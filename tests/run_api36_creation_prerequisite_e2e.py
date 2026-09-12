@@ -105,6 +105,7 @@ PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
 CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
 CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
+CREATION_TIMEOUT_DIAGNOSTIC_SECONDS = 8.0
 CREATION_BOOTSTRAP_TIMING_LINE = re.compile(
     rf"^{re.escape(CREATION_BOOTSTRAP_TIMING_PREFIX)}(?P<payload>\{{.*\}})$"
 )
@@ -780,9 +781,110 @@ def wait_for_creation_bootstrap_timing_log(
         last_logcat,
         encoding="utf-8",
     )
-    device.capture("creation-bootstrap-timing-log-timeout")
+    try:
+        capture_creation_bootstrap_timeout(device)
+    except Exception:
+        # Diagnostic failure cannot replace the original failed observation.
+        pass
     raise RuntimeError(
         "Timed out waiting for the exact post-action creation bootstrap timing marker"
+    )
+
+
+def wait_for_creation_bootstrap_timing_with_progress(
+    device: shared.Device,
+    progress: ProgressRecorder,
+) -> str:
+    """Retain partial timing without replacing a failed bootstrap observation."""
+    bootstrap_log_observation: dict[str, object] = {}
+    wait_failed = True
+    try:
+        logcat = wait_for_creation_bootstrap_timing_log(
+            device,
+            observation_out=bootstrap_log_observation,
+        )
+        wait_failed = False
+        return logcat
+    finally:
+        if bootstrap_log_observation:
+            try:
+                progress.record_scan(bootstrap_log_observation)
+            except Exception:
+                if not wait_failed:
+                    raise
+
+
+def capture_creation_bootstrap_timeout(device: shared.Device) -> None:
+    """Collect bounded diagnostics after failure; never grant more bootstrap time."""
+    name = "creation-bootstrap-timing-log-timeout"
+    deadline = time.monotonic() + CREATION_TIMEOUT_DIAGNOSTIC_SECONDS
+    observation: dict[str, object] = {
+        "diagnosticOnly": True,
+        "bootstrapStatus": "timeout",
+        "freshHierarchy": "unavailable",
+        "dialogTrace": "unavailable",
+    }
+    try:
+        # The legacy capture copies an existing device XML file. Name it as
+        # prior evidence from the outset, even if later diagnostics fail.
+        device.capture(f"{name}-prior-hierarchy", deadline=min(deadline, time.monotonic() + 2.0))
+    except Exception:
+        pass
+    prior = device.evidence / f"{name}-prior-hierarchy.xml"
+    if prior.is_file():
+        observation["priorHierarchy"] = "copied-existing-device-file-not-fresh"
+    try:
+        trace = device.run(
+            *shared.ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS,
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=1.0),
+            deadline=min(deadline, time.monotonic() + 1.0),
+        )
+        (device.evidence / f"{name}-dialog-trace.txt").write_text(trace.stdout, encoding="utf-8")
+        observation["dialogTrace"] = "captured" if trace.stdout.strip() else "empty"
+    except Exception as error:
+        # Preserve why this diagnostic was unavailable without replacing the
+        # failed bootstrap or leaking raw transport/character details.
+        observation["dialogTraceFailureType"] = type(error).__name__
+    try:
+        fresh = device.run(
+            *shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS,
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=5.0),
+            deadline=deadline,
+            text=False,
+        )
+        raw = fresh.stdout
+        # /dev/tty may add UIAutomator's status line around the XML document.
+        start = raw.find(b"<hierarchy")
+        end = raw.rfind(b"</hierarchy>")
+        complete = shared._complete_file_hierarchy(raw[start:end + len(b"</hierarchy>")])
+        if complete is not None:
+            (device.evidence / f"{name}.xml").write_text(complete[0], encoding="utf-8")
+            observation["freshHierarchy"] = "captured-from-new-read-only-dump"
+        else:
+            observation["freshHierarchy"] = "invalid-new-dump"
+    except Exception as error:
+        observation["freshHierarchyFailureType"] = type(error).__name__
+    (device.evidence / f"{name}-diagnostics.json").write_text(
+        json.dumps(observation, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def record_creation_action_tap_intent(
+    device: shared.Device, node: shared.UiNode, target_returned_at: float
+) -> None:
+    """Retain coordinates and clocks, never field values or a dispatch receipt."""
+    (device.evidence / "creation-action-tap-intent.json").write_text(
+        json.dumps({
+            "diagnosticOnly": True,
+            "event": "tap-intent",
+            "resourceId": "dialog-action-create-character",
+            "bounds": list(node.bounds),
+            "center": list(node.center),
+            "targetReturnedAtMonotonicSeconds": target_returned_at,
+            "tapRequestedAtMonotonicSeconds": time.monotonic(),
+            "tapRequestedAtUtc": datetime.now(timezone.utc).isoformat(),
+        }, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
     )
 
 
@@ -3368,6 +3470,7 @@ def require_exact_attributes_category_round_trip(
     device: shared.Device,
     *,
     deadline: float,
+    proof_expectation: proof_state.ProofBuildExpectation,
 ) -> str:
     """Open Attributes and return through one exact, non-replayable navigation path."""
     node, before = acquire_exact_attributes_category_authority(
@@ -3394,7 +3497,28 @@ def require_exact_attributes_category_round_trip(
         surface_name="Attributes category detail route",
         deadline=deadline,
     )
+    # Back revalidates the parent asynchronously: its previous controls remain
+    # disabled until the current appearance renders. Capture the latest retained
+    # parent publication immediately before this one Back, then admit only a
+    # later same-process/workspace attachment before observing stable UI values.
+    # This schedules the unchanged strict scan; it does not replace that scan
+    # or authorize retrying a navigation action or ignoring genuine state drift.
+    prior_attachment = proof_state.wait_for_state(
+        device,
+        expected=proof_expectation,
+        page_automation_id="creation-prerequisite-page",
+        stage="attachment-authority-ready",
+        wizard_lane="creation-prerequisite",
+        timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=30),
+        deadline=deadline,
+    )
     device.back(deadline=deadline)
+    read_creation_prerequisite_attachment_proof_state(
+        device,
+        proof_expectation,
+        expected_prior_proof=prior_attachment.payload,
+        deadline=deadline,
+    )
     require_exact_attributes_post_back_observation(
         device,
         before,
@@ -3407,6 +3531,7 @@ def open_exact_prerequisite_preview(
     device: shared.Device,
     *,
     deadline: float,
+    forward_scrolls: int = 4,
 ) -> None:
     """Acquire and tap one exact Preview action, then prove its exact route."""
     selector = "creation-prerequisite-prepare-preview"
@@ -3414,7 +3539,7 @@ def open_exact_prerequisite_preview(
         selector,
         timeout=60,
         backward_scrolls=0,
-        forward_scrolls=4,
+        forward_scrolls=forward_scrolls,
         scroll_distance_ratio=0.22,
         evidence_prefix="creation-prerequisite-prepare-preview",
         surface_name="Creation prerequisite Preview action",
@@ -5319,7 +5444,9 @@ def wait_for_prerequisite_scan_origin(
     proof therefore issued eight blind reverse gestures, waited, and then paid
     for a second hierarchy read at the start of the stable scan.  This bounded
     acquisition instead reverses only while the exact prerequisite route is
-    present but its two top authority anchors are absent.  The hierarchy that
+    present but its two top authority anchors are absent, and the page is not
+    loading or reporting unavailable authority. Retained anchors from an older
+    appearance never establish readiness while revalidation is loading. The hierarchy that
     proves those anchors is returned for direct reuse as the scan's first
     viewport; duplicate route or anchor nodes still fail closed.  Only the
     untouched viewport immediately following its one opening tap may exchange
@@ -5357,6 +5484,7 @@ def wait_for_prerequisite_scan_origin(
     file_backed_attempts = 0
     direct_fallback_reads = 0
     hierarchy_durations_ms: list[int] = []
+    last_observation: dict[str, object] | None = None
 
     def record_origin(
         status: str,
@@ -5386,7 +5514,84 @@ def wait_for_prerequisite_scan_origin(
             }
         if opening_action is not None:
             payload["openingAction"] = json.loads(json.dumps(opening_action))
+        if status != "resolved" and last_observation is not None:
+            # Diagnostic only: retain one detached, already-observed frame. This
+            # is neither raw XML identity nor an alternate success authority, and
+            # collecting it must not spend another ADB/read/mutation lease.
+            payload["lastObservation"] = json.loads(json.dumps(last_observation))
         scan_observer(payload)
+
+    def remember_observation(nodes: list[shared.UiNode], mode: str) -> None:
+        nonlocal last_observation
+        if not nodes:
+            return
+        captured = [shared.UiNode(dict(node.attributes)) for node in nodes]
+        last_observation = {
+            "schema": "chummer.android.prerequisite-origin-observation/v1",
+            "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "observationMode": mode,
+            "hierarchyDigest": accessibility_signature_sha256(captured),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(captured),
+            "nodes": [node.attributes for node in captured],
+        }
+
+    def is_loading(nodes: list[shared.UiNode], *, direct: bool = False) -> bool:
+        state_selectors = (
+            "creation-prerequisite-loading",
+            "creation-prerequisite-unavailable",
+            "creation-prerequisite-blockers",
+        )
+        states = {
+            selector: [node for node in nodes if _exact_resource_id(node) == selector]
+            for selector in state_selectors
+        }
+        ambiguous = {key: len(value) for key, value in states.items() if len(value) > 1}
+        if ambiguous:
+            record_origin(
+                "state-cardinality-invalid",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="ambiguous" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite state cardinality invalid: {ambiguous!r}")
+        noncanonical = [
+            selector for selector, candidates in states.items() if candidates and (
+                candidates[0].attributes.get("package") != shared.PACKAGE
+                or candidates[0].attributes.get("resource-id")
+                != f"{shared.PACKAGE}:id/{selector}"
+            )
+        ]
+        if noncanonical:
+            record_origin(
+                "state-identity-invalid",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="noncanonical" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite state identity invalid: {noncanonical!r}")
+        # OnAppearing retains the previous body while adding the loading marker.
+        # Both old ready controls and old error cards are inert during this load.
+        if states[state_selectors[0]]:
+            return True
+        unavailable = [selector for selector in state_selectors[1:] if states[selector]]
+        if unavailable:
+            record_origin(
+                "authority-unavailable",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="authority-unavailable" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite authority unavailable: {unavailable!r}")
+        return False
+
+    def wait_for_next_observation(seconds: float, *, operation: str) -> None:
+        try:
+            sleep_before_phase_deadline(seconds, deadline=operation_deadline, operation=operation)
+        except RuntimeError:
+            record_origin(
+                "deadline-exhausted",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
+            raise
 
     def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
         return {
@@ -5491,6 +5696,7 @@ def wait_for_prerequisite_scan_origin(
             hierarchy_durations_ms.append(
                 round((time.perf_counter() - direct_started) * 1000)
             )
+            remember_observation(nodes, "single-direct-read-only")
             observe_first_post_tap(nodes)
             matches = exact_matches(nodes)
             ambiguous = {
@@ -5507,6 +5713,15 @@ def wait_for_prerequisite_scan_origin(
                 raise RuntimeError(
                     "Creation prerequisite direct scan origin was ambiguous: "
                     f"{ambiguous!r}"
+                )
+            if is_loading(nodes, direct=True):
+                record_origin(
+                    "direct-fallback-loading",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="loading",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose a ready prerequisite surface"
                 )
             missing = [
                 selector
@@ -5554,12 +5769,19 @@ def wait_for_prerequisite_scan_origin(
                 hierarchy_durations_ms=tuple(hierarchy_durations_ms),
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
+        except Exception:
+            record_origin(
+                "file-read-failed",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
+            raise
+        remember_observation(nodes, "fresh-file-backed")
         observe_first_post_tap(nodes)
         if not nodes:
             empty_hierarchy_reads += 1
-            sleep_before_phase_deadline(
+            wait_for_next_observation(
                 0.75,
-                deadline=operation_deadline,
                 operation="prerequisite scan-origin empty-hierarchy wait",
             )
             continue
@@ -5583,6 +5805,12 @@ def wait_for_prerequisite_scan_origin(
                 "Creation prerequisite scan origin was ambiguous: "
                 f"{ambiguous!r}"
             )
+        if is_loading(nodes):
+            wait_for_next_observation(
+                0.25,
+                operation="prerequisite scan-origin loading wait",
+            )
+            continue
         if len(matches[route_selector]) == 1 and all(
             len(matches[selector]) == 1 for selector in top_selectors
         ):
@@ -5608,9 +5836,8 @@ def wait_for_prerequisite_scan_origin(
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
         if device.dismiss_system_ui_anr(nodes, deadline=operation_deadline):
-            sleep_before_phase_deadline(
+            wait_for_next_observation(
                 2,
-                deadline=operation_deadline,
                 operation="prerequisite scan-origin system-UI wait",
             )
             continue
@@ -5621,9 +5848,8 @@ def wait_for_prerequisite_scan_origin(
             )
             reverse_swipes += 1
             continue
-        sleep_before_phase_deadline(
+        wait_for_next_observation(
             0.25,
-            deadline=operation_deadline,
             operation="prerequisite scan-origin retry wait",
         )
     record_origin(
@@ -6340,10 +6566,21 @@ def select_priority_rank(
             f"{selected_resource_id!r}"
         )
 
+    expected_rank = rank_token.upper()
+    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
+    language = (
+        locale_binding.language
+        if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
+        else "en"
+    )
+    rank_label = PRIORITY_RANK_LABEL_BY_LANGUAGE[language]
     deadline = time.monotonic() + 45
     row: shared.UiNode | None = None
+    detail: str | None = None
     while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+        nodes = device.hierarchy(deadline=deadline)
+        if time.monotonic() >= deadline:
+            break
         if not nodes:
             time.sleep(0.75)
             continue
@@ -6375,39 +6612,36 @@ def select_priority_rank(
             and len(matches["creation-prerequisite-page"]) == 1
             and len(matches[category_selector]) == 1
         ):
-            row = matches[category_selector][0]
-            break
+            candidate = matches[category_selector][0]
+            detail = candidate.attributes.get("content-desc", "")
+            # Pop can expose the retained parent before its asynchronous
+            # revalidation refreshes the selected rank. Observe within this
+            # same lease; never repeat the rank-selection tap.
+            if (
+                candidate.attributes.get("enabled") == "true"
+                and candidate.attributes.get("clickable") == "true"
+                and device.node_has_tappable_bounds(candidate)
+                and re.search(
+                    rf"(?:^|[. ·]){re.escape(rank_label)} {re.escape(expected_rank)}(?:$|[. ·])",
+                    detail,
+                ) is not None
+            ):
+                row = candidate
+                break
         if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.25)
     if row is None:
+        if detail is not None:
+            device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
+            raise RuntimeError(
+                f"Selected {category} rank {expected_rank!r} was not projected by the "
+                f"refreshed phone draft row within the bounded wait: {detail!r}"
+            )
         device.capture(f"creation-prerequisite-{category}-category-pop-timeout")
         raise RuntimeError(
             f"{category} rank selection did not publish one refreshed parent row"
-        )
-    detail = row.attributes.get("content-desc", "")
-    expected_rank = rank_token.upper()
-    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
-    language = (
-        locale_binding.language
-        if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
-        else "en"
-    )
-    rank_label = PRIORITY_RANK_LABEL_BY_LANGUAGE[language]
-    if (
-        row.attributes.get("enabled") != "true"
-        or row.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(row)
-        or re.search(
-            rf"(?:^|[. ·]){re.escape(rank_label)} {re.escape(expected_rank)}(?:$|[. ·])",
-            detail,
-        ) is None
-    ):
-        device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
-        raise RuntimeError(
-            f"Selected {category} rank {expected_rank!r} was not projected by the "
-            f"refreshed phone draft row: {detail!r}"
         )
     category_navigation["lastCategory"] = category
     category_navigation["currentNodes"] = nodes
@@ -9828,6 +10062,7 @@ def require_exact_restored_authority_option(
     previous_root_category: str | None,
     retain_selected_node: bool,
     deadline: float,
+    proof_expectation: proof_state.ProofBuildExpectation,
     max_scrolls: int = 40,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str | None = None,
@@ -10011,13 +10246,36 @@ def require_exact_restored_authority_option(
             deadline=deadline,
         )
     else:
+        # Returning exposes the parent's old enabled rows before its awaited
+        # appearance revalidation refreshes their generation-bound callbacks.
+        # That source-proven race fits run 34623722416's retained parent route;
+        # the archive does not prove which generation handled its exact tap.
+        # Capture the latest observation immediately before this Back, not an
+        # earlier opening's sequence. Proof only gates scheduling: the fresh
+        # accessibility acquisition and all option/selection checks still apply.
+        prior_attachment = proof_state.wait_for_state(
+            device,
+            expected=proof_expectation,
+            page_automation_id="creation-prerequisite-page",
+            stage="attachment-authority-ready",
+            wizard_lane="creation-prerequisite",
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=30),
+            deadline=deadline,
+        )
         device.back(deadline=deadline)
+        return_deadline = min(deadline, time.monotonic() + 45)
+        read_creation_prerequisite_attachment_proof_state(
+            device,
+            proof_expectation,
+            expected_prior_proof=prior_attachment.payload,
+            deadline=return_deadline,
+        )
         root_node = device.wait_for_single_exact_resource_id(
             "creation-prerequisite-page",
             timeout=45,
             evidence_prefix=f"restored-{category}-back-to-prerequisite",
             surface_name=f"Prerequisite route after restored {category} proof",
-            deadline=deadline,
+            deadline=return_deadline,
         )
         _require_canonical_chummer_resource_id(
             device,
@@ -11220,7 +11478,7 @@ def read_creation_prerequisite_attachment_proof_state(
     expected_prior_proof: dict[str, object],
     deadline: float,
 ) -> dict[str, object]:
-    """Bind the one opening tap to an exact attached prerequisite page.
+    """Bind one navigation action to a later exact attached prerequisite page.
 
     This app-private observation proves only the route lifecycle boundary and
     its revision-bound Core snapshot. The following accessibility traversal
@@ -11234,6 +11492,8 @@ def read_creation_prerequisite_attachment_proof_state(
         stage="attachment-authority-ready",
         wizard_lane="creation-prerequisite",
         timeout=timeout,
+        deadline=deadline,
+        after_same_process_proof=expected_prior_proof,
     )
     payload = snapshot.payload
     workspace = payload.get("workspace")
@@ -11272,7 +11532,7 @@ def read_creation_prerequisite_attachment_proof_state(
         )
         raise RuntimeError(
             "Creation prerequisite attachment proof is not a later same-process "
-            "observation of the exact Resources workspace"
+            "observation of the exact workspace"
         )
     return {
         "schema": payload["schema"],
@@ -11427,6 +11687,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         target_scroll_surface="dialog-surface",
         max_target_scrolls=16,
     )
+    create_character_target_returned_at = time.monotonic()
     progress.record_initial_milestone("dialog-acquisition-complete")
     if (
         create_character.attributes.get("enabled") != "true"
@@ -11439,17 +11700,16 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         )
     progress.advance("initial-authority")
     clear_creation_bootstrap_timing_log(device)
+    record_creation_action_tap_intent(device, create_character, create_character_target_returned_at)
     device.shell(
         "input",
         "tap",
         *(str(value) for value in create_character.center),
     )
-    bootstrap_log_observation: dict[str, object] = {}
-    bootstrap_logcat = wait_for_creation_bootstrap_timing_log(
+    bootstrap_logcat = wait_for_creation_bootstrap_timing_with_progress(
         device,
-        observation_out=bootstrap_log_observation,
+        progress,
     )
-    progress.record_scan(bootstrap_log_observation)
     creation_bootstrap_timing = capture_creation_bootstrap_timing(
         device,
         logcat=bootstrap_logcat,
@@ -11756,28 +12016,37 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError("Active-skill Talent SelectionId was not exposed by Core authority")
 
     progress.advance("talent-active-preview")
-    device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-preview-page", timeout=60)
-    active_preview_digest = canonical_digest(
+    active_preview_deadline = progress.active_phase_deadline("talent-active-preview")
+    open_exact_prerequisite_preview(
         device,
-        "creation-prerequisite-preview-digest",
-        scroll=True,
+        deadline=active_preview_deadline,
+        forward_scrolls=22,
     )
+    # Read the narrow digest row from the same stable-origin traversal as the
+    # grant plan. A separate forward-only wait can skip it and leave the
+    # observer at the bottom of an otherwise correctly rendered Preview.
+    active_preview_proof: dict[str, object] = {}
     active_plan_digest = require_exact_preview_talent_grant_plan(
         device,
         "Active skills",
         active_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="talent-active-skill-preview-plan",
-        deadline=progress.active_phase_deadline("talent-active-preview"),
+        deadline=active_preview_deadline,
+        proof_out=active_preview_proof,
     )
-    device.capture("creation-prerequisite-talent-active-skill-preview")
-    device.back()
+    active_preview_digest = str(active_preview_proof["previewDigest"])
+    device.capture(
+        "creation-prerequisite-talent-active-skill-preview",
+        deadline=active_preview_deadline,
+    )
+    device.back(deadline=active_preview_deadline)
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-page",
         timeout=45,
         evidence_prefix="talent-active-skill-preview-back",
         surface_name="Prerequisite route after active-skill preview",
+        deadline=active_preview_deadline,
     )
 
     # Changing the selected Talent must clear the prior active-skill slots.  The
@@ -11843,6 +12112,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     attributes_before = require_exact_attributes_category_round_trip(
         device,
         deadline=preview_confirm_deadline,
+        proof_expectation=proof_expectation,
     )
 
     open_exact_prerequisite_preview(
@@ -11963,6 +12233,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category=None,
         retain_selected_node=False,
         deadline=same_process_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="same-process-restored-authority-option-heritage",
     )
@@ -11976,6 +12247,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category="heritage",
         retain_selected_node=True,
         deadline=same_process_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="same-process-restored-authority-option-talent",
     )
@@ -12260,6 +12532,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category=None,
         retain_selected_node=False,
         deadline=process_restart_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="process-restart-restored-authority-option-heritage",
     )
@@ -12273,6 +12546,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         previous_root_category="heritage",
         retain_selected_node=True,
         deadline=process_restart_options_deadline,
+        proof_expectation=proof_expectation,
         scan_observer=progress.record_scan,
         scan_id="process-restart-restored-authority-option-talent",
     )

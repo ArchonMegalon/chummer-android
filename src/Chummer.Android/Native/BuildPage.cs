@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
@@ -10,6 +11,21 @@ namespace Chummer.Android.Native;
 public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
+
+// Finalization has its own owner-bound queue key; other creation phases retain
+// their existing contracts. A same-ID account switch must retire this request.
+internal sealed record CreationFinalizationProjectionBinding(
+    CreationDashboardProjectionBinding Dashboard,
+    OwnerContextStamp? Owner,
+    string? Tab,
+    string? Action,
+    string? Section)
+{
+    public bool Matches(CharacterOverviewState state, CharacterCreationWizardSnapshot snapshot)
+        => Dashboard.Matches(state, snapshot) && state.DisplayOwnerContext == Owner
+           && state.Session.OwnerContext == Owner && state.ActiveTabId == Tab
+           && state.ActiveActionId == Action && state.ActiveSectionId == Section;
+}
 
 public sealed record CreationDashboardRouteReadyMarker(
     string Schema,
@@ -295,15 +311,22 @@ public static class BuildPageUiProjection
     /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
     /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
     /// placeholder is not a competing domain authority: Attributes, Skills, Contacts, and
-    /// Resources are opened only by their dedicated typed projections.  No stage becomes
-    /// available from the generic snapshot alone.
+    /// Resources are opened only by their dedicated typed projections, whose domain
+    /// must match the destination step. A finalization
+    /// requirement for this same stage's not-yet-authored draft is likewise not an editor
+    /// entry prerequisite. The finalization snapshot remains unchanged and still blocks
+    /// finishing the character. A consistently completed, blocker-free stage can be
+    /// revisited even when the generic projection retains its unavailable flag.
+    /// No stage opens from the generic snapshot alone.
     /// </summary>
     public static bool CanOpenExactTypedCreationStage(
         CharacterCreationWizardStageState stage,
+        string authorityStepId,
         bool exactTypedAuthorityReady)
     {
         ArgumentNullException.ThrowIfNull(stage);
         if (!exactTypedAuthorityReady
+            || !string.Equals(stage.StepId, authorityStepId, StringComparison.Ordinal)
             || stage.StepId is not (CharacterCreationWizardStepIds.Attributes
                 or CharacterCreationWizardStepIds.Skills
                 or CharacterCreationWizardStepIds.ContactsLifestyles
@@ -312,13 +335,32 @@ public static class BuildPageUiProjection
             return false;
         }
 
-        return stage.IsAvailable
-            ? stage.Blockers.Count == 0
-            : stage.Blockers.Count == 1
-              && string.Equals(
-                  stage.Blockers[0],
-                  "creation-wizard-legal-options-authority-unavailable",
-                  StringComparison.Ordinal);
+        bool hasCompleteStatus = string.Equals(
+            stage.Status, CharacterCreationWizardStepStatuses.Complete, StringComparison.Ordinal);
+        if (stage.IsComplete || hasCompleteStatus)
+            return stage.IsComplete && hasCompleteStatus && stage.Blockers.Count == 0;
+
+        if (stage.IsAvailable)
+            return stage.Blockers.Count == 0;
+        if (stage.Blockers.Count != 1)
+            return false;
+        if (string.Equals(
+                stage.Blockers[0],
+                "creation-wizard-legal-options-authority-unavailable",
+                StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        string? ownMissingDraftBlocker = stage.StepId switch
+        {
+            CharacterCreationWizardStepIds.Attributes => CharacterCreationFinalizationBlockers.AttributesDraftRequired,
+            CharacterCreationWizardStepIds.Skills => CharacterCreationFinalizationBlockers.SkillsDraftRequired,
+            CharacterCreationWizardStepIds.Resources => CharacterCreationFinalizationBlockers.ResourcesDraftRequired,
+            _ => null
+        };
+        return ownMissingDraftBlocker is not null
+               && string.Equals(stage.Blockers[0], ownMissingDraftBlocker, StringComparison.Ordinal);
     }
 
     public static bool HasExactTypedResourcesAuthority(
@@ -681,7 +723,7 @@ public sealed class BuildPage : NativePageBase
     private readonly ToolbarItem _save;
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>> _creationPrerequisiteQueue = new();
+        CreationPrerequisitePhoneLoad> _creationPrerequisiteQueue = new();
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>> _creationAttributesQueue = new();
@@ -695,18 +737,19 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardProjectionBinding,
         CharacterCreationResourcesInteractionLoadResult> _creationResourcesQueue = new();
     private readonly LatestBackgroundProjectionQueue<
-        CreationDashboardProjectionBinding,
+        CreationFinalizationProjectionBinding,
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>> _creationFinalizationQueue = new();
     private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
     private readonly ICharacterCreationGearInteractionPresenter? _gearPresenter;
     private readonly ICharacterOverviewPresenter? _overviewPresenter;
     private CreationDashboardAuthorityProjection? _creationProjection;
-    private CreationDashboardProjectionBinding? _creationFinalizationBinding;
+    private CreationFinalizationProjectionBinding? _creationFinalizationBinding;
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
         _creationFinalizationAuthority;
     private string? _creationFinalizationFailureReason;
     private CancellationTokenSource? _creationDashboardRouteReadyLifetime;
     private long _creationDashboardAppearanceGeneration;
+    private long _dossierRenderGeneration;
     private long _creationDashboardRouteReadyEmittedGeneration = -1;
     private readonly CreationNavigationRefreshLease _creationNavigationRefreshLease = new();
     private readonly CreationNavigationReleaseScheduler _creationNavigationReleaseScheduler;
@@ -824,6 +867,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void Refresh()
     {
+        _dossierRenderGeneration++;
         _body.Clear();
         _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
@@ -1499,12 +1543,15 @@ public sealed class BuildPage : NativePageBase
     {
         if (projection is null || projection.Progress.HasLoading)
             return;
+        CharacterOverviewState original = Coordinator.State;
         if (!CreationDashboardProjectionBinding.TryCreate(
-                Coordinator.State,
+                original,
                 snapshot,
-                out CreationDashboardProjectionBinding? binding)
-            || binding is null)
+                out CreationDashboardProjectionBinding? dashboardBinding)
+            || dashboardBinding is null || !Coordinator.IsCreationFinalizationDisplayCurrent(original))
             return;
+        var binding = new CreationFinalizationProjectionBinding(dashboardBinding,
+            original.DisplayOwnerContext, original.ActiveTabId, original.ActiveActionId, original.ActiveSectionId);
         if (_creationFinalizationBinding?.Equals(binding) != true)
         {
             _creationFinalizationQueue.Cancel();
@@ -1521,11 +1568,11 @@ public sealed class BuildPage : NativePageBase
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
-                        Coordinator.LoadCreationFinalization();
+                        Coordinator.LoadCreationFinalization(original);
                     cancellationToken.ThrowIfCancellationRequested();
                     return result;
                 },
-                out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+                out BackgroundProjectionRequest<CreationFinalizationProjectionBinding> request);
             if (_creationFinalizationQueue.TryTake(
                     request,
                     out CharacterCreationFinalizationResult<CharacterCreationFinalizationState> completed,
@@ -1565,8 +1612,23 @@ public sealed class BuildPage : NativePageBase
             ScheduleCreationNavigationPressCancellation(pressGeneration);
         review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
         {
-            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
-                Coordinator.ReviewCreationFinalization(authority.Value.Binding);
+            long originalAppearance = _creationDashboardAppearanceGeneration;
+            if (!IsCurrentCreationDashboardPage()) return;
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result;
+            try
+            {
+                result = await Coordinator.ReviewCreationFinalizationAsync(authority.Value.Binding);
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                // A departed/recreated appearance must not surface an old worker
+                // failure through the shared navigation error handler.
+                if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
+                    return;
+                throw;
+            }
+            if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
+                return;
             if (result is not
                 {
                     Outcome: CharacterCreationFinalizationOutcomes.Available,
@@ -1577,6 +1639,8 @@ public sealed class BuildPage : NativePageBase
                     result.Blockers.FirstOrDefault()
                     ?? "The final creation authority changed. Reload the runner and review again.");
             }
+            if (!Coordinator.IsCreationFinalizationReviewCurrent(result.Value))
+                return;
             await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
         }, pressGeneration);
         _body.Add(review);
@@ -1646,12 +1710,13 @@ public sealed class BuildPage : NativePageBase
     }
 
     private void ScheduleCreationFinalizationAcceptance(
-        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+        BackgroundProjectionRequest<CreationFinalizationProjectionBinding> request)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (_creationFinalizationBinding?.Equals(request.Key) != true
                 || Coordinator.State.CreationWizard is not { } snapshot
+                || !Coordinator.IsCreationFinalizationDisplayCurrent(Coordinator.State)
                 || !request.Key.Matches(Coordinator.State, snapshot))
             {
                 _creationFinalizationQueue.TryAccept(request);
@@ -1702,12 +1767,13 @@ public sealed class BuildPage : NativePageBase
                 switch (phase)
                 {
                     case CreationDashboardAuthorityPhase.Prerequisite:
+                        CharacterOverviewState prerequisiteDisplay = Coordinator.State;
                         ResolveCreationPhase(
                             binding,
                             projection.Progress.Prerequisite,
                             phase,
                             _creationPrerequisiteQueue,
-                            Coordinator.LoadCreationPrerequisite,
+                            () => Coordinator.LoadCreationPrerequisiteInBackground(prerequisiteDisplay),
                             AcceptCreationPrerequisite);
                         break;
                     case CreationDashboardAuthorityPhase.Attributes:
@@ -1874,7 +1940,7 @@ public sealed class BuildPage : NativePageBase
 
     private void AcceptCreationPrerequisite(
         CreationDashboardProjectionBinding binding,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result,
+        CreationPrerequisitePhoneLoad loaded,
         Exception? error)
     {
         if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
@@ -1884,7 +1950,7 @@ public sealed class BuildPage : NativePageBase
             Progress = projection.Progress.WithTerminal(
                 CreationDashboardAuthorityPhase.Prerequisite,
                 failed: error is not null),
-            Prerequisite = error is null ? result : null,
+            Prerequisite = error is null ? Coordinator.AcceptCreationPrerequisiteLoad(loaded) : null,
             PrerequisiteFailureReason = error is null
                 ? null
                 : "creation-prerequisite-authority-load-failed"
@@ -2105,10 +2171,12 @@ public sealed class BuildPage : NativePageBase
                 StringComparison.Ordinal);
             bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Attributes,
                 HasAuthoritativeAttributes(attributes));
             bool skillStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
             bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Skills,
                 HasAuthoritativeSkills(skills));
             bool qualitiesStage = string.Equals(
                 stage.StepId,
@@ -2127,10 +2195,12 @@ public sealed class BuildPage : NativePageBase
             bool contactsStage = IsContactsStage(stage.StepId);
             bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.ContactsLifestyles,
                 HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStage = IsResourcesStage(stage.StepId);
             bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Resources,
                 HasAuthoritativeResources(creationResources));
             bool identityStage = string.Equals(
                 stage.StepId,
@@ -2324,10 +2394,12 @@ public sealed class BuildPage : NativePageBase
                                      && HasAuthoritativeFoundationOptions();
             bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Attributes,
                 HasAuthoritativeAttributes(attributeResult));
             bool skillStep = string.Equals(stepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
             bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Skills,
                 HasAuthoritativeSkills(skillsResult));
             bool qualitiesStep = string.Equals(stepId, CharacterCreationWizardStepIds.Qualities, StringComparison.Ordinal);
             bool canOpenQualities = qualitiesStep
@@ -2343,10 +2415,12 @@ public sealed class BuildPage : NativePageBase
             bool contactsStep = IsContactsStage(stepId);
             bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.ContactsLifestyles,
                 HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStep = IsResourcesStage(stepId);
             bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Resources,
                 HasAuthoritativeResources(creationResources));
             bool identityStep = string.Equals(
                 stepId,
@@ -2525,6 +2599,7 @@ public sealed class BuildPage : NativePageBase
                Outcome: CharacterCreationFoundationOutcomes.Success,
                Value: { } state
            }
+           && Coordinator.IsCreationPrerequisiteStateCurrent(state)
            && CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State);
 
     private bool HasAuthoritativeAttributes(
@@ -2637,7 +2712,9 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationPrerequisiteAsync(
         CharacterCreationPrerequisiteState authority)
-        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority));
+        => Coordinator.IsCreationPrerequisiteStateCurrent(authority)
+            ? Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority))
+            : Task.CompletedTask;
 
     private Task OpenCreationAttributesAsync(CharacterCreationAttributesState authority)
         => Navigation.PushAsync(new CreationAttributesPage(Coordinator, authority));
@@ -2766,6 +2843,9 @@ public sealed class BuildPage : NativePageBase
 
     private void AddDossier()
     {
+        CharacterOverviewState original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
         _body.Add(NativeTheme.Eyebrow("Runner"));
         _body.Add(NativeTheme.NavigationRow(
             "Origin dossier",
@@ -2792,14 +2872,17 @@ public sealed class BuildPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             "Primary arm",
             "Preferred arm or Ambidextrous read-only state",
-            async () =>
+            () => RunAsync(async () =>
             {
-                PrimaryArmEditorState? editor = await Coordinator.PreparePrimaryArmEditAsync();
-                if (editor is not null)
+                if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)) return;
+                PrimaryArmEditorState? editor = await Coordinator.PreparePrimaryArmEditAsync(original);
+                if (editor is not null && IsCurrentAppearanceGeneration(appearance)
+                    && render == _dossierRenderGeneration
+                    && Coordinator.IsPrimaryArmEditorCurrent(editor))
                 {
                     await Navigation.PushAsync(new PrimaryArmPage(Coordinator, editor));
                 }
-            },
+            }),
             automationId: "build-primary-arm"));
         _body.Add(NativeTheme.NavigationRow(
             "Sustained effects",

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
@@ -9,6 +10,168 @@ using Chummer.Presentation.Shell;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunCreationBootstrapProductionOverviewAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        var owners = new ControlledLinkedOwner();
+        OwnerContextStamp original = owners.Capture();
+        var metrics = new List<BootstrapProductionStage>();
+        ProductionBootstrapProbe? bootstrap = null;
+        ProductionFinalizationLoadProbe? finalization = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationBootstrap: true, productionCreationOverview: true,
+            bootstrapDecorator: actual => bootstrap = new(actual, original, metrics),
+            finalizationDecorator: actual => finalization = new(actual, original, metrics));
+        try
+        {
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            var coldStore = new FileWorkspaceStore(runtime.StateDirectory);
+            Require(owners.Current == OwnerScope.LocalSingleUser && coldStore.List().Count == 0,
+                "SETUP: production overview diagnostic must start in an empty actual local partition.");
+            await runtime.Coordinator.CreateRunnerAsync();
+            Require(runtime.Coordinator.State.ActiveDialog?.Id == "dialog.new_character",
+                "SETUP: actual native New Runner did not open its canonical dialog.");
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Production overview diagnostic", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterAlias", "Production overview", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.Priority, default);
+            long actionStarted = Stopwatch.GetTimestamp();
+            try { await runtime.Coordinator.ExecuteDialogActionAsync("create_character"); }
+            finally { metrics.Add(new("native-create-action", Stopwatch.GetElapsedTime(actionStarted).TotalMilliseconds)); }
+
+            var state = runtime.Coordinator.State;
+            Require(bootstrap is { ActivationCalls: > 0, ValidationCalls: > 0, LegacyCreateCalls: 0,
+                        FailedValidations: 0, Activation: { Receipt: not null, Bundle: not null } }
+                    && bootstrap.Activation.Outcome == CharacterCreationBootstrapOutcomes.Success,
+                "Actual create did not finish the receipt-bearing activation and current-validation path.");
+            var activation = bootstrap!.Activation!;
+            var receipt = activation.Receipt!;
+            var bundle = activation.Bundle!;
+            Require(CharacterCreationBootstrapReceiptDigest.IsValid(receipt)
+                && receipt.WorkspaceId == bundle.Receipt.WorkspaceId
+                && receipt.ReceiptDigest == bundle.Receipt.ReceiptDigest,
+                "Actual activation did not retain a valid, matching Core receipt.");
+            var coldReader = new FileWorkspaceStore(runtime.StateDirectory);
+            var cold = original.Owner.IsLocalSingleUser
+                ? coldReader.Get(receipt.WorkspaceId)
+                : coldReader.Get(original.Owner, receipt.WorkspaceId);
+            Require(cold.Success && cold.Value is { ContentRevision: 1, SavedRevision: 0 }
+                && cold.Value.Document.AuxiliaryState.CharacterCreationBootstrapBinding?.BindingDigest == receipt.Binding.BindingDigest
+                && CharacterCreationBootstrapActivationIntegrity.ComputeDocumentDigest(cold.Value.Document)
+                    == bundle.RecoveryBinding.WorkspaceDocumentDigest
+                && coldStore.List().Count == 1 && coldStore.List(ContactsOwnerA).Count == 0 && coldStore.List(ContactsOwnerB).Count == 0,
+                "Actual receipt does not match the sole cold bootstrap document and durable binding.");
+            Require(state.WorkspaceId == receipt.WorkspaceId && state.Session.ActiveWorkspaceId == receipt.WorkspaceId
+                && state.ContentRevision == receipt.ContentRevision && state.SavedRevision == receipt.SavedRevision
+                && state.Profile?.Created == false && !state.IsBusy && state.Error is null && state.ActiveDialog is null
+                && state.DisplayOwnerContext == original && state.Session.OwnerContext == original && owners.Capture() == original
+                && runtime.Shell.State.OwnerContext == original && runtime.Shell.State.ActiveWorkspaceId == receipt.WorkspaceId
+                && runtime.Shell.State.OpenWorkspaces.Any(item => item.Id == receipt.WorkspaceId),
+                "Actual production-wired create did not join original-owner presenter and Shell activation.");
+            Require(state.CreationWizard is { CharacterCreated: false } wizard
+                && wizard.WorkspaceId == receipt.WorkspaceId.Value && wizard.WorkspaceRevision == receipt.ContentRevision
+                && wizard.BuildMethod == CharacterCreationBuildMethods.Priority
+                && state.CreationFoundation is not null && state.CreationContacts is not null && state.CreationQualities is not null
+                && state.CreationLifestyles is null,
+                "Production factory did not publish its required initial wizard projections with Lifestyles absent.");
+            Require(finalization is { LoadCalls: > 0, ReviewCalls: 0, ConfirmCalls: 0, LookupCalls: 0 }
+                && state.CreationFinalization is { CanReview: false, CharacterCreated: false } projected
+                && projected.Binding.WorkspaceId == receipt.WorkspaceId
+                && projected.Binding.ContentRevision == receipt.ContentRevision
+                && projected.Binding.SavedRevision == receipt.SavedRevision
+                && ReferenceEquals(projected, finalization.LastLoad?.Value),
+                "Production finalization Load was omitted, became reviewable, or was replaced by another path.");
+            Require(owners.ActiveLeases == 0, "Production-wiring bootstrap left a real owner lease active.");
+            Console.WriteLine("PASS managed production-wiring bootstrap diagnostic; not device or API36 authority");
+        }
+        finally
+        {
+            // Fixed stage labels and numbers only. Timings are observations, not
+            // acceptance thresholds; legitimate additional validation/Load calls remain visible.
+            foreach (var stage in metrics)
+                Console.WriteLine("BOOTSTRAP_PRODUCTION_STAGE " + JsonSerializer.Serialize(stage));
+            Console.WriteLine("BOOTSTRAP_PRODUCTION_COUNTS " + JsonSerializer.Serialize(new
+            {
+                createActivation = bootstrap?.ActivationCalls ?? 0,
+                tryValidateCurrent = bootstrap?.ValidationCalls ?? 0,
+                legacyCreate = bootstrap?.LegacyCreateCalls ?? 0,
+                finalizationLoad = finalization?.LoadCalls ?? 0,
+                finalizationReview = finalization?.ReviewCalls ?? 0,
+                finalizationConfirm = finalization?.ConfirmCalls ?? 0,
+                finalizationLookup = finalization?.LookupCalls ?? 0
+            }));
+            Require(owners.ActiveLeases == 0, "Production-wiring bootstrap left a real owner lease active.");
+        }
+    }
+
+    private sealed record BootstrapProductionStage(string Stage, double ElapsedMilliseconds);
+
+    private sealed class ProductionBootstrapProbe(IOwnerBoundCharacterCreationBootstrapService actual,
+        OwnerContextStamp expectedOwner, List<BootstrapProductionStage> metrics) : IOwnerBoundCharacterCreationBootstrapService
+    {
+        public int ActivationCalls { get; private set; }
+        public int ValidationCalls { get; private set; }
+        public int FailedValidations { get; private set; }
+        public int LegacyCreateCalls { get; private set; }
+        public CharacterCreationBootstrapActivationAttempt? Activation { get; private set; }
+        public CharacterCreationBootstrapResult<CharacterCreationBootstrapReceipt> Create(OwnerContextStamp owner,
+            CharacterCreationBootstrapRequest request)
+        { LegacyCreateCalls++; return actual.Create(owner, request); }
+        public CharacterCreationBootstrapActivationAttempt CreateActivation(OwnerContextStamp owner,
+            CharacterCreationBootstrapRequest request)
+        {
+            Require(owner == expectedOwner && request.BuildMethod == CharacterCreationBuildMethods.Priority,
+                "Bootstrap activation lost the original local owner or explicit Priority method.");
+            ActivationCalls++;
+            long started = Stopwatch.GetTimestamp();
+            try { return Activation = actual.CreateActivation(owner, request); }
+            finally { metrics.Add(new("bootstrap-create-activation", Stopwatch.GetElapsedTime(started).TotalMilliseconds)); }
+        }
+        public bool TryValidateCurrent(OwnerContextStamp owner, CharacterCreationBootstrapActivationBundle activation,
+            out IReadOnlyList<string> blockers)
+        {
+            Require(owner == expectedOwner, "Activation validation recaptured another owner.");
+            ValidationCalls++;
+            long started = Stopwatch.GetTimestamp();
+            try
+            {
+                bool valid = actual.TryValidateCurrent(owner, activation, out blockers);
+                if (!valid) FailedValidations++;
+                return valid;
+            }
+            finally { metrics.Add(new("bootstrap-validate-current", Stopwatch.GetElapsedTime(started).TotalMilliseconds)); }
+        }
+    }
+
+    private sealed class ProductionFinalizationLoadProbe(IOwnerBoundCharacterCreationFinalizationService actual,
+        OwnerContextStamp expectedOwner, List<BootstrapProductionStage> metrics) : IOwnerBoundCharacterCreationFinalizationService
+    {
+        public int LoadCalls { get; private set; }
+        public int ReviewCalls { get; private set; }
+        public int ConfirmCalls { get; private set; }
+        public int LookupCalls { get; private set; }
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? LastLoad { get; private set; }
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationState> Load(OwnerContextStamp owner,
+            CharacterCreationFinalizationLoadRequest request)
+        {
+            Require(owner == expectedOwner, "Production finalization Load recaptured another owner.");
+            LoadCalls++;
+            long started = Stopwatch.GetTimestamp();
+            try { return LastLoad = actual.Load(owner, request); }
+            finally { metrics.Add(new("finalization-load", Stopwatch.GetElapsedTime(started).TotalMilliseconds)); }
+        }
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> Review(OwnerContextStamp owner,
+            CharacterCreationFinalizationReviewRequest request)
+        { ReviewCalls++; return actual.Review(owner, request); }
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> Confirm(OwnerContextStamp owner,
+            CharacterCreationFinalizationConfirmRequest request)
+        { ConfirmCalls++; return actual.Confirm(owner, request); }
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> LookupReceipt(OwnerContextStamp owner,
+            CharacterCreationFinalizationReceiptLookupRequest request)
+        { LookupCalls++; return actual.LookupReceipt(owner, request); }
+    }
+
     public static async Task RunCreationBootstrapOwnerCasesAsync(string contentRoot)
     {
         var failures = new List<string>();

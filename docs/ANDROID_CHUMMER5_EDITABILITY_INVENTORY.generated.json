@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "78c2d51678a1d7c369d72f34c11a2ee17d1921ab7fbc9b9c12f7ac444aeb5515"
+        "sha256": "521872b13992070c2e7f760bc9a89c037cf405909be5bcfb8da61837432ed937"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -132,7 +132,7 @@
       {
         "path": "src/Chummer.Android/Native/PrimaryArmPage.cs",
         "exists": true,
-        "sha256": "39bf2fc3f9dfedc1cb1ea8397d95f9c7436207660f572a02174132f1a141d6ea"
+        "sha256": "9daa0ad22dc8a0255a004e454f940d8524a49f521c98db1103fe58304779b9db"
       },
       {
         "path": "src/Chummer.Android/Native/GroupMembershipPage.cs",
@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "dd7d01682b09acd03013c5bb0bdd60fbf2fa09426a241db15489231b96c59a6a"
+        "sha256": "07a8fd215423ced5d1a839dde349daacbf31a3c429d6818676d6b0921981de3b"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -582,7 +582,7 @@
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
         "exists": true,
-        "sha256": "d9af5fea4d05d48afded0769f53a6fc406439d8845859242316a5347e14b8587"
+        "sha256": "fa4b37ecccf970b1a84484c4fed82dad071d25f5badf3678ef4ea34cc57d10a2"
       },
       {
         "path": "src/Chummer.Android/Native/OriginDossierPage.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "08cebaaa8bd7b62353976d4e63cbebfde44f537afb80753a742069a33e60515f"
+        "sha256": "37c8af0278fe0b1ce1a3b318997cb01cf9651a59ababc312fbe77653320c37b7"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -607,32 +607,37 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "83277740c5c354f7e067da17d2e04827860d32c101b530aecb55531b94117e43"
+        "sha256": "8eb063794db8e2e40a565a30a3c35df19f8cf77085cae7249faeea8f79d80a7a"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
         "exists": true,
-        "sha256": "78313797e0096866f5dcf1580ee5c1eb220384a086762236b9941769cfa42f95"
+        "sha256": "5e249b900841cd0d76c7c13705241b512db8079dd69581517549c1b8e8ab2642"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
         "exists": true,
-        "sha256": "8f8f9903e903b7b3384edbeec91faf89c0269752b02df07a0b331ad66c24219a"
+        "sha256": "c3bebbbc27ff029da67e1bd3ffdb40d3dfd56fc20715032d5eb097ffc52aa201"
       },
       {
         "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
         "exists": true,
-        "sha256": "78c8d38c4973605f31353b973b03dc312c7d3e32c1965cf94bf5d202b84791e4"
+        "sha256": "ea26e83b26c2cc38a4528d5047177b93efd43becc47d8fcdd5e0332e3d8874dc"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "1d495e537322137925ef298ff15b36f14a02f177568b2f3b5c5cae9faf6d1084"
+        "sha256": "3f78fbe69adea8e13d757188d35aeac9e357209429e05e18f84c8c84bd9e549d"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
         "exists": true,
         "sha256": "ef0d7d243a846eb8ef6515a5935aa03a27bfc0febb15f0d1f2f4a8744b55af4b"
+      },
+      {
+        "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
+        "exists": true,
+        "sha256": "82a0ddd1196b57a809028fa45b231dcc7b8abd3ed044eee882601efe29868ad4"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidAfterRunWorkspaceSnapshotSource.cs",
@@ -652,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6779662772ac008792caf6bba035501245bd1ba0ef0faca661e32e6f3b5b6998"
+        "sha256": "c7d87605bf6bf928146f22c3f243da64267d92cb3b06af84c50f1ff02e483a37"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -757,17 +762,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
         "exists": true,
-        "sha256": "736d7a42c283f8f7c215393cc5fedae5c1e507cf9f24ff4321a75371c4931a71"
+        "sha256": "6fa8a5482faf1790ab28a493efcb14c7b6b442f97ccebf9076c96d80d04d636b"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
         "exists": true,
-        "sha256": "648e058e747c591875a707fd8911080b37ddc52b12bc7b6634968f505a51a88c"
+        "sha256": "c7310264ef377058f0c4e19ae91805924d3c523998b70c190c9257d3c934541c"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
         "exists": true,
-        "sha256": "272ee5ccafcd43e8536a97a7c29e9da629f52f415a999c8316b57eb012c42473"
+        "sha256": "74fd713c62da452ef6d457f296a3423ff3c7343806cf690863da6c03b4ce4d27"
       },
       {
         "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
@@ -812,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "a92da1991eb9892133e0de39233e4bbcf5426334890ba62da2cf4276ab311c9c"
+        "sha256": "7bcc851e57ef1dd55e5d7bd1ee12cd3f438466bafead3348fab6cef1ee9970f9"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -837,7 +842,7 @@
       {
         "path": "scripts/build-debug.sh",
         "exists": true,
-        "sha256": "a78c52d5eb31cadedd0963c9f21d5d1de614240b877a36de4e86e1f5c27a3951"
+        "sha256": "22578425f980b26e51c09e6d5b8d214257d8c657a376e204d19c8b2f95b3d903"
       },
       {
         "path": "scripts/api36_proof_environment_authority.py",
@@ -872,7 +877,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "adb72056ef2270c86a19afb05e14e7378db4f3d57c794f484b5d937659e968c7"
+        "sha256": "ff765d63a91e558af8cdf7318280077d5cf921da83493269e31ff1a12535fdac"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -902,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
         "exists": true,
-        "sha256": "3143d6b5718d4d93280f9e8e7e1ceb7318e94612e44e7a1f1b6eabddd27eb797"
+        "sha256": "7ecc2270d7e7d8f45b79e86227397f0dee5b5a9a99eb9e01c7816c5faad9387e"
       },
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
@@ -912,7 +917,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "6dda0413e746c4067bc926de3796c39188537179bf61a4c887669e7f0dc9f748"
+        "sha256": "eb07dabed200ecdab0e123e5b531e63c4f727761d4c13e6bf8e78096b976f766"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -927,7 +932,7 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "e20f17fc6b8eca36c4a6956773dd75edb5938734891cb3c066c55e84f7678a1c"
+        "sha256": "7104f788d09691bac5585d02772650841f0e83d29fa8808733f8deb56111715f"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
@@ -952,17 +957,17 @@
       {
         "path": "tests/api36_proof_state.py",
         "exists": true,
-        "sha256": "64f0bae8e1803aa3330602b43cb126d4817d3362c7ea08aa9c6f73c0c824bad7"
+        "sha256": "6cc987db2008c9830043de7ffc0d2e384affe4bff1275a82f39611c8cc8421e7"
       },
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "24fa5da83eb4c5774b45ac21c0fa8fc1c730caf9e3f180f64a85d4f503d67b58"
+        "sha256": "e18b8f3b6a0c80732354dac55977e8b3b95b8ca1da245cdf4e0b857da4f31c07"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",
         "exists": true,
-        "sha256": "dfdcae33d30e8f2f048ea215996c76d85cab7184c9c380e09290aec4e2c2ac68"
+        "sha256": "5321b1e0fb83573a6f4ca31038f69725d71d48e639e315e6ae4f345791dc937b"
       },
       {
         "path": "tests/run_api36_sr5_playtime_short_burst_e2e.py",
@@ -1012,12 +1017,12 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "3bbdf9d4f75fe26e6c978452712810687a5011727594d9c9b98fabc099716fbf"
+        "sha256": "51385d28c3095857a5b015cb0d6fe67bba176f72faa33606e8a2beaca6b10361"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
         "exists": true,
-        "sha256": "e09a24d3a6ba9ccecd5b87b777a48eef723f9f477ecafef11d90e188ca42b267"
+        "sha256": "04208934b0a3e50fcd59f6ca80756b9e5e3f13efefffb36b96982b348f640499"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.LinkedCharacters.cs",
@@ -1042,7 +1047,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "362f6e6baced265e8a188d86fe446cd779efa2c02f6b3d98688909dfb0a03858"
+        "sha256": "34cb80d0c1c6457766e5406ea67a65b63e2ff5e56d2e48d0f21fdf62d7418ff4"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1462,7 +1467,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "19469901284cb7e608d82536d944a9c903f53f7bb51498837719b2c512a06687"
+        "sha256": "d5d23172a680fd306fedaa3364cb5cf80c36390c3f039b863ef9afa7b75836a1"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2497,7 +2502,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "16defdbf3c9c12c4c2a8334329ec488f846adefb17afc8d1eb0ba5a44a073aea"
+        "sha256": "139f02cce9653c2daf3cd0b68a5e05335c5b14d3f2972ae3dc2e44ca65021652"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2517,7 +2522,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "094aea1aae97c842b2053722784891f2f7fa088bf69b789fc64f2e07f45d8076"
+        "sha256": "9219c4b8342c2a7ed24718b4192ab51cfc3aa8120f7aa86664e45f8a3269b49f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2738,6 +2743,16 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
         "sha256": "258d9d210dfb74f95fbb25d3b23fe472673ee509439292d5cd2a6c3e903b508f"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+        "exists": true,
+        "sha256": "495ffb7cfa6e447ffabb77e4ff97685fe3a9b128f407baaebda05cd584ac6f8f"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+        "exists": true,
+        "sha256": "03a79157301b75781414fa51aecfa30628bdfb36d839e5b1982f3d8dd1625143"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -3010,7 +3025,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "0be3823a0ae7b6fb702afd9ab904a2b9d5f570a8acf8e43a11be6d8a33ed8c3f"
+      "sha256": "6d5835b6c25c5af652a05e8bf5c1ae165ee85d6ebfe2dc787479890df00db86f"
     }
   },
   "coverageByFamily": {
@@ -6760,7 +6775,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -6772,10 +6791,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -6830,7 +6853,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -6842,10 +6869,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -6895,7 +6926,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -6907,10 +6942,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -6960,7 +6999,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -6972,10 +7015,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -15077,6 +15124,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15087,7 +15135,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact preview digest is explicitly confirmed into one revision-bound Core auxiliary draft; raw character XML remains unchanged and character finalization is still pending",
       "e2e": {
         "phone": {
@@ -15147,6 +15195,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15157,7 +15206,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core Heritage SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
@@ -15214,6 +15263,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15224,7 +15274,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core Talent SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
@@ -15454,6 +15504,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15464,7 +15515,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected resources rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15520,6 +15571,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15530,7 +15582,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected skills rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15586,6 +15638,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15596,7 +15649,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected talent rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15652,6 +15705,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15662,7 +15716,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected attributes rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -15718,6 +15772,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPrerequisite.cs",
           "tests/run_api36_creation_prerequisite_e2e.py"
         ],
         "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
@@ -15728,7 +15783,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "presenterMutation": "IOwnerBoundCharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
       "persistenceAssertion": "the exact Core-projected heritage rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
@@ -28527,6 +28582,9 @@
           "src/Chummer.Android/Native/BuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
           "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
@@ -28539,7 +28597,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest)",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest, OwnerContextStamp, CancellationToken)",
       "persistenceAssertion": "character/primaryarm equals exact Left or Right after save, same-session reopen, and process restart; enabled Ambidextrous improvement remains read-only",
       "e2e": {
         "phone": {
@@ -33506,7 +33564,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33518,10 +33580,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33576,7 +33642,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33588,10 +33658,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33646,7 +33720,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33658,10 +33736,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33716,7 +33798,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33728,10 +33814,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33786,7 +33876,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33798,10 +33892,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33856,7 +33954,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33868,10 +33970,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33926,7 +34032,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -33938,10 +34048,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -33996,7 +34110,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34008,10 +34126,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34066,7 +34188,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34078,10 +34204,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34136,7 +34266,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34148,10 +34282,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34206,7 +34344,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34218,10 +34360,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34276,7 +34422,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34288,10 +34438,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34346,7 +34500,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34358,10 +34516,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34416,7 +34578,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34428,10 +34594,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34486,7 +34656,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34498,10 +34672,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34556,7 +34734,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34568,10 +34750,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34626,7 +34812,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34638,10 +34828,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34696,7 +34890,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34708,10 +34906,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34766,7 +34968,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34778,10 +34984,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34836,7 +35046,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34848,10 +35062,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34906,7 +35124,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34918,10 +35140,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -34976,7 +35202,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -34988,10 +35218,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35046,7 +35280,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35058,10 +35296,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35116,7 +35358,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35128,10 +35374,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35186,7 +35436,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35198,10 +35452,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35256,7 +35514,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35268,10 +35530,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35326,7 +35592,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35338,10 +35608,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35396,7 +35670,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35408,10 +35686,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35466,7 +35748,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35478,10 +35764,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35536,7 +35826,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35548,10 +35842,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35606,7 +35904,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35618,10 +35920,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35676,7 +35982,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35688,10 +35998,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35746,7 +36060,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35758,10 +36076,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35816,7 +36138,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35828,10 +36154,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35886,7 +36216,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35898,10 +36232,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -35956,7 +36294,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -35968,10 +36310,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36026,7 +36372,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36038,10 +36388,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36096,7 +36450,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36108,10 +36466,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36166,7 +36528,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36178,10 +36544,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36236,7 +36606,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36248,10 +36622,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36306,7 +36684,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36318,10 +36700,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36376,7 +36762,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36388,10 +36778,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36446,7 +36840,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36458,10 +36856,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36516,7 +36918,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36528,10 +36934,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36586,7 +36996,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36598,10 +37012,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36656,7 +37074,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36668,10 +37090,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36726,7 +37152,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36738,10 +37168,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -36796,7 +37230,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
       "tablet": {
@@ -36808,10 +37246,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -54365,7 +54807,11 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ],
         "coverageLimit": "The single synthetic Chummer5 runtime row represents every additional Physical and Stun checkbox created beyond the designer controls; parity is the exact filled-count effect for both tracks, not a one-widget-per-generated-box layout."
       },
@@ -54378,10 +54824,14 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
           "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyConditionMonitorEditAsync(ConditionMonitorEditRequest, OwnerContextStamp, CharacterWorkspaceId, long, CancellationToken)",
       "persistenceAssertion": "character/physicalcmfilled and character/stuncmfilled each equal the corresponding chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
@@ -61632,6 +62082,9 @@
           "src/Chummer.Android/Native/BuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspaceMutationClient.cs",
+          "chummer-presentation/Chummer.Presentation/IOwnerBoundWorkspacePersistenceClient.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
           "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
@@ -61644,7 +62097,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest)",
+      "presenterMutation": "IOwnerBoundWorkspaceMutationPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest, OwnerContextStamp, CancellationToken)",
       "persistenceAssertion": "character/primaryarm equals exact Left or Right after save, same-session reopen, and process restart; enabled Ambidextrous improvement remains read-only",
       "e2e": {
         "phone": {

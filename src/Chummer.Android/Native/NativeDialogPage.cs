@@ -1,6 +1,9 @@
 using Chummer.Presentation.Overview;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+using Chummer.Android.Proof;
+#endif
 
 [assembly: InternalsVisibleTo("Chummer.Android.Native.InteractionTests")]
 
@@ -18,6 +21,7 @@ public sealed class NativeDialogPage : ContentPage
     private DesktopDialogState? _renderedDialog;
     private ActivityIndicator? _busyIndicator;
     private Label? _busyLabel;
+    private HorizontalStackLayout? _busyContainer;
     private bool _interactionBusy;
     private long _renderGeneration;
 
@@ -167,6 +171,7 @@ public sealed class NativeDialogPage : ContentPage
         SemanticProperties.SetDescription(_busyLabel, _busyLabel.Text);
         busy.Add(_busyIndicator);
         busy.Add(_busyLabel);
+        _busyContainer = busy;
         body.Insert(actionsInsertIndex, busy);
 
         Content = new ScrollView { Content = body };
@@ -299,6 +304,10 @@ public sealed class NativeDialogPage : ContentPage
     private void SetInteractionBusy(bool busy)
     {
         _interactionBusy = busy;
+        if (_busyContainer is not null)
+        {
+            _busyContainer.IsVisible = busy;
+        }
         _closeToolbarItem.IsEnabled = !busy;
         foreach (InteractiveElement interactive in _interactiveElements)
         {
@@ -552,11 +561,20 @@ public sealed class NativeDialogPage : ContentPage
 
     private async Task ExecuteAsync(NativeDialogActionBinding binding)
     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "click", binding.RenderGeneration);
+#endif
         if (!_interactionGate.TryClaimAction())
         {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "claim-rejected", binding.RenderGeneration);
+#endif
             return;
         }
 
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "claimed", binding.RenderGeneration);
+#endif
         SetInteractionBusy(true);
         await YieldBusyFrameAsync();
         try
@@ -564,9 +582,18 @@ public sealed class NativeDialogPage : ContentPage
             await _interactionGate.RunClaimedActionAsync(
                 async () =>
                 {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "field-flush-start", binding.RenderGeneration);
+#endif
                     await CommitPendingTextFieldsCoreAsync();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                    Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "field-flush-complete", binding.RenderGeneration);
+#endif
                     if (!TryResolveActiveAction(binding, out DesktopDialogAction action))
                     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                        Api36ProofStatePublisher.TraceCreationDialogStage(binding.ActionId, "binding-rejected", binding.RenderGeneration);
+#endif
                         throw new InvalidOperationException(
                             $"Dialog action '{binding.ActionId}' changed before it could be executed.");
                     }

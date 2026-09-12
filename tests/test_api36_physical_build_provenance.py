@@ -22,6 +22,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
+    def test_trusted_content_commit_matches_checked_in_content_manifest(self) -> None:
+        manifest = json.loads(
+            (REPO_ROOT / "src/Chummer.Android/Content/chummer-content-manifest.json").read_bytes()
+        )
+        self.assertEqual(manifest["coreRevision"], physical_contract.TRUSTED_CORE_CONTENT_COMMIT)
+        self.assertEqual(manifest["coreRevision"], provenance.CORE_CONTENT_REVISION)
+
     def test_physical_proof_constants_match_the_checked_in_package_authority(self) -> None:
         raw = (REPO_ROOT / "eng/internal-phone-beta-package-authority.json").read_bytes()
         manifest = json.loads(raw)
@@ -34,6 +41,18 @@ class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
         )
         self.assertEqual(manifest["presentationSource"]["commit"], provenance.PRESENTATION_COMMIT)
         self.assertEqual(manifest["presentationSource"]["tree"], provenance.PRESENTATION_TREE)
+        self.assertEqual(
+            manifest["sourceGraph"]["corePackageRecipeCommit"],
+            provenance.CORE_PACKAGE_RECIPE_REVISION,
+        )
+        self.assertEqual(
+            manifest["sourceGraph"]["coreRuntimeSourceCommit"], provenance.CORE_RUNTIME_REVISION
+        )
+        self.assertEqual(3, len({
+            provenance.CORE_CONTENT_REVISION,
+            provenance.CORE_PACKAGE_RECIPE_REVISION,
+            provenance.CORE_RUNTIME_REVISION,
+        }))
         self.assertEqual(
             manifest["packagePlaneLock"]["sha256"], provenance.PRESENTATION_PACKAGE_LOCK_SHA256
         )
@@ -368,6 +387,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "sha256": provenance.file_sha256(self.lock),
                 "sizeBytes": self.lock.stat().st_size,
             }),
+            mock.patch.object(physical_contract, "TRUSTED_CORE_CONTENT_COMMIT", self.core_commit),
             mock.patch.object(physical_contract, "TRUSTED_CORE_CONTENT_TREE", self.core_tree),
             mock.patch.object(
                 provenance, "_probe_version",
@@ -431,7 +451,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
     def package_authority_payload(self) -> dict[str, object]:
         presentation_commit = getattr(self, "presentation_commit", provenance.PRESENTATION_COMMIT)
         presentation_tree = getattr(self, "presentation_tree", provenance.PRESENTATION_TREE)
-        core_recipe_commit = getattr(self, "core_commit", provenance.CORE_CONTENT_REVISION)
+        core_recipe_commit = provenance.CORE_PACKAGE_RECIPE_REVISION
         presentation_lock = getattr(self, "presentation_lock", None)
         ui_receipt = getattr(self, "ui_authority_receipt", None)
         cache_manifest = getattr(self, "package_cache_manifest", None)
@@ -923,6 +943,45 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             verifier=self.verified_package_authority,
         )
 
+    def test_package_authority_accepts_distinct_core_recipe_content_and_runtime(self) -> None:
+        with mock.patch.object(
+            self, "verified_package_authority", wraps=self.verified_package_authority,
+        ) as verifier:
+            payload = self.validate_package_authority_fixture()
+        verifier.assert_called_once()
+        self.assertEqual(
+            provenance.CORE_PACKAGE_RECIPE_REVISION,
+            payload["sourceGraph"]["corePackageRecipeCommit"],
+        )
+        self.assertEqual(3, len({
+            payload["sourceGraph"]["corePackageRecipeCommit"],
+            payload["sourceGraph"]["coreRuntimeSourceCommit"],
+            provenance.CORE_CONTENT_REVISION,
+        }))
+
+    def assert_package_recipe_substitution_rejected(self, revision: str) -> None:
+        payload = json.loads(self.package_authority.read_bytes())
+        payload["sourceGraph"]["corePackageRecipeCommit"] = revision
+        write_json(self.package_authority, payload)
+        # Authenticate these altered bytes so rejection must reach the exact
+        # role comparison, not an incidental stale manifest digest.
+        with (
+            mock.patch.object(
+                provenance, "PACKAGE_AUTHORITY_SHA256",
+                provenance.file_sha256(self.package_authority),
+            ),
+            mock.patch.object(self, "verified_package_authority") as verifier,
+            self.assertRaisesRegex(ValueError, "posture/source graph is not exact"),
+        ):
+            self.validate_package_authority_fixture()
+        verifier.assert_not_called()
+
+    def test_package_authority_rejects_content_as_core_recipe(self) -> None:
+        self.assert_package_recipe_substitution_rejected(provenance.CORE_CONTENT_REVISION)
+
+    def test_package_authority_rejects_runtime_as_core_recipe(self) -> None:
+        self.assert_package_recipe_substitution_rejected(provenance.CORE_RUNTIME_REVISION)
+
     def test_full_v3_provenance_round_trip_binds_inputs_without_device_claims(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         provenance.write_manifest(self.manifest, manifest)
@@ -961,10 +1020,14 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         )
         self.assertEqual(provenance.CORE_RUNTIME_REVISION, core_row["commit"])
         self.assertEqual(
-            self.core_commit,
+            provenance.CORE_PACKAGE_RECIPE_REVISION,
             manifest["packageAuthority"]["sourceGraph"]["corePackageRecipeCommit"],
         )
         self.assertEqual(self.core_commit, manifest["content"]["coreRevision"])
+        self.assertNotEqual(
+            manifest["content"]["coreRevision"],
+            manifest["packageAuthority"]["sourceGraph"]["corePackageRecipeCommit"],
+        )
         self.assertNotEqual(
             manifest["packageAuthority"]["sourceGraph"]["coreRuntimeSourceCommit"],
             manifest["packageAuthority"]["sourceGraph"]["corePackageRecipeCommit"],
@@ -1080,6 +1143,40 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             self.package_authority.write_bytes(original_authority)
             self.package_authority_binding.write_bytes(original_intake)
             self.package_authority_seal.write_bytes(original_post)
+
+    def assert_consumer_content_role_substitution_rejected(self, field: str) -> None:
+        manifest = provenance.create_manifest(**self.create_arguments())
+        graph_path = self.root / "consumer-release-source-graph.json"
+        write_json(graph_path, self.consumer_source_graph(manifest))
+        replacement = manifest["packageAuthority"]["sourceGraph"][field]
+        self.assertNotEqual(physical_contract.TRUSTED_CORE_CONTENT_COMMIT, replacement)
+        # Keep both content commit claims internally consistent, retain the
+        # trusted tree, and refresh the outer digest to reach the owner-of-truth
+        # check rather than fail on incidental envelope binding.
+        manifest["content"]["coreRevision"] = replacement
+        manifest["content"]["sourceRepository"]["commit"] = replacement
+        self.reseal_for_consumer(manifest)
+        write_json(self.manifest, manifest)
+        with (
+            mock.patch.object(
+                physical_contract, "_validate_content_references",
+                wraps=physical_contract._validate_content_references,
+            ) as content_references,
+            self.assertRaisesRegex(ValueError, "content source is not the exact trusted canonical content"),
+        ):
+            physical_contract.validate_build_provenance(
+                physical_contract.bind_regular(self.manifest, "resealed content role substitution"),
+                physical_contract.bind_regular(graph_path, "consumer release source graph"),
+                physical_contract.bind_regular(self.apk, "materialized producer APK"),
+                **self.consumer_validation_arguments(),
+            )
+        content_references.assert_not_called()
+
+    def test_consumer_rejects_core_recipe_as_content_with_resealed_digest(self) -> None:
+        self.assert_consumer_content_role_substitution_rejected("corePackageRecipeCommit")
+
+    def test_consumer_rejects_core_runtime_as_content_with_resealed_digest(self) -> None:
+        self.assert_consumer_content_role_substitution_rejected("coreRuntimeSourceCommit")
 
     def test_v3_release_intent_cannot_substitute_project_head_or_tree_authority(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
@@ -1982,7 +2079,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6",
+            "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -2028,10 +2125,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6",
+            "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
             provenance.file_sha256(lock_path),
         )
-        self.assertEqual(70_375, lock_path.stat().st_size)
+        self.assertEqual(70263, lock_path.stat().st_size)
         self.assertEqual(142, len(lock["dependencies"][provenance.TARGET_FRAMEWORK]))
 
         hub_package_ids = (

@@ -6,6 +6,7 @@ namespace Chummer.Android.Native;
 public sealed class ConditionMonitorEditPage : NativePageBase
 {
     private readonly WorkspaceConditionMonitorTrack _track;
+    private long _renderGeneration;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -24,8 +25,11 @@ public sealed class ConditionMonitorEditPage : NativePageBase
 
     protected override void Refresh()
     {
+        long generation = ++_renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        CharacterOverviewState original = Coordinator.State;
         _body.Clear();
-        ConditionMonitorEditorState? editor = Coordinator.State.ActiveConditionMonitor;
+        ConditionMonitorEditorState? editor = original.ActiveConditionMonitor;
         ConditionMonitorTrackState? track = editor?.Tracks.FirstOrDefault(candidate => candidate.Track == _track);
         if (track is null)
         {
@@ -64,15 +68,19 @@ public sealed class ConditionMonitorEditPage : NativePageBase
 
         Button apply = NativeTheme.PrimaryButton("Apply damage track");
         apply.AutomationId = $"condition-monitor-save-{Token(track.Track)}";
-        apply.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyConditionMonitorEditAsync(
-            new ConditionMonitorEditRequest(track.Track, SelectedNumber(filled, track.Filled))));
+        apply.Clicked += async (_, _) => await RunAsync(async () =>
+            _ = await Coordinator.TryApplyBoundConditionMonitorEditAsync(
+                new ConditionMonitorEditRequest(track.Track, SelectedNumber(filled, track.Filled)),
+                original, () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
         _body.Add(apply);
 
         Button clear = NativeTheme.SecondaryButton("Clear damage");
         clear.AutomationId = $"condition-monitor-clear-{Token(track.Track)}";
         clear.IsEnabled = track.Filled > 0;
-        clear.Clicked += async (_, _) => await RunAsync(() => Coordinator.ApplyConditionMonitorEditAsync(
-            new ConditionMonitorEditRequest(track.Track, 0)));
+        clear.Clicked += async (_, _) => await RunAsync(async () =>
+            _ = await Coordinator.TryApplyBoundConditionMonitorEditAsync(
+                new ConditionMonitorEditRequest(track.Track, 0),
+                original, () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
         _body.Add(clear);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))

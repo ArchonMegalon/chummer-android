@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
 using Microsoft.Maui.Storage;
@@ -24,6 +26,7 @@ public enum Sr5PlaytimeDamageRecoveryObservation
 
 public sealed record Sr5PlaytimeDamageSnapshot(
     string ContractName,
+    [property: JsonConverter(typeof(Sr5PlaytimeDamageOwnerJsonConverter))] OwnerScope AccountOwner,
     CharacterWorkspaceId WorkspaceId,
     long WorkspaceRevision,
     long SavedRevision,
@@ -34,10 +37,11 @@ public sealed record Sr5PlaytimeDamageSnapshot(
     int EditableMaximum,
     string SnapshotDigest)
 {
-    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-snapshot/v1";
+    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-snapshot/v2";
 
     public bool IsExact()
         => string.Equals(ContractName, CurrentContractName, StringComparison.Ordinal)
+           && Sr5PlaytimeDamageIntegrity.IsCanonicalAccount(AccountOwner)
            && !string.IsNullOrWhiteSpace(WorkspaceId.Value)
            && WorkspaceRevision is > 0 and < long.MaxValue
            && SavedRevision == WorkspaceRevision
@@ -60,7 +64,7 @@ public sealed record Sr5PlaytimeDamageQuote(
     int FilledAfter,
     string QuoteDigest)
 {
-    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-quote/v1";
+    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-quote/v2";
 
     public bool IsExact()
         => string.Equals(ContractName, CurrentContractName, StringComparison.Ordinal)
@@ -84,6 +88,7 @@ public sealed record Sr5PlaytimeDamageQuote(
 
 public sealed record Sr5PlaytimeDamageReceipt(
     string ContractName,
+    [property: JsonConverter(typeof(Sr5PlaytimeDamageOwnerJsonConverter))] OwnerScope AccountOwner,
     Guid ActionId,
     string IdempotencyKey,
     CharacterWorkspaceId WorkspaceId,
@@ -98,12 +103,13 @@ public sealed record Sr5PlaytimeDamageReceipt(
     string ObservedPostconditionDigest,
     string ReceiptDigest)
 {
-    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-receipt/v1";
+    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-receipt/v2";
 
     public bool IsExact()
         => string.Equals(ContractName, CurrentContractName, StringComparison.Ordinal)
            && ActionId != Guid.Empty
            && Sr5PlaytimeDamageIntegrity.IsRawDigest(IdempotencyKey)
+           && Sr5PlaytimeDamageIntegrity.IsCanonicalAccount(AccountOwner)
            && !string.IsNullOrWhiteSpace(WorkspaceId.Value)
            && ExpectedWorkspaceRevision is > 0 and < long.MaxValue
            && AppliedWorkspaceRevision == ExpectedWorkspaceRevision + 1
@@ -137,8 +143,8 @@ public sealed record Sr5PlaytimeDamageJournal(
     Sr5PlaytimeDamageReceipt? Receipt,
     string JournalDigest)
 {
-    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-journal/v1";
-    public const int CurrentSchemaVersion = 1;
+    public const string CurrentContractName = "chummer.android.sr5-playtime-damage-journal/v2";
+    public const int CurrentSchemaVersion = 2;
 
     public bool IsExact()
         => Sr5PlaytimeDamageIntegrity.IsExact(this);
@@ -146,18 +152,32 @@ public sealed record Sr5PlaytimeDamageJournal(
 
 public static class Sr5PlaytimeDamageIntegrity
 {
-    private const string SnapshotSchema = "chummer.android.sr5-playtime-damage-snapshot-digest/v1";
-    private const string QuoteSchema = "chummer.android.sr5-playtime-damage-quote-digest/v1";
-    private const string IdempotencySchema = "chummer.android.sr5-playtime-damage-idempotency/v1";
-    private const string PostconditionSchema = "chummer.android.sr5-playtime-damage-postcondition/v1";
-    private const string ReceiptSchema = "chummer.android.sr5-playtime-damage-receipt-digest/v1";
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private const string SnapshotSchema = "chummer.android.sr5-playtime-damage-snapshot-digest/v2";
+    private const string QuoteSchema = "chummer.android.sr5-playtime-damage-quote-digest/v2";
+    private const string IdempotencySchema = "chummer.android.sr5-playtime-damage-idempotency/v2";
+    private const string PostconditionSchema = "chummer.android.sr5-playtime-damage-postcondition/v2";
+    private const string ReceiptSchema = "chummer.android.sr5-playtime-damage-receipt-digest/v2";
     private const string JournalSchema = Sr5PlaytimeDamageJournal.CurrentContractName;
+
+    // Persisted identity is not a live lease or credential. Reject aliases rather
+    // than silently merging preference namespaces. Core defines canonicalization.
+    public static bool IsCanonicalAccount(OwnerScope owner)
+    {
+        if (string.IsNullOrWhiteSpace(owner.Value)
+            || !string.Equals(owner.Value, owner.NormalizedValue, StringComparison.Ordinal)
+            || (owner.UsesLocalSingleUserValue && !owner.IsLocalSingleUser)) return false;
+        // UTF-8 replacement characters must not alias two different account keys.
+        try { _ = StrictUtf8.GetByteCount(owner.Value); return true; }
+        catch (EncoderFallbackException) { return false; }
+    }
 
     public static bool IsSupportedTrack(WorkspaceConditionMonitorTrack track)
         => track is WorkspaceConditionMonitorTrack.Physical
             or WorkspaceConditionMonitorTrack.Stun;
 
     public static bool TryProject(
+        OwnerScope accountOwner,
         bool characterCreated,
         string? gameEdition,
         CharacterWorkspaceId? workspaceId,
@@ -170,7 +190,8 @@ public static class Sr5PlaytimeDamageIntegrity
         out Sr5PlaytimeDamageSnapshot snapshot)
     {
         snapshot = null!;
-        if (!characterCreated
+        if (!IsCanonicalAccount(accountOwner)
+            || !characterCreated
             || !string.Equals(gameEdition?.Trim(), "SR5", StringComparison.OrdinalIgnoreCase)
             || workspaceId is null
             || string.IsNullOrWhiteSpace(workspaceId.Value.Value)
@@ -204,6 +225,7 @@ public static class Sr5PlaytimeDamageIntegrity
 
         var unsigned = new Sr5PlaytimeDamageSnapshot(
             Sr5PlaytimeDamageSnapshot.CurrentContractName,
+            accountOwner,
             workspaceId.Value,
             workspaceRevision,
             savedRevision,
@@ -253,10 +275,12 @@ public static class Sr5PlaytimeDamageIntegrity
             throw new InvalidOperationException("An exact Playtime damage quote and owner are required.");
         string idempotencyKey = RawHash(
             IdempotencySchema,
+            quote.Original.AccountOwner.NormalizedValue,
             ownerId.ToString("D"),
             quote.ActionId.ToString("D"),
             quote.QuoteDigest);
         string postcondition = ComputePostconditionDigest(
+            quote.Original.AccountOwner,
             quote.Original.WorkspaceId,
             checked(quote.Original.WorkspaceRevision + 1),
             quote.Original.Track,
@@ -310,6 +334,7 @@ public static class Sr5PlaytimeDamageIntegrity
             || journal.Phase == Sr5PlaytimeDamageTransactionPhase.Applied
             || observed is null
             || !observed.IsExact()
+            || observed.AccountOwner != journal.Quote.Original.AccountOwner
             || observed.WorkspaceId != journal.Quote.Original.WorkspaceId
             || observed.Track != journal.Quote.Original.Track)
         {
@@ -329,6 +354,7 @@ public static class Sr5PlaytimeDamageIntegrity
             return Sr5PlaytimeDamageRecoveryObservation.Conflict;
         }
         observedPostconditionDigest = ComputePostconditionDigest(
+            observed.AccountOwner,
             observed.WorkspaceId,
             observed.WorkspaceRevision,
             observed.Track,
@@ -355,6 +381,7 @@ public static class Sr5PlaytimeDamageIntegrity
         }
         var unsignedReceipt = new Sr5PlaytimeDamageReceipt(
             Sr5PlaytimeDamageReceipt.CurrentContractName,
+            applying.Quote.Original.AccountOwner,
             applying.Quote.ActionId,
             applying.IdempotencyKey,
             applying.Quote.Original.WorkspaceId,
@@ -402,6 +429,7 @@ public static class Sr5PlaytimeDamageIntegrity
         try
         {
             expectedPostcondition = ComputePostconditionDigest(
+                journal.Quote.Original.AccountOwner,
                 journal.Quote.Original.WorkspaceId,
                 checked(journal.Quote.Original.WorkspaceRevision + 1),
                 journal.Quote.Original.Track,
@@ -424,6 +452,7 @@ public static class Sr5PlaytimeDamageIntegrity
               && receipt.IsExact()
               && receipt.ActionId == journal.Quote.ActionId
               && string.Equals(receipt.IdempotencyKey, journal.IdempotencyKey, StringComparison.Ordinal)
+              && receipt.AccountOwner == journal.Quote.Original.AccountOwner
               && receipt.WorkspaceId == journal.Quote.Original.WorkspaceId
               && receipt.ExpectedWorkspaceRevision == journal.Quote.Original.WorkspaceRevision
               && receipt.Track == journal.Quote.Original.Track
@@ -444,6 +473,7 @@ public static class Sr5PlaytimeDamageIntegrity
         => Hash(
             SnapshotSchema,
             snapshot.ContractName,
+            snapshot.AccountOwner.NormalizedValue,
             snapshot.WorkspaceId.Value,
             snapshot.WorkspaceRevision.ToString(CultureInfo.InvariantCulture),
             snapshot.SavedRevision.ToString(CultureInfo.InvariantCulture),
@@ -457,6 +487,7 @@ public static class Sr5PlaytimeDamageIntegrity
         => Hash(
             QuoteSchema,
             quote.ContractName,
+            quote.Original.AccountOwner.NormalizedValue,
             quote.ActionId.ToString("D"),
             quote.Original.SnapshotDigest,
             quote.FilledAfter.ToString(CultureInfo.InvariantCulture));
@@ -465,6 +496,7 @@ public static class Sr5PlaytimeDamageIntegrity
         => Hash(
             ReceiptSchema,
             receipt.ContractName,
+            receipt.AccountOwner.NormalizedValue,
             receipt.ActionId.ToString("D"),
             receipt.IdempotencyKey,
             receipt.WorkspaceId.Value,
@@ -479,6 +511,7 @@ public static class Sr5PlaytimeDamageIntegrity
             receipt.ObservedPostconditionDigest);
 
     internal static string ComputePostconditionDigest(
+        OwnerScope accountOwner,
         CharacterWorkspaceId workspaceId,
         long appliedRevision,
         WorkspaceConditionMonitorTrack track,
@@ -486,6 +519,7 @@ public static class Sr5PlaytimeDamageIntegrity
         int editableMaximum)
         => Hash(
             PostconditionSchema,
+            accountOwner.NormalizedValue,
             workspaceId.Value,
             appliedRevision.ToString(CultureInfo.InvariantCulture),
             track.ToString(),
@@ -513,6 +547,7 @@ public static class Sr5PlaytimeDamageIntegrity
     private static string ComputeJournalDigest(Sr5PlaytimeDamageJournal journal)
         => Hash(
             JournalSchema,
+            journal.Quote.Original.AccountOwner.NormalizedValue,
             journal.SchemaVersion.ToString(CultureInfo.InvariantCulture),
             journal.Version.ToString(CultureInfo.InvariantCulture),
             journal.Phase.ToString(),
@@ -538,14 +573,35 @@ public static class Sr5PlaytimeDamageIntegrity
         => value.IndexOfAnyExcept("0123456789abcdef") < 0;
 }
 
+// Only a stable Core account identity is serialized; no issuer/epoch is persisted.
+// Reconstructing the Local identity here attributes history, never admits a lease.
+public sealed class Sr5PlaytimeDamageOwnerJsonConverter : JsonConverter<OwnerScope>
+{
+    public override OwnerScope Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.String) throw new JsonException("A canonical account identity is required.");
+        string raw = reader.GetString()!;
+        OwnerScope owner = new(raw);
+        if (string.IsNullOrWhiteSpace(raw) || raw != owner.NormalizedValue)
+            throw new JsonException("Account identity aliases are not accepted.");
+        return owner.UsesLocalSingleUserValue ? OwnerScope.LocalSingleUser : owner;
+    }
+    public override void Write(Utf8JsonWriter writer, OwnerScope owner, JsonSerializerOptions options)
+    {
+        if (!Sr5PlaytimeDamageIntegrity.IsCanonicalAccount(owner)) throw new JsonException("Invalid account identity.");
+        writer.WriteStringValue(owner.NormalizedValue);
+    }
+}
+
 internal sealed class PreferencesSr5PlaytimeDamageJournalBackend(
+    OwnerScope accountOwner,
     WorkspaceConditionMonitorTrack track,
     CharacterWorkspaceId workspaceId) : ISr5CareerCheckpointBackend
 {
     private static string WorkspaceToken(CharacterWorkspaceId id)
         => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(id.Value)));
 
-    private readonly string _storageKey = track switch
+    private readonly string _legacyStorageKey = track switch
     {
         WorkspaceConditionMonitorTrack.Physical =>
             $"sr5.playtime.damage.physical.{WorkspaceToken(workspaceId)}.v1",
@@ -554,6 +610,11 @@ internal sealed class PreferencesSr5PlaytimeDamageJournalBackend(
         _ => throw new ArgumentOutOfRangeException(nameof(track))
     };
 
+    private readonly string _storageKey = $"sr5.playtime.damage.{track.ToString().ToLowerInvariant()}."
+        + $"{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(accountOwner.NormalizedValue)))}."
+        + $"{WorkspaceToken(workspaceId)}.v2";
+
+    internal bool HasUnattributedLegacy => !string.IsNullOrEmpty(Preferences.Default.Get(_legacyStorageKey, string.Empty));
     public string Read() => Preferences.Default.Get(_storageKey, string.Empty);
     public void Write(string payload) => Preferences.Default.Set(_storageKey, payload);
     public void Remove() => Preferences.Default.Remove(_storageKey);
@@ -565,31 +626,54 @@ public sealed class Sr5PlaytimeDamageJournalStore
     private static readonly object Gate = new();
     private readonly ISr5CareerCheckpointBackend _backend;
     private readonly Sr5CareerMutationOwnerStore _mutationOwners;
+    public OwnerScope AccountOwner { get; }
+    private readonly CharacterWorkspaceId _workspaceId;
+    private readonly WorkspaceConditionMonitorTrack _track;
+    public const string LegacyUnattributedBlocker = "Legacy unattributed Playtime damage history is quarantined. No account was assigned and its mutation owner remains unresolved.";
 
     internal Sr5PlaytimeDamageJournalStore(
         ISr5CareerCheckpointBackend backend,
-        Sr5CareerMutationOwnerStore mutationOwners)
+        Sr5CareerMutationOwnerStore mutationOwners,
+        OwnerScope accountOwner,
+        CharacterWorkspaceId workspaceId,
+        WorkspaceConditionMonitorTrack track)
     {
+        if (!Sr5PlaytimeDamageIntegrity.IsCanonicalAccount(accountOwner)
+            || string.IsNullOrWhiteSpace(workspaceId.Value) || !Sr5PlaytimeDamageIntegrity.IsSupportedTrack(track))
+            throw new ArgumentException("An exact account, workspace and track are required for damage history.");
+        AccountOwner = accountOwner;
+        _workspaceId = workspaceId;
+        _track = track;
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
         _mutationOwners = mutationOwners ?? throw new ArgumentNullException(nameof(mutationOwners));
     }
 
     public static Sr5PlaytimeDamageJournalStore CreateDefault(
+        OwnerScope accountOwner,
         WorkspaceConditionMonitorTrack track,
         CharacterWorkspaceId? workspaceId)
         => new(
             new PreferencesSr5PlaytimeDamageJournalBackend(
+                accountOwner,
                 track,
                 workspaceId.HasValue
                 && !string.IsNullOrWhiteSpace(workspaceId.Value.Value)
                     ? workspaceId.Value
                     : throw new InvalidOperationException(
                         "A loaded runner workspace is required for Playtime damage recovery.")),
-            Sr5CareerMutationOwnerStore.CreateDefault());
+            Sr5CareerMutationOwnerStore.CreateDefault(), accountOwner, workspaceId!.Value, track);
 
     internal static Sr5PlaytimeDamageJournalStore CreateIsolated(
-        ISr5CareerCheckpointBackend backend)
-        => new(backend, Sr5CareerMutationOwnerStore.CreateIsolated());
+        ISr5CareerCheckpointBackend backend, OwnerScope accountOwner,
+        CharacterWorkspaceId workspaceId, WorkspaceConditionMonitorTrack track)
+        => new(backend, Sr5CareerMutationOwnerStore.CreateIsolated(), accountOwner, workspaceId, track);
+
+    private bool HasBinding(Sr5PlaytimeDamageSnapshot? snapshot)
+        => snapshot is not null && IsBoundTo(snapshot.AccountOwner, snapshot.WorkspaceId, snapshot.Track);
+
+    internal bool IsBoundTo(OwnerScope accountOwner, CharacterWorkspaceId workspaceId,
+        WorkspaceConditionMonitorTrack track)
+        => accountOwner == AccountOwner && workspaceId == _workspaceId && track == _track;
 
     public bool TryRead(out Sr5PlaytimeDamageJournal? journal, out string blocker)
     {
@@ -612,6 +696,11 @@ public sealed class Sr5PlaytimeDamageJournalStore
     {
         ArgumentNullException.ThrowIfNull(quote);
         review = null!;
+        if (!quote.IsExact() || !HasBinding(quote.Original))
+        {
+            blocker = "The damage quote belongs to another account, runner or track.";
+            return false;
+        }
         lock (Gate)
         {
             long version = 1;
@@ -649,7 +738,7 @@ public sealed class Sr5PlaytimeDamageJournalStore
     {
         ArgumentNullException.ThrowIfNull(expected);
         applying = null!;
-        if (!expected.IsExact()
+        if (!expected.IsExact() || !HasBinding(expected.Quote.Original)
             || expected.Phase != Sr5PlaytimeDamageTransactionPhase.Reviewed)
         {
             blocker = "Only the exact reviewed Playtime damage quote may enter Applying.";
@@ -697,6 +786,8 @@ public sealed class Sr5PlaytimeDamageJournalStore
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(applying);
+        if (!applying.IsExact() || !HasBinding(applying.Quote.Original))
+            throw new InvalidOperationException("The damage journal belongs to another account, runner or track.");
         IDisposable lease = await _mutationOwners.AcquireExecutionLeaseAsync(
             Owner(applying),
             cancellationToken).ConfigureAwait(false);
@@ -764,7 +855,13 @@ public sealed class Sr5PlaytimeDamageJournalStore
         Sr5PlaytimeDamageJournal applying,
         Sr5PlaytimeDamageJournal resolution,
         out string blocker)
-        => _mutationOwners.TryComplete(
+    {
+        if (!HasBinding(applying.Quote.Original) || !HasBinding(resolution.Quote.Original))
+        {
+            blocker = "The damage resolution belongs to another account, runner or track.";
+            return false;
+        }
+        return _mutationOwners.TryComplete(
             Owner(applying),
             () =>
             {
@@ -778,6 +875,7 @@ public sealed class Sr5PlaytimeDamageJournalStore
                 }
             },
             out blocker);
+    }
 
     private bool TryClear(
         Sr5PlaytimeDamageJournal expected,
@@ -882,6 +980,11 @@ public sealed class Sr5PlaytimeDamageJournalStore
         journal = null;
         try
         {
+            if (_backend is PreferencesSr5PlaytimeDamageJournalBackend preferences && preferences.HasUnattributedLegacy)
+            {
+                blocker = LegacyUnattributedBlocker;
+                return false;
+            }
             string payload = _backend.Read();
             if (string.IsNullOrEmpty(payload))
             {
@@ -894,7 +997,13 @@ public sealed class Sr5PlaytimeDamageJournalStore
                 return false;
             }
             journal = JsonSerializer.Deserialize<Sr5PlaytimeDamageJournal>(payload);
-            if (journal is null || !journal.IsExact())
+            if (journal?.SchemaVersion == 1)
+            {
+                journal = null;
+                blocker = LegacyUnattributedBlocker;
+                return false;
+            }
+            if (journal is null || !journal.IsExact() || !HasBinding(journal.Quote.Original))
             {
                 journal = null;
                 blocker = "The Playtime damage journal is invalid and replay-blocking.";
@@ -919,9 +1028,9 @@ public sealed class Sr5PlaytimeDamageJournalStore
 
     private bool TryWriteLocked(Sr5PlaytimeDamageJournal journal, out string blocker)
     {
-        if (!journal.IsExact())
+        if (!journal.IsExact() || !HasBinding(journal.Quote.Original))
         {
-            blocker = "The Playtime damage journal is not exact.";
+            blocker = "The Playtime damage journal is not exact for this account, runner and track.";
             return false;
         }
         try

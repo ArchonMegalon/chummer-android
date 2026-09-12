@@ -93,6 +93,13 @@ internal sealed record NativeCreationBootstrapTimingSnapshot(
     public bool WorkspaceStatePublished => WorkspaceStatePublishedTimestamp > 0;
 }
 
+internal enum NativeCreationBootstrapObservation
+{
+    None,
+    LoadStarted,
+    WorkspaceStatePublished
+}
+
 internal sealed class NativeCreationBootstrapTiming
 {
     private readonly object _sync = new();
@@ -107,7 +114,7 @@ internal sealed class NativeCreationBootstrapTiming
 
     public long StartedTimestamp { get; }
 
-    public void Observe(CharacterOverviewState state)
+    public NativeCreationBootstrapObservation Observe(CharacterOverviewState state)
     {
         long observedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         lock (_sync)
@@ -115,7 +122,7 @@ internal sealed class NativeCreationBootstrapTiming
             if (_loadStartedTimestamp == 0 && state.IsBusy)
             {
                 _loadStartedTimestamp = observedTimestamp;
-                return;
+                return NativeCreationBootstrapObservation.LoadStarted;
             }
 
             if (_loadStartedTimestamp > 0
@@ -127,7 +134,10 @@ internal sealed class NativeCreationBootstrapTiming
             {
                 _workspaceStatePublishedTimestamp = observedTimestamp;
                 _publishedWorkspaceId = workspaceId.Value;
+                return NativeCreationBootstrapObservation.WorkspaceStatePublished;
             }
+
+            return NativeCreationBootstrapObservation.None;
         }
     }
 
@@ -311,17 +321,23 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly IChummerClient _client;
+    private readonly IOwnerContextAccessor? _damageJournalOwnerAccessor;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly OriginDossierLifeModulePhoneRuntime? _originLifeModuleRuntime;
     private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
     private readonly ICharacterCreationLifestylesInteractionPresenter _creationLifestylesPresenter;
-    private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
+    private readonly IOwnerBoundCharacterCreationPrerequisiteService? _ownerBoundPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
+    private readonly IOwnerBoundCharacterCreationFinalizationService? _ownerBoundFinalizationService;
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationBinding, CharacterOverviewState> _finalizationLoads = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationReview, CharacterOverviewState> _finalizationReviews = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationReceipt, CharacterOverviewState> _finalizationReceipts = new();
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<PrimaryArmEditorState, CharacterOverviewState> _primaryArmEditors = new();
     private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
     private readonly Sr5CareerCustomDrugRecipeService? _careerCustomDrugRecipeService;
     private readonly Sr5CareerVehicleWorkshopService? _careerVehicleWorkshopService;
@@ -412,21 +428,28 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ICharacterCareerReputationService? careerReputationService = null,
         Sr5CareerReputationJournal? careerReputationJournal = null,
         AndroidLinkedCharacterIntentJournal? linkedCharacterJournal = null,
-        IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null)
+        IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null,
+        IOwnerBoundCharacterCreationFinalizationService? ownerBoundCreationFinalizationService = null,
+        IOwnerContextAccessor? damageJournalOwnerAccessor = null,
+        IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService = null)
     {
         _presenter = presenter;
         _client = client;
+        // Maui's existing IOwnerContextAccessor registration is the same issuing
+        // accessor used by Core. Hosts that omit this capability fail closed.
+        _damageJournalOwnerAccessor = damageJournalOwnerAccessor;
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _originLifeModuleRuntime = originLifeModuleRuntime;
         _creationContactsPresenter = creationContactsPresenter;
         _creationLifestylesPresenter = creationLifestylesPresenter;
-        _creationPrerequisiteService = creationPrerequisiteService;
+        _ownerBoundPrerequisiteService = ownerBoundCreationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
+        _ownerBoundFinalizationService = ownerBoundCreationFinalizationService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
         _careerCustomDrugRecipeService = careerCustomDrugRecipeService;
         _careerVehicleWorkshopService = careerVehicleWorkshopService;
@@ -458,6 +481,45 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public event EventHandler? Changed;
 
     public CharacterOverviewState State => _presenter.State;
+
+    // Journal-only synchronous admission. Never retain this lease across await,
+    // UI work or Core mutation dispatch. Capture alone cannot manufacture a lease.
+    internal bool TryAcquireDamageJournalOwner(OwnerContextStamp? expected,
+        CharacterWorkspaceId workspaceId, out IOwnerContextLease? lease)
+    {
+        lease = null;
+        if (expected is not { IsValid: true } stamp
+            || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners
+            || !Matches()) return false;
+        IOwnerContextLease? acquired = null;
+        try
+        {
+            if (!owners.TryAcquire(stamp, out acquired) || acquired is null) return false;
+            if (!Matches() || acquired.Stamp != stamp) return false;
+            lease = acquired;
+            return true;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (lease is null) acquired?.Dispose();
+        }
+
+        bool Matches()
+        {
+            CharacterOverviewState state = State;
+            if (_disposed || state.WorkspaceId != workspaceId || state.IsBusy
+                || state.Error is not null || state.ConflictState is not null
+                || state.DisplayOwnerContext != expected || state.Session.OwnerContext != expected
+                || _shellPresenter.State.OwnerContext != expected
+                || _client is not IOwnerBoundWorkspaceMutationClient bound) return false;
+            try { return bound.CaptureOwnerContext() == expected; }
+            catch (Exception exception) when (exception is not OutOfMemoryException) { return false; }
+        }
+    }
 
     /// <summary>
     /// Captures the exact current document bytes and document metadata for the read-only SR5
@@ -1383,35 +1445,53 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
         LoadCreationPrerequisite()
-    {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                [CharacterCreationPrerequisiteBlockers.WorkspaceUnavailable]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result =
-            _creationPrerequisiteService.Load(
-                new CharacterCreationPrerequisiteLoadRequest(workspaceId));
-        if (result.Value is { } state
-            && !CreationPrerequisitePhoneAuthority.MatchesOverview(state, State))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        return result;
-    }
+        // Rendering reads only an already accepted, original-owner projection.
+        => _prerequisiteCachedState is { } state && IsCreationPrerequisiteStateCurrent(state)
+            ? new(CharacterCreationFoundationOutcomes.Success, state, [])
+            : PrerequisiteUnavailable<CharacterCreationPrerequisiteState>();
 
     public CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
         LoadCreationFinalization()
+        => LoadCreationFinalization(State);
+
+    internal bool IsCreationFinalizationDisplayCurrent(CharacterOverviewState original)
+        => !_disposed && State.Error is null
+           && State.WorkspaceId == original.WorkspaceId
+           && State.ContentRevision == original.ContentRevision
+           && State.SavedRevision == original.SavedRevision
+           && State.Profile?.Created == original.Profile?.Created
+           && ReferenceEquals(State.Profile, original.Profile)
+           && State.ActiveTabId == original.ActiveTabId
+           && State.ActiveActionId == original.ActiveActionId
+           && State.ActiveSectionId == original.ActiveSectionId
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && State.Session.OwnerContext == original.Session.OwnerContext
+           && original.Session.OwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext);
+
+    private bool CanUseLegacyFinalization(CharacterOverviewState original)
+        => original.DisplayOwnerContext is null && _client is not IOwnerBoundWorkspaceMutationClient
+           && _ownerBoundFinalizationService is null && _creationFinalizationService is not null;
+
+    private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
+        LoadFinalizationForDisplay(CharacterOverviewState original, CharacterWorkspaceId workspaceId)
+        => original.DisplayOwnerContext is { IsValid: true } owner
+            ? _ownerBoundFinalizationService?.Load(owner, new(workspaceId))
+                ?? FinalizationUnavailable<CharacterCreationFinalizationState>()
+            : CanUseLegacyFinalization(original)
+                ? _creationFinalizationService!.Load(new(workspaceId))
+                : FinalizationUnavailable<CharacterCreationFinalizationState>();
+
+    private static CharacterCreationFinalizationResult<T> FinalizationUnavailable<T>() where T : class
+        => new(CharacterCreationFinalizationOutcomes.Unavailable, null,
+            [CharacterCreationFinalizationBlockers.WorkspaceUnavailable]);
+
+    internal CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
+        LoadCreationFinalization(CharacterOverviewState original)
     {
-        if (_creationFinalizationService is null
-            || State.Profile?.Created != false
-            || State.WorkspaceId is not { } workspaceId)
+        if (!IsCreationFinalizationDisplayCurrent(original)
+            || original.Profile?.Created != false
+            || original.WorkspaceId is not { } workspaceId)
         {
             return new CharacterCreationFinalizationResult<CharacterCreationFinalizationState>(
                 CharacterCreationFinalizationOutcomes.Unavailable,
@@ -1420,46 +1500,57 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
-            _creationFinalizationService.Load(new(workspaceId));
-        if (result.Value is { } authority
-            && (authority.Binding.WorkspaceId != workspaceId
-                || authority.Binding.ContentRevision != State.ContentRevision
-                || authority.Binding.SavedRevision != State.SavedRevision))
+            LoadFinalizationForDisplay(original, workspaceId);
+        if (!IsCreationFinalizationDisplayCurrent(original)
+            || result.Value is { } authority
+               && (authority.Binding.WorkspaceId != workspaceId
+                   || authority.Binding.ContentRevision != original.ContentRevision
+                   || authority.Binding.SavedRevision != original.SavedRevision))
         {
             return new CharacterCreationFinalizationResult<CharacterCreationFinalizationState>(
                 CharacterCreationFinalizationOutcomes.Conflict,
                 null,
                 [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
         }
+        if (result.Value is { } issued)
+            _finalizationLoads.GetValue(issued.Binding, _ => original);
         return result;
     }
 
     internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityCreationReceipt()
     {
-        if (_creationFinalizationService is null
-            || State.Profile?.Created != true
-            || State.WorkspaceId is not { } workspaceId)
+        CharacterOverviewState original = State;
+        if (!IsCreationFinalizationDisplayCurrent(original)
+            || original.Profile?.Created != true
+            || original.WorkspaceId is not { } workspaceId)
         {
             return null;
         }
 
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
-            _creationFinalizationService.Load(new(workspaceId));
-        return CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+            LoadFinalizationForDisplay(original, workspaceId);
+        return !IsCreationFinalizationDisplayCurrent(original) ? null
+            : CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
             result,
             workspaceId,
-            State.ContentRevision,
-            State.SavedRevision);
+            original.ContentRevision,
+            original.SavedRevision);
     }
+
+    public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>
+        ReviewCreationFinalizationAsync(CharacterCreationFinalizationBinding binding,
+            CancellationToken cancellationToken = default)
+        => Task.Run(() => ReviewCreationFinalization(binding), cancellationToken);
 
     public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>
         ReviewCreationFinalization(CharacterCreationFinalizationBinding binding)
     {
         ArgumentNullException.ThrowIfNull(binding);
+        if (!_finalizationLoads.TryGetValue(binding, out CharacterOverviewState? original))
+            return FinalizationUnavailable<CharacterCreationFinalizationReview>();
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState> load =
-            LoadCreationFinalization();
-        if (_creationFinalizationService is null
-            || load.Value is not { CanReview: true } state
+            LoadCreationFinalization(original);
+        if (load.Value is not { CanReview: true } state
             || state.Binding != binding)
         {
             return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>(
@@ -1469,26 +1560,41 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     ? load.Blockers
                     : [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
         }
-        return _creationFinalizationService.Review(new(binding));
+        var reviewed = original.DisplayOwnerContext is { IsValid: true } owner
+            ? _ownerBoundFinalizationService?.Review(owner, new(binding))
+            : CanUseLegacyFinalization(original) ? _creationFinalizationService!.Review(new(binding)) : null;
+        if (!IsCreationFinalizationDisplayCurrent(original) || reviewed is null)
+            return FinalizationUnavailable<CharacterCreationFinalizationReview>();
+        if (reviewed.Value is { } issued)
+            _finalizationReviews.GetValue(issued, _ => original);
+        return reviewed;
     }
 
     public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>>
         ConfirmCreationFinalizationAsync(
             CharacterCreationFinalizationReview review,
             string idempotencyKey,
-            CancellationToken cancellationToken = default) =>
-        WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationFinalizationCoreAsync(review, idempotencyKey, cancellationToken),
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(review);
+        // A review is an in-process intent issued for its original display.
+        // Never recapture an account at button-click time or after the queue.
+        if (!_finalizationReviews.TryGetValue(review, out CharacterOverviewState? original))
+            return Task.FromResult(FinalizationUnavailable<CharacterCreationFinalizationReceipt>());
+        return WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationFinalizationCoreAsync(original, review, idempotencyKey, cancellationToken),
             cancellationToken);
+    }
 
     private async Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>>
         ConfirmCreationFinalizationCoreAsync(
+            CharacterOverviewState original,
             CharacterCreationFinalizationReview review,
             string idempotencyKey,
             CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(review);
-        if (_creationFinalizationService is null
+        if (!IsCreationFinalizationDisplayCurrent(original)
             || review is not { CanConfirm: true, Plan: not null }
             || State.Profile?.Created != false
             || State.WorkspaceId != review.Binding.WorkspaceId
@@ -1502,16 +1608,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>? result = null;
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            result = _creationFinalizationService.Confirm(new(
+            var command = new CharacterCreationFinalizationConfirmRequest(
                 review.Binding,
                 review.PreviewDigest,
                 review.Plan.PlanDigest,
                 idempotencyKey,
-                ExplicitlyConfirmed: true));
+                ExplicitlyConfirmed: true);
+            // Core acquires, uses and releases its thread-affine owner lease
+            // inside this one synchronous worker delegate, never on the UI thread.
+            result = await Task.Run(() =>
+                original.DisplayOwnerContext is { IsValid: true } owner
+                    ? _ownerBoundFinalizationService?.Confirm(owner, command)
+                    : CanUseLegacyFinalization(original) ? _creationFinalizationService!.Confirm(command) : null,
+                cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             // A durable atomic commit may have completed before its result reached this
             // boundary. Recover only the exact retained idempotency key; never retry with
@@ -1523,10 +1637,21 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             || result!.Outcome is not (CharacterCreationFinalizationOutcomes.Applied
                 or CharacterCreationFinalizationOutcomes.Replayed))
         {
-            CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> lookup =
-                _creationFinalizationService.LookupReceipt(new(
-                    review.Binding.WorkspaceId,
-                    idempotencyKey));
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> lookup;
+            try
+            {
+                var query = new CharacterCreationFinalizationReceiptLookupRequest(review.Binding.WorkspaceId, idempotencyKey);
+                // A canceled caller cannot prevent observing a possibly committed
+                // receipt. This is a scoped read only, never a write retry.
+                lookup = await Task.Run(() =>
+                    original.DisplayOwnerContext is { IsValid: true } owner
+                        ? _ownerBoundFinalizationService?.LookupReceipt(owner, query)
+                            ?? FinalizationUnavailable<CharacterCreationFinalizationReceipt>()
+                        : CanUseLegacyFinalization(original) ? _creationFinalizationService!.LookupReceipt(query)
+                            : FinalizationUnavailable<CharacterCreationFinalizationReceipt>());
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            { return result ?? FinalizationUnavailable<CharacterCreationFinalizationReceipt>(); }
             if (lookup.Outcome != CharacterCreationFinalizationOutcomes.Replayed
                 || lookup.Value is null)
                 return result ?? lookup;
@@ -1534,174 +1659,71 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             receipt = lookup.Value;
         }
 
-        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        if (State.Profile?.Created != true
-            || State.WorkspaceId != receipt.WorkspaceId
-            || State.ContentRevision != receipt.ContentRevision
-            || State.SavedRevision != receipt.SavedRevision)
+        _finalizationReceipts.GetValue(receipt, _ => original);
+        try
         {
-            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>(
-                CharacterCreationFinalizationOutcomes.Applied,
-                receipt,
-                [CharacterCreationFinalizationBlockers.PostCommitReopenRequired]);
+            if (!IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext))
+                return CommittedNeedsReopen();
+            if (original.DisplayOwnerContext is { } owner)
+            {
+                if (_presenter is not IOwnerBoundWorkspaceRefreshPresenter bound)
+                    return CommittedNeedsReopen();
+                await bound.LoadAsync(owner, receipt.WorkspaceId, cancellationToken);
+            }
+            else await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+            if (!IsCreationFinalizationReceiptCurrent(receipt)) return CommittedNeedsReopen();
+            await SyncShellAsync(cancellationToken);
+            if (!IsCreationFinalizationReceiptCurrent(receipt)) return CommittedNeedsReopen();
+            _notice = "Character creation finalized. Career mode reopened from the durable receipt.";
+            NotifyChanged();
+            if (!IsCreationFinalizationReceiptCurrent(receipt)) return CommittedNeedsReopen();
+            return new(result!.Outcome, receipt, []);
         }
-
-        _notice = "Character creation finalized. Career mode reopened from the durable receipt.";
-        NotifyChanged();
-        return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>(
-            result.Outcome,
-            receipt,
-            []);
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // Cancellation, changed accounts, reload and subscriber failures after
+            // a known commit cannot erase the receipt or replay the mutation.
+            return CommittedNeedsReopen();
+        }
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> CommittedNeedsReopen()
+            => new(result!.Outcome, receipt, [CharacterCreationFinalizationBlockers.PostCommitReopenRequired]);
     }
 
-    internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
-        PreviewCreationPrerequisite(
+    internal bool IsCreationFinalizationReviewCurrent(CharacterCreationFinalizationReview review)
+        => _finalizationReviews.TryGetValue(review, out var original)
+           && IsCreationFinalizationDisplayCurrent(original);
+
+    internal bool IsCreationFinalizationReceiptCurrent(CharacterCreationFinalizationReceipt receipt)
+        => CanDisplayCreationFinalizationReceipt(receipt)
+           && State.Error is null && State.Profile?.Created == true
+           && State.WorkspaceId == receipt.WorkspaceId
+           && State.ContentRevision == receipt.ContentRevision
+           && State.SavedRevision == receipt.SavedRevision;
+
+    internal bool CanDisplayCreationFinalizationReceipt(CharacterCreationFinalizationReceipt receipt)
+        => _finalizationReceipts.TryGetValue(receipt, out var original)
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && State.Session.OwnerContext == original.DisplayOwnerContext;
+
+    internal Task<CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>>
+        PreviewCreationPrerequisiteAsync(
             CharacterCreationPrerequisiteBinding binding,
             IReadOnlyDictionary<string, string> assignments,
-            CreationPrerequisitePhoneSelections selections)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        ArgumentNullException.ThrowIfNull(assignments);
-        ArgumentNullException.ThrowIfNull(selections);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            LoadCreationPrerequisite();
-        if (load.Value is not { } state
-            || !CreationPrerequisitePhoneAuthority.BindingEquals(binding, state.Binding))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                state.Blockers.Count > 0
-                    ? state.Blockers
-                    : [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
-        }
+            CreationPrerequisitePhoneSelections selections,
+            CancellationToken cancellationToken = default,
+            Func<bool>? isCurrentEditor = null)
+        => PreviewIssuedCreationPrerequisiteAsync(binding, assignments, selections, cancellationToken, isCurrentEditor);
 
-        return _creationPrerequisiteService.Preview(
-            new CharacterCreationPrerequisitePreviewRequest(
-                binding,
-                new Dictionary<string, string>(assignments, StringComparer.Ordinal))
-            {
-                HeritageSelectionId = selections.HeritageSelectionId,
-                TalentSelectionId = selections.TalentSelectionId,
-                TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
-                TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
-            });
-    }
-
-    internal async Task<CreationPrerequisitePhoneConfirmResult>
+    internal Task<CreationPrerequisitePhoneConfirmResult>
         ConfirmCreationPrerequisiteAsync(
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
             CreationPrerequisitePhoneSelections selections,
-            CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationPrerequisiteCoreAsync(
-                preview,
-                assignments,
-                selections,
-                cancellationToken),
-            cancellationToken);
-
-    private async Task<CreationPrerequisitePhoneConfirmResult>
-        ConfirmCreationPrerequisiteCoreAsync(
-            CharacterCreationPrerequisitePreview preview,
-            IReadOnlyDictionary<string, string> assignments,
-            CreationPrerequisitePhoneSelections selections,
-            CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(preview);
-        ArgumentNullException.ThrowIfNull(assignments);
-        ArgumentNullException.ThrowIfNull(selections);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> before =
-            LoadCreationPrerequisite();
-        if (before.Value is not { } state
-            || !CreationPrerequisitePhoneAuthority.BindingEquals(preview.Binding, state.Binding))
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
-        }
-        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State)
-            || !PreviewMatchesSelections(preview, assignments, selections, state)
-            || !preview.RequiresExplicitConfirmation
-            || !preview.CanConfirm
-            || preview.Blockers.Count != 0
-            || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(preview.PreviewDigest))
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationPrerequisiteBlockers.PreviewDigestMismatch]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteReceipt> result =
-            _creationPrerequisiteService.Confirm(
-                new CharacterCreationPrerequisiteConfirmRequest(
-                    preview.Binding,
-                    new Dictionary<string, string>(assignments, StringComparer.Ordinal),
-                    preview.PreviewDigest,
-                    ExplicitlyConfirmed: true)
-                {
-                    HeritageSelectionId = selections.HeritageSelectionId,
-                    TalentSelectionId = selections.TalentSelectionId,
-                    TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
-                    TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
-                });
-        if (!string.Equals(
-                result.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || result.Value is not { } receipt)
-        {
-            return new CreationPrerequisitePhoneConfirmResult(
-                result.Outcome,
-                result.Value,
-                null,
-                result.Blockers);
-        }
-
-        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> refreshed =
-            LoadCreationPrerequisite();
-        if (refreshed.Value is not { } refreshedState
-            || !CreationPrerequisitePhoneAuthority.ReceiptMatches(
-                receipt,
-                refreshedState,
-                State))
-        {
-            _notice = null;
-            NotifyChanged();
-            return new CreationPrerequisitePhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                receipt,
-                null,
-                refreshed.Blockers
-                    .Append(CharacterCreationPrerequisiteBlockers.DraftConflict)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
-                    .ToArray());
-        }
-
-        _notice = "Creation-method draft saved. Core has opened the Attributes prerequisite.";
-        NotifyChanged();
-        return new CreationPrerequisitePhoneConfirmResult(
-            CharacterCreationFoundationOutcomes.Success,
-            receipt,
-            refreshedState,
-            []);
-    }
+            CancellationToken cancellationToken = default,
+            Func<bool>? isCurrentPreview = null)
+        => ConfirmIssuedCreationPrerequisiteAsync(
+            preview, assignments, selections, cancellationToken, isCurrentPreview);
 
     public CharacterCreationFoundationResult<CharacterCreationAttributesState>
         LoadCreationAttributes()
@@ -3447,18 +3469,39 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     public async Task ApplyConditionMonitorEditAsync(
         ConditionMonitorEditRequest request,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ApplyConditionMonitorEditCoreAsync(request, cancellationToken),
-            cancellationToken);
+    {
+        CharacterOverviewState original = State;
+        if (!await TryApplyBoundConditionMonitorEditAsync(request, original, () => true, cancellationToken))
+            throw new InvalidOperationException(
+                "The damage change could not be verified for the original runner. Reopen it to review the outcome before retrying.");
+    }
 
-    private async Task ApplyConditionMonitorEditCoreAsync(
+    private async Task<bool> ApplyConditionMonitorEditCoreAsync(
         ConditionMonitorEditRequest request,
+        CharacterOverviewState original,
         CancellationToken cancellationToken)
     {
-        await _presenter.ApplyConditionMonitorEditAsync(request, cancellationToken);
-        _notice = State.Error is null ? "Damage track updated." : null;
+        if (original.DisplayOwnerContext is not { IsValid: true } owner
+            || original.WorkspaceId is not { } workspaceId
+            || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound)
+            return false;
+        CommandResult<WorkspaceRevisionReceipt> result = await bound.ApplyConditionMonitorEditAsync(
+            request, owner, workspaceId, original.ContentRevision, cancellationToken);
+        if (!result.Success || result.Value is not { } receipt
+            || receipt.Id != workspaceId || original.ContentRevision == long.MaxValue
+            || receipt.ContentRevision != original.ContentRevision + 1
+            || receipt.SavedRevision != original.SavedRevision
+            || !IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != original.SavedRevision)
+            return false;
+        // Damage changes remain dirty. No checkpoint or replay is inferred from
+        // a refreshed view, and a recovery conflict keeps the editor open.
         await SyncShellAsync(cancellationToken);
+        if (!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != original.SavedRevision) return false;
+        _notice = "Damage track updated.";
         NotifyChanged();
+        return true;
     }
 
     internal Task<bool> TryApplyBoundConditionMonitorEditAsync(
@@ -3470,7 +3513,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             CharacterOverviewState current = State;
-            if (_disposed || current.IsBusy || current.Error is not null
+            if (!IsNativeEditDisplayCurrent(expected)
                 || expected.WorkspaceId is null
                 || current.WorkspaceId != expected.WorkspaceId
                 || current.ContentRevision != expected.ContentRevision
@@ -3482,8 +3525,83 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 || !isCurrentInspector())
                 return false;
 
-            await ApplyConditionMonitorEditCoreAsync(request, cancellationToken);
-            return State.Error is null;
+            return await ApplyConditionMonitorEditCoreAsync(request, expected, cancellationToken);
+        }, cancellationToken);
+
+    /// <summary>
+    /// Wizard-only confirmation. Unlike the generic condition editor this joins
+    /// an explicit original-owner checkpoint. Null is not proof of no mutation:
+    /// callers must retain their durable Applying journal and must not replay.
+    /// </summary>
+    internal Task<WorkspaceSaveReceipt?> TryApplyAndSaveBoundConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CharacterOverviewState expected,
+        Func<bool> isCurrentReview,
+        CancellationToken cancellationToken = default)
+        => WithWorkspaceActivationGateAsync<WorkspaceSaveReceipt?>(async () =>
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(expected);
+            ArgumentNullException.ThrowIfNull(isCurrentReview);
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterOverviewState current = State;
+            if (!IsNativeEditDisplayCurrent(expected)
+                || expected.IsDirty || expected.ContentRevision != expected.SavedRevision
+                || expected.ContentRevision == long.MaxValue
+                || expected.WorkspaceId is not { } workspaceId
+                || expected.DisplayOwnerContext is not { IsValid: true } owner
+                || current.WorkspaceId != workspaceId
+                || !ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)
+                || expected.ActiveConditionMonitor is not { CareerEditable: true } monitor
+                || !Sr5PlaytimeDamageIntegrity.IsSupportedTrack(request.Track)
+                || monitor.Tracks.Count(track => track.Track == request.Track) != 1
+                || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound
+                || _presenter is not IOwnerBoundWorkspacePersistencePresenter persistence
+                || !isCurrentReview())
+                return null;
+
+            // Pass the issued frame's stamp through both operations. Neither the
+            // queue nor a postcommit continuation may recapture the current user.
+            CommandResult<WorkspaceRevisionReceipt> mutation = await bound.ApplyConditionMonitorEditAsync(
+                request, owner, workspaceId, expected.ContentRevision, cancellationToken);
+            if (!mutation.Success || mutation.Value is not { } committed
+                || committed.Id != workspaceId
+                || committed.ContentRevision != expected.ContentRevision + 1
+                || committed.SavedRevision != expected.SavedRevision)
+                return null;
+
+            // Once dispatched, page departure does not authorize cancellation or
+            // replay. The runtime still requires this exact live account for Save.
+            CommandResult<WorkspaceSaveReceipt> saved = await persistence.SaveAsync(
+                owner, workspaceId, committed.ContentRevision, cancellationToken);
+            if (!saved.Success || saved.Value is not { } receipt
+                || receipt.Id != workspaceId
+                || receipt.ContentRevision != committed.ContentRevision
+                || receipt.SavedRevision != committed.ContentRevision)
+                return null;
+
+            // A joined canonical receipt stays known even when its original view
+            // can no longer publish. Current display truth only gates feedback.
+            try
+            {
+                if (!IsNativeMutationObservationCurrent(expected, receipt.ContentRevision)
+                    || State.SavedRevision != receipt.SavedRevision || State.IsDirty)
+                    return receipt;
+                using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await SyncShellAsync(postCommitBudget.Token);
+                if (!IsNativeMutationObservationCurrent(expected, receipt.ContentRevision)
+                    || State.SavedRevision != receipt.SavedRevision || State.IsDirty)
+                    return receipt;
+                _durableSaveNotice = new(receipt.Id, receipt.SavedRevision) { OriginalOwner = owner };
+                _notice = "Damage saved.";
+                NotifyChanged();
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // Includes subscriber exceptions and lost/cancelled observations.
+                // They cannot erase the known save or authorize a second write.
+            }
+            return receipt;
         }, cancellationToken);
 
     public Task<CareerReputationEditorState?> PrepareCareerReputationEditAsync(
@@ -3612,36 +3730,119 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(
         CancellationToken cancellationToken = default)
-        => _presenter.PreparePrimaryArmEditAsync(cancellationToken);
+        => PreparePrimaryArmEditAsync(State, cancellationToken);
+
+    internal async Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(
+        CharacterOverviewState original, CancellationToken cancellationToken = default)
+    {
+        if (!IsNativeEditDisplayCurrent(original)) return null;
+        PrimaryArmEditorState? editor = await _presenter.PreparePrimaryArmEditAsync(cancellationToken);
+        if (editor is null || !IsNativeEditDisplayCurrent(original)
+            || editor.WorkspaceId != original.WorkspaceId
+            || editor.ContentRevision != original.ContentRevision) return null;
+        _primaryArmEditors.GetValue(editor, _ => original);
+        return editor;
+    }
+
+    internal bool IsPrimaryArmEditorCurrent(PrimaryArmEditorState editor)
+        => _primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)
+           && editor.WorkspaceId == original.WorkspaceId
+           && editor.ContentRevision == original.ContentRevision
+           && IsNativeEditDisplayCurrent(original);
+
+    internal Task<bool> TryApplyBoundPrimaryArmEditAsync(
+        PrimaryArmEditorState editor, string value, Func<bool> isCurrentEditor,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original))
+            return Task.FromResult(false);
+        return WithWorkspaceActivationGateAsync(
+            () => !isCurrentEditor() ? Task.FromResult(false)
+                : ApplyPrimaryArmEditCoreAsync(
+                    new(editor.WorkspaceId, editor.ContentRevision, value), original, cancellationToken),
+            cancellationToken);
+    }
+
+    internal bool IsPrimaryArmSaveCurrent(PrimaryArmEditorState editor)
+        => _primaryArmEditors.TryGetValue(editor, out CharacterOverviewState? original)
+           && original.ContentRevision < long.MaxValue
+           && IsNativeMutationObservationCurrent(original, original.ContentRevision + 1)
+           && State.SavedRevision == original.ContentRevision + 1;
 
     public async Task ApplyPrimaryArmEditAsync(
         PrimaryArmEditRequest request,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ApplyPrimaryArmEditCoreAsync(request, cancellationToken),
-            cancellationToken);
+    {
+        CharacterOverviewState original = State;
+        if (!await WithWorkspaceActivationGateAsync(
+            () => ApplyPrimaryArmEditCoreAsync(request, original, cancellationToken), cancellationToken))
+            throw new InvalidOperationException(
+                "The primary-arm change could not be verified for the original runner. Reopen it to review the outcome before retrying.");
+    }
 
-    private async Task ApplyPrimaryArmEditCoreAsync(
+    private async Task<bool> ApplyPrimaryArmEditCoreAsync(
         PrimaryArmEditRequest request,
+        CharacterOverviewState original,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (State.WorkspaceId != request.WorkspaceId
-            || State.ContentRevision != request.ExpectedContentRevision)
-        {
-            throw new InvalidOperationException(
-                "This runner changed while Primary Arm was open. Reopen it before saving.");
-        }
+        if (!IsNativeEditDisplayCurrent(original)
+            || original.WorkspaceId != request.WorkspaceId
+            || original.ContentRevision != request.ExpectedContentRevision
+            || original.DisplayOwnerContext is not { IsValid: true } owner
+            || _presenter is not IOwnerBoundWorkspaceMutationPresenter bound
+            || _presenter is not IOwnerBoundWorkspacePersistencePresenter persistence)
+            return false;
 
-        await _presenter.ApplyPrimaryArmEditAsync(request, cancellationToken);
-        if (State.Error is null)
+        CommandResult<WorkspaceRevisionReceipt> mutation = await bound.ApplyPrimaryArmEditAsync(
+            request, owner, cancellationToken);
+        if (!mutation.Success || mutation.Value is not { } committed
+            || committed.Id != request.WorkspaceId || original.ContentRevision == long.MaxValue
+            || committed.ContentRevision != original.ContentRevision + 1
+            || committed.SavedRevision != original.SavedRevision
+            || !IsNativeMutationObservationCurrent(original, committed.ContentRevision)) return false;
+        CommandResult<WorkspaceSaveReceipt> saved = await persistence.SaveAsync(
+            owner, committed.Id, committed.ContentRevision, cancellationToken);
+        if (!saved.Success || saved.Value is not { } receipt || receipt.Id != committed.Id
+            || receipt.ContentRevision != committed.ContentRevision
+            || receipt.SavedRevision != committed.ContentRevision
+            || !IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != receipt.SavedRevision) return false;
+        using var postCommitBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try { await SyncShellAsync(postCommitBudget.Token); }
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            await _presenter.SaveAsync(cancellationToken);
+            // Both canonical calls joined. Never replay them on observation failure.
+            return false;
         }
-        _notice = State.Error is null ? "Primary arm saved." : null;
-        await SyncShellAsync(cancellationToken);
+        if (!IsNativeMutationObservationCurrent(original, receipt.ContentRevision)
+            || State.SavedRevision != receipt.SavedRevision) return false;
+        _durableSaveNotice = new(receipt.Id, receipt.SavedRevision) { OriginalOwner = owner };
+        _notice = "Primary arm saved.";
         NotifyChanged();
+        return true;
     }
+
+    private bool IsNativeEditDisplayCurrent(CharacterOverviewState original)
+        => !_disposed && !State.IsBusy && State.Error is null && State.ConflictState is null
+           && original.WorkspaceId is not null && original.ContentRevision > 0
+           && State.WorkspaceId == original.WorkspaceId
+           && State.ContentRevision == original.ContentRevision
+           && State.SavedRevision == original.SavedRevision
+           && ReferenceEquals(State.Profile, original.Profile)
+           && State.ActiveTabId == original.ActiveTabId
+           && State.ActiveActionId == original.ActiveActionId
+           && State.ActiveSectionId == original.ActiveSectionId
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && State.Session.OwnerContext == original.DisplayOwnerContext
+           && _shellPresenter.State.OwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext);
+
+    private bool IsNativeMutationObservationCurrent(CharacterOverviewState original, long revision)
+        => !_disposed && !State.IsBusy && State.Error is null && State.ConflictState is null
+           && State.Session.ActiveWorkspaceId == original.WorkspaceId
+           && State.Session.OwnerContext == original.DisplayOwnerContext
+           && IsNativePersistenceViewCurrent(original, revision);
 
     public Task<CareerMugshotEditorState?> PrepareCareerMugshotEditAsync(
         CancellationToken cancellationToken = default)
@@ -6140,12 +6341,20 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     }
 
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
+    {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "activation-queued");
+#endif
+        await WithWorkspaceActivationGateAsync(
             () => ExecuteDialogActionCoreAsync(actionId, cancellationToken),
             cancellationToken);
+    }
 
     private async Task ExecuteDialogActionCoreAsync(string actionId, CancellationToken cancellationToken)
     {
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "activation-admitted");
+#endif
         CharacterWorkspaceId? workspaceBeforeAction = State.WorkspaceId;
         NativeCreationBootstrapTiming? bootstrapTiming = string.Equals(
             actionId,
@@ -6155,7 +6364,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 : null;
         EventHandler? bootstrapObserver = bootstrapTiming is null
             ? null
-            : (_, _) => bootstrapTiming.Observe(State);
+            : (_, _) =>
+            {
+                NativeCreationBootstrapObservation observation = bootstrapTiming.Observe(State);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+                // Partial observations are diagnostics, never the completed bootstrap marker.
+                if (observation == NativeCreationBootstrapObservation.LoadStarted)
+                    Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "bootstrap-load-start-observed");
+                else if (observation == NativeCreationBootstrapObservation.WorkspaceStatePublished)
+                    Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "bootstrap-workspace-published-observed");
+#endif
+            };
         if (bootstrapObserver is not null)
         {
             _presenter.StateChanged += bootstrapObserver;
@@ -6179,6 +6398,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         long presenterCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "presenter-returned");
+#endif
         if (activeSectionAction is not null
             && State.ActiveDialog is null
             && State.ContentRevision > contentRevision)
@@ -6198,8 +6420,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             RefreshShellAfterPresenterSyncAsync,
             cancellationToken);
         long androidShellCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "shell-complete");
+#endif
         await ProcessPendingOutputsAsync(cancellationToken);
         long pendingOutputsCompletedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "outputs-complete");
+#endif
         if (bootstrapSnapshot is not null && AndroidE2EAuthority.Enabled)
         {
             TraceCreationBootstrapTiming(

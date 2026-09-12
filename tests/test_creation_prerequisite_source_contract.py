@@ -381,6 +381,81 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 inspect.getsource(driver.wait_for_creation_bootstrap_timing_log),
             )
 
+    def test_creation_bootstrap_partial_breadcrumbs_are_proof_only(self) -> None:
+        source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        observer = source[source.index("EventHandler? bootstrapObserver ="):]
+        observer = observer[:observer.index("if (bootstrapObserver is not null)")]
+        guard = observer.index("#if CHUMMER_API36_PROOF_INSTRUMENTATION")
+        guard_end = observer.index("#endif", guard)
+        for stage in (
+            "bootstrap-load-start-observed",
+            "bootstrap-workspace-published-observed",
+        ):
+            call = f'Api36ProofStatePublisher.TraceCreationDialogStage(actionId, "{stage}");'
+            self.assertEqual(1, observer.count(call))
+            self.assertIn(call, observer[guard:guard_end])
+        self.assertNotIn("TraceCreationBootstrapTiming", observer)
+
+    def test_creation_bootstrap_progress_retains_timeout_and_original_exception(self) -> None:
+        failure = RuntimeError("original bootstrap timeout")
+        observation = {"scanId": "creation-bootstrap-timing-log-poll", "status": "timeout"}
+
+        def wait(device, *, observation_out):
+            observation_out.update(observation)
+            raise failure
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress._active_id = "initial-authority"
+            with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+                with self.assertRaises(RuntimeError) as caught:
+                    driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+            self.assertIs(failure, caught.exception)
+            self.assertEqual(1, waited.call_count)
+            retained = {**observation, "phaseId": "initial-authority"}
+            self.assertEqual([retained], progress.scans)
+            payload = json.loads(progress.evidence_path.read_text(encoding="utf-8"))
+            self.assertEqual([retained], payload["scans"])
+            self.assertEqual([], payload["milestones"])
+            self.assertEqual("running", payload["status"])
+
+    def test_creation_bootstrap_progress_recording_failure_cannot_mask_timeout(self) -> None:
+        failure = RuntimeError("original bootstrap timeout")
+        progress = mock.Mock()
+        progress.record_scan.side_effect = OSError("diagnostic write failed")
+
+        def wait(device, *, observation_out):
+            observation_out.update({"status": "timeout"})
+            raise failure
+
+        with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+            with self.assertRaises(RuntimeError) as caught:
+                driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+        self.assertIs(failure, caught.exception)
+        self.assertEqual(1, waited.call_count)
+        progress.record_scan.assert_called_once_with({"status": "timeout"})
+
+    def test_creation_bootstrap_progress_preserves_success_and_recording_failure(self) -> None:
+        for recording_failure in (None, OSError("diagnostic write failed")):
+            with self.subTest(recording_failure=recording_failure):
+                progress = mock.Mock()
+                progress.record_scan.side_effect = recording_failure
+
+                def wait(device, *, observation_out):
+                    observation_out.update({"status": "resolved"})
+                    return mock.sentinel.exact_logcat
+
+                with mock.patch.object(driver, "wait_for_creation_bootstrap_timing_log", side_effect=wait) as waited:
+                    if recording_failure is None:
+                        self.assertIs(mock.sentinel.exact_logcat,
+                            driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress))
+                    else:
+                        with self.assertRaises(OSError) as caught:
+                            driver.wait_for_creation_bootstrap_timing_with_progress(mock.sentinel.device, progress)
+                        self.assertIs(recording_failure, caught.exception)
+                self.assertEqual(1, waited.call_count)
+                progress.record_scan.assert_called_once_with({"status": "resolved"})
+
     def test_creation_bootstrap_stream_and_snapshot_accept_one_exact_main_divider(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -474,6 +549,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-bootstrap-timing-json-invalid"
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_wait_rejects_illegal_stream_or_snapshot_lines(self) -> None:
         payload = self.bootstrap_timing_payload()
         marker = driver.CREATION_BOOTSTRAP_TIMING_PREFIX + json.dumps(
@@ -585,6 +661,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 TimingDevice.captures,
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_stream_rejects_prefixed_marker_line(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -613,6 +690,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "creation-bootstrap-timing-log-timeout"
             )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_stream_success_at_deadline_fails_without_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -648,6 +726,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual("timeout", observation["status"])
             self.assertEqual(0, observation["snapshotLogcatReadCount"])
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_snapshot_cannot_extend_original_deadline(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = self.bootstrap_timing_payload()
@@ -710,6 +789,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )[0],
         )
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_marker_poll_times_out_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = mock.Mock()
@@ -742,6 +822,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(1, observation["streamLogcatReadCount"])
             self.assertEqual(0, observation["snapshotLogcatReadCount"])
 
+    @mock.patch.object(driver, "capture_creation_bootstrap_timeout", lambda device: device.capture("creation-bootstrap-timing-log-timeout"))
     def test_creation_bootstrap_transport_timeout_rejects_partial_marker_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             evidence = Path(temporary)
@@ -787,6 +868,180 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     encoding="utf-8"
                 ),
             )
+
+    def test_creation_timeout_real_transport_keeps_diagnostics_without_replaying_action(self) -> None:
+        # Keep Device.run and its mutation fence real: mocking run itself hides
+        # the hosted failure where the exact trace read was never admitted.
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary) / "screenshots"
+            device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+            trace_arguments = (
+                "logcat", "-d", "-b", "main", "-v", "threadtime",
+                "-s", "ChummerCreateDiag:I", "*:S",
+            )
+            fresh = b'<hierarchy rotation="0"><node text="busy" /></hierarchy>'
+            invoked = []
+
+            def invoke(arguments, **_kwargs):
+                invoked.append(arguments)
+                if arguments == driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS:
+                    raise subprocess.TimeoutExpired(arguments, 1.0)
+                outputs = {
+                    ("exec-out", "screencap", "-p"): b"diagnostic screenshot",
+                    ("exec-out", "cat", driver.shared.ADB_FILE_HIERARCHY_REMOTE_PATH): fresh.decode(),
+                    ("logcat", "-d", "-t", "500"): "prior log tail",
+                    trace_arguments: "CHUMMER_CREATE_DIAGNOSTIC stage=claimed",
+                    driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS: fresh,
+                }
+                return subprocess.CompletedProcess(arguments, 0, stdout=outputs[arguments], stderr="")
+
+            with mock.patch.object(device, "_invoke_once", side_effect=invoke), \
+                    mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                with self.assertRaisesRegex(RuntimeError, "exact post-action creation bootstrap"):
+                    driver.wait_for_creation_bootstrap_timing_log(device, timeout=1.0)
+                with self.assertRaises(driver.shared.AdbTransportError) as blocked:
+                    device.shell("input", "tap", "290", "2187")
+            self.assertEqual("prior-mutation-outcome-unknown", blocked.exception.receipt["classification"])
+            self.assertFalse(blocked.exception.receipt["commandInvocationPerformed"])
+            self.assertEqual(1, invoked.count(driver.ADB_CREATION_BOOTSTRAP_LOGCAT_WAIT_ARGUMENTS))
+            self.assertEqual(1, invoked.count(trace_arguments))
+            self.assertFalse(any(arguments[:2] == ("shell", "input") for arguments in invoked))
+            name = "creation-bootstrap-timing-log-timeout"
+            self.assertEqual("CHUMMER_CREATE_DIAGNOSTIC stage=claimed",
+                             (evidence / f"{name}-dialog-trace.txt").read_text())
+            observation = json.loads((evidence / f"{name}-diagnostics.json").read_text())
+            self.assertEqual("timeout", observation["bootstrapStatus"])
+            self.assertEqual("captured", observation["dialogTrace"])
+            self.assertEqual("captured-from-new-read-only-dump", observation["freshHierarchy"])
+            self.assertEqual(fresh.decode(), (evidence / f"{name}.xml").read_text())
+            self.assertFalse((evidence / driver.CREATION_BOOTSTRAP_TIMING_FILE_NAME).exists())
+
+    def test_creation_timeout_records_empty_or_failed_trace_without_restoring_authority(self) -> None:
+        for fails in (True, False):
+            with self.subTest(fails=fails), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                device.run.side_effect = [
+                    OSError("diagnostic unavailable") if fails else subprocess.CompletedProcess([], 0, stdout=""),
+                    subprocess.CompletedProcess([], 0, stdout=b"<hierarchy><node /></hierarchy>"),
+                ]
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                    driver.capture_creation_bootstrap_timeout(device)
+                observation = json.loads((device.evidence / "creation-bootstrap-timing-log-timeout-diagnostics.json").read_text())
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual("unavailable" if fails else "empty", observation["dialogTrace"])
+                self.assertEqual("OSError" if fails else None, observation.get("dialogTraceFailureType"))
+                self.assertEqual(101.0, device.run.call_args_list[0].kwargs["deadline"])
+                self.assertFalse((device.evidence / driver.CREATION_BOOTSTRAP_TIMING_FILE_NAME).exists())
+
+    def test_creation_timeout_diagnostic_separates_stale_and_fresh_hierarchies(self) -> None:
+        for fresh_succeeds in (True, False):
+            with self.subTest(fresh_succeeds=fresh_succeeds), tempfile.TemporaryDirectory() as temporary:
+                device = mock.Mock()
+                device.evidence = Path(temporary)
+                name = "creation-bootstrap-timing-log-timeout"
+                stale = '<hierarchy rotation="0"><node text="prior" /></hierarchy>'
+                fresh = '<hierarchy rotation="0"><node text="fresh" /></hierarchy>'
+                device.capture.side_effect = lambda captured_name, **_kwargs: (
+                    device.evidence / f"{captured_name}.xml"
+                ).write_text(stale)
+                device.run.side_effect = (
+                    subprocess.CompletedProcess([], 0, stdout="stage=claimed", stderr=""),
+                    subprocess.CompletedProcess([], 0, stdout=(fresh + "\nUI hierchary dumped to: /dev/tty").encode(), stderr=b"")
+                    if fresh_succeeds else subprocess.TimeoutExpired([], 5),
+                )
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0):
+                    driver.capture_creation_bootstrap_timeout(device)
+                self.assertEqual(stale, (device.evidence / f"{name}-prior-hierarchy.xml").read_text())
+                self.assertEqual(fresh_succeeds, (device.evidence / f"{name}.xml").exists())
+                if fresh_succeeds:
+                    self.assertEqual(fresh, (device.evidence / f"{name}.xml").read_text())
+                observation = json.loads((device.evidence / f"{name}-diagnostics.json").read_text())
+                self.assertTrue(observation["diagnosticOnly"])
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual(2, device.run.call_count)
+                self.assertEqual(driver.shared.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, device.run.call_args.args)
+                self.assertEqual(108.0, device.run.call_args.kwargs["deadline"])
+                self.assertEqual(5.0, device.run.call_args.kwargs["timeout"])
+                device.shell.assert_not_called()
+
+    def test_creation_timeout_diagnostic_failure_cannot_replace_bootstrap_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.side_effect = subprocess.TimeoutExpired([], 1.0)
+            with mock.patch.object(driver, "capture_creation_bootstrap_timeout", side_effect=OSError("diagnostic unavailable")), \
+                    self.assertRaisesRegex(RuntimeError, "exact post-action creation bootstrap"):
+                driver.wait_for_creation_bootstrap_timing_log(device, timeout=1.0)
+            self.assertEqual(1, device.run.call_count)
+            device.shell.assert_not_called()
+
+    def test_creation_timeout_actual_capture_keeps_prior_xml_and_rejects_partial_new_dump(self) -> None:
+        for fresh_complete in (True, False):
+            with self.subTest(fresh_complete=fresh_complete), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary) / "screenshots"
+                device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+                name = "creation-bootstrap-timing-log-timeout"
+                stale = '<hierarchy rotation="0"><node text="prior" /></hierarchy>'
+                fresh = b'<hierarchy rotation="0"><node text="new" /></hierarchy>'
+                if not fresh_complete:
+                    fresh = fresh.removesuffix(b"</hierarchy>")
+                outputs = (b"screenshot", stale, "old log tail", "stage=claimed", fresh)
+                with mock.patch.object(driver.time, "monotonic", return_value=100.0), \
+                        mock.patch.object(device, "run", side_effect=[
+                            subprocess.CompletedProcess([], 0, stdout=output) for output in outputs
+                        ]) as transport:
+                    driver.capture_creation_bootstrap_timeout(device)
+                self.assertEqual(b"screenshot", (evidence / f"{name}-prior-hierarchy.png").read_bytes())
+                self.assertEqual(stale, (evidence / f"{name}-prior-hierarchy.xml").read_text())
+                self.assertEqual(fresh_complete, (evidence / f"{name}.xml").exists())
+                self.assertEqual("stage=claimed", (evidence / f"{name}-dialog-trace.txt").read_text())
+                observation = json.loads((evidence / f"{name}-diagnostics.json").read_text())
+                self.assertEqual("timeout", observation["bootstrapStatus"])
+                self.assertEqual("captured-from-new-read-only-dump" if fresh_complete else "invalid-new-dump",
+                                 observation["freshHierarchy"])
+                self.assertEqual(5, transport.call_count)
+                self.assertTrue(all(call.kwargs["deadline"] <= 108.0 for call in transport.call_args_list))
+
+    def test_creation_timeout_exhausted_diagnostic_deadline_admits_no_more_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary) / "screenshots"
+            device = driver.shared.Device(Path("/unused/adb"), "unused", evidence)
+            clock = [100.0]
+
+            def exhausted(*_args, **_kwargs):
+                clock[0] = 108.0
+                return subprocess.CompletedProcess([], 0, stdout=b"late screenshot")
+
+            with mock.patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+                    mock.patch.object(device, "run", side_effect=exhausted) as transport:
+                driver.capture_creation_bootstrap_timeout(device)
+            transport.assert_called_once()
+            self.assertEqual(("exec-out", "screencap", "-p"), transport.call_args.args)
+            observation = json.loads((evidence / "creation-bootstrap-timing-log-timeout-diagnostics.json").read_text())
+            self.assertEqual("timeout", observation["bootstrapStatus"])
+            self.assertEqual("unavailable", observation["freshHierarchy"])
+            self.assertEqual("AdbOperationDeadlineExceeded", observation["freshHierarchyFailureType"])
+            self.assertFalse((evidence / "creation-bootstrap-timing-log-timeout.xml").exists())
+
+    def test_creation_tap_intent_retains_geometry_without_character_values_or_dispatch_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            node = self.canonical_node("dialog-action-create-character", text="private value")
+            with mock.patch.object(driver.time, "monotonic", return_value=12.0):
+                driver.record_creation_action_tap_intent(device, node, 11.0)
+            payload = (device.evidence / "creation-action-tap-intent.json").read_text()
+            self.assertNotIn("private value", payload)
+            observation = json.loads(payload)
+            self.assertTrue(observation["diagnosticOnly"])
+            self.assertEqual("tap-intent", observation["event"])
+            self.assertEqual([100, 300, 900, 500], observation["bounds"])
+            self.assertEqual([500, 400], observation["center"])
+            self.assertEqual(11.0, observation["targetReturnedAtMonotonicSeconds"])
+            self.assertEqual(12.0, observation["tapRequestedAtMonotonicSeconds"])
+            device.run.assert_not_called()
+            device.shell.assert_not_called()
 
     def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
         first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}
@@ -1768,6 +2023,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_progress_finish_rejects_cross_field_timing_forgery(self) -> None:
         cases = (
+            ("validBaseline", None),
             ("phaseOverSum", "does not reconcile"),
             ("totalOverPhaseSum", "does not reconcile"),
             ("milestoneTotalZero", "milestone timing differs"),
@@ -1775,8 +2031,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("milestoneBoolOrdinal", "milestone evidence differs"),
         )
         for case, expected_error in cases:
-            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary, mock.patch(
-                "builtins.print"
+            with (
+                self.subTest(case=case),
+                tempfile.TemporaryDirectory() as temporary,
+                mock.patch("builtins.print"),
+                # Host scheduling/JSON writes must not change which hostile
+                # timing field this fixture reaches, including its final phase.
+                mock.patch.object(driver.time, "monotonic", return_value=100.0),
             ):
                 progress = driver.ProgressRecorder(Path(temporary))
                 for phase_id in driver.PHASE_ORDER:
@@ -1790,6 +2051,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     ):
                         if milestone_phase == phase_id:
                             progress.record_initial_milestone(milestone_id)
+                if case == "validBaseline":
+                    baseline = progress.finish()
+                    self.assertEqual(len(driver.PHASE_ORDER), len(baseline["phases"]))
+                    self.assertEqual(0, baseline["totalElapsedMs"])
+                    continue
                 if case == "phaseOverSum":
                     for phase in progress.phases:
                         phase["elapsedMs"] = phase["budgetMs"]
@@ -6464,6 +6730,118 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             deadline=deadline,
         )
 
+    def _restored_attachment_barrier_scenario(self, *, stale_forever=False, duplicate=False):
+        # Only device transport/appearance timing and scroll scans are modeled.
+        # The real proof parser/digest, sequence, workspace, option and tap paths run.
+        from types import SimpleNamespace
+        from test_api36_proof_state_contract import attachment_payload, encoded, expectation
+
+        clock = [100.0]
+        ready = [True]
+        returned = [False]
+        after_back_reads = [0]
+        events = []
+        device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
+        prior = attachment_payload(9)
+        stale_talent = self.canonical_node("creation-prerequisite-talent-selection")
+        fresh_talent = self.canonical_node(
+            "creation-prerequisite-talent-selection", bounds="[100,700][900,900]",
+        )
+        observed_rows = []
+
+        def observe(_device, *, deadline, attempt):
+            self.assertLessEqual(deadline, 220.0)
+            if not returned[0]:
+                events.append("pre-back-proof-9")
+                payload = prior
+            else:
+                after_back_reads[0] += 1
+                ready[0] = after_back_reads[0] >= 2 and not stale_forever
+                payload = attachment_payload(10) if ready[0] else prior
+                events.append(f"post-back-proof-{payload['sequence']}")
+            return encoded(payload), 4242, {"attempt": attempt}
+
+        def back(**_kwargs):
+            events.append("back")
+            returned[0] = True
+            ready[0] = False
+
+        def acquire_talent(*_args, **_kwargs):
+            node = fresh_talent if ready[0] else stale_talent
+            observed_rows.append(node)
+            events.append("fresh-talent" if ready[0] else "stale-talent")
+            return node
+
+        def tap(*args, **_kwargs):
+            self.assertEqual(("input", "tap"), args[:2])
+            if returned[0]:
+                self.assertTrue(ready[0], "Talent tap preceded refreshed attachment")
+                self.assertEqual(tuple(map(str, fresh_talent.center)), args[2:])
+                events.append("talent-tap")
+            else:
+                events.append("heritage-tap")
+
+        def route(selector, **_kwargs):
+            if returned[0] and selector == "creation-prerequisite-page":
+                events.append("parent-accessibility")
+            return self.canonical_node(selector)
+
+        def rewind(_device, selector, **_kwargs):
+            return self.canonical_node(selector), []
+
+        def scan(_device, *, scan_id, **_kwargs):
+            category = "talent" if "talent" in scan_id else "heritage"
+            option = self.canonical_node(
+                f"creation-prerequisite-{category}-option-exact",
+                text="Current typed draft selection",
+            )
+            nodes = [option, option] if duplicate and category == "talent" else [option]
+            return SimpleNamespace(screens=[nodes], swipes=0)
+
+        device.back.side_effect = back
+        device.shell.side_effect = tap
+        device.wait_exact_resource_id_bidirectional.side_effect = acquire_talent
+        device.wait_for_single_exact_resource_id.side_effect = route
+        navigation = {"selectionViewports": {"heritage": 0, "talent": 1}, "currentViewport": 2}
+        with mock.patch.object(driver.proof_state, "_state_file_observation", side_effect=observe), mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0]
+        ), mock.patch.object(driver.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n)), mock.patch.object(
+            driver, "rewind_to_exact_resource_id", side_effect=rewind
+        ), mock.patch.object(driver, "acquire_stable_start_origin", return_value=self.priority_rank_origin([])), mock.patch.object(
+            driver, "scan_forward_with_receipt", side_effect=scan
+        ):
+            try:
+                for category in ("heritage", "talent"):
+                    driver.require_exact_restored_authority_option(
+                        device, category, f"creation-prerequisite-{category}-option-exact", "selection-exact",
+                        root_navigation=navigation, observed_selection_id="selection-exact",
+                        previous_root_category=None if category == "heritage" else "heritage",
+                        retain_selected_node=category == "talent", deadline=220.0,
+                        proof_expectation=expectation(),
+                    )
+            finally:
+                self.assertEqual(1, device.back.call_count)
+                self.assertEqual(1 if stale_forever else 2, device.shell.call_count)
+        return events, observed_rows, fresh_talent
+
+    def test_restored_talent_waits_for_fresh_attachment_before_one_current_row_tap(self) -> None:
+        events, rows, current = self._restored_attachment_barrier_scenario()
+        self.assertEqual([
+            "heritage-tap", "pre-back-proof-9", "back", "post-back-proof-9",
+            "post-back-proof-10", "parent-accessibility", "fresh-talent", "talent-tap",
+        ], events)
+        self.assertEqual(1, len(rows))
+        self.assertIs(current, rows[0])
+
+    def test_restored_talent_stale_attachment_never_reaches_acquisition_or_tap(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "required_after=9"):
+            self._restored_attachment_barrier_scenario(stale_forever=True)
+
+    def test_restored_talent_fresh_attachment_does_not_bypass_duplicate_options(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "duplicateResourceId=True"):
+            self._restored_attachment_barrier_scenario(duplicate=True)
+
     def test_prerequisite_navigation_rejects_partial_proof_contract_before_tap(self) -> None:
         device = mock.Mock()
         with self.assertRaisesRegex(ValueError, "supplied together"):
@@ -7534,7 +7912,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             route = "parent"
             viewport = "bottom"
 
-            def hierarchy(self):
+            def hierarchy(self, *, deadline=None):
                 calls.append(("hierarchy", self.route))
                 if self.route == "parent":
                     return [parent_page] if self.viewport == "bottom" else [parent_page, initial_row]
@@ -8526,12 +8904,223 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                          [driver.shared.UiNode({"resource-id": "rank-origin"})]
                      ),
                  ), \
+                 mock.patch.object(
+                     driver.time, "monotonic", side_effect=[100.0, 100.0, 101.0, 145.0]
+                 ), \
+                 mock.patch.object(driver.time, "sleep"), \
                  self.assertRaisesRegex(RuntimeError, expected_error):
                 driver.select_priority_rank(
                     device,
                     "heritage",
                     category_navigation=category_navigation,
                 )
+
+    def assert_rank_refresh_observations(
+        self,
+        snapshots: list[list[driver.shared.UiNode]],
+        *,
+        expected_error: str | None = None,
+        read_seconds: float = 1.0,
+        language: str = "en",
+    ):
+        """Model only transport/clock; execute the real exact rank-tap helper."""
+        initial = self.canonical_node(
+            "creation-prerequisite-category-heritage", bounds="[10,100][900,300]"
+        )
+        ranks = [
+            self.canonical_node(
+                f"creation-prerequisite-rank-heritage-{rank}",
+                bounds=f"[100,{300 + index * 150}][900,{400 + index * 150}]",
+            )
+            for index, rank in enumerate("abcde")
+        ]
+        clock = [100.0]
+
+        class RefreshDevice:
+            def __init__(self):
+                self.taps = []
+                self.deadlines = []
+                self.captures = []
+                self.reads = 0
+
+            def shell(self, *arguments):
+                self.taps.append(arguments)
+                if len(self.taps) > 2:
+                    raise AssertionError("rank refresh must never repeat a tap")
+
+            def hierarchy(self, *, deadline=None):
+                if len(self.taps) == 1:
+                    if deadline is not None:
+                        raise AssertionError("rank reacquisition precedes the refresh lease")
+                    return ranks
+                if len(self.taps) != 2 or deadline != 145.0:
+                    raise AssertionError("refresh must share one exact post-tap lease")
+                self.deadlines.append(deadline)
+                self.reads += 1
+                if self.reads > 45:
+                    raise AssertionError("unbounded refresh observations")
+                clock[0] += read_seconds
+                return snapshots[min(self.reads - 1, len(snapshots) - 1)]
+
+            def display_size(self):
+                return (1080, 2400)
+
+            node_has_tappable_bounds = driver.shared.Device.node_has_tappable_bounds
+
+            def dismiss_system_ui_anr(self, _nodes=None):
+                return False
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = RefreshDevice()
+        device._phone_ui_locale_binding = driver.shared.PhoneUiLocaleBinding(
+            locale_tag=language, language=language, authority_property="persist.sys.locale",
+        )
+        navigation = {}
+        with mock.patch.object(
+            driver, "acquire_measured_priority_category_row", return_value=initial
+        ), mock.patch.object(
+            driver, "wait_for_priority_rank_origin",
+            return_value=self.priority_rank_origin(ranks),
+        ) as origin, mock.patch.object(
+            driver, "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([ranks], 0),
+        ) as scan, mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0]
+        ), mock.patch.object(
+            driver.time, "sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+        ):
+            if expected_error is None:
+                self.assertEqual(
+                    "creation-prerequisite-rank-heritage-e",
+                    driver.select_priority_rank(
+                        device, "heritage", category_navigation=navigation,
+                    ),
+                )
+            else:
+                with self.assertRaisesRegex(RuntimeError, expected_error):
+                    driver.select_priority_rank(
+                        device, "heritage", category_navigation=navigation,
+                    )
+                self.assertEqual({}, navigation)
+        self.assertEqual(
+            [("input", "tap", "455", "200"), ("input", "tap", "500", "950")],
+            device.taps,
+        )
+        origin.assert_called_once()
+        scan.assert_called_once()
+        self.assertTrue(device.deadlines)
+        self.assertEqual({145.0}, set(device.deadlines))
+        return device, navigation, clock[0]
+
+    def test_rank_selection_waits_for_stale_absent_then_exact_current_row(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        stale = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Select an authority-projected rank"},
+        )
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human · source SR5"},
+        )
+        current = [parent, selected]
+        device, navigation, elapsed = self.assert_rank_refresh_observations(
+            [[parent, stale], [], [parent], current]
+        )
+        self.assertEqual(4, device.reads)
+        self.assertEqual([], device.captures)
+        self.assertLess(elapsed, 145.0)
+        self.assertEqual("heritage", navigation["lastCategory"])
+        self.assertIs(current, navigation["currentNodes"])
+        self.assertIs(selected, navigation["currentNodes"][1])
+
+    def test_rank_selection_preserves_exact_rank_and_readiness_until_deadline(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        for attributes in (
+            {"content-desc": "Heritage. 1. Select an authority-projected rank"},
+            {"content-desc": "Heritage. 1. Rank A · Human"},
+            {"content-desc": "Heritage. 1. Rank Evil · Human"},
+            {"enabled": "false"},
+            {"clickable": "false"},
+            {"bounds": "[100,300][900,305]"},
+            {"bounds": "[100,2500][900,2700]"},
+        ):
+            with self.subTest(attributes=attributes):
+                values = {"content-desc": "Heritage. 1. Rank E · Human", **attributes}
+                invalid = self.canonical_node("creation-prerequisite-category-heritage", **values)
+                device, _, elapsed = self.assert_rank_refresh_observations(
+                    [[parent, invalid]], expected_error="was not projected",
+                )
+                self.assertEqual(145.0, elapsed)
+                self.assertGreater(device.reads, 1)
+                self.assertEqual(["creation-prerequisite-heritage-draft-not-refreshed"], device.captures)
+
+    def test_rank_selection_waits_for_selected_row_to_become_tappable(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human"},
+        )
+        disabled = driver.shared.UiNode({**selected.attributes, "enabled": "false"})
+        current = [parent, selected]
+        device, navigation, _ = self.assert_rank_refresh_observations([[parent, disabled], current])
+        self.assertEqual(2, device.reads)
+        self.assertIs(current, navigation["currentNodes"])
+
+    def test_rank_selection_accepts_only_exact_refreshed_localized_rank(self) -> None:
+        for language, label in (("en", "Rank"), ("de", "Rang"), ("es", "Rango")):
+            with self.subTest(language=language):
+                parent = self.canonical_node("creation-prerequisite-page")
+                stale = self.canonical_node(
+                    "creation-prerequisite-category-heritage",
+                    **{"content-desc": f"Heritage. 1. {label} A · source SR5"},
+                )
+                selected = self.canonical_node(
+                    "creation-prerequisite-category-heritage",
+                    **{"content-desc": f"Heritage. 1. {label} E · source SR5"},
+                )
+                current = [parent, selected]
+                device, navigation, _ = self.assert_rank_refresh_observations(
+                    [[parent, stale], current], language=language,
+                )
+                self.assertEqual(2, device.reads)
+                self.assertIs(current, navigation["currentNodes"])
+
+    def test_rank_selection_rejects_ambiguous_current_observation_immediately(self) -> None:
+        parent = self.canonical_node("creation-prerequisite-page")
+        selected = self.canonical_node(
+            "creation-prerequisite-category-heritage",
+            **{"content-desc": "Heritage. 1. Rank E · Human"},
+        )
+        category = self.canonical_node("creation-prerequisite-category-page")
+        for duplicate in (parent, selected, category):
+            with self.subTest(selector=duplicate.attributes["resource-id"]):
+                nodes = [parent, selected, duplicate]
+                if duplicate is category:
+                    nodes.append(category)
+                device, _, elapsed = self.assert_rank_refresh_observations(
+                    [nodes, [parent, selected]], expected_error="ambiguous parent state",
+                )
+                self.assertEqual(1, device.reads)
+                self.assertEqual(101.0, elapsed)
+                self.assertEqual(["creation-prerequisite-heritage-pop-cardinality-invalid"], device.captures)
+
+    def test_rank_selection_rejects_selected_hierarchy_returned_at_or_after_deadline(self) -> None:
+        current = [
+            self.canonical_node("creation-prerequisite-page"),
+            self.canonical_node(
+                "creation-prerequisite-category-heritage",
+                **{"content-desc": "Heritage. 1. Rank E · Human"},
+            ),
+        ]
+        for read_seconds in (45.0, 46.0):
+            with self.subTest(read_seconds=read_seconds):
+                device, _, _ = self.assert_rank_refresh_observations(
+                    [current], expected_error="did not publish one refreshed parent row",
+                    read_seconds=read_seconds,
+                )
+                self.assertEqual(1, device.reads)
 
     def test_direct_priority_bootstrap_skips_legacy_continuation_and_public_save_detour(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -10054,8 +10643,29 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             device = mock.Mock()
             device.evidence = Path(temporary)
-            device.run.return_value = pending
+            # Keep the 20 ms lease without depending on host scheduling. Real
+            # sleeps can overshoot it before the intended marker-timeout path.
+            clock_ms = [0]
+            advances: list[tuple[str, int]] = []
+
+            def read_pending(*arguments: str, **options: object):
+                self.assertEqual(driver.shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS, arguments)
+                self.assertEqual(0.02, options["deadline"])
+                self.assertGreaterEqual(options["timeout"], 0.001)
+                clock_ms[0] += 2
+                advances.append(("read", 2))
+                return pending
+
+            def advance_sleep(seconds: float) -> None:
+                self.assertEqual(0.005, seconds)
+                clock_ms[0] += 5
+                advances.append(("sleep", 5))
+
+            device.run.side_effect = read_pending
             with (
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: clock_ms[0] / 1000),
+                mock.patch.object(driver.time, "perf_counter", side_effect=lambda: clock_ms[0] / 1000),
+                mock.patch.object(driver.time, "sleep", side_effect=advance_sleep),
                 mock.patch.object(
                     driver,
                     "POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS",
@@ -10086,12 +10696,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
 
             self.assertGreaterEqual(device.run.call_count, 1)
+            self.assertEqual(3, device.run.call_count)
+            self.assertEqual([
+                ("read", 2), ("sleep", 5), ("read", 2), ("sleep", 5), ("read", 2),
+            ], advances)
+            self.assertEqual(16, clock_ms[0])
             device.capture.assert_called_once()
             self.assertEqual(
                 "creation-dashboard-route-ready-timeout",
                 device.capture.call_args.args[0],
             )
             self.assertIn("deadline", device.capture.call_args.kwargs)
+            self.assertEqual(1.0, device.capture.call_args.kwargs["deadline"])
             device.shell.assert_not_called()
             device.hierarchy.assert_not_called()
 
@@ -10140,7 +10756,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             NATIVE / "CreationPrerequisitePreviewPage.cs"
         ).read_text(encoding="utf-8")
         callback = source[
-            source.index("private async Task BackToBuildAsync()") :
+            source.index("private async Task BackToBuildAsync(") :
             source.index("private static string FormatBudget(")
         ]
 
@@ -12906,7 +13522,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("active_grant_proof.current_viewport"),
             active_preview,
         )
-        self.assertLess(active_preview, source.index("active_preview_digest = canonical_digest("))
+        self.assertLess(
+            active_preview,
+            source.index('active_preview_digest = str(active_preview_proof["previewDigest"])'),
+        )
         preview_back = source.index(
             'evidence_prefix="talent-active-skill-preview-back"'
         )
@@ -13128,6 +13747,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(1, phase_block.count("tap_exact_current_preview_confirm("))
         self.assertEqual(1, phase_block.count("read_exact_confirmed_receipt("))
         self.assertEqual(2, block.count("deadline=preview_confirm_deadline"))
+        self.assertEqual(1, block.count("proof_expectation=proof_expectation"))
+        self.assertIs(
+            inspect.signature(driver.require_exact_attributes_category_round_trip)
+            .parameters["proof_expectation"].default,
+            inspect.Parameter.empty,
+        )
         for forbidden in (
             "node_text(",
             "device.tap(",
@@ -13150,6 +13775,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             round_trip.count("require_exact_attributes_post_back_observation("),
         )
         self.assertEqual(1, round_trip.count("device.shell("))
+        self.assertEqual(1, round_trip.count("proof_state.wait_for_state("))
+        self.assertEqual(
+            1, round_trip.count("read_creation_prerequisite_attachment_proof_state(")
+        )
+        self.assertLess(
+            round_trip.index("proof_state.wait_for_state("),
+            round_trip.index("device.back(deadline=deadline)"),
+        )
+        self.assertLess(
+            round_trip.index("device.back(deadline=deadline)"),
+            round_trip.index("read_creation_prerequisite_attachment_proof_state("),
+        )
+        self.assertLess(
+            round_trip.index("read_creation_prerequisite_attachment_proof_state("),
+            round_trip.index("require_exact_attributes_post_back_observation("),
+        )
         for forbidden in (
             "node_text(",
             "device.tap(",
@@ -13261,6 +13902,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait_for_single_exact_resource_id.return_value = category_route
         device.node_has_tappable_bounds.return_value = True
         device.dismiss_system_ui_anr.return_value = False
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        prior = {"sequence": 9}
 
         with mock.patch.object(
             driver,
@@ -13270,10 +13913,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 [disabled],
                 [disabled],
             ],
-        ) as scan:
+        ) as scan, mock.patch.object(
+            driver.proof_state, "wait_for_state", return_value=mock.Mock(payload=prior)
+        ) as read_prior, mock.patch.object(
+            driver, "read_creation_prerequisite_attachment_proof_state"
+        ) as read_attachment:
             actual = driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=expectation,
             )
 
         self.assertEqual(authority, actual)
@@ -13306,6 +13954,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.tap.assert_not_called()
         device.wait.assert_not_called()
         device.back.assert_called_once_with(deadline=deadline)
+        self.assertIs(expectation, read_prior.call_args.kwargs["expected"])
+        self.assertEqual(deadline, read_prior.call_args.kwargs["deadline"])
+        read_attachment.assert_called_once_with(
+            device, expectation, expected_prior_proof=prior, deadline=deadline
+        )
 
     def test_exact_attributes_pre_tap_authority_fails_closed_without_action(
         self,
@@ -13336,6 +13989,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.require_exact_attributes_category_round_trip(
                         device,
                         deadline=deadline,
+                        proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
                     )
                 device.shell.assert_not_called()
                 device.wait_for_single_exact_resource_id.assert_not_called()
@@ -13397,6 +14051,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.require_exact_attributes_category_round_trip(
                         device,
                         deadline=deadline,
+                        proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
                     )
                 device.shell.assert_not_called()
                 device.wait_for_single_exact_resource_id.assert_not_called()
@@ -13427,6 +14082,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.shell.assert_called_once()
@@ -13454,11 +14110,233 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.shell.assert_called_once()
         device.hierarchy.assert_called_once_with(deadline=deadline)
         device.back.assert_not_called()
+
+    def _attributes_post_back_readiness_scenario(
+        self, *, proof_fault: str | None = None, scan_fault: str | None = None,
+    ) -> tuple[list[str], list[tuple[str, str]]]:
+        # Model transport, viewport movement and asynchronous appearance only.
+        # Real proof parsing/digests, later-sequence admission, stable-end scan,
+        # exact resource identity, contiguous values/states and the one tap run.
+        from test_api36_proof_state_contract import attachment_payload, encoded, expectation
+
+        clock = [100.0]
+        deadline = clock[0] + driver.PHASE_BUDGET_MS["preview-confirm"] / 1000
+        self.assertEqual(460.0, deadline)
+        returned, ready, viewport, proof_reads = [False], [True], [0], [0]
+        events: list[str] = []
+        observed_states: list[tuple[str, str]] = []
+        prior = attachment_payload(9)
+        authority = "Attributes. Rank A · raw grant 24 "
+        selector = "creation-prerequisite-category-attributes"
+        category = self.canonical_node(selector, text="", **{"content-desc": authority})
+        route = self.canonical_node("creation-prerequisite-page")
+        disabled = self.canonical_node(
+            "creation-prerequisite-attributes-disabled",
+            text="Raw normal Attribute grant: 24 · Attributes remain disabled",
+            enabled="false",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.node_has_tappable_bounds.return_value = True
+
+        def observe(_device, *, deadline: float, attempt: int):
+            self.assertLessEqual(deadline, 460.0)
+            if not returned[0]:
+                events.append("prior-attachment-9")
+                payload = prior
+            else:
+                proof_reads[0] += 1
+                sequence = 9 if proof_reads[0] == 1 else 10
+                if proof_fault in {"stale", "regressed"}:
+                    sequence = 9 if proof_fault == "stale" else 8
+                payload = attachment_payload(sequence)
+                if proof_reads[0] >= 2:
+                    replacements = {
+                        "process": ("processId", 4243),
+                        "instance": ("processInstanceId", "55555555-5555-5555-5555-555555555555"),
+                        "generation": ("e2eAuthorityGeneration", 3),
+                    }
+                    workspace_replacements = {
+                        "workspace": ("workspaceId", "another-workspace"),
+                        "content-revision": ("contentRevision", 32),
+                        "saved-revision": ("savedRevision", 30),
+                        "payload": ("payloadSha256", "a" * 64),
+                        "document": ("documentSha256", "b" * 64),
+                    }
+                    if proof_fault in replacements:
+                        field, value = replacements[proof_fault]
+                        payload[field] = value
+                    if proof_fault in workspace_replacements:
+                        field, value = workspace_replacements[proof_fault]
+                        payload["workspace"][field] = value
+                    if proof_fault == "late":
+                        clock[0] = deadline
+                payload["stateDigest"] = driver.proof_state.expected_state_digest(payload)
+                ready[0] = sequence > 9 and proof_fault is None
+                events.append(f"returned-attachment-{sequence}")
+            return encoded(payload), payload["processId"], {"attempt": attempt}
+
+        def hierarchy(**kwargs):
+            self.assertEqual(deadline, kwargs["deadline"])
+            if not returned[0]:
+                events.append("pre-tap-category")
+                return [category]
+            events.append("ready-hierarchy" if ready[0] else "pending-hierarchy")
+            current = driver.shared.UiNode({
+                **category.attributes,
+                "enabled": "true" if ready[0] else "false",
+                "bounds": "[100,300][900,500]" if viewport[0] == 0 else "[100,80][900,280]",
+            })
+            # Without the readiness barrier, the first collected row is pending
+            # and the next overlapping row is enabled: the real collector rejects
+            # this transition instead of an artificial assertion in the fake.
+            ready[0] = True
+            nodes = [route, disabled]
+            include = viewport[0] < 2
+            if scan_fault == "missing":
+                include = False
+            if scan_fault == "reappeared":
+                include = viewport[0] != 1
+            if include:
+                if scan_fault == "changed-selection":
+                    current.attributes["content-desc"] = "Attributes. Rank B · raw grant 20"
+                if viewport[0] == 1:
+                    changes = {
+                        "text": {"text": "Attributes. Rank B · raw grant 20"},
+                        "description": {"content-desc": authority + " "},
+                        "enabled": {"enabled": "false"},
+                        "clickable": {"clickable": "false"},
+                        "decoy": {"package": "other.package"},
+                    }
+                    current.attributes.update(changes.get(scan_fault, {}))
+                nodes.append(current)
+                observed_states.append((current.attributes["enabled"], current.attributes["clickable"]))
+                if scan_fault == "duplicate" and viewport[0] == 1:
+                    nodes.append(current)
+            return nodes
+
+        def tap(*args, **kwargs):
+            self.assertEqual(("input", "tap", "500", "400"), args)
+            self.assertEqual(deadline, kwargs["deadline"])
+            events.append("category-tap")
+
+        def category_route(resource_id, **kwargs):
+            self.assertEqual("creation-prerequisite-category-page", resource_id)
+            self.assertEqual(deadline, kwargs["deadline"])
+            self.assertIs(False, kwargs["scroll"])
+            self.assertEqual(0, kwargs["max_scrolls"])
+            events.append("category-route")
+            return self.canonical_node(resource_id)
+
+        def back(**kwargs):
+            self.assertEqual(deadline, kwargs["deadline"])
+            events.append("back")
+            returned[0], ready[0] = True, False
+
+        def swipe(**kwargs):
+            self.assertEqual({"distance_ratio": 0.22, "deadline": deadline}, kwargs)
+            viewport[0] += 1
+
+        device.hierarchy.side_effect = hierarchy
+        device.shell.side_effect = tap
+        device.wait_for_single_exact_resource_id.side_effect = category_route
+        device.back.side_effect = back
+        device.swipe_up.side_effect = swipe
+        expected_build = expectation()
+        with mock.patch.object(
+            driver.proof_state, "_state_file_observation", side_effect=observe,
+        ), mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0],
+        ), mock.patch.object(
+            driver.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n),
+        ), mock.patch.object(
+            driver.proof_state, "wait_for_state", wraps=driver.proof_state.wait_for_state,
+        ) as proof_wait, mock.patch.object(
+            driver, "read_creation_prerequisite_attachment_proof_state",
+            wraps=driver.read_creation_prerequisite_attachment_proof_state,
+        ) as attachment, mock.patch.object(
+            driver, "scan_forward_until_stable", wraps=driver.scan_forward_until_stable,
+        ) as scan:
+            try:
+                actual = driver.require_exact_attributes_category_round_trip(
+                    device, deadline=deadline, proof_expectation=expected_build,
+                )
+                self.assertEqual(authority, actual)
+            finally:
+                device.shell.assert_called_once()
+                device.back.assert_called_once_with(deadline=deadline)
+                device.wait_for_single_exact_resource_id.assert_called_once()
+                device.tap.assert_not_called()
+                device.wait.assert_not_called()
+                self.assertEqual(2, proof_wait.call_count)
+                for call in proof_wait.call_args_list:
+                    self.assertIs(expected_build, call.kwargs["expected"])
+                    self.assertEqual(deadline, call.kwargs["deadline"])
+                    self.assertEqual("attachment-authority-ready", call.kwargs["stage"])
+                attachment.assert_called_once_with(
+                    device, expected_build, expected_prior_proof=prior, deadline=deadline,
+                )
+                if proof_fault:
+                    scan.assert_not_called()
+                    self.assertEqual([], observed_states)
+                    self.assertEqual(1, device.hierarchy.call_count)
+                else:
+                    scan.assert_called_once_with(
+                        device, scan_id="creation-prerequisite-attributes-post-back",
+                        max_scrolls=12, distance_ratio=0.22, stable_repeats=2,
+                        max_consecutive_empty_reads=3, delay_seconds=0.0, deadline=deadline,
+                    )
+                    self.assertLessEqual(device.swipe_up.call_count, 12)
+                for call in device.capture.call_args_list:
+                    self.assertEqual(deadline, call.kwargs["deadline"])
+        return events, observed_states
+
+    def test_attributes_post_back_readiness_precedes_real_exact_scan(self) -> None:
+        events, states = self._attributes_post_back_readiness_scenario()
+        self.assertEqual([
+            "pre-tap-category", "category-tap", "category-route", "prior-attachment-9",
+            "back", "returned-attachment-9", "returned-attachment-10",
+        ], events[:7])
+        self.assertEqual(["ready-hierarchy"] * 5, events[7:])
+        self.assertEqual([("true", "true"), ("true", "true")], states)
+        self.assertNotIn("pending-hierarchy", events)
+
+    def test_attributes_post_back_readiness_rejects_stale_regressed_and_late_sequence(self) -> None:
+        for fault, error in (
+            ("stale", "required_after=9"),
+            ("regressed", "required_after=9"),
+            ("late", "state observation completed after its deadline"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, error):
+                self._attributes_post_back_readiness_scenario(proof_fault=fault)
+
+    def test_attributes_post_back_readiness_rejects_coherent_identity_and_workspace_drift(self) -> None:
+        for fault in (
+            "process", "instance", "generation", "workspace", "content-revision",
+            "saved-revision", "payload", "document",
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, "exact same-process workspace"):
+                self._attributes_post_back_readiness_scenario(proof_fault=fault)
+
+    def test_attributes_post_back_readiness_does_not_bypass_real_authority_failures(self) -> None:
+        for fault, error in (
+            ("text", "incomplete or unstable"),
+            ("description", "incomplete or unstable"),
+            ("enabled", "incomplete or unstable"),
+            ("clickable", "incomplete or unstable"),
+            ("duplicate", "cardinality 2"),
+            ("decoy", "canonical Chummer resource identity"),
+            ("missing", "incomplete or unstable"),
+            ("reappeared", "incomplete or unstable"),
+            ("changed-selection", "byte-for-byte"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, error):
+                self._attributes_post_back_readiness_scenario(scan_fault=fault)
 
     def test_post_back_attributes_scan_rejects_duplicate_and_decoy_authority(
         self,
@@ -13548,6 +14426,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.node_has_tappable_bounds.assert_called_once_with(
@@ -14346,6 +15225,214 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
         device.hierarchy.assert_not_called()
         device.shell.assert_not_called()
+
+    def _active_preview_scan_case(
+        self, *, start_at_bottom: bool, fault: str | None = None
+    ) -> tuple[dict[str, object], mock.Mock, list[dict[str, object]], list[int]]:
+        """Run the actual phase; model only transport, viewport motion and time."""
+        sha = "sha256:" + "a" * 64
+        plan_sha = "sha256:" + "c" * 64
+        option_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        preview_id = option_id.replace("talent-active-skill-option-", "preview-talent-active-skill-")
+        route = self.canonical_node("creation-prerequisite-preview-page")
+        digest = self.canonical_node(
+            "creation-prerequisite-preview-digest", text=sha,
+            bounds="[100,600][900,700]", clickable="false",
+        )
+        frames = [
+            [route, self.canonical_node("creation-prerequisite-preview-binding", text="Revision 1")],
+            [route, digest,
+             self.canonical_node("creation-prerequisite-preview-raw-character-xml-digest", text=sha),
+             self.canonical_node("creation-prerequisite-preview-auxiliary-state-digest", text="b" * 64),
+             self.canonical_node("creation-prerequisite-preview-authority-digest", text=sha)],
+            [route, *[
+                self.canonical_node(f"creation-prerequisite-preview-assignment-{category}")
+                for category in driver.CATEGORIES
+            ]],
+            [route, self.canonical_node("creation-prerequisite-preview-heritage"),
+             self.canonical_node("creation-prerequisite-preview-talent"),
+             self.canonical_node("creation-prerequisite-preview-karma-budget", text="Karma 25"),
+             self.canonical_node("creation-prerequisite-preview-attributes-ready")],
+            [route, self.canonical_node(driver.TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID, text=plan_sha),
+             self.canonical_node(preview_id, text="Swimming · Rating 4"),
+             self.canonical_node("creation-prerequisite-confirm", text="Confirm exact preview")],
+        ]
+        if fault == "missing-digest":
+            frames[1].remove(digest)
+        elif fault == "malformed-digest":
+            digest.attributes["text"] = "not-a-canonical-digest"
+        elif fault == "duplicate-digest":
+            frames[1].append(self.canonical_node("creation-prerequisite-preview-digest", text=sha))
+        elif fault == "duplicate-grant":
+            frames[-1].append(self.canonical_node(preview_id, text="Swimming · Rating 4"))
+        elif fault == "wrong-grant":
+            frames[-1][2] = self.canonical_node(
+                preview_id.replace("0dbcb9cd", "1dbcb9cd"), text="Wrong skill · Rating 4"
+            )
+        elif fault is not None:
+            raise AssertionError(f"Unknown fixture fault: {fault}")
+        now = [100.0]
+        position = [4 if start_at_bottom else 0]
+        parent_position = [0]
+        opened = [False]
+        observations: list[int] = []
+        scans: list[dict[str, object]] = []
+        device = mock.Mock(spec=driver.shared.Device)
+        button = self.canonical_node("creation-prerequisite-prepare-preview")
+
+        def bounded(options: dict[str, object]) -> None:
+            self.assertIn("deadline", options)
+            self.assertGreater(float(options["deadline"]), now[0])
+            self.assertLessEqual(float(options["deadline"]), 250.0)
+
+        def hierarchy(**options: object) -> list[driver.shared.UiNode]:
+            bounded(options)
+            now[0] += 0.001
+            if not opened[0]:
+                # Active-grant completion starts before the final Preview
+                # action: four fine gestures are insufficient in this model.
+                return [
+                    self.canonical_node("creation-prerequisite-page"),
+                    button if parent_position[0] == 6 else self.canonical_node(
+                        "creation-prerequisite-talent-selection-id", text=f"parent-{parent_position[0]}"
+                    ),
+                ]
+            observations.append(position[0])
+            return list(frames[position[0]])
+
+        def swipe(*, distance_ratio: float, deadline: float, reverse: bool, x_ratio: float = 0.5) -> None:
+            bounded({"deadline": deadline})
+            self.assertEqual(250.0, deadline)
+            if not opened[0]:
+                self.assertFalse(reverse)
+                self.assertEqual(0.22, distance_ratio)
+                parent_position[0] = min(6, parent_position[0] + 1)
+                return
+            # A 0.52 forward swipe skips frame 1 (the narrow digest); the
+            # existing rich scan's 0.30 overlap visits every authority frame.
+            step = 2 if distance_ratio >= 0.5 else 1
+            position[0] = max(0, min(4, position[0] + (-step if reverse else step)))
+
+        def acquire(selector: str, **options: object) -> driver.shared.UiNode:
+            bounded(options)
+            self.assertEqual("creation-prerequisite-prepare-preview", selector)
+            self.assertTrue(options["require_tappable"])
+            self.assertEqual(22, options["forward_scrolls"])
+            self.assertFalse(opened[0])
+            return driver.shared.Device.wait_exact_resource_id_bidirectional(device, selector, **options)
+
+        def tap(*arguments: str, **options: object) -> None:
+            bounded(options)
+            self.assertEqual(("input", "tap", "500", "400"), arguments)
+            self.assertFalse(opened[0], "Preview action was replayed")
+            opened[0] = True
+
+        def exact_route(selector: str, **options: object) -> driver.shared.UiNode:
+            bounded(options)
+            expected = "creation-prerequisite-preview-page" if opened[0] else "creation-prerequisite-page"
+            self.assertEqual(expected, selector)
+            self.assertFalse(options.get("scroll", False))
+            return route if opened[0] else self.canonical_node(expected)
+
+        def back(**options: object) -> None:
+            bounded(options)
+            self.assertEqual(250.0, options["deadline"])
+            self.assertTrue(opened[0])
+            opened[0] = False
+
+        device.hierarchy.side_effect = hierarchy
+        device._scroll_x_ratio.return_value = 0.5
+        device.dismiss_system_ui_anr.return_value = False
+        device.swipe_down.side_effect = lambda **kw: swipe(**kw, reverse=True)
+        device.swipe_up.side_effect = lambda **kw: swipe(**kw, reverse=False)
+        device.wait_exact_resource_id_bidirectional.side_effect = acquire
+        device.wait_for_single_exact_resource_id.side_effect = exact_route
+        device.shell.side_effect = tap
+        device.back.side_effect = back
+        device.capture.side_effect = lambda name, **kw: bounded(kw)
+        device.node_has_tappable_bounds.side_effect = lambda node, **kw: (bounded(kw) is None)
+        device.wait.side_effect = AssertionError("Coarse forward-only wait bypassed the stable scan")
+        device.tap.side_effect = AssertionError("Generic Preview tap bypassed exact acquisition")
+        progress = mock.Mock()
+        progress.active_phase_deadline.return_value = 250.0
+        progress.record_scan.side_effect = scans.append
+        tree = ast.parse(inspect.getsource(driver.execute))
+        statements = tree.body[0].body
+
+        def is_phase(statement: ast.stmt, name: str) -> bool:
+            return (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Call)
+                and ast.unparse(statement.value.func) == "progress.advance"
+                and statement.value.args
+                and isinstance(statement.value.args[0], ast.Constant)
+                and statement.value.args[0].value == name
+            )
+
+        start = next(i for i, statement in enumerate(statements) if is_phase(statement, "talent-active-preview"))
+        end = next(i for i, statement in enumerate(statements) if is_phase(statement, "talent-skill-group-selection"))
+        program = ast.Module(body=statements[start:end], type_ignores=[])
+        namespace = {
+            **driver.__dict__, "device": device, "progress": progress,
+            "active_selected_option_ids": (option_id,),
+        }
+        try:
+            with mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]), \
+                 mock.patch.object(driver.time, "perf_counter", side_effect=lambda: now[0]), \
+                 mock.patch.object(driver.time, "sleep", side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds)):
+                exec(compile(program, "<actual-active-preview-phase>", "exec"), namespace)
+        finally:
+            device.wait_exact_resource_id_bidirectional.assert_called_once()
+            device.shell.assert_called_once()
+            self.assertEqual(6, parent_position[0])
+            device.wait.assert_not_called()
+            device.tap.assert_not_called()
+            progress.advance.assert_called_once_with("talent-active-preview")
+            progress.active_phase_deadline.assert_called_once_with("talent-active-preview")
+            self.assertEqual(150_000, driver.PHASE_BUDGET_MS["talent-active-preview"])
+            if fault is not None:
+                device.back.assert_not_called()
+                self.assertNotIn("active_preview_digest", namespace)
+        return namespace, device, scans, observations
+
+    def test_active_preview_rich_scan_recovers_bottom_and_skipped_narrow_digest(self) -> None:
+        for start_at_bottom in (False, True):
+            with self.subTest(start_at_bottom=start_at_bottom):
+                namespace, device, scans, observations = self._active_preview_scan_case(
+                    start_at_bottom=start_at_bottom
+                )
+                proof = namespace["active_preview_proof"]
+                self.assertEqual("sha256:" + "a" * 64, namespace["active_preview_digest"])
+                self.assertEqual("sha256:" + "c" * 64, namespace["active_plan_digest"])
+                self.assertEqual({"rawCharacterXml": "sha256:" + "a" * 64,
+                                  "auxiliaryState": "b" * 64,
+                                  "authority": "sha256:" + "a" * 64}, proof["bindingDigests"])
+                self.assertEqual(tuple(f"creation-prerequisite-preview-assignment-{c}" for c in driver.CATEGORIES), proof["assignmentIds"])
+                self.assertEqual(1, len(proof["grantIds"]))
+                self.assertIn("Swimming · Rating 4", proof["immutableAuthorities"].values())
+                self.assertIn(1, observations)
+                self.assertEqual(4 if start_at_bottom else 0, observations[0])
+                self.assertEqual(1, len(scans))
+                self.assertEqual("stable-end", scans[0]["status"])
+                self.assertTrue(scans[0]["reusedInitialScreen"])
+                self.assertEqual(4 if start_at_bottom else 2, scans[0]["originReverseSwipes"])
+                self.assertEqual(6, scans[0]["swipes"])
+                device.back.assert_called_once_with(deadline=250.0)
+                self.assertEqual(2, device.wait_for_single_exact_resource_id.call_count)
+
+    def test_active_preview_rich_scan_rejects_invalid_digest_and_grant_authority(self) -> None:
+        for fault, message in (
+            ("missing-digest", "incomplete or unstable"),
+            ("malformed-digest", "Rich Preview authority was malformed"),
+            ("duplicate-digest", "cardinality 2"),
+            ("duplicate-grant", "preview grant plan was not exact"),
+            ("wrong-grant", "preview grant plan was not exact"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, message):
+                self._active_preview_scan_case(start_at_bottom=True, fault=fault)
 
     def test_rich_preview_rejects_unknown_or_reordered_assignments(self) -> None:
         option_id = (
@@ -15700,31 +16787,55 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        bound = (NATIVE / "RunnerSessionCoordinator.CreationPrerequisite.cs").read_text(encoding="utf-8")
         for marker in (
-            "internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>",
-            "internal async Task<CreationPrerequisitePhoneConfirmResult>",
-            "ICharacterCreationPrerequisiteService creationPrerequisiteService",
-            "_creationPrerequisiteService.Load(",
-            "new CharacterCreationPrerequisiteLoadRequest(workspaceId)",
-            "_creationPrerequisiteService.Preview(",
-            "new CharacterCreationPrerequisitePreviewRequest(",
-            "HeritageSelectionId = selections.HeritageSelectionId",
-            "TalentSelectionId = selections.TalentSelectionId",
-            "TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray()",
-            "TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()",
-            "_creationPrerequisiteService.Confirm(",
+            "IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService",
+            "PreviewCreationPrerequisiteAsync(",
+            "ConfirmCreationPrerequisiteAsync(",
+            "_prerequisiteCachedState is { } state && IsCreationPrerequisiteStateCurrent(state)",
+        ):
+            self.assertIn(marker, source)
+        self.assertNotIn("_creationPrerequisiteService.", source + bound)
+        for marker in (
+            "service.Load(owner, new(workspaceId))",
+            "await Task.Run(() => service.Preview(owner, request), cancellationToken)",
+            "return service.Confirm(owner, request);",
+            "new CharacterCreationPrerequisitePreviewRequest(binding, copiedAssignments)",
             "new CharacterCreationPrerequisiteConfirmRequest(",
+            "HeritageSelectionId = copiedSelections.HeritageSelectionId",
+            "TalentSelectionId = copiedSelections.TalentSelectionId",
+            "TalentActiveSkillSelectionIds = copiedSelections.TalentActiveSkillSelectionIds",
+            "TalentSkillGroupSelectionIds = copiedSelections.TalentSkillGroupSelectionIds",
             "preview.PreviewDigest",
             "ExplicitlyConfirmed: true",
-            "await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken)",
+            "await refresh.LoadAsync(owner, receipt.WorkspaceId, cancellationToken)",
             "CreationPrerequisitePhoneAuthority.ReceiptMatches(",
             "!preview.RequiresExplicitConfirmation",
             "!preview.CanConfirm",
             "CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(preview.PreviewDigest)",
             "CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision",
-            "CharacterCreationPrerequisiteBlockers.PreviewDigestMismatch",
+            "_prerequisiteLoads.TryGetValue(binding, out var issued)",
+            "_prerequisitePreviews.TryGetValue(preview, out var issued)",
+            "IsNativeEditDisplayCurrent(original)",
+            "IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)",
+            "issued.Load.OriginalDisplay.DisplayOwnerContext is not { IsValid: true } owner",
+            "isCurrentPreview?.Invoke() == false",
+            "Interlocked.Exchange(ref entered, 1)",
+            "catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)",
+            "issued.ConfirmationStarted = false",
+            "PrerequisiteOutcomeUnknown",
+            "new(result.Outcome, receipt, null, [PrerequisitePostCommitRefreshRequired])",
         ):
-            self.assertIn(marker, source)
+            self.assertIn(marker, bound)
+
+        confirm = bound[bound.index("private Task<CreationPrerequisitePhoneConfirmResult> ConfirmIssuedCreationPrerequisiteAsync(") :]
+        before_core = confirm[:confirm.index("return service.Confirm(owner, request);")]
+        self.assertNotIn("LoadCreationPrerequisite", before_core)
+        self.assertLess(before_core.index("CopyPrerequisiteAssignments(assignments)"), before_core.index("WithWorkspaceActivationGateAsync"))
+        self.assertLess(before_core.index("_prerequisitePreviews.TryGetValue"), before_core.index("WithWorkspaceActivationGateAsync"))
+        self.assertEqual(1, confirm.count("service.Confirm("))
+        self.assertNotIn("LookupReceipt", bound)
+        self.assertNotIn("await _presenter.LoadAsync(", bound)
 
         prerequisite_region = source[
             source.index("LoadCreationPrerequisite()") : source.index(
@@ -15739,6 +16850,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "UpdateMetadataAsync",
         ):
             self.assertNotIn(forbidden, prerequisite_region)
+            self.assertNotIn(forbidden, bound)
 
     def test_phone_draft_is_exact_bound_and_enforces_projected_profiles(self) -> None:
         source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
@@ -15958,7 +17070,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "new CreationPriorityDetailPage(",
             '"creation-prerequisite-attributes-disabled"',
             "halveattributepoints adjustment",
-            "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections)",
+            "await Coordinator.PreviewCreationPrerequisiteAsync(state.Binding, assignments, selections,",
             "new CreationPrerequisitePreviewPage(",
         ):
             self.assertIn(marker, page)
@@ -16094,17 +17206,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             page.index("private void TryPublishApi36AttachmentProof()")
         ]
         self.assertEqual(1, refresh.count("            ResolveCurrentAuthority();"))
-        self.assertEqual(1, page.count("Coordinator.LoadCreationPrerequisite()"))
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite()", page)
+        self.assertIn("await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,", page)
+        self.assertIn("() => IsCurrentAppearanceGeneration(appearance)", page)
         self.assertIn("CharacterCreationPrerequisiteState dashboardAuthority", page)
         self.assertIn("_dashboardAuthority = dashboardAuthority", page)
         self.assertIn(
             "CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State)",
             page,
         )
-        self.assertLess(
-            page.index("_dashboardAuthority = null;"),
-            page.index("return Coordinator.LoadCreationPrerequisite();"),
-        )
+        self.assertIn("Coordinator.IsCreationPrerequisiteStateCurrent(authority)", page)
+        self.assertIn("render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)", page)
+        self.assertIn("isCurrentEditor: () => IsCurrentEditor(state, render, appearance)", page)
         self.assertIn(
             "OpenCreationPrerequisiteAsync(prerequisite!.Value!)",
             dashboard,
@@ -16117,15 +17230,40 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.LoadCreationPrerequisite", options)
         self.assertIn("CharacterCreationPrerequisiteState state", options)
         self.assertIn("_state = state ?? throw", options)
-        self.assertIn("if (!_draft.Matches(_state, Coordinator.State))", category_refresh)
+        self.assertIn("!Coordinator.IsCreationPrerequisiteStateCurrent(_state) || !_draft.Matches(_state, Coordinator.State)", category_refresh)
         self.assertLess(
-            category_refresh.index("if (!_draft.Matches(_state, Coordinator.State))"),
+            category_refresh.index("!Coordinator.IsCreationPrerequisiteStateCurrent(_state)"),
             category_refresh.index("_draft.OptionsForCategory("),
         )
         self.assertIn(
             "AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision])",
             category_refresh,
         )
+
+    def test_prerequisite_preview_render_is_read_only_and_receipt_visibility_is_honest(self) -> None:
+        preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite", preview)
+        self.assertIn("await Coordinator.RevalidateCreationPrerequisitePreviewAsync(_preview, cancellationToken,", preview)
+        self.assertIn("if (_confirmation is not null) return;", preview)
+        self.assertIn("isCurrentPreview: () => IsCurrentPreview(render, appearance)", preview)
+        self.assertIn("!Coordinator.CanDisplayCreationPrerequisitePreview(_preview)", preview)
+        self.assertIn("Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)", preview)
+        self.assertIn("Coordinator.CanDisplayCreationPrerequisiteReceipt(committed)", preview)
+        self.assertIn('reopen.AutomationId = "creation-prerequisite-saved-reopen-required";', preview)
+        self.assertIn("_confirmation.Blockers.Count == 0", preview)
+        self.assertIn("await RunAsync(() => BackToBuildAsync(receipt, refreshed, render, appearance))", preview)
+        back = preview[preview.index("private async Task BackToBuildAsync(") : preview.index("private static string FormatBudget(")]
+        for guard in ("render != _renderGeneration", "!IsCurrentAppearanceGeneration(appearance)",
+                      "!ReferenceEquals(_confirmation?.Receipt, receipt)",
+                      "!ReferenceEquals(_confirmation?.RefreshedState, refreshed)",
+                      "!Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)"):
+            self.assertLess(back.index(guard), back.index("Shell.Current"))
+        for child in ("CreationPriorityDetailPage.cs", "CreationTalentSkillGrantPage.cs"):
+            source = (NATIVE / child).read_text(encoding="utf-8")
+            self.assertNotIn("Coordinator.LoadCreationPrerequisite", source)
+            self.assertIn("private readonly CharacterCreationPrerequisiteState _state", source)
+            self.assertIn("render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)", source)
+            self.assertIn("Coordinator.IsCreationPrerequisiteStateCurrent(_state)", source)
 
     def test_build_ghost_is_dormant_and_has_no_phone_prerequisite_launch(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
@@ -16138,6 +17276,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for forbidden in (
             "AskRook(",
             "PreviewCreationPrerequisite(",
+            "PreviewCreationPrerequisiteAsync(",
             "ConfirmCreationPrerequisiteAsync(",
             "ICharacterCreationPrerequisiteService",
         ):

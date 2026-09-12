@@ -110,8 +110,8 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
 
         for marker in (
             "using Chummer.Contracts.Workspaces;",
-            "State.Profile?.Created != true",
-            "_creationFinalizationService.Load(new(workspaceId))",
+            "original.Profile?.Created != true",
+            "LoadFinalizationForDisplay(original, workspaceId)",
             "ResolvePersistedPriorityReceipt(",
             "LastReceipt: { } receipt",
             "CharacterCreationFinalizationOutcomes.Blocked",
@@ -135,6 +135,34 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             "Short(persistedReceipt",
         ):
             self.assertNotIn(forbidden, build)
+
+    def test_persisted_receipt_load_is_owner_bound_and_fenced_before_and_after_read(self) -> None:
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        load = coordinator.split(
+            "internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityCreationReceipt()", 1
+        )[1].split(
+            "public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>", 1
+        )[0]
+        capture = load.index("CharacterOverviewState original = State;")
+        before = load.index("!IsCreationFinalizationDisplayCurrent(original)")
+        dispatch = load.index("LoadFinalizationForDisplay(original, workspaceId)")
+        after = load.index("!IsCreationFinalizationDisplayCurrent(original)", before + 1)
+        projection = load.index("ResolvePersistedPriorityReceipt(")
+        self.assertLess(capture, before)
+        self.assertLess(before, dispatch)
+        self.assertLess(dispatch, after)
+        self.assertLess(after, projection)
+        self.assertIn("original.Profile?.Created != true", load[before:dispatch])
+        self.assertIn("original.ContentRevision", load[projection:])
+        self.assertIn("original.SavedRevision", load[projection:])
+        helper = coordinator.split(
+            "LoadFinalizationForDisplay(CharacterOverviewState original, CharacterWorkspaceId workspaceId)", 1
+        )[1].split("private static CharacterCreationFinalizationResult<T>", 1)[0]
+        self.assertIn("original.DisplayOwnerContext is { IsValid: true } owner", helper)
+        self.assertIn("_ownerBoundFinalizationService?.Load(owner, new(workspaceId))", helper)
+        self.assertIn("?? FinalizationUnavailable<CharacterCreationFinalizationState>()", helper)
+        self.assertIn(": CanUseLegacyFinalization(original)", helper)
+        self.assertNotIn("_creationFinalizationService", load)
 
     def test_authority_surface_does_not_expose_secret_receipt_fields(self) -> None:
         finalization = (NATIVE / "CreationFinalizationPage.cs").read_text(encoding="utf-8")

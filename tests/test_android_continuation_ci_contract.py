@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -17,8 +18,11 @@ FLAGS = (
     "--android-continuation-roaming",
     "--android-continuation-native-content-root",
     "--android-account-owner-content-root",
+    "--creation-bootstrap-production-content-root",
+    "--creation-prerequisite-owner-content-root",
     "--creation-bootstrap-owner-content-root",
     "--creation-contacts-owner-content-root",
+    "--creation-finalization-owner-content-root",
     "--persistence-owner-content-root",
     "--account-erasure-owner-content-root",
 )
@@ -31,7 +35,7 @@ class AndroidContinuationCiContractTests(unittest.TestCase):
     def script(self, name: str) -> str:
         return (REPO / "scripts" / name).read_text(encoding="utf-8")
 
-    def test_eight_suites_follow_the_same_successful_interaction_build(self) -> None:
+    def test_eleven_suites_follow_the_same_successful_interaction_build(self) -> None:
         program = (REPO / "tests/Chummer.Android.Native.InteractionTests/Program.cs").read_text()
         project = (REPO / "tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj").read_text()
         self.assertIn("<TargetFramework>net10.0</TargetFramework>", project)
@@ -51,6 +55,67 @@ class AndroidContinuationCiContractTests(unittest.TestCase):
                 self.assertNotIn('" restore ', block)
                 self.assertNotIn("set +e", block)
                 self.assertNotIn("|| true", block)
+
+    def test_finalization_flag_dispatches_the_actual_unconditional_native_suite(self) -> None:
+        directory = REPO / "tests/Chummer.Android.Native.InteractionTests"
+        program = (directory / "Program.cs").read_text(encoding="utf-8")
+        dispatch = program.split(
+            'if (args.Length == 2 && args[0] == "--creation-finalization-owner-content-root")', 1
+        )[1].split("}", 1)[0]
+        self.assertEqual(
+            '{\n            await AfterRunAuthorityHarness.RunCreationFinalizationOwnerCasesAsync(args[1]);\n            return;',
+            dispatch.strip(),
+        )
+        project = ET.parse(directory / "Chummer.Android.Native.InteractionTests.csproj").getroot()
+        matches = [(group, item) for group in project.findall("ItemGroup")
+                   for item in group.findall("Compile")
+                   if item.get("Include") == "CreationFinalizationOwnerRuntimeTests.cs"]
+        self.assertEqual(1, len(matches))
+        group, item = matches[0]
+        self.assertNotIn("Condition", group.attrib)
+        self.assertNotIn("Condition", item.attrib)
+        self.assertIn("public static async Task RunCreationFinalizationOwnerCasesAsync(string contentRoot)",
+                      (directory / "CreationFinalizationOwnerRuntimeTests.cs").read_text(encoding="utf-8"))
+
+    def test_prerequisite_flags_dispatch_separate_actual_unconditional_native_suites(self) -> None:
+        directory = REPO / "tests/Chummer.Android.Native.InteractionTests"
+        program = (directory / "Program.cs").read_text(encoding="utf-8")
+        project = ET.parse(directory / "Chummer.Android.Native.InteractionTests.csproj").getroot()
+        cases = (
+            ("--creation-bootstrap-production-content-root",
+             "RunCreationBootstrapProductionOverviewAsync", "CreationBootstrapOwnerRuntimeTests.cs"),
+            ("--creation-prerequisite-owner-content-root",
+             "RunCreationPrerequisiteOwnerCasesAsync", "CreationPrerequisiteOwnerRuntimeTests.cs"),
+        )
+        for flag, method, source in cases:
+            with self.subTest(flag=flag):
+                selector = f'if (args.Length == 2 && args[0] == "{flag}")'
+                self.assertEqual(1, program.count(selector))
+                dispatch = program.split(selector, 1)[1].split("}", 1)[0]
+                self.assertEqual(
+                    '{\n            await AfterRunAuthorityHarness.'
+                    + method + '(args[1]);\n            return;',
+                    dispatch.strip(),
+                )
+                matches = [(group, item) for group in project.findall("ItemGroup")
+                           for item in group.findall("Compile") if item.get("Include") == source]
+                self.assertEqual(1, len(matches))
+                group, item = matches[0]
+                self.assertNotIn("Condition", group.attrib)
+                self.assertNotIn("Condition", item.attrib)
+                self.assertIn(f"public static async Task {method}(string contentRoot)",
+                              (directory / source).read_text(encoding="utf-8"))
+
+    def test_hosted_managed_gate_uses_runtime_core_content_not_the_apk_content_checkout(self) -> None:
+        workflow = (REPO / ".github/workflows/api36-editing-e2e.yml").read_text(encoding="utf-8")
+        for step in ("Build the emulator APK and native compile gate", "Build the ARM64 hosted debug candidate"):
+            with self.subTest(step=step):
+                block = workflow.split("- name: " + step, 1)[1].split("\n      - name:", 1)[0]
+                self.assertIn("working-directory: chummer-android", block)
+                self.assertIn("CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine", block)
+                self.assertIn("run: scripts/build-debug.sh", block)
+                self.assertNotIn("chummer-core-content", block)
+                self.assertNotIn("continue-on-error", block)
 
     def run_suites(self, name: str, failed_flag: str = "", binary: bool = True):
         script = self.script(name)

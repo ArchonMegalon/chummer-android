@@ -3635,6 +3635,20 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             )[0],
         )
 
+    def test_only_exact_creation_dialog_diagnostic_is_read_only(self) -> None:
+        exact = ("logcat", "-d", "-b", "main", "-v", "threadtime",
+                 "-s", "ChummerCreateDiag:I", "*:S")
+        self.assertEqual("read-only-retryable", driver.adb_command_retry_policy(exact)[0])
+        for hostile in (
+            (*exact, "-c"),
+            exact[:1] + exact[2:],
+            tuple("*:I" if part == "ChummerCreateDiag:I" else part for part in exact),
+            tuple("system" if part == "main" else part for part in exact),
+            ("shell", *exact),
+        ):
+            with self.subTest(arguments=hostile):
+                self.assertEqual("non-replayable", driver.adb_command_retry_policy(hostile)[0])
+
     def test_creation_dashboard_ready_snapshot_is_exactly_read_only_retryable(self) -> None:
         self.assertEqual(
             (

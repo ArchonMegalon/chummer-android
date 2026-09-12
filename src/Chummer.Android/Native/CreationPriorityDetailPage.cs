@@ -10,6 +10,8 @@ namespace Chummer.Android.Native;
 public sealed class CreationPriorityDetailPage : NativePageBase
 {
     private readonly CreationPrerequisitePhoneDraft _draft;
+    private readonly CharacterCreationPrerequisiteState _state;
+    private long _renderGeneration;
     private readonly string _categoryId;
     private readonly VerticalStackLayout _body = new()
     {
@@ -20,9 +22,11 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     internal CreationPriorityDetailPage(
         RunnerSessionCoordinator coordinator,
         CreationPrerequisitePhoneDraft draft,
+        CharacterCreationPrerequisiteState state,
         string categoryId) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
+        _state = state ?? throw new ArgumentNullException(nameof(state));
         _categoryId = categoryId is (CharacterCreationPriorityCategoryIds.Heritage
             or CharacterCreationPriorityCategoryIds.Talent)
             ? categoryId
@@ -41,23 +45,17 @@ public sealed class CreationPriorityDetailPage : NativePageBase
 
     protected override void Refresh()
     {
+        _renderGeneration++;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.DetailPage.Eyebrow", "Core-projected choice")));
         string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
         _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
 
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
-            Coordinator.LoadCreationPrerequisite();
-        if (!string.Equals(
-                load.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || load.Value is not { } state
+        CharacterCreationPrerequisiteState state = _state;
+        if (!Coordinator.IsCreationPrerequisiteStateCurrent(state)
             || !_draft.Matches(state, Coordinator.State))
         {
-            AddBlockers(load.Blockers.Count > 0
-                ? load.Blockers
-                : [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+            AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
             return;
         }
 
@@ -95,6 +93,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
 
     private void AddHeritageOptions(CharacterCreationPrerequisiteState state)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         IReadOnlyList<CharacterCreationPriorityHeritageOptionProjection> options =
             _draft.HeritageOptions(state, Coordinator.State);
         if (options.Count == 0)
@@ -141,7 +141,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 title,
                 detail,
-                () => SelectHeritageAsync(state, option.SelectionId),
+                () => IsCurrentSelection(render, appearance)
+                    ? SelectHeritageAsync(state, option.SelectionId) : Task.CompletedTask,
                 option.IsEnabled && option.Blockers.Count == 0,
                 $"creation-prerequisite-heritage-option-{Token(option.SelectionId)}"));
         }
@@ -149,6 +150,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
 
     private void AddTalentOptions(CharacterCreationPrerequisiteState state)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         IReadOnlyList<CharacterCreationPriorityTalentOptionProjection> options =
             _draft.TalentOptions(state, Coordinator.State);
         if (options.Count == 0)
@@ -219,7 +222,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 option.Name,
                 detail,
-                () => SelectTalentAsync(state, option.SelectionId),
+                () => IsCurrentSelection(render, appearance)
+                    ? SelectTalentAsync(state, option.SelectionId) : Task.CompletedTask,
                 option.IsEnabled && option.Blockers.Count == 0 && grantBlockers.Count == 0,
                 $"creation-prerequisite-talent-option-{Token(option.SelectionId)}"));
         }
@@ -253,11 +257,16 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             await Navigation.PushAsync(new CreationTalentSkillGrantPage(
                 Coordinator,
                 _draft,
+                state,
                 selectionId));
             return;
         }
         await Navigation.PopAsync(animated: false);
     }
+
+    private bool IsCurrentSelection(long render, long appearance)
+        => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+           && Coordinator.IsCreationPrerequisiteStateCurrent(_state);
 
     private void AddBlockers(IReadOnlyList<string> blockers)
     {

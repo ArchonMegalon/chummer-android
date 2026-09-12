@@ -1,4 +1,5 @@
 import importlib
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -7,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 
 REPO = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent))
 TESTS = REPO / "tests"
 sys.path.insert(0, str(TESTS))
 driver = importlib.import_module("run_api36_sr5_before_run_edge_e2e")
@@ -66,7 +68,7 @@ class BeforeRunHostedDriverTests(unittest.TestCase):
         paths = driver.source_paths(
             driver=Path(driver.__file__).resolve(),
             android_root=REPO,
-            workspace_root=REPO.parent,
+            workspace_root=WORKSPACE,
             fixture=driver.HOSTED_SPEC.fixture,
         )
         self.assertTrue(paths)

@@ -7,7 +7,9 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="IssuedArmConditionPageRuntimeTests.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="ArmConditionOwnerRuntimeTests.cs" />
     <Compile Include="AndroidAccountOwnerRuntimeTests.cs" />
     <Compile Include="AndroidInitialPhoneRouteRuntimeTests.cs" />
     <Compile Include="AndroidWorkspaceContinuationHttpTests.cs" />
@@ -20,7 +22,12 @@
     <Compile Include="LinkedCharacterNativeRuntimeTests.cs" />
     <Compile Include="AfterRunPageInteractionTests.cs" />
     <Compile Include="AfterRunNativeRuntimeTests.cs" />
+    <Compile Include="DamageJournalAccountRuntimeTests.cs" />
+    <Compile Include="DamageReviewOwnerRuntimeTests.cs" />
+    <Compile Include="DamageSaveReceiptRuntimeTests.cs" />
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
+    <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
+    <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />
     <Compile Include="CreationBootstrapOwnerRuntimeTests.cs" />
     <Compile Include="PersistenceOwnerRuntimeTests.cs" />
     <Compile Include="ReputationGestureOwnerRuntimeTests.cs" />
