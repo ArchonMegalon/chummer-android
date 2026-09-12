@@ -215,6 +215,8 @@ internal static class Program
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
             (nameof(ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync), ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync),
+            (nameof(ExactTypedResourcesAuthorityCanReopenItsCompletedStageAsync), ExactTypedResourcesAuthorityCanReopenItsCompletedStageAsync),
+            (nameof(ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync), ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync),
             (nameof(ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync), ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
             (nameof(ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync), ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync),
@@ -1096,6 +1098,166 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task ExactTypedResourcesAuthorityCanReopenItsCompletedStageAsync()
+    {
+        // The shared wizard projector retains Resources IsAvailable=false when
+        // finalization marks the stage complete and removes its blockers. This
+        // is a policy fixture, not the hosted device's unretained typed state.
+        ResourcesFixture fixture = NewResourcesFixture();
+        CharacterCreationWizardStageState completed = ConservativeStage(
+            CharacterCreationWizardStepIds.Resources) with
+        {
+            Status = CharacterCreationWizardStepStatuses.Complete,
+            IsComplete = true,
+            Blockers = []
+        };
+        CharacterOverviewState overview = fixture.Overview with
+        {
+            CreationWizard = fixture.Overview.CreationWizard! with
+            {
+                Steps = [completed],
+                CompletionBlockers = ["creation-finalization-skills-draft-required"],
+                CanFinalize = false
+            }
+        };
+        string snapshotBefore = System.Text.Json.JsonSerializer.Serialize(overview.CreationWizard);
+        bool exactResourcesReady = BuildPageUiProjection.HasExactTypedResourcesAuthority(
+            fixture.Load, overview);
+        Require(exactResourcesReady,
+            "The completed-stage regression did not retain valid exact typed Resources authority.");
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                completed, CharacterCreationWizardStepIds.Resources, exactResourcesReady),
+            "An exact typed Resources editor could not reopen its blocker-free completed generic stage.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                completed, CharacterCreationWizardStepIds.Resources, exactTypedAuthorityReady: false),
+            "A completed Resources stage opened without current exact typed authority.");
+        foreach (CharacterCreationResourcesInteractionLoadResult? unavailable in new[]
+        {
+            null,
+            fixture.Load with { State = null },
+            fixture.Load with { Outcome = CharacterCreationResourcesOutcomes.Blocked },
+            fixture.Load with { State = fixture.State with { CanEdit = false } },
+            fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Binding = fixture.State.Binding with
+                    {
+                        ContentRevision = fixture.State.Binding.ContentRevision + 1
+                    }
+                }
+            },
+            fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable]
+                }
+            }
+        })
+        {
+            bool ready = BuildPageUiProjection.HasExactTypedResourcesAuthority(unavailable, overview);
+            Require(!ready && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    completed, CharacterCreationWizardStepIds.Resources, ready),
+                "Missing, stale, or blocked typed Resources authority reopened a completed stage.");
+        }
+        foreach (string? foreignAuthority in new string?[]
+        {
+            CharacterCreationWizardStepIds.Attributes,
+            CharacterCreationWizardStepIds.Skills,
+            CharacterCreationWizardStepIds.ContactsLifestyles,
+            null, string.Empty, "unknown-created-stage"
+        })
+        {
+            Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    completed, foreignAuthority!, exactTypedAuthorityReady: true),
+                "A completed Resources stage admitted another or missing typed domain.");
+        }
+        (string Name, CharacterCreationWizardStageState Stage)[] rejected =
+        [
+            ("incomplete", completed with { Status = CharacterCreationWizardStepStatuses.Blocked, IsComplete = false }),
+            ("complete status only", completed with { IsComplete = false }),
+            ("complete flag only", completed with { Status = CharacterCreationWizardStepStatuses.Blocked }),
+            ("noncanonical complete status", completed with { Status = CharacterCreationWizardStepStatuses.Complete.ToUpperInvariant() }),
+            ("prerequisite blocker", completed with { Blockers = ["creation-stage-prerequisite-incomplete"] }),
+            ("own missing draft", completed with { Blockers = ["creation-finalization-resources-draft-required"] }),
+            ("foreign missing draft", completed with { Blockers = ["creation-finalization-skills-draft-required"] }),
+            ("legal options placeholder", completed with { Blockers = ["creation-wizard-legal-options-authority-unavailable"] }),
+            ("multiple blockers", completed with { Blockers = ["creation-finalization-resources-draft-required", "creation-stage-prerequisite-incomplete"] }),
+            ("unowned stage", completed with { StepId = CharacterCreationWizardStepIds.Review })
+        ];
+        foreach ((string name, CharacterCreationWizardStageState stage) in rejected)
+        {
+            Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    stage, stage.StepId, exactTypedAuthorityReady: true),
+                $"The completed-stage entry path admitted {name} instead of an exact blocker-free completion.");
+        }
+        Require(
+            !completed.IsAvailable && completed.IsComplete
+            && completed.Status == CharacterCreationWizardStepStatuses.Complete
+            && completed.Blockers.Count == 0
+            && snapshotBefore == System.Text.Json.JsonSerializer.Serialize(overview.CreationWizard)
+            && overview.CreationWizard!.CanFinalize == false,
+            "Reopening Resources changed the retained completion snapshot or bypassed whole-build finalization.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync()
+    {
+        // Shared entry-policy cases, not substitutes for each domain's typed
+        // readiness validator. Resources above additionally runs its validator.
+        foreach (string stepId in new[]
+        {
+            CharacterCreationWizardStepIds.Attributes,
+            CharacterCreationWizardStepIds.Skills,
+            CharacterCreationWizardStepIds.ContactsLifestyles,
+            CharacterCreationWizardStepIds.Resources
+        })
+        {
+            foreach (bool available in new[] { false, true })
+            {
+                CharacterCreationWizardStageState completed = ConservativeStage(stepId) with
+                {
+                    Status = CharacterCreationWizardStepStatuses.Complete,
+                    IsComplete = true,
+                    IsAvailable = available,
+                    Blockers = []
+                };
+                string before = System.Text.Json.JsonSerializer.Serialize(completed);
+                Require(
+                    BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                        completed, stepId, exactTypedAuthorityReady: true)
+                    && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                        completed, stepId, exactTypedAuthorityReady: false),
+                    $"Completed {stepId} entry did not require exact typed authority (available={available}).");
+
+                CharacterCreationWizardStageState[] contradictory =
+                [
+                    completed with { IsComplete = false },
+                    completed with { Status = CharacterCreationWizardStepStatuses.Blocked },
+                    completed with { Status = CharacterCreationWizardStepStatuses.Complete.ToUpperInvariant() },
+                    completed with { Blockers = ["creation-wizard-legal-options-authority-unavailable"] },
+                    completed with { Blockers = ["creation-finalization-attributes-draft-required"] },
+                    completed with { Blockers = ["creation-finalization-skills-draft-required"] },
+                    completed with { Blockers = ["creation-finalization-resources-draft-required"] },
+                    completed with { Blockers = ["creation-stage-prerequisite-incomplete"] }
+                ];
+                foreach (CharacterCreationWizardStageState rejected in contradictory)
+                {
+                    Require(
+                        !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                            rejected, stepId, exactTypedAuthorityReady: true),
+                        $"Contradictory completed {stepId} bypassed completion checks (available={available}).");
+                }
+                Require(before == System.Text.Json.JsonSerializer.Serialize(completed),
+                    $"Reopening completed {stepId} changed the immutable wizard stage.");
+            }
+        }
+        return Task.CompletedTask;
+    }
+
     private static Task ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync()
     {
         (string StepId, string? DraftRequired)[] domains =
@@ -1236,6 +1398,17 @@ internal static class Program
                     CharacterCreationWizardStepIds.Resources,
                     ready),
                 $"Hostile Resources authority shape '{name}' opened through its missing-draft entry path.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(CharacterCreationWizardStepIds.Resources) with
+                    {
+                        Status = CharacterCreationWizardStepStatuses.Complete,
+                        IsComplete = true,
+                        Blockers = []
+                    },
+                    CharacterCreationWizardStepIds.Resources,
+                    ready),
+                $"Hostile Resources authority shape '{name}' reopened a completed stage.");
         }
 
         Require(

@@ -315,7 +315,9 @@ public static class BuildPageUiProjection
     /// must match the destination step. A finalization
     /// requirement for this same stage's not-yet-authored draft is likewise not an editor
     /// entry prerequisite. The finalization snapshot remains unchanged and still blocks
-    /// finishing the character. No stage opens from the generic snapshot alone.
+    /// finishing the character. A consistently completed, blocker-free stage can be
+    /// revisited even when the generic projection retains its unavailable flag.
+    /// No stage opens from the generic snapshot alone.
     /// </summary>
     public static bool CanOpenExactTypedCreationStage(
         CharacterCreationWizardStageState stage,
@@ -332,6 +334,11 @@ public static class BuildPageUiProjection
         {
             return false;
         }
+
+        bool hasCompleteStatus = string.Equals(
+            stage.Status, CharacterCreationWizardStepStatuses.Complete, StringComparison.Ordinal);
+        if (stage.IsComplete || hasCompleteStatus)
+            return stage.IsComplete && hasCompleteStatus && stage.Blockers.Count == 0;
 
         if (stage.IsAvailable)
             return stage.Blockers.Count == 0;
