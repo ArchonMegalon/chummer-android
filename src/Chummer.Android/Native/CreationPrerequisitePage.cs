@@ -99,8 +99,41 @@ public sealed class CreationPrerequisitePage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,
             () => IsCurrentAppearanceGeneration(appearance));
+        if (!IsCurrentAppearanceGeneration(appearance))
+            return;
+
+        CharacterCreationPrerequisiteState? current = loaded.Value is { } loadedState
+            && Coordinator.IsCreationPrerequisiteStateCurrent(loadedState) ? loadedState : null;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        if (AndroidE2EAuthority.Enabled && current is { } proofState)
+        {
+            // Confirmation reloads the presenter, which invalidates its diagnostic
+            // workspace snapshot. Revalidation alone does not recapture that
+            // snapshot. Read the actual current bytes before publishing this
+            // appearance; never synthesize proof from the retained page state.
+            if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                    proofState.Binding.RawCharacterXmlDigest,
+                    out string expectedPayloadSha256))
+            {
+                current = null;
+            }
+            else
+            {
+                NativeWorkspaceAuthoritySnapshot? proofAuthority =
+                    await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
+                        proofState.Binding.WorkspaceId,
+                        proofState.Binding.ContentRevision,
+                        proofState.Binding.SavedRevision,
+                        expectedPayloadSha256,
+                        cancellationToken);
+                if (proofAuthority is null)
+                    current = null;
+            }
+        }
+#endif
+        cancellationToken.ThrowIfCancellationRequested();
         if (IsCurrentAppearanceGeneration(appearance))
-            _dashboardAuthority = loaded.Value is { } state
+            _dashboardAuthority = current is { } state
                                   && Coordinator.IsCreationPrerequisiteStateCurrent(state) ? state : null;
     }
 

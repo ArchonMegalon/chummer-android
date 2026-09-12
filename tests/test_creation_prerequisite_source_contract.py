@@ -10643,8 +10643,29 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             device = mock.Mock()
             device.evidence = Path(temporary)
-            device.run.return_value = pending
+            # Keep the 20 ms lease without depending on host scheduling. Real
+            # sleeps can overshoot it before the intended marker-timeout path.
+            clock_ms = [0]
+            advances: list[tuple[str, int]] = []
+
+            def read_pending(*arguments: str, **options: object):
+                self.assertEqual(driver.shared.ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS, arguments)
+                self.assertEqual(0.02, options["deadline"])
+                self.assertGreaterEqual(options["timeout"], 0.001)
+                clock_ms[0] += 2
+                advances.append(("read", 2))
+                return pending
+
+            def advance_sleep(seconds: float) -> None:
+                self.assertEqual(0.005, seconds)
+                clock_ms[0] += 5
+                advances.append(("sleep", 5))
+
+            device.run.side_effect = read_pending
             with (
+                mock.patch.object(driver.time, "monotonic", side_effect=lambda: clock_ms[0] / 1000),
+                mock.patch.object(driver.time, "perf_counter", side_effect=lambda: clock_ms[0] / 1000),
+                mock.patch.object(driver.time, "sleep", side_effect=advance_sleep),
                 mock.patch.object(
                     driver,
                     "POST_CONFIRM_DASHBOARD_READY_TIMEOUT_SECONDS",
@@ -10675,12 +10696,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
 
             self.assertGreaterEqual(device.run.call_count, 1)
+            self.assertEqual(3, device.run.call_count)
+            self.assertEqual([
+                ("read", 2), ("sleep", 5), ("read", 2), ("sleep", 5), ("read", 2),
+            ], advances)
+            self.assertEqual(16, clock_ms[0])
             device.capture.assert_called_once()
             self.assertEqual(
                 "creation-dashboard-route-ready-timeout",
                 device.capture.call_args.args[0],
             )
             self.assertIn("deadline", device.capture.call_args.kwargs)
+            self.assertEqual(1.0, device.capture.call_args.kwargs["deadline"])
             device.shell.assert_not_called()
             device.hierarchy.assert_not_called()
 

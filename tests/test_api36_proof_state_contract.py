@@ -517,6 +517,105 @@ class Api36ProofStateContractTests(unittest.TestCase):
         self.assertTrue(all("deadline" in options for _, options in device.shell_calls))
         self.assertTrue(all("deadline" in options for _, options in device.run_calls))
 
+    def test_reader_rejects_remote_missing_file_diagnostics_with_local_zero_exit(self) -> None:
+        # Run 34678728103 retained these exact lengths/hashes, not raw stdout.
+        # Model only transport/clock: the real metadata parser, read reconciliation,
+        # wait loop, state validator and evidence writer must reject the diagnostics.
+        missing_stat = "stat: 'files/api36-proof/state.v2.json': No such file or directory\n"
+        missing_content = b"cat: files/api36-proof/state.v2.json: No such file or directory\n"
+        stat_sha = "e1276eb827e6e7a798b29f3044a81c79324072462aa6132bb2cba6a50e9f0f05"
+        content_sha = "a413744eadce4498567d1db6461d06a71ec7933f3b8dd1dd064fe49a27e02eb0"
+        self.assertEqual((67, stat_sha), (
+            len(missing_stat.encode("utf-8")), hashlib.sha256(missing_stat.encode("utf-8")).hexdigest(),
+        ))
+        self.assertEqual((64, content_sha), (
+            len(missing_content), hashlib.sha256(missing_content).hexdigest(),
+        ))
+        prior = attachment_payload(9)
+        fresh = encoded(attachment_payload(10))
+        fresh_metadata = f"1:101:{len(fresh)}:1788336000:81a4\n"
+        case = self
+
+        for fresh_after_missing in (False, True):
+            with self.subTest(fresh_after_missing=fresh_after_missing):
+                clock = [100.0]
+                deadline = 100.5
+                calls = []
+
+                class Device:
+                    def __init__(self, evidence: Path) -> None:
+                        self.evidence = evidence
+                        self.read_count = 0
+
+                    def shell(self, *arguments: str, **options: object) -> str:
+                        case.assertEqual(("pidof", proof.PACKAGE), arguments)
+                        case.assertEqual(deadline, options["deadline"])
+                        calls.append(("shell", arguments))
+                        return "4242"
+
+                    def run(self, *arguments: str, **options: object) -> SimpleNamespace:
+                        position = self.read_count % 3
+                        expected = (proof.STAT_ARGUMENTS, proof.READ_ARGUMENTS, proof.STAT_ARGUMENTS)
+                        case.assertEqual(expected[position], arguments)
+                        case.assertEqual(deadline, options["deadline"])
+                        case.assertIs(False, options["check"])
+                        if position == 1:
+                            case.assertIs(False, options["text"])
+                        calls.append(("run", arguments))
+                        ready = fresh_after_missing and self.read_count >= 3
+                        self.read_count += 1
+                        stdout = (
+                            fresh if ready else missing_content
+                        ) if position == 1 else (fresh_metadata if ready else missing_stat)
+                        return SimpleNamespace(returncode=0, stdout=stdout)
+
+                with tempfile.TemporaryDirectory() as temporary, patch.object(
+                    proof.time, "monotonic", side_effect=lambda: clock[0]
+                ), patch.object(
+                    proof.time, "sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+                ), patch.object(proof, "validate_state", wraps=proof.validate_state) as validate:
+                    device = Device(Path(temporary))
+                    arguments = dict(
+                        expected=expectation(), page_automation_id="creation-prerequisite-page",
+                        stage="attachment-authority-ready", wizard_lane="creation-prerequisite",
+                        timeout=30, deadline=deadline, after_same_process_proof=prior,
+                    )
+                    if fresh_after_missing:
+                        result = proof.wait_for_state(device, **arguments)
+                        self.assertEqual(fresh, encoded(result.payload))
+                        self.assertEqual(10, result.payload["sequence"])
+                        validate.assert_called_once_with(fresh, expected=expectation(), live_process_id=4242)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "^Timed out waiting for exact API-36 proof state: metadata-noncanonical$"):
+                            proof.wait_for_state(device, **arguments)
+                        validate.assert_not_called()
+                        self.assertEqual(deadline, clock[0])
+                    receipt = json.loads((device.evidence / proof.READ_RECEIPT_NAME).read_text(encoding="utf-8"))
+                self.assertEqual("pass" if fresh_after_missing else "fail", receipt["status"])
+                self.assertEqual(2 if fresh_after_missing else None, receipt["acceptedAttempt"])
+                self.assertEqual(0, receipt["mutationCommandsRetried"])
+                rejected = receipt["attempts"][:-1] if fresh_after_missing else receipt["attempts"]
+                self.assertTrue(rejected)
+                for observation in rejected:
+                    self.assertEqual("retry", observation["status"])
+                    self.assertEqual("metadata-noncanonical", observation["reconciliation"])
+                    self.assertEqual(4242, observation["processBefore"])
+                    self.assertEqual(4242, observation["processAfter"])
+                    for suffix in ("Before", "After"):
+                        self.assertIsNone(observation[f"metadata{suffix}"])
+                        self.assertEqual(0, observation[f"metadata{suffix}ReturnCode"])
+                        self.assertEqual({"type": "text", "bytes": 67, "sha256": stat_sha}, observation[f"metadata{suffix}Output"])
+                    self.assertEqual(0, observation["contentReturnCode"])
+                    self.assertEqual({"type": "bytes", "bytes": 64, "sha256": content_sha}, observation["contentOutput"])
+                    self.assertEqual("0a", observation["lastByteHex"])
+                    self.assertIs(False, observation["canonicalTerminalByte"])
+                    self.assertNotIn("validationFailure", observation)
+                self.assertEqual([
+                    ("shell", ("pidof", proof.PACKAGE)),
+                    ("run", proof.STAT_ARGUMENTS), ("run", proof.READ_ARGUMENTS),
+                    ("run", proof.STAT_ARGUMENTS), ("shell", ("pidof", proof.PACKAGE)),
+                ] * len(receipt["attempts"]), calls)
+
     def test_reader_retries_only_a_content_size_mismatch_then_accepts_exact_bytes(
         self,
     ) -> None:
@@ -925,6 +1024,69 @@ class Api36ProofStateContractTests(unittest.TestCase):
             '<Compile Remove="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs"',
             project,
         )
+
+    def test_creation_prerequisite_appearance_recaptures_exact_opt_in_proof_authority(self) -> None:
+        # Source-contract only: this does not execute the Android lifecycle or
+        # prove that a hosted post-confirm attachment successfully wrote its file.
+        page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
+            encoding="utf-8"
+        )
+        project = (ROOT / "src/Chummer.Android/Chummer.Android.csproj").read_text(
+            encoding="utf-8"
+        )
+        prepare = page[
+            page.index("protected override async Task PrepareForAppearanceRefreshAsync(") :
+            page.index("protected override void Refresh()")
+        ]
+        before, guarded = prepare.split("#if CHUMMER_API36_PROOF_INSTRUMENTATION\n")
+        proof_capture, after = guarded.split("#endif\n")
+        ordered_before = (
+            "long appearance = CaptureAppearanceGeneration();",
+            "await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,",
+            "() => IsCurrentAppearanceGeneration(appearance));",
+            "if (!IsCurrentAppearanceGeneration(appearance))\n            return;",
+            "CharacterCreationPrerequisiteState? current = loaded.Value is { } loadedState",
+            "Coordinator.IsCreationPrerequisiteStateCurrent(loadedState) ? loadedState : null;",
+        )
+        positions = [before.index(marker) for marker in ordered_before]
+        self.assertEqual(sorted(positions), positions)
+        self.assertIn("if (AndroidE2EAuthority.Enabled && current is { } proofState)", proof_capture)
+        normalize = proof_capture.index(
+            "if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(\n"
+            "                    proofState.Binding.RawCharacterXmlDigest,\n"
+            "                    out string expectedPayloadSha256))"
+        )
+        rejected_digest = proof_capture.index("current = null;", normalize)
+        capture = proof_capture.index(
+            "await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(\n"
+            "                        proofState.Binding.WorkspaceId,\n"
+            "                        proofState.Binding.ContentRevision,\n"
+            "                        proofState.Binding.SavedRevision,\n"
+            "                        expectedPayloadSha256,\n"
+            "                        cancellationToken);"
+        )
+        rejected_capture = proof_capture.index("if (proofAuthority is null)\n                    current = null;")
+        self.assertLess(normalize, rejected_digest)
+        self.assertLess(rejected_digest, proof_capture.index("else", rejected_digest))
+        self.assertLess(proof_capture.index("else", rejected_digest), capture)
+        self.assertLess(capture, rejected_capture)
+        self.assertEqual(2, proof_capture.count("current = null;"))
+        self.assertNotIn("_dashboardAuthority =", before + proof_capture)
+        self.assertIn(
+            "cancellationToken.ThrowIfCancellationRequested();\n"
+            "        if (IsCurrentAppearanceGeneration(appearance))\n"
+            "            _dashboardAuthority = current is { } state\n"
+            "                                  && Coordinator.IsCreationPrerequisiteStateCurrent(state) ? state : null;",
+            after,
+        )
+        for forbidden in (
+            "RefreshApi36ProofWorkspaceAuthorityAsync", "AndroidE2EAuthority", "proofState",
+        ):
+            self.assertNotIn(forbidden, before + after)
+        for forbidden in ("new NativeWorkspaceAuthoritySnapshot", "Task.Delay", "while (", "TryPublish"):
+            self.assertNotIn(forbidden, prepare)
+        self.assertIn('<Error Condition="\'$(Configuration)\' != \'Debug\'"', project)
+        self.assertIn('<Compile Remove="Proof/Api36ProofState.cs;Proof/Api36ProofStatePublisher.cs"', project)
 
     def test_creation_prerequisite_attachment_publisher_reports_only_exact_write_success(self) -> None:
         publisher = (
