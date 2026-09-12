@@ -214,6 +214,8 @@ internal static class Program
             (nameof(TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync), TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
+            (nameof(ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync), ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync),
+            (nameof(ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync), ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
             (nameof(ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync), ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync),
             (nameof(ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync), ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync),
@@ -888,11 +890,13 @@ internal static class Program
         Require(
             BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 resources,
+                CharacterCreationWizardStepIds.Resources,
                 exactTypedAuthorityReady: true),
             "An exact typed Resources projection did not rehydrate its conservative generic stage after reopen.");
         Require(
             !BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 resources,
+                CharacterCreationWizardStepIds.Resources,
                 exactTypedAuthorityReady: false),
             "A generic Resources placeholder opened without exact typed authority.");
         foreach (string stepId in admitted)
@@ -900,11 +904,13 @@ internal static class Program
             Require(
                 BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     ConservativeStage(stepId),
+                    stepId,
                     exactTypedAuthorityReady: true),
                 $"The exact typed {stepId} route was omitted from the closed rehydration set.");
             Require(
                 !BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     ConservativeStage(stepId) with { IsAvailable = true },
+                    stepId,
                     exactTypedAuthorityReady: false),
                 $"The generic {stepId} flag opened without exact typed authority.");
         }
@@ -913,6 +919,7 @@ internal static class Program
             Require(
                 !BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     ConservativeStage(stepId),
+                    stepId,
                     exactTypedAuthorityReady: true),
                 $"Typed route rehydration escaped to non-owned stage {stepId}.");
         }
@@ -928,6 +935,7 @@ internal static class Program
                 {
                     Blockers = ["creation-stage-prerequisite-incomplete"]
                 },
+                CharacterCreationWizardStepIds.Resources,
                 exactTypedAuthorityReady: true),
             "Exact typed authority overrode a generic blocker that was not the conservative legal-options placeholder.");
         Require(
@@ -937,8 +945,218 @@ internal static class Program
                     IsAvailable = true,
                     Blockers = ["creation-stage-prerequisite-incomplete"]
                 },
+                CharacterCreationWizardStepIds.Resources,
                 exactTypedAuthorityReady: true),
             "Exact typed authority trusted a contradictory generic available flag with a semantic blocker.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync()
+    {
+        // This uses the existing phone-authority fixture, not a claimed capture of
+        // the hosted device's unretained Resources typed result.
+        ResourcesFixture fixture = NewResourcesFixture();
+        var resourcesStage = ConservativeStage(CharacterCreationWizardStepIds.Resources) with
+        {
+            Blockers = ["creation-finalization-resources-draft-required"]
+        };
+        CharacterOverviewState overview = fixture.Overview with
+        {
+            CreationWizard = fixture.Overview.CreationWizard! with
+            {
+                Steps = [resourcesStage]
+            }
+        };
+        Require(
+            fixture.State.PendingDraft is null
+            && fixture.Load.State == fixture.State
+            && fixture.State.CanEdit
+            && fixture.State.Blockers.Count == 0,
+            "The Resources editor-entry regression must begin before a Resources draft is authored.");
+        bool exactResourcesReady = BuildPageUiProjection.HasExactTypedResourcesAuthority(
+            fixture.Load,
+            overview);
+        Require(
+            exactResourcesReady,
+            "The existing exact Resources phone fixture did not satisfy real typed readiness.");
+        Require(
+            BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resourcesStage, CharacterCreationWizardStepIds.Resources, exactResourcesReady),
+            "An exact Resources editor could not open to author its own missing finalization draft.");
+        Require(
+            !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                resourcesStage, CharacterCreationWizardStepIds.Resources, exactTypedAuthorityReady: false),
+            "A missing Resources finalization draft bypassed mandatory exact typed authority.");
+        foreach (CharacterCreationResourcesInteractionLoadResult hostile in new[]
+        {
+            fixture.Load with { State = null },
+            fixture.Load with { Outcome = CharacterCreationResourcesOutcomes.Blocked },
+            fixture.Load with { State = fixture.State with { CanEdit = false } },
+            fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Binding = fixture.State.Binding with
+                    {
+                        ContentRevision = fixture.State.Binding.ContentRevision + 1
+                    }
+                }
+            },
+            fixture.Load with
+            {
+                State = fixture.State with
+                {
+                    Blockers = [CharacterCreationResourcesBlockers.AuthorityUnavailable]
+                }
+            }
+        })
+        {
+            bool ready = BuildPageUiProjection.HasExactTypedResourcesAuthority(hostile, overview);
+            Require(
+                !ready && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    resourcesStage, CharacterCreationWizardStepIds.Resources, ready),
+                "An unavailable, stale, or blocked Resources result opened through the missing-draft case.");
+        }
+
+        // These mapping cases isolate the shared entry policy. The Resources
+        // case above additionally executes its real typed-readiness predicate.
+        (string StepId, string OwnDraftRequired)[] mappings =
+        [
+            (CharacterCreationWizardStepIds.Attributes, "creation-finalization-attributes-draft-required"),
+            (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
+            (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
+        ];
+        foreach ((string stepId, string ownDraftRequired) in mappings)
+        {
+            CharacterCreationWizardStageState own = ConservativeStage(stepId) with
+            {
+                Blockers = [ownDraftRequired]
+            };
+            Require(
+                BuildPageUiProjection.CanOpenExactTypedCreationStage(own, stepId, exactTypedAuthorityReady: true)
+                && !BuildPageUiProjection.CanOpenExactTypedCreationStage(own, stepId, exactTypedAuthorityReady: false),
+                $"The {stepId} missing-draft entry mapping did not require exact typed readiness.");
+            Require(
+                !own.IsAvailable && !own.IsComplete
+                && own.Blockers.SequenceEqual([ownDraftRequired], StringComparer.Ordinal),
+                $"Opening the {stepId} editor changed its retained finalization/completion evidence.");
+
+            string[][] rejectedBlockers =
+            [
+                ["creation-stage-prerequisite-incomplete"],
+                ["creation-finalization-binding-mismatch"],
+                [ownDraftRequired, "creation-stage-prerequisite-incomplete"],
+                [ownDraftRequired, "creation-wizard-legal-options-authority-unavailable"],
+                [ownDraftRequired, ownDraftRequired],
+                [ownDraftRequired.ToUpperInvariant()]
+            ];
+            foreach (string[] blockers in rejectedBlockers)
+            {
+                Require(
+                    !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                        own with { Blockers = blockers },
+                        stepId,
+                        exactTypedAuthorityReady: true),
+                    $"The {stepId} entry mapping discarded an unrelated, multiple, or malformed blocker.");
+            }
+            foreach ((string foreignStepId, string foreignDraftRequired) in mappings)
+            {
+                if (foreignStepId == stepId)
+                    continue;
+                Require(
+                    !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                        own with { Blockers = [foreignDraftRequired] },
+                        stepId,
+                        exactTypedAuthorityReady: true),
+                    $"The {stepId} editor bypassed the {foreignStepId} missing-draft boundary.");
+            }
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    own with { IsAvailable = true },
+                    stepId,
+                    exactTypedAuthorityReady: true),
+                $"The {stepId} entry mapping accepted a contradictory available flag with a blocker.");
+            foreach (string unownedStepId in new[]
+            {
+                CharacterCreationWizardStepIds.ContactsLifestyles,
+                CharacterCreationWizardStepIds.Qualities,
+                CharacterCreationWizardStepIds.MagicResonance,
+                CharacterCreationWizardStepIds.Review,
+                "unknown-created-stage"
+            })
+            {
+                Require(
+                    !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                        own with { StepId = unownedStepId },
+                        unownedStepId,
+                        exactTypedAuthorityReady: true),
+                    $"The missing-draft exception escaped to the unowned {unownedStepId} stage.");
+            }
+        }
+        return Task.CompletedTask;
+    }
+
+    private static Task ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync()
+    {
+        (string StepId, string? DraftRequired)[] domains =
+        [
+            (CharacterCreationWizardStepIds.Attributes, "creation-finalization-attributes-draft-required"),
+            (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
+            (CharacterCreationWizardStepIds.ContactsLifestyles, null),
+            (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
+        ];
+        foreach ((string stageId, string? draftRequired) in domains)
+        {
+            CharacterCreationWizardStageState placeholder = ConservativeStage(stageId);
+            (string Name, CharacterCreationWizardStageState Stage, bool OwnedEntry)[] states =
+            [
+                ("available", placeholder with { IsAvailable = true, Blockers = [] }, true),
+                ("placeholder", placeholder, true),
+                // Contacts has no missing-draft exception: a different domain's
+                // draft blocker must remain closed even with exact Contacts authority.
+                ("missing draft", placeholder with
+                {
+                    Blockers = [draftRequired ?? "creation-finalization-resources-draft-required"]
+                }, draftRequired is not null)
+            ];
+            foreach ((string name, CharacterCreationWizardStageState stage, bool ownedEntry) in states)
+            {
+                foreach (var (authorityId, _) in domains)
+                {
+                    bool expected = stageId == authorityId && ownedEntry;
+                    Require(
+                        BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                            stage, authorityId, exactTypedAuthorityReady: true) == expected,
+                        $"The {name} {stageId} stage admitted the wrong typed domain {authorityId}, or rejected its own entry.");
+                    Require(
+                        !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                            stage, authorityId, exactTypedAuthorityReady: false),
+                        $"The {name} {stageId} stage opened without ready {authorityId} authority.");
+                }
+                foreach (string? invalidAuthority in new string?[]
+                {
+                    null, string.Empty, " ", "unknown-created-stage", stageId.ToUpperInvariant(),
+                    " " + stageId, stageId + " "
+                })
+                {
+                    Require(
+                        !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                            stage, invalidAuthority!, exactTypedAuthorityReady: true),
+                        $"The {name} {stageId} stage accepted missing or noncanonical authority identity.");
+                }
+            }
+        }
+        foreach (string? invalidStep in new string?[] { null, string.Empty, " ", "unknown-created-stage" })
+        {
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(CharacterCreationWizardStepIds.Resources) with
+                    {
+                        StepId = invalidStep!, IsAvailable = true, Blockers = []
+                    },
+                    invalidStep!, exactTypedAuthorityReady: true),
+                "An unknown or missing stage identity admitted matching but unowned typed authority.");
+        }
         return Task.CompletedTask;
     }
 
@@ -953,6 +1171,7 @@ internal static class Program
         Require(
             BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 ConservativeStage(CharacterCreationWizardStepIds.Resources),
+                CharacterCreationWizardStepIds.Resources,
                 BuildPageUiProjection.HasExactTypedResourcesAuthority(
                     fixture.Load,
                     fixture.Overview)),
@@ -1005,8 +1224,18 @@ internal static class Program
             Require(
                 !BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     ConservativeStage(CharacterCreationWizardStepIds.Resources) with { IsAvailable = true },
+                    CharacterCreationWizardStepIds.Resources,
                     ready),
                 $"Hostile Resources authority shape '{name}' opened through the generic stage flag.");
+            Require(
+                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    ConservativeStage(CharacterCreationWizardStepIds.Resources) with
+                    {
+                        Blockers = ["creation-finalization-resources-draft-required"]
+                    },
+                    CharacterCreationWizardStepIds.Resources,
+                    ready),
+                $"Hostile Resources authority shape '{name}' opened through its missing-draft entry path.");
         }
 
         Require(
@@ -2268,6 +2497,7 @@ internal static class Program
         Require(
             BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 resources,
+                CharacterCreationWizardStepIds.Resources,
                 exactTypedAuthorityReady: true),
             "An unrelated terminal Creation failure blocked an exact ready Resources route.");
 

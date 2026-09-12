@@ -311,15 +311,20 @@ public static class BuildPageUiProjection
     /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
     /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
     /// placeholder is not a competing domain authority: Attributes, Skills, Contacts, and
-    /// Resources are opened only by their dedicated typed projections.  No stage becomes
-    /// available from the generic snapshot alone.
+    /// Resources are opened only by their dedicated typed projections, whose domain
+    /// must match the destination step. A finalization
+    /// requirement for this same stage's not-yet-authored draft is likewise not an editor
+    /// entry prerequisite. The finalization snapshot remains unchanged and still blocks
+    /// finishing the character. No stage opens from the generic snapshot alone.
     /// </summary>
     public static bool CanOpenExactTypedCreationStage(
         CharacterCreationWizardStageState stage,
+        string authorityStepId,
         bool exactTypedAuthorityReady)
     {
         ArgumentNullException.ThrowIfNull(stage);
         if (!exactTypedAuthorityReady
+            || !string.Equals(stage.StepId, authorityStepId, StringComparison.Ordinal)
             || stage.StepId is not (CharacterCreationWizardStepIds.Attributes
                 or CharacterCreationWizardStepIds.Skills
                 or CharacterCreationWizardStepIds.ContactsLifestyles
@@ -328,13 +333,27 @@ public static class BuildPageUiProjection
             return false;
         }
 
-        return stage.IsAvailable
-            ? stage.Blockers.Count == 0
-            : stage.Blockers.Count == 1
-              && string.Equals(
-                  stage.Blockers[0],
-                  "creation-wizard-legal-options-authority-unavailable",
-                  StringComparison.Ordinal);
+        if (stage.IsAvailable)
+            return stage.Blockers.Count == 0;
+        if (stage.Blockers.Count != 1)
+            return false;
+        if (string.Equals(
+                stage.Blockers[0],
+                "creation-wizard-legal-options-authority-unavailable",
+                StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        string? ownMissingDraftBlocker = stage.StepId switch
+        {
+            CharacterCreationWizardStepIds.Attributes => CharacterCreationFinalizationBlockers.AttributesDraftRequired,
+            CharacterCreationWizardStepIds.Skills => CharacterCreationFinalizationBlockers.SkillsDraftRequired,
+            CharacterCreationWizardStepIds.Resources => CharacterCreationFinalizationBlockers.ResourcesDraftRequired,
+            _ => null
+        };
+        return ownMissingDraftBlocker is not null
+               && string.Equals(stage.Blockers[0], ownMissingDraftBlocker, StringComparison.Ordinal);
     }
 
     public static bool HasExactTypedResourcesAuthority(
@@ -2145,10 +2164,12 @@ public sealed class BuildPage : NativePageBase
                 StringComparison.Ordinal);
             bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Attributes,
                 HasAuthoritativeAttributes(attributes));
             bool skillStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
             bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Skills,
                 HasAuthoritativeSkills(skills));
             bool qualitiesStage = string.Equals(
                 stage.StepId,
@@ -2167,10 +2188,12 @@ public sealed class BuildPage : NativePageBase
             bool contactsStage = IsContactsStage(stage.StepId);
             bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.ContactsLifestyles,
                 HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStage = IsResourcesStage(stage.StepId);
             bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Resources,
                 HasAuthoritativeResources(creationResources));
             bool identityStage = string.Equals(
                 stage.StepId,
@@ -2364,10 +2387,12 @@ public sealed class BuildPage : NativePageBase
                                      && HasAuthoritativeFoundationOptions();
             bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Attributes,
                 HasAuthoritativeAttributes(attributeResult));
             bool skillStep = string.Equals(stepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
             bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Skills,
                 HasAuthoritativeSkills(skillsResult));
             bool qualitiesStep = string.Equals(stepId, CharacterCreationWizardStepIds.Qualities, StringComparison.Ordinal);
             bool canOpenQualities = qualitiesStep
@@ -2383,10 +2408,12 @@ public sealed class BuildPage : NativePageBase
             bool contactsStep = IsContactsStage(stepId);
             bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.ContactsLifestyles,
                 HasAuthoritativeCreationContacts(creationContacts));
             bool resourcesStep = IsResourcesStage(stepId);
             bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
+                CharacterCreationWizardStepIds.Resources,
                 HasAuthoritativeResources(creationResources));
             bool identityStep = string.Equals(
                 stepId,
