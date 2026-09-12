@@ -607,7 +607,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "7887e58ed7944d47de24426c8ebaa8419869f32c52ee2eb4c8d61b5bbac9123f"
+        "sha256": "8eb063794db8e2e40a565a30a3c35df19f8cf77085cae7249faeea8f79d80a7a"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -962,7 +962,7 @@
       {
         "path": "tests/test_api36_proof_state_contract.py",
         "exists": true,
-        "sha256": "3c577007aaa7f72c0c27aefd38db69b319400864416979e5fe3d5aa4dd6837be"
+        "sha256": "e18b8f3b6a0c80732354dac55977e8b3b95b8ca1da245cdf4e0b857da4f31c07"
       },
       {
         "path": "tests/test_run_api36_sr5_before_run_edge_e2e_driver.py",

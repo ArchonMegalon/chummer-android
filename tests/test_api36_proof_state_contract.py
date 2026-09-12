@@ -1040,45 +1040,63 @@ class Api36ProofStateContractTests(unittest.TestCase):
         ]
         before, guarded = prepare.split("#if CHUMMER_API36_PROOF_INSTRUMENTATION\n")
         proof_capture, after = guarded.split("#endif\n")
+        flat_before = " ".join(before.split())
+        flat_proof = " ".join(proof_capture.split())
+        flat_after = " ".join(after.split())
         ordered_before = (
             "long appearance = CaptureAppearanceGeneration();",
             "await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,",
             "() => IsCurrentAppearanceGeneration(appearance));",
-            "if (!IsCurrentAppearanceGeneration(appearance))\n            return;",
-            "CharacterCreationPrerequisiteState? current = loaded.Value is { } loadedState",
-            "Coordinator.IsCreationPrerequisiteStateCurrent(loadedState) ? loadedState : null;",
+            "if (!IsCurrentAppearanceGeneration(appearance)) return;",
+            "CharacterCreationPrerequisiteState? current = null;",
+            "if (!string.Equals(loaded.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal))",
+            "failure = CaptureAppearanceFailure(loaded.Outcome, loaded.Blockers);",
+            "else if (loaded.Value is not { } loadedState)",
+            "[CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);",
+            "else if (!Coordinator.IsCreationPrerequisiteStateCurrent(loadedState))",
+            "[CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);",
+            "else current = loadedState;",
         )
-        positions = [before.index(marker) for marker in ordered_before]
+        positions = [flat_before.index(marker) for marker in ordered_before]
         self.assertEqual(sorted(positions), positions)
         self.assertIn("if (AndroidE2EAuthority.Enabled && current is { } proofState)", proof_capture)
-        normalize = proof_capture.index(
-            "if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(\n"
-            "                    proofState.Binding.RawCharacterXmlDigest,\n"
-            "                    out string expectedPayloadSha256))"
+        normalize = flat_proof.index(
+            "if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256( "
+            "proofState.Binding.RawCharacterXmlDigest, out string expectedPayloadSha256))"
         )
-        rejected_digest = proof_capture.index("current = null;", normalize)
-        capture = proof_capture.index(
-            "await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(\n"
-            "                        proofState.Binding.WorkspaceId,\n"
-            "                        proofState.Binding.ContentRevision,\n"
-            "                        proofState.Binding.SavedRevision,\n"
-            "                        expectedPayloadSha256,\n"
-            "                        cancellationToken);"
+        rejected_digest = flat_proof.index("current = null;", normalize)
+        capture = flat_proof.index(
+            "await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync( "
+            "proofState.Binding.WorkspaceId, proofState.Binding.ContentRevision, "
+            "proofState.Binding.SavedRevision, expectedPayloadSha256, cancellationToken);"
         )
-        rejected_capture = proof_capture.index("if (proofAuthority is null)\n                    current = null;")
+        rejected_capture = flat_proof.index("if (proofAuthority is null) { current = null;")
         self.assertLess(normalize, rejected_digest)
-        self.assertLess(rejected_digest, proof_capture.index("else", rejected_digest))
-        self.assertLess(proof_capture.index("else", rejected_digest), capture)
+        self.assertLess(rejected_digest, flat_proof.index("else", rejected_digest))
+        self.assertLess(flat_proof.index("else", rejected_digest), capture)
         self.assertLess(capture, rejected_capture)
         self.assertEqual(2, proof_capture.count("current = null;"))
         self.assertNotIn("_dashboardAuthority =", before + proof_capture)
-        self.assertIn(
-            "cancellationToken.ThrowIfCancellationRequested();\n"
-            "        if (IsCurrentAppearanceGeneration(appearance))\n"
-            "            _dashboardAuthority = current is { } state\n"
-            "                                  && Coordinator.IsCreationPrerequisiteStateCurrent(state) ? state : null;",
-            after,
+        ordered_after = (
+            "cancellationToken.ThrowIfCancellationRequested();",
+            "if (!IsCurrentAppearanceGeneration(appearance)) return;",
+            "if (current is { } state)",
+            "if (!Coordinator.IsCreationPrerequisiteStateCurrent(state))",
+            "current = null;",
+            "[CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);",
+            "else if (!CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))",
+            "failure = RuleAuthorityNotReady(state);",
+            "_dashboardAuthority = current;",
+            "_appearanceFailure = failure;",
         )
+        positions = [flat_after.index(marker) for marker in ordered_after]
+        self.assertEqual(sorted(positions), positions)
+        for marker in (
+            "creation-prerequisite-proof-raw-digest-invalid",
+            "creation-prerequisite-proof-workspace-capture-unavailable",
+        ):
+            self.assertIn(marker, proof_capture)
+            self.assertNotIn(marker, before + after)
         for forbidden in (
             "RefreshApi36ProofWorkspaceAuthorityAsync", "AndroidE2EAuthority", "proofState",
         ):
@@ -1253,6 +1271,13 @@ class Api36ProofStateContractTests(unittest.TestCase):
         page = (ROOT / "src/Chummer.Android/Native/CreationPrerequisitePage.cs").read_text(
             encoding="utf-8"
         )
+        ready_start = page.index("protected override void Refresh()")
+        # A result-typed field/helper before Refresh is not its closing boundary.
+        ready_end = page.index(
+            "private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>\n"
+            "        ResolveCurrentAuthority()",
+            ready_start,
+        )
         edges = {
             "appearing": page[
                 page.index("protected override void OnAppearing()") :
@@ -1266,10 +1291,7 @@ class Api36ProofStateContractTests(unittest.TestCase):
                 page.index("private void OnApi36ProofLoaded(") :
                 page.index("private void TryPublishApi36AttachmentProof()")
             ],
-            "ready": page[
-                page.index("protected override void Refresh()") :
-                page.index("private CharacterCreationFoundationResult<")
-            ],
+            "ready": page[ready_start:ready_end],
         }
         for name, edge in edges.items():
             with self.subTest(edge=name):

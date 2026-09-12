@@ -25,6 +25,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private readonly CreationPrerequisitePhoneDraft _draft = new();
     private readonly CharacterCreationPrerequisiteState _originalAuthority;
     private CharacterCreationPrerequisiteState? _dashboardAuthority;
+    private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? _appearanceFailure;
     private long _renderGeneration;
     private IReadOnlyList<string> _prepareBlockers = [];
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -55,6 +56,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         // this appearance; a failed preparation must not revive cached authority.
         _body.IsEnabled = false;
         _dashboardAuthority = null;
+        _appearanceFailure = null;
         if (!_body.Children.Contains(_loading))
             _body.Children.Insert(0, _loading);
         _loading.IsRunning = true;
@@ -84,6 +86,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         _body.IsEnabled = false;
         _dashboardAuthority = null;
+        _appearanceFailure = null;
         _loading.IsRunning = false;
         _body.Children.Remove(_loading);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -97,45 +100,104 @@ public sealed class CreationPrerequisitePage : NativePageBase
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
         long appearance = CaptureAppearanceGeneration();
-        var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,
-            () => IsCurrentAppearanceGeneration(appearance));
-        if (!IsCurrentAppearanceGeneration(appearance))
-            return;
-
-        CharacterCreationPrerequisiteState? current = loaded.Value is { } loadedState
-            && Coordinator.IsCreationPrerequisiteStateCurrent(loadedState) ? loadedState : null;
-#if CHUMMER_API36_PROOF_INSTRUMENTATION
-        if (AndroidE2EAuthority.Enabled && current is { } proofState)
+        try
         {
-            // Confirmation reloads the presenter, which invalidates its diagnostic
-            // workspace snapshot. Revalidation alone does not recapture that
-            // snapshot. Read the actual current bytes before publishing this
-            // appearance; never synthesize proof from the retained page state.
-            if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
-                    proofState.Binding.RawCharacterXmlDigest,
-                    out string expectedPayloadSha256))
-            {
-                current = null;
-            }
+            var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,
+                () => IsCurrentAppearanceGeneration(appearance));
+            if (!IsCurrentAppearanceGeneration(appearance))
+                return;
+
+            CharacterCreationPrerequisiteState? current = null;
+            CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? failure = null;
+            if (!string.Equals(loaded.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal))
+                failure = CaptureAppearanceFailure(loaded.Outcome, loaded.Blockers);
+            else if (loaded.Value is not { } loadedState)
+                failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                    [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
+            else if (!Coordinator.IsCreationPrerequisiteStateCurrent(loadedState))
+                failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                    [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
             else
+                current = loadedState;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            if (AndroidE2EAuthority.Enabled && current is { } proofState)
             {
-                NativeWorkspaceAuthoritySnapshot? proofAuthority =
-                    await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
-                        proofState.Binding.WorkspaceId,
-                        proofState.Binding.ContentRevision,
-                        proofState.Binding.SavedRevision,
-                        expectedPayloadSha256,
-                        cancellationToken);
-                if (proofAuthority is null)
+                // Confirmation reloads the presenter, which invalidates its diagnostic
+                // workspace snapshot. Revalidation alone does not recapture that
+                // snapshot. Read the actual current bytes before publishing this
+                // appearance; never synthesize proof from the retained page state.
+                if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                        proofState.Binding.RawCharacterXmlDigest,
+                        out string expectedPayloadSha256))
+                {
                     current = null;
+                    failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                        ["creation-prerequisite-proof-raw-digest-invalid"]);
+                }
+                else
+                {
+                    NativeWorkspaceAuthoritySnapshot? proofAuthority =
+                        await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
+                            proofState.Binding.WorkspaceId,
+                            proofState.Binding.ContentRevision,
+                            proofState.Binding.SavedRevision,
+                            expectedPayloadSha256,
+                            cancellationToken);
+                    if (proofAuthority is null)
+                    {
+                        current = null;
+                        failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                            ["creation-prerequisite-proof-workspace-capture-unavailable"]);
+                    }
+                }
             }
-        }
 #endif
-        cancellationToken.ThrowIfCancellationRequested();
-        if (IsCurrentAppearanceGeneration(appearance))
-            _dashboardAuthority = current is { } state
-                                  && Coordinator.IsCreationPrerequisiteStateCurrent(state) ? state : null;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentAppearanceGeneration(appearance))
+                return;
+            if (current is { } state)
+            {
+                if (!Coordinator.IsCreationPrerequisiteStateCurrent(state))
+                {
+                    current = null;
+                    failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                        [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+                }
+                else if (!CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
+                {
+                    current = null;
+                    failure = RuleAuthorityNotReady(state);
+                }
+            }
+            _dashboardAuthority = current;
+            _appearanceFailure = failure;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            if (IsCurrentAppearanceGeneration(appearance))
+            {
+                _dashboardAuthority = null;
+                _appearanceFailure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                    ["creation-prerequisite-appearance-load-failed"]);
+            }
+            // NativePageBase still owns the exception alert. The page records only
+            // a safe failure code, never exception text, document bytes or owner data.
+            throw;
+        }
     }
+
+    private static CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        CaptureAppearanceFailure(string outcome, IEnumerable<string> blockers)
+        => new(outcome, null, Array.AsReadOnly(blockers.ToArray()));
+
+    private static CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        RuleAuthorityNotReady(CharacterCreationPrerequisiteState state)
+        => CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+            new[] { "creation-prerequisite-rule-authority-not-ready" }
+                .Concat(state.Blockers)
+                .Concat(state.Authority.Blockers)
+                .Concat(state.CreationKarmaBudget.Blockers)
+                .Distinct(StringComparer.Ordinal));
 
     protected override void Refresh()
     {
@@ -224,8 +286,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
 
         // Refresh only renders this page's issued authority. Appearance performs
         // bounded asynchronous revalidation; another owner's cache is never a fallback.
-        return new(CharacterCreationFoundationOutcomes.Conflict, null,
-            [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        if (_appearanceFailure is { } failure)
+            return failure;
+        if (_dashboardAuthority is { } unavailable)
+            return Coordinator.IsCreationPrerequisiteStateCurrent(unavailable)
+                ? RuleAuthorityNotReady(unavailable)
+                : CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                    [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        return CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+            [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
     }
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION

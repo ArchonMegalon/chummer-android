@@ -33,7 +33,10 @@ internal static partial class AfterRunAuthorityHarness
                 "postcommit-owner-b", "postcommit-observer", "entered-unknown",
                 "page-same", "page-departure", "page-old-render", "page-queued-departure", "page-load-fault",
                 "page-back-departure", "page-back-old-render", "page-back-owner-b", "page-back-owner-aba",
-                "parent-return", "parent-return-fault", "parent-return-departure", "parent-return-owner-b", "parent-return-owner-aba"];
+                "parent-return", "parent-return-fault", "parent-return-departure", "parent-return-owner-b", "parent-return-owner-aba",
+                "parent-return-core-blocked", "parent-return-core-invalid", "parent-return-core-empty",
+                "parent-return-core-copy", "parent-return-core-recovery", "parent-return-core-fault-recovery",
+                "parent-return-core-currentness"];
             if (parentReadinessOnly)
                 cases = cases.Where(scenario => scenario.StartsWith("parent-return", StringComparison.Ordinal)).ToArray();
             foreach (string scenario in cases)
@@ -127,6 +130,11 @@ internal static partial class AfterRunAuthorityHarness
                     && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
                 "SETUP: actual Bootstrap/Load did not issue an actionable Priority prerequisite: " + JsonSerializer.Serialize(loaded));
             var state = loaded.Value!;
+            if (scenario.StartsWith("parent-return-core-", StringComparison.Ordinal))
+            {
+                await RunPrerequisiteAppearanceFailureAsync(runtime, owners, ui, probe!, state, scenario);
+                return;
+            }
             if (scenario.StartsWith("parent-return", StringComparison.Ordinal))
             {
                 await RunPrerequisiteParentReturnAsync(runtime, owners, ui, probe!, state, scenario);
@@ -392,6 +400,9 @@ internal static partial class AfterRunAuthorityHarness
         public int PostCommitLoadFaultCalls { get; private set; }
         public int AfterCommitCalls { get; private set; }
         public int AppearanceLoadFaultCalls { get; private set; }
+        public int AppearanceOutcomeCalls { get; private set; }
+        public string? AppearanceOutcomeOverride { get; set; }
+        public List<string> AppearanceBlockers { get; } = [];
         public bool FailAppearanceLoad { get; set; }
         public bool FailPostCommitLoad { get; set; }
         public Action? AfterCommit { get; set; }
@@ -423,7 +434,17 @@ internal static partial class AfterRunAuthorityHarness
                     PostCommitLoadFaultCalls++;
                     throw new InvalidOperationException("diagnostic postcommit Load fault");
                 }
-                return actual.Load(owner, request);
+                var result = actual.Load(owner, request);
+                if (AppearanceOutcomeOverride is { } outcome)
+                {
+                    // Keep actual owner acquisition/source loading as the setup;
+                    // substitute only a negative response, never successful authority.
+                    Require(result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null },
+                        "SETUP: real Core Load was not successful before the negative response injection.");
+                    AppearanceOutcomeCalls++;
+                    return new(outcome, null, AppearanceBlockers);
+                }
+                return result;
             });
         public CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview> Preview(OwnerContextStamp owner,
             CharacterCreationPrerequisitePreviewRequest request) => Invoke("preview", () => actual.Preview(owner, request));
@@ -442,6 +463,125 @@ internal static partial class AfterRunAuthorityHarness
                 }
             }
             return result;
+        }
+    }
+
+    private static async Task RunPrerequisiteAppearanceFailureAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, IssuedPageUiContext ui, PrerequisiteCoreProbe probe,
+        CharacterCreationPrerequisiteState state, string scenario)
+    {
+        var page = new CreationPrerequisitePage(runtime.Coordinator, state);
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var navigation = new NavigationPage(new ContentPage { Title = "Prerequisite diagnostics origin" });
+        await navigation.PushAsync(page, animated: false);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        Task? pending = null;
+        int renders = 0, offUiRenders = 0;
+        void Observe(object? sender, ElementEventArgs args)
+        {
+            renders++;
+            if (!ReferenceEquals(SynchronizationContext.Current, ui) || page.Dispatcher.IsDispatchRequired) offUiRenders++;
+        }
+        body.ChildAdded += Observe; body.ChildRemoved += Observe;
+        try
+        {
+            await AppearAsync();
+            Require(body.IsEnabled && alerts.Titles.Count == 0
+                && IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "creation-prerequisite-prepare-preview"),
+                "SETUP: actual initial prerequisite appearance never rendered its ready surface.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            bool fault = scenario == "parent-return-core-fault-recovery";
+            bool invalid = scenario is "parent-return-core-invalid" or "parent-return-core-empty";
+            string[] expected = scenario == "parent-return-core-empty" ? [CharacterCreationFoundationOutcomes.Invalid]
+                : invalid ? ["diagnostic-core-prerequisite-invalid"]
+                : ["diagnostic-core-prerequisite-source-unavailable", "diagnostic-core-prerequisite-profile-unavailable"];
+            probe.AppearanceOutcomeOverride = fault ? null
+                : invalid ? CharacterCreationFoundationOutcomes.Invalid : CharacterCreationFoundationOutcomes.Blocked;
+            if (scenario != "parent-return-core-empty") probe.AppearanceBlockers.AddRange(expected);
+            probe.FailAppearanceLoad = fault;
+            int calls = probe.Calls.Count;
+            await AppearAsync();
+            Require(probe.Calls.Count == calls + 1 && probe.AppearanceOutcomeCalls == (fault ? 0 : 1)
+                && probe.AppearanceLoadFaultCalls == (fault ? 1 : 0),
+                "The intended appearance result/exception was not reached exactly once.");
+            Require(alerts.Titles.Count == (fault ? 1 : 0), "Negative Core result was mistaken for an exception, or load exception did not alert.");
+            AssertUnavailable(fault ? ["creation-prerequisite-appearance-load-failed"] : expected);
+
+            if (scenario == "parent-return-core-copy")
+            {
+                probe.AppearanceBlockers.Clear(); probe.AppearanceBlockers.Add("forged-after-return-blocker");
+                calls = probe.Calls.Count;
+                typeof(CreationPrerequisitePage).GetMethod("Refresh",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(page, null);
+                Require(probe.Calls.Count == calls, "A diagnostic rerender re-entered Core.");
+                AssertUnavailable(expected);
+            }
+            if (scenario == "parent-return-core-currentness")
+            {
+                IssuedPageLifecycle(page, "OnDisappearing");
+                var oldDisplay = runtime.Coordinator.State;
+                OwnerContextStamp owner = owners.Capture();
+                var target = new FileWorkspaceStore(runtime.StateDirectory).Get(owners.Current, runtime.Id).Value!;
+                await HydrateFinalizationOwnerAsync(runtime, owners, target);
+                Require(owners.Capture() == owner && !ReferenceEquals(oldDisplay.Profile, runtime.Coordinator.State.Profile)
+                    && oldDisplay.ContentRevision == runtime.Coordinator.State.ContentRevision
+                    && oldDisplay.SavedRevision == runtime.Coordinator.State.SavedRevision,
+                    "SETUP: same-owner/revision display replacement never happened.");
+                calls = probe.Calls.Count;
+                await AppearAsync();
+                Require(probe.Calls.Count == calls && probe.AppearanceOutcomeCalls == 1,
+                    "A retained stale issuance entered Core or borrowed the replacement display.");
+                AssertUnavailable([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+                Require(alerts.Titles.Count == 0, "A currentness rejection raised an unrelated exception.");
+            }
+            if (scenario is "parent-return-core-recovery" or "parent-return-core-fault-recovery")
+            {
+                IssuedPageLifecycle(page, "OnDisappearing");
+                probe.AppearanceOutcomeOverride = null; probe.FailAppearanceLoad = false;
+                calls = probe.Calls.Count;
+                await AppearAsync();
+                Require(probe.Calls.Count == calls + 1 && body.IsEnabled
+                    && !IssuedElements(page).Any(item => item.AutomationId == "creation-prerequisite-unavailable")
+                    && IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "creation-prerequisite-prepare-preview")
+                    && alerts.Titles.Count == (fault ? 1 : 0),
+                    "Later actual Core success retained the prior failure or repeated its alert.");
+                var current = (CharacterCreationPrerequisiteState?)typeof(CreationPrerequisitePage)
+                    .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                Require(current is not null && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(current),
+                    "Recovered controls were not backed by an actual fresh Core issuance.");
+            }
+            Require(probe.ConfirmCalls == 0 && owners.ActiveLeases == 0, "Diagnostic appearance mutated or retained an owner lease.");
+        }
+        finally
+        {
+            try
+            {
+                if (pending is not null) await JoinIssuedPageAsync(pending);
+                if (IssuedPageField<int>(page, "_subscribed") != 0) IssuedPageLifecycle(page, "OnDisappearing");
+                await JoinIssuedPageAsync(ui.RunAsync(() => Task.CompletedTask));
+                Require(renders > 0 && offUiRenders == 0 && owners.ActiveLeases == 0,
+                    "Diagnostic page renders escaped the actual managed dispatcher or leaked a lease.");
+                Console.WriteLine("PREREQUISITE_APPEARANCE_DIAGNOSTIC " + JsonSerializer.Serialize(new
+                { scenario, renders, offUiRenders, probe.AppearanceOutcomeCalls, probe.AppearanceLoadFaultCalls,
+                    alerts = alerts.Titles.ToArray(), scope = "actual managed Core/native lifecycle; proof-instrumentation branch not compiled" }));
+            }
+            finally { body.ChildAdded -= Observe; body.ChildRemoved -= Observe; }
+        }
+        async Task AppearAsync()
+        {
+            pending = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            await JoinIssuedPageAsync(pending); pending = null;
+        }
+        void AssertUnavailable(string[] blockers)
+        {
+            Require(!body.IsEnabled && !IssuedElements(page).OfType<Button>().Any()
+                && !IssuedElements(page).OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                "Unavailable appearance left controls active or a loading operation running.");
+            var border = IssuedElements(page).OfType<Border>().Single(item => item.AutomationId == "creation-prerequisite-unavailable");
+            string[] rendered = ((VerticalStackLayout)border.Content!).Children.OfType<Label>().Skip(1).Select(item => item.Text).ToArray();
+            Require(rendered.SequenceEqual(blockers), "Unavailable card replaced/lost/reordered blockers: " + JsonSerializer.Serialize(rendered));
         }
     }
 
