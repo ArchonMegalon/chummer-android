@@ -5444,7 +5444,9 @@ def wait_for_prerequisite_scan_origin(
     proof therefore issued eight blind reverse gestures, waited, and then paid
     for a second hierarchy read at the start of the stable scan.  This bounded
     acquisition instead reverses only while the exact prerequisite route is
-    present but its two top authority anchors are absent.  The hierarchy that
+    present but its two top authority anchors are absent, and the page is not
+    loading or reporting unavailable authority. Retained anchors from an older
+    appearance never establish readiness while revalidation is loading. The hierarchy that
     proves those anchors is returned for direct reuse as the scan's first
     viewport; duplicate route or anchor nodes still fail closed.  Only the
     untouched viewport immediately following its one opening tap may exchange
@@ -5482,6 +5484,7 @@ def wait_for_prerequisite_scan_origin(
     file_backed_attempts = 0
     direct_fallback_reads = 0
     hierarchy_durations_ms: list[int] = []
+    last_observation: dict[str, object] | None = None
 
     def record_origin(
         status: str,
@@ -5511,7 +5514,84 @@ def wait_for_prerequisite_scan_origin(
             }
         if opening_action is not None:
             payload["openingAction"] = json.loads(json.dumps(opening_action))
+        if status != "resolved" and last_observation is not None:
+            # Diagnostic only: retain one detached, already-observed frame. This
+            # is neither raw XML identity nor an alternate success authority, and
+            # collecting it must not spend another ADB/read/mutation lease.
+            payload["lastObservation"] = json.loads(json.dumps(last_observation))
         scan_observer(payload)
+
+    def remember_observation(nodes: list[shared.UiNode], mode: str) -> None:
+        nonlocal last_observation
+        if not nodes:
+            return
+        captured = [shared.UiNode(dict(node.attributes)) for node in nodes]
+        last_observation = {
+            "schema": "chummer.android.prerequisite-origin-observation/v1",
+            "observedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "observationMode": mode,
+            "hierarchyDigest": accessibility_signature_sha256(captured),
+            "hierarchyDigestDomain": CREATION_METHOD_ONE_SHOT_DIGEST_DOMAIN,
+            "nodeCount": len(captured),
+            "nodes": [node.attributes for node in captured],
+        }
+
+    def is_loading(nodes: list[shared.UiNode], *, direct: bool = False) -> bool:
+        state_selectors = (
+            "creation-prerequisite-loading",
+            "creation-prerequisite-unavailable",
+            "creation-prerequisite-blockers",
+        )
+        states = {
+            selector: [node for node in nodes if _exact_resource_id(node) == selector]
+            for selector in state_selectors
+        }
+        ambiguous = {key: len(value) for key, value in states.items() if len(value) > 1}
+        if ambiguous:
+            record_origin(
+                "state-cardinality-invalid",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="ambiguous" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite state cardinality invalid: {ambiguous!r}")
+        noncanonical = [
+            selector for selector, candidates in states.items() if candidates and (
+                candidates[0].attributes.get("package") != shared.PACKAGE
+                or candidates[0].attributes.get("resource-id")
+                != f"{shared.PACKAGE}:id/{selector}"
+            )
+        ]
+        if noncanonical:
+            record_origin(
+                "state-identity-invalid",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="noncanonical" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite state identity invalid: {noncanonical!r}")
+        # OnAppearing retains the previous body while adding the loading marker.
+        # Both old ready controls and old error cards are inert during this load.
+        if states[state_selectors[0]]:
+            return True
+        unavailable = [selector for selector in state_selectors[1:] if states[selector]]
+        if unavailable:
+            record_origin(
+                "authority-unavailable",
+                lease_reserve_exhausted=direct,
+                direct_fallback_result="authority-unavailable" if direct else "not-needed",
+            )
+            raise RuntimeError(f"Creation prerequisite authority unavailable: {unavailable!r}")
+        return False
+
+    def wait_for_next_observation(seconds: float, *, operation: str) -> None:
+        try:
+            sleep_before_phase_deadline(seconds, deadline=operation_deadline, operation=operation)
+        except RuntimeError:
+            record_origin(
+                "deadline-exhausted",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
+            raise
 
     def exact_matches(nodes: list[shared.UiNode]) -> dict[str, list[shared.UiNode]]:
         return {
@@ -5616,6 +5696,7 @@ def wait_for_prerequisite_scan_origin(
             hierarchy_durations_ms.append(
                 round((time.perf_counter() - direct_started) * 1000)
             )
+            remember_observation(nodes, "single-direct-read-only")
             observe_first_post_tap(nodes)
             matches = exact_matches(nodes)
             ambiguous = {
@@ -5632,6 +5713,15 @@ def wait_for_prerequisite_scan_origin(
                 raise RuntimeError(
                     "Creation prerequisite direct scan origin was ambiguous: "
                     f"{ambiguous!r}"
+                )
+            if is_loading(nodes, direct=True):
+                record_origin(
+                    "direct-fallback-loading",
+                    lease_reserve_exhausted=True,
+                    direct_fallback_result="loading",
+                )
+                raise RuntimeError(
+                    "Creation prerequisite direct scan origin did not expose a ready prerequisite surface"
                 )
             missing = [
                 selector
@@ -5679,12 +5769,19 @@ def wait_for_prerequisite_scan_origin(
                 hierarchy_durations_ms=tuple(hierarchy_durations_ms),
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
+        except Exception:
+            record_origin(
+                "file-read-failed",
+                lease_reserve_exhausted=False,
+                direct_fallback_result="not-needed",
+            )
+            raise
+        remember_observation(nodes, "fresh-file-backed")
         observe_first_post_tap(nodes)
         if not nodes:
             empty_hierarchy_reads += 1
-            sleep_before_phase_deadline(
+            wait_for_next_observation(
                 0.75,
-                deadline=operation_deadline,
                 operation="prerequisite scan-origin empty-hierarchy wait",
             )
             continue
@@ -5708,6 +5805,12 @@ def wait_for_prerequisite_scan_origin(
                 "Creation prerequisite scan origin was ambiguous: "
                 f"{ambiguous!r}"
             )
+        if is_loading(nodes):
+            wait_for_next_observation(
+                0.25,
+                operation="prerequisite scan-origin loading wait",
+            )
+            continue
         if len(matches[route_selector]) == 1 and all(
             len(matches[selector]) == 1 for selector in top_selectors
         ):
@@ -5733,9 +5836,8 @@ def wait_for_prerequisite_scan_origin(
                 empty_hierarchy_reads=empty_hierarchy_reads,
             )
         if device.dismiss_system_ui_anr(nodes, deadline=operation_deadline):
-            sleep_before_phase_deadline(
+            wait_for_next_observation(
                 2,
-                deadline=operation_deadline,
                 operation="prerequisite scan-origin system-UI wait",
             )
             continue
@@ -5746,9 +5848,8 @@ def wait_for_prerequisite_scan_origin(
             )
             reverse_swipes += 1
             continue
-        sleep_before_phase_deadline(
+        wait_for_next_observation(
             0.25,
-            deadline=operation_deadline,
             operation="prerequisite scan-origin retry wait",
         )
     record_origin(
