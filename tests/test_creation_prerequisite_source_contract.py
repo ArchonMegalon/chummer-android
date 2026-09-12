@@ -2508,13 +2508,159 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             continuity_guard=continuity,
         )
 
+    def test_resources_continuity_shared_scanner_ignores_empty_before_exact_entry(self) -> None:
+        # Only transport observations and elapsed time are modeled. The real
+        # bidirectional scanner, Resources opener, and continuity guard run.
+        for target_at_entry in (True, False):
+            with self.subTest(target_at_entry=target_at_entry):
+                expected = self.continuity_launch_state(("20952",))
+                entry = self.resources_continuity_nodes(entry=True, target=target_at_entry)
+                target = entry if target_at_entry else self.resources_continuity_nodes(target=True)
+                screens = iter([[], entry] if target_at_entry else [[], entry, [], target])
+                device = self.resources_continuity_device([])
+                clock = {"now": 10.0}
+                deadline = 130.0
+                continuity = driver.CreationDashboardContinuityGuard(
+                    device, expected, deadline=deadline, phase_id="process-restart-resources",
+                    resources_acquisition=True,
+                )
+
+                def read_hierarchy(**options):
+                    self.assertEqual({"deadline": deadline}, options)
+                    nodes = next(screens)
+                    if not nodes:
+                        # No new gesture or entry proof is caused by an empty
+                        # read, including an empty observation after one swipe.
+                        self.assertEqual(device.swipe_up.call_count, len(continuity.scroll_journal))
+                        device.shell.assert_not_called()
+                        if continuity.scroll_journal:
+                            device.dismiss_system_ui_anr.assert_called_once()
+                        else:
+                            device.dismiss_system_ui_anr.assert_not_called()
+                    return nodes
+
+                def advance(seconds):
+                    clock["now"] += seconds
+
+                device.hierarchy.side_effect = read_hierarchy
+                with (
+                    mock.patch.object(driver.shared.time, "monotonic", side_effect=lambda: clock["now"]),
+                    mock.patch.object(driver.shared.time, "sleep", side_effect=advance) as sleep,
+                    mock.patch.object(driver, "_strict_creation_dashboard_launch_state", return_value=expected) as launch,
+                    mock.patch.object(driver, "capture_creation_dashboard_continuity_failure") as capture,
+                    mock.patch.object(driver.shared, "reset_scroll_to_top") as reset,
+                ):
+                    self.open_guarded_resources(device, continuity, deadline)
+                self.assertEqual(2 if target_at_entry else 4, device.hierarchy.call_count)
+                self.assertEqual(1 if target_at_entry else 3, sleep.call_count)
+                self.assertEqual(1 if target_at_entry else 2, launch.call_count)
+                self.assertTrue(all(call.kwargs["deadline"] == deadline for call in launch.call_args_list))
+                self.assertEqual([0] if target_at_entry else [0, 1],
+                                 [row["gesturesIssued"] for row in continuity.scroll_journal])
+                self.assertTrue(continuity.scroll_journal[0]["requiredAnchors"]["exactDashboardEntry"])
+                self.assertTrue(all(row["expectedProcessIds"] == ["20952"]
+                                    for row in continuity.scroll_journal))
+                self.assertEqual(0 if target_at_entry else 1, device.swipe_up.call_count)
+                device.swipe_down.assert_not_called()
+                device.shell.assert_called_once_with(
+                    "input", "tap", *(str(value) for value in target[-1].center),
+                    timeout=15, deadline=deadline,
+                )
+                self.assertEqual(deadline, device.wait_for_single_exact_resource_id.call_args.kwargs["deadline"])
+                options = device.wait_exact_resource_id_bidirectional.call_args.kwargs
+                self.assertEqual(continuity.require_resources_scan, options["continuity_check"])
+                self.assertEqual((0, 22, 0.22, deadline),
+                                 (options["backward_scrolls"], options["forward_scrolls"],
+                                  options["scroll_distance_ratio"], options["deadline"]))
+                device.run.assert_not_called()
+                device.read_only_hierarchy.assert_not_called()
+                device.read_only_hierarchy_once.assert_not_called()
+                capture.assert_not_called()
+                reset.assert_not_called()
+
+    def test_resources_continuity_empty_reads_keep_original_deadline_without_actions(self) -> None:
+        for read_seconds in (0.0, 1.0):
+            with self.subTest(read_seconds=read_seconds):
+                clock = {"now": 0.0}
+                deadline = 1.0
+                device = self.resources_continuity_device([])
+                expected = self.continuity_launch_state()
+                continuity = driver.CreationDashboardContinuityGuard(
+                    device, expected, deadline=deadline, phase_id="process-restart-resources",
+                    resources_acquisition=True,
+                )
+
+                def read_hierarchy(**options):
+                    self.assertEqual({"deadline": deadline}, options)
+                    clock["now"] += read_seconds
+                    return []
+
+                def advance(seconds):
+                    clock["now"] += seconds
+
+                device.hierarchy.side_effect = read_hierarchy
+                with (
+                    mock.patch.object(driver.shared.time, "monotonic", side_effect=lambda: clock["now"]),
+                    mock.patch.object(driver.shared.time, "sleep", side_effect=advance) as sleep,
+                    mock.patch.object(driver, "_strict_creation_dashboard_launch_state") as launch,
+                    mock.patch.object(driver, "capture_creation_dashboard_continuity_failure") as capture,
+                    self.assertRaises(driver.shared.AdbOperationDeadlineExceeded),
+                ):
+                    self.open_guarded_resources(device, continuity, deadline)
+                self.assertEqual(2 if read_seconds == 0 else 1, device.hierarchy.call_count)
+                self.assertEqual(1 if read_seconds == 0 else 0, sleep.call_count)
+                self.assertEqual((), continuity.scroll_journal)
+                self.assertLessEqual(clock["now"], deadline)
+                device.swipe_up.assert_not_called()
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+                device.run.assert_not_called()
+                device.read_only_hierarchy.assert_not_called()
+                device.read_only_hierarchy_once.assert_not_called()
+                device.dismiss_system_ui_anr.assert_not_called()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+                launch.assert_not_called()
+                capture.assert_not_called()
+
+    def test_resources_continuity_scan_cannot_establish_entry_after_a_gesture(self) -> None:
+        for traversal, gestures in (("reverse", 0), ("forward", 1), ("forward", -1),
+                                    ("forward", True), ("forward", 0.0)):
+            with self.subTest(traversal=traversal, gestures=gestures):
+                device = self.resources_continuity_device([])
+                continuity = driver.CreationDashboardContinuityGuard(
+                    device, self.continuity_launch_state(), deadline=driver.time.monotonic() + 120,
+                    phase_id="process-restart-resources", resources_acquisition=True,
+                )
+                with (
+                    mock.patch.object(driver, "_strict_creation_dashboard_launch_state") as launch,
+                    self.assertRaisesRegex(RuntimeError, "before any scan gesture"),
+                ):
+                    continuity.require_resources_scan(
+                        self.resources_continuity_nodes(entry=True, target=True),
+                        "late-entry", traversal, gestures,
+                    )
+                self.assertEqual((), continuity.scroll_journal)
+                launch.assert_not_called()
+                with self.assertRaisesRegex(RuntimeError, "fresh dashboard entry"):
+                    continuity.require(self.resources_continuity_nodes(target=True), "still-unbound", "forward", 1)
+                device.shell.assert_not_called()
+                device.swipe_up.assert_not_called()
+                device.swipe_down.assert_not_called()
+
+    def test_resources_continuity_opener_uses_only_shared_scanner_entry_observations(self) -> None:
+        source = inspect.getsource(driver.open_resources)
+        self.assertIn('continuity_options["continuity_check"] = continuity_guard.require_resources_scan', source)
+        self.assertNotIn("device.hierarchy(", source)
+        self.assertNotIn("read_only_hierarchy", source)
+        self.assertNotIn("/dev/tty", source)
+        self.assertNotIn("require_resources_entry(", source)
+        self.assertNotIn("current_launch_state(", source)
+
     def test_resources_continuity_accepts_scrolling_without_the_offscreen_header(self) -> None:
         expected = self.continuity_launch_state()
         entry = self.resources_continuity_nodes(entry=True)
         scrolled = self.resources_continuity_nodes(target=True)
-        device = self.resources_continuity_device([
-            entry, self.resources_continuity_nodes(), scrolled,
-        ])
+        device = self.resources_continuity_device([entry, scrolled])
         deadline = driver.time.monotonic() + 120
         continuity = driver.CreationDashboardContinuityGuard(
             device, expected, deadline=deadline, phase_id="process-restart-resources",
@@ -2537,8 +2683,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "input", "tap", *(str(value) for value in scrolled[-1].center),
             timeout=15, deadline=deadline,
         )
-        self.assertEqual([0, 0, 1], [row["gesturesIssued"] for row in continuity.scroll_journal])
-        self.assertEqual(["dashboard-entry", "forward", "forward"],
+        self.assertEqual([0, 1], [row["gesturesIssued"] for row in continuity.scroll_journal])
+        self.assertEqual(["dashboard-entry", "forward"],
                          [row["traversal"] for row in continuity.scroll_journal])
         self.assertTrue(continuity.scroll_journal[0]["requiredAnchors"]["exactDashboardEntry"])
         self.assertFalse(continuity.scroll_journal[-1]["requiredAnchors"]["dashboardEntryRequired"])
@@ -2553,6 +2699,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         })]
         cases = {
             "launcher": launcher,
+            "foreign-package-with-exact-target": entry + launcher,
+            "wrong-route-with-exact-target": [self.canonical_node("creation-prerequisite-page"), entry[-1]],
             "missing-dashboard": self.resources_continuity_nodes(target=True),
             "duplicate-dashboard": entry + [entry[2]],
             "missing-root": entry[1:],
@@ -2562,7 +2710,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         }
         for label, nodes in cases.items():
             with self.subTest(label=label):
-                device = self.resources_continuity_device([nodes])
+                device = self.resources_continuity_device([[], nodes])
                 expected = self.continuity_launch_state()
                 deadline = driver.time.monotonic() + 120
                 continuity = driver.CreationDashboardContinuityGuard(
@@ -2572,11 +2720,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with (
                     mock.patch.object(driver, "_strict_creation_dashboard_launch_state", return_value=expected),
                     mock.patch.object(driver, "capture_creation_dashboard_continuity_failure") as capture,
+                    mock.patch.object(driver.shared.time, "sleep"),
                     self.assertRaisesRegex(RuntimeError, "continuity"),
                 ):
                     self.open_guarded_resources(device, continuity, deadline)
                 capture.assert_called_once()
-                device.wait_exact_resource_id_bidirectional.assert_not_called()
+                device.wait_exact_resource_id_bidirectional.assert_called_once()
+                self.assertEqual(2, device.hierarchy.call_count)
+                self.assertEqual(1, len(continuity.scroll_journal))
                 device.swipe_up.assert_not_called()
                 device.swipe_down.assert_not_called()
                 device.shell.assert_not_called()
@@ -2589,7 +2740,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             with self.subTest(changed_at_entry=changed_at_entry):
                 entry = self.resources_continuity_nodes(entry=True)
                 target = self.resources_continuity_nodes(target=True)
-                device = self.resources_continuity_device([entry, target])
+                device = self.resources_continuity_device([[], entry, target])
                 expected = self.continuity_launch_state(("20952",))
                 replacement = self.continuity_launch_state(("20953",))
                 observations = [replacement] if changed_at_entry else [expected, replacement]
@@ -2601,13 +2752,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with (
                     mock.patch.object(driver, "_strict_creation_dashboard_launch_state", side_effect=observations),
                     mock.patch.object(driver, "capture_creation_dashboard_continuity_failure") as capture,
+                    mock.patch.object(driver.shared.time, "sleep"),
                     self.assertRaisesRegex(RuntimeError, "package-pid-changed"),
                 ):
                     self.open_guarded_resources(device, continuity, deadline)
                 self.assertEqual(expected, capture.call_args.kwargs["expected"])
                 self.assertEqual(replacement, capture.call_args.kwargs["observed"])
                 device.shell.assert_not_called()
-                device.swipe_up.assert_not_called()
+                self.assertEqual(0 if changed_at_entry else 1, device.swipe_up.call_count)
+                self.assertEqual(2 if changed_at_entry else 3, device.hierarchy.call_count)
+                self.assertTrue(all(row["expectedProcessIds"] == ["20952"]
+                                    for row in continuity.scroll_journal))
                 device.swipe_down.assert_not_called()
                 device.wait_for_single_exact_resource_id.assert_not_called()
 
@@ -2624,7 +2779,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for label, final_nodes in hostile.items():
             with self.subTest(label=label):
                 device = self.resources_continuity_device([
-                    self.resources_continuity_nodes(entry=True), self.resources_continuity_nodes(), final_nodes,
+                    self.resources_continuity_nodes(entry=True), final_nodes,
                 ])
                 deadline = driver.time.monotonic() + 120
                 continuity = driver.CreationDashboardContinuityGuard(
@@ -2655,11 +2810,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         target = self.resources_continuity_nodes(target=True)[-1]
         disabled = self.canonical_node("creation-stage-resources", enabled="false")
         for label, nodes, message in (
-            ("duplicate", self.resources_continuity_nodes(target=True) + [target], "cardinality 2"),
-            ("disabled", self.resources_continuity_nodes() + [disabled], "not enabled"),
+            ("duplicate", self.resources_continuity_nodes(entry=True, target=True) + [target], "cardinality 2"),
+            ("disabled", self.resources_continuity_nodes(entry=True) + [disabled], "not enabled"),
         ):
             with self.subTest(label=label):
-                device = self.resources_continuity_device([self.resources_continuity_nodes(entry=True), nodes])
+                device = self.resources_continuity_device([[], nodes])
                 expected = self.continuity_launch_state()
                 deadline = driver.time.monotonic() + 120
                 continuity = driver.CreationDashboardContinuityGuard(
@@ -2668,12 +2823,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
                 with (
                     mock.patch.object(driver, "_strict_creation_dashboard_launch_state", return_value=expected),
+                    mock.patch.object(driver.shared.time, "sleep"),
                     self.assertRaisesRegex(RuntimeError, message),
                 ):
                     self.open_guarded_resources(device, continuity, deadline)
                 device.shell.assert_not_called()
                 device.swipe_up.assert_not_called()
                 device.swipe_down.assert_not_called()
+                self.assertEqual(2, device.hierarchy.call_count)
+                device.wait_for_single_exact_resource_id.assert_not_called()
 
     def test_resources_continuity_requires_entry_and_reuses_exact_restart_baseline(self) -> None:
         expected = self.continuity_launch_state()

@@ -1753,6 +1753,31 @@ class CreationDashboardContinuityGuard:
         self._require(nodes, scan_id, "dashboard-entry", 0, dashboard_entry=True)
         self._resources_entry_proven = True
 
+    def require_resources_scan(
+        self,
+        nodes: list[shared.UiNode],
+        scan_id: str,
+        traversal: str,
+        gestures_issued: int,
+    ) -> None:
+        """Admit the first usable Resources scan before any target or gesture.
+
+        The existing shared scanner owns bounded file-hierarchy acquisition.
+        An absent dump is not a new route: it cannot establish entry, advance
+        the viewport, or replace the originally verified restart identity.
+        Every real frame still passes the exact continuity guard.
+        """
+        if not self._resources_acquisition:
+            raise ValueError("Resources scanning requires Resources acquisition mode")
+        if not nodes:
+            raise RuntimeError("Resources scan has no usable hierarchy observation")
+        if not self._resources_entry_proven:
+            if traversal != "forward" or type(gestures_issued) is not int or gestures_issued != 0:
+                raise RuntimeError("Resources entry must be proven before any scan gesture")
+            self.require_resources_entry(nodes, f"{scan_id}-dashboard-entry")
+            return
+        self.require(nodes, scan_id, traversal, gestures_issued)
+
     def _require(
         self,
         nodes: list[shared.UiNode],
@@ -10507,13 +10532,12 @@ def open_resources(
     if continuity_guard is not None:
         if deadline is None or observed_dashboard is None:
             raise ValueError("Guarded Resources acquisition requires a dashboard and caller deadline")
-        # Do not use the caller's earlier UiNode as fresh foreground evidence.
+        # The first usable frame in the existing bounded forward scanner must
+        # prove exact dashboard entry before a target or gesture is admitted.
+        # Do not add a one-shot read here: an unavailable dump is not evidence
+        # of route loss, and the caller's older UiNode is not fresh authority.
         # The guard retains restart.restarted, never an arbitrary current PID.
-        continuity_guard.require_resources_entry(
-            device.hierarchy(deadline=deadline),
-            "process-restart-resources-dashboard-entry",
-        )
-        continuity_options["continuity_check"] = continuity_guard.require
+        continuity_options["continuity_check"] = continuity_guard.require_resources_scan
     if observed_dashboard is not None:
         _require_canonical_chummer_resource_id(
             device,
