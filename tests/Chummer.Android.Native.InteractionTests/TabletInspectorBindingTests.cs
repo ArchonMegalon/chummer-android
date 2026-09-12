@@ -2,7 +2,9 @@ using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
 using Chummer.Application.Owners;
+using Chummer.Application.Workspaces;
 using Chummer.Contracts.Owners;
+using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
@@ -13,6 +15,7 @@ internal static class TabletInspectorBindingTests
     private const string ItemAId = "11111111-1111-4111-8111-111111111111";
     private const string ItemBId = "22222222-2222-4222-8222-222222222222";
     private static readonly OwnerContextStamp LinkedDisplayOwner = new(OwnerScope.LocalSingleUser, "controlled-tablet-host", 0);
+    private static readonly OwnerContextStamp ConditionDisplayOwner = new(new OwnerScope("tablet-condition-a"), "controlled-tablet-condition-host", 1);
     public static async Task RunAsync()
     {
         UnsavedCollectionDraftSurvivesSelectionAndRefresh();
@@ -554,10 +557,17 @@ internal static class TabletInspectorBindingTests
 
     private static async Task DamageWaitRechecksTrackAndWorkspaceAsync()
     {
-        foreach (string change in new[] { "workspace", "revision", "track", "refresh", "departure", "owner-b", "owner-aba", "unchanged" })
+        foreach (string change in new[] { "workspace", "revision", "track", "refresh", "departure", "owner-b", "owner-aba", "live-owner-b", "live-owner-aba", "unchanged" })
         {
             using var fixture = new Fixture(condition: true);
             BindOwnerDriftCase(fixture, change);
+            CharacterOverviewState originalDisplay = fixture.State;
+            Require(originalDisplay.DisplayOwnerContext is { IsValid: true } initialOwner
+                && initialOwner == fixture.LiveConditionOwner
+                && initialOwner == originalDisplay.Session.OwnerContext
+                && initialOwner == fixture.ConditionShellOwner,
+                "Condition queue fixture did not begin with coherent display/session/shell/live owner admission.");
+            int ownerCapturesAfterQueue = -1;
             SemaphoreSlim gate = fixture.ActivationGate;
             Require(gate.Wait(0), "Could not reserve workspace gate.");
             Task<bool> action;
@@ -569,6 +579,9 @@ internal static class TabletInspectorBindingTests
                         fixture.State, fixture.Generation])!;
                 Require(!action.IsCompleted && fixture.ConditionRequests.Count == 0,
                     "Damage action did not wait for actual activation.");
+                // Exclude any capture before queueing: the assertion below must
+                // observe a new live-owner check after this held gate is released.
+                ownerCapturesAfterQueue = fixture.ConditionOwnerCaptureCalls;
                 switch (change)
                 {
                     case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-runner") }; break;
@@ -578,6 +591,16 @@ internal static class TabletInspectorBindingTests
                     case "departure": fixture.Depart(); break;
                     case "owner-b":
                     case "owner-aba": ChangeOwnerWithoutRefresh(fixture, change); break;
+                    case "live-owner-b":
+                    case "live-owner-aba":
+                        OwnerContextStamp originalOwner = fixture.LiveConditionOwner;
+                        fixture.LiveConditionOwner = originalOwner with
+                        { Owner = new OwnerScope("tablet-condition-b"), TransitionRevision = originalOwner.TransitionRevision + 1 };
+                        if (change == "live-owner-aba")
+                            fixture.LiveConditionOwner = originalOwner with { TransitionRevision = originalOwner.TransitionRevision + 2 };
+                        Require(ReferenceEquals(fixture.State, originalDisplay),
+                            "Live-owner probe changed the displayed state instead of only the independent accessor.");
+                        break;
                 }
             }
             finally { gate.Release(); }
@@ -590,6 +613,11 @@ internal static class TabletInspectorBindingTests
             }
             else Require(!await action && fixture.ConditionRequests.Count == 0,
                 $"Damage applied after {change} changed behind the gate.");
+            if (change is "live-owner-b" or "live-owner-aba")
+                Require(ownerCapturesAfterQueue >= 0
+                    && fixture.ConditionOwnerCaptureCalls > ownerCapturesAfterQueue
+                    && ReferenceEquals(fixture.State, originalDisplay),
+                    "Live-owner rejection did not consult the accessor inside the gate while preserving the old display.");
         }
     }
 
@@ -835,8 +863,9 @@ internal static class TabletInspectorBindingTests
     private static void BindOwnerDriftCase(Fixture fixture, string change)
     {
         if (change is not ("owner-b" or "owner-aba")) return;
-        fixture.State = fixture.State with
-        { DisplayOwnerContext = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1) };
+        OwnerContextStamp owner = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 1);
+        if (fixture.State.ActiveConditionMonitor is not null) fixture.PublishConditionOwner(owner);
+        else fixture.State = fixture.State with { DisplayOwnerContext = owner };
         fixture.Refresh();
     }
 
@@ -844,11 +873,14 @@ internal static class TabletInspectorBindingTests
     {
         // Leave the workspace, projection references and page generation alone.
         // Only the account publication changes while the action is queued.
-        fixture.State = fixture.State with
-        { DisplayOwnerContext = new(new OwnerScope("tablet-owner-b"), "tablet-account-authority", 2) };
+        void Publish(OwnerContextStamp owner)
+        {
+            if (fixture.State.ActiveConditionMonitor is not null) fixture.PublishConditionOwner(owner);
+            else fixture.State = fixture.State with { DisplayOwnerContext = owner };
+        }
+        Publish(new(new OwnerScope("tablet-owner-b"), "tablet-account-authority", 2));
         if (change == "owner-aba")
-            fixture.State = fixture.State with
-            { DisplayOwnerContext = new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 3) };
+            Publish(new(new OwnerScope("tablet-owner-a"), "tablet-account-authority", 3));
     }
 
     private static WorkspaceCollectionEditorState Editor(string a, string b)
@@ -941,6 +973,10 @@ internal static class TabletInspectorBindingTests
         };
         public readonly List<WorkspaceCollectionMutationRequest> Requests = [];
         public readonly List<ConditionMonitorEditRequest> ConditionRequests = [];
+        // Controlled host inputs only. The separate real Core/native suite proves storage effects.
+        public OwnerContextStamp LiveConditionOwner = ConditionDisplayOwner;
+        public OwnerContextStamp ConditionShellOwner = ConditionDisplayOwner;
+        public int ConditionOwnerCaptureCalls;
         public readonly RunnerSessionCoordinator Coordinator;
         public TabletBuildPage Page;
         public Task<bool> Confirmation = Task.FromResult(false);
@@ -964,6 +1000,8 @@ internal static class TabletInspectorBindingTests
             if (condition)
                 State = State with
                 {
+                    DisplayOwnerContext = ConditionDisplayOwner,
+                    Session = State.Session with { OwnerContext = ConditionDisplayOwner },
                     Profile = State.Profile! with { Created = true },
                     ActiveSectionId = "conditionmonitor", ActiveCollectionEditor = null,
                     ActiveConditionMonitor = new(true, [
@@ -995,16 +1033,31 @@ internal static class TabletInspectorBindingTests
                     }).ToArray()
                 }};
             var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add,
-                request => CollectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)));
+                request => CollectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)),
+                condition ? () => LiveConditionOwner : null);
             LinkedJournal = new AndroidLinkedCharacterIntentJournal(LinkedJournalDirectory);
             linkedReader ??= new ControlledLinkedReader(() => State);
             if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
             Coordinator = new RunnerSessionCoordinator(presenter,
-                null!, null!, null!, null!, null!, null!, StrictPageProxy.Create<IShellPresenter>(),
+                condition ? TabletOwnerCaptureProxy.Create(() =>
+                {
+                    ConditionOwnerCaptureCalls++;
+                    return LiveConditionOwner;
+                }) : null!,
+                null!, null!, null!, null!, null!,
+                condition ? StrictPageProxy.Create<IShellPresenter>(() => ShellState.Empty with
+                    { OwnerContext = ConditionShellOwner }) : StrictPageProxy.Create<IShellPresenter>(),
                 null!, null!, null!, linkedFiles!, null!, account ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
                 null!, null!, linkedCharacterJournal: LinkedJournal, linkedWorkspaceReader: linkedReader);
             Page = NewPage();
             Refresh();
+        }
+
+        public void PublishConditionOwner(OwnerContextStamp owner)
+        {
+            LiveConditionOwner = owner;
+            ConditionShellOwner = owner;
+            State = State with { DisplayOwnerContext = owner, Session = State.Session with { OwnerContext = owner } };
         }
 
         private TabletBuildPage NewPage() => new(Coordinator, (_, message, _, _) =>
@@ -1119,6 +1172,25 @@ internal static class TabletInspectorBindingTests
 }
 
 public interface ITabletOwnerBoundMutationTestPresenter : ICharacterOverviewPresenter, IOwnerBoundWorkspaceMutationPresenter { }
+public interface ITabletOwnerCaptureTestClient : IChummerClient, IOwnerBoundWorkspaceMutationClient { }
+
+public class TabletOwnerCaptureProxy : DispatchProxy
+{
+    private Func<OwnerContextStamp> _capture = null!;
+    public static IChummerClient Create(Func<OwnerContextStamp> capture)
+    {
+        var instance = Create<ITabletOwnerCaptureTestClient, TabletOwnerCaptureProxy>();
+        ((TabletOwnerCaptureProxy)(object)instance)._capture = capture;
+        return instance;
+    }
+    protected override object? Invoke(MethodInfo? method, object?[]? args)
+    {
+        if (method?.Name == nameof(IOwnerBoundWorkspaceMutationClient.CaptureOwnerContext)
+            && args is { Length: 0 }) return _capture();
+        // No storage reads, writes, canonical receipts or lease authority are faked here.
+        throw new InvalidOperationException($"Unexpected tablet owner-capture dependency: {method?.Name}");
+    }
+}
 
 public class TabletMutationProxy : DispatchProxy
 {
@@ -1126,11 +1198,13 @@ public class TabletMutationProxy : DispatchProxy
     private Action<WorkspaceCollectionMutationRequest> _observe = null!;
     private Action<ConditionMonitorEditRequest> _condition = null!;
     private Func<WorkspaceCollectionMutationRequest, Task>? _collectionResult;
+    private Func<OwnerContextStamp>? _conditionOwner;
 
     public static ICharacterOverviewPresenter Create(Func<CharacterOverviewState> state,
         Action<WorkspaceCollectionMutationRequest> observe,
         Action<ConditionMonitorEditRequest> condition,
-        Func<WorkspaceCollectionMutationRequest, Task>? collectionResult = null)
+        Func<WorkspaceCollectionMutationRequest, Task>? collectionResult = null,
+        Func<OwnerContextStamp>? conditionOwner = null)
     {
         var instance = Create<ITabletOwnerBoundMutationTestPresenter, TabletMutationProxy>();
         var proxy = (TabletMutationProxy)(object)instance;
@@ -1138,6 +1212,7 @@ public class TabletMutationProxy : DispatchProxy
         proxy._observe = observe;
         proxy._condition = condition;
         proxy._collectionResult = collectionResult;
+        proxy._conditionOwner = conditionOwner;
         return instance;
     }
 
@@ -1149,8 +1224,21 @@ public class TabletMutationProxy : DispatchProxy
         if (name == "get_State") return _state();
         if (name == "ApplyConditionMonitorEditAsync")
         {
-            _condition((ConditionMonitorEditRequest)args![0]!);
-            return Task.FromCanceled(new CancellationToken(canceled: true));
+            CharacterOverviewState current = _state();
+            if (args is not { Length: 5 }
+                || args[0] is not ConditionMonitorEditRequest request
+                || args[1] is not OwnerContextStamp { IsValid: true } owner
+                || args[2] is not CharacterWorkspaceId workspace
+                || args[3] is not long revision
+                || args[4] is not CancellationToken token
+                || _conditionOwner is null || owner != _conditionOwner()
+                || owner != current.DisplayOwnerContext || owner != current.Session.OwnerContext
+                || workspace != current.WorkspaceId || revision != current.ContentRevision)
+                throw new InvalidOperationException("The host dropped its exact original condition owner/workspace/revision binding.");
+            token.ThrowIfCancellationRequested();
+            _condition(request);
+            // Stop at dispatch observation, without inventing a canonical mutation result.
+            return Task.FromCanceled<CommandResult<WorkspaceRevisionReceipt>>(new CancellationToken(canceled: true));
         }
         if (name == "ApplyCollectionMutationAsync")
         {

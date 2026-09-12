@@ -107,6 +107,7 @@
   <data name="Priority.Preview.Binding" xml:space="preserve"><value>Revision {0} · saved {1} · preview {2}</value></data>
   <data name="Priority.Preview.Confirm" xml:space="preserve"><value>Confirm assignments draft</value></data>
   <data name="Priority.Preview.Confirmed" xml:space="preserve"><value>Creation-method draft confirmed and authoritative state reloaded.</value></data>
+  <data name="Priority.Preview.SavedReopenRequired" xml:space="preserve"><value>Draft saved. The current state could not be reloaded. Reopen the character before continuing.</value></data>
   <data name="Priority.Preview.ContentRevision" xml:space="preserve"><value>Content revision</value></data>
   <data name="Priority.Preview.DocumentChanged" xml:space="preserve"><value>Character document changed</value></data>
   <data name="Priority.Preview.Eyebrow" xml:space="preserve"><value>Explicit review</value></data>

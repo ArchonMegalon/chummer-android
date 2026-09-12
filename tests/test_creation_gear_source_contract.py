@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import os
+import runpy
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PRESENTATION_ROOT = ROOT.parent / "chummer-presentation"
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", ROOT.parent))
+PRESENTATION_ROOT = WORKSPACE / "chummer-presentation"
 PAGE = ROOT / "src/Chummer.Android/Native/CreationGearPage.cs"
 RESOURCES_PAGE = ROOT / "src/Chummer.Android/Native/CreationResourcesPage.cs"
 MAUI_PROGRAM = ROOT / "src/Chummer.Android/MauiProgram.cs"
@@ -18,6 +23,46 @@ def source(path: Path) -> str:
 
 
 class CreationGearSourceContractTests(unittest.TestCase):
+    def test_related_source_contracts_use_explicit_workspace_without_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            missing = Path(temporary) / "absent-workspace"
+            for label, configured, expected in (
+                ("explicit", str(WORKSPACE), WORKSPACE),
+                ("explicit-missing", str(missing), missing),
+                ("absent", None, ROOT.parent),
+            ):
+                with self.subTest(root=label), patch.dict(os.environ):
+                    if configured is None:
+                        os.environ.pop("CHUMMER_COMPLETE_ROOT", None)
+                    else:
+                        os.environ["CHUMMER_COMPLETE_ROOT"] = configured
+                    for filename in (
+                        "test_creation_gear_source_contract.py",
+                        "test_creation_resources_source_contract.py",
+                        "test_run_api36_sr5_before_run_edge_e2e_driver.py",
+                    ):
+                        with self.subTest(module=filename):
+                            module = runpy.run_path(str(ROOT / "tests" / filename))
+                            self.assertEqual(expected, module["WORKSPACE"])
+                            if "PRESENTER" in module:
+                                self.assertEqual(expected / "chummer-presentation", module["PRESENTATION_ROOT"])
+                                if label == "explicit-missing":
+                                    with self.assertRaises(FileNotFoundError):
+                                        module["source"](module["PRESENTER"])
+                            elif label != "absent":
+                                hosted = module["driver"]
+                                case = module["BeforeRunHostedDriverTests"](
+                                    "test_source_graph_binds_typed_app_presentation_core_and_fixture"
+                                )
+                                with patch.object(hosted, "source_paths", wraps=hosted.source_paths) as paths:
+                                    if label == "explicit-missing":
+                                        with self.assertRaises(AssertionError):
+                                            case.test_source_graph_binds_typed_app_presentation_core_and_fixture()
+                                    else:
+                                        case.test_source_graph_binds_typed_app_presentation_core_and_fixture()
+                                paths.assert_called_once()
+                                self.assertEqual(expected, paths.call_args.kwargs["workspace_root"])
+
     def test_phone_consumes_typed_renderer_neutral_presenter(self) -> None:
         page = source(PAGE)
         presenter = source(PRESENTER)

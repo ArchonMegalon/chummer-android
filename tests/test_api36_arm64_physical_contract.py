@@ -195,6 +195,9 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "SOURCE": ".:git:fixture",
             }),
             mock.patch.object(
+                contract, "TRUSTED_CORE_CONTENT_COMMIT", "6" * 40,
+            ),
+            mock.patch.object(
                 contract, "TRUSTED_CORE_CONTENT_TREE",
                 next(
                     row["tree"] for row in self.graph_payload()["repositories"]
@@ -530,7 +533,7 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                 "contractName": "chummer.android.internal-phone-beta-package-authority/v2",
                 "authorityState": "current_graph_verified",
                 "sourceGraph": {
-                    "corePackageRecipeCommit": "6" * 40,
+                    "corePackageRecipeCommit": "7" * 40,
                     "coreRuntimeSourceCommit": repository_map["chummer6-core"]["commit"],
                     "hubProducerCommit": repository_map["chummer6-hub"]["commit"],
                     "registryCommit": repository_map["chummer6-hub-registry"]["commit"],

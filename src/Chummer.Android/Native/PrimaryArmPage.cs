@@ -55,8 +55,7 @@ public sealed class PrimaryArmPage : NativePageBase
     protected override void Refresh()
     {
         bool editable = !_editor.Ambidextrous
-            && Coordinator.State.WorkspaceId == _editor.WorkspaceId
-            && Coordinator.State.ContentRevision == _editor.ContentRevision;
+            && Coordinator.IsPrimaryArmEditorCurrent(_editor);
         _primaryArm.IsEnabled = editable;
         _save.IsEnabled = editable;
     }
@@ -73,11 +72,11 @@ public sealed class PrimaryArmPage : NativePageBase
         }
 
         string value = _primaryArm.SelectedItem as string ?? _editor.Value;
-        await Coordinator.ApplyPrimaryArmEditAsync(new PrimaryArmEditRequest(
-            _editor.WorkspaceId,
-            _editor.ContentRevision,
-            value));
-        if (Coordinator.State.Error is null)
+        long appearance = CaptureAppearanceGeneration();
+        bool saved = await Coordinator.TryApplyBoundPrimaryArmEditAsync(
+            _editor, value, () => IsCurrentAppearanceGeneration(appearance));
+        if (saved && IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsPrimaryArmSaveCurrent(_editor))
         {
             await Navigation.PopAsync();
         }

@@ -35,6 +35,9 @@ class NativeCompileSourcePathTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        # Own the fixture workspace even when TMPDIR is nested in a real checkout
+        # with an outer integration shelf. Do not inherit the host's marker.
+        (self.root / ".integration-worktrees").mkdir()
         self.repo = self.root / "android"
         self.project = self.repo / "tests/Compile/Compile.csproj"
         self.project.parent.mkdir(parents=True)
@@ -66,6 +69,128 @@ class NativeCompileSourcePathTests(unittest.TestCase):
         compiled, issues = compile_graph.verify_source_graph(self.repo, self.project)
         self.assertEqual([], issues)
         self.assertEqual(5, len(compiled))
+
+    def _add_proof_inputs(self) -> str:
+        paths = (
+            "src/Chummer.Android/Proof/Api36ProofState.cs",
+            "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        )
+        for relative in paths:
+            target = self.repo / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("// owned proof-only fixture source\n", encoding="utf-8")
+        group = ('<ItemGroup Condition="\'$(ChummerNativeProofCaptureTests)\' == \'true\'">'
+                 + "".join(f'<Compile Include="../../{path}" />' for path in paths)
+                 + "</ItemGroup>")
+        text = self.manifest.read_text(encoding="utf-8").replace("</Project>", group + "</Project>")
+        self.manifest.write_text(text, encoding="utf-8")
+        return text
+
+    def test_proof_sources_are_counted_only_in_explicit_opt_in(self) -> None:
+        self._add_proof_inputs()
+        default, issues = compile_graph.verify_source_graph(self.repo, self.project)
+        self.assertEqual([], issues)
+        enabled, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=True)
+        self.assertEqual([], issues)
+        self.assertEqual(5, len(default))
+        self.assertEqual(7, len(enabled))
+        self.assertEqual({
+            self.repo / "src/Chummer.Android/Proof/Api36ProofState.cs",
+            self.repo / "src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+        }, set(enabled) - set(default))
+
+    def test_requested_proof_mode_cannot_silently_use_an_ordinary_manifest(self) -> None:
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=True)
+        self.assertTrue(any("proof-capture-input-group-count" in issue for issue in issues), issues)
+        for forged in ("true", "false", 1, 0, None):
+            with self.subTest(forged=forged):
+                _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=forged)
+                self.assertEqual(["proof-capture-option-must-be-boolean"], issues)
+
+    def test_unknown_manifest_conditions_fail_closed_in_both_modes(self) -> None:
+        original = self._add_proof_inputs()
+        replacements = (
+            ("<Project>", '<Project Condition="true">'),
+            ("'$(ChummerNativeProofCaptureTests)' == 'true'", "'$(UnreviewedFlag)' == 'true'"),
+            ("'$(ChummerNativeProofCaptureTests)' == 'true'", "'$(ChummerNativeProofCaptureTests)' != 'false'"),
+            ('<Compile Include="../../src/Chummer.Android/Native/Page.cs"',
+             '<Compile Condition="false" Include="../../src/Chummer.Android/Native/Page.cs"'),
+            ('<Compile Include="../../src/Chummer.Android/Native/Page.cs"',
+             '<Compile Exclude="**" Include="../../src/Chummer.Android/Native/Page.cs"'),
+        )
+        for old, new in replacements:
+            self.assertIn(old, original)
+            for enabled in (False, True):
+                with self.subTest(replacement=new, enabled=enabled):
+                    self.manifest.write_text(original.replace(old, new), encoding="utf-8")
+                    _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=enabled)
+                    self.assertTrue(any("owned-input-manifest-invalid" in issue for issue in issues), issues)
+
+    def test_proof_manifest_requires_exact_two_conditioned_sources(self) -> None:
+        original = self._add_proof_inputs()
+        group_start = original.index('<ItemGroup Condition=')
+        group = original[group_start:original.index('</ItemGroup>', group_start) + len('</ItemGroup>')]
+        variants = (
+            original.replace(' Condition="\'$(ChummerNativeProofCaptureTests)\' == \'true\'"', ""),
+            original.replace('<Compile Include="../../src/Chummer.Android/Proof/Api36ProofState.cs" />', ""),
+            original.replace('Api36ProofStatePublisher.cs', 'Unapproved.cs'),
+            original.replace('</Project>', group + '</Project>'),
+            original.replace('<Compile Include="../../src/Chummer.Android/Proof/Api36ProofState.cs" />',
+                             '<Compile Include="../../src/Chummer.Android/Proof/Api36ProofStatePublisher.cs" />'),
+        )
+        for index, text in enumerate(variants):
+            for enabled in (False, True):
+                with self.subTest(index=index, enabled=enabled):
+                    self.manifest.write_text(text, encoding="utf-8")
+                    _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=enabled)
+                    self.assertTrue(any("proof-capture-input" in issue for issue in issues), issues)
+
+    def test_unconditional_proof_aliases_and_globs_cannot_bypass_opt_in(self) -> None:
+        original = self._add_proof_inputs()
+        for include in ("../../src/Chummer.Android/Native/../Proof/Api36ProofState.cs",
+                        "../../src/Chummer.Android/P?oof/Api36Proof*.cs"):
+            for enabled in (False, True):
+                with self.subTest(include=include, enabled=enabled):
+                    self.manifest.write_text(original.replace("</ItemGroup>",
+                        f'<Compile Include="{include}" /></ItemGroup>', 1), encoding="utf-8")
+                    _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=enabled)
+                    self.assertTrue(any("proof-capture-resolved-input-set-mismatch" in issue
+                                        or "compile-input-resolves-more-than-once" in issue for issue in issues), issues)
+        extra = self.repo / "src/Chummer.Android/Proof/Unapproved.cs"
+        extra.write_text("// unapproved proof fixture\n", encoding="utf-8")
+        self.manifest.write_text(original.replace("</ItemGroup>",
+            '<Compile Include="../../src/Chummer.Android/Native/../Proof/Unapproved.cs" /></ItemGroup>', 1), encoding="utf-8")
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=True)
+        self.assertIn("proof-capture-resolved-input-set-mismatch", issues)
+
+    def test_opted_in_proof_file_cannot_be_a_link_or_missing(self) -> None:
+        self._add_proof_inputs()
+        path = self.repo / "src/Chummer.Android/Proof/Api36ProofState.cs"
+        target = path.with_name("Actual.cs")
+        path.rename(target)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=True)
+        self.assertTrue(any("compile-input-unavailable" in issue for issue in issues), issues)
+        path.symlink_to(target.name)
+        _, issues = compile_graph.verify_source_graph(self.repo, self.project, proof_capture_tests=True)
+        self.assertTrue(any("symlink" in issue for issue in issues), issues)
+
+    def test_cli_records_explicit_proof_mode_and_rejects_ambiguous_options(self) -> None:
+        self._add_proof_inputs()
+        command = [sys.executable, "-B", str(REPO / "scripts/verify_native_compile_graph.py"),
+                   "--repo-root", str(self.repo), "--project", str(self.project)]
+        for arguments, count, enabled in (([], 5, False), (["--proof-capture-tests", "false"], 5, False),
+                                          (["--proof-capture-tests", "true"], 7, True)):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(command + arguments, capture_output=True, text=True, timeout=10, check=False)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                payload = json.loads(result.stdout)
+                self.assertIs(enabled, payload["proofCaptureTests"])
+                self.assertEqual(count, payload["compiledOwnedSourceCount"])
+        for arguments in (["--proof-capture-tests", "1"], ["--proof-capture-tests", "True"],
+                          ["--proof-capture-tests", "true", "--assets-only"]):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(command + arguments, capture_output=True, text=True, timeout=10, check=False)
+                self.assertNotEqual(0, result.returncode)
 
     def test_msbuild_dot_segment_repo_root_infers_the_canonical_workspace(self) -> None:
         dependency = self.root / "chummer-presentation/Presentation.csproj"

@@ -11,6 +11,45 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static Task RunNativeDialogBusyCaseAsync()
+    {
+        using var fixture = new PageFixture();
+        DesktopDialogState dialog = new("dialog.new_character", "Select Build Method", null, [],
+            [new DesktopDialogAction("create_character", "OK"), new DesktopDialogAction("cancel", "Cancel")]);
+        var page = new NativeDialogPage(fixture.Coordinator, dialog);
+        MethodInfo setBusy = typeof(NativeDialogPage).GetMethod("SetInteractionBusy",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        MethodInfo render = typeof(NativeDialogPage).GetMethod("Render",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        Check(false);
+        setBusy.Invoke(page, [true]);
+        Check(true);
+        // Replacement controls must retain the in-flight action's visible state.
+        render.Invoke(page, [dialog]);
+        Check(true);
+        setBusy.Invoke(page, [false]);
+        Check(false);
+        Console.WriteLine("PASS actual native dialog busy container, children, actions and rerender");
+        return Task.CompletedTask;
+
+        void Check(bool busy)
+        {
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content;
+            var container = body.Children.OfType<HorizontalStackLayout>()
+                .Single(item => item.AutomationId == "dialog-busy");
+            var indicator = container.Children.OfType<ActivityIndicator>().Single();
+            var label = container.Children.OfType<Label>().Single();
+            Require(container.IsVisible == busy && indicator.IsVisible == busy
+                    && indicator.IsRunning == busy && label.IsVisible == busy,
+                "Busy feedback must have a visible parent and running children only during the action.");
+            Require(body.Children.OfType<Grid>().Single().Children.OfType<Button>()
+                    .All(button => button.IsEnabled == !busy)
+                    && page.ToolbarItems.Single().IsEnabled == !busy,
+                "Native dialog actions and Close must follow the busy interaction state.");
+        }
+    }
+
     public static async Task RunNativePageCasesAsync()
     {
         await DiscardDialogKeepsOrDeletesOnlyTheReviewedJournalAsync();

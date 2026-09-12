@@ -7,6 +7,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+    <ChummerNativeProofCaptureTests Condition="'$(ChummerNativeProofCaptureTests)' == ''">false</ChummerNativeProofCaptureTests>
+    <DefineConstants Condition="'$(ChummerNativeProofCaptureTests)' == 'true'">$(DefineConstants);CHUMMER_API36_PROOF_INSTRUMENTATION</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
@@ -43,6 +45,10 @@
   </ItemGroup>
   <Import Project="NativeCompileInputs.props" />
   <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">
-    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/../../scripts/verify_native_compile_graph.py&quot; --repo-root &quot;$(MSBuildProjectDirectory)/../..&quot; --project &quot;$(MSBuildProjectFullPath)&quot; --require-assets" />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerNativeProofCaptureTests)', '\A(true|false)\z'))"
+           Text="ChummerNativeProofCaptureTests must be exactly true or false." />
+    <Error Condition="'$(ChummerNativeProofCaptureTests)' == 'true' and '$(Configuration)' != 'Debug'"
+           Text="ChummerNativeProofCaptureTests is supported only in the managed Debug test build; it is not a Release or APK qualification." />
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/../../scripts/verify_native_compile_graph.py&quot; --repo-root &quot;$(MSBuildProjectDirectory)/../..&quot; --project &quot;$(MSBuildProjectFullPath)&quot; --require-assets --proof-capture-tests &quot;$(ChummerNativeProofCaptureTests)&quot;" />
   </Target>
 </Project>

@@ -62,7 +62,8 @@ def test_playtime_uses_one_restart_safe_typed_transaction_presenter() -> None:
     assert "state.Snapshot.WorkspaceId" in page
     assert "Sr5PlaytimeDamageIntegrity.IsSupportedTrack(track.Track)" in page
     assert "!track.ActsAsAlternateTrack" in page
-    assert "ApplyConditionMonitorEditAsync(" in damage_page
+    assert "TryApplyAndSaveBoundConditionMonitorEditAsync(" in damage_page
+    assert "await Coordinator.ApplyConditionMonitorEditAsync(" not in damage_page
     assert "Sr5CareerMutationDomains.PlaytimeDamage" in damage_transaction
     assert "observed.WorkspaceRevision != journal.Quote.Original.WorkspaceRevision + 1" in damage_transaction
 
@@ -73,3 +74,36 @@ def test_playtime_uses_one_restart_safe_typed_transaction_presenter() -> None:
     assert "IdempotencyKey" in transaction
     assert "TryReturnToReview(" in transaction
     assert "TryClearApplied(" in transaction
+
+
+def test_damage_confirmation_retains_review_owner_and_requires_explicit_save() -> None:
+    page = (REPO / "src/Chummer.Android/Native/Sr5PlaytimeDamageWizardPage.cs").read_text(
+        encoding="utf-8"
+    )
+    coordinator = (REPO / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs").read_text(
+        encoding="utf-8"
+    )
+    review = page.split("public sealed class Sr5PlaytimeDamageReviewPage", 1)[1]
+    confirm = review.split("private async Task ConfirmAsync(", 1)[1].split(
+        "private Sr5PlaytimeDamageSnapshot? ProjectCurrent()", 1
+    )[0]
+    helper = coordinator.split(
+        "internal Task<WorkspaceSaveReceipt?> TryApplyAndSaveBoundConditionMonitorEditAsync(", 1
+    )[1].split("public Task<CareerReputationEditorState?>", 1)[0]
+
+    assert "_reviewFrame = coordinator.State;" in review
+    assert "_originalOwner = _reviewFrame.DisplayOwnerContext;" in review
+    assert "ConfirmAsync(renderGeneration, appearanceGeneration)" in review
+    assert "IsCurrentAppearanceGeneration(appearanceGeneration)" in confirm
+    assert "_reviewFrame," in confirm
+    assert "if (saved is null || observed is null" in confirm
+    assert "TryReturnToReview(" not in confirm
+    assert confirm.rindex("IsCurrentReview()") > confirm.rindex('Text("Damage saved")')
+    assert "WithWorkspaceActivationGateAsync<WorkspaceSaveReceipt?>" in helper
+    assert "|| !isCurrentReview())" in helper
+    assert "request, owner, workspaceId, expected.ContentRevision" in helper
+    assert "await persistence.SaveAsync(" in helper
+    assert "owner, workspaceId, committed.ContentRevision" in helper
+    assert "receipt.SavedRevision != committed.ContentRevision" in helper
+    assert "return receipt;" in helper
+    assert "Coordinator.SaveAsync(" not in confirm

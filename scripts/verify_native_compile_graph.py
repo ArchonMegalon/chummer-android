@@ -16,6 +16,11 @@ from typing import Any, Iterable
 SCHEMA = "chummer.android.native-compile-graph/v1"
 DEFAULT_PROJECT = Path("tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj")
 INPUTS_FILE = "NativeCompileInputs.props"
+PROOF_CAPTURE_CONDITION = "'$(ChummerNativeProofCaptureTests)' == 'true'"
+PROOF_CAPTURE_INPUTS = (
+    "../../src/Chummer.Android/Proof/Api36ProofState.cs",
+    "../../src/Chummer.Android/Proof/Api36ProofStatePublisher.cs",
+)
 
 
 def _is_within(path: Path, root: Path) -> bool:
@@ -51,16 +56,46 @@ def _load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _compile_includes(inputs_path: Path) -> list[str]:
+def _compile_includes(inputs_path: Path, proof_capture_tests: bool = False) -> list[str]:
     root = ET.parse(inputs_path).getroot()
-    return [
-        element.attrib["Include"]
-        for element in root.findall(".//Compile")
-        if "Include" in element.attrib
-    ]
+    # This is a closed input manifest, not a general MSBuild evaluator. Do not
+    # count conditionally excluded files as though the compiler consumed them.
+    if root.tag != "Project" or root.attrib:
+        raise ValueError("unsupported-input-manifest-root")
+    includes: list[str] = []
+    proof_groups = 0
+    for group in root:
+        if group.tag != "ItemGroup" or set(group.attrib) - {"Condition"}:
+            raise ValueError("unsupported-input-manifest-group")
+        condition = group.attrib.get("Condition")
+        if condition not in (None, PROOF_CAPTURE_CONDITION):
+            raise ValueError("unsupported-input-manifest-condition")
+        group_inputs: list[str] = []
+        for element in group:
+            if (element.tag != "Compile" or "Include" not in element.attrib
+                    or set(element.attrib) - {"Include", "Link"} or len(element)):
+                raise ValueError("unsupported-compile-input-declaration")
+            group_inputs.append(element.attrib["Include"])
+        if condition == PROOF_CAPTURE_CONDITION:
+            proof_groups += 1
+            if len(group_inputs) != 2 or set(group_inputs) != set(PROOF_CAPTURE_INPUTS):
+                raise ValueError("proof-capture-input-set-mismatch")
+            if proof_capture_tests:
+                includes.extend(group_inputs)
+        else:
+            if any(value.startswith("../../src/Chummer.Android/Proof/") for value in group_inputs):
+                raise ValueError("proof-capture-input-requires-explicit-opt-in")
+            includes.extend(group_inputs)
+    if proof_groups > 1 or proof_capture_tests and proof_groups != 1:
+        raise ValueError("proof-capture-input-group-count")
+    return includes
 
 
-def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path], list[str]]:
+def verify_source_graph(
+    repo_root: Path, project_path: Path, *, proof_capture_tests: bool = False,
+) -> tuple[list[Path], list[str]]:
+    if type(proof_capture_tests) is not bool:
+        return [], ["proof-capture-option-must-be-boolean"]
     for label, path in (("source-root", repo_root), ("compile-project", project_path)):
         symlink = _first_symlink(path)
         if symlink is not None:
@@ -84,7 +119,10 @@ def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path]
     if not inputs_path.is_file() or inputs_path.is_symlink():
         return [], issues + [f"owned-input-manifest-unavailable:{inputs_path}"]
 
-    includes = _compile_includes(inputs_path)
+    try:
+        includes = _compile_includes(inputs_path, proof_capture_tests)
+    except (ET.ParseError, OSError, ValueError) as error:
+        return [], issues + [f"owned-input-manifest-invalid:{error}"]
     if len(includes) != len(set(includes)):
         issues.append("duplicate-compile-input")
     compiled: list[Path] = []
@@ -113,6 +151,12 @@ def verify_source_graph(repo_root: Path, project_path: Path) -> tuple[list[Path]
     if len(compiled) != len(set(compiled)):
         issues.append("compile-input-resolves-more-than-once")
     compiled_set = set(compiled)
+    proof_root = repo_root / "src/Chummer.Android/Proof"
+    actual_proof = {path for path in compiled_set if _is_within(path, proof_root)}
+    expected_proof = ({(project_path.parent / value).resolve() for value in PROOF_CAPTURE_INPUTS}
+                      if proof_capture_tests else set())
+    if actual_proof != expected_proof:
+        issues.append("proof-capture-resolved-input-set-mismatch")
     native_root = repo_root / "src/Chummer.Android/Native"
     expected_native = set(native_root.glob("*.cs"))
     actual_native = {path for path in compiled_set if path.parent == native_root}
@@ -261,7 +305,11 @@ def main() -> int:
     parser.add_argument("--require-assets", action="store_true")
     parser.add_argument("--assets-only", action="store_true")
     parser.add_argument("--assets-root", type=Path)
+    parser.add_argument("--proof-capture-tests", choices=("false", "true"), default="false")
     args = parser.parse_args()
+    proof_capture_tests = args.proof_capture_tests == "true"
+    if proof_capture_tests and args.assets_only:
+        parser.error("proof capture requires source verification; --assets-only is insufficient")
 
     # Reject lexical links before resolving MSBuild's legitimate /../.. root.
     # Workspace ancestry must be inferred from the canonical repository, not
@@ -281,7 +329,7 @@ def main() -> int:
         if args.workspace_root is None:
             workspace_root = _default_workspace_root(repo_root)
         if not args.assets_only:
-            compiled, issues = verify_source_graph(repo_root, project_path)
+            compiled, issues = verify_source_graph(repo_root, project_path, proof_capture_tests=proof_capture_tests)
         if args.require_assets or args.assets_only:
             referenced, asset_issues = verify_asset_graph(
                 project_path, workspace_root, args.assets_root,
@@ -294,6 +342,7 @@ def main() -> int:
         "workspaceRoot": str(workspace_root),
         "compileProject": str(project_path),
         "compiledOwnedSourceCount": len(compiled),
+        "proofCaptureTests": proof_capture_tests,
         "generatedProjectReferenceCount": len(referenced),
         "issues": sorted(set(issues)),
     }

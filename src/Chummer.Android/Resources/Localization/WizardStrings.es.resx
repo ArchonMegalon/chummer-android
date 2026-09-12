@@ -107,6 +107,7 @@
   <data name="Priority.Preview.Binding" xml:space="preserve"><value>Revisión {0} · guardada {1} · vista previa {2}</value></data>
   <data name="Priority.Preview.Confirm" xml:space="preserve"><value>Confirmar borrador de asignaciones</value></data>
   <data name="Priority.Preview.Confirmed" xml:space="preserve"><value>Se confirmó el borrador del método de creación y se recargó el estado autoritativo.</value></data>
+  <data name="Priority.Preview.SavedReopenRequired" xml:space="preserve"><value>Borrador guardado. No se pudo recargar el estado actual. Vuelve a abrir el personaje antes de continuar.</value></data>
   <data name="Priority.Preview.ContentRevision" xml:space="preserve"><value>Revisión de contenido</value></data>
   <data name="Priority.Preview.DocumentChanged" xml:space="preserve"><value>Documento del personaje modificado</value></data>
   <data name="Priority.Preview.Eyebrow" xml:space="preserve"><value>Revisión explícita</value></data>

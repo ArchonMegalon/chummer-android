@@ -376,7 +376,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = CREATION_DRIVER_PATH.read_text(encoding="utf-8")
         active = source[
             source.index("active_plan_digest = require_exact_preview_talent_grant_plan(") :
-            source.index('device.capture("creation-prerequisite-talent-active-skill-preview")')
+            source.index('active_preview_digest = str(active_preview_proof["previewDigest"])')
         ]
         skill_group = source[
             source.index("skill_group_plan_digest = require_exact_preview_talent_grant_plan(") :
@@ -385,9 +385,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ))
         ]
         self.assertIn(
-            'deadline=progress.active_phase_deadline("talent-active-preview")',
+            "deadline=active_preview_deadline",
             active,
         )
+        active_phase = source[
+            source.index('progress.advance("talent-active-preview")') :
+            source.index('progress.advance("talent-skill-group-selection")')
+        ]
+        self.assertEqual(
+            1,
+            active_phase.count(
+                'active_preview_deadline = progress.active_phase_deadline("talent-active-preview")'
+            ),
+        )
+        # Opener, scan, capture, Back and parent-route read share one deadline;
+        # none may start a new full phase budget after the previous operation.
+        self.assertEqual(5, active_phase.count("deadline=active_preview_deadline"))
         self.assertIn(
             "deadline=preview_confirm_deadline",
             skill_group,
@@ -5724,6 +5737,373 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "workspace-authority-cardinality-invalid"
             )
 
+    def test_exact_resource_deadline_retains_actual_empty_hierarchy_delay_context(self) -> None:
+        for selector, prefix, surface in (
+            ("creation-prerequisite-confirm", "creation-prerequisite-confirm-current",
+             "Measured current Preview Confirm action"),
+            ("creation-prerequisite-confirmed", "creation-prerequisite-confirmed-receipt-transition",
+             "Confirmed prerequisite state transition"),
+        ):
+            with self.subTest(selector=selector), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary)
+                device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+                now, monotonic, sleep = self._fake_clock()
+                with (
+                    patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                    patch.object(DRIVER.time, "sleep", side_effect=sleep),
+                    patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                    patch.object(device, "hierarchy", wraps=device.hierarchy) as hierarchy,
+                    patch.object(device, "capture", wraps=device.capture) as capture,
+                    self.assertRaisesRegex(DRIVER.AdbOperationDeadlineExceeded, "bounded acquisition delay") as failed,
+                ):
+                    device.wait_for_single_exact_resource_id(
+                        selector, timeout=1, deadline=360.0, scroll=False,
+                        evidence_prefix=prefix, surface_name=surface,
+                    )
+                adb.assert_not_called()
+                capture.assert_not_called()
+                self.assertEqual([call(deadline=1.0), call(deadline=1.0)], hierarchy.call_args_list)
+                self.assertEqual(0.75, now[0])
+                self.assertIn("owned-file retry", (evidence / "last-invalid-hierarchy.txt").read_text())
+                diagnostic = json.loads((evidence / f"{prefix}-deadline.json").read_text())
+                self.assertEqual(selector, diagnostic["selector"])
+                self.assertEqual(prefix, diagnostic["evidencePrefix"])
+                self.assertEqual(surface, diagnostic["surfaceName"])
+                self.assertEqual("empty-hierarchy-delay", diagnostic["stage"])
+                self.assertEqual(2, diagnostic["hierarchyReads"])
+                self.assertEqual(2, diagnostic["emptyHierarchyReads"])
+                self.assertEqual(0, diagnostic["scrolls"])
+                self.assertIsNone(diagnostic["lastMatchCount"])
+                self.assertEqual(1.0, diagnostic["operationDeadline"])
+                self.assertEqual(360.0, diagnostic["callerDeadline"])
+                self.assertEqual(0.75, diagnostic["observedAtMonotonic"])
+                self.assertEqual(type(failed.exception).__name__, diagnostic["errorType"])
+                self.assertTrue(any(selector in note for note in failed.exception.__notes__))
+                projections = diagnostic["observedHierarchyProjections"]
+                self.assertIsNone(projections["firstNonempty"])
+                self.assertIsNone(projections["latestNonempty"])
+                self.assertEqual(0, projections["collectionFailures"])
+
+    def test_exact_resource_deadline_retains_detached_first_latest_nonempty_views(self) -> None:
+        before = DRIVER.UiNode({
+            "resource-id": f"{DRIVER.PACKAGE}:id/creation-prerequisite-confirm",
+            "bounds": "[20,900][400,950]", "enabled": "true", "clickable": "true",
+        })
+        after = DRIVER.UiNode({
+            "resource-id": "android:id/message", "class": "android.widget.TextView",
+            "bounds": "[20,200][400,400]",
+        })
+        original_before, original_after = dict(before.attributes), dict(after.attributes)
+        observations = iter(([before], [after], []))
+
+        def hierarchy(*, deadline: float) -> list[object]:
+            self.assertEqual(2.0, deadline)
+            nodes = next(observations)
+            if nodes == [after]:
+                before.attributes["enabled"] = "false"
+            elif not nodes:
+                before.attributes.clear()
+                after.attributes.clear()
+            return nodes
+
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            now, monotonic, sleep = self._fake_clock()
+            with (
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic) as clock,
+                patch.object(DRIVER.time, "sleep", side_effect=sleep) as delay,
+                patch.object(device, "hierarchy", side_effect=hierarchy) as reads,
+                patch.object(device, "dismiss_system_ui_anr", return_value=False) as anr,
+                patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                patch.object(device, "capture") as capture,
+                self.assertRaisesRegex(DRIVER.AdbOperationDeadlineExceeded, "bounded acquisition delay"),
+            ):
+                device.wait_for_single_exact_resource_id(
+                    "creation-prerequisite-confirmed", timeout=2, deadline=360.0,
+                    scroll=False, max_scrolls=0,
+                )
+            self.assertEqual(8, clock.call_count)  # No new diagnostic clock evaluations.
+            self.assertEqual([call(0.75), call(0.75)], delay.call_args_list)
+            self.assertEqual([call(deadline=2.0)] * 3, reads.call_args_list)
+            self.assertEqual(2, anr.call_count)
+            self.assertEqual(1.5, now[0])
+            adb.assert_not_called()
+            capture.assert_not_called()
+            diagnostic = json.loads((evidence / "workspace-authority-deadline.json").read_text())
+            self.assertEqual(3, diagnostic["hierarchyReads"])
+            self.assertEqual(1, diagnostic["emptyHierarchyReads"])
+            self.assertEqual(0, diagnostic["lastMatchCount"])
+            self.assertEqual(0, diagnostic["scrolls"])
+            projections = diagnostic["observedHierarchyProjections"]
+            self.assertEqual("flattened-accessibility-observations", projections["kind"])
+            self.assertFalse(projections["authoritative"])
+            self.assertFalse(projections["rawXml"])
+            for key, ordinal, started, attributes in (
+                ("firstNonempty", 1, 0.0, original_before),
+                ("latestNonempty", 2, 0.75, original_after),
+            ):
+                self.assertEqual({
+                    "readOrdinal": ordinal, "observationStartedAtMonotonic": started,
+                    "nodeCount": 1, "omittedNodes": 0, "omittedAttributes": 0,
+                    "truncatedAttributes": 0, "nodes": [attributes],
+                }, projections[key])
+
+    def test_exact_resource_deadline_projection_is_bounded_and_omits_free_form_data(self) -> None:
+        node = DRIVER.UiNode({
+            "resource-id": "x" * 300, "class": "android.widget.EditText",
+            "package": DRIVER.PACKAGE, "bounds": "[1,2][3,4]", "password": "true",
+            "text": "fixture-private-input", "content-desc": "fixture-private-description",
+            "unknown": "fixture-private-extra", "enabled": False,
+        })
+        nodes = [node] + [DRIVER.UiNode({"resource-id": "ordinary-control"}) for _ in range(128)]
+        error = DRIVER.AdbOperationDeadlineExceeded("original deadline")
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(DRIVER.time, "sleep"),
+                patch.object(device, "hierarchy", side_effect=[nodes, error]) as reads,
+                patch.object(device, "dismiss_system_ui_anr", return_value=False),
+                patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+            self.assertIs(error, failed.exception)
+            self.assertEqual([call(deadline=1.0)] * 2, reads.call_args_list)
+            adb.assert_not_called()
+            rendered = (evidence / "workspace-authority-deadline.json").read_text()
+            self.assertNotIn("fixture-private-", rendered)
+            projections = json.loads(rendered)["observedHierarchyProjections"]
+            self.assertEqual(128, projections["maxNodesPerObservation"])
+            self.assertEqual(256, projections["maxAttributeCharacters"])
+            self.assertIn("text, content-desc", projections["omissionPolicy"])
+            retained = projections["firstNonempty"]
+            self.assertEqual(retained, projections["latestNonempty"])
+            self.assertEqual(129, retained["nodeCount"])
+            self.assertEqual(128, len(retained["nodes"]))
+            self.assertEqual(1, retained["omittedNodes"])
+            self.assertEqual(4, retained["omittedAttributes"])
+            self.assertEqual(1, retained["truncatedAttributes"])
+            self.assertEqual({
+                "resource-id": "x" * 256, "class": "android.widget.EditText",
+                "package": DRIVER.PACKAGE, "bounds": "[1,2][3,4]", "password": "true",
+            }, retained["nodes"][0])
+
+    def test_exact_resource_deadline_projection_never_carries_across_calls(self) -> None:
+        old = DRIVER.UiNode({"resource-id": "old-route"})
+        error = DRIVER.AdbOperationDeadlineExceeded("original deadline")
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(DRIVER.time, "sleep"),
+                patch.object(device, "hierarchy", side_effect=[[old], error, error]) as reads,
+                patch.object(device, "dismiss_system_ui_anr", return_value=False),
+                patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+            ):
+                for prefix in ("first-call", "second-call"):
+                    with self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed:
+                        device.wait_for_single_exact_resource_id(
+                            "exact-target", timeout=1, deadline=2.0, evidence_prefix=prefix,
+                        )
+                    self.assertIs(error, failed.exception)
+            self.assertEqual([call(deadline=1.0)] * 3, reads.call_args_list)
+            adb.assert_not_called()
+            first = json.loads((evidence / "first-call-deadline.json").read_text())
+            second = json.loads((evidence / "second-call-deadline.json").read_text())
+            self.assertIsNotNone(first["observedHierarchyProjections"]["firstNonempty"])
+            self.assertIsNone(second["observedHierarchyProjections"]["firstNonempty"])
+            self.assertIsNone(second["observedHierarchyProjections"]["latestNonempty"])
+
+    def test_exact_resource_deadline_preserves_exception_instance_subclass_and_cause(self) -> None:
+        cause = OSError("fixture origin")
+        error = DRIVER.AdbHierarchyLeaseReserveExceeded("fixture reserved lease")
+        error.__cause__ = cause
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(device, "hierarchy", side_effect=error) as hierarchy,
+                patch.object(device, "capture") as capture,
+                self.assertRaises(DRIVER.AdbHierarchyLeaseReserveExceeded) as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+            self.assertIs(error, failed.exception)
+            self.assertIs(cause, failed.exception.__cause__)
+            hierarchy.assert_called_once_with(deadline=1.0)
+            capture.assert_not_called()
+            diagnostic = json.loads((evidence / "workspace-authority-deadline.json").read_text())
+            self.assertEqual("hierarchy", diagnostic["stage"])
+            self.assertEqual(1, diagnostic["hierarchyReads"])
+            self.assertEqual(0, diagnostic["emptyHierarchyReads"])
+
+    def test_exact_resource_deadline_projection_failure_preserves_match_and_original_error(self) -> None:
+        class BrokenDiagnosticAttributes(dict):
+            def get(self, key, default=None):
+                if key == "class":
+                    raise ValueError("diagnostic-only projection failure")
+                return super().get(key, default)
+
+        for matches in (True, False):
+            with self.subTest(matches=matches), tempfile.TemporaryDirectory() as temporary:
+                evidence = Path(temporary)
+                node = DRIVER.UiNode(BrokenDiagnosticAttributes({
+                    "resource-id": "exact-target" if matches else "other-control",
+                }))
+                error = DRIVER.AdbOperationDeadlineExceeded("original deadline")
+                device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+                with (
+                    patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                    patch.object(DRIVER.time, "sleep"),
+                    patch.object(device, "hierarchy", side_effect=[[node], error]) as reads,
+                    patch.object(device, "dismiss_system_ui_anr", return_value=False),
+                    patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                ):
+                    if matches:
+                        self.assertIs(node, device.wait_for_single_exact_resource_id(
+                            "exact-target", timeout=1, deadline=2.0,
+                        ))
+                    else:
+                        with self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed:
+                            device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+                        self.assertIs(error, failed.exception)
+                adb.assert_not_called()
+                self.assertEqual([call(deadline=1.0)] * (1 if matches else 2), reads.call_args_list)
+                if matches:
+                    self.assertEqual([], list(evidence.iterdir()))
+                else:
+                    diagnostic = json.loads((evidence / "workspace-authority-deadline.json").read_text())
+                    projections = diagnostic["observedHierarchyProjections"]
+                    self.assertEqual(1, projections["collectionFailures"])
+                    self.assertIsNone(projections["firstNonempty"])
+                    self.assertIsNone(projections["latestNonempty"])
+
+    def test_exact_resource_deadline_diagnostic_failure_never_masks_original(self) -> None:
+        error = DRIVER.AdbOperationDeadlineExceeded("original deadline")
+        observed = DRIVER.UiNode({"resource-id": "observed-route"})
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", Path(temporary))
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(DRIVER.time, "sleep"),
+                patch.object(device, "hierarchy", side_effect=[[observed], error]) as reads,
+                patch.object(device, "dismiss_system_ui_anr", return_value=False),
+                patch.object(Path, "open", side_effect=OSError("diagnostic write unavailable")),
+                patch.object(device, "capture") as capture,
+                self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+            self.assertIs(error, failed.exception)
+            self.assertEqual("original deadline", str(failed.exception))
+            self.assertEqual([call(deadline=1.0)] * 2, reads.call_args_list)
+            capture.assert_not_called()
+
+    def test_exact_resource_deadline_json_failure_never_masks_original(self) -> None:
+        error = DRIVER.AdbOperationDeadlineExceeded("original deadline")
+        observed = DRIVER.UiNode({"resource-id": "observed-route"})
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", Path(temporary))
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(DRIVER.time, "sleep"),
+                patch.object(device, "hierarchy", side_effect=[[observed], error]) as reads,
+                patch.object(device, "dismiss_system_ui_anr", return_value=False),
+                patch.object(DRIVER.json, "dump", side_effect=ValueError("diagnostic JSON unavailable")),
+                patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                patch.object(device, "capture") as capture,
+                self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+            self.assertIs(error, failed.exception)
+            self.assertEqual("original deadline", str(failed.exception))
+            self.assertEqual([call(deadline=1.0)] * 2, reads.call_args_list)
+            adb.assert_not_called()
+            capture.assert_not_called()
+
+    def test_exact_resource_expired_loop_retains_host_context_without_new_adb_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=10.0),
+                patch.object(device, "_invoke_once", side_effect=AssertionError("Unexpected ADB")) as adb,
+                patch.object(device, "hierarchy", wraps=device.hierarchy) as hierarchy,
+                patch.object(device, "capture", wraps=device.capture) as capture,
+                self.assertRaisesRegex(RuntimeError, "Timed out waiting for exactly one") as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=45, deadline=10.0)
+            self.assertIs(type(failed.exception), RuntimeError)
+            adb.assert_not_called()
+            hierarchy.assert_not_called()
+            capture.assert_called_once_with("workspace-authority-unavailable", deadline=10.0)
+            self.assertEqual(["workspace-authority-deadline.json"], [path.name for path in evidence.iterdir()])
+            diagnostic = json.loads((evidence / "workspace-authority-deadline.json").read_text())
+            self.assertEqual("loop-exhausted", diagnostic["stage"])
+            self.assertEqual(0, diagnostic["hierarchyReads"])
+            self.assertEqual(10.0, diagnostic["operationDeadline"])
+            self.assertEqual(10.0, diagnostic["callerDeadline"])
+
+    def test_exact_resource_deadline_preserves_existing_diagnostic_bytes(self) -> None:
+        error = DRIVER.AdbOperationDeadlineExceeded("new observation deadline")
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", evidence)
+            diagnostic = evidence / "workspace-authority-deadline.json"
+            retained = b'{"originalObservation":"retain byte-for-byte"}\n'
+            diagnostic.write_bytes(retained)
+            with (
+                patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                patch.object(device, "hierarchy", side_effect=error) as hierarchy,
+                patch.object(device, "capture") as capture,
+                self.assertRaises(DRIVER.AdbOperationDeadlineExceeded) as failed,
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+            self.assertIs(error, failed.exception)
+            hierarchy.assert_called_once_with(deadline=1.0)
+            capture.assert_not_called()
+            self.assertEqual(retained, diagnostic.read_bytes())
+
+    def test_exact_resource_deadline_success_and_cardinality_keep_existing_call_shape(self) -> None:
+        exact = DRIVER.UiNode({"resource-id": "exact-target"})
+        for nodes in ([exact], [exact, exact]):
+            with self.subTest(cardinality=len(nodes)), tempfile.TemporaryDirectory() as temporary:
+                device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", Path(temporary))
+                with (
+                    patch.object(DRIVER.time, "monotonic", return_value=0.0),
+                    patch.object(device, "hierarchy", return_value=nodes) as hierarchy,
+                    patch.object(device, "capture") as capture,
+                ):
+                    if len(nodes) == 1:
+                        self.assertIs(exact, device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0))
+                        capture.assert_not_called()
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+                            device.wait_for_single_exact_resource_id("exact-target", timeout=1, deadline=2.0)
+                        capture.assert_called_once_with("workspace-authority-cardinality-invalid", deadline=1.0)
+                hierarchy.assert_called_once_with(deadline=1.0)
+                self.assertEqual([], list(Path(temporary).iterdir()))
+
+    def test_exact_resource_without_caller_deadline_keeps_legacy_timeout_behavior(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(Path("/unused/adb"), "host-only-fixture", Path(temporary))
+            now, monotonic, sleep = self._fake_clock()
+            with (
+                patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                patch.object(DRIVER.time, "sleep", side_effect=sleep),
+                patch.object(device, "hierarchy", return_value=[]) as hierarchy,
+                patch.object(device, "capture") as capture,
+                self.assertRaisesRegex(RuntimeError, "Timed out waiting for exactly one"),
+            ):
+                device.wait_for_single_exact_resource_id("exact-target", timeout=1)
+            self.assertEqual([call(), call()], hierarchy.call_args_list)
+            self.assertEqual(1.5, now[0])
+            capture.assert_called_once_with("workspace-authority-unavailable")
+            self.assertEqual([], list(Path(temporary).iterdir()))
+
     def test_exact_accessibility_value_rejects_prefix_and_duplicate_toolbar_nodes(self) -> None:
         exact = DRIVER.UiNode(
             {
@@ -6186,7 +6566,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for method_name, start_marker in (
-            ("ConfirmCreationPrerequisiteAsync", "internal async Task<CreationPrerequisitePhoneConfirmResult>\n        ConfirmCreationPrerequisiteAsync("),
             ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync("),
             (
                 "SwitchWorkspaceAsync",
@@ -6199,11 +6578,62 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync"),
             ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync"),
             ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync"),
-            ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync"),
             ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync"),
         ):
             block = self._coordinator_member(source, start_marker)
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        prerequisite = (REPO_ROOT / "src" / "Chummer.Android" / "Native"
+                        / "RunnerSessionCoordinator.CreationPrerequisite.cs").read_text(encoding="utf-8")
+        prerequisite_entry = self._coordinator_member(source, "internal Task<CreationPrerequisitePhoneConfirmResult>\n        ConfirmCreationPrerequisiteAsync(")
+        self.assertIn("ConfirmIssuedCreationPrerequisiteAsync(", prerequisite_entry)
+        bound_prerequisite = self._coordinator_member(prerequisite, "private Task<CreationPrerequisitePhoneConfirmResult> ConfirmIssuedCreationPrerequisiteAsync(")
+        self.assertIn("WithWorkspaceActivationGateAsync", bound_prerequisite)
+        self.assertLess(bound_prerequisite.index("_prerequisitePreviews.TryGetValue(preview, out var issued)"),
+                        bound_prerequisite.index("WithWorkspaceActivationGateAsync"))
+        self.assertIn("isCurrentPreview?.Invoke() == false", bound_prerequisite)
+
+        # The public compatibility entry captures before delegating; the bound
+        # helper owns the same gate and cannot substitute a fresh current frame.
+        condition = self._coordinator_member(source, "public async Task ApplyConditionMonitorEditAsync(")
+        call = "TryApplyBoundConditionMonitorEditAsync(request, original, () => true, cancellationToken)"
+        self.assertLess(condition.index("CharacterOverviewState original = State;"), condition.index(call))
+        bound_condition = self._coordinator_member(source, "internal Task<bool> TryApplyBoundConditionMonitorEditAsync(")
+        gate = bound_condition.index("=> WithWorkspaceActivationGateAsync(async () =>")
+        dispatch = bound_condition.index("return await ApplyConditionMonitorEditCoreAsync(request, expected, cancellationToken);")
+        for guard in (
+            "cancellationToken.ThrowIfCancellationRequested();",
+            "!IsNativeEditDisplayCurrent(expected)", "expected.WorkspaceId is null",
+            "current.WorkspaceId != expected.WorkspaceId",
+            "current.ContentRevision != expected.ContentRevision",
+            "current.SavedRevision != expected.SavedRevision",
+            "!string.Equals(current.ActiveSectionId, expected.ActiveSectionId, StringComparison.Ordinal)",
+            "!ReferenceEquals(current.ActiveConditionMonitor, expected.ActiveConditionMonitor)",
+            "expected.ActiveConditionMonitor is not { CareerEditable: true } monitor",
+            "monitor.Tracks.Count(track => track.Track == request.Track) != 1",
+            "!isCurrentInspector()", "return false;",
+        ):
+            self.assertLess(gate, bound_condition.index(guard))
+            self.assertLess(bound_condition.index(guard), dispatch)
+        for block in (condition, bound_condition):
+            self.assertNotIn("_presenter.", block)
+            self.assertNotIn("bound.ApplyConditionMonitorEditAsync(", block)
+        current = self._coordinator_member(source, "private bool IsNativeEditDisplayCurrent(")
+        for guard in (
+            "!_disposed", "!State.IsBusy", "State.Error is null", "State.ConflictState is null",
+            "State.WorkspaceId == original.WorkspaceId",
+            "State.ContentRevision == original.ContentRevision", "State.SavedRevision == original.SavedRevision",
+            "ReferenceEquals(State.Profile, original.Profile)",
+            "State.ActiveTabId == original.ActiveTabId", "State.ActiveActionId == original.ActiveActionId",
+            "State.ActiveSectionId == original.ActiveSectionId",
+            "State.DisplayOwnerContext == original.DisplayOwnerContext",
+            "State.Session.OwnerContext == original.DisplayOwnerContext",
+            "_shellPresenter.State.OwnerContext == original.DisplayOwnerContext",
+            "IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)",
+        ):
+            self.assertIn(guard, current)
+        live = self._coordinator_member(source, "private bool IsNativePersistenceOwnerCurrent(")
+        self.assertIn("originalOwner is { IsValid: true } owner && bound.CaptureOwnerContext() == owner", live)
 
         # Collection compatibility calls capture before queueing; the exact bound
         # helper, not a newly captured current frame, owns activation admission.

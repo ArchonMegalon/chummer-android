@@ -224,13 +224,14 @@ TRUSTED_JDK_RELEASE_VALUES = {
     "SOURCE": ".:git:261f4ed0a496",
 }
 TRUSTED_PRESENTATION_PRODUCER_LOCK = {
-    "sha256": "725e0ee73e7a4ec34026911534f77ef1b2eee3b5514d977b56374f5a02336826",
+    "sha256": "3bb31f112a24aaf51e7edd8360e447ba8578e3565c2d4314b2a49a3b0c385904",
     "sizeBytes": 2019,
 }
 TRUSTED_FULL_PROJECT_LOCK = {
-    "sha256": "805882c8077168aacdf4111312f06c64604c157039f513fdabe3181ba97215b6",
-    "sizeBytes": 70375,
+    "sha256": "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
+    "sizeBytes": 70263,
 }
+TRUSTED_CORE_CONTENT_COMMIT = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
 TRUSTED_CORE_CONTENT_TREE = "3f39863d2ae5db4d6d7b3d07185e33bf240db330"
 WP1_REFERENCE_EVIDENCE_FILES = {
     "executionEvidence.toolchainLog": "toolchain.log",
@@ -1735,10 +1736,10 @@ def validate_build_provenance(
     require_hex(content_source.get("tree"), "WP1 Core content source tree", length=40)
     if (
         content.get("coreRevision") != content_source.get("commit")
-        or content_source.get("commit") != package_source_graph.get("corePackageRecipeCommit")
+        or content_source.get("commit") != TRUSTED_CORE_CONTENT_COMMIT
         or content_source.get("tree") != TRUSTED_CORE_CONTENT_TREE
     ):
-        raise ValueError("WP1 Core content source is not bound to current package authority")
+        raise ValueError("WP1 Core content source is not the exact trusted canonical content")
     _validate_content_references(content, apk, references)
 
     artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")

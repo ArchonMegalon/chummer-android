@@ -11,6 +11,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
     private readonly CreationPrerequisitePhoneDraft _draft;
     private readonly CharacterCreationPrerequisiteState _state;
     private readonly string _categoryId;
+    private long _renderGeneration;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -37,12 +38,14 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
 
     protected override void Refresh()
     {
+        long render = ++_renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.CategoryPage.Eyebrow", "Priority assignments")));
         string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
         _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
 
-        if (!_draft.Matches(_state, Coordinator.State))
+        if (!Coordinator.IsCreationPrerequisiteStateCurrent(_state) || !_draft.Matches(_state, Coordinator.State))
         {
             AddBlockers([CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
             return;
@@ -98,7 +101,9 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.Format("Common.Rank", "Rank {0}", projection.Rank),
                 detail,
-                () => SelectAsync(projection.Rank),
+                () => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+                      && Coordinator.IsCreationPrerequisiteStateCurrent(_state)
+                    ? SelectAsync(projection.Rank) : Task.CompletedTask,
                 option.IsEnabled,
                 $"creation-prerequisite-rank-{Token(_categoryId)}-{Token(projection.Rank)}"));
         }

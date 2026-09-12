@@ -787,10 +787,35 @@ def wait_for_state(
     stage: str,
     wizard_lane: str | None,
     timeout: float = 30,
+    deadline: float | None = None,
+    after_same_process_proof: dict[str, object] | None = None,
 ) -> ProofStateSnapshot:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("Proof-state wait timeout must be finite and positive")
-    deadline = time.monotonic() + timeout
+    if deadline is not None and not math.isfinite(deadline):
+        raise ValueError("Proof-state caller deadline must be finite")
+    timeout_deadline = time.monotonic() + timeout
+    deadline = timeout_deadline if deadline is None else min(deadline, timeout_deadline)
+    prior_sequence: int | None = None
+    identity_fields = ("processId", "processInstanceId", "e2eAuthorityGeneration")
+    workspace_fields = (
+        "workspaceId", "contentRevision", "savedRevision", "payloadSha256", "documentSha256",
+    )
+    prior_identity: tuple[object, ...] = ()
+    prior_workspace: tuple[object, ...] = ()
+    if after_same_process_proof is not None:
+        if not isinstance(after_same_process_proof, dict):
+            raise ValueError("Prior proof must be one process/workspace observation")
+        prior_sequence = _require_int(
+            after_same_process_proof.get("sequence"), "Prior proof sequence", minimum=1,
+        )
+        workspace = after_same_process_proof.get("workspace")
+        if not isinstance(workspace, dict) or any(
+            after_same_process_proof.get(field) is None for field in identity_fields
+        ) or any(workspace.get(field) is None for field in workspace_fields):
+            raise ValueError("Prior proof requires exact process and workspace bindings")
+        prior_identity = tuple(after_same_process_proof[field] for field in identity_fields)
+        prior_workspace = tuple(workspace[field] for field in workspace_fields)
     last_detail = "state file unavailable"
     attempts: list[dict[str, Any]] = []
     started = time.monotonic()
@@ -820,6 +845,9 @@ def wait_for_state(
             _write_state_read_receipt(device, receipt)
             raise
         attempts.append(observation)
+        if time.monotonic() >= deadline:
+            last_detail = "state observation completed after its deadline"
+            break
         if raw is None or live_process_id is None:
             last_detail = observation["reconciliation"]
             _write_state_read_receipt(
@@ -851,6 +879,14 @@ def wait_for_state(
                 expected=expected,
                 live_process_id=live_process_id,
             )
+            if prior_sequence is not None:
+                workspace = snapshot.payload["workspace"]
+                if (
+                    tuple(snapshot.payload[field] for field in identity_fields) != prior_identity
+                    or not isinstance(workspace, dict)
+                    or tuple(workspace[field] for field in workspace_fields) != prior_workspace
+                ):
+                    raise RuntimeError("Later proof changed its exact same-process workspace")
         except RuntimeError as error:
             if str(error) != "API-36 proof state belongs to a stale process":
                 observation["status"] = "fail"
@@ -888,6 +924,8 @@ def wait_for_state(
             and surface["stage"] == stage
             and surface["wizardLane"] == wizard_lane
             and surface["settled"] is True
+            and (prior_sequence is None or snapshot.payload["sequence"] > prior_sequence)
+            and time.monotonic() < deadline
         ):
             receipt = {
                 "schema": READ_RECEIPT_SCHEMA,
@@ -914,6 +952,8 @@ def wait_for_state(
             f"page={surface['pageAutomationId']!r} stage={surface['stage']!r} "
             f"lane={surface['wizardLane']!r} settled={surface['settled']!r}"
         )
+        if prior_sequence is not None:
+            last_detail += f" sequence={snapshot.payload['sequence']} required_after={prior_sequence}"
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             break

@@ -17,8 +17,16 @@ public sealed class CreationPrerequisitePage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private readonly ActivityIndicator _loading = new()
+    {
+        AutomationId = "creation-prerequisite-loading",
+        HeightRequest = 24
+    };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
+    private readonly CharacterCreationPrerequisiteState _originalAuthority;
     private CharacterCreationPrerequisiteState? _dashboardAuthority;
+    private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? _appearanceFailure;
+    private long _renderGeneration;
     private IReadOnlyList<string> _prepareBlockers = [];
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
     private CharacterCreationPrerequisiteState? _latestApi36ProofReadyState;
@@ -30,27 +38,39 @@ public sealed class CreationPrerequisitePage : NativePageBase
         RunnerSessionCoordinator coordinator,
         CharacterCreationPrerequisiteState dashboardAuthority) : base(coordinator)
     {
-        _dashboardAuthority = dashboardAuthority
+        _originalAuthority = _dashboardAuthority = dashboardAuthority
             ?? throw new ArgumentNullException(nameof(dashboardAuthority));
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
         Content = new ScrollView { Content = _body };
+        _body.IsEnabled = false;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         Loaded += OnApi36ProofLoaded;
 #endif
     }
 
-#if CHUMMER_API36_PROOF_INSTRUMENTATION
     protected override void OnAppearing()
     {
+        // A returned page still contains callbacks from its preceding appearance.
+        // Keep those controls inert until fresh owner-bound revalidation renders
+        // this appearance; a failed preparation must not revive cached authority.
+        _body.IsEnabled = false;
+        _dashboardAuthority = null;
+        _appearanceFailure = null;
+        if (!_body.Children.Contains(_loading))
+            _body.Children.Insert(0, _loading);
+        _loading.IsRunning = true;
         base.OnAppearing();
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
         // NativePageBase may refresh synchronously before its first incomplete await, or later
         // after initialization. Retain the route, Loaded, and ready-state signals so every
         // lifecycle order reaches the same exact attachment gate.
         _api36ProofRouteAppeared = true;
         TryPublishApi36AttachmentProof();
+#endif
     }
 
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
     {
         base.OnNavigatedTo(args);
@@ -60,18 +80,130 @@ public sealed class CreationPrerequisitePage : NativePageBase
         // every authority and cardinality decision.
         TryPublishApi36AttachmentProof();
     }
+#endif
 
     protected override void OnDisappearing()
     {
+        _body.IsEnabled = false;
+        _dashboardAuthority = null;
+        _appearanceFailure = null;
+        _loading.IsRunning = false;
+        _body.Children.Remove(_loading);
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
         _api36ProofRouteAppeared = false;
         _latestApi36ProofReadyState = null;
         _api36ProofAttachmentPublished = false;
+#endif
         base.OnDisappearing();
     }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        long appearance = CaptureAppearanceGeneration();
+        try
+        {
+            var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,
+                () => IsCurrentAppearanceGeneration(appearance));
+            if (!IsCurrentAppearanceGeneration(appearance))
+                return;
+
+            CharacterCreationPrerequisiteState? current = null;
+            CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? failure = null;
+            if (!string.Equals(loaded.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal))
+                failure = CaptureAppearanceFailure(loaded.Outcome, loaded.Blockers);
+            else if (loaded.Value is not { } loadedState)
+                failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                    [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
+            else if (!Coordinator.IsCreationPrerequisiteStateCurrent(loadedState))
+                failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                    [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+            else
+                current = loadedState;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+            if (AndroidE2EAuthority.Enabled && current is { } proofState)
+            {
+                // Confirmation reloads the presenter, which invalidates its diagnostic
+                // workspace snapshot. Revalidation alone does not recapture that
+                // snapshot. Read the actual current bytes before publishing this
+                // appearance; never synthesize proof from the retained page state.
+                if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                        proofState.Binding.RawCharacterXmlDigest,
+                        out string expectedPayloadSha256))
+                {
+                    current = null;
+                    failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                        ["creation-prerequisite-proof-raw-digest-invalid"]);
+                }
+                else
+                {
+                    NativeWorkspaceAuthoritySnapshot? proofAuthority =
+                        await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
+                            proofState.Binding.WorkspaceId,
+                            proofState.Binding.ContentRevision,
+                            proofState.Binding.SavedRevision,
+                            expectedPayloadSha256,
+                            cancellationToken);
+                    if (proofAuthority is null)
+                    {
+                        current = null;
+                        failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                            ["creation-prerequisite-proof-workspace-capture-unavailable"]);
+                    }
+                }
+            }
 #endif
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentAppearanceGeneration(appearance))
+                return;
+            if (current is { } state)
+            {
+                if (!Coordinator.IsCreationPrerequisiteStateCurrent(state))
+                {
+                    current = null;
+                    failure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                        [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+                }
+                else if (!CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
+                {
+                    current = null;
+                    failure = RuleAuthorityNotReady(state);
+                }
+            }
+            _dashboardAuthority = current;
+            _appearanceFailure = failure;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            if (IsCurrentAppearanceGeneration(appearance))
+            {
+                _dashboardAuthority = null;
+                _appearanceFailure = CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+                    ["creation-prerequisite-appearance-load-failed"]);
+            }
+            // NativePageBase still owns the exception alert. The page records only
+            // a safe failure code, never exception text, document bytes or owner data.
+            throw;
+        }
+    }
+
+    private static CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        CaptureAppearanceFailure(string outcome, IEnumerable<string> blockers)
+        => new(outcome, null, Array.AsReadOnly(blockers.ToArray()));
+
+    private static CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        RuleAuthorityNotReady(CharacterCreationPrerequisiteState state)
+        => CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+            new[] { "creation-prerequisite-rule-authority-not-ready" }
+                .Concat(state.Blockers)
+                .Concat(state.Authority.Blockers)
+                .Concat(state.CreationKarmaBudget.Blockers)
+                .Distinct(StringComparer.Ordinal));
 
     protected override void Refresh()
     {
+        _body.IsEnabled = false;
+        _loading.IsRunning = false;
+        _renderGeneration++;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         _api36ProofAttachmentPublished = false;
         _latestApi36ProofReadyState = null;
@@ -131,6 +263,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _prepareBlockers,
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
+        _body.IsEnabled = IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
+            && Coordinator.IsCreationPrerequisiteStateCurrent(state);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         _latestApi36ProofReadyState = state;
         TryPublishApi36AttachmentProof();
@@ -141,6 +275,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         ResolveCurrentAuthority()
     {
         if (_dashboardAuthority is { } authority
+            && Coordinator.IsCreationPrerequisiteStateCurrent(authority)
             && CreationPrerequisitePhoneAuthority.IsReady(authority, Coordinator.State))
         {
             return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
@@ -149,11 +284,17 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 []);
         }
 
-        // The dashboard projection is immutable and revision-bound. Once it no longer
-        // matches the live overview, discard it before asking Core for a fresh authority;
-        // an older projection must never become a navigation or mutation fallback.
-        _dashboardAuthority = null;
-        return Coordinator.LoadCreationPrerequisite();
+        // Refresh only renders this page's issued authority. Appearance performs
+        // bounded asynchronous revalidation; another owner's cache is never a fallback.
+        if (_appearanceFailure is { } failure)
+            return failure;
+        if (_dashboardAuthority is { } unavailable)
+            return Coordinator.IsCreationPrerequisiteStateCurrent(unavailable)
+                ? RuleAuthorityNotReady(unavailable)
+                : CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Conflict,
+                    [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        return CaptureAppearanceFailure(CharacterCreationFoundationOutcomes.Blocked,
+            [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
     }
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -167,6 +308,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         IReadOnlyList<Page> navigationStack = Navigation.NavigationStack;
         if (_api36ProofAttachmentPublished
             || !_api36ProofRouteAppeared
+            || !_body.IsEnabled
             || !IsLoaded
             || Handler is null
             || Window is null
@@ -174,6 +316,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
             || !ReferenceEquals(navigationStack[^1], this)
             || navigationStack.Count(candidate => ReferenceEquals(candidate, this)) != 1
             || _latestApi36ProofReadyState is not { } state
+            || !Coordinator.IsCreationPrerequisiteStateCurrent(state)
             || !CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State))
         {
             return;
@@ -336,6 +479,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
 
     private void AddCategories(CharacterCreationPrerequisiteState state)
     {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Categories.Heading", "Five ordered categories")));
         for (int index = 0; index < CharacterCreationPriorityCategoryIds.Ordered.Count; index++)
         {
@@ -369,11 +514,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 label,
                 detail,
-                () => Navigation.PushAsync(new CreationPriorityCategoryPage(
+                () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityCategoryPage(
                     Coordinator,
                     _draft,
                     state,
-                    category)),
+                    category)) : Task.CompletedTask,
                 automationId: $"creation-prerequisite-category-{Token(category)}"));
 
             if (string.Equals(
@@ -396,10 +541,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
                                 "Common.SelectionInline",
                                 "selection {0}",
                                 selectedHeritage.SelectionId)),
-                    () => Navigation.PushAsync(new CreationPriorityDetailPage(
+                    () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
                         _draft,
-                        category)),
+                        state,
+                        category)) : Task.CompletedTask,
                     enabled: selected is not null,
                     automationId: "creation-prerequisite-heritage-selection"));
                 if (selectedHeritage is not null)
@@ -433,10 +579,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
                                 "selection {0}",
                                 selectedTalent.SelectionId),
                             TalentGrantProgress(selectedTalent, state)),
-                    () => Navigation.PushAsync(new CreationPriorityDetailPage(
+                    () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
                         _draft,
-                        category)),
+                        state,
+                        category)) : Task.CompletedTask,
                     enabled: selected is not null,
                     automationId: "creation-prerequisite-talent-selection"));
                 if (selectedTalent is not null)
@@ -554,8 +701,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         Button preview = NativeTheme.PrimaryButton(WizardStrings.Get("Priority.Actions.Preview", "Preview assignments draft"));
         preview.AutomationId = "creation-prerequisite-prepare-preview";
-        preview.IsEnabled = _draft.CanPrepare(state, Coordinator.State);
-        preview.Clicked += async (_, _) => await PreparePreviewAsync(state);
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        preview.IsEnabled = Coordinator.IsCreationPrerequisiteStateCurrent(state)
+                            && _draft.CanPrepare(state, Coordinator.State);
+        preview.Clicked += async (_, _) => await RunAsync(() => PreparePreviewAsync(state, render, appearance));
         _body.Add(preview);
 
         Button reset = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Actions.Reset", "Reset rank selections"));
@@ -563,6 +713,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         reset.IsEnabled = _draft.Assignments(state, Coordinator.State).Count > 0;
         reset.Clicked += (_, _) =>
         {
+            if (!IsCurrentEditor(state, render, appearance)) return;
             _prepareBlockers = [];
             _draft.Reset(state, Coordinator.State);
             Refresh();
@@ -579,8 +730,13 @@ public sealed class CreationPrerequisitePage : NativePageBase
         _body.Add(scope);
     }
 
-    private async Task PreparePreviewAsync(CharacterCreationPrerequisiteState state)
+    private bool IsCurrentEditor(CharacterCreationPrerequisiteState state, long render, long appearance)
+        => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+           && Coordinator.IsCreationPrerequisiteStateCurrent(state);
+
+    private async Task PreparePreviewAsync(CharacterCreationPrerequisiteState state, long render, long appearance)
     {
+        if (!IsCurrentEditor(state, render, appearance)) return;
         _prepareBlockers = [];
         if (!_draft.CanPrepare(state, Coordinator.State))
         {
@@ -602,7 +758,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
             return;
         }
         CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview> result =
-            Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections);
+            await Coordinator.PreviewCreationPrerequisiteAsync(state.Binding, assignments, selections,
+                isCurrentEditor: () => IsCurrentEditor(state, render, appearance));
+        if (!IsCurrentEditor(state, render, appearance)) return;
         if (!string.Equals(
                 result.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
@@ -617,6 +775,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
             return;
         }
 
+        if (!Coordinator.IsCreationPrerequisitePreviewCurrent(prepared)) return;
         await Navigation.PushAsync(new CreationPrerequisitePreviewPage(
             Coordinator,
             prepared,

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import os
 import re
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PRESENTATION_ROOT = ROOT.parent / "chummer-presentation"
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", ROOT.parent))
+PRESENTATION_ROOT = WORKSPACE / "chummer-presentation"
 PRESENTER = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterCreationResourcesInteractionPresenter.cs"
 PAGE = ROOT / "src/Chummer.Android/Native/CreationResourcesPage.cs"
 BUILD_PAGE = ROOT / "src/Chummer.Android/Native/BuildPage.cs"

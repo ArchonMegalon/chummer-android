@@ -18,6 +18,22 @@ public sealed class CreationFinalizationPage : NativePageBase
     };
     private readonly string _idempotencyKey;
     private bool _confirming;
+    private long _appearanceGeneration;
+    private bool _visible;
+
+    protected override void OnAppearing()
+    {
+        _appearanceGeneration++;
+        _visible = true;
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _visible = false;
+        _appearanceGeneration++;
+        base.OnDisappearing();
+    }
 
     public CreationFinalizationPage(
         RunnerSessionCoordinator coordinator,
@@ -41,6 +57,11 @@ public sealed class CreationFinalizationPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (!Coordinator.IsCreationFinalizationReviewCurrent(_review))
+        {
+            _body.Add(NativeTheme.Body("This review belongs to a previous runner or account. Reopen the runner and review again.", NativeTheme.Danger));
+            return;
+        }
         _body.Add(NativeTheme.Eyebrow("Final review"));
         _body.Add(NativeTheme.Title("Enter Career mode"));
         _body.Add(NativeTheme.Body(
@@ -115,14 +136,17 @@ public sealed class CreationFinalizationPage : NativePageBase
 
     private async Task ConfirmAsync()
     {
-        if (_confirming)
+        if (_confirming || !_visible)
             return;
+        long originalAppearance = _appearanceGeneration;
         _confirming = true;
         Refresh();
         try
         {
             CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> result =
                 await Coordinator.ConfirmCreationFinalizationAsync(_review, _idempotencyKey);
+            if (!_visible || _appearanceGeneration != originalAppearance)
+                return;
             if (result.Value is not { } receipt
                 || result.Outcome is not (CharacterCreationFinalizationOutcomes.Applied
                     or CharacterCreationFinalizationOutcomes.Replayed))
@@ -131,6 +155,8 @@ public sealed class CreationFinalizationPage : NativePageBase
                     result.Blockers.FirstOrDefault()
                     ?? "Core rejected finalization. Reload and review the current runner revision.");
             }
+            if (!Coordinator.CanDisplayCreationFinalizationReceipt(receipt))
+                return;
             await Navigation.PushAsync(new CreationFinalizationReceiptPage(
                 Coordinator,
                 receipt,
@@ -172,8 +198,14 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (!Coordinator.CanDisplayCreationFinalizationReceipt(_receipt))
+        {
+            _body.Add(NativeTheme.Body("Return to the original account to view this receipt.", NativeTheme.Danger));
+            return;
+        }
         _body.Add(NativeTheme.Eyebrow("Durable receipt"));
-        _body.Add(NativeTheme.Title("Career mode is ready"));
+        bool reopened = Coordinator.IsCreationFinalizationReceiptCurrent(_receipt);
+        _body.Add(NativeTheme.Title(reopened ? "Career mode is ready" : "Creation was saved"));
 
         VerticalStackLayout receipt = new() { Spacing = 6 };
         receipt.Add(NativeTheme.Metric("Receipt", Short(_receipt.ReceiptDigest)));
@@ -208,12 +240,10 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
                 _receipt.ReceiptDigest)));
 
         Label reopen = NativeTheme.Body(
-            Coordinator.State.Profile?.Created == true
-                && Coordinator.State.WorkspaceId == _receipt.WorkspaceId
-                && Coordinator.State.ContentRevision == _receipt.ContentRevision
+            reopened
                 ? "Fresh reopen verified: this runner is now using Career mode."
                 : "The atomic receipt is durable, but the Career view must be reopened before further edits.",
-            Coordinator.State.Profile?.Created == true ? NativeTheme.Success : NativeTheme.Danger);
+            reopened ? NativeTheme.Success : NativeTheme.Danger);
         reopen.AutomationId = "creation-finalization-career-reopen";
         _body.Add(reopen);
 
@@ -227,7 +257,12 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
 
         Button done = NativeTheme.PrimaryButton("Open Career runner");
         done.AutomationId = "creation-finalization-open-career";
-        done.Clicked += async (_, _) => await Navigation.PopToRootAsync();
+        done.IsEnabled = reopened;
+        done.Clicked += async (_, _) =>
+        {
+            if (Coordinator.IsCreationFinalizationReceiptCurrent(_receipt))
+                await Navigation.PopToRootAsync();
+        };
         _body.Add(done);
     }
 

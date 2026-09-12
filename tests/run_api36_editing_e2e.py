@@ -304,6 +304,10 @@ ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "*:S",
 )
 ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
+ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS = (
+    "logcat", "-d", "-b", "main", "-v", "threadtime",
+    "-s", "ChummerCreateDiag:I", "*:S",
+)
 ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS = (
     "logcat",
     "-d",
@@ -1024,6 +1028,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return (
             "read-only-retryable",
             "bounded exact-tag creation-bootstrap timing observation",
+        )
+    if arguments == ADB_CREATION_DIALOG_DIAGNOSTIC_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact-tag creation-dialog diagnostic snapshot; not mutation authority",
         )
     if arguments == ADB_CREATION_DASHBOARD_READY_LOGCAT_ARGUMENTS:
         return (
@@ -5164,8 +5173,9 @@ class Device:
         """Return exactly one accessibility node with an exact resource id.
 
         Exact evidence must never use the driver's permissive text/prefix
-        selector. A missing node means the surface was not published; duplicate
-        nodes make the rendered proof ambiguous. Both conditions fail closed.
+        selector. A missing node means the surface was not established by this
+        observation; duplicate nodes make the rendered proof ambiguous. Both
+        conditions fail closed.
         """
         timeout_deadline = time.monotonic() + timeout
         operation_deadline = (
@@ -5174,16 +5184,184 @@ class Device:
             else min(timeout_deadline, deadline)
         )
         scrolls = 0
-        while time.monotonic() < operation_deadline:
-            nodes = (
-                self.hierarchy()
-                if deadline is None
-                else self.hierarchy(deadline=operation_deadline)
-            )
-            if not nodes:
-                # A failed/empty UIAutomator dump is not evidence that the target is
-                # outside the viewport.  Advancing here can move a short row through
-                # the viewport without ever observing it.
+        hierarchy_reads = 0
+        empty_hierarchy_reads = 0
+        last_match_count: int | None = None
+        stage = "hierarchy"
+        first_nonempty_projection: dict[str, object] | None = None
+        latest_nonempty_projection: dict[str, object] | None = None
+        projection_failures = 0
+        projection_max_nodes = 128
+        projection_max_attribute_characters = 256
+        projection_attributes = (
+            "resource-id", "class", "package", "bounds", "index",
+            "checkable", "checked", "clickable", "enabled", "focusable", "focused",
+            "scrollable", "long-clickable", "password", "selected",
+        )
+
+        def retain_nonempty_projection(
+            nodes: list[UiNode], observation_started_at: float,
+        ) -> None:
+            nonlocal first_nonempty_projection, latest_nonempty_projection, projection_failures
+            try:
+                projected_nodes = []
+                truncated_attributes = 0
+                omitted_attributes = 0
+                for node in nodes[:projection_max_nodes]:
+                    attributes = {}
+                    for name in projection_attributes:
+                        value = node.attributes.get(name)
+                        if isinstance(value, str):
+                            attributes[name] = value[:projection_max_attribute_characters]
+                            truncated_attributes += len(value) > projection_max_attribute_characters
+                    omitted_attributes += len(node.attributes) - len(attributes)
+                    projected_nodes.append(attributes)
+                projection = {
+                    "readOrdinal": hierarchy_reads,
+                    "observationStartedAtMonotonic": observation_started_at,
+                    "nodeCount": len(nodes),
+                    "omittedNodes": max(0, len(nodes) - projection_max_nodes),
+                    "omittedAttributes": omitted_attributes,
+                    "truncatedAttributes": truncated_attributes,
+                    "nodes": projected_nodes,
+                }
+                if first_nonempty_projection is None:
+                    first_nonempty_projection = projection
+                latest_nonempty_projection = projection
+            except Exception:
+                # Diagnostic collection cannot change matching or the original failure.
+                projection_failures += 1
+
+        def record_deadline_context(error: AdbOperationDeadlineExceeded | None) -> None:
+            # Host-only diagnostic, not evidence of product absence or mutation.
+            # Exhaustion grants no further ADB budget, including for capture.
+            try:
+                diagnostic = {
+                    "selector": selector,
+                    "evidencePrefix": evidence_prefix,
+                    "surfaceName": surface_name,
+                    "stage": stage,
+                    "hierarchyReads": hierarchy_reads,
+                    "emptyHierarchyReads": empty_hierarchy_reads,
+                    "lastMatchCount": last_match_count,
+                    "scrolls": scrolls,
+                    "operationDeadline": operation_deadline,
+                    "callerDeadline": deadline,
+                    "observedAtMonotonic": time.monotonic(),
+                    "errorType": type(error).__name__ if error is not None else "RuntimeError",
+                    "error": str(error) if error is not None else "Exact selector observation timed out",
+                    "observedHierarchyProjections": {
+                        "kind": "flattened-accessibility-observations",
+                        "authoritative": False,
+                        "rawXml": False,
+                        "maxNodesPerObservation": projection_max_nodes,
+                        "maxAttributeCharacters": projection_max_attribute_characters,
+                        "retainedAttributes": projection_attributes,
+                        # Free-form display/input text may contain credentials. Do not
+                        # guess which strings are safe, including on unexpected routes.
+                        "omissionPolicy": "text, content-desc and all non-allowlisted attributes omitted",
+                        "collectionFailures": projection_failures,
+                        "firstNonempty": first_nonempty_projection,
+                        "latestNonempty": latest_nonempty_projection,
+                    },
+                }
+                with (self.evidence / f"{evidence_prefix}-deadline.json").open(
+                    "x", encoding="utf-8"
+                ) as stream:
+                    json.dump(diagnostic, stream, indent=2)
+                    stream.write("\n")
+            except Exception:
+                # A full/unavailable evidence volume must not mask the failure.
+                pass
+            if error is not None:
+                try:
+                    error.add_note(
+                        f"Exact selector observation: selector={selector!r}; "
+                        f"evidence_prefix={evidence_prefix!r}; surface={surface_name!r}; stage={stage}"
+                    )
+                except Exception:
+                    pass
+
+        try:
+            while (observation_started_at := time.monotonic()) < operation_deadline:
+                stage = "hierarchy"
+                hierarchy_reads += 1
+                nodes = (
+                    self.hierarchy()
+                    if deadline is None
+                    else self.hierarchy(deadline=operation_deadline)
+                )
+                if not nodes:
+                    # A failed/empty UIAutomator dump is not evidence that the target is
+                    # outside the viewport.  Advancing here can move a short row through
+                    # the viewport without ever observing it.
+                    empty_hierarchy_reads += 1
+                    stage = "empty-hierarchy-delay"
+                    if deadline is None:
+                        time.sleep(0.75)
+                    else:
+                        _sleep_before_operation_deadline(
+                            0.75,
+                            deadline=operation_deadline,
+                        )
+                    continue
+                if deadline is not None:
+                    retain_nonempty_projection(nodes, observation_started_at)
+                matches = [
+                    node
+                    for node in nodes
+                    if Device._has_exact_resource_id(node, selector)
+                ]
+                last_match_count = len(matches)
+                if len(matches) == 1:
+                    return matches[0]
+                if len(matches) > 1:
+                    stage = "cardinality-capture"
+                    if deadline is None:
+                        self.capture(f"{evidence_prefix}-cardinality-invalid")
+                    else:
+                        self.capture(
+                            f"{evidence_prefix}-cardinality-invalid",
+                            deadline=operation_deadline,
+                        )
+                    raise RuntimeError(
+                        f"{surface_name} "
+                        f"{selector!r} has cardinality {len(matches)}; expected exactly one"
+                    )
+                stage = "system-ui-observation"
+                system_ui_dismissed = (
+                    self.dismiss_system_ui_anr(nodes)
+                    if deadline is None
+                    else self.dismiss_system_ui_anr(
+                        nodes,
+                        deadline=operation_deadline,
+                    )
+                )
+                if system_ui_dismissed:
+                    stage = "system-ui-delay"
+                    if deadline is None:
+                        time.sleep(2)
+                    else:
+                        _sleep_before_operation_deadline(
+                            2,
+                            deadline=operation_deadline,
+                        )
+                    continue
+                if scroll and scrolls < max_scrolls:
+                    stage = "scroll"
+                    if deadline is None:
+                        self.swipe_up(
+                            x_ratio=self._scroll_x_ratio(selector),
+                            distance_ratio=scroll_distance_ratio,
+                        )
+                    else:
+                        self.swipe_up(
+                            x_ratio=self._scroll_x_ratio(selector),
+                            distance_ratio=scroll_distance_ratio,
+                            deadline=operation_deadline,
+                        )
+                    scrolls += 1
+                stage = "acquisition-delay"
                 if deadline is None:
                     time.sleep(0.75)
                 else:
@@ -5191,66 +5369,15 @@ class Device:
                         0.75,
                         deadline=operation_deadline,
                     )
-                continue
-            matches = [
-                node
-                for node in nodes
-                if Device._has_exact_resource_id(node, selector)
-            ]
-            if len(matches) == 1:
-                return matches[0]
-            if len(matches) > 1:
-                if deadline is None:
-                    self.capture(f"{evidence_prefix}-cardinality-invalid")
-                else:
-                    self.capture(
-                        f"{evidence_prefix}-cardinality-invalid",
-                        deadline=operation_deadline,
-                    )
-                raise RuntimeError(
-                    f"{surface_name} "
-                    f"{selector!r} has cardinality {len(matches)}; expected exactly one"
-                )
-            system_ui_dismissed = (
-                self.dismiss_system_ui_anr(nodes)
-                if deadline is None
-                else self.dismiss_system_ui_anr(
-                    nodes,
-                    deadline=operation_deadline,
-                )
-            )
-            if system_ui_dismissed:
-                if deadline is None:
-                    time.sleep(2)
-                else:
-                    _sleep_before_operation_deadline(
-                        2,
-                        deadline=operation_deadline,
-                    )
-                continue
-            if scroll and scrolls < max_scrolls:
-                if deadline is None:
-                    self.swipe_up(
-                        x_ratio=self._scroll_x_ratio(selector),
-                        distance_ratio=scroll_distance_ratio,
-                    )
-                else:
-                    self.swipe_up(
-                        x_ratio=self._scroll_x_ratio(selector),
-                        distance_ratio=scroll_distance_ratio,
-                        deadline=operation_deadline,
-                    )
-                scrolls += 1
-            if deadline is None:
-                time.sleep(0.75)
-            else:
-                _sleep_before_operation_deadline(
-                    0.75,
-                    deadline=operation_deadline,
-                )
+        except AdbOperationDeadlineExceeded as error:
+            if deadline is not None:
+                record_deadline_context(error)
+            raise
         if deadline is None:
             self.capture(f"{evidence_prefix}-unavailable")
         else:
+            stage = "loop-exhausted"
+            record_deadline_context(None)
             self.capture(
                 f"{evidence_prefix}-unavailable",
                 deadline=operation_deadline,

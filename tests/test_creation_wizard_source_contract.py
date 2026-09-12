@@ -1,4 +1,5 @@
 import ast
+import re
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,27 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_both_dashboard_routes_bind_each_typed_authority_to_its_own_step(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        # The compiled interaction matrix verifies the admission policy. This
+        # separate wiring guard covers both card and Continue-route call sites:
+        # forwarding stage.StepId would wrongly authorize a different domain.
+        calls = re.findall(
+            r"bool canOpen(Attributes|Skills|Contacts|Resources)\s*=\s*"
+            r"BuildPageUiProjection\.CanOpenExactTypedCreationStage\(\s*stage,\s*"
+            r"CharacterCreationWizardStepIds\.(\w+),\s*(HasAuthoritative\w+)\(",
+            source,
+        )
+        expected = {
+            "Attributes": ("Attributes", "HasAuthoritativeAttributes"),
+            "Skills": ("Skills", "HasAuthoritativeSkills"),
+            "Contacts": ("ContactsLifestyles", "HasAuthoritativeCreationContacts"),
+            "Resources": ("Resources", "HasAuthoritativeResources"),
+        }
+        self.assertEqual(8, len(calls))
+        for route, (step, predicate) in expected.items():
+            self.assertEqual(2, calls.count((route, step, predicate)), route)
+
     def test_synchronous_creation_completions_drain_and_render_current_progress(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         resolver = source.split("private CreationDashboardAuthorityProjection? ResolveCreationProjection(", 1)[1].split(

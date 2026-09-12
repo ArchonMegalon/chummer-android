@@ -21,6 +21,23 @@ public sealed class Api36ProofStatePublisher
 {
     public const string RelativePath = "api36-proof/state.v2.json";
     public const string ImportRelativePath = "api36-proof/import.v1.json";
+
+    // Diagnostic breadcrumbs only: no runner values, credentials, or authority receipt.
+    // This file and its callers are excluded from ordinary/Play builds.
+    internal static void TraceCreationDialogStage(string actionId, string stage, long renderGeneration = 0)
+    {
+        if (!AndroidE2EAuthority.Enabled || !string.Equals(actionId, "create_character", StringComparison.Ordinal))
+            return;
+        try
+        {
+            global::Android.Util.Log.Info("ChummerCreateDiag",
+                $"CHUMMER_CREATE_DIAGNOSTIC stage={stage} render={renderGeneration} ticks={System.Diagnostics.Stopwatch.GetTimestamp()}");
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // Observation must never prevent or replay the user's action.
+        }
+    }
     private readonly object _sync = new();
     private readonly string _directory;
     private readonly string _path;
