@@ -13720,6 +13720,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(1, phase_block.count("tap_exact_current_preview_confirm("))
         self.assertEqual(1, phase_block.count("read_exact_confirmed_receipt("))
         self.assertEqual(2, block.count("deadline=preview_confirm_deadline"))
+        self.assertEqual(1, block.count("proof_expectation=proof_expectation"))
+        self.assertIs(
+            inspect.signature(driver.require_exact_attributes_category_round_trip)
+            .parameters["proof_expectation"].default,
+            inspect.Parameter.empty,
+        )
         for forbidden in (
             "node_text(",
             "device.tap(",
@@ -13742,6 +13748,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             round_trip.count("require_exact_attributes_post_back_observation("),
         )
         self.assertEqual(1, round_trip.count("device.shell("))
+        self.assertEqual(1, round_trip.count("proof_state.wait_for_state("))
+        self.assertEqual(
+            1, round_trip.count("read_creation_prerequisite_attachment_proof_state(")
+        )
+        self.assertLess(
+            round_trip.index("proof_state.wait_for_state("),
+            round_trip.index("device.back(deadline=deadline)"),
+        )
+        self.assertLess(
+            round_trip.index("device.back(deadline=deadline)"),
+            round_trip.index("read_creation_prerequisite_attachment_proof_state("),
+        )
+        self.assertLess(
+            round_trip.index("read_creation_prerequisite_attachment_proof_state("),
+            round_trip.index("require_exact_attributes_post_back_observation("),
+        )
         for forbidden in (
             "node_text(",
             "device.tap(",
@@ -13853,6 +13875,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait_for_single_exact_resource_id.return_value = category_route
         device.node_has_tappable_bounds.return_value = True
         device.dismiss_system_ui_anr.return_value = False
+        expectation = mock.Mock(spec=driver.proof_state.ProofBuildExpectation)
+        prior = {"sequence": 9}
 
         with mock.patch.object(
             driver,
@@ -13862,10 +13886,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 [disabled],
                 [disabled],
             ],
-        ) as scan:
+        ) as scan, mock.patch.object(
+            driver.proof_state, "wait_for_state", return_value=mock.Mock(payload=prior)
+        ) as read_prior, mock.patch.object(
+            driver, "read_creation_prerequisite_attachment_proof_state"
+        ) as read_attachment:
             actual = driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=expectation,
             )
 
         self.assertEqual(authority, actual)
@@ -13898,6 +13927,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.tap.assert_not_called()
         device.wait.assert_not_called()
         device.back.assert_called_once_with(deadline=deadline)
+        self.assertIs(expectation, read_prior.call_args.kwargs["expected"])
+        self.assertEqual(deadline, read_prior.call_args.kwargs["deadline"])
+        read_attachment.assert_called_once_with(
+            device, expectation, expected_prior_proof=prior, deadline=deadline
+        )
 
     def test_exact_attributes_pre_tap_authority_fails_closed_without_action(
         self,
@@ -13928,6 +13962,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.require_exact_attributes_category_round_trip(
                         device,
                         deadline=deadline,
+                        proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
                     )
                 device.shell.assert_not_called()
                 device.wait_for_single_exact_resource_id.assert_not_called()
@@ -13989,6 +14024,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.require_exact_attributes_category_round_trip(
                         device,
                         deadline=deadline,
+                        proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
                     )
                 device.shell.assert_not_called()
                 device.wait_for_single_exact_resource_id.assert_not_called()
@@ -14019,6 +14055,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.shell.assert_called_once()
@@ -14046,11 +14083,233 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.shell.assert_called_once()
         device.hierarchy.assert_called_once_with(deadline=deadline)
         device.back.assert_not_called()
+
+    def _attributes_post_back_readiness_scenario(
+        self, *, proof_fault: str | None = None, scan_fault: str | None = None,
+    ) -> tuple[list[str], list[tuple[str, str]]]:
+        # Model transport, viewport movement and asynchronous appearance only.
+        # Real proof parsing/digests, later-sequence admission, stable-end scan,
+        # exact resource identity, contiguous values/states and the one tap run.
+        from test_api36_proof_state_contract import attachment_payload, encoded, expectation
+
+        clock = [100.0]
+        deadline = clock[0] + driver.PHASE_BUDGET_MS["preview-confirm"] / 1000
+        self.assertEqual(460.0, deadline)
+        returned, ready, viewport, proof_reads = [False], [True], [0], [0]
+        events: list[str] = []
+        observed_states: list[tuple[str, str]] = []
+        prior = attachment_payload(9)
+        authority = "Attributes. Rank A · raw grant 24 "
+        selector = "creation-prerequisite-category-attributes"
+        category = self.canonical_node(selector, text="", **{"content-desc": authority})
+        route = self.canonical_node("creation-prerequisite-page")
+        disabled = self.canonical_node(
+            "creation-prerequisite-attributes-disabled",
+            text="Raw normal Attribute grant: 24 · Attributes remain disabled",
+            enabled="false",
+        )
+        device = mock.Mock(spec=driver.shared.Device)
+        device.node_has_tappable_bounds.return_value = True
+
+        def observe(_device, *, deadline: float, attempt: int):
+            self.assertLessEqual(deadline, 460.0)
+            if not returned[0]:
+                events.append("prior-attachment-9")
+                payload = prior
+            else:
+                proof_reads[0] += 1
+                sequence = 9 if proof_reads[0] == 1 else 10
+                if proof_fault in {"stale", "regressed"}:
+                    sequence = 9 if proof_fault == "stale" else 8
+                payload = attachment_payload(sequence)
+                if proof_reads[0] >= 2:
+                    replacements = {
+                        "process": ("processId", 4243),
+                        "instance": ("processInstanceId", "55555555-5555-5555-5555-555555555555"),
+                        "generation": ("e2eAuthorityGeneration", 3),
+                    }
+                    workspace_replacements = {
+                        "workspace": ("workspaceId", "another-workspace"),
+                        "content-revision": ("contentRevision", 32),
+                        "saved-revision": ("savedRevision", 30),
+                        "payload": ("payloadSha256", "a" * 64),
+                        "document": ("documentSha256", "b" * 64),
+                    }
+                    if proof_fault in replacements:
+                        field, value = replacements[proof_fault]
+                        payload[field] = value
+                    if proof_fault in workspace_replacements:
+                        field, value = workspace_replacements[proof_fault]
+                        payload["workspace"][field] = value
+                    if proof_fault == "late":
+                        clock[0] = deadline
+                payload["stateDigest"] = driver.proof_state.expected_state_digest(payload)
+                ready[0] = sequence > 9 and proof_fault is None
+                events.append(f"returned-attachment-{sequence}")
+            return encoded(payload), payload["processId"], {"attempt": attempt}
+
+        def hierarchy(**kwargs):
+            self.assertEqual(deadline, kwargs["deadline"])
+            if not returned[0]:
+                events.append("pre-tap-category")
+                return [category]
+            events.append("ready-hierarchy" if ready[0] else "pending-hierarchy")
+            current = driver.shared.UiNode({
+                **category.attributes,
+                "enabled": "true" if ready[0] else "false",
+                "bounds": "[100,300][900,500]" if viewport[0] == 0 else "[100,80][900,280]",
+            })
+            # Without the readiness barrier, the first collected row is pending
+            # and the next overlapping row is enabled: the real collector rejects
+            # this transition instead of an artificial assertion in the fake.
+            ready[0] = True
+            nodes = [route, disabled]
+            include = viewport[0] < 2
+            if scan_fault == "missing":
+                include = False
+            if scan_fault == "reappeared":
+                include = viewport[0] != 1
+            if include:
+                if scan_fault == "changed-selection":
+                    current.attributes["content-desc"] = "Attributes. Rank B · raw grant 20"
+                if viewport[0] == 1:
+                    changes = {
+                        "text": {"text": "Attributes. Rank B · raw grant 20"},
+                        "description": {"content-desc": authority + " "},
+                        "enabled": {"enabled": "false"},
+                        "clickable": {"clickable": "false"},
+                        "decoy": {"package": "other.package"},
+                    }
+                    current.attributes.update(changes.get(scan_fault, {}))
+                nodes.append(current)
+                observed_states.append((current.attributes["enabled"], current.attributes["clickable"]))
+                if scan_fault == "duplicate" and viewport[0] == 1:
+                    nodes.append(current)
+            return nodes
+
+        def tap(*args, **kwargs):
+            self.assertEqual(("input", "tap", "500", "400"), args)
+            self.assertEqual(deadline, kwargs["deadline"])
+            events.append("category-tap")
+
+        def category_route(resource_id, **kwargs):
+            self.assertEqual("creation-prerequisite-category-page", resource_id)
+            self.assertEqual(deadline, kwargs["deadline"])
+            self.assertIs(False, kwargs["scroll"])
+            self.assertEqual(0, kwargs["max_scrolls"])
+            events.append("category-route")
+            return self.canonical_node(resource_id)
+
+        def back(**kwargs):
+            self.assertEqual(deadline, kwargs["deadline"])
+            events.append("back")
+            returned[0], ready[0] = True, False
+
+        def swipe(**kwargs):
+            self.assertEqual({"distance_ratio": 0.22, "deadline": deadline}, kwargs)
+            viewport[0] += 1
+
+        device.hierarchy.side_effect = hierarchy
+        device.shell.side_effect = tap
+        device.wait_for_single_exact_resource_id.side_effect = category_route
+        device.back.side_effect = back
+        device.swipe_up.side_effect = swipe
+        expected_build = expectation()
+        with mock.patch.object(
+            driver.proof_state, "_state_file_observation", side_effect=observe,
+        ), mock.patch.object(
+            driver.time, "monotonic", side_effect=lambda: clock[0],
+        ), mock.patch.object(
+            driver.time, "sleep", side_effect=lambda n: clock.__setitem__(0, clock[0] + n),
+        ), mock.patch.object(
+            driver.proof_state, "wait_for_state", wraps=driver.proof_state.wait_for_state,
+        ) as proof_wait, mock.patch.object(
+            driver, "read_creation_prerequisite_attachment_proof_state",
+            wraps=driver.read_creation_prerequisite_attachment_proof_state,
+        ) as attachment, mock.patch.object(
+            driver, "scan_forward_until_stable", wraps=driver.scan_forward_until_stable,
+        ) as scan:
+            try:
+                actual = driver.require_exact_attributes_category_round_trip(
+                    device, deadline=deadline, proof_expectation=expected_build,
+                )
+                self.assertEqual(authority, actual)
+            finally:
+                device.shell.assert_called_once()
+                device.back.assert_called_once_with(deadline=deadline)
+                device.wait_for_single_exact_resource_id.assert_called_once()
+                device.tap.assert_not_called()
+                device.wait.assert_not_called()
+                self.assertEqual(2, proof_wait.call_count)
+                for call in proof_wait.call_args_list:
+                    self.assertIs(expected_build, call.kwargs["expected"])
+                    self.assertEqual(deadline, call.kwargs["deadline"])
+                    self.assertEqual("attachment-authority-ready", call.kwargs["stage"])
+                attachment.assert_called_once_with(
+                    device, expected_build, expected_prior_proof=prior, deadline=deadline,
+                )
+                if proof_fault:
+                    scan.assert_not_called()
+                    self.assertEqual([], observed_states)
+                    self.assertEqual(1, device.hierarchy.call_count)
+                else:
+                    scan.assert_called_once_with(
+                        device, scan_id="creation-prerequisite-attributes-post-back",
+                        max_scrolls=12, distance_ratio=0.22, stable_repeats=2,
+                        max_consecutive_empty_reads=3, delay_seconds=0.0, deadline=deadline,
+                    )
+                    self.assertLessEqual(device.swipe_up.call_count, 12)
+                for call in device.capture.call_args_list:
+                    self.assertEqual(deadline, call.kwargs["deadline"])
+        return events, observed_states
+
+    def test_attributes_post_back_readiness_precedes_real_exact_scan(self) -> None:
+        events, states = self._attributes_post_back_readiness_scenario()
+        self.assertEqual([
+            "pre-tap-category", "category-tap", "category-route", "prior-attachment-9",
+            "back", "returned-attachment-9", "returned-attachment-10",
+        ], events[:7])
+        self.assertEqual(["ready-hierarchy"] * 5, events[7:])
+        self.assertEqual([("true", "true"), ("true", "true")], states)
+        self.assertNotIn("pending-hierarchy", events)
+
+    def test_attributes_post_back_readiness_rejects_stale_regressed_and_late_sequence(self) -> None:
+        for fault, error in (
+            ("stale", "required_after=9"),
+            ("regressed", "required_after=9"),
+            ("late", "state observation completed after its deadline"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, error):
+                self._attributes_post_back_readiness_scenario(proof_fault=fault)
+
+    def test_attributes_post_back_readiness_rejects_coherent_identity_and_workspace_drift(self) -> None:
+        for fault in (
+            "process", "instance", "generation", "workspace", "content-revision",
+            "saved-revision", "payload", "document",
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, "exact same-process workspace"):
+                self._attributes_post_back_readiness_scenario(proof_fault=fault)
+
+    def test_attributes_post_back_readiness_does_not_bypass_real_authority_failures(self) -> None:
+        for fault, error in (
+            ("text", "incomplete or unstable"),
+            ("description", "incomplete or unstable"),
+            ("enabled", "incomplete or unstable"),
+            ("clickable", "incomplete or unstable"),
+            ("duplicate", "cardinality 2"),
+            ("decoy", "canonical Chummer resource identity"),
+            ("missing", "incomplete or unstable"),
+            ("reappeared", "incomplete or unstable"),
+            ("changed-selection", "byte-for-byte"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, error):
+                self._attributes_post_back_readiness_scenario(scan_fault=fault)
 
     def test_post_back_attributes_scan_rejects_duplicate_and_decoy_authority(
         self,
@@ -14140,6 +14399,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_exact_attributes_category_round_trip(
                 device,
                 deadline=deadline,
+                proof_expectation=mock.Mock(spec=driver.proof_state.ProofBuildExpectation),
             )
 
         device.node_has_tappable_bounds.assert_called_once_with(

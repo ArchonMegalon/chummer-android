@@ -3470,6 +3470,7 @@ def require_exact_attributes_category_round_trip(
     device: shared.Device,
     *,
     deadline: float,
+    proof_expectation: proof_state.ProofBuildExpectation,
 ) -> str:
     """Open Attributes and return through one exact, non-replayable navigation path."""
     node, before = acquire_exact_attributes_category_authority(
@@ -3496,7 +3497,28 @@ def require_exact_attributes_category_round_trip(
         surface_name="Attributes category detail route",
         deadline=deadline,
     )
+    # Back revalidates the parent asynchronously: its previous controls remain
+    # disabled until the current appearance renders. Capture the latest retained
+    # parent publication immediately before this one Back, then admit only a
+    # later same-process/workspace attachment before observing stable UI values.
+    # This schedules the unchanged strict scan; it does not replace that scan
+    # or authorize retrying a navigation action or ignoring genuine state drift.
+    prior_attachment = proof_state.wait_for_state(
+        device,
+        expected=proof_expectation,
+        page_automation_id="creation-prerequisite-page",
+        stage="attachment-authority-ready",
+        wizard_lane="creation-prerequisite",
+        timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=30),
+        deadline=deadline,
+    )
     device.back(deadline=deadline)
+    read_creation_prerequisite_attachment_proof_state(
+        device,
+        proof_expectation,
+        expected_prior_proof=prior_attachment.payload,
+        deadline=deadline,
+    )
     require_exact_attributes_post_back_observation(
         device,
         before,
@@ -11989,6 +12011,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     attributes_before = require_exact_attributes_category_round_trip(
         device,
         deadline=preview_confirm_deadline,
+        proof_expectation=proof_expectation,
     )
 
     open_exact_prerequisite_preview(
