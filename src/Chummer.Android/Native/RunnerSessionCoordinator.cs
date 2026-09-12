@@ -1454,6 +1454,30 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         LoadCreationFinalization()
         => LoadCreationFinalization(State);
 
+    // Only the dashboard's Task.Run-backed projection queue calls this method.
+    // Its finalizer and child-page revalidation use the same Android owner lease;
+    // serialize their admission without blocking the UI or retrying Core work.
+    // A canceled synchronous finalizer still owns the gate until it really exits.
+    internal CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
+        LoadCreationFinalizationInBackground(
+            CharacterOverviewState original, CancellationToken cancellationToken)
+    {
+        _workspaceActivationGate.Wait(cancellationToken);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // The original owner/display is checked after admission and again
+            // after the actual read. Never replace it with a newly captured owner.
+            var result = LoadCreationFinalization(original);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
+        }
+        finally
+        {
+            _workspaceActivationGate.Release();
+        }
+    }
+
     internal bool IsCreationFinalizationDisplayCurrent(CharacterOverviewState original)
         => !_disposed && State.Error is null
            && State.WorkspaceId == original.WorkspaceId

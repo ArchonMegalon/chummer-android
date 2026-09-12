@@ -1568,7 +1568,7 @@ public sealed class BuildPage : NativePageBase
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
-                        Coordinator.LoadCreationFinalization(original);
+                        Coordinator.LoadCreationFinalizationInBackground(original, cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
                     return result;
                 },

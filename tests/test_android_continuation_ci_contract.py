@@ -32,6 +32,11 @@ CONTENT_START = "# Continuation tests use only this build's canonical Core conte
 PROOF_START = "# Managed proof-capture regression uses a separate explicit Debug build."
 PROOF_END = "# End managed proof-capture regression."
 PROOF_FLAG = "--creation-prerequisite-proof-capture-content-root"
+PROOF_FLAGS = (
+    PROOF_FLAG,
+    "--creation-resources-prerequisite-rebind-content-root",
+    "--creation-finalization-admission-content-root",
+)
 
 
 class AndroidContinuationCiContractTests(unittest.TestCase):
@@ -217,10 +222,12 @@ class AndroidContinuationCiContractTests(unittest.TestCase):
         self.assertIn('--configuration Debug', block)
         self.assertIn('"${local_tree_args[@]}"', block)
         self.assertNotIn("ChummerNativeProofCaptureTests", script[:start] + script[end:])
-        self.assertNotIn(PROOF_FLAG, script[:start] + script[end:])
         release = self.script("compile-native-release-no-package.sh")
         self.assertNotIn("ChummerNativeProofCaptureTests", release)
-        self.assertNotIn(PROOF_FLAG, release)
+        for flag in PROOF_FLAGS:
+            self.assertEqual(1, block.count(flag))
+            self.assertNotIn(flag, script[:start] + script[end:])
+            self.assertNotIn(flag, release)
         for forbidden in ('"$project_path"', "proof_build_args", "DefineConstants", "set +e", "|| true"):
             self.assertNotIn(forbidden, block)
         for required in ("--no-restore", "-m:1", "--disable-build-servers",
@@ -241,7 +248,7 @@ class AndroidContinuationCiContractTests(unittest.TestCase):
             env = {**os.environ, "interaction_tests_path": str(project),
                    "native_content_root": content, "fake_failure": failure,
                    "fake_binary": binary, "expected_binary": str(assembly),
-                   "fake_local_arg": local_arg, "proof_flag": PROOF_FLAG}
+                   "fake_local_arg": local_arg, "proof_flags": "|".join(PROOF_FLAGS)}
             # Only shell control flow is modeled. This is not a compiler, assembly
             # or workspace-authority test; the managed selector remains mandatory.
             fake = r'''
@@ -262,9 +269,9 @@ fake_dotnet() {
       symlink) ln -s -- "$expected_binary.ordinary" "$expected_binary" ;;
       *) return 45 ;;
     esac
-  elif [[ "$2" == "$proof_flag" ]]; then
+  elif [[ "|$proof_flags|" == *"|$2|"* ]]; then
     [[ "$(< "$1")" == proof ]] || return 44
-    [[ "$fake_failure" != proof ]] || return 43
+    [[ "$fake_failure" != "$2" ]] || return 43
   else
     [[ "$2" != "$fake_failure" ]] || return 37
   fi
@@ -281,24 +288,24 @@ local_tree_args=("$fake_local_arg")
                               "-p:BuildInParallel=false", "-p:ChummerDesktopRuntimeIdentifiers=",
                               "-p:ChummerUseLocalCompatibilityTree=true",
                               "-p:ChummerNativeProofCaptureTests=true", local_arg))
-            proof = f"{assembly}|{PROOF_FLAG}|{content}"
-            return result, ordinary, build, proof
+            proofs = [f"{assembly}|{flag}|{content}" for flag in PROOF_FLAGS]
+            return result, ordinary, build, proofs
 
     def test_proof_capture_runs_only_after_ordinary_suites_and_successful_opt_in_build(self) -> None:
-        result, ordinary, build, proof = self.run_through_proof_capture()
+        result, ordinary, build, proofs = self.run_through_proof_capture()
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual([*ordinary, build, proof], result.stdout.splitlines())
+        self.assertEqual([*ordinary, build, *proofs], result.stdout.splitlines())
 
     def test_proof_capture_gate_preserves_failure_without_replay_or_fallback(self) -> None:
-        for failure in (*FLAGS, "build", "proof"):
+        for failure in (*FLAGS, "build", *PROOF_FLAGS):
             with self.subTest(failure=failure):
-                result, ordinary, build, proof = self.run_through_proof_capture(failure=failure)
+                result, ordinary, build, proofs = self.run_through_proof_capture(failure=failure)
                 if failure in FLAGS:
                     expected, code = ordinary[:FLAGS.index(failure) + 1], 37
                 elif failure == "build":
                     expected, code = [*ordinary, build], 41
                 else:
-                    expected, code = [*ordinary, build, proof], 43
+                    expected, code = [*ordinary, build, *proofs[:PROOF_FLAGS.index(failure) + 1]], 43
                 self.assertEqual(code, result.returncode, result.stderr)
                 self.assertEqual(expected, result.stdout.splitlines())
 
@@ -308,6 +315,46 @@ local_tree_args=("$fake_local_arg")
                 result, ordinary, build, _ = self.run_through_proof_capture(binary=binary)
                 self.assertEqual(64, result.returncode, result.stderr)
                 self.assertEqual([*ordinary, build], result.stdout.splitlines())
+
+    def test_rebind_and_admission_dispatch_real_unconditional_native_sources(self) -> None:
+        directory = REPO / "tests/Chummer.Android.Native.InteractionTests"
+        program = (directory / "Program.cs").read_text(encoding="utf-8")
+        project = ET.parse(directory / "Chummer.Android.Native.InteractionTests.csproj").getroot()
+        for flag, method, source in (
+            (PROOF_FLAGS[1], "RunCreationResourcesPrerequisiteRebindCasesAsync", "CreationResourcesPrerequisiteRebindRuntimeTests.cs"),
+            (PROOF_FLAGS[2], "RunCreationFinalizationAdmissionCasesAsync", "CreationFinalizationAdmissionRuntimeTests.cs"),
+        ):
+            with self.subTest(flag=flag):
+                selector = f'if (args.Length == 2 && args[0] == "{flag}")'
+                self.assertEqual(1, program.count(selector))
+                dispatch = program.split(selector, 1)[1].split("}", 1)[0]
+                self.assertEqual('{\n            await AfterRunAuthorityHarness.' + method
+                                 + '(args[1]);\n            return;', dispatch.strip())
+                matches = [(group, item) for group in project.findall("ItemGroup")
+                           for item in group.findall("Compile") if item.get("Include") == source]
+                self.assertEqual(1, len(matches))
+                for element in matches[0]:
+                    self.assertNotIn("Condition", element.attrib)
+                self.assertIn(f"public static async Task {method}(string contentRoot",
+                              (directory / source).read_text(encoding="utf-8"))
+
+    def test_dashboard_finalization_uses_existing_gate_only_on_its_background_worker(self) -> None:
+        native = REPO / "src/Chummer.Android/Native"
+        dashboard = (native / "BuildPage.cs").read_text(encoding="utf-8")
+        worker = dashboard.split("private void PrepareCreationFinalizationProjection(", 1)[1].split(
+            "private void AddFinalizationReviewAction()", 1)[0]
+        self.assertIn("_creationFinalizationQueue.TryRequest(", worker)
+        self.assertEqual(1, worker.count("Coordinator.LoadCreationFinalizationInBackground(original, cancellationToken)"))
+        self.assertNotIn("Coordinator.LoadCreationFinalization(original)", worker)
+        coordinator = (native / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        admission = coordinator.split("LoadCreationFinalizationInBackground(", 1)[1].split(
+            "internal bool IsCreationFinalizationDisplayCurrent", 1)[0]
+        self.assertEqual(1, admission.count("_workspaceActivationGate.Wait(cancellationToken)"))
+        self.assertEqual(1, admission.count("LoadCreationFinalization(original)"))
+        self.assertEqual(2, admission.count("cancellationToken.ThrowIfCancellationRequested()"))
+        self.assertIn("finally\n        {\n            _workspaceActivationGate.Release();", admission)
+        for forbidden in ("TryAcquire", "Task.Delay", "Thread.Sleep", "while (", "new SemaphoreSlim"):
+            self.assertNotIn(forbidden, admission)
 
     def test_content_is_bound_to_the_same_core_root_before_any_build(self) -> None:
         for name in SCRIPTS:

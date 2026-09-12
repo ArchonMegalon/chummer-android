@@ -204,6 +204,8 @@ proof_capture_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chumm
   exit 64
 }
 "$dotnet_command" "$proof_capture_tests_binary" --creation-prerequisite-proof-capture-content-root "$native_content_root"
+"$dotnet_command" "$proof_capture_tests_binary" --creation-resources-prerequisite-rebind-content-root "$native_content_root"
+"$dotnet_command" "$proof_capture_tests_binary" --creation-finalization-admission-content-root "$native_content_root"
 # End managed proof-capture regression.
 
 "$dotnet_command" run \

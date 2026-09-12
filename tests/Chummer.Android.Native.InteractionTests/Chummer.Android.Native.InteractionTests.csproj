@@ -28,6 +28,8 @@
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
     <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />
+    <Compile Include="CreationResourcesPrerequisiteRebindRuntimeTests.cs" />
+    <Compile Include="CreationFinalizationAdmissionRuntimeTests.cs" />
     <Compile Include="CreationBootstrapOwnerRuntimeTests.cs" />
     <Compile Include="PersistenceOwnerRuntimeTests.cs" />
     <Compile Include="ReputationGestureOwnerRuntimeTests.cs" />

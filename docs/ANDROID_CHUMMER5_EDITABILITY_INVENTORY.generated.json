@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "521872b13992070c2e7f760bc9a89c037cf405909be5bcfb8da61837432ed937"
+        "sha256": "9b09ecf02373e80c3c57eedf1126fc81b2d58ed900ec6678f1bc0c77d9e465c7"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "c7d87605bf6bf928146f22c3f243da64267d92cb3b06af84c50f1ff02e483a37"
+        "sha256": "4543467e991ead8ea8ed74a4bb115e5de02d143fe601df95d9534956d73dcbcc"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -842,7 +842,7 @@
       {
         "path": "scripts/build-debug.sh",
         "exists": true,
-        "sha256": "e7d779bf8d09fa57d49ee66b164014f9d5e5aae350107fd0368890701c61ce8b"
+        "sha256": "ece98f67834eec4f2020c83daab58cae05b1177acbd40d0163745d7eb9982331"
       },
       {
         "path": "scripts/api36_proof_environment_authority.py",

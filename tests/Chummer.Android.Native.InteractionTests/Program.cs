@@ -33,6 +33,16 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationPrerequisiteProofCaptureCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-resources-prerequisite-rebind-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationResourcesPrerequisiteRebindCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-finalization-admission-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationFinalizationAdmissionCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--creation-bootstrap-timing")
         {
             await CreationBootstrapObservationsAreOneShotAndRequireSuccessfulStateAsync();
