@@ -1,69 +1,102 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
 
-namespace Chummer.Android;
-
-public sealed class App : Microsoft.Maui.Controls.Application
+namespace Chummer.Android
 {
-    protected override Window CreateWindow(IActivationState? activationState)
-        => new(new ContentPage());
+    public sealed class App : Microsoft.Maui.Controls.Application
+    {
+        protected override Window CreateWindow(IActivationState? activationState)
+            => new(new ContentPage());
+    }
+
+    public static class AndroidBundledContentMaterializer
+    {
+        public static string Materialize() => FileSystem.AppDataDirectory;
+    }
+
+    public sealed class AndroidDocumentService : IAndroidDocumentService
+    {
+        public Task<AndroidDocument?> OpenAsync(CancellationToken cancellationToken)
+            => Task.FromResult<AndroidDocument?>(null);
+
+        public Task<bool> SaveAsAsync(
+            string suggestedName,
+            string mediaType,
+            Stream content,
+            CancellationToken cancellationToken)
+            => Task.FromResult(false);
+    }
+
+    public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
+    {
+        public Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<AndroidImageDocumentCandidate?>(null);
+    }
+
+    public sealed class AndroidSystemService : IAndroidSystemService
+    {
+        public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(false);
+
+        public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
+            => Task.FromResult(AndroidUpdateCheckResult.Unavailable);
+
+        public Task ShareTextAsync(string text) => Task.CompletedTask;
+
+        public Task<bool> PrintPdfAsync(
+            string fileName,
+            string contentBase64,
+            string title,
+            CancellationToken cancellationToken)
+            => Task.FromResult(false);
+    }
+
+    public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
+    {
+        public PlayReviewInstallContext InstallContext { get; } = new(
+            PlayReviewPolicy.CanonicalApplicationId,
+            null,
+            "compile-gate",
+            IsReleaseBuild: false);
+
+        public bool IsRuntimeAvailable => false;
+
+        public Task RequestReviewAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task OpenStoreListingAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
 }
 
-public static class AndroidBundledContentMaterializer
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+// Android-only signatures needed by the actual proof publisher. They cannot
+// supply a picker URI or logcat observation in this managed-only test process.
+namespace Android.Util
 {
-    public static string Materialize() => FileSystem.AppDataDirectory;
+    public static class Log
+    {
+        public static int Info(string tag, string message)
+            => throw new PlatformNotSupportedException("Android logcat is unavailable in managed proof-capture tests.");
+    }
 }
 
-public sealed class AndroidDocumentService : IAndroidDocumentService
+namespace Android.Net
 {
-    public Task<AndroidDocument?> OpenAsync(CancellationToken cancellationToken)
-        => Task.FromResult<AndroidDocument?>(null);
+    public sealed class Uri
+    {
+        private Uri() { }
 
-    public Task<bool> SaveAsAsync(
-        string suggestedName,
-        string mediaType,
-        Stream content,
-        CancellationToken cancellationToken)
-        => Task.FromResult(false);
+        public override string ToString()
+            => throw new PlatformNotSupportedException("Android picker URIs are unavailable in managed proof-capture tests.");
+    }
 }
 
-public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
+namespace Chummer.Android.Platform
 {
-    public Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(
-        CancellationToken cancellationToken = default)
-        => Task.FromResult<AndroidImageDocumentCandidate?>(null);
+    internal static class DocumentIntentBroker
+    {
+        internal const int OpenRequestCode = 6411;
+    }
 }
-
-public sealed class AndroidSystemService : IAndroidSystemService
-{
-    public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(false);
-
-    public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
-        => Task.FromResult(AndroidUpdateCheckResult.Unavailable);
-
-    public Task ShareTextAsync(string text) => Task.CompletedTask;
-
-    public Task<bool> PrintPdfAsync(
-        string fileName,
-        string contentBase64,
-        string title,
-        CancellationToken cancellationToken)
-        => Task.FromResult(false);
-}
-
-public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
-{
-    public PlayReviewInstallContext InstallContext { get; } = new(
-        PlayReviewPolicy.CanonicalApplicationId,
-        null,
-        "compile-gate",
-        IsReleaseBuild: false);
-
-    public bool IsRuntimeAvailable => false;
-
-    public Task RequestReviewAsync(CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
-
-    public Task OpenStoreListingAsync(CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
-}
+#endif

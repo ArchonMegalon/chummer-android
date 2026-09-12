@@ -19,6 +19,182 @@ internal static partial class AfterRunAuthorityHarness
     public static Task RunCreationPrerequisiteParentReadinessCasesAsync(string contentRoot)
         => RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: true);
 
+    public static async Task RunCreationPrerequisiteProofCaptureCasesAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        // This selector is never an optional skip. The referenced native assembly
+        // must contain the real conditional page/coordinator/publisher source.
+        Require(typeof(RunnerSessionCoordinator).GetMethod("RefreshApi36ProofWorkspaceAuthorityAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic) is not null,
+            "Build the native test reference with ChummerNativeProofCaptureTests=true; proof capture was not compiled.");
+        PropertyInfo debugAuthority = typeof(RunnerSessionCoordinator).GetProperty("DebugWorkspaceAuthority")
+            ?? throw new InvalidOperationException("Proof capture requires the actual Debug native assembly.");
+        Type publisher = typeof(RunnerSessionCoordinator).Assembly.GetType("Chummer.Android.Proof.Api36ProofStatePublisher", true)!;
+        using var ui = new IssuedPageUiContext();
+        bool priorOptIn = AndroidE2EAuthority.Enabled;
+        // Configure before constructing any coordinator: its Changed subscriber
+        // otherwise launches an unrelated fire-and-forget authority refresh.
+        try
+        {
+            AndroidE2EAuthority.ConfigureForCurrentProcess(true);
+            await ui.RunAsync(async () =>
+            {
+                foreach (bool missingWorkspace in new[] { false, true })
+                {
+                    await RunPrerequisiteProofCaptureCaseAsync(contentRoot, ui, debugAuthority, publisher, missingWorkspace);
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS actual native prerequisite proof capture: "
+                        + (missingWorkspace ? "missing-workspace-after-real-load" : "unchanged-workspace"));
+                }
+                Console.WriteLine("PASS actual native prerequisite proof capture cases: 2");
+            });
+        }
+        finally
+        {
+            // Each case's actual runtime is disposed/joined before changing this
+            // process flag. No publisher, synthetic build identity or proof file.
+            AndroidE2EAuthority.ConfigureForCurrentProcess(priorOptIn);
+        }
+    }
+
+    private static async Task RunPrerequisiteProofCaptureCaseAsync(string contentRoot, IssuedPageUiContext ui,
+        PropertyInfo debugAuthority, Type publisher, bool missingWorkspace)
+    {
+        var owners = new ControlledLinkedOwner();
+        PrerequisiteCoreProbe? probe = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationPrerequisite: true,
+            prerequisiteDecorator: actual => probe = new(actual, owners, ui));
+        Require(runtime.Services.GetService(publisher) is null
+            && Microsoft.Maui.IPlatformApplication.Current?.Services.GetService(publisher) is null,
+            "SETUP: managed capture tests must not register or construct a proof-file publisher.");
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        WorkspaceStoredDocument seed = PreparePrerequisiteOwnerFixture(runtime);
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerA, seed);
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerB, seed);
+        owners.Set(ContactsOwnerA);
+        await HydrateFinalizationOwnerAsync(runtime, owners, seed);
+        var before = PrerequisiteColdRows(runtime);
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        WorkspaceStoredDocument expected = store.Get(ContactsOwnerA, runtime.Id).Value!;
+        var loaded = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+        Require(loaded is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null }
+            && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
+            "SETUP: real Core did not issue the initial prerequisite authority.");
+        var page = new CreationPrerequisitePage(runtime.Coordinator, loaded.Value!);
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var navigation = new NavigationPage(new ContentPage { Title = "Proof capture origin" });
+        await navigation.PushAsync(page, animated: false);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        Task? pending = null;
+        int renders = 0, offUiRenders = 0, afterLoadCalls = 0, injectedDeletes = 0;
+        CharacterCreationPrerequisiteState? returnedState = null;
+        void Observe(object? sender, ElementEventArgs args)
+        {
+            renders++;
+            if (!ReferenceEquals(SynchronizationContext.Current, ui) || page.Dispatcher.IsDispatchRequired) offUiRenders++;
+        }
+        body.ChildAdded += Observe; body.ChildRemoved += Observe;
+        try
+        {
+            int calls = probe!.Calls.Count;
+            await AppearAsync();
+            Require(probe.Calls.Count == calls + 1, "SETUP: initial appearance did not perform exactly one real Core Load.");
+            NativeWorkspaceAuthoritySnapshot first = AssertReadyCapture();
+            IssuedPageLifecycle(page, "OnDisappearing");
+            probe.AfterSuccessfulAppearanceLoad = state =>
+            {
+                // Injection is AFTER actual owner-bound Core work succeeds; never
+                // change its result, binding, revisions, digest or source authority.
+                afterLoadCalls++;
+                returnedState = state;
+                Require(state.Binding.WorkspaceId == runtime.Id && owners.Current == ContactsOwnerA,
+                    "SETUP: the post-load fixture hook targeted another owner/workspace.");
+                if (!missingWorkspace) return;
+                Require(Path.GetFileName(runtime.StateDirectory).StartsWith("chummer-native-reward-runtime-", StringComparison.Ordinal)
+                    && Path.IsPathFullyQualified(runtime.StateDirectory), "SETUP: deletion is restricted to the owned temporary fixture.");
+                var deleted = store.Delete(ContactsOwnerA, runtime.Id, expected.ContentRevision);
+                Require(deleted.Success && !store.Get(ContactsOwnerA, runtime.Id).Success,
+                    "SETUP: the exact temporary owner-scoped workspace was not removed.");
+                injectedDeletes++;
+            };
+            calls = probe.Calls.Count;
+            await AppearAsync();
+            Require(probe.Calls.Count == calls + 1 && afterLoadCalls == 1 && returnedState is not null
+                && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(returnedState),
+                "The second appearance did not retain a genuinely successful/current Core issuance before proof capture.");
+            if (missingWorkspace)
+            {
+                Require(injectedDeletes == 1 && debugAuthority.GetValue(runtime.Coordinator) is null
+                    && !body.IsEnabled && !IssuedElements(page).OfType<Button>().Any(),
+                    "Missing workspace recapture retained its old proof snapshot or active controls.");
+                var unavailable = IssuedElements(page).OfType<Border>()
+                    .Single(item => item.AutomationId == "creation-prerequisite-unavailable");
+                string[] blockers = ((VerticalStackLayout)unavailable.Content!).Children.OfType<Label>()
+                    .Skip(1).Select(item => item.Text).ToArray();
+                Require(blockers.SequenceEqual(new[] { "creation-prerequisite-proof-workspace-capture-unavailable" }),
+                    "Successful Core Load followed by failed proof capture lost its exact failure class: " + JsonSerializer.Serialize(blockers));
+                Require(!store.Get(ContactsOwnerA, runtime.Id).Success, "The page recreated the deliberately missing fixture workspace.");
+            }
+            else
+            {
+                Require(injectedDeletes == 0 && !ReferenceEquals(first, AssertReadyCapture()),
+                    "A new appearance reused the old snapshot instead of recapturing the actual current document.");
+                Require(FinalizationDocumentDigest(store.Get(ContactsOwnerA, runtime.Id).Value!) == before["account-a"].Digest,
+                    "Successful read-only proof capture changed its owner workspace.");
+            }
+            Require(FinalizationDocumentDigest(store.Get(runtime.Id).Value!) == before["local"].Digest
+                && FinalizationDocumentDigest(store.Get(ContactsOwnerB, runtime.Id).Value!) == before["account-b"].Digest,
+                "Proof capture/injection changed a different owner partition.");
+            Require(alerts.Titles.Count == 0 && probe.ConfirmCalls == 0 && owners.ActiveLeases == 0
+                && !IssuedElements(page).OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                "Proof preparation alerted, confirmed, retained an owner lease or never settled.");
+        }
+        finally
+        {
+            probe!.AfterSuccessfulAppearanceLoad = null;
+            try
+            {
+                if (pending is not null) await JoinIssuedPageAsync(pending);
+                if (IssuedPageField<int>(page, "_subscribed") != 0) IssuedPageLifecycle(page, "OnDisappearing");
+                await JoinIssuedPageAsync(ui.RunAsync(() => Task.CompletedTask));
+                Require(renders > 0 && offUiRenders == 0 && owners.ActiveLeases == 0,
+                    "Proof preparation escaped the managed UI dispatcher or retained an owner lease.");
+                Console.WriteLine("PREREQUISITE_PROOF_CAPTURE " + JsonSerializer.Serialize(new
+                { missingWorkspace, afterLoadCalls, injectedDeletes, renders, offUiRenders, probe.ConfirmCalls,
+                    alerts = alerts.Titles.ToArray(), scope = "actual conditional page/coordinator and file-backed Core; no Android attachment/file publication" }));
+            }
+            finally { body.ChildAdded -= Observe; body.ChildRemoved -= Observe; }
+        }
+        async Task AppearAsync()
+        {
+            pending = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            await JoinIssuedPageAsync(pending); pending = null;
+        }
+        NativeWorkspaceAuthoritySnapshot AssertReadyCapture()
+        {
+            var snapshot = debugAuthority.GetValue(runtime.Coordinator) as NativeWorkspaceAuthoritySnapshot;
+            string rawDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                new System.Text.UTF8Encoding(false, true).GetBytes(expected.Document.Content))).ToLowerInvariant();
+            var state = (CharacterCreationPrerequisiteState?)typeof(CreationPrerequisitePage)
+                .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+            Require(snapshot is not null && state is not null && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(state)
+                && body.IsEnabled && !IssuedElements(page).Any(item => item.AutomationId == "creation-prerequisite-unavailable")
+                && IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "creation-prerequisite-prepare-preview"),
+                "The real proof-enabled appearance did not publish a current ready dashboard and actual workspace snapshot.");
+            Require(snapshot!.WorkspaceId == runtime.Id.Value && snapshot.ContentRevision == expected.ContentRevision
+                && snapshot.SavedRevision == expected.SavedRevision && snapshot.PayloadSha256 == rawDigest
+                && snapshot.DocumentSha256 == RunnerSessionCoordinator.ComputeDocumentAuthoritySha256(expected.Document)
+                && state!.Binding.RawCharacterXmlDigest == "sha256:" + rawDigest
+                && state.Binding.ContentRevision == expected.ContentRevision && state.Binding.SavedRevision == expected.SavedRevision,
+                "Proof capture was not bound to the actual cold-stored raw XML, document metadata and both revisions.");
+            return snapshot!;
+        }
+    }
+
     private static async Task RunCreationPrerequisiteCasesAsync(string contentRoot, bool parentReadinessOnly)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
@@ -406,6 +582,7 @@ internal static partial class AfterRunAuthorityHarness
         public bool FailAppearanceLoad { get; set; }
         public bool FailPostCommitLoad { get; set; }
         public Action? AfterCommit { get; set; }
+        public Action<CharacterCreationPrerequisiteState>? AfterSuccessfulAppearanceLoad { get; set; }
 
         private T Invoke<T>(string operation, Func<T> work)
         {
@@ -443,6 +620,13 @@ internal static partial class AfterRunAuthorityHarness
                         "SETUP: real Core Load was not successful before the negative response injection.");
                     AppearanceOutcomeCalls++;
                     return new(outcome, null, AppearanceBlockers);
+                }
+                if (AfterSuccessfulAppearanceLoad is { } afterLoad)
+                {
+                    Require(result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null },
+                        "SETUP: post-load injection requires a genuine successful Core result.");
+                    AfterSuccessfulAppearanceLoad = null;
+                    afterLoad(result.Value!);
                 }
                 return result;
             });

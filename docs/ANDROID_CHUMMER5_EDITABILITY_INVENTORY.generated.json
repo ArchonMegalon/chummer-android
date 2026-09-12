@@ -842,7 +842,7 @@
       {
         "path": "scripts/build-debug.sh",
         "exists": true,
-        "sha256": "22578425f980b26e51c09e6d5b8d214257d8c657a376e204d19c8b2f95b3d903"
+        "sha256": "e7d779bf8d09fa57d49ee66b164014f9d5e5aae350107fd0368890701c61ce8b"
       },
       {
         "path": "scripts/api36_proof_environment_authority.py",
@@ -912,7 +912,7 @@
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "exists": true,
-        "sha256": "0cd9d90800cbd0841aaf973ab151524fdc5350ae7d7530de5962cbee9226d3a1"
+        "sha256": "ceb47b0e1c3a362df068ee4b48a24e1b373e81479d1c4292d07c6aee15ecfec5"
       },
       {
         "path": "tests/test_api36_e2e_workflow.py",

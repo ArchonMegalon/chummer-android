@@ -185,6 +185,27 @@ interaction_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chummer
 "$dotnet_command" "$interaction_tests_binary" --account-erasure-owner-content-root "$native_content_root"
 # End required account/continuation suites.
 
+# Managed proof-capture regression uses a separate explicit Debug build.
+# The ordinary suites above and the APK never receive this test-only property.
+"$dotnet_command" build "$interaction_tests_path" \
+  --configuration Debug \
+  --no-restore \
+  -m:1 \
+  --disable-build-servers \
+  -p:UseSharedCompilation=false \
+  -p:BuildInParallel=false \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true \
+  -p:ChummerNativeProofCaptureTests=true \
+  "${local_tree_args[@]}"
+proof_capture_tests_binary="${interaction_tests_path%/*}/bin/Debug/net10.0/Chummer.Android.Native.InteractionTests.dll"
+[[ -f "$proof_capture_tests_binary" && ! -L "$proof_capture_tests_binary" ]] || {
+  echo "The just-built managed proof-capture test binary is unavailable." >&2
+  exit 64
+}
+"$dotnet_command" "$proof_capture_tests_binary" --creation-prerequisite-proof-capture-content-root "$native_content_root"
+# End managed proof-capture regression.
+
 "$dotnet_command" run \
   --project "$document_provider_work_tests_path" \
   --configuration Debug \

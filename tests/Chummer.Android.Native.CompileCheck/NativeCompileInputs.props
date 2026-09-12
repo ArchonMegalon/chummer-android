@@ -27,4 +27,9 @@
     <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />
     <Compile Include="CompileStubs.cs" Link="CompileStubs.cs" />
   </ItemGroup>
+  <!-- Test-only opt-in: compile the actual publisher and contract, never substitutes. -->
+  <ItemGroup Condition="'$(ChummerNativeProofCaptureTests)' == 'true'">
+    <Compile Include="../../src/Chummer.Android/Proof/Api36ProofState.cs" Link="Proof/Api36ProofState.cs" />
+    <Compile Include="../../src/Chummer.Android/Proof/Api36ProofStatePublisher.cs" Link="Proof/Api36ProofStatePublisher.cs" />
+  </ItemGroup>
 </Project>
