@@ -13495,7 +13495,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("active_grant_proof.current_viewport"),
             active_preview,
         )
-        self.assertLess(active_preview, source.index("active_preview_digest = canonical_digest("))
+        self.assertLess(
+            active_preview,
+            source.index('active_preview_digest = str(active_preview_proof["previewDigest"])'),
+        )
         preview_back = source.index(
             'evidence_prefix="talent-active-skill-preview-back"'
         )
@@ -14935,6 +14938,214 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 )
         device.hierarchy.assert_not_called()
         device.shell.assert_not_called()
+
+    def _active_preview_scan_case(
+        self, *, start_at_bottom: bool, fault: str | None = None
+    ) -> tuple[dict[str, object], mock.Mock, list[dict[str, object]], list[int]]:
+        """Run the actual phase; model only transport, viewport motion and time."""
+        sha = "sha256:" + "a" * 64
+        plan_sha = "sha256:" + "c" * 64
+        option_id = (
+            "creation-prerequisite-talent-active-skill-option-"
+            "0dbcb9cd-f824-4b5d-a387-90d33318b04c"
+        )
+        preview_id = option_id.replace("talent-active-skill-option-", "preview-talent-active-skill-")
+        route = self.canonical_node("creation-prerequisite-preview-page")
+        digest = self.canonical_node(
+            "creation-prerequisite-preview-digest", text=sha,
+            bounds="[100,600][900,700]", clickable="false",
+        )
+        frames = [
+            [route, self.canonical_node("creation-prerequisite-preview-binding", text="Revision 1")],
+            [route, digest,
+             self.canonical_node("creation-prerequisite-preview-raw-character-xml-digest", text=sha),
+             self.canonical_node("creation-prerequisite-preview-auxiliary-state-digest", text="b" * 64),
+             self.canonical_node("creation-prerequisite-preview-authority-digest", text=sha)],
+            [route, *[
+                self.canonical_node(f"creation-prerequisite-preview-assignment-{category}")
+                for category in driver.CATEGORIES
+            ]],
+            [route, self.canonical_node("creation-prerequisite-preview-heritage"),
+             self.canonical_node("creation-prerequisite-preview-talent"),
+             self.canonical_node("creation-prerequisite-preview-karma-budget", text="Karma 25"),
+             self.canonical_node("creation-prerequisite-preview-attributes-ready")],
+            [route, self.canonical_node(driver.TALENT_GRANT_PREVIEW_PLAN_DIGEST_ID, text=plan_sha),
+             self.canonical_node(preview_id, text="Swimming · Rating 4"),
+             self.canonical_node("creation-prerequisite-confirm", text="Confirm exact preview")],
+        ]
+        if fault == "missing-digest":
+            frames[1].remove(digest)
+        elif fault == "malformed-digest":
+            digest.attributes["text"] = "not-a-canonical-digest"
+        elif fault == "duplicate-digest":
+            frames[1].append(self.canonical_node("creation-prerequisite-preview-digest", text=sha))
+        elif fault == "duplicate-grant":
+            frames[-1].append(self.canonical_node(preview_id, text="Swimming · Rating 4"))
+        elif fault == "wrong-grant":
+            frames[-1][2] = self.canonical_node(
+                preview_id.replace("0dbcb9cd", "1dbcb9cd"), text="Wrong skill · Rating 4"
+            )
+        elif fault is not None:
+            raise AssertionError(f"Unknown fixture fault: {fault}")
+        now = [100.0]
+        position = [4 if start_at_bottom else 0]
+        parent_position = [0]
+        opened = [False]
+        observations: list[int] = []
+        scans: list[dict[str, object]] = []
+        device = mock.Mock(spec=driver.shared.Device)
+        button = self.canonical_node("creation-prerequisite-prepare-preview")
+
+        def bounded(options: dict[str, object]) -> None:
+            self.assertIn("deadline", options)
+            self.assertGreater(float(options["deadline"]), now[0])
+            self.assertLessEqual(float(options["deadline"]), 250.0)
+
+        def hierarchy(**options: object) -> list[driver.shared.UiNode]:
+            bounded(options)
+            now[0] += 0.001
+            if not opened[0]:
+                # Active-grant completion starts before the final Preview
+                # action: four fine gestures are insufficient in this model.
+                return [
+                    self.canonical_node("creation-prerequisite-page"),
+                    button if parent_position[0] == 6 else self.canonical_node(
+                        "creation-prerequisite-talent-selection-id", text=f"parent-{parent_position[0]}"
+                    ),
+                ]
+            observations.append(position[0])
+            return list(frames[position[0]])
+
+        def swipe(*, distance_ratio: float, deadline: float, reverse: bool, x_ratio: float = 0.5) -> None:
+            bounded({"deadline": deadline})
+            self.assertEqual(250.0, deadline)
+            if not opened[0]:
+                self.assertFalse(reverse)
+                self.assertEqual(0.22, distance_ratio)
+                parent_position[0] = min(6, parent_position[0] + 1)
+                return
+            # A 0.52 forward swipe skips frame 1 (the narrow digest); the
+            # existing rich scan's 0.30 overlap visits every authority frame.
+            step = 2 if distance_ratio >= 0.5 else 1
+            position[0] = max(0, min(4, position[0] + (-step if reverse else step)))
+
+        def acquire(selector: str, **options: object) -> driver.shared.UiNode:
+            bounded(options)
+            self.assertEqual("creation-prerequisite-prepare-preview", selector)
+            self.assertTrue(options["require_tappable"])
+            self.assertEqual(22, options["forward_scrolls"])
+            self.assertFalse(opened[0])
+            return driver.shared.Device.wait_exact_resource_id_bidirectional(device, selector, **options)
+
+        def tap(*arguments: str, **options: object) -> None:
+            bounded(options)
+            self.assertEqual(("input", "tap", "500", "400"), arguments)
+            self.assertFalse(opened[0], "Preview action was replayed")
+            opened[0] = True
+
+        def exact_route(selector: str, **options: object) -> driver.shared.UiNode:
+            bounded(options)
+            expected = "creation-prerequisite-preview-page" if opened[0] else "creation-prerequisite-page"
+            self.assertEqual(expected, selector)
+            self.assertFalse(options.get("scroll", False))
+            return route if opened[0] else self.canonical_node(expected)
+
+        def back(**options: object) -> None:
+            bounded(options)
+            self.assertEqual(250.0, options["deadline"])
+            self.assertTrue(opened[0])
+            opened[0] = False
+
+        device.hierarchy.side_effect = hierarchy
+        device._scroll_x_ratio.return_value = 0.5
+        device.dismiss_system_ui_anr.return_value = False
+        device.swipe_down.side_effect = lambda **kw: swipe(**kw, reverse=True)
+        device.swipe_up.side_effect = lambda **kw: swipe(**kw, reverse=False)
+        device.wait_exact_resource_id_bidirectional.side_effect = acquire
+        device.wait_for_single_exact_resource_id.side_effect = exact_route
+        device.shell.side_effect = tap
+        device.back.side_effect = back
+        device.capture.side_effect = lambda name, **kw: bounded(kw)
+        device.node_has_tappable_bounds.side_effect = lambda node, **kw: (bounded(kw) is None)
+        device.wait.side_effect = AssertionError("Coarse forward-only wait bypassed the stable scan")
+        device.tap.side_effect = AssertionError("Generic Preview tap bypassed exact acquisition")
+        progress = mock.Mock()
+        progress.active_phase_deadline.return_value = 250.0
+        progress.record_scan.side_effect = scans.append
+        tree = ast.parse(inspect.getsource(driver.execute))
+        statements = tree.body[0].body
+
+        def is_phase(statement: ast.stmt, name: str) -> bool:
+            return (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Call)
+                and ast.unparse(statement.value.func) == "progress.advance"
+                and statement.value.args
+                and isinstance(statement.value.args[0], ast.Constant)
+                and statement.value.args[0].value == name
+            )
+
+        start = next(i for i, statement in enumerate(statements) if is_phase(statement, "talent-active-preview"))
+        end = next(i for i, statement in enumerate(statements) if is_phase(statement, "talent-skill-group-selection"))
+        program = ast.Module(body=statements[start:end], type_ignores=[])
+        namespace = {
+            **driver.__dict__, "device": device, "progress": progress,
+            "active_selected_option_ids": (option_id,),
+        }
+        try:
+            with mock.patch.object(driver.time, "monotonic", side_effect=lambda: now[0]), \
+                 mock.patch.object(driver.time, "perf_counter", side_effect=lambda: now[0]), \
+                 mock.patch.object(driver.time, "sleep", side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds)):
+                exec(compile(program, "<actual-active-preview-phase>", "exec"), namespace)
+        finally:
+            device.wait_exact_resource_id_bidirectional.assert_called_once()
+            device.shell.assert_called_once()
+            self.assertEqual(6, parent_position[0])
+            device.wait.assert_not_called()
+            device.tap.assert_not_called()
+            progress.advance.assert_called_once_with("talent-active-preview")
+            progress.active_phase_deadline.assert_called_once_with("talent-active-preview")
+            self.assertEqual(150_000, driver.PHASE_BUDGET_MS["talent-active-preview"])
+            if fault is not None:
+                device.back.assert_not_called()
+                self.assertNotIn("active_preview_digest", namespace)
+        return namespace, device, scans, observations
+
+    def test_active_preview_rich_scan_recovers_bottom_and_skipped_narrow_digest(self) -> None:
+        for start_at_bottom in (False, True):
+            with self.subTest(start_at_bottom=start_at_bottom):
+                namespace, device, scans, observations = self._active_preview_scan_case(
+                    start_at_bottom=start_at_bottom
+                )
+                proof = namespace["active_preview_proof"]
+                self.assertEqual("sha256:" + "a" * 64, namespace["active_preview_digest"])
+                self.assertEqual("sha256:" + "c" * 64, namespace["active_plan_digest"])
+                self.assertEqual({"rawCharacterXml": "sha256:" + "a" * 64,
+                                  "auxiliaryState": "b" * 64,
+                                  "authority": "sha256:" + "a" * 64}, proof["bindingDigests"])
+                self.assertEqual(tuple(f"creation-prerequisite-preview-assignment-{c}" for c in driver.CATEGORIES), proof["assignmentIds"])
+                self.assertEqual(1, len(proof["grantIds"]))
+                self.assertIn("Swimming · Rating 4", proof["immutableAuthorities"].values())
+                self.assertIn(1, observations)
+                self.assertEqual(4 if start_at_bottom else 0, observations[0])
+                self.assertEqual(1, len(scans))
+                self.assertEqual("stable-end", scans[0]["status"])
+                self.assertTrue(scans[0]["reusedInitialScreen"])
+                self.assertEqual(4 if start_at_bottom else 2, scans[0]["originReverseSwipes"])
+                self.assertEqual(6, scans[0]["swipes"])
+                device.back.assert_called_once_with(deadline=250.0)
+                self.assertEqual(2, device.wait_for_single_exact_resource_id.call_count)
+
+    def test_active_preview_rich_scan_rejects_invalid_digest_and_grant_authority(self) -> None:
+        for fault, message in (
+            ("missing-digest", "incomplete or unstable"),
+            ("malformed-digest", "Rich Preview authority was malformed"),
+            ("duplicate-digest", "cardinality 2"),
+            ("duplicate-grant", "preview grant plan was not exact"),
+            ("wrong-grant", "preview grant plan was not exact"),
+        ):
+            with self.subTest(fault=fault), self.assertRaisesRegex(RuntimeError, message):
+                self._active_preview_scan_case(start_at_bottom=True, fault=fault)
 
     def test_rich_preview_rejects_unknown_or_reordered_assignments(self) -> None:
         option_id = (

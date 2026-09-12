@@ -3509,6 +3509,7 @@ def open_exact_prerequisite_preview(
     device: shared.Device,
     *,
     deadline: float,
+    forward_scrolls: int = 4,
 ) -> None:
     """Acquire and tap one exact Preview action, then prove its exact route."""
     selector = "creation-prerequisite-prepare-preview"
@@ -3516,7 +3517,7 @@ def open_exact_prerequisite_preview(
         selector,
         timeout=60,
         backward_scrolls=0,
-        forward_scrolls=4,
+        forward_scrolls=forward_scrolls,
         scroll_distance_ratio=0.22,
         evidence_prefix="creation-prerequisite-prepare-preview",
         surface_name="Creation prerequisite Preview action",
@@ -11892,28 +11893,37 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError("Active-skill Talent SelectionId was not exposed by Core authority")
 
     progress.advance("talent-active-preview")
-    device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-preview-page", timeout=60)
-    active_preview_digest = canonical_digest(
+    active_preview_deadline = progress.active_phase_deadline("talent-active-preview")
+    open_exact_prerequisite_preview(
         device,
-        "creation-prerequisite-preview-digest",
-        scroll=True,
+        deadline=active_preview_deadline,
+        forward_scrolls=22,
     )
+    # Read the narrow digest row from the same stable-origin traversal as the
+    # grant plan. A separate forward-only wait can skip it and leave the
+    # observer at the bottom of an otherwise correctly rendered Preview.
+    active_preview_proof: dict[str, object] = {}
     active_plan_digest = require_exact_preview_talent_grant_plan(
         device,
         "Active skills",
         active_selected_option_ids,
         scan_observer=progress.record_scan,
         scan_id="talent-active-skill-preview-plan",
-        deadline=progress.active_phase_deadline("talent-active-preview"),
+        deadline=active_preview_deadline,
+        proof_out=active_preview_proof,
     )
-    device.capture("creation-prerequisite-talent-active-skill-preview")
-    device.back()
+    active_preview_digest = str(active_preview_proof["previewDigest"])
+    device.capture(
+        "creation-prerequisite-talent-active-skill-preview",
+        deadline=active_preview_deadline,
+    )
+    device.back(deadline=active_preview_deadline)
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-page",
         timeout=45,
         evidence_prefix="talent-active-skill-preview-back",
         surface_name="Prerequisite route after active-skill preview",
+        deadline=active_preview_deadline,
     )
 
     # Changing the selected Talent must clear the prior active-skill slots.  The

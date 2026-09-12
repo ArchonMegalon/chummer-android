@@ -376,7 +376,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = CREATION_DRIVER_PATH.read_text(encoding="utf-8")
         active = source[
             source.index("active_plan_digest = require_exact_preview_talent_grant_plan(") :
-            source.index('device.capture("creation-prerequisite-talent-active-skill-preview")')
+            source.index('active_preview_digest = str(active_preview_proof["previewDigest"])')
         ]
         skill_group = source[
             source.index("skill_group_plan_digest = require_exact_preview_talent_grant_plan(") :
@@ -385,9 +385,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ))
         ]
         self.assertIn(
-            'deadline=progress.active_phase_deadline("talent-active-preview")',
+            "deadline=active_preview_deadline",
             active,
         )
+        active_phase = source[
+            source.index('progress.advance("talent-active-preview")') :
+            source.index('progress.advance("talent-skill-group-selection")')
+        ]
+        self.assertEqual(
+            1,
+            active_phase.count(
+                'active_preview_deadline = progress.active_phase_deadline("talent-active-preview")'
+            ),
+        )
+        # Opener, scan, capture, Back and parent-route read share one deadline;
+        # none may start a new full phase budget after the previous operation.
+        self.assertEqual(5, active_phase.count("deadline=active_preview_deadline"))
         self.assertIn(
             "deadline=preview_confirm_deadline",
             skill_group,
