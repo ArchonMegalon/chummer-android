@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import base64
 from datetime import UTC, datetime, timedelta
 import hashlib
 import importlib.util
@@ -443,6 +444,42 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.two_green_receipt, self.two_green_approval,
         )
         self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
+
+        # Synthetic independent approver key: the real build verifier must not
+        # accept it, even if a signed payload relabels it as the legacy builder.
+        original_attestation = self.build_attestation.read_bytes()
+        approver_private = self.root / "approval-only.private.pem"
+        approver_public = self.root / "approval-only.public.pem"
+        for args in (
+            ["genpkey", "-algorithm", "ED25519", "-out", str(approver_private)],
+            ["pkey", "-in", str(approver_private), "-pubout", "-out", str(approver_public)],
+        ):
+            subprocess.run(["/usr/bin/openssl", *args], check=True, capture_output=True, timeout=20)
+        approver_private.chmod(0o600)
+        approver_id = "fleet-release-approver-2026-09"
+        with mock.patch.object(build.VERIFY, "RELEASE_APPROVAL_ONLY_KEYS", {
+            approver_id: (approver_public, hashlib.sha256(approver_public.read_bytes()).hexdigest()),
+        }):
+            for key_id in (approver_id, build.VERIFY.RELEASE_APPROVER_KEY_ID):
+                with self.subTest(approval_key_cannot_attest_as=key_id):
+                    changed = {key: value for key, value in attestation.items() if key != "signatureBase64"}
+                    changed["keyId"] = key_id
+                    payload = self.root / "approval-only-builder-payload.json"
+                    payload.write_bytes(build.VERIFY._canonical_json_bytes(changed))
+                    signature = subprocess.run(
+                        ["/usr/bin/openssl", "pkeyutl", "-sign", "-inkey", str(approver_private),
+                         "-rawin", "-in", str(payload)],
+                        check=True, capture_output=True, timeout=20,
+                    ).stdout
+                    self.build_attestation.write_bytes(build._pretty({
+                        **changed, "signatureBase64": base64.b64encode(signature).decode("ascii"),
+                    }))
+                    with self.assertRaisesRegex(ValueError, "signature is invalid"):
+                        self.original_build_attestation_verifier(
+                            self.build_attestation, self.aab, self.graph, self.build_sidecar,
+                            self.two_green_receipt, self.two_green_approval,
+                        )
+        self.build_attestation.write_bytes(original_attestation)
 
         unvalidated_output = self.root / "unvalidated-build-attestation.json"
         with self.assertRaisesRegex(ValueError, "external-signer-required"):

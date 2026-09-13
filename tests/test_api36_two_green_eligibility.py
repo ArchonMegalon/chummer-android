@@ -105,6 +105,218 @@ class FakeAuthenticatedGitHubClient:
         return self.responses[endpoint]
 
 
+class ReleaseApprovalPinnedKeysTests(unittest.TestCase):
+    def test_public_key_inventory_is_additive_and_digest_pinned(self) -> None:
+        self.assertEqual("local-release-builder-2026", consumer.RELEASE_APPROVER_KEY_ID)
+        self.assertEqual(
+            "ed1fbe95fc7713bfc6d9d0fea21726c1ba3193533fc2d5523e054ad8fb86184c",
+            sha256(consumer.RELEASE_APPROVER_PUBLIC_KEY.read_bytes()),
+        )
+        self.assertEqual({"fleet-release-approver-2026-09"}, set(consumer.RELEASE_APPROVAL_ONLY_KEYS))
+        public, digest = consumer._release_approval_key("fleet-release-approver-2026-09")
+        self.assertEqual(
+            "0ccffb5997e10dea7531894e00a2376f8da309a8e50da00199ffc3073de85dcb", digest,
+        )
+        self.assertEqual(digest, sha256(public.read_bytes()))
+        self.assertNotIn(b"PRIVATE KEY", public.read_bytes())
+        self.assertEqual(
+            "b0afed082c23ee1af1c828dde5b28ffa4061ceaa71d1bab4c11927ff142f43a3",
+            sha256(base64.b64decode(public.read_bytes().splitlines()[1], validate=True)),
+        )
+
+
+class ReleaseApprovalKeyTrustTests(unittest.TestCase):
+    KEY_ID = "fleet-release-approver-2026-09"
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.keys = {}
+        for name in (consumer.RELEASE_APPROVER_KEY_ID, self.KEY_ID):
+            private = self.root / f"{name}.private.pem"
+            public = self.root / f"{name}.public.pem"
+            self.openssl("genpkey", "-algorithm", "ED25519", "-out", str(private))
+            private.chmod(0o600)
+            self.openssl("pkey", "-in", str(private), "-pubout", "-out", str(public))
+            self.keys[name] = (private, public)
+        legacy_public = self.keys[consumer.RELEASE_APPROVER_KEY_ID][1]
+        new_public = self.keys[self.KEY_ID][1]
+        for attribute, value in (
+            ("RELEASE_APPROVER_PUBLIC_KEY", legacy_public),
+            ("RELEASE_APPROVER_PUBLIC_KEY_SHA256", sha256(legacy_public.read_bytes())),
+            ("RELEASE_APPROVAL_ONLY_KEYS", {
+                self.KEY_ID: (new_public, sha256(new_public.read_bytes())),
+            }),
+        ):
+            patcher = mock.patch.object(consumer, attribute, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        # Only the approval boundary is under test here; full authority replay
+        # remains covered by Api36TwoGreenEligibilityTests below.
+        self.receipt = {
+            "commonAuthority": {
+                "dependencyGraph": {"sha256": "a" * 64},
+                "environmentPolicy": {"sha256": "b" * 64},
+            },
+            "releaseIdentity": {"versionName": "0.1.0-preview.12", "versionCode": 12},
+            "eligibilitySha256": "c" * 64,
+            "sourceCommit": "d" * 40,
+            "sourceTree": "e" * 40,
+        }
+        self.raw = consumer._canonical_json_bytes(self.receipt)
+        self.now = datetime.now(UTC).replace(microsecond=0)
+        self.approval = self.root / "approval.json"
+
+    @staticmethod
+    def openssl(*args: str) -> bytes:
+        return subprocess.run(
+            ["/usr/bin/openssl", *args], check=True, capture_output=True, timeout=20,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"},
+        ).stdout
+
+    def unsigned(self, key_id: str) -> dict[str, object]:
+        return consumer.release_approval_unsigned(
+            self.raw, self.receipt, key_id=key_id,
+            generated_at_utc=self.now.isoformat().replace("+00:00", "Z"),
+            expires_at_utc=(self.now + timedelta(hours=1)).isoformat().replace("+00:00", "Z"),
+            challenge_nonce="1" * 64,
+            provenance_validator_sha256=sha256(consumer.TWO_GREEN_PATH.read_bytes()),
+            provenance_replay_sha256="2" * 64,
+        )
+
+    def sign(self, unsigned: dict[str, object], signer_id: str) -> str:
+        payload = self.root / "payload.json"
+        payload.write_bytes(consumer._canonical_json_bytes(unsigned))
+        signature = base64.b64encode(self.openssl(
+            "pkeyutl", "-sign", "-inkey", str(self.keys[signer_id][0]),
+            "-rawin", "-in", str(payload),
+        )).decode("ascii")
+        self.approval.write_bytes(consumer._canonical_json_bytes({
+            **unsigned, "signatureBase64": signature,
+        }))
+        self.approval.chmod(0o600)
+        return signature
+
+    def verify(self) -> dict[str, object]:
+        return consumer._verify_release_approval(
+            self.approval, receipt_raw=self.raw, receipt=self.receipt, now=self.now,
+        )
+
+    def test_exact_key_selection_preserves_legacy_and_new_approval_id(self) -> None:
+        for key_id in self.keys:
+            with self.subTest(key_id=key_id):
+                self.sign(self.unsigned(key_id), key_id)
+                result = self.verify()
+                self.assertEqual(key_id, result["keyId"])
+                self.assertEqual(consumer.RELEASE_APPROVAL_SCOPE, result["approvalScope"])
+                other = next(name for name in self.keys if name != key_id)
+                self.sign(self.unsigned(key_id), other)
+                with self.assertRaisesRegex(ValueError, "signature is invalid"):
+                    self.verify()
+
+    def test_unknown_and_malformed_key_ids_fail_before_crypto(self) -> None:
+        for key_id in (None, [], {}, "", "unknown", self.KEY_ID.upper(), "../key.pem"):
+            with self.subTest(key_id=key_id):
+                unsigned = self.unsigned(self.KEY_ID)
+                unsigned["keyId"] = key_id
+                self.sign(unsigned, self.KEY_ID)
+                with mock.patch.object(consumer.subprocess, "run") as crypto:
+                    with self.assertRaisesRegex(ValueError, "key is not admitted"):
+                        self.verify()
+                    crypto.assert_not_called()
+
+    def test_both_keys_keep_lifetime_and_exact_claim_guards(self) -> None:
+        mutations = {
+            "contractName": "chummer.android.release-build-attestation/v2",
+            "algorithm": "rsa",
+            "role": "android_internal_release_builder",
+            "approvalScope": "android_internal_release_artifact_binding",
+            "signingAuthorized": True,
+            "publicationAuthorized": True,
+            "googlePlayUploadAuthorized": True,
+            "sourceTree": "f" * 40,
+            "provenanceValidatorSha256": "0" * 64,
+            "generatedAtUtc": (self.now + timedelta(minutes=3)).isoformat().replace("+00:00", "Z"),
+            "expiresAtUtc": self.now.isoformat().replace("+00:00", "Z"),
+        }
+        for key_id in self.keys:
+            for field, value in mutations.items():
+                with self.subTest(key_id=key_id, field=field):
+                    unsigned = self.unsigned(key_id)
+                    unsigned[field] = value
+                    self.sign(unsigned, key_id)
+                    with self.assertRaises(ValueError):
+                        self.verify()
+
+    def test_new_key_pin_and_nonlinked_file_are_enforced(self) -> None:
+        self.sign(self.unsigned(self.KEY_ID), self.KEY_ID)
+        public = self.keys[self.KEY_ID][1]
+        for selected in ((public, "0" * 64), (self.root / "missing.pem", "0" * 64)):
+            with self.subTest(selected=selected), mock.patch.object(
+                consumer, "RELEASE_APPROVAL_ONLY_KEYS", {self.KEY_ID: selected},
+            ), self.assertRaises(ValueError):
+                self.verify()
+        link = self.root / "linked.pem"
+        link.symlink_to(public)
+        with mock.patch.object(consumer, "RELEASE_APPROVAL_ONLY_KEYS", {
+            self.KEY_ID: (link, sha256(public.read_bytes())),
+        }), self.assertRaisesRegex(ValueError, "non-symlink"):
+            self.verify()
+
+    def test_openssl_receives_only_digest_checked_key_snapshot(self) -> None:
+        self.sign(self.unsigned(self.KEY_ID), self.KEY_ID)
+        public = self.keys[self.KEY_ID][1]
+        captured = public.read_bytes()
+        run = subprocess.run
+
+        def observe(argv, **kwargs):
+            snapshot = Path(argv[argv.index("-inkey") + 1])
+            self.assertNotEqual(public, snapshot)
+            self.assertEqual(captured, snapshot.read_bytes())
+            self.assertEqual({"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}, kwargs["env"])
+            self.assertEqual(20, kwargs["timeout"])
+            public.write_bytes(self.keys[consumer.RELEASE_APPROVER_KEY_ID][1].read_bytes())
+            return run(argv, **kwargs)
+
+        with mock.patch.object(consumer.subprocess, "run", side_effect=observe) as crypto:
+            self.assertEqual(self.KEY_ID, self.verify()["keyId"])
+            self.assertEqual(1, crypto.call_count)
+        with self.assertRaisesRegex(ValueError, "digest differs"):
+            self.verify()
+
+    def test_approval_key_selector_cannot_be_used_for_builder_authority(self) -> None:
+        for field, value in (
+            ("contractName", "chummer.android.release-build-attestation/v2"),
+            ("algorithm", "rsa"),
+            ("keyId", consumer.RELEASE_APPROVER_KEY_ID),
+            ("role", "android_internal_release_builder"),
+            ("approvalScope", "android_internal_release_artifact_binding"),
+            ("signingAuthorized", True),
+        ):
+            with self.subTest(field=field):
+                changed = self.unsigned(self.KEY_ID)
+                changed[field] = value
+                signature = self.sign(changed, self.KEY_ID)
+                with mock.patch.object(consumer.subprocess, "run") as crypto:
+                    with self.assertRaisesRegex(ValueError, "another authority"):
+                        consumer._verify_ed25519_signature(
+                            changed, signature, label="authority", approval_key_id=self.KEY_ID,
+                        )
+                    crypto.assert_not_called()
+        unsigned = self.unsigned(self.KEY_ID)
+        unsigned.update(contractName="chummer.android.release-build-attestation/v2",
+                        role="android_internal_release_builder")
+        signature = self.sign(unsigned, self.KEY_ID)
+        with self.assertRaisesRegex(ValueError, "another authority"):
+            consumer._verify_ed25519_signature(
+                unsigned, signature, label="build", approval_key_id=self.KEY_ID,
+            )
+        # The unchanged default used by the real builder trusts only its legacy key.
+        with self.assertRaisesRegex(ValueError, "signature is invalid"):
+            consumer._verify_ed25519_signature(unsigned, signature, label="build")
+
+
 class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -999,6 +1211,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         private_key: Path | None = None,
         generated: datetime | None = None,
         expires: datetime | None = None,
+        key_id: str = consumer.RELEASE_APPROVER_KEY_ID,
     ) -> Path:
         generated = (generated or datetime.now(UTC)).replace(microsecond=0)
         expires = expires or generated + timedelta(hours=1)
@@ -1010,6 +1223,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             challenge_nonce="4" * 64,
             provenance_validator_sha256=sha256(consumer.TWO_GREEN_PATH.read_bytes()),
             provenance_replay_sha256="5" * 64,
+            key_id=key_id,
         )
         payload = self.root / "release-approval-payload.json"
         payload.write_bytes(consumer._canonical_json_bytes(unsigned))
@@ -2225,6 +2439,28 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                     self.approver_private_key,
                     self.root / "fabricated-authenticated-pr.json",
                 )
+
+    def test_current_receipt_consumes_new_approval_without_widening_authority(self) -> None:
+        self.inputs["policy"] = gate.POLICY_PATH
+        self.inputs["environment_policy"] = gate.ENVIRONMENT_POLICY_PATH
+        authority = self.create()
+        receipt, _, package_authority, source_graph = self.release_consumer_inputs(authority)
+        key_id = "fleet-release-approver-2026-09"
+        # This full-consumer fixture models custody; the independent-key native
+        # signature and cross-role cases above test the cryptographic boundary.
+        with mock.patch.object(consumer, "RELEASE_APPROVAL_ONLY_KEYS", {
+            key_id: (self.approver_public_key, sha256(self.approver_public_key.read_bytes())),
+        }):
+            approval = self.write_release_approval(receipt, authority, key_id=key_id)
+            verified = consumer.verify_release_eligibility(
+                receipt, approval, android_root=self.android,
+                expected_version_name="0.1.0-preview.12", expected_version_code=12,
+                package_authority_path=package_authority, source_graph_path=source_graph,
+            )
+        self.assertEqual(key_id, verified["protectedApproval"]["keyId"])
+        self.assertEqual(consumer.RELEASE_APPROVAL_SCOPE, verified["protectedApproval"]["approvalScope"])
+        self.assertFalse(verified["publicationAuthorized"])
+        self.assertFalse(verified["googlePlayUploadAuthorized"])
 
     def test_recomputed_plain_receipt_hash_cannot_replace_protected_approval(self) -> None:
         self.inputs["policy"] = gate.POLICY_PATH
