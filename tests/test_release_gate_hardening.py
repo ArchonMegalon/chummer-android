@@ -537,6 +537,7 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertFalse(authority.exists())
 
     def test_local_toolchain_record_is_unsigned_non_authority_and_omits_android_sdk(self) -> None:
+        # Schema/routing fixture only: modeled SDK custody is not deployment proof.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             java_sdk = root / "jdk"
@@ -560,10 +561,19 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                 BUILD_ATTESTATION, "_dotnet_version_digest", return_value="2" * 64
             ), mock.patch.object(
                 BUILD_ATTESTATION, "_trusted_tree_digest", return_value=("3" * 64, 4, 100)
-            ):
+            ), mock.patch.object(
+                BUILD_ATTESTATION, "_trusted_tool_sha256",
+                side_effect=lambda path, label, limit: BUILD_ATTESTATION._sha256_file(path, label, limit),
+            ) as tool_hash:
                 observation = BUILD_ATTESTATION.materialize_java_toolchain_observation(
                     java_sdk, dotnet, output
                 )
+            # Both construction and readback must route every SDK hash, with its cap.
+            expected = [mock.call(dotnet, "trusted dotnet", 256 * 1024 * 1024)] + [
+                mock.call(java_sdk / "bin" / name, f"trusted Java {name}", 128 * 1024 * 1024)
+                for name in ("java", "javac", "jarsigner", "keytool")
+            ]
+            self.assertCountEqual(tool_hash.call_args_list, expected * 2)
             self.assertEqual(
                 "non_authoritative_local_unsigned_preparation",
                 observation["authorityClass"],
@@ -576,6 +586,32 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertTrue(
                 observation["externalSignerMustBindFullJdkDotnetAndroidSdkClosure"]
             )
+
+    def test_trusted_executable_real_root_owner_differs_from_caller_reader(self) -> None:
+        # Read an existing system executable; never execute it or fake its UID.
+        tool = Path("/usr/bin/true")
+        if os.getuid() == 0 or not tool.is_file():
+            self.skipTest("requires a nonroot caller and a root-owned system executable")
+        self.assertEqual(0, tool.stat().st_uid)
+        self.assertLessEqual(tool.stat().st_size, 256 * 1024)
+        expected = hashlib.sha256(tool.read_bytes()).hexdigest()
+        with mock.patch.object(os, "read", wraps=os.read) as reads:
+            self.assertEqual(expected, BUILD_ATTESTATION._trusted_tool_sha256(
+                tool, "system fixture", 256 * 1024
+            ))
+        self.assertEqual(4, reads.call_count)  # Bytes + EOF, twice; no subprocess.
+        self.assertTrue(all(call.args[1] == 1024 * 1024 for call in reads.call_args_list))
+        with self.assertRaisesRegex(ValueError, "bounded owner file"):
+            BUILD_ATTESTATION._sha256_file(tool, "ordinary fixture", 256 * 1024)
+        with tempfile.TemporaryDirectory() as directory:
+            caller_tool = Path(directory) / "caller-tool"
+            caller_tool.write_bytes(b"caller bytes")
+            caller_tool.chmod(0o700)
+            self.assertEqual(os.getuid(), caller_tool.stat().st_uid)
+            self.assertEqual(hashlib.sha256(b"caller bytes").hexdigest(),
+                             BUILD_ATTESTATION._sha256_file(caller_tool, "ordinary", 128))
+            with self.assertRaisesRegex(ValueError, "root-owned"):
+                BUILD_ATTESTATION._trusted_tool_sha256(caller_tool, "forged tool", 128)
 
     def test_readable_owner_only_private_keys_cannot_authorize_local_signing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1013,6 +1049,118 @@ class TrustedToolchainTreeTests(unittest.TestCase):
 
     def digest(self):
         return BUILD_ATTESTATION._trusted_tree_digest(self.root, "fixture toolchain")
+
+    def test_trusted_executable_admission_bounds_precede_content_reads(self) -> None:
+        for case in ("owner", "ancestor-owner", "writable", "ancestor-writable",
+                     "symlink", "directory", "fifo", "empty", "large", "nonexec"):
+            with self.subTest(case=case):
+                target = self.write("tool", b"tool")
+                target.chmod(0o755)
+                if case in ("owner", "ancestor-owner"):
+                    self.overrides[target if case == "owner" else self.root.parent] = {"st_uid": 1000}
+                elif case in ("writable", "ancestor-writable"):
+                    path = target if case == "writable" else self.root.parent
+                    self.overrides[path] = {"st_mode": path.stat().st_mode | 0o020}
+                elif case in ("symlink", "directory", "fifo"):
+                    target.unlink()
+                    if case == "symlink":
+                        target.symlink_to(self.write("other"))
+                    elif case == "directory":
+                        target.mkdir()
+                    else:
+                        os.mkfifo(target, 0o700)
+                elif case == "empty":
+                    target.write_bytes(b"")
+                elif case == "large":
+                    target.write_bytes(b"oversized")
+                else:
+                    target.chmod(0o644)
+                with mock.patch.object(os, "read", side_effect=AssertionError("not admitted")):
+                    with self.assertRaises(ValueError):
+                        BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 4)
+                self.overrides.clear()
+                if case == "directory":
+                    target.rmdir()
+                else:
+                    target.unlink()
+        target = self.write("tool", b"tool")
+        target.chmod(0o755)
+        for limit in (0, -1, True, 4.0):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", limit)
+
+    def test_trusted_executable_rechecks_metadata_after_admission(self) -> None:
+        target = self.write("tool")
+        target.chmod(0o755)
+        real_tool = BUILD_ATTESTATION._trusted_tool
+
+        def change_after_admission(path, root, label):
+            result = real_tool(path, root, label)
+            self.overrides[path] = {"st_uid": 1000}
+            return result
+
+        with mock.patch.object(BUILD_ATTESTATION, "_trusted_tool", change_after_admission):
+            with self.assertRaisesRegex(ValueError, "bounded root-owned"):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
+
+    def test_trusted_executable_changed_fd_bytes_and_ancestry_rejected(self) -> None:
+        for change in ("replace", "grow", "rewrite", "fd", "ancestor"):
+            with self.subTest(change=change):
+                target = self.write("tool", b"original")
+                target.chmod(0o755)
+                before = target.stat()
+                self.frozen_times[(before.st_dev, before.st_ino)] = (before.st_mtime_ns, before.st_ctime_ns)
+                real_read, real_fstat = os.read, os.fstat
+                changed = False
+
+                def mutate_after_read(fd, count):
+                    nonlocal changed
+                    chunk = real_read(fd, count)
+                    if chunk and not changed:
+                        changed = True
+                        if change == "replace":
+                            os.replace(self.write("new", b"original"), target)
+                        elif change == "grow":
+                            target.write_bytes(b"more than original")
+                        elif change == "rewrite":
+                            target.write_bytes(b"replaced")
+                            self.assertEqual(BUILD_ATTESTATION._lease_identity(before),
+                                             BUILD_ATTESTATION._lease_identity(target.stat()))
+                        elif change == "ancestor":
+                            self.overrides[self.root.parent] = {"st_mode": stat.S_IFDIR | 0o777}
+                    return chunk
+
+                def changed_fstat(fd):
+                    metadata = real_fstat(fd)
+                    if change == "fd" and changed:
+                        metadata.st_uid = 1000
+                    return metadata
+
+                with mock.patch.object(os, "read", mutate_after_read), mock.patch.object(os, "fstat", changed_fstat):
+                    with self.assertRaises(ValueError):
+                        BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
+                self.assertTrue(changed)
+                self.overrides.clear()
+                target.unlink()
+
+    def test_trusted_executable_no_follow_rejects_leaf_swap(self) -> None:
+        target = self.write("tool")
+        target.chmod(0o755)
+        other = self.write("other")
+        real_open = os.open
+
+        def swap_before_open(path, flags, *args, **kwargs):
+            self.assertEqual(target, Path(path))
+            self.assertTrue(flags & os.O_NOFOLLOW)
+            target.unlink()
+            target.symlink_to(other)
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(os, "open", swap_before_open), mock.patch.object(
+            os, "read", side_effect=AssertionError("swapped bytes must not be read")
+        ):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
 
     @staticmethod
     def file_row(name: str, content: bytes, mode=0o644) -> bytes:
