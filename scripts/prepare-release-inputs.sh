@@ -87,6 +87,7 @@ project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 dotnet_command=""
 nuget_org_source="https://api.nuget.org/v3/index.json"
 release_child_home=""
+release_child_tmp=""
 
 clean_exec() {
   local child_home="${release_child_home:-/nonexistent/chummer-android-unsigned}"
@@ -94,6 +95,10 @@ clean_exec() {
     PATH=/usr/bin:/bin LANG=C LC_ALL=C HOME="$child_home"
     XDG_CONFIG_HOME="$child_home" DOTNET_CLI_HOME="$child_home"
   )
+  # Pre-initialization utilities omit TMPDIR; never forward the caller's value.
+  if [[ -n "$release_child_tmp" ]]; then
+    child_environment+=(TMPDIR="$release_child_tmp")
+  fi
   local allowed_name
   for allowed_name in \
     CHUMMER_ANDROID_REVISION CHUMMER_PRESENTATION_REVISION \
@@ -278,6 +283,8 @@ prepared_approval="$input_dir/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated
 release_child_home="$input_dir/unsigned-child-home"
 mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks" \
   "$release_child_home"
+mkdir -m 0700 -- "$input_dir/preparation-tmp"
+release_child_tmp="$input_dir/preparation-tmp"
 install -m 0600 -- \
   "$two_green_receipt_input" \
   "$prepared_eligibility"

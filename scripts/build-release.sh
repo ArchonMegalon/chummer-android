@@ -85,6 +85,7 @@ repo_dir="$(cd "$repo_dir" && pwd -P)"
 unset CHUMMER_RELEASE_REPO_ROOT
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 release_child_home=""
+release_child_tmp=""
 
 clean_exec() {
   local child_home="${release_child_home:-/nonexistent/chummer-android-unsigned}"
@@ -92,6 +93,10 @@ clean_exec() {
     PATH=/usr/bin:/bin LANG=C LC_ALL=C HOME="$child_home"
     XDG_CONFIG_HOME="$child_home" DOTNET_CLI_HOME="$child_home"
   )
+  # Pre-initialization utilities omit TMPDIR; never forward the caller's value.
+  if [[ -n "$release_child_tmp" ]]; then
+    child_environment+=(TMPDIR="$release_child_tmp")
+  fi
   local allowed_name
   for allowed_name in \
     CHUMMER_ANDROID_REVISION CHUMMER_PRESENTATION_REVISION \
@@ -372,6 +377,8 @@ external_signer_request="$release_input_root/$release_attempt_id.external-signer
   || fail "external-signer-request-already-exists"
 mkdir -m 0700 -- "$staged_publish_dir" "$selected_package_feed" \
   "$isolated_packages" "$routed_locks" "$release_intermediate"
+mkdir -m 0700 -- "$release_tmp/child-tmp"
+release_child_tmp="$release_tmp/child-tmp"
 # Build-download state is always fresh and separate from the NuGet package tree.
 release_aar_cache="$release_tmp/aar-cache"
 aar_arguments=(--aar-lock "$repo_dir/eng/android-aar-inputs.lock.json"

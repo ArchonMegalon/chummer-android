@@ -181,6 +181,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
             clean_start = script.index('release_child_home=""')
             clean_end = script.index("\n}\n", script.index("clean_exec()", clean_start)) + 3
             clean = script[clean_start:clean_end]
+            temporary_selection = re.search(r'mkdir -m 0700 -- "\$(?:release_tmp|input_dir)/[^"\n]+"\nrelease_child_tmp="[^"\n]+"\n', script).group(0)
+            self.assertLess(script.index(temporary_selection), script.index('clean_exec "$dotnet_command" restore'))
             package_arguments = ""
             if script_name == "prepare-release-inputs.sh":
                 arguments_start = script.index("package_arguments=(\n")
@@ -214,6 +216,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED": str(input_dir / "owner"),
                         "CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY": str(input_dir / "authority.json"),
                         "authority": str(input_dir / "authority.json"), "input_dir": str(input_dir),
+                        "release_tmp": str(input_dir), "TMPDIR": "/hostile/ambient-tmp",
+                        "release_child_tmp": "/hostile/caller-selected-tmp",
                         "isolated_packages": str(input_dir / "fresh-cache"),
                         "nuget_packages": str(input_dir / "fresh-cache"), "NUGET_PACKAGES": str(input_dir / "fresh-cache"),
                         "runtime_id": "android-arm64", "routed_locks": str(input_dir / "locks"),
@@ -245,11 +249,16 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         'require_exact_directory() { [[ -n "${!1}" && -d "${!1}" ]]; }\n'
                         'fail() { exit 91; }\n'
                         'python3() { /usr/bin/python3 -c \'import json,sys; print(json.dumps({"snapshot":sys.argv[1:]}))\' "$@"; }\n'
-                    ) + package_arguments + '\n' + routing + '\n' + ''.join(actual_command)
+                        'mkdir() { clean_exec /usr/bin/mkdir "$@"; }\n'
+                        'clean_exec "$dotnet_command" preinit\n'
+                    ) + temporary_selection + package_arguments + '\n' + routing + '\n' + ''.join(actual_command)
                     result = subprocess.run(["/bin/bash", "-p", "-c", program], env=environment,
                                             text=True, capture_output=True, timeout=10, check=False)
                     self.assertEqual(0, result.returncode, result.stderr)
                     observed = [json.loads(line) for line in result.stdout.splitlines()]
+                    before = observed.pop(0)
+                    self.assertEqual(["preinit"], before["argv"])
+                    self.assertNotIn("TMPDIR", before["env"])
                     command = observed[-1]["argv"]
                     self.assertEqual([operation, str(self.project)], command[:2])
                     self.assert_exact_routing(command, input_dir)
@@ -283,6 +292,12 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         self.assertNotIn("--force-evaluate", argument.casefold())
                         self.assertNotIn("restoreforceevaluate", argument.casefold())
                     child = observed[-1]["env"]
+                    expected_tmp = input_dir / ("child-tmp" if script_name == "build-release.sh" else "preparation-tmp")
+                    self.assertEqual(str(expected_tmp), child["TMPDIR"])
+                    self.assertEqual(0o700, expected_tmp.stat().st_mode & 0o777)
+                    self.assertEqual(os.getuid(), expected_tmp.stat().st_uid)
+                    self.assertEqual(before["env"]["HOME"], child["HOME"])
+                    self.assertNotEqual(child["HOME"], child["TMPDIR"])
                     for forbidden in ("HTTPS_PROXY", "http_proxy", "NUGET_PLUGIN_PATHS", "RestoreSources",
                                       "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "RestoreForceEvaluate",
                                       "RestoreLockedMode", "RestorePackagesWithLockFile", *hostile_routing):
