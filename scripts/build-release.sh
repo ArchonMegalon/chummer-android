@@ -274,6 +274,19 @@ child_home_permissions="$(stat -c '%a' -- "$release_child_home")"
 case "$release_input_root/" in
   "$workspace_root/"*) fail "release-input-root-inside-workspace" ;;
 esac
+aar_protected_roots=(--exclude-root "$workspace_root" --exclude-root "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED"
+  --exclude-root "$AndroidSdkDirectory" --exclude-root "$JavaSdkDirectory" --exclude-root "$(dirname -- "$dotnet_command")")
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+  aar_protected_roots+=(--exclude-root "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED")
+fi
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  python3 "$repo_dir/scripts/prepare_android_aar_cache.py" validate \
+    --source "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED" \
+    --aar-lock "$repo_dir/eng/android-aar-inputs.lock.json" \
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
+    "${aar_protected_roots[@]}" --exclude-root "$release_input_root" \
+    || fail "offline-aar-input-invalid"
+fi
 require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
 require_private_regular_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 two_green_receipt="$release_input_root/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
@@ -359,6 +372,18 @@ external_signer_request="$release_input_root/$release_attempt_id.external-signer
   || fail "external-signer-request-already-exists"
 mkdir -m 0700 -- "$staged_publish_dir" "$selected_package_feed" \
   "$isolated_packages" "$routed_locks" "$release_intermediate"
+# Build-download state is always fresh and separate from the NuGet package tree.
+release_aar_cache="$release_tmp/aar-cache"
+aar_arguments=(--aar-lock "$repo_dir/eng/android-aar-inputs.lock.json"
+  --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json"
+  "${aar_protected_roots[@]}" --exclude-root "$isolated_packages"
+  --exclude-root "$selected_package_feed")
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  aar_arguments+=(--source "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED")
+fi
+python3 "$repo_dir/scripts/prepare_android_aar_cache.py" seed \
+  --cache "$release_aar_cache" "${aar_arguments[@]}" \
+  || fail "aar-cache-seed"
 install -m 0600 -- \
   "$repo_dir/src/Chummer.Android/packages.lock.json" \
   "$routed_locks/Chummer.Android.packages.lock.json"
@@ -541,6 +566,11 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
   --manifest "$restore_manifest" \
   || fail "locked-restore-consumption-pre-publish"
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  python3 "$repo_dir/scripts/prepare_android_aar_cache.py" verify \
+    --cache "$release_aar_cache" "${aar_arguments[@]}" \
+    || fail "aar-originals-pre-publish"
+fi
 clean_exec "$dotnet_command" publish "$project_path" \
   --configuration "$configuration" \
   --framework "$framework" \
@@ -574,9 +604,15 @@ clean_exec "$dotnet_command" publish "$project_path" \
   -p:ApplicationDisplayVersion="$version_name" \
   -p:ApplicationVersion="$version_code" \
   -p:PublishDir="$staged_publish_dir/" \
+  -p:XamarinBuildDownloadDir="$release_aar_cache/" \
   -p:AndroidKeyStore=false \
   -p:AndroidPackageFormats=aab
 
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  python3 "$repo_dir/scripts/prepare_android_aar_cache.py" verify \
+    --cache "$release_aar_cache" "${aar_arguments[@]}" \
+    || fail "aar-originals-post-publish"
+fi
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" verify \
   --input-root "$release_tmp" \
   --intermediate-root "$release_intermediate" \

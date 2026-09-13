@@ -253,6 +253,21 @@ input_permissions="$(stat -c '%a' -- "$input_dir")"
 [[ -z "$(find "$input_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
   || fail "release-input-directory-not-empty"
 
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  aar_protected_roots=(--exclude-root "$AndroidSdkDirectory" --exclude-root "$JavaSdkDirectory"
+    --exclude-root "$(dirname -- "$dotnet_command")")
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+    aar_protected_roots+=(--exclude-root "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED")
+  fi
+  python3 "$repo_dir/scripts/prepare_android_aar_cache.py" validate \
+    --source "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED" \
+    --aar-lock "$repo_dir/eng/android-aar-inputs.lock.json" \
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
+    --exclude-root "$workspace_root" --exclude-root "$input_dir" \
+    --exclude-root "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" "${aar_protected_roots[@]}" \
+    || fail "offline-aar-input-invalid"
+fi
+
 authority="$input_dir/chummer.android.release-package-authority.v2.json"
 nuget_packages="$input_dir/nuget-packages"
 preparation_obj="$input_dir/preparation-obj"
@@ -395,6 +410,10 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
     printf 'export CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED=%q\n' \
       "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"
+  fi
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+    printf 'export CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED=%q\n' \
+      "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED"
   fi
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"

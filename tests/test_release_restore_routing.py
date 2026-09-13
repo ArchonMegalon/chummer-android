@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -218,6 +219,7 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "runtime_id": "android-arm64", "routed_locks": str(input_dir / "locks"),
                         "configuration": "Release", "framework": "net10.0-android36.0",
                         "staged_publish_dir": str(input_dir / "publish"),
+                        "release_aar_cache": str(input_dir / "aar-cache"),
                         "version_name": "0.1.0-preview.12", "version_code": "12",
                         "project_locks": str(input_dir / "locks"),
                         "preparation_obj": str(input_dir / "intermediate"),
@@ -229,6 +231,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "NUGET_PLUGIN_PATHS": "must-not-leak", "RestoreSources": "must-not-leak",
                         "RestoreForceEvaluate": "true", "RestoreLockedMode": "false",
                         "RestorePackagesWithLockFile": "false",
+                        "XamarinBuildDownloadDir": "/hostile/ambient-aar-cache",
+                        "CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED": "must-not-leak",
                     }
                     hostile_routing = ("CustomBeforeMicrosoftCommonProps", "CustomBeforeDirectoryBuildProps",
                                        "DirectoryBuildPropsPath", "ChummerReleaseLockRoot",
@@ -256,6 +260,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         self.assertEqual(1, len(observed))
                         self.assertIn("--no-restore", command)
                         self.assertIn("-p:AndroidKeyStore=false", command)
+                        self.assertEqual([f'-p:XamarinBuildDownloadDir={input_dir}/aar-cache/'],
+                                         [arg for arg in command if "xamarinbuilddownloaddir" in arg.casefold()])
                     elif offline:
                         self.assertEqual([expected_selected], sources)
                         self.assertNotIn("https://api.nuget.org/v3/index.json", command)
@@ -281,6 +287,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                                       "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "RestoreForceEvaluate",
                                       "RestoreLockedMode", "RestorePackagesWithLockFile", *hostile_routing):
                         self.assertNotIn(forbidden, child)
+                    for forbidden in ("XamarinBuildDownloadDir", "CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED"):
+                        self.assertNotIn(forbidden, child)
                     # These mutations of the recorded real argv must fail the same exact routing contract.
                     late = [arg.replace("CustomBeforeDirectoryBuildProps", "CustomBeforeMicrosoftCommonProps") for arg in command]
                     mutations = [("late-hook", late), ("missing-early-hook", [arg for arg in command
@@ -305,6 +313,49 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
         release = (REPO / "scripts/build-release.sh").read_text()
         self.assertIn('isolated_packages="$release_tmp/nuget-packages"', release)
         self.assertIn('NUGET_PACKAGES="$isolated_packages"', release)
+        self.assertIn("export CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED=%q", exports)
+        self.assertNotIn("XamarinBuildDownloadDir", exports)
+        self.assertNotIn("aar-cache", exports)
+
+    def test_aar_seed_and_checks_bracket_publish_without_preseeded_extractions(self):
+        script = (REPO / "scripts/build-release.sh").read_text()
+        publish = script.index('clean_exec "$dotnet_command" publish')
+        self.assertLess(script.index('prepare_android_aar_cache.py" seed'), publish)
+        checks = [match.start() for match in re.finditer('prepare_android_aar_cache.py" verify', script)]
+        self.assertEqual(2, len(checks))
+        self.assertLess(checks[0], publish); self.assertLess(publish, checks[1])
+        self.assertIn('release_aar_cache="$release_tmp/aar-cache"', script)
+        preparation = (REPO / "scripts/prepare-release-inputs.sh").read_text()
+        self.assertIn('prepare_android_aar_cache.py" validate', preparation)
+        self.assertNotIn('prepare_android_aar_cache.py" seed', preparation)
+        for text in (script, preparation):
+            for protected in ("AndroidSdkDirectory", "JavaSdkDirectory", "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"):
+                self.assertIn(f'--exclude-root "${protected}"', text)
+            self.assertIn('--exclude-root "$(dirname -- "$dotnet_command")"', text)
+
+    def test_real_aar_shell_blocks_preserve_unset_empty_and_explicit_source(self):
+        script = (REPO / "scripts/build-release.sh").read_text()
+        start = script.index("# Build-download state")
+        seed = script[start:script.index("install -m 0600", start)]
+        checks = []
+        for match in re.finditer('prepare_android_aar_cache.py" verify', script):
+            checks.append(script[script.rfind("if [[", 0, match.start()):script.index("\nfi", match.start()) + 3])
+        for source in (None, "", str(self.root / "explicit-source")):
+            environment = {"PATH": "/usr/bin:/bin", "repo_dir": str(self.repo), "release_tmp": str(self.root),
+                           "isolated_packages": str(self.root / "nuget"), "selected_package_feed": str(self.root / "selected")}
+            if source is not None:
+                environment["CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED"] = source
+            program = 'set -euo pipefail\naar_protected_roots=()\nfail() { exit 91; }\n' + (
+                'python3() { /usr/bin/python3 -c \'import json,sys;print(json.dumps(sys.argv[1:]))\' "$@"; }\n') + seed + "\n" + "\n".join(checks)
+            result = subprocess.run(["bash", "-p", "-c", program], env=environment, capture_output=True, text=True, timeout=5)
+            self.assertEqual(0, result.returncode, result.stderr)
+            commands = [json.loads(line) for line in result.stdout.splitlines()]
+            self.assertEqual(["seed"] if source is None else ["seed", "verify", "verify"], [row[1] for row in commands])
+            for row in commands:
+                self.assertEqual(str(self.root / "aar-cache"), row[row.index("--cache") + 1])
+                self.assertEqual(source is not None, "--source" in row)
+                if source is not None:
+                    self.assertEqual(source, row[row.index("--source") + 1])
 
 
 if __name__ == "__main__":
