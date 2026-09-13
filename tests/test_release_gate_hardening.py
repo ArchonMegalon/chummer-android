@@ -773,12 +773,19 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                     "PATH": "/usr/bin:/bin",
                     "UNRELATED_CALLER_SECRET": "must-not-reach-child",
                     "CHUMMER_ANDROID_REVISION": "a" * 40,
+                    "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED": "/private/transport-only",
+                    "HTTPS_PROXY": "must-not-reach-child",
+                    "NUGET_PLUGIN_PATHS": "must-not-reach-child",
+                    "RestoreSources": "must-not-reach-child",
                 },
             )
             child_environment = observed.read_text(encoding="utf-8")
             self.assertNotIn("UNRELATED_CALLER_SECRET", child_environment)
             self.assertNotIn("must-not-reach-child", child_environment)
             self.assertIn("CHUMMER_ANDROID_REVISION=" + "a" * 40, child_environment)
+            for rejected in ("CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "HTTPS_PROXY",
+                             "NUGET_PLUGIN_PATHS", "RestoreSources"):
+                self.assertNotIn(rejected, child_environment)
 
         for module_name in (
             "sign_android_release_build_attestation.py",

@@ -320,6 +320,22 @@ package_arguments=(
   "-p:ChummerUiKitPackageVersion=$ui_kit_version"
 )
 
+# Offline preparation uses the same bounded snapshot as the release build.
+# The subsequent build snapshots again and starts another empty package cache.
+restore_sources=(--source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" --source "$nuget_org_source")
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+  require_exact_directory CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED
+  selected_package_feed="$input_dir/selected-release-feed"
+  mkdir -m 0700 -- "$selected_package_feed"
+  python3 "$repo_dir/scripts/seal_release_restore_consumption.py" snapshot-feed \
+    --authority "$authority" \
+    --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+    --destination "$selected_package_feed" \
+    --external-source "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED" \
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
+    || fail "selected-offline-feed-snapshot"
+  restore_sources=(--source "$selected_package_feed")
+fi
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
 export MSBUILDDISABLENODEREUSE=1
 export NUGET_PACKAGES="$nuget_packages"
@@ -329,8 +345,7 @@ clean_exec "$dotnet_command" restore "$project_path" \
   --disable-parallel \
   --no-http-cache \
   --packages "$nuget_packages" \
-  --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
-  --source "$nuget_org_source" \
+  "${restore_sources[@]}" \
   "${package_arguments[@]}"
 for lock_name in \
   Chummer.Android.packages.lock.json \
@@ -377,6 +392,10 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   printf 'export CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=%q\n' \
     "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED"
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+    printf 'export CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED=%q\n' \
+      "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"
+  fi
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
   printf 'export CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=%q\n' \

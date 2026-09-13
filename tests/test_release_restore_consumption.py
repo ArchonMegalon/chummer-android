@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import base64
 import copy
+from contextlib import nullcontext
 import hashlib
 import importlib.util
+import io
 import json
 import os
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest import mock
+import zipfile
 from pathlib import Path
 
 
@@ -203,6 +209,301 @@ def sealed_fixture(root: Path):
     payload = module.materialize_payload(**arguments)
     verify_arguments = {key: value for key, value in arguments.items() if key not in {"input_root", "authority_path"}}
     return values, payload, arguments, verify_arguments
+
+
+class OfflineFeedTests(unittest.TestCase):
+    """Real local archive snapshots; no native restore or signature proof."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="offline-release-feed-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.values = fixture(self.root)
+        self.module, self.workspace, self.input_root, self.authority, self.owner = self.values[:5]
+        self.external = private_directory(self.root / "external")
+        self.destination = private_directory(self.input_root / "offline-selected")
+        self.lock = self.values[-1]
+        rows = {name: {"type": "Transitive", "resolved": "1.2.3",
+                      "contentHash": base64.b64encode(b"h" * 64).decode()} for name in PACKAGE_IDS}
+        rows["Example.Package"] = {"type": "Direct", "resolved": "2.3.4",
+                                  "contentHash": base64.b64encode(b"n" * 64).decode()}
+        self.payload = {"version": 2, "dependencies": {
+            "net10.0-android36.0": rows, "net10.0-android36.0/android-arm64": {}}}
+        self.package = self.external / "Example.Package.2.3.4.nupkg"
+        self.package_bytes = self.archive()
+        private_file(self.package, self.package_bytes)
+        self.write_lock()
+
+    @staticmethod
+    def archive(*, package_id="Example.Package", version="2.3.4", extra=(), nuspec=None):
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("Example.Package.nuspec", nuspec or (
+                '<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">'
+                f'<metadata><id>{package_id}</id><version>{version}</version></metadata></package>'))
+            archive.writestr("lib/net10.0/example.dll", b"fixture, not managed code")
+            for name, data in extra:
+                archive.writestr(name, data)
+        return output.getvalue()
+
+    def write_lock(self):
+        private_file(self.lock, json.dumps(self.payload).encode())
+
+    def snapshot(self, **overrides):
+        arguments = dict(authority_path=self.authority, source=self.owner, destination=self.destination,
+                         external_source=self.external, project_lock=self.lock)
+        arguments.update(overrides)
+        return self.module.snapshot_feed(**arguments)
+
+    def test_complete_snapshot_is_bound_by_existing_v2_feed_inventory(self):
+        result = self.snapshot()
+        self.assertEqual((13, 12, 1), tuple(result[key] for key in (
+            "selectedPackageCount", "selectedOwnerPackageCount", "selectedExternalPackageCount")))
+        self.assertEqual(self.package_bytes, (self.destination / self.package.name).read_bytes())
+        arguments = dict(input_root=self.input_root, workspace_root=self.workspace,
+                         authority_path=self.authority, owner_feed=self.destination,
+                         packages_root=self.values[6], routed_lock_root=self.values[7],
+                         intermediate_root=self.values[8].parent, project_lock=self.lock)
+        manifest = self.module.materialize_payload(**arguments)
+        self.assertEqual(self.module.CONTRACT, manifest["contractName"])
+        self.assertEqual(12, len(manifest["chummerClosure"]))
+        self.assertEqual(13, len(manifest["ownerFeed"]["files"]))
+        self.assertFalse(manifest["publicationAuthorized"])
+        (self.destination / self.package.name).write_bytes(b"changed after restore")
+        verify = {key: value for key, value in arguments.items() if key not in {"input_root", "authority_path"}}
+        with self.assertRaisesRegex(ValueError, "feed changed"):
+            self.module.verify_post_publish(manifest, phase="pre-publish", **verify)
+
+    def test_signature_member_does_not_turn_archive_sha512_into_nuget_content_hash(self):
+        # This is not a cryptographically signed package. It proves the transport
+        # helper leaves NuGet's signed-package content hash to native locked restore.
+        data = self.archive(extra=((".signature.p7s", b"signature-shaped fixture"),))
+        private_file(self.package, data)
+        locked = self.payload["dependencies"]["net10.0-android36.0"]["Example.Package"]["contentHash"]
+        self.assertNotEqual(base64.b64encode(hashlib.sha512(data).digest()).decode(), locked)
+        self.assertEqual(1, self.snapshot()["selectedExternalPackageCount"])
+
+    def test_malformed_content_hash_and_conflicting_lock_identities_are_rejected(self):
+        private_file(self.package, self.archive(extra=((".signature.p7s", b"signature-shaped fixture"),)))
+        original = copy.deepcopy(self.payload)
+        for attack in ("short", "non-base64", "wrong-size", "case", "version-conflict", "hash-conflict",
+                       "owner-version", "missing-owner", "unknown-project", "targets", "schema"):
+            with self.subTest(attack=attack):
+                self.payload = copy.deepcopy(original)
+                rows = self.payload["dependencies"]["net10.0-android36.0"]
+                row = rows["Example.Package"]
+                if attack in {"short", "non-base64", "wrong-size"}:
+                    row["contentHash"] = {"short": "bad", "non-base64": "!" * 88,
+                                          "wrong-size": base64.b64encode(b"x" * 65).decode()}[attack]
+                elif attack == "case":
+                    rows["example.package"] = copy.deepcopy(row)
+                elif attack in {"version-conflict", "hash-conflict"}:
+                    other = copy.deepcopy(row)
+                    other["resolved" if attack == "version-conflict" else "contentHash"] = (
+                        "9.9.9" if attack == "version-conflict" else base64.b64encode(b"x" * 64).decode())
+                    self.payload["dependencies"]["net10.0-android36.0/android-arm64"]["Example.Package"] = other
+                elif attack == "owner-version":
+                    rows[PACKAGE_IDS[0]]["resolved"] = "9.9.9"
+                elif attack == "missing-owner":
+                    del rows[PACKAGE_IDS[0]]
+                elif attack == "unknown-project":
+                    rows["Other.Project"] = {"type": "Project"}
+                elif attack == "targets":
+                    self.payload["dependencies"]["unbound"] = {}
+                else:
+                    self.payload["version"] = True
+                self.write_lock()
+                with self.assertRaises(ValueError):
+                    self.snapshot()
+                self.assertEqual([], list(self.destination.iterdir()))
+
+    def test_duplicate_json_key_is_rejected(self):
+        private_file(self.lock, b'{"version":2,"version":2,"dependencies":{}}')
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.snapshot()
+
+    def test_directory_enumeration_is_capped_without_materializing_all_entries(self):
+        observed = []
+        def entries():
+            for index in range(self.module.FEED_PACKAGE_COUNT + 100):
+                observed.append(index)
+                yield SimpleNamespace(name=f"package-{index}.nupkg")
+        with mock.patch.object(self.module.os, "scandir", return_value=nullcontext(entries())):
+            with self.assertRaisesRegex(ValueError, "too many"):
+                self.module._feed_names(123)  # No real descriptor is used by this iterator fixture.
+        self.assertEqual(self.module.FEED_PACKAGE_COUNT + 1, len(observed))
+
+    def test_offline_snapshot_never_uses_unbounded_listdir(self):
+        with mock.patch.object(self.module.os, "listdir", side_effect=AssertionError("unbounded listing")):
+            self.assertEqual(13, self.snapshot()["selectedPackageCount"])
+
+    def test_current_checked_in_lock_selects_real_external_closure(self):
+        data = (REPO / "src/Chummer.Android/packages.lock.json").read_bytes()
+        lock = json.loads(data)
+        self.assertEqual(1, lock["version"])
+        rows = lock["dependencies"]["net10.0-android36.0"]
+        owners = [{"packageId": name, "version": rows[name]["resolved"], "nupkgSha256": "0" * 64}
+                  for name in PACKAGE_IDS]
+        selected = self.module._external_packages(data, owners)
+        self.assertEqual(128, len(selected))
+        expected = {name for name, row in rows.items()
+                    if row["type"] != "Project" and not name.lower().startswith("chummer.")}
+        self.assertEqual(expected, {row["packageId"] for row in selected})
+
+    def test_exact_external_membership_and_non_linked_files(self):
+        for attack in ("missing", "extra", "case", "version", "symlink", "hardlink", "fifo", "directory", "public"):
+            with self.subTest(attack=attack), tempfile.TemporaryDirectory() as temporary:
+                external = private_directory(Path(temporary) / "external")
+                path = private_file(external / self.package.name, self.package_bytes)
+                if attack == "missing": path.unlink()
+                elif attack == "extra": private_file(external / "Other.1.0.0.nupkg", b"extra")
+                elif attack == "case": private_file(external / self.package.name.lower(), self.package_bytes)
+                elif attack == "version": path.rename(external / "Example.Package.2.3.5.nupkg")
+                elif attack in {"symlink", "hardlink", "fifo", "directory"}:
+                    path.unlink()
+                    if attack == "symlink": path.symlink_to(self.package)
+                    elif attack == "hardlink": os.link(self.package, path)
+                    elif attack == "fifo": os.mkfifo(path, 0o600)
+                    else: path.mkdir(mode=0o700)
+                else: path.chmod(0o644)
+                destination = private_directory(Path(temporary) / "selected")
+                with self.assertRaises((ValueError, OSError)):
+                    self.snapshot(external_source=external, destination=destination)
+
+    def test_unsafe_or_wrong_identity_archives_are_rejected(self):
+        symlink = zipfile.ZipInfo("escape")
+        symlink.create_system = 3
+        symlink.external_attr = 0o120777 << 16
+        cases = [b"not a zip", self.package_bytes[:-20], self.archive(package_id="Wrong"),
+                 self.archive(version="9.9.9"), self.archive(extra=(("../escape", b"x"),)),
+                 self.archive(extra=(("/absolute", b"x"),)), self.archive(extra=(("C:\\host", b"x"),)),
+                 self.archive(extra=((symlink, b"outside"),)),
+                 self.archive(extra=(("LIB/net10.0/EXAMPLE.dll", b"duplicate"),)),
+                 self.archive(extra=(("lib", b"file-directory conflict"),)),
+                 self.archive(extra=(("Other.nuspec", b"duplicate metadata"),)),
+                 self.archive(nuspec='<!DOCTYPE package [<!ENTITY x "x">]><package/>'),
+                 self.archive(nuspec='<!DOCTYPE package [<!ENTITY x "x">]><package/>'.encode("utf-16")),
+                 self.archive(nuspec='<package/>'.encode("utf-16-le")),
+                 self.archive(nuspec='<?xml version="1.0" encoding="iso-8859-1"?><package/>')]
+        for index, data in enumerate(cases):
+            with self.subTest(index=index):
+                private_file(self.package, data)
+                destination = private_directory(self.input_root / f"bad-{index}")
+                with self.assertRaises(ValueError):
+                    self.snapshot(destination=destination)
+
+    def test_transport_limits_are_enforced_without_large_allocations(self):
+        for limit in ("FEED_ARCHIVE_BYTES", "FEED_TOTAL_BYTES", "FEED_EXPANDED_BYTES",
+                      "FEED_TOTAL_EXPANDED_BYTES", "FEED_MEMBER_COUNT", "FEED_NUSPEC_BYTES", "FEED_LOCK_BYTES"):
+            with self.subTest(limit=limit), mock.patch.object(self.module, limit, 1):
+                destination = private_directory(self.input_root / limit)
+                with self.assertRaises(ValueError):
+                    self.snapshot(destination=destination)
+
+    def assert_zip_rejected_before_parser(self, data, **limits):
+        limits = limits or {"FEED_MEMBER_COUNT": self.module.FEED_MEMBER_COUNT}
+        with mock.patch.multiple(self.module, **limits), mock.patch.object(self.module.zipfile, "ZipFile") as parser:
+            with self.assertRaises(ValueError):
+                self.module._external_archive(data, {"packageId": "Example.Package", "version": "2.3.4"})
+            parser.assert_not_called()
+
+    def test_physical_zip_count_precedes_parser_even_with_forged_low_end_counts(self):
+        data = bytearray(self.archive(extra=(("a", b"a"), ("b", b"b"))))
+        struct.pack_into("<HH", data, len(data) - 22 + 8, 1, 1)
+        self.assert_zip_rejected_before_parser(bytes(data), FEED_MEMBER_COUNT=2)
+        # The true count must also match the end record when below the limit.
+        self.assert_zip_rejected_before_parser(bytes(data))
+        with mock.patch.object(zipfile, "ZIP64_LIMIT", 1):
+            data64 = bytearray(self.archive(extra=(("a", b"a"), ("b", b"b"))))
+        offset64 = len(data64) - 22 - 20 - 56
+        struct.pack_into("<QQ", data64, offset64 + 24, 1, 1)
+        struct.pack_into("<HH", data64, len(data64) - 22 + 8, 65535, 65535)
+        self.assert_zip_rejected_before_parser(bytes(data64), FEED_MEMBER_COUNT=2)
+
+    def test_zip_metadata_and_path_limits_apply_before_parser(self):
+        self.assert_zip_rejected_before_parser(self.package_bytes, FEED_ARCHIVE_BYTES=32)
+        self.assert_zip_rejected_before_parser(self.package_bytes, FEED_CENTRAL_BYTES=64)
+        self.assert_zip_rejected_before_parser(self.package_bytes, FEED_ZIP_RECORD_BYTES=48)
+        self.assert_zip_rejected_before_parser(self.archive(extra=(("a" * 25, b"x"),)), FEED_MEMBER_NAME_BYTES=24)
+        self.assert_zip_rejected_before_parser(self.archive(extra=(("é" * 13, b"x"),)), FEED_MEMBER_NAME_BYTES=24)
+        self.assert_zip_rejected_before_parser(self.archive(extra=(("a/b/c/d", b"x"),)), FEED_MEMBER_DEPTH=3)
+        oversized = zipfile.ZipInfo("a")
+        oversized.extra = struct.pack("<HH", 0xffff, 9000) + b"x" * 9000
+        self.assert_zip_rejected_before_parser(self.archive(extra=((oversized, b"x"),)))
+
+    def test_unsupported_or_forged_zip_directory_spans_never_enter_parser(self):
+        end = len(self.package_bytes) - 22
+        start = struct.unpack_from("<I", self.package_bytes, end + 16)[0]
+        for offset, form, value in ((end + 4, "<H", 1), (end + 12, "<I", 0xffffffff),
+                                    (end + 16, "<I", start + 1), (start + 28, "<H", 65535),
+                                    (start, "<I", 0), (start + 34, "<H", 1)):
+            with self.subTest(offset=offset, value=value):
+                changed = bytearray(self.package_bytes)
+                struct.pack_into(form, changed, offset, value)
+                self.assert_zip_rejected_before_parser(bytes(changed))
+        self.assert_zip_rejected_before_parser(self.package_bytes + b"trailing")
+        self.assert_zip_rejected_before_parser(b"prepended" + self.package_bytes)
+        override = zipfile.ZipInfo("a")
+        override.extra = struct.pack("<HHBI", 0x7075, 6, 1, 0) + b"a"
+        self.assert_zip_rejected_before_parser(self.archive(extra=((override, b"x"),)))
+        with mock.patch.object(zipfile, "ZIP64_LIMIT", 1):
+            data64 = self.archive()
+        end64 = len(data64) - 22 - 20 - 56
+        for offset, value in ((end64 + 4, 2**63), (end64 + 40, 2**63),
+                              (end64 + 48, 2**63), (len(data64) - 22 - 20 + 8, 2**63)):
+            with self.subTest(zip64_offset=offset):
+                changed = bytearray(data64)
+                struct.pack_into("<Q", changed, offset, value)
+                self.assert_zip_rejected_before_parser(bytes(changed))
+
+    def test_standard_utf8_comment_and_fixed_zip64_archives_remain_supported(self):
+        ordinary = bytearray(self.archive(extra=(("lib/café.txt", b"x"),)))
+        struct.pack_into("<H", ordinary, len(ordinary) - 2, 7)
+        ordinary.extend(b"comment")
+        with mock.patch.object(zipfile, "ZIP64_LIMIT", 1):
+            data64 = self.archive()
+        for data in (bytes(ordinary), data64):
+            with self.subTest(zip64=data is data64):
+                self.assertGreater(self.module._external_archive(data, {
+                    "packageId": "Example.Package", "version": "2.3.4"}), 0)
+
+    def test_overlaps_and_partial_offline_arguments_fail_closed(self):
+        for options in ({"external_source": self.owner}, {"external_source": self.input_root},
+                        {"external_source": self.destination}, {"external_source": None}, {"project_lock": None}):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.snapshot(**options)
+
+    def test_source_replacement_during_read_is_rejected(self):
+        original_read = self.module.os.read
+        replaced = False
+        def read(descriptor, count):
+            nonlocal replaced
+            data = original_read(descriptor, count)
+            if not replaced and data == self.package_bytes:
+                replaced = True
+                self.package.rename(self.external / "old.nupkg")
+                private_file(self.package, self.package_bytes)
+            return data
+        with mock.patch.object(self.module.os, "read", side_effect=read):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                self.snapshot()
+        self.assertTrue(replaced)
+
+    def test_destination_replacement_is_rejected_without_writing_into_replacement(self):
+        original_archive = self.module._external_archive
+        displaced = self.input_root / "displaced-snapshot"
+        def inspect(data, row):
+            result = original_archive(data, row)
+            self.destination.rename(displaced)
+            private_directory(self.destination)
+            private_file(self.destination / "sentinel", b"replacement must survive")
+            return result
+        with mock.patch.object(self.module, "_external_archive", side_effect=inspect):
+            with self.assertRaisesRegex(ValueError, "directory changed"):
+                self.snapshot()
+        self.assertEqual(["sentinel"], [path.name for path in self.destination.iterdir()])
+        self.assertEqual(b"replacement must survive", (self.destination / "sentinel").read_bytes())
+        self.assertEqual(self.package_bytes, (displaced / self.package.name).read_bytes())
 
 
 class ReleaseRestoreConsumptionTests(unittest.TestCase):

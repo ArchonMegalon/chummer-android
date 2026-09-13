@@ -399,10 +399,20 @@ python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --package-id "$package_id" \
   --require-empty
 
+# Offline input is transport only; no prepared global cache is trusted or reused.
+snapshot_arguments=()
+restore_sources=(--source "$selected_package_feed" --source "$nuget_org_source")
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+  require_exact_directory CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED
+  snapshot_arguments=(--external-source "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json")
+  restore_sources=(--source "$selected_package_feed")
+fi
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" snapshot-feed \
   --authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --destination "$selected_package_feed" \
+  "${snapshot_arguments[@]}" \
   || fail "selected-owner-feed-snapshot"
 python3 "$repo_dir/scripts/seal_release_restore_consumption.py" assert-clean \
   --workspace-root "$workspace_root" \
@@ -416,8 +426,7 @@ clean_exec "$dotnet_command" restore "$project_path" \
   --disable-parallel \
   --no-http-cache \
   --packages "$isolated_packages" \
-  --source "$selected_package_feed" \
-  --source "$nuget_org_source" \
+  "${restore_sources[@]}" \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_id" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerPresentationRoot="$workspace_root/chummer-presentation" \
