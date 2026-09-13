@@ -1,4 +1,4 @@
-"""Execute the release scripts' actual graph-check commands, never a build/signing lane."""
+"""Exercise actual release command blocks with recorders, never an SDK/signing lane."""
 
 import json
 import os
@@ -146,13 +146,36 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
         self.assertLess(publish, script.index(verify[1]))
         self.assertEqual(2, script.count('-p:ChummerReleaseIntermediateRoot="$release_intermediate"'))
 
-    def test_real_restore_command_routing_and_clean_child_environment(self):
+    def assert_exact_routing(self, command, input_dir):
+        properties = {}
+        for argument in command:
+            for prefix in ("-p:", "/p:", "-property:", "/property:"):
+                if argument.casefold().startswith(prefix):
+                    name, separator, value = argument[len(prefix):].partition("=")
+                    self.assertEqual("=", separator)
+                    properties.setdefault(name.casefold(), []).append(value)
+                    break
+        for forbidden in ("custombeforemicrosoftcommonprops", "directorybuildpropspath",
+                          "baseintermediateoutputpath", "msbuildprojectextensionspath", "nugetlockfilepath"):
+            self.assertNotIn(forbidden, properties)
+        for name, value in {
+            "CustomBeforeDirectoryBuildProps": self.repo / "eng/ReleaseRestoreRouting.props",
+            "ChummerReleaseLockRoot": input_dir / "locks",
+            "ChummerReleaseIntermediateRoot": input_dir / "intermediate",
+            "ChummerPresentationRoot": self.workspace / "chummer-presentation",
+            "ChummerCoreEngineRoot": self.workspace / "chummer-core-engine",
+        }.items():
+            self.assertEqual([str(value)], properties.get(name.casefold()), name)
+
+    def test_real_restore_and_publish_routing_and_clean_child_environment(self):
         """Run real routing/clean_exec blocks with an argv recorder, never dotnet."""
         recorder = self.root / "record-tool"
         recorder.write_text('#!/usr/bin/python3\nimport json,os,sys\n'
                             'print(json.dumps({"argv":sys.argv[1:],"env":dict(os.environ)}))\n')
         recorder.chmod(0o700)
-        for script_name in ("build-release.sh", "prepare-release-inputs.sh"):
+        for script_name, operation in (("build-release.sh", "restore"),
+                                       ("prepare-release-inputs.sh", "restore"),
+                                       ("build-release.sh", "publish")):
             script = (REPO / "scripts" / script_name).read_text()
             clean_start = script.index('release_child_home=""')
             clean_end = script.index("\n}\n", script.index("clean_exec()", clean_start)) + 3
@@ -164,17 +187,17 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                 package_arguments = script[arguments_start:arguments_end]
             route_start = script.index("# Offline ")
             route_end = script.index('python3 "$repo_dir/scripts/seal_release_restore_consumption.py" assert-clean', route_start) if script_name == "build-release.sh" else script.index("export DOTNET_CLI_USE_MSBUILD_SERVER=0", route_start)
-            routing = script[route_start:route_end]
-            restore_start = script.index('clean_exec "$dotnet_command" restore')
-            restore_lines = script[restore_start:].splitlines(keepends=True)
-            restore = []
-            for line in restore_lines:
-                restore.append(line)
+            routing = script[route_start:route_end] if operation == "restore" else ""
+            command_start = script.index('clean_exec "$dotnet_command" ' + operation)
+            command_lines = script[command_start:].splitlines(keepends=True)
+            actual_command = []
+            for line in command_lines:
+                actual_command.append(line)
                 if not line.rstrip().endswith("\\"):
                     break
             for offline in (False, True):
-                with self.subTest(script=script_name, offline=offline):
-                    input_dir = self.root / f"{script_name}-{offline}"
+                with self.subTest(script=script_name, operation=operation, offline=offline):
+                    input_dir = self.root / f"{script_name}-{operation}-{offline}"
                     input_dir.mkdir(mode=0o700)
                     external = input_dir / "external"
                     external.mkdir(mode=0o700)
@@ -193,6 +216,9 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "isolated_packages": str(input_dir / "fresh-cache"),
                         "nuget_packages": str(input_dir / "fresh-cache"), "NUGET_PACKAGES": str(input_dir / "fresh-cache"),
                         "runtime_id": "android-arm64", "routed_locks": str(input_dir / "locks"),
+                        "configuration": "Release", "framework": "net10.0-android36.0",
+                        "staged_publish_dir": str(input_dir / "publish"),
+                        "version_name": "0.1.0-preview.12", "version_code": "12",
                         "project_locks": str(input_dir / "locks"),
                         "preparation_obj": str(input_dir / "intermediate"),
                         "release_intermediate": str(input_dir / "intermediate"),
@@ -204,21 +230,33 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "RestoreForceEvaluate": "true", "RestoreLockedMode": "false",
                         "RestorePackagesWithLockFile": "false",
                     }
+                    hostile_routing = ("CustomBeforeMicrosoftCommonProps", "CustomBeforeDirectoryBuildProps",
+                                       "DirectoryBuildPropsPath", "ChummerReleaseLockRoot",
+                                       "ChummerReleaseIntermediateRoot", "NuGetLockFilePath",
+                                       "BaseIntermediateOutputPath", "MSBuildProjectExtensionsPath")
+                    environment.update({name: "/hostile/wrong-root" for name in hostile_routing})
                     if offline:
                         environment["CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"] = str(external)
                     program = 'set -euo pipefail\n' + clean + '\n' + (
                         'require_exact_directory() { [[ -n "${!1}" && -d "${!1}" ]]; }\n'
                         'fail() { exit 91; }\n'
                         'python3() { /usr/bin/python3 -c \'import json,sys; print(json.dumps({"snapshot":sys.argv[1:]}))\' "$@"; }\n'
-                    ) + package_arguments + '\n' + routing + '\n' + ''.join(restore)
+                    ) + package_arguments + '\n' + routing + '\n' + ''.join(actual_command)
                     result = subprocess.run(["/bin/bash", "-p", "-c", program], env=environment,
                                             text=True, capture_output=True, timeout=10, check=False)
                     self.assertEqual(0, result.returncode, result.stderr)
                     observed = [json.loads(line) for line in result.stdout.splitlines()]
                     command = observed[-1]["argv"]
+                    self.assertEqual([operation, str(self.project)], command[:2])
+                    self.assert_exact_routing(command, input_dir)
                     sources = [command[index + 1] for index, item in enumerate(command) if item == "--source"]
                     expected_selected = str(input_dir / "selected-release-feed") if script_name == "prepare-release-inputs.sh" else str(selected)
-                    if offline:
+                    if operation == "publish":
+                        self.assertEqual([], sources)
+                        self.assertEqual(1, len(observed))
+                        self.assertIn("--no-restore", command)
+                        self.assertIn("-p:AndroidKeyStore=false", command)
+                    elif offline:
                         self.assertEqual([expected_selected], sources)
                         self.assertNotIn("https://api.nuget.org/v3/index.json", command)
                         snapshot = observed[0]["snapshot"]
@@ -227,20 +265,37 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                     else:
                         owner = str(input_dir / "owner") if script_name == "prepare-release-inputs.sh" else str(selected)
                         self.assertEqual([owner, "https://api.nuget.org/v3/index.json"], sources)
-                    for flag in ("--locked-mode", "--disable-parallel", "--no-http-cache",
-                                 "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true"):
+                    for flag in ("-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true"):
                         self.assertIn(flag, command)
+                    if operation == "restore":
+                        for flag in ("--locked-mode", "--disable-parallel", "--no-http-cache"):
+                            self.assertIn(flag, command)
+                        self.assertEqual(str(input_dir / "fresh-cache"), command[command.index("--packages") + 1])
                     # Qualified consumption must not bypass native lock/hash validation.
                     # Scope this to the actual argv, not deliberately owned generation lanes.
                     for argument in command:
                         self.assertNotIn("--force-evaluate", argument.casefold())
                         self.assertNotIn("restoreforceevaluate", argument.casefold())
-                    self.assertEqual(str(input_dir / "fresh-cache"), command[command.index("--packages") + 1])
                     child = observed[-1]["env"]
                     for forbidden in ("HTTPS_PROXY", "http_proxy", "NUGET_PLUGIN_PATHS", "RestoreSources",
                                       "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "RestoreForceEvaluate",
-                                      "RestoreLockedMode", "RestorePackagesWithLockFile"):
+                                      "RestoreLockedMode", "RestorePackagesWithLockFile", *hostile_routing):
                         self.assertNotIn(forbidden, child)
+                    # These mutations of the recorded real argv must fail the same exact routing contract.
+                    late = [arg.replace("CustomBeforeDirectoryBuildProps", "CustomBeforeMicrosoftCommonProps") for arg in command]
+                    mutations = [("late-hook", late), ("missing-early-hook", [arg for arg in command
+                                 if not arg.startswith("-p:CustomBeforeDirectoryBuildProps=")])]
+                    for name in ("DirectoryBuildPropsPath", "BaseIntermediateOutputPath",
+                                 "MSBuildProjectExtensionsPath", "NuGetLockFilePath"):
+                        mutations.append((name, command + [f"/property:{name}=/hostile/replacement"]))
+                    for name in ("CustomBeforeDirectoryBuildProps", "ChummerReleaseLockRoot",
+                                 "ChummerReleaseIntermediateRoot", "ChummerPresentationRoot", "ChummerCoreEngineRoot"):
+                        mutations.append((f"wrong-{name}", [f"-p:{name}=/hostile/wrong-root" if arg.startswith(f"-p:{name}=") else arg
+                                                          for arg in command]))
+                        mutations.append((f"duplicate-{name}", command + [f"/property:{name}=/hostile/duplicate-root"]))
+                    for label, mutation in mutations:
+                        with self.subTest(rejected_routing=label), self.assertRaises(AssertionError):
+                            self.assert_exact_routing(mutation, input_dir)
 
     def test_preparation_exports_transport_path_not_a_prepared_cache_authority(self):
         script = (REPO / "scripts/prepare-release-inputs.sh").read_text()

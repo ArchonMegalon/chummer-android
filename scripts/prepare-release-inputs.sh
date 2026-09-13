@@ -297,6 +297,7 @@ ui_kit_version="$(jq -er \
   '.ownerPackagePins[] | select(.package_id == "Chummer.Ui.Kit") | .version' \
   "$authority")"
 
+# Set paths before Microsoft.Common.props captures their initial values.
 package_arguments=(
   "-p:ChummerPresentationRoot=$presentation_root"
   "-p:ChummerCoreEngineRoot=$core_root"
@@ -305,7 +306,7 @@ package_arguments=(
   "-p:ChummerUseLockedOwnerContractPackages=true"
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
-  "-p:CustomBeforeMicrosoftCommonProps=$repo_dir/eng/ReleaseRestoreRouting.props"
+  "-p:CustomBeforeDirectoryBuildProps=$repo_dir/eng/ReleaseRestoreRouting.props"
   "-p:ChummerReleaseLockRoot=$project_locks"
   "-p:ChummerReleaseIntermediateRoot=$preparation_obj"
   "-p:NuGetAudit=false"

@@ -420,6 +420,7 @@ python3 "$repo_dir/scripts/seal_release_restore_consumption.py" assert-clean \
 
 NUGET_PACKAGES="$isolated_packages"
 export NUGET_PACKAGES
+# Set paths before Microsoft.Common.props captures their initial values.
 clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
   --disable-parallel \
@@ -434,7 +435,7 @@ clean_exec "$dotnet_command" restore "$project_path" \
   -p:ChummerUseLockedOwnerContractPackages=true \
   -p:RestoreLockedMode=true \
   -p:RestorePackagesWithLockFile=true \
-  -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
+  -p:CustomBeforeDirectoryBuildProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
   -p:ChummerReleaseLockRoot="$routed_locks" \
   -p:ChummerReleaseIntermediateRoot="$release_intermediate" \
   -p:NuGetAudit=false \
@@ -558,7 +559,7 @@ clean_exec "$dotnet_command" publish "$project_path" \
   -p:ChummerUseLockedOwnerContractPackages=true \
   -p:RestoreLockedMode=true \
   -p:RestorePackagesWithLockFile=true \
-  -p:CustomBeforeMicrosoftCommonProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
+  -p:CustomBeforeDirectoryBuildProps="$repo_dir/eng/ReleaseRestoreRouting.props" \
   -p:ChummerReleaseLockRoot="$routed_locks" \
   -p:ChummerReleaseIntermediateRoot="$release_intermediate" \
   -p:NuGetAudit=false \
