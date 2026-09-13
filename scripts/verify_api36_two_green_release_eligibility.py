@@ -103,6 +103,14 @@ RELEASE_APPROVER_PUBLIC_KEY = (
 RELEASE_APPROVER_PUBLIC_KEY_SHA256 = (
     "ed1fbe95fc7713bfc6d9d0fea21726c1ba3193533fc2d5523e054ad8fb86184c"
 )
+# The legacy singleton above also binds build attestations. Additional keys
+# are admitted only for the existing preparation-only approval contract.
+RELEASE_APPROVAL_ONLY_KEYS = {
+    "fleet-release-approver-2026-09": (
+        REPO_ROOT / "eng/trusted-release-approvers/fleet-release-approver-2026-09.public.pem",
+        "0ccffb5997e10dea7531894e00a2376f8da309a8e50da00199ffc3073de85dcb",
+    ),
+}
 MAX_APPROVAL_LIFETIME = timedelta(hours=12)
 APPROVAL_CLOCK_SKEW = timedelta(minutes=2)
 OPENSSL = Path("/usr/bin/openssl")
@@ -238,19 +246,48 @@ def _utc_timestamp(value: object, label: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _release_approval_key(key_id: object) -> tuple[Path, str]:
+    keys = {
+        **RELEASE_APPROVAL_ONLY_KEYS,
+        RELEASE_APPROVER_KEY_ID: (
+            RELEASE_APPROVER_PUBLIC_KEY, RELEASE_APPROVER_PUBLIC_KEY_SHA256,
+        ),
+    }
+    if not isinstance(key_id, str) or key_id not in keys:
+        raise ValueError("two-green protected release approval key is not admitted")
+    return keys[key_id]
+
+
 def _verify_ed25519_signature(
     unsigned: dict[str, Any],
     signature_text: object,
     *,
     label: str,
+    approval_key_id: str | None = None,
 ) -> None:
+    public_key, public_key_sha256 = (
+        RELEASE_APPROVER_PUBLIC_KEY, RELEASE_APPROVER_PUBLIC_KEY_SHA256,
+    )
+    if approval_key_id is not None:
+        if (
+            unsigned.get("contractName") != RELEASE_APPROVAL_CONTRACT
+            or unsigned.get("algorithm") != "ed25519"
+            or unsigned.get("keyId") != approval_key_id
+            or unsigned.get("role") != RELEASE_APPROVER_ROLE
+            or unsigned.get("approvalScope") != RELEASE_APPROVAL_SCOPE
+            or any(unsigned.get(field) is not False for field in (
+                "signingAuthorized", "publicationAuthorized", "googlePlayUploadAuthorized",
+            ))
+        ):
+            raise ValueError("approval-only key cannot verify another authority")
+        public_key, public_key_sha256 = _release_approval_key(approval_key_id)
     public_key_raw = _stable_bytes(
-        RELEASE_APPROVER_PUBLIC_KEY,
+        public_key,
         label="trusted release approver public key",
         limit=16 * 1024,
         owner_only=False,
     )
-    if hashlib.sha256(public_key_raw).hexdigest() != RELEASE_APPROVER_PUBLIC_KEY_SHA256:
+    if hashlib.sha256(public_key_raw).hexdigest() != public_key_sha256:
         raise ValueError("trusted release approver public key digest differs")
     if not isinstance(signature_text, str) or len(signature_text) > 256:
         raise ValueError(f"{label} signature is invalid")
@@ -266,12 +303,15 @@ def _verify_ed25519_signature(
         root = Path(directory)
         payload_path = root / "payload.json"
         signature_path = root / "signature.bin"
+        public_key_path = root / "public.pem"
         payload_path.write_bytes(_canonical_json_bytes(unsigned))
         signature_path.write_bytes(signature)
+        # Verify the captured, digest-checked bytes, not a reopened source path.
+        public_key_path.write_bytes(public_key_raw)
         completed = subprocess.run(
             [
                 os.fspath(OPENSSL), "pkeyutl", "-verify", "-pubin",
-                "-inkey", os.fspath(RELEASE_APPROVER_PUBLIC_KEY), "-rawin",
+                "-inkey", os.fspath(public_key_path), "-rawin",
                 "-in", os.fspath(payload_path), "-sigfile", os.fspath(signature_path),
             ],
             check=False,
@@ -292,7 +332,9 @@ def release_approval_unsigned(
     challenge_nonce: str,
     provenance_validator_sha256: str,
     provenance_replay_sha256: str,
+    key_id: str = RELEASE_APPROVER_KEY_ID,
 ) -> dict[str, Any]:
+    _release_approval_key(key_id)
     common = receipt.get("commonAuthority")
     release = receipt.get("releaseIdentity")
     if not isinstance(common, dict) or not isinstance(release, dict):
@@ -304,7 +346,7 @@ def release_approval_unsigned(
     return {
         "contractName": RELEASE_APPROVAL_CONTRACT,
         "algorithm": "ed25519",
-        "keyId": RELEASE_APPROVER_KEY_ID,
+        "keyId": key_id,
         "role": RELEASE_APPROVER_ROLE,
         "approvalScope": RELEASE_APPROVAL_SCOPE,
         "generatedAtUtc": generated_at_utc,
@@ -366,7 +408,6 @@ def _verify_release_approval(
     if (
         approval.get("contractName") != RELEASE_APPROVAL_CONTRACT
         or approval.get("algorithm") != "ed25519"
-        or approval.get("keyId") != RELEASE_APPROVER_KEY_ID
         or approval.get("role") != RELEASE_APPROVER_ROLE
         or approval.get("approvalScope") != RELEASE_APPROVAL_SCOPE
         or approval.get("signingAuthorized") is not False
@@ -374,6 +415,7 @@ def _verify_release_approval(
         or approval.get("googlePlayUploadAuthorized") is not False
     ):
         raise ValueError("two-green protected release approval posture is invalid")
+    _release_approval_key(approval.get("keyId"))
     generated = _utc_timestamp(approval.get("generatedAtUtc"), "release approval generatedAtUtc")
     expires = _utc_timestamp(approval.get("expiresAtUtc"), "release approval expiresAtUtc")
     if now is not None and (now.tzinfo is None or now.utcoffset() is None):
@@ -403,6 +445,7 @@ def _verify_release_approval(
         challenge_nonce=approval["challengeNonce"],
         provenance_validator_sha256=approval["provenanceValidatorSha256"],
         provenance_replay_sha256=approval["provenanceReplaySha256"],
+        key_id=approval["keyId"],
     )
     if any(approval.get(key) != value for key, value in unsigned.items()):
         raise ValueError("two-green protected release approval claims differ from the receipt")
@@ -411,10 +454,11 @@ def _verify_release_approval(
         unsigned,
         signature_text,
         label="two-green protected release approval",
+        approval_key_id=approval["keyId"],
     )
     return {
         "contractName": RELEASE_APPROVAL_CONTRACT,
-        "keyId": RELEASE_APPROVER_KEY_ID,
+        "keyId": approval["keyId"],
         "role": RELEASE_APPROVER_ROLE,
         "approvalScope": RELEASE_APPROVAL_SCOPE,
         "approvalSha256": hashlib.sha256(approval_raw).hexdigest(),
