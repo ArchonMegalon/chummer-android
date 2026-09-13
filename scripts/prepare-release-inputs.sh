@@ -341,7 +341,6 @@ export MSBUILDDISABLENODEREUSE=1
 export NUGET_PACKAGES="$nuget_packages"
 clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
-  --force-evaluate \
   --disable-parallel \
   --no-http-cache \
   --packages "$nuget_packages" \

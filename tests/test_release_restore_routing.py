@@ -157,6 +157,11 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
             clean_start = script.index('release_child_home=""')
             clean_end = script.index("\n}\n", script.index("clean_exec()", clean_start)) + 3
             clean = script[clean_start:clean_end]
+            package_arguments = ""
+            if script_name == "prepare-release-inputs.sh":
+                arguments_start = script.index("package_arguments=(\n")
+                arguments_end = script.index("\n)\n", arguments_start) + 3
+                package_arguments = script[arguments_start:arguments_end]
             route_start = script.index("# Offline ")
             route_end = script.index('python3 "$repo_dir/scripts/seal_release_restore_consumption.py" assert-clean', route_start) if script_name == "build-release.sh" else script.index("export DOTNET_CLI_USE_MSBUILD_SERVER=0", route_start)
             routing = script[route_start:route_end]
@@ -178,6 +183,8 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                     environment = {
                         "PATH": "/usr/bin:/bin", "repo_dir": str(self.repo),
                         "workspace_root": str(self.workspace), "project_path": str(self.project),
+                        "presentation_root": str(self.workspace / "chummer-presentation"),
+                        "core_root": str(self.workspace / "chummer-core-engine"),
                         "dotnet_command": str(recorder), "selected_package_feed": str(selected),
                         "nuget_org_source": "https://api.nuget.org/v3/index.json",
                         "CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED": str(input_dir / "owner"),
@@ -186,12 +193,16 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         "isolated_packages": str(input_dir / "fresh-cache"),
                         "nuget_packages": str(input_dir / "fresh-cache"), "NUGET_PACKAGES": str(input_dir / "fresh-cache"),
                         "runtime_id": "android-arm64", "routed_locks": str(input_dir / "locks"),
+                        "project_locks": str(input_dir / "locks"),
+                        "preparation_obj": str(input_dir / "intermediate"),
                         "release_intermediate": str(input_dir / "intermediate"),
                         "core_version": "1.2.3", "campaign_version": "1.2.3", "run_version": "1.2.3",
                         "registry_version": "1.2.3", "ui_kit_version": "1.2.3",
                         "AndroidSdkDirectory": "/not-executed/android", "JavaSdkDirectory": "/not-executed/java",
                         "HTTPS_PROXY": "must-not-leak", "http_proxy": "must-not-leak",
                         "NUGET_PLUGIN_PATHS": "must-not-leak", "RestoreSources": "must-not-leak",
+                        "RestoreForceEvaluate": "true", "RestoreLockedMode": "false",
+                        "RestorePackagesWithLockFile": "false",
                     }
                     if offline:
                         environment["CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"] = str(external)
@@ -199,8 +210,7 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         'require_exact_directory() { [[ -n "${!1}" && -d "${!1}" ]]; }\n'
                         'fail() { exit 91; }\n'
                         'python3() { /usr/bin/python3 -c \'import json,sys; print(json.dumps({"snapshot":sys.argv[1:]}))\' "$@"; }\n'
-                        'package_arguments=(-p:RestoreLockedMode=true -p:RestorePackagesWithLockFile=true)\n'
-                    ) + routing + '\n' + ''.join(restore)
+                    ) + package_arguments + '\n' + routing + '\n' + ''.join(restore)
                     result = subprocess.run(["/bin/bash", "-p", "-c", program], env=environment,
                                             text=True, capture_output=True, timeout=10, check=False)
                     self.assertEqual(0, result.returncode, result.stderr)
@@ -217,11 +227,19 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                     else:
                         owner = str(input_dir / "owner") if script_name == "prepare-release-inputs.sh" else str(selected)
                         self.assertEqual([owner, "https://api.nuget.org/v3/index.json"], sources)
-                    for flag in ("--locked-mode", "--force-evaluate", "--disable-parallel", "--no-http-cache"):
+                    for flag in ("--locked-mode", "--disable-parallel", "--no-http-cache",
+                                 "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true"):
                         self.assertIn(flag, command)
+                    # Qualified consumption must not bypass native lock/hash validation.
+                    # Scope this to the actual argv, not deliberately owned generation lanes.
+                    for argument in command:
+                        self.assertNotIn("--force-evaluate", argument.casefold())
+                        self.assertNotIn("restoreforceevaluate", argument.casefold())
                     self.assertEqual(str(input_dir / "fresh-cache"), command[command.index("--packages") + 1])
                     child = observed[-1]["env"]
-                    for forbidden in ("HTTPS_PROXY", "http_proxy", "NUGET_PLUGIN_PATHS", "RestoreSources", "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"):
+                    for forbidden in ("HTTPS_PROXY", "http_proxy", "NUGET_PLUGIN_PATHS", "RestoreSources",
+                                      "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "RestoreForceEvaluate",
+                                      "RestoreLockedMode", "RestorePackagesWithLockFile"):
                         self.assertNotIn(forbidden, child)
 
     def test_preparation_exports_transport_path_not_a_prepared_cache_authority(self):

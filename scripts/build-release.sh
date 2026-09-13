@@ -422,7 +422,6 @@ NUGET_PACKAGES="$isolated_packages"
 export NUGET_PACKAGES
 clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
-  --force-evaluate \
   --disable-parallel \
   --no-http-cache \
   --packages "$isolated_packages" \
