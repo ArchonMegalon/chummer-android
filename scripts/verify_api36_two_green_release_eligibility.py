@@ -111,6 +111,14 @@ RELEASE_APPROVAL_ONLY_KEYS = {
         "0ccffb5997e10dea7531894e00a2376f8da309a8e50da00199ffc3073de85dcb",
     ),
 }
+RELEASE_BUILDER_KEY_ID = "fleet-release-builder-2026-09"
+RELEASE_BUILDER_ONLY_KEYS = {
+    RELEASE_BUILDER_KEY_ID: (
+        REPO_ROOT / "eng/trusted-release-builders/fleet-release-builder-2026-09.public.pem",
+        "ef44c5b7fcadaf0f115b5f0e0e7b1a65edb322bb002faf980acb654a5db8caaf",
+    ),
+}
+_NO_BUILDER_KEY = object()
 MAX_APPROVAL_LIFETIME = timedelta(hours=12)
 APPROVAL_CLOCK_SKEW = timedelta(minutes=2)
 OPENSSL = Path("/usr/bin/openssl")
@@ -264,11 +272,32 @@ def _verify_ed25519_signature(
     *,
     label: str,
     approval_key_id: str | None = None,
+    builder_key_id: object = _NO_BUILDER_KEY,
 ) -> None:
     public_key, public_key_sha256 = (
         RELEASE_APPROVER_PUBLIC_KEY, RELEASE_APPROVER_PUBLIC_KEY_SHA256,
     )
-    if approval_key_id is not None:
+    key_label = "trusted release approver public key"
+    if builder_key_id is not _NO_BUILDER_KEY:
+        if approval_key_id is not None:
+            raise ValueError("release signature key roles are mutually exclusive")
+        public_key, public_key_sha256 = _release_builder_key(builder_key_id)
+        key_label = "trusted release builder public key"
+        contract = unsigned.get("contractName")
+        flags = ("publicationAuthorized", "googlePlayUploadAuthorized")
+        if contract == "chummer.android.release-build-attestation/v2":
+            flags += ("signingAuthorized",)
+        elif contract != "chummer.android.external-release-signer-attestation/v1" or "signingAuthorized" in unsigned:
+            raise ValueError("builder-only key cannot verify another authority")
+        if (
+            unsigned.get("algorithm") != "ed25519"
+            or unsigned.get("keyId") != builder_key_id
+            or unsigned.get("role") != "android_internal_release_builder"
+            or unsigned.get("attestationScope") != "android_internal_release_artifact_binding"
+            or any(unsigned.get(field) is not False for field in flags)
+        ):
+            raise ValueError("builder-only key cannot verify another authority")
+    elif approval_key_id is not None:
         if (
             unsigned.get("contractName") != RELEASE_APPROVAL_CONTRACT
             or unsigned.get("algorithm") != "ed25519"
@@ -283,12 +312,12 @@ def _verify_ed25519_signature(
         public_key, public_key_sha256 = _release_approval_key(approval_key_id)
     public_key_raw = _stable_bytes(
         public_key,
-        label="trusted release approver public key",
+        label=key_label,
         limit=16 * 1024,
         owner_only=False,
     )
     if hashlib.sha256(public_key_raw).hexdigest() != public_key_sha256:
-        raise ValueError("trusted release approver public key digest differs")
+        raise ValueError(f"{key_label} digest differs")
     if not isinstance(signature_text, str) or len(signature_text) > 256:
         raise ValueError(f"{label} signature is invalid")
     try:
@@ -321,6 +350,20 @@ def _verify_ed25519_signature(
         )
     if completed.returncode != 0:
         raise ValueError(f"{label} signature is invalid")
+
+
+def _release_builder_key(key_id: object) -> tuple[Path, str]:
+    # The legacy key remains valid for historical builder receipts only; the
+    # active builder identity is independent of approval-only identities.
+    keys = {
+        **RELEASE_BUILDER_ONLY_KEYS,
+        RELEASE_APPROVER_KEY_ID: (
+            RELEASE_APPROVER_PUBLIC_KEY, RELEASE_APPROVER_PUBLIC_KEY_SHA256,
+        ),
+    }
+    if not isinstance(key_id, str) or key_id not in keys:
+        raise ValueError("release build attestation key is not admitted")
+    return keys[key_id]
 
 
 def release_approval_unsigned(

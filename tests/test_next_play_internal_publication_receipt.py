@@ -150,6 +150,13 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         )
         self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY = self.attester_public_key
         self.module.BUILD_ATTESTATION.VERIFY.RELEASE_APPROVER_PUBLIC_KEY_SHA256 = hashlib.sha256(self.attester_public_key.read_bytes()).hexdigest()
+        builder_keys = mock.patch.dict(self.module.BUILD_ATTESTATION.VERIFY.RELEASE_BUILDER_ONLY_KEYS, {
+            self.module.BUILD_ATTESTATION.VERIFY.RELEASE_BUILDER_KEY_ID: (
+                self.attester_public_key, hashlib.sha256(self.attester_public_key.read_bytes()).hexdigest(),
+            ),
+        })
+        builder_keys.start()
+        self.addCleanup(builder_keys.stop)
         self.module.BUILD_ATTESTATION.verify = (
             lambda *_args, **_kwargs: copy.deepcopy(self.build_attestation_binding)
         )
@@ -435,6 +442,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                 java_tool_authority=self.graph,
             )
         self.assertFalse(attestation["publicationAuthorized"])
+        self.assertEqual(build.VERIFY.RELEASE_BUILDER_KEY_ID, attestation["keyId"])
         self.assertEqual(
             build.VALIDATION_CONTRACT,
             attestation["protectedValidation"]["contractName"],
@@ -444,6 +452,35 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
             self.two_green_receipt, self.two_green_approval,
         )
         self.assertEqual(self.expected_source_graph_sha256, verified["sourceGraph"]["sha256"])
+
+        # Historical v2 selection must reconstruct the old key ID without
+        # relabeling its source, timestamp, qualification or artifact bindings.
+        historical = {key: value for key, value in attestation.items() if key != "signatureBase64"}
+        historical["keyId"] = build.VERIFY.RELEASE_APPROVER_KEY_ID
+        old_private, old_public = self.root / "old-builder.private.pem", self.root / "old-builder.public.pem"
+        for args in (
+            ["genpkey", "-algorithm", "ED25519", "-out", str(old_private)],
+            ["pkey", "-in", str(old_private), "-pubout", "-out", str(old_public)],
+        ):
+            subprocess.run(["/usr/bin/openssl", *args], check=True, capture_output=True, timeout=20)
+        old_private.chmod(0o600)
+        payload = self.root / "historical-payload.json"
+        payload.write_bytes(build.VERIFY._canonical_json_bytes(historical))
+        old_signature = subprocess.run(
+            ["/usr/bin/openssl", "pkeyutl", "-sign", "-inkey", str(old_private),
+             "-rawin", "-in", str(payload)], check=True, capture_output=True, timeout=20,
+        ).stdout
+        self.build_attestation.write_bytes(build._pretty({
+            **historical, "signatureBase64": base64.b64encode(old_signature).decode("ascii"),
+        }))
+        with mock.patch.object(build.VERIFY, "RELEASE_APPROVER_PUBLIC_KEY", old_public), mock.patch.object(
+            build.VERIFY, "RELEASE_APPROVER_PUBLIC_KEY_SHA256", hashlib.sha256(old_public.read_bytes()).hexdigest(),
+        ):
+            self.assertEqual(historical, self.original_build_attestation_verifier(
+                self.build_attestation, self.aab, self.graph, self.build_sidecar,
+                self.two_green_receipt, self.two_green_approval,
+            ))
+        self.build_attestation.write_bytes(build._pretty(attestation))
 
         # Synthetic independent approver key: the real build verifier must not
         # accept it, even if a signed payload relabels it as the legacy builder.
@@ -460,7 +497,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         with mock.patch.object(build.VERIFY, "RELEASE_APPROVAL_ONLY_KEYS", {
             approver_id: (approver_public, hashlib.sha256(approver_public.read_bytes()).hexdigest()),
         }):
-            for key_id in (approver_id, build.VERIFY.RELEASE_APPROVER_KEY_ID):
+            for key_id in (approver_id, build.VERIFY.RELEASE_APPROVER_KEY_ID, build.VERIFY.RELEASE_BUILDER_KEY_ID):
                 with self.subTest(approval_key_cannot_attest_as=key_id):
                     changed = {key: value for key, value in attestation.items() if key != "signatureBase64"}
                     changed["keyId"] = key_id
@@ -474,7 +511,7 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
                     self.build_attestation.write_bytes(build._pretty({
                         **changed, "signatureBase64": base64.b64encode(signature).decode("ascii"),
                     }))
-                    with self.assertRaisesRegex(ValueError, "signature is invalid"):
+                    with self.assertRaisesRegex(ValueError, "not admitted" if key_id == approver_id else "signature is invalid"):
                         self.original_build_attestation_verifier(
                             self.build_attestation, self.aab, self.graph, self.build_sidecar,
                             self.two_green_receipt, self.two_green_approval,
@@ -816,6 +853,49 @@ class NextPlayInternalPublicationReceiptTests(unittest.TestCase):
         self.receipt.chmod(0o600)
         with self.assertRaisesRegex(ValueError, "new file"):
             self.materialize()
+
+    def test_schema_validates_materialized_receipts_for_only_the_two_approval_identities(self) -> None:
+        from jsonschema import Draft202012Validator, ValidationError
+
+        schema = json.loads(SCHEMA.read_bytes())
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+        for key_id in ("local-release-builder-2026", "fleet-release-approver-2026-09"):
+            with self.subTest(approval_key_id=key_id):
+                self.two_green_binding["protectedApproval"]["keyId"] = key_id
+                self.receipt.unlink(missing_ok=True)
+                self.assertEqual("pass", self.materialize()["status"])
+                payload = json.loads(self.receipt.read_bytes())
+                validator.validate(payload)
+                self.assertEqual("pass", self.verify()["status"])
+                for wrong_contract in (
+                    "chummer.android.api36-ordered-review-main-green-eligibility/v2",
+                    "chummer.android.api36-ordered-review-main-green-eligibility/v4",
+                    "unknown",
+                ):
+                    with self.subTest(rejected_eligibility_contract=wrong_contract):
+                        changed = copy.deepcopy(payload)
+                        changed["twoGreenEligibility"]["contractName"] = wrong_contract
+                        with self.assertRaises(ValidationError):
+                            validator.validate(changed)
+                for wrong in ("fleet-release-builder-2026-09", "unknown", "", None, [], 1):
+                    with self.subTest(rejected_key_id=wrong):
+                        changed = copy.deepcopy(payload)
+                        changed["twoGreenEligibility"]["protectedApproval"]["keyId"] = wrong
+                        with self.assertRaises(ValidationError):
+                            validator.validate(changed)
+                for field, value in (("role", "android_internal_release_builder"),
+                                     ("approvalScope", "android_internal_release_artifact_binding"),
+                                     ("extraAuthority", True)):
+                    changed = copy.deepcopy(payload)
+                    changed["twoGreenEligibility"]["protectedApproval"][field] = value
+                    with self.assertRaises(ValidationError):
+                        validator.validate(changed)
+                for section in (payload, payload["twoGreenEligibility"], payload["authorization"]):
+                    section["publicationAuthorized"] = True
+                    with self.assertRaises(ValidationError):
+                        validator.validate(payload)
+                    section["publicationAuthorized"] = False
 
     def test_schema_is_closed_internal_only_and_never_grants_production(self) -> None:
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
