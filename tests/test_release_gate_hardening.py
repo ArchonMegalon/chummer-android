@@ -43,6 +43,162 @@ TWO_GREEN_SIGNER = load(
 
 
 class ReleaseGateHardeningTests(unittest.TestCase):
+    def test_proof_verifier_requires_every_immutable_descriptor_seal(self) -> None:
+        import fcntl
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "sealed_proof_fixture")
+        with tempfile.TemporaryDirectory() as temporary:
+            aab = Path(temporary) / "clean.aab"
+            fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly")
+            bits = (fcntl.F_SEAL_SEAL, fcntl.F_SEAL_SHRINK, fcntl.F_SEAL_GROW, fcntl.F_SEAL_WRITE)
+            self.assertEqual(CAPTURE.REQUIRED_SEALS, sum(bits))
+            for subset in range(16):
+                with self.subTest(seals=subset):
+                    descriptor = os.memfd_create("proof-seal-test", os.MFD_ALLOW_SEALING)
+                    try:
+                        os.write(descriptor, aab.read_bytes())
+                        fcntl.fcntl(descriptor, fcntl.F_ADD_SEALS, sum(bit for index, bit in enumerate(bits) if subset & (1 << index)))
+                        path = Path(f"/proc/self/fd/{descriptor}")
+                        if subset == 15:
+                            self.assertEqual((1, 1), fixtures.VERIFIER.verify(path, REPO)[:2])
+                        else:
+                            with self.assertRaisesRegex(fixtures.VERIFIER.VerificationError, "complete immutable seal set"):
+                                fixtures.VERIFIER.verify(path, REPO)
+                    finally:
+                        os.close(descriptor)
+
+    def test_proof_verifier_rejects_unsafe_descriptor_and_ordinary_symlink_inputs(self) -> None:
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "unsafe_proof_fixture")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            aab = root / "clean.aab"
+            fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly")
+            snapshot = CAPTURE._sealed_bytes(aab.read_bytes(), "proof-fixture")
+            read_pipe, write_pipe = os.pipe()
+            regular = os.open(aab, os.O_RDONLY)
+            closed = os.dup(regular)
+            os.close(closed)
+            link = root / "linked.aab"
+            link.symlink_to(aab)
+            try:
+                for path in (Path(f"/proc/self/fd/{read_pipe}"), Path(f"/proc/self/fd/{regular}"),
+                             Path(f"/proc/self/fd/{closed}"), Path(f"/proc/self/fd/0{snapshot['descriptor']}"),
+                             Path(f"/proc/self/fd/+{snapshot['descriptor']}"), Path("/proc/self/fd/99999999999"),
+                             Path(f"/dev/fd/{snapshot['descriptor']}"), link):
+                    with self.subTest(path=str(path)), self.assertRaises(fixtures.VERIFIER.VerificationError):
+                        fixtures.VERIFIER.verify(path, REPO)
+                for alias in (f"/proc/self/fd//{snapshot['descriptor']}", f"/proc/self/fd/./{snapshot['descriptor']}"):
+                    result = subprocess.run(["/usr/bin/python3", "-I", "-E", "-S",
+                        str(REPO / "scripts/verify_release_aab_excludes_api36_proof.py"), alias],
+                        env={"PATH": "/usr/bin:/bin", "CHUMMER_VALIDATOR_REPO_ROOT": str(REPO)},
+                        capture_output=True, text=True, timeout=10, pass_fds=(snapshot["descriptor"],))
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("descriptor path must be canonical", result.stderr)
+                fixtures._write_aab(aab, b"MZ\x00Api36ProofStatePublisher")
+                hostile = CAPTURE._sealed_bytes(aab.read_bytes(), "proof-forbidden")
+                try:
+                    with self.assertRaisesRegex(fixtures.VERIFIER.VerificationError, "proof-type"):
+                        fixtures.VERIFIER.verify(CAPTURE._fd_path(hostile), REPO)
+                finally:
+                    os.close(hostile["descriptor"])
+            finally:
+                for descriptor in (snapshot["descriptor"], read_pipe, write_pipe, regular):
+                    os.close(descriptor)
+
+    def test_unsigned_shell_validation_uses_sealed_aab_bytes_and_rejects_signature_metadata(self) -> None:
+        """Real sealed transaction + descriptor-held validators; bundletool modeled.
+
+        Signature entries are synthetic ZIP markers, NOT verified signatures.
+        No key generation, jarsigner operation, SDK or Android build runs here.
+        """
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "unsigned_aab_fixture")
+        manifest_xml = '''<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+ package="com.myexternalbrain.chummer" android:compileSdkVersion="36" android:versionCode="12"
+ android:versionName="0.1.0-preview.12">
+ <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36"/>
+ <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="com.myexternalbrain.chummer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+ <application android:allowBackup="false" android:usesCleartextTraffic="false">
+ <activity android:exported="true" android:enableOnBackInvokedCallback="true">
+ <intent-filter><action android:name="android.intent.action.MAIN"/></intent-filter>
+ <intent-filter android:autoVerify="true"><data android:scheme="https" android:host="chummer.run"
+ android:path="/app/install-link"/></intent-filter></activity></application></manifest>'''
+        markers = (None, "META-INF/UPLOAD.SF", "META-INF/UPLOAD.RSA", "META-INF/UPLOAD.DSA",
+                   "META-INF/UPLOAD.EC", "META-INF/SIG-CUSTOM", "meta-inf/upload.sf",
+                   "MeTa-InF/upLoad.rSa", "META-INF/sig-custom", "./META-INF/UPLOAD.SF",
+                   "/META-INF/UPLOAD.SF", "META-INF//UPLOAD.SF", "META-INF/../UPLOAD.SF", "META-INF\\UPLOAD.SF")
+        for marker in markers:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                artifacts = root / "artifacts"
+                artifacts.mkdir(mode=0o700)
+                aab = root / "com.myexternalbrain.chummer-Signed.aab"
+                fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly", extra_name=marker)
+                with zipfile.ZipFile(aab, "a") as archive:
+                    archive.writestr("META-INF/MANIFEST.MF", b"Manifest-Version: 1.0\r\n\r\n")
+                aab = aab.rename(root / "com.myexternalbrain.chummer.aab")
+                original = aab.read_bytes()
+                graph = root / "graph.json"
+                graph.write_bytes(b"{}\n")
+                manifest = root / "manifest.xml"
+                manifest.write_text(manifest_xml, encoding="utf-8")
+                bundletool = root / "modeled-bundletool.jar"
+                bundletool.write_bytes(b"NOT an actual bundletool jar")
+                java = root / "modeled-java"
+                java.write_text("#!/usr/bin/python3\nimport os, pathlib, sys\n"
+                    "assert sys.argv[1]=='-jar' and any(x.startswith('--bundle=/proc/self/fd/') for x in sys.argv)\n"
+                    "assert sys.argv[3] in ('validate','dump')\n"
+                    "if sys.argv[3]=='dump': print(pathlib.Path(os.environ['TEST_MANIFEST']).read_text())\n")
+                java.chmod(0o700)
+                snapshots = [BUILD_ATTESTATION._lease_current(REPO / "scripts" / name, 8 * 1024 * 1024, name)
+                             for name in ("validate-aab.sh", "inspect_aab.py", "verify_release_aab_excludes_api36_proof.py")]
+                environment = {"PATH": "/usr/bin:/bin", "LANG": "C", "TEST_MANIFEST": str(manifest),
+                    "CHUMMER_BUNDLETOOL_JAR": str(bundletool), "CHUMMER_JAVA": str(java),
+                    "CHUMMER_PYTHON3": "/usr/bin/python3", "CHUMMER_JARSIGNER": "/must-not-execute",
+                    "CHUMMER_KEYTOOL": "/must-not-execute", "CHUMMER_VALIDATOR_REPO_ROOT": str(REPO),
+                    "CHUMMER_EXPECTED_VERSION_NAME": "0.1.0-preview.12", "CHUMMER_EXPECTED_VERSION_CODE": "12",
+                    "CHUMMER_INSPECT_AAB_SCRIPT": BUILD_ATTESTATION._lease_fd_path(snapshots[1]),
+                    "CHUMMER_PROOF_EXCLUSION_SCRIPT": BUILD_ATTESTATION._lease_fd_path(snapshots[2])}
+                observed = []
+                def validate(aab_fd, _graph_fd, _sidecar_fd, descriptors):
+                    self.assertEqual(original, aab_fd.read_bytes())
+                    # A same-UID named-path change cannot decide the validation.
+                    fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly",
+                                        extra_name="META-INF/OTHER.SF" if marker is None else None)
+                    completed = subprocess.run(["/bin/bash", BUILD_ATTESTATION._lease_fd_path(snapshots[0]), str(aab_fd)],
+                        env=environment, capture_output=True, text=True, timeout=20,
+                        pass_fds=(*descriptors, *(item["descriptor"] for item in snapshots)))
+                    observed.append(completed)
+                    if completed.returncode:
+                        raise ValueError(completed.stderr)
+                try:
+                    arguments = (aab, graph, artifacts / "raw.aab", artifacts / "graph.json",
+                                 artifacts / "raw.aab.sha256", validate)
+                    if marker is None:
+                        CAPTURE.transaction(*arguments)
+                        self.assertEqual(original, (artifacts / "raw.aab").read_bytes())
+                        self.assertIn("no JAR signature metadata", observed[0].stdout)
+                    else:
+                        error = "noncanonical ZIP name" if any(part in marker for part in ("./", "//", "\\")) \
+                            or marker.startswith("/") else "JAR signature metadata is forbidden"
+                        with self.assertRaisesRegex(ValueError, error):
+                            CAPTURE.transaction(*arguments)
+                        self.assertEqual([], list(artifacts.iterdir()))
+                    self.assertEqual(1, len(observed))
+                finally:
+                    BUILD_ATTESTATION._close_leases(snapshots, verify=True)
+
+    def test_unsigned_inspection_flag_preserves_signed_branch_and_is_explicit(self) -> None:
+        source = (REPO / "scripts/validate-aab.sh").read_text()
+        self.assertIn('if [[ -z "$upload_certificate_path" ]]; then\n  inspection_arguments+=(--require-unsigned)', source)
+        self.assertIn('"$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml" "${inspection_arguments[@]}"', source)
+        self.assertIn('if [[ -n "$upload_certificate_path" ]]; then', source)
+        completed = subprocess.run(["/usr/bin/python3", "-I", "-E", "-S", str(REPO / "scripts/inspect_aab.py"),
+                                    "missing.aab", "missing.xml", "--allow-signed"],
+                                   capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(0, completed.returncode)
+        self.assertIn("usage: inspect_aab.py", completed.stderr)
+
     def test_release_shell_entry_ignores_hostile_bash_env(self) -> None:
         """Both supported entry forms must keep BASH_ENV from running."""
 

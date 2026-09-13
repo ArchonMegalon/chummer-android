@@ -27,7 +27,7 @@ def attr(element: ET.Element, name: str) -> str | None:
     return element.get(f"{ANDROID}{name}")
 
 
-def inspect(aab_path: Path, manifest_path: Path) -> None:
+def inspect(aab_path: Path, manifest_path: Path, *, require_unsigned: bool = False) -> None:
     expected_version_name = os.environ.get("CHUMMER_EXPECTED_VERSION_NAME")
     expected_version_code = os.environ.get("CHUMMER_EXPECTED_VERSION_CODE")
     require(bool(expected_version_name), "protected expected version name is missing")
@@ -83,6 +83,22 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
 
     with zipfile.ZipFile(aab_path) as bundle:
         names = bundle.namelist()
+        if require_unsigned:
+            # A JAR manifest alone can be unsigned. Signature instruction files,
+            # algorithm blocks and reserved SIG-* files cannot enter this lane,
+            # regardless of the bundle filename or whether the signature is valid.
+            for entry in bundle.infolist():
+                name = entry.orig_filename
+                require(name == entry.filename and "\\" not in name and not name.startswith("/"),
+                        "noncanonical ZIP name in unsigned bundle")
+                parts = name.rstrip("/").split("/")
+                require(all(part not in ("", ".", "..") for part in parts),
+                        "noncanonical ZIP name in unsigned bundle")
+                if len(parts) == 2 and parts[0].upper() == "META-INF":
+                    leaf = parts[1].upper()
+                    require(not (leaf.endswith((".SF", ".RSA", ".DSA", ".EC")) or leaf.startswith("SIG-")),
+                            "JAR signature metadata is forbidden in an unsigned bundle")
+            print("AAB unsigned inspection passed: no JAR signature metadata.")
     native_abis = {
         name.split("/", 3)[2]
         for name in names
@@ -97,7 +113,8 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
 
 
 def main() -> None:
-    require(len(sys.argv) == 3, "usage: inspect_aab.py AAB MANIFEST_XML")
+    require(len(sys.argv) == 3 or (len(sys.argv) == 4 and sys.argv[3] == "--require-unsigned"),
+            "usage: inspect_aab.py AAB MANIFEST_XML [--require-unsigned]")
     # /proc/self/fd paths are intentionally not resolved: the protected
     # attester supplies immutable inherited descriptors rather than names that
     # a same-UID filesystem attacker can swap.
@@ -105,7 +122,7 @@ def main() -> None:
     manifest_path = Path(sys.argv[2])
     require(aab_path.is_file(), f"bundle not found: {aab_path}")
     require(manifest_path.is_file(), f"manifest not found: {manifest_path}")
-    inspect(aab_path, manifest_path)
+    inspect(aab_path, manifest_path, require_unsigned=len(sys.argv) == 4)
 
 
 if __name__ == "__main__":
