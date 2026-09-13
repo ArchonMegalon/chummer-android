@@ -49,7 +49,11 @@ if ! "$java_command" -jar "$bundletool_path" validate --bundle="$aab_path" > "$t
 fi
 echo "bundletool validation passed."
 "$java_command" -jar "$bundletool_path" dump manifest --bundle="$aab_path" > "$temporary_dir/manifest.xml"
-"$python_command" -I -E -S "$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml"
+inspection_arguments=()
+if [[ -z "$upload_certificate_path" ]]; then
+  inspection_arguments+=(--require-unsigned)
+fi
+"$python_command" -I -E -S "$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml" "${inspection_arguments[@]}"
 "$python_command" -I -E -S "$proof_exclusion_script" "$aab_path"
 
 if [[ -n "$upload_certificate_path" ]]; then

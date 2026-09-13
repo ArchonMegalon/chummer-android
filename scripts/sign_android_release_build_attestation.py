@@ -230,7 +230,7 @@ def _java_toolchain_unsigned(java_sdk: Path, dotnet: Path) -> dict[str, Any]:
     )
     dotnet_claim = {
         "absolutePath": os.fspath(dotnet),
-        "sha256": _sha256_file(dotnet, "trusted dotnet", 256 * 1024 * 1024),
+        "sha256": _trusted_tool_sha256(dotnet, "trusted dotnet", 256 * 1024 * 1024),
         "sizeBytes": dotnet.stat().st_size,
         "versionOutputSha256": _dotnet_version_digest(dotnet),
     }
@@ -247,7 +247,7 @@ def _java_toolchain_unsigned(java_sdk: Path, dotnet: Path) -> dict[str, Any]:
         "tools": {
             name: {
                 "relativePath": f"bin/{name}",
-                "sha256": _sha256_file(path, f"trusted Java {name}", 128 * 1024 * 1024),
+                "sha256": _trusted_tool_sha256(path, f"trusted Java {name}", 128 * 1024 * 1024),
                 "sizeBytes": path.stat().st_size,
             }
             for name, path in tools.items()
@@ -379,7 +379,7 @@ def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
             or isinstance(claim.get("sizeBytes"), bool)
             or claim["sizeBytes"] <= 0
             or tool.stat().st_size != claim["sizeBytes"]
-            or _sha256_file(tool, f"trusted Java {name}", 128 * 1024 * 1024)
+            or _trusted_tool_sha256(tool, f"trusted Java {name}", 128 * 1024 * 1024)
             != VERIFY._sha256(claim.get("sha256"), f"trusted Java {name} digest")
         ):
             raise ValueError("trusted Java tool bytes differ")
@@ -408,7 +408,7 @@ def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
         or isinstance(dotnet_claim.get("sizeBytes"), bool)
         or dotnet_claim["sizeBytes"] <= 0
         or dotnet.stat().st_size != dotnet_claim["sizeBytes"]
-        or _sha256_file(dotnet, "trusted dotnet", 256 * 1024 * 1024)
+        or _trusted_tool_sha256(dotnet, "trusted dotnet", 256 * 1024 * 1024)
         != VERIFY._sha256(dotnet_claim.get("sha256"), "trusted dotnet digest")
         or _dotnet_version_digest(dotnet)
         != VERIFY._sha256(
@@ -439,6 +439,30 @@ def _load_trusted_java_toolchain(authority_path: Path) -> dict[str, Any]:
 
 def _sha256_file(path: Path, label: str, limit: int) -> str:
     return hashlib.sha256(_read(path, label, limit, False)).hexdigest()
+
+
+def _trusted_tool_sha256(path: Path, label: str, limit: int) -> str:
+    """Hash root-custodied executables without relaxing caller-owned input reads."""
+    failure = f"{label} must be one bounded root-owned executable"
+    if type(limit) is not int or limit <= 0:
+        raise ValueError(failure)
+    try:
+        root = _trusted_tool_root(path.parent, f"{label} root")
+        _trusted_tool(path, root, label)
+        metadata = path.lstat()
+        if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0
+                or stat.S_IMODE(metadata.st_mode) & 0o022
+                or not metadata.st_mode & 0o111 or not 0 < metadata.st_size <= limit):
+            raise ValueError(failure)
+        digest = _trusted_tree_file_sha256(path, metadata, label)
+        # Recheck custody after the two stable FD passes, not just before opening.
+        _trusted_tool_root(root, f"{label} root")
+        _trusted_tool(path, root, label)
+        if _lease_identity(path.lstat()) != _lease_identity(metadata):
+            raise ValueError(f"{label} changed while hashing its executable")
+        return digest
+    except (OSError, RuntimeError):
+        raise ValueError(failure) from None
 
 
 def _lease_identity(metadata: os.stat_result) -> tuple[int, ...]:

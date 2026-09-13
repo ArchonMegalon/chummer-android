@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import re
 import os
+import stat
 import struct
 import sys
 import zipfile
 from dataclasses import dataclass
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
 
@@ -333,11 +335,37 @@ def _scan_assembly_store(
     return entry_count, expanded_total
 
 
-def verify(aab_path: Path, repo_root: Path) -> tuple[int, int, int]:
+@contextmanager
+def _aab_input(aab_path: Path):
     require(aab_path.is_absolute(), "AAB path must be absolute")
-    require(aab_path.is_file() and not aab_path.is_symlink(), "AAB must be a regular non-symlink file")
-    if not str(aab_path).startswith("/proc/self/fd/"):
+    if str(aab_path).startswith("/proc/self/fd/"):
+        match = re.fullmatch(r"/proc/self/fd/(0|[1-9][0-9]{0,9})", str(aab_path))
+        require(match is not None, "AAB descriptor path must be canonical")
+        descriptor = None
+        try:
+            import fcntl  # Ordinary file validation remains available off Linux.
+            # Duplicate first: validate and consume this held descriptor, never
+            # reopen the caller's descriptor number after checking its seals.
+            descriptor = os.dup(int(match[1]))
+            require(stat.S_ISREG(os.fstat(descriptor).st_mode), "AAB descriptor must be regular")
+            seals = fcntl.F_SEAL_SEAL | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_GROW | fcntl.F_SEAL_WRITE
+            require(fcntl.fcntl(descriptor, fcntl.F_GET_SEALS) == seals,
+                    "AAB descriptor must have the complete immutable seal set")
+            with os.fdopen(descriptor, "rb") as source:
+                descriptor = None
+                yield source
+        except (ImportError, OSError, OverflowError) as error:
+            raise VerificationError("AAB descriptor is unavailable or not immutable") from error
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+    else:
+        require(aab_path.is_file() and not aab_path.is_symlink(), "AAB must be a regular non-symlink file")
         require(aab_path.resolve(strict=True) == aab_path, "AAB path must be canonical")
+        yield aab_path
+
+
+def verify(aab_path: Path, repo_root: Path) -> tuple[int, int, int]:
     markers = load_markers(repo_root)
 
     expanded_total = 0
@@ -345,7 +373,7 @@ def verify(aab_path: Path, repo_root: Path) -> tuple[int, int, int]:
     assembly_bytes = 0
     stores: list[tuple[str, bytes]] = []
     try:
-        with zipfile.ZipFile(aab_path) as bundle:
+        with _aab_input(aab_path) as source, zipfile.ZipFile(source) as bundle:
             entries = bundle.infolist()
             require(0 < len(entries) <= MAX_ARCHIVE_ENTRIES, "AAB has an invalid entry count")
             names = [entry.filename for entry in entries]
@@ -384,6 +412,8 @@ def main() -> None:
     )
     aab_path = Path(sys.argv[1])
     try:
+        if str(aab_path).startswith("/proc/self/fd/"):
+            require(sys.argv[1] == str(aab_path), "AAB descriptor path must be canonical")
         stores, assemblies, expanded_bytes = verify(aab_path, repo_root)
     except VerificationError as error:
         raise SystemExit(f"Release AAB proof-exclusion verification failed: {error}") from error

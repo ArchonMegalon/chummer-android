@@ -43,6 +43,162 @@ TWO_GREEN_SIGNER = load(
 
 
 class ReleaseGateHardeningTests(unittest.TestCase):
+    def test_proof_verifier_requires_every_immutable_descriptor_seal(self) -> None:
+        import fcntl
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "sealed_proof_fixture")
+        with tempfile.TemporaryDirectory() as temporary:
+            aab = Path(temporary) / "clean.aab"
+            fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly")
+            bits = (fcntl.F_SEAL_SEAL, fcntl.F_SEAL_SHRINK, fcntl.F_SEAL_GROW, fcntl.F_SEAL_WRITE)
+            self.assertEqual(CAPTURE.REQUIRED_SEALS, sum(bits))
+            for subset in range(16):
+                with self.subTest(seals=subset):
+                    descriptor = os.memfd_create("proof-seal-test", os.MFD_ALLOW_SEALING)
+                    try:
+                        os.write(descriptor, aab.read_bytes())
+                        fcntl.fcntl(descriptor, fcntl.F_ADD_SEALS, sum(bit for index, bit in enumerate(bits) if subset & (1 << index)))
+                        path = Path(f"/proc/self/fd/{descriptor}")
+                        if subset == 15:
+                            self.assertEqual((1, 1), fixtures.VERIFIER.verify(path, REPO)[:2])
+                        else:
+                            with self.assertRaisesRegex(fixtures.VERIFIER.VerificationError, "complete immutable seal set"):
+                                fixtures.VERIFIER.verify(path, REPO)
+                    finally:
+                        os.close(descriptor)
+
+    def test_proof_verifier_rejects_unsafe_descriptor_and_ordinary_symlink_inputs(self) -> None:
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "unsafe_proof_fixture")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            aab = root / "clean.aab"
+            fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly")
+            snapshot = CAPTURE._sealed_bytes(aab.read_bytes(), "proof-fixture")
+            read_pipe, write_pipe = os.pipe()
+            regular = os.open(aab, os.O_RDONLY)
+            closed = os.dup(regular)
+            os.close(closed)
+            link = root / "linked.aab"
+            link.symlink_to(aab)
+            try:
+                for path in (Path(f"/proc/self/fd/{read_pipe}"), Path(f"/proc/self/fd/{regular}"),
+                             Path(f"/proc/self/fd/{closed}"), Path(f"/proc/self/fd/0{snapshot['descriptor']}"),
+                             Path(f"/proc/self/fd/+{snapshot['descriptor']}"), Path("/proc/self/fd/99999999999"),
+                             Path(f"/dev/fd/{snapshot['descriptor']}"), link):
+                    with self.subTest(path=str(path)), self.assertRaises(fixtures.VERIFIER.VerificationError):
+                        fixtures.VERIFIER.verify(path, REPO)
+                for alias in (f"/proc/self/fd//{snapshot['descriptor']}", f"/proc/self/fd/./{snapshot['descriptor']}"):
+                    result = subprocess.run(["/usr/bin/python3", "-I", "-E", "-S",
+                        str(REPO / "scripts/verify_release_aab_excludes_api36_proof.py"), alias],
+                        env={"PATH": "/usr/bin:/bin", "CHUMMER_VALIDATOR_REPO_ROOT": str(REPO)},
+                        capture_output=True, text=True, timeout=10, pass_fds=(snapshot["descriptor"],))
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("descriptor path must be canonical", result.stderr)
+                fixtures._write_aab(aab, b"MZ\x00Api36ProofStatePublisher")
+                hostile = CAPTURE._sealed_bytes(aab.read_bytes(), "proof-forbidden")
+                try:
+                    with self.assertRaisesRegex(fixtures.VERIFIER.VerificationError, "proof-type"):
+                        fixtures.VERIFIER.verify(CAPTURE._fd_path(hostile), REPO)
+                finally:
+                    os.close(hostile["descriptor"])
+            finally:
+                for descriptor in (snapshot["descriptor"], read_pipe, write_pipe, regular):
+                    os.close(descriptor)
+
+    def test_unsigned_shell_validation_uses_sealed_aab_bytes_and_rejects_signature_metadata(self) -> None:
+        """Real sealed transaction + descriptor-held validators; bundletool modeled.
+
+        Signature entries are synthetic ZIP markers, NOT verified signatures.
+        No key generation, jarsigner operation, SDK or Android build runs here.
+        """
+        fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "unsigned_aab_fixture")
+        manifest_xml = '''<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+ package="com.myexternalbrain.chummer" android:compileSdkVersion="36" android:versionCode="12"
+ android:versionName="0.1.0-preview.12">
+ <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36"/>
+ <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="com.myexternalbrain.chummer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+ <application android:allowBackup="false" android:usesCleartextTraffic="false">
+ <activity android:exported="true" android:enableOnBackInvokedCallback="true">
+ <intent-filter><action android:name="android.intent.action.MAIN"/></intent-filter>
+ <intent-filter android:autoVerify="true"><data android:scheme="https" android:host="chummer.run"
+ android:path="/app/install-link"/></intent-filter></activity></application></manifest>'''
+        markers = (None, "META-INF/UPLOAD.SF", "META-INF/UPLOAD.RSA", "META-INF/UPLOAD.DSA",
+                   "META-INF/UPLOAD.EC", "META-INF/SIG-CUSTOM", "meta-inf/upload.sf",
+                   "MeTa-InF/upLoad.rSa", "META-INF/sig-custom", "./META-INF/UPLOAD.SF",
+                   "/META-INF/UPLOAD.SF", "META-INF//UPLOAD.SF", "META-INF/../UPLOAD.SF", "META-INF\\UPLOAD.SF")
+        for marker in markers:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                artifacts = root / "artifacts"
+                artifacts.mkdir(mode=0o700)
+                aab = root / "com.myexternalbrain.chummer-Signed.aab"
+                fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly", extra_name=marker)
+                with zipfile.ZipFile(aab, "a") as archive:
+                    archive.writestr("META-INF/MANIFEST.MF", b"Manifest-Version: 1.0\r\n\r\n")
+                aab = aab.rename(root / "com.myexternalbrain.chummer.aab")
+                original = aab.read_bytes()
+                graph = root / "graph.json"
+                graph.write_bytes(b"{}\n")
+                manifest = root / "manifest.xml"
+                manifest.write_text(manifest_xml, encoding="utf-8")
+                bundletool = root / "modeled-bundletool.jar"
+                bundletool.write_bytes(b"NOT an actual bundletool jar")
+                java = root / "modeled-java"
+                java.write_text("#!/usr/bin/python3\nimport os, pathlib, sys\n"
+                    "assert sys.argv[1]=='-jar' and any(x.startswith('--bundle=/proc/self/fd/') for x in sys.argv)\n"
+                    "assert sys.argv[3] in ('validate','dump')\n"
+                    "if sys.argv[3]=='dump': print(pathlib.Path(os.environ['TEST_MANIFEST']).read_text())\n")
+                java.chmod(0o700)
+                snapshots = [BUILD_ATTESTATION._lease_current(REPO / "scripts" / name, 8 * 1024 * 1024, name)
+                             for name in ("validate-aab.sh", "inspect_aab.py", "verify_release_aab_excludes_api36_proof.py")]
+                environment = {"PATH": "/usr/bin:/bin", "LANG": "C", "TEST_MANIFEST": str(manifest),
+                    "CHUMMER_BUNDLETOOL_JAR": str(bundletool), "CHUMMER_JAVA": str(java),
+                    "CHUMMER_PYTHON3": "/usr/bin/python3", "CHUMMER_JARSIGNER": "/must-not-execute",
+                    "CHUMMER_KEYTOOL": "/must-not-execute", "CHUMMER_VALIDATOR_REPO_ROOT": str(REPO),
+                    "CHUMMER_EXPECTED_VERSION_NAME": "0.1.0-preview.12", "CHUMMER_EXPECTED_VERSION_CODE": "12",
+                    "CHUMMER_INSPECT_AAB_SCRIPT": BUILD_ATTESTATION._lease_fd_path(snapshots[1]),
+                    "CHUMMER_PROOF_EXCLUSION_SCRIPT": BUILD_ATTESTATION._lease_fd_path(snapshots[2])}
+                observed = []
+                def validate(aab_fd, _graph_fd, _sidecar_fd, descriptors):
+                    self.assertEqual(original, aab_fd.read_bytes())
+                    # A same-UID named-path change cannot decide the validation.
+                    fixtures._write_aab(aab, b"MZ\x00ordinary-release-assembly",
+                                        extra_name="META-INF/OTHER.SF" if marker is None else None)
+                    completed = subprocess.run(["/bin/bash", BUILD_ATTESTATION._lease_fd_path(snapshots[0]), str(aab_fd)],
+                        env=environment, capture_output=True, text=True, timeout=20,
+                        pass_fds=(*descriptors, *(item["descriptor"] for item in snapshots)))
+                    observed.append(completed)
+                    if completed.returncode:
+                        raise ValueError(completed.stderr)
+                try:
+                    arguments = (aab, graph, artifacts / "raw.aab", artifacts / "graph.json",
+                                 artifacts / "raw.aab.sha256", validate)
+                    if marker is None:
+                        CAPTURE.transaction(*arguments)
+                        self.assertEqual(original, (artifacts / "raw.aab").read_bytes())
+                        self.assertIn("no JAR signature metadata", observed[0].stdout)
+                    else:
+                        error = "noncanonical ZIP name" if any(part in marker for part in ("./", "//", "\\")) \
+                            or marker.startswith("/") else "JAR signature metadata is forbidden"
+                        with self.assertRaisesRegex(ValueError, error):
+                            CAPTURE.transaction(*arguments)
+                        self.assertEqual([], list(artifacts.iterdir()))
+                    self.assertEqual(1, len(observed))
+                finally:
+                    BUILD_ATTESTATION._close_leases(snapshots, verify=True)
+
+    def test_unsigned_inspection_flag_preserves_signed_branch_and_is_explicit(self) -> None:
+        source = (REPO / "scripts/validate-aab.sh").read_text()
+        self.assertIn('if [[ -z "$upload_certificate_path" ]]; then\n  inspection_arguments+=(--require-unsigned)', source)
+        self.assertIn('"$inspect_aab_script" "$aab_path" "$temporary_dir/manifest.xml" "${inspection_arguments[@]}"', source)
+        self.assertIn('if [[ -n "$upload_certificate_path" ]]; then', source)
+        completed = subprocess.run(["/usr/bin/python3", "-I", "-E", "-S", str(REPO / "scripts/inspect_aab.py"),
+                                    "missing.aab", "missing.xml", "--allow-signed"],
+                                   capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(0, completed.returncode)
+        self.assertIn("usage: inspect_aab.py", completed.stderr)
+
     def test_release_shell_entry_ignores_hostile_bash_env(self) -> None:
         """Both supported entry forms must keep BASH_ENV from running."""
 
@@ -381,6 +537,7 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertFalse(authority.exists())
 
     def test_local_toolchain_record_is_unsigned_non_authority_and_omits_android_sdk(self) -> None:
+        # Schema/routing fixture only: modeled SDK custody is not deployment proof.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             java_sdk = root / "jdk"
@@ -404,10 +561,19 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                 BUILD_ATTESTATION, "_dotnet_version_digest", return_value="2" * 64
             ), mock.patch.object(
                 BUILD_ATTESTATION, "_trusted_tree_digest", return_value=("3" * 64, 4, 100)
-            ):
+            ), mock.patch.object(
+                BUILD_ATTESTATION, "_trusted_tool_sha256",
+                side_effect=lambda path, label, limit: BUILD_ATTESTATION._sha256_file(path, label, limit),
+            ) as tool_hash:
                 observation = BUILD_ATTESTATION.materialize_java_toolchain_observation(
                     java_sdk, dotnet, output
                 )
+            # Both construction and readback must route every SDK hash, with its cap.
+            expected = [mock.call(dotnet, "trusted dotnet", 256 * 1024 * 1024)] + [
+                mock.call(java_sdk / "bin" / name, f"trusted Java {name}", 128 * 1024 * 1024)
+                for name in ("java", "javac", "jarsigner", "keytool")
+            ]
+            self.assertCountEqual(tool_hash.call_args_list, expected * 2)
             self.assertEqual(
                 "non_authoritative_local_unsigned_preparation",
                 observation["authorityClass"],
@@ -420,6 +586,32 @@ class ReleaseGateHardeningTests(unittest.TestCase):
             self.assertTrue(
                 observation["externalSignerMustBindFullJdkDotnetAndroidSdkClosure"]
             )
+
+    def test_trusted_executable_real_root_owner_differs_from_caller_reader(self) -> None:
+        # Read an existing system executable; never execute it or fake its UID.
+        tool = Path("/usr/bin/true")
+        if os.getuid() == 0 or not tool.is_file():
+            self.skipTest("requires a nonroot caller and a root-owned system executable")
+        self.assertEqual(0, tool.stat().st_uid)
+        self.assertLessEqual(tool.stat().st_size, 256 * 1024)
+        expected = hashlib.sha256(tool.read_bytes()).hexdigest()
+        with mock.patch.object(os, "read", wraps=os.read) as reads:
+            self.assertEqual(expected, BUILD_ATTESTATION._trusted_tool_sha256(
+                tool, "system fixture", 256 * 1024
+            ))
+        self.assertEqual(4, reads.call_count)  # Bytes + EOF, twice; no subprocess.
+        self.assertTrue(all(call.args[1] == 1024 * 1024 for call in reads.call_args_list))
+        with self.assertRaisesRegex(ValueError, "bounded owner file"):
+            BUILD_ATTESTATION._sha256_file(tool, "ordinary fixture", 256 * 1024)
+        with tempfile.TemporaryDirectory() as directory:
+            caller_tool = Path(directory) / "caller-tool"
+            caller_tool.write_bytes(b"caller bytes")
+            caller_tool.chmod(0o700)
+            self.assertEqual(os.getuid(), caller_tool.stat().st_uid)
+            self.assertEqual(hashlib.sha256(b"caller bytes").hexdigest(),
+                             BUILD_ATTESTATION._sha256_file(caller_tool, "ordinary", 128))
+            with self.assertRaisesRegex(ValueError, "root-owned"):
+                BUILD_ATTESTATION._trusted_tool_sha256(caller_tool, "forged tool", 128)
 
     def test_readable_owner_only_private_keys_cannot_authorize_local_signing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -773,12 +965,19 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                     "PATH": "/usr/bin:/bin",
                     "UNRELATED_CALLER_SECRET": "must-not-reach-child",
                     "CHUMMER_ANDROID_REVISION": "a" * 40,
+                    "CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED": "/private/transport-only",
+                    "HTTPS_PROXY": "must-not-reach-child",
+                    "NUGET_PLUGIN_PATHS": "must-not-reach-child",
+                    "RestoreSources": "must-not-reach-child",
                 },
             )
             child_environment = observed.read_text(encoding="utf-8")
             self.assertNotIn("UNRELATED_CALLER_SECRET", child_environment)
             self.assertNotIn("must-not-reach-child", child_environment)
             self.assertIn("CHUMMER_ANDROID_REVISION=" + "a" * 40, child_environment)
+            for rejected in ("CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED", "HTTPS_PROXY",
+                             "NUGET_PLUGIN_PATHS", "RestoreSources"):
+                self.assertNotIn(rejected, child_environment)
 
         for module_name in (
             "sign_android_release_build_attestation.py",
@@ -850,6 +1049,118 @@ class TrustedToolchainTreeTests(unittest.TestCase):
 
     def digest(self):
         return BUILD_ATTESTATION._trusted_tree_digest(self.root, "fixture toolchain")
+
+    def test_trusted_executable_admission_bounds_precede_content_reads(self) -> None:
+        for case in ("owner", "ancestor-owner", "writable", "ancestor-writable",
+                     "symlink", "directory", "fifo", "empty", "large", "nonexec"):
+            with self.subTest(case=case):
+                target = self.write("tool", b"tool")
+                target.chmod(0o755)
+                if case in ("owner", "ancestor-owner"):
+                    self.overrides[target if case == "owner" else self.root.parent] = {"st_uid": 1000}
+                elif case in ("writable", "ancestor-writable"):
+                    path = target if case == "writable" else self.root.parent
+                    self.overrides[path] = {"st_mode": path.stat().st_mode | 0o020}
+                elif case in ("symlink", "directory", "fifo"):
+                    target.unlink()
+                    if case == "symlink":
+                        target.symlink_to(self.write("other"))
+                    elif case == "directory":
+                        target.mkdir()
+                    else:
+                        os.mkfifo(target, 0o700)
+                elif case == "empty":
+                    target.write_bytes(b"")
+                elif case == "large":
+                    target.write_bytes(b"oversized")
+                else:
+                    target.chmod(0o644)
+                with mock.patch.object(os, "read", side_effect=AssertionError("not admitted")):
+                    with self.assertRaises(ValueError):
+                        BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 4)
+                self.overrides.clear()
+                if case == "directory":
+                    target.rmdir()
+                else:
+                    target.unlink()
+        target = self.write("tool", b"tool")
+        target.chmod(0o755)
+        for limit in (0, -1, True, 4.0):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", limit)
+
+    def test_trusted_executable_rechecks_metadata_after_admission(self) -> None:
+        target = self.write("tool")
+        target.chmod(0o755)
+        real_tool = BUILD_ATTESTATION._trusted_tool
+
+        def change_after_admission(path, root, label):
+            result = real_tool(path, root, label)
+            self.overrides[path] = {"st_uid": 1000}
+            return result
+
+        with mock.patch.object(BUILD_ATTESTATION, "_trusted_tool", change_after_admission):
+            with self.assertRaisesRegex(ValueError, "bounded root-owned"):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
+
+    def test_trusted_executable_changed_fd_bytes_and_ancestry_rejected(self) -> None:
+        for change in ("replace", "grow", "rewrite", "fd", "ancestor"):
+            with self.subTest(change=change):
+                target = self.write("tool", b"original")
+                target.chmod(0o755)
+                before = target.stat()
+                self.frozen_times[(before.st_dev, before.st_ino)] = (before.st_mtime_ns, before.st_ctime_ns)
+                real_read, real_fstat = os.read, os.fstat
+                changed = False
+
+                def mutate_after_read(fd, count):
+                    nonlocal changed
+                    chunk = real_read(fd, count)
+                    if chunk and not changed:
+                        changed = True
+                        if change == "replace":
+                            os.replace(self.write("new", b"original"), target)
+                        elif change == "grow":
+                            target.write_bytes(b"more than original")
+                        elif change == "rewrite":
+                            target.write_bytes(b"replaced")
+                            self.assertEqual(BUILD_ATTESTATION._lease_identity(before),
+                                             BUILD_ATTESTATION._lease_identity(target.stat()))
+                        elif change == "ancestor":
+                            self.overrides[self.root.parent] = {"st_mode": stat.S_IFDIR | 0o777}
+                    return chunk
+
+                def changed_fstat(fd):
+                    metadata = real_fstat(fd)
+                    if change == "fd" and changed:
+                        metadata.st_uid = 1000
+                    return metadata
+
+                with mock.patch.object(os, "read", mutate_after_read), mock.patch.object(os, "fstat", changed_fstat):
+                    with self.assertRaises(ValueError):
+                        BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
+                self.assertTrue(changed)
+                self.overrides.clear()
+                target.unlink()
+
+    def test_trusted_executable_no_follow_rejects_leaf_swap(self) -> None:
+        target = self.write("tool")
+        target.chmod(0o755)
+        other = self.write("other")
+        real_open = os.open
+
+        def swap_before_open(path, flags, *args, **kwargs):
+            self.assertEqual(target, Path(path))
+            self.assertTrue(flags & os.O_NOFOLLOW)
+            target.unlink()
+            target.symlink_to(other)
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(os, "open", swap_before_open), mock.patch.object(
+            os, "read", side_effect=AssertionError("swapped bytes must not be read")
+        ):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                BUILD_ATTESTATION._trusted_tool_sha256(target, "fixture executable", 128)
 
     @staticmethod
     def file_row(name: str, content: bytes, mode=0o644) -> bytes:

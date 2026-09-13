@@ -87,6 +87,7 @@ project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 dotnet_command=""
 nuget_org_source="https://api.nuget.org/v3/index.json"
 release_child_home=""
+release_child_tmp=""
 
 clean_exec() {
   local child_home="${release_child_home:-/nonexistent/chummer-android-unsigned}"
@@ -94,6 +95,10 @@ clean_exec() {
     PATH=/usr/bin:/bin LANG=C LC_ALL=C HOME="$child_home"
     XDG_CONFIG_HOME="$child_home" DOTNET_CLI_HOME="$child_home"
   )
+  # Pre-initialization utilities omit TMPDIR; never forward the caller's value.
+  if [[ -n "$release_child_tmp" ]]; then
+    child_environment+=(TMPDIR="$release_child_tmp")
+  fi
   local allowed_name
   for allowed_name in \
     CHUMMER_ANDROID_REVISION CHUMMER_PRESENTATION_REVISION \
@@ -253,6 +258,21 @@ input_permissions="$(stat -c '%a' -- "$input_dir")"
 [[ -z "$(find "$input_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
   || fail "release-input-directory-not-empty"
 
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+  aar_protected_roots=(--exclude-root "$AndroidSdkDirectory" --exclude-root "$JavaSdkDirectory"
+    --exclude-root "$(dirname -- "$dotnet_command")")
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+    aar_protected_roots+=(--exclude-root "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED")
+  fi
+  python3 "$repo_dir/scripts/prepare_android_aar_cache.py" validate \
+    --source "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED" \
+    --aar-lock "$repo_dir/eng/android-aar-inputs.lock.json" \
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
+    --exclude-root "$workspace_root" --exclude-root "$input_dir" \
+    --exclude-root "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" "${aar_protected_roots[@]}" \
+    || fail "offline-aar-input-invalid"
+fi
+
 authority="$input_dir/chummer.android.release-package-authority.v2.json"
 nuget_packages="$input_dir/nuget-packages"
 preparation_obj="$input_dir/preparation-obj"
@@ -263,6 +283,8 @@ prepared_approval="$input_dir/ANDROID_API36_TWO_GREEN_RELEASE_APPROVAL.generated
 release_child_home="$input_dir/unsigned-child-home"
 mkdir -m 0700 -- "$nuget_packages" "$preparation_obj" "$project_locks" \
   "$release_child_home"
+mkdir -m 0700 -- "$input_dir/preparation-tmp"
+release_child_tmp="$input_dir/preparation-tmp"
 install -m 0600 -- \
   "$two_green_receipt_input" \
   "$prepared_eligibility"
@@ -297,6 +319,7 @@ ui_kit_version="$(jq -er \
   '.ownerPackagePins[] | select(.package_id == "Chummer.Ui.Kit") | .version' \
   "$authority")"
 
+# Set paths before Microsoft.Common.props captures their initial values.
 package_arguments=(
   "-p:ChummerPresentationRoot=$presentation_root"
   "-p:ChummerCoreEngineRoot=$core_root"
@@ -305,7 +328,7 @@ package_arguments=(
   "-p:ChummerUseLockedOwnerContractPackages=true"
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
-  "-p:CustomBeforeMicrosoftCommonProps=$repo_dir/eng/ReleaseRestoreRouting.props"
+  "-p:CustomBeforeDirectoryBuildProps=$repo_dir/eng/ReleaseRestoreRouting.props"
   "-p:ChummerReleaseLockRoot=$project_locks"
   "-p:ChummerReleaseIntermediateRoot=$preparation_obj"
   "-p:NuGetAudit=false"
@@ -320,17 +343,31 @@ package_arguments=(
   "-p:ChummerUiKitPackageVersion=$ui_kit_version"
 )
 
+# Offline preparation uses the same bounded snapshot as the release build.
+# The subsequent build snapshots again and starts another empty package cache.
+restore_sources=(--source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" --source "$nuget_org_source")
+if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+  require_exact_directory CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED
+  selected_package_feed="$input_dir/selected-release-feed"
+  mkdir -m 0700 -- "$selected_package_feed"
+  python3 "$repo_dir/scripts/seal_release_restore_consumption.py" snapshot-feed \
+    --authority "$authority" \
+    --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+    --destination "$selected_package_feed" \
+    --external-source "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED" \
+    --project-lock "$repo_dir/src/Chummer.Android/packages.lock.json" \
+    || fail "selected-offline-feed-snapshot"
+  restore_sources=(--source "$selected_package_feed")
+fi
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
 export MSBUILDDISABLENODEREUSE=1
 export NUGET_PACKAGES="$nuget_packages"
 clean_exec "$dotnet_command" restore "$project_path" \
   --locked-mode \
-  --force-evaluate \
   --disable-parallel \
   --no-http-cache \
   --packages "$nuget_packages" \
-  --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
-  --source "$nuget_org_source" \
+  "${restore_sources[@]}" \
   "${package_arguments[@]}"
 for lock_name in \
   Chummer.Android.packages.lock.json \
@@ -377,6 +414,14 @@ python3 "$repo_dir/scripts/verify_api36_two_green_release_eligibility.py" \
   printf 'export CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED=%q\n' \
     "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED"
   printf 'export NUGET_PACKAGES=%q\n' "$nuget_packages"
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED ]]; then
+    printf 'export CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED=%q\n' \
+      "$CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"
+  fi
+  if [[ -v CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED ]]; then
+    printf 'export CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED=%q\n' \
+      "$CHUMMER_ANDROID_RELEASE_OFFLINE_AAR_FEED"
+  fi
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_NAME=%q\n' "$version_name"
   printf 'export CHUMMER_ANDROID_EXPECTED_VERSION_CODE=%q\n' "$version_code"
   printf 'export CHUMMER_ANDROID_RELEASE_TOOLCHAIN_AUTHORITY=%q\n' \

@@ -13,9 +13,15 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import io
 import json
 import os
+import re
 import stat
+import struct
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
@@ -46,6 +52,21 @@ EXPECTED_INTERMEDIATE_PROJECTS = {"Chummer.Android", *EXPECTED_SOURCE_PROJECTS}
 PRIMARY_ASSETS = "Chummer.Android/project.assets.json"
 PRIMARY_DGSPEC = "Chummer.Android/Chummer.Android.csproj.nuget.dgspec.json"
 VERIFY_PHASES = {"pre-publish", "post-publish"}
+# Transport/read limits, not a quota for NuGet extraction or later build output.
+FEED_ARCHIVE_BYTES = 128 * 1024 * 1024
+FEED_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
+FEED_EXPANDED_BYTES = 512 * 1024 * 1024
+FEED_TOTAL_EXPANDED_BYTES = 8 * 1024 * 1024 * 1024
+FEED_MEMBER_COUNT = 8192
+FEED_CENTRAL_BYTES = 16 * 1024 * 1024
+FEED_ZIP_RECORD_BYTES = 8192
+FEED_MEMBER_NAME_BYTES = 1024
+FEED_MEMBER_DEPTH = 32
+FEED_PACKAGE_COUNT = 1024
+FEED_LOCK_BYTES = 4 * 1024 * 1024
+FEED_NUSPEC_BYTES = 1024 * 1024
+PACKAGE_ID = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}\Z")
+PACKAGE_VERSION = re.compile(r"[0-9]+(?:\.[0-9]+){0,3}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\Z")
 
 
 class InventoryDriftError(ValueError):
@@ -323,12 +344,338 @@ def _authority_packages(authority: Mapping[str, Any]) -> list[dict[str, str]]:
     return sorted(rows, key=lambda row: row["packageId"])
 
 
-def snapshot_feed(authority_path: Path, source: Path, destination: Path) -> dict[str, Any]:
-    authority_data, _ = _stable_file(authority_path, "release package authority")
+def _feed_identity(info: os.stat_result) -> tuple[int, ...]:
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_nlink,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _feed_read(directory: int, name: str, limit: int) -> bytes:
+    """Read one bounded regular file through the captured directory, never a link."""
+    descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+    try:
+        before = os.fstat(descriptor)
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+            or before.st_mode & 0o077 or before.st_nlink != 1 or not 0 < before.st_size <= limit):
+            raise ValueError("feed input must be bounded, private and singly linked")
+        chunks, size = [], 0
+        while chunk := os.read(descriptor, min(1024 * 1024, limit + 1 - size)):
+            size += len(chunk)
+            if size > limit:
+                raise ValueError("feed input exceeds its byte limit")
+            chunks.append(chunk)
+        if (size != before.st_size or _feed_identity(before) != _feed_identity(os.fstat(descriptor))
+            or _feed_identity(before) != _feed_identity(os.stat(name, dir_fd=directory, follow_symlinks=False))):
+            raise ValueError("feed input changed during snapshot")
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def _feed_names(directory: int) -> dict[str, str]:
+    names = {}
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if len(names) >= FEED_PACKAGE_COUNT or entry.name.lower() in names:
+                raise ValueError("offline feed has too many or duplicate filenames")
+            names[entry.name.lower()] = entry.name
+    return names
+
+
+def _external_packages(data: bytes, owners: list[dict[str, str]]) -> list[dict[str, str]]:
+    lock = _strict_json_bytes(data, "offline project lock")
+    dependencies = lock.get("dependencies")
+    if (type(lock.get("version")) is not int or lock["version"] not in {1, 2}
+        or not isinstance(dependencies, dict) or set(dependencies) != EXPECTED_ANDROID_TARGETS):
+        raise ValueError("offline project lock targets or version are not exact")
+    selected: dict[str, dict[str, str]] = {}
+    owner_versions = {row["packageId"].lower(): row["version"] for row in owners}
+    seen_owners = set()
+    for rows in dependencies.values():
+        if not isinstance(rows, dict) or len(rows) > FEED_PACKAGE_COUNT:
+            raise ValueError("offline project lock package table is invalid")
+        per_target = set()
+        for package_id, row in rows.items():
+            key = package_id.lower()
+            if not PACKAGE_ID.fullmatch(package_id) or key in per_target or not isinstance(row, dict):
+                raise ValueError("offline project lock has duplicate or invalid identities")
+            per_target.add(key)
+            if row.get("type") == "Project":
+                if key not in {name.lower() for name in EXPECTED_SOURCE_PROJECTS}:
+                    raise ValueError("offline project lock has an unexpected source project")
+                continue
+            version, content_hash = row.get("resolved"), row.get("contentHash")
+            if (row.get("type") not in {"Direct", "Transitive"} or not isinstance(version, str)
+                or len(version) > 100 or not PACKAGE_VERSION.fullmatch(version)
+                or not isinstance(content_hash, str) or len(content_hash) != 88):
+                raise ValueError("offline project lock package identity or contentHash is malformed")
+            try:
+                digest = base64.b64decode(content_hash, validate=True)
+            except ValueError as error:
+                raise ValueError("offline project lock contentHash is malformed") from error
+            if len(digest) != 64 or base64.b64encode(digest).decode() != content_hash:
+                raise ValueError("offline project lock contentHash is malformed")
+            value = {"packageId": package_id, "version": version, "contentHash": content_hash}
+            if key in selected and selected[key] != value:
+                raise ValueError("offline project lock has conflicting identities")
+            selected[key] = value
+            if key.startswith("chummer."):
+                if owner_versions.get(key) != version:
+                    raise ValueError("offline project lock differs from Chummer owner authority")
+                seen_owners.add(key)
+    if seen_owners != set(owner_versions) or len(selected) > FEED_PACKAGE_COUNT:
+        raise ValueError("offline project lock owner closure or package count is not exact")
+    return [row for key, row in sorted(selected.items()) if key not in owner_versions]
+
+
+def _version_identity(value: str) -> tuple[tuple[int, ...], str]:
+    # Nuspec may spell 1.0 as 1.0.0; build metadata does not select a NuGet version.
+    if len(value) > 100 or not PACKAGE_VERSION.fullmatch(value):
+        raise ValueError("offline package nuspec version is malformed")
+    numeric, _, suffix = value.split("+", 1)[0].partition("-")
+    parts = tuple(int(part) for part in numeric.split("."))
+    return parts + (0,) * (4 - len(parts)), suffix.lower()
+
+
+def _admit_zip_directory(data: bytes) -> None:
+    """Bound physical metadata before ZipFile allocates one object per entry.
+
+    Admit contiguous single-disk ZIP and fixed ZIP64 end records. Multipart,
+    prepended archives, ZIP64 extensible data and Unicode-name overrides are
+    unsupported; no payload extraction or declared-count-based allocation.
+    """
+    if not 22 <= len(data) <= FEED_ARCHIVE_BYTES or data[:4] != b"PK\x03\x04":
+        raise ValueError("offline archive byte size is invalid")
+    end = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 65535))
+    if end < 0 or end + 22 > len(data):
+        raise ValueError("offline archive end record is invalid")
+    _, disk, directory_disk, disk_count, count, size, start, comment = struct.unpack_from("<4s4H2IH", data, end)
+    if end + 22 + comment != len(data) or disk or directory_disk or disk_count != count:
+        raise ValueError("offline archive end span or disk layout is unsupported")
+    directory_end = end
+    if end >= 20 and data[end - 20:end - 16] == b"PK\x06\x07":
+        _, disk64, offset64, disks64 = struct.unpack_from("<4sIQI", data, end - 20)
+        if disk64 or disks64 != 1 or offset64 + 56 != end - 20:
+            raise ValueError("offline archive ZIP64 span is unsupported")
+        record = struct.unpack_from("<4sQHHIIQQQQ", data, offset64)
+        signature, record_size, _, _, disk64, directory_disk64, disk_count64, count64, size64, start64 = record
+        if (signature != b"PK\x06\x06" or record_size != 44 or disk64 or directory_disk64
+            or disk_count64 != count64 or count not in {65535, count64}
+            or size not in {0xffffffff, size64} or start not in {0xffffffff, start64}):
+            raise ValueError("offline archive ZIP64 end record is unsupported")
+        count, size, start, directory_end = count64, size64, start64, offset64
+    elif count == 65535 or size == 0xffffffff or start == 0xffffffff:
+        raise ValueError("offline archive ZIP64 end record is absent")
+    if not 0 < size <= FEED_CENTRAL_BYTES or start + size != directory_end:
+        raise ValueError("offline archive central directory span is invalid")
+    actual, position = 0, start
+    while position < directory_end:
+        # Count real records, even when the EOCD maliciously declares fewer.
+        if actual >= FEED_MEMBER_COUNT or directory_end - position < 46:
+            raise ValueError("offline archive physical member count or header is invalid")
+        header = struct.unpack_from("<4s6H3I5H2I", data, position)
+        name_size, extra_size, comment_size, member_disk = header[10:14]
+        record_size = 46 + name_size + extra_size + comment_size
+        if (header[0] != b"PK\x01\x02" or member_disk or not 0 < name_size <= FEED_MEMBER_NAME_BYTES
+            or record_size > FEED_ZIP_RECORD_BYTES or position + record_size > directory_end):
+            raise ValueError("offline archive central member record is invalid")
+        name_end = position + 46 + name_size
+        name = data[position + 46:name_end]
+        if name.rstrip(b"/").count(b"/") + 1 > FEED_MEMBER_DEPTH:
+            raise ValueError("offline archive member path is too deep")
+        extra_position, extra_end = name_end, name_end + extra_size
+        while extra_position < extra_end:
+            if extra_end - extra_position < 4:
+                raise ValueError("offline archive extra field is invalid")
+            kind, length = struct.unpack_from("<HH", data, extra_position)
+            extra_position += 4 + length
+            if extra_position > extra_end or kind == 0x7075:
+                raise ValueError("offline archive extra field or name override is unsupported")
+        position += record_size
+        actual += 1
+    if not actual or actual != count:
+        raise ValueError("offline archive declared and physical member counts differ")
+
+
+def _external_archive(data: bytes, package: Mapping[str, str]) -> int:
+    """Check transport safety/identity, not signatures or NuGet's content hash."""
+    try:
+        _admit_zip_directory(data)
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            members = archive.infolist()
+            if not 0 < len(members) <= FEED_MEMBER_COUNT:
+                raise ValueError("offline archive member count is invalid")
+            total, names, files, nuspec = 0, set(), set(), None
+            for member in members:
+                name = member.filename.rstrip("/")
+                parts = name.split("/")
+                folded = name.lower()
+                mode = stat.S_IFMT(member.external_attr >> 16)
+                if (member.orig_filename != member.filename or not name or "\\" in name or ":" in name
+                    or any(ord(character) < 32 for character in name)
+                    or any(part in {"", ".", ".."} for part in parts) or folded in names
+                    or member.flag_bits & 1 or mode not in {0, stat.S_IFREG, stat.S_IFDIR}
+                    or member.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
+                    or (mode == stat.S_IFDIR and not member.is_dir())):
+                    raise ValueError("offline archive contains unsafe or duplicate members")
+                names.add(folded)
+                if not member.is_dir():
+                    files.add(folded)
+                total += member.file_size
+                if total > FEED_EXPANDED_BYTES:
+                    raise ValueError("offline archive exceeds expanded-byte limit")
+                if len(parts) == 1 and name.lower().endswith(".nuspec"):
+                    if nuspec is not None or member.file_size > FEED_NUSPEC_BYTES:
+                        raise ValueError("offline archive nuspec is absent or ambiguous")
+                    nuspec = member
+            if any("/".join(name.split("/")[:index]) in files
+                   for name in names for index in range(1, len(name.split("/")))):
+                raise ValueError("offline archive has conflicting file and directory paths")
+            if nuspec is None:
+                raise ValueError("offline archive nuspec is absent")
+            # Stream every member to check CRC/truncation without extracting host files.
+            for member in members:
+                consumed = 0
+                with archive.open(member) as stream:
+                    while chunk := stream.read(1024 * 1024):
+                        consumed += len(chunk)
+                        if consumed > member.file_size:
+                            raise ValueError("offline archive member exceeds declared size")
+                if consumed != member.file_size:
+                    raise ValueError("offline archive member is truncated")
+            try:
+                xml = archive.read(nuspec).decode("utf-8-sig")
+            except UnicodeError as error:
+                raise ValueError("offline archive nuspec must be UTF-8") from error
+            declaration = re.match(r"\s*<\?xml\b[^?]*\?>", xml)
+            encodings = re.findall(r"encoding\s*=\s*['\"]([^'\"]+)['\"]", declaration[0]) if declaration else []
+            if "\x00" in xml or any(value.lower() != "utf-8" for value in encodings):
+                raise ValueError("offline archive nuspec must be UTF-8")
+            if "<!DOCTYPE" in xml.upper() or "<!ENTITY" in xml.upper():
+                raise ValueError("offline archive nuspec declarations are forbidden")
+            root = ET.fromstring(xml)
+            metadata = [node for node in root if node.tag.rsplit("}", 1)[-1] == "metadata"]
+            if root.tag.rsplit("}", 1)[-1] != "package" or len(metadata) != 1:
+                raise ValueError("offline archive nuspec metadata is malformed")
+            values = {}
+            for key in ("id", "version"):
+                matches = [node.text for node in metadata[0] if node.tag.rsplit("}", 1)[-1] == key]
+                if len(matches) != 1 or not isinstance(matches[0], str):
+                    raise ValueError("offline archive nuspec identity is malformed")
+                values[key] = matches[0]
+            if (values["id"].lower() != package["packageId"].lower()
+                or _version_identity(values["version"]) != _version_identity(package["version"])):
+                raise ValueError("offline archive nuspec differs from locked identity")
+            return total
+    except (zipfile.BadZipFile, ET.ParseError, RuntimeError, NotImplementedError, EOFError,
+            zlib.error, struct.error, UnicodeError) as error:
+        raise ValueError("offline package archive is invalid") from error
+
+
+def _snapshot_external_feed(source: Path, destination: Path, external: Path, project_lock: Path,
+                            owners: list[dict[str, str]]) -> dict[str, Any]:
+    roots = [source, destination, external, project_lock.parent]
+    for root in roots:
+        _owned_directory(root, "offline snapshot root")
+    _private_directory(external, "offline external feed")
+    for left, right in ((source, destination), (external, destination), (source, external)):
+        if left == right or left in right.parents or right in left.parents:
+            raise ValueError("offline snapshot directories must be disjoint")
+    if project_lock.parent == destination or destination in project_lock.parents:
+        raise ValueError("offline project lock overlaps the snapshot destination")
+    descriptors = []
+    try:
+        for root in roots:
+            before = _feed_identity(root.lstat())
+            descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            descriptors.append(descriptor)
+            if _feed_identity(os.fstat(descriptor)) != before:
+                raise ValueError("offline snapshot root changed while opening")
+        source_fd, destination_fd, external_fd, lock_fd = descriptors
+        if _feed_names(destination_fd):
+            raise ValueError("offline snapshot destination must be empty")
+        identities = [_feed_identity(os.fstat(fd)) for fd in descriptors]
+        lock_bytes = _feed_read(lock_fd, project_lock.name, FEED_LOCK_BYTES)
+        packages = _external_packages(lock_bytes, owners)
+        plan = []
+        for fd, rows, exact in ((source_fd, owners, False), (external_fd, packages, True)):
+            entries = _feed_names(fd)
+            expected = {f'{row["packageId"]}.{row["version"]}.nupkg'.lower() for row in rows}
+            if (exact and set(entries) != expected) or not expected <= set(entries):
+                raise ValueError("offline feed package membership is not exact")
+            plan.extend((fd, entries[f'{row["packageId"]}.{row["version"]}.nupkg'.lower()], row, exact)
+                        for row in rows)
+        total, expanded, inventory = 0, 0, []
+        for fd, name, row, is_external in plan:
+            data = _feed_read(fd, name, min(FEED_ARCHIVE_BYTES, FEED_TOTAL_BYTES - total))
+            total += len(data)
+            digest = hashlib.sha256(data).hexdigest()
+            if is_external:
+                expanded += _external_archive(data, row)
+                if expanded > FEED_TOTAL_EXPANDED_BYTES:
+                    raise ValueError("offline feed exceeds expanded-byte limit")
+            elif digest != row["nupkgSha256"]:
+                raise ValueError("selected retained package digest drifted")
+            output = f'{row["packageId"]}.{row["version"]}.nupkg'
+            descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                 0o600, dir_fd=destination_fd)
+            try:
+                remaining = memoryview(data)
+                while remaining:
+                    written = os.write(descriptor, remaining)
+                    if written <= 0:
+                        raise ValueError("offline snapshot write was incomplete")
+                    remaining = remaining[written:]
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            inventory.append({"path": output, "sizeBytes": len(data), "sha256": digest})
+        os.fsync(destination_fd)
+        inventory.sort(key=lambda row: row["path"])
+        if set(_feed_names(destination_fd).values()) != {row["path"] for row in inventory}:
+            raise ValueError("offline snapshot membership changed")
+        for row in inventory:
+            copied = _feed_read(destination_fd, row["path"], row["sizeBytes"])
+            if len(copied) != row["sizeBytes"] or hashlib.sha256(copied).hexdigest() != row["sha256"]:
+                raise ValueError("offline snapshot bytes changed")
+        for index, (root, fd) in enumerate(zip(roots, descriptors)):
+            current = os.fstat(fd)
+            if _feed_identity(current) != _feed_identity(root.lstat()):
+                raise ValueError("offline snapshot directory changed")
+            if index != 1 and _feed_identity(current) != identities[index]:
+                raise ValueError("offline snapshot input directory changed")
+        if _feed_read(lock_fd, project_lock.name, FEED_LOCK_BYTES) != lock_bytes:
+            raise ValueError("offline project lock changed during snapshot")
+        # Native locked restore validates contentHash, including signed packages.
+        # Raw archive SHA256 here binds transport bytes only.
+        return {"selectedPackageCount": len(plan), "selectedOwnerPackageCount": len(owners),
+                "selectedExternalPackageCount": len(packages), "selectedPackages": owners,
+                "inventory": inventory, "inventorySha256": _inventory_digest(inventory),
+                "publicationAuthorized": False}
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+
+
+def snapshot_feed(authority_path: Path, source: Path, destination: Path, *,
+                  external_source: Path | None = None, project_lock: Path | None = None) -> dict[str, Any]:
+    if external_source is not None or project_lock is not None:
+        _owned_directory(authority_path.parent, "offline authority root")
+        descriptor = os.open(authority_path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            authority_data = _feed_read(descriptor, authority_path.name, FEED_LOCK_BYTES)
+        finally:
+            os.close(descriptor)
+    else:
+        authority_data, _ = _stable_file(authority_path, "release package authority")
     authority = _strict_json_bytes(authority_data, "release package authority")
     packages = _authority_packages(authority)
     source = _owned_directory(source, "retained package feed")
-    destination = _private_directory(destination, "private selected package feed", empty=True)
+    destination = _private_directory(destination, "private selected package feed",
+                                     empty=external_source is None and project_lock is None)
+    if external_source is not None or project_lock is not None:
+        if external_source is None or project_lock is None:
+            raise ValueError("offline snapshot requires both external feed and project lock")
+        return _snapshot_external_feed(source, destination, external_source, project_lock, packages)
     source_files = {path.name.lower(): path for path in source.iterdir() if path.is_file()}
     for package in packages:
         name = f'{package["packageId"]}.{package["version"]}.nupkg'
@@ -894,6 +1241,8 @@ def main() -> int:
     snapshot.add_argument("--authority", required=True, type=Path)
     snapshot.add_argument("--source", required=True, type=Path)
     snapshot.add_argument("--destination", required=True, type=Path)
+    snapshot.add_argument("--external-source", type=Path)
+    snapshot.add_argument("--project-lock", type=Path)
     clean = subparsers.add_parser("assert-clean")
     clean.add_argument("--workspace-root", required=True, type=Path)
     materialize = subparsers.add_parser("materialize")
@@ -914,7 +1263,8 @@ def main() -> int:
     manifest_sha256: str | None = None
     try:
         if args.action == "snapshot-feed":
-            result = snapshot_feed(args.authority, args.source, args.destination)
+            result = snapshot_feed(args.authority, args.source, args.destination,
+                                   external_source=args.external_source, project_lock=args.project_lock)
             print(json.dumps(result, sort_keys=True))
             return 0
         if args.action == "assert-clean":

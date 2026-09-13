@@ -1,0 +1,39 @@
+{
+  "archives": [
+    {
+      "fileName": "appupdate-2.1.0.aar",
+      "packageId": "Xamarin.Google.Android.Play.App.Update",
+      "packageVersion": "2.1.0.19",
+      "sizeBytes": 200874,
+      "sha256": "1565e9ef014f7cb7193f0462e4d817480aff4b333fc7f7e0052bb932cc28820d"
+    },
+    {
+      "fileName": "corecommon-2.0.4.aar",
+      "packageId": "Xamarin.Google.Android.Play.Core.Common",
+      "packageVersion": "2.0.4.10",
+      "sizeBytes": 143765,
+      "sha256": "36400824014fc61d9379b13dd1ab13f6514847fb04347c0fdfe618bace78f3ed"
+    },
+    {
+      "fileName": "playservicesbasement-18.10.0.aar",
+      "packageId": "Xamarin.GooglePlayServices.Basement",
+      "packageVersion": "118.10.0.2",
+      "sizeBytes": 412544,
+      "sha256": "859963500c141053043e6b02ff3065609184078d8c72799f4d162058be52fff8"
+    },
+    {
+      "fileName": "playservicestasks-18.4.1.aar",
+      "packageId": "Xamarin.GooglePlayServices.Tasks",
+      "packageVersion": "118.4.1.2",
+      "sizeBytes": 72086,
+      "sha256": "e8e3a012e50209f80ce2d988ad3b31927d20fee155d0b6538859bc0d903673d2"
+    },
+    {
+      "fileName": "review-2.0.2.aar",
+      "packageId": "Xamarin.Google.Android.Play.Review",
+      "packageVersion": "2.0.2.9",
+      "sizeBytes": 178573,
+      "sha256": "1602026678231dba0f7482d1244e45ff83d9ff22fc8b6d6be8961228ac7a32dd"
+    }
+  ]
+}
