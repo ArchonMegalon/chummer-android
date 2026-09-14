@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -26,7 +27,7 @@ COMPATIBILITY_GRAPH = {
 }
 INVENTORY_AUTHORITIES = {
     "ArchonMegalon/chummer6-design":
-        "c60c93f635e371d784812140f5d5181d1d954ae2",
+        json.loads((REPO_ROOT / "eng/design-policy-authority.json").read_bytes())["design"]["commit"],
     "ArchonMegalon/chummer5a":
         "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
 }
@@ -83,6 +84,17 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertNotIn("matrix.profile", self.text)
         self.assertIn("launches only pixel_6", self.text)
         self.assertIn("makes no tablet-readiness claim", self.text)
+
+    def test_design_policy_pin_applies_to_build_aggregate_and_ordered_replay(self) -> None:
+        pin = json.loads((REPO_ROOT / "eng/design-policy-authority.json").read_bytes())["design"]
+        other = (REPO_ROOT / ".github/workflows/api36-two-consecutive-green.yml").read_text()
+        for text, expected_count in ((self.text, 2), (other, 1)):
+            refs = re.findall(r"repository: ArchonMegalon/chummer6-design\s+ref: ([^\s]+)", text)
+            self.assertEqual([pin["commit"]] * expected_count, refs)
+            self.assertIn('--design-root "$GITHUB_WORKSPACE/chummer-design"', text)
+        self.assertIn('"eng/design-policy-authority.json"', self.text.split("workflow_dispatch:")[0])
+        self.assertIn("scripts/android_design_policy_authority.py", self.text)
+        self.assertIn('--design-root "${{ github.workspace }}/chummer-design"', self.text)
 
     def test_builds_the_native_x64_candidate_once(self) -> None:
         self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-x64", self.text)

@@ -15,6 +15,8 @@ on:
       - "eng/api36-proof-environment-authority.json"
       - "eng/api36-sr5-wizard-gate-authority.json"
       - "eng/api36-two-consecutive-green-authority.json"
+      - "eng/design-policy-authority.json"
+      - "eng/release-test-bootstrap.lock.json"
       - "global.json"
       - "play/**"
       - "scripts/**"
@@ -152,7 +154,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-design
-          ref: c60c93f635e371d784812140f5d5181d1d954ae2
+          ref: e408e11bdfabc34898cb0eca6e2409a98d021e4d
           path: chummer-design
           persist-credentials: false
           fetch-depth: 1
@@ -200,7 +202,11 @@ jobs:
           python3 scripts/verify_play_internal_publication_receipt.py
 
       - name: Verify the pinned phone-beta contract
-        run: python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py
+        run: |
+          python3 chummer-android/scripts/android_design_policy_authority.py \
+            --android-root "$GITHUB_WORKSPACE/chummer-android" \
+            --design-root "$GITHUB_WORKSPACE/chummer-design"
+          python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py
 
       - name: Verify the pinned canonical Android content manifest
         run: >-
@@ -604,6 +610,19 @@ jobs:
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
+      - name: Check out the exact Design qualification policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-design
+          ref: e408e11bdfabc34898cb0eca6e2409a98d021e4d
+          path: chummer-design
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            products/chummer/ANDROID_PHONE_BETA_SUPPORT_MATRIX.yaml
+            scripts/ai/validate_android_phone_beta_contract.py
+          sparse-checkout-cone-mode: false
+
       - name: Download the exact x64 APK authority input
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -630,6 +649,7 @@ jobs:
           CHUMMER_E2E_APK_SHA256: ${{ needs.build.outputs.apk-sha256 }}
         run: >-
           python3 chummer-android/scripts/verify-api36-editing-e2e-aggregate.py
+          --design-root "${{ github.workspace }}/chummer-design"
           --evidence-root "${{ runner.temp }}/chummer-api36-journey-evidence"
           --receipt "${{ runner.temp }}/chummer-api36-aggregate/receipt.json"
           --gate-contract chummer-android/eng/api36-sr5-wizard-gate-authority.json
@@ -660,6 +680,7 @@ jobs:
           authority="$authority_root/ANDROID_P0_PR_AUTHORITY.generated.json"
           common=(
             --android-root "$GITHUB_WORKSPACE/chummer-android"
+            --design-root "$GITHUB_WORKSPACE/chummer-design"
             --hosted-candidate "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json"
             --aggregate "$RUNNER_TEMP/chummer-api36-aggregate/receipt.json"
             --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"

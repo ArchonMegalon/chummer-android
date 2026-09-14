@@ -344,8 +344,18 @@ python3 "$repo_dir/scripts/preflight_native_android_toolchain.py" \
   --android-sdk "$AndroidSdkDirectory" \
   --java-sdk "$JavaSdkDirectory"
 
-# The complete test process tree starts from clean_exec's explicit allowlist.
-python3 -m unittest discover -s "$repo_dir/tests" -v
+# Source tests need their locked pytest/jsonschema closure, not the production
+# validators' deliberately site-free interpreter. The dedicated helper creates
+# and removes a fresh offline test-only venv; production wrappers are unchanged.
+python3 "$repo_dir/scripts/run_release_source_tests.py" \
+  --repo-root "$repo_dir" \
+  --workspace-root "$workspace_root" \
+  --oracle-root "$workspace_root/chummer5a" \
+  --bootstrap-dir "${CHUMMER_ANDROID_RELEASE_TEST_BOOTSTRAP_DIR:-}" \
+  --wheelhouse "${CHUMMER_ANDROID_RELEASE_TEST_WHEELHOUSE:-}" \
+  --scratch-root "$release_input_root" \
+  --dotnet "$dotnet_command" \
+  || fail "offline-release-source-tests"
 
 artifact_dir="$release_input_root/artifacts"
 mkdir -p -- "$artifact_dir"

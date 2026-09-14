@@ -36,6 +36,9 @@ from api36_wizard_gate_contract import (  # noqa: E402
 from api36_proof_environment_authority import (  # noqa: E402
     POLICY_SCHEMA as ENVIRONMENT_POLICY_SCHEMA,
 )
+from android_design_policy_authority import (  # noqa: E402
+    validate_policy_authorities, verify_design_checkout,
+)
 
 
 CONTRACT = "chummer.android.p0-pr-authority/v1"
@@ -173,7 +176,7 @@ def validate_aggregate(
     fields = {
         "schema", "status", "generatedAtUtc", "authorityClass", "proofScope",
         "publicationAuthorized", "gateAuthority", "artifactAuthority",
-        "environmentAuthority",
+        "environmentAuthority", "policyAuthorities",
         "requiredJourneyCount", "requiredJourneys", "journeyCount", "journeys",
     }
     required_map = {
@@ -183,6 +186,7 @@ def validate_aggregate(
     required = list(required_map)
     if set(value) != fields:
         raise ValueError("wizard aggregate fields are not exact")
+    validate_policy_authorities(value.get("policyAuthorities"))
     if (
         value["schema"] != AGGREGATE_SCHEMA
         or value["status"] != "pass"
@@ -347,8 +351,9 @@ def git_identity(android_root: Path) -> dict[str, str]:
 
 def create_authority(
     *, android_root: Path, hosted_candidate: Path, aggregate: Path, workflow: Path,
-    x64_apk: Path, arm64_apk: Path,
+    x64_apk: Path, arm64_apk: Path, design_root: Path,
 ) -> dict[str, object]:
+    policy_authorities = verify_design_checkout(design_root, android_root=android_root)
     hosted_bytes = stable_regular_bytes(hosted_candidate, "hosted ARM64 candidate")
     aggregate_bytes = stable_regular_bytes(aggregate, "wizard aggregate")
     workflow_bytes = stable_regular_bytes(workflow, "API-36 workflow")
@@ -362,6 +367,8 @@ def create_authority(
     aggregate_value = validate_aggregate(
         strict_json_object(aggregate_bytes, "wizard aggregate"), gate
     )
+    if aggregate_value["policyAuthorities"] != policy_authorities:
+        raise ValueError("P0 and aggregate Design policy authorities differ")
     dependency_graph = validate_dependency_graph(candidate)
     checked_out_android = git_identity(android_root)
     github_run = candidate["githubRun"]
@@ -434,6 +441,7 @@ def create_authority(
             "repository": android_source["repository"],
         },
         "dependencyGraph": dependency_graph,
+        "policyAuthorities": policy_authorities,
         "workflow": file_binding(workflow_bytes, WORKFLOW_RELATIVE_PATH),
         "apks": {
             "android-x64": {
@@ -467,6 +475,8 @@ def create_authority(
         },
         "doesNotAssert": list(DOES_NOT_ASSERT),
     }
+    if verify_design_checkout(design_root, android_root=android_root) != policy_authorities:
+        raise ValueError("Design policy changed while creating P0 authority")
     return {**unsigned, "authoritySha256": canonical_sha256(unsigned)}
 
 
@@ -474,12 +484,13 @@ def validate_authority(value: dict[str, object]) -> dict[str, object]:
     expected_fields = {
         "schema", "status", "authorityClass", "proofScope",
         "publicationAuthorized", "humanPullRequestBodyAuthoritative", "githubRun",
-        "androidSource", "dependencyGraph", "workflow", "apks",
+        "androidSource", "dependencyGraph", "policyAuthorities", "workflow", "apks",
         "requiredJourneyCount", "journeys", "aggregate", "inputs",
         "doesNotAssert", "authoritySha256",
     }
     if set(value) != expected_fields:
         raise ValueError("P0 PR authority fields are not exact")
+    validate_policy_authorities(value.get("policyAuthorities"))
     if (
         value["schema"] != CONTRACT
         or value["status"] != "pass"
@@ -525,6 +536,7 @@ def write_atomically(path: Path, value: dict[str, object]) -> None:
 
 def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--android-root", type=Path, required=True)
+    parser.add_argument("--design-root", type=Path, required=True)
     parser.add_argument("--hosted-candidate", type=Path, required=True)
     parser.add_argument("--aggregate", type=Path, required=True)
     parser.add_argument("--workflow", type=Path, required=True)
@@ -544,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     expected = create_authority(
         android_root=args.android_root,
+        design_root=args.design_root,
         hosted_candidate=args.hosted_candidate,
         aggregate=args.aggregate,
         workflow=args.workflow,

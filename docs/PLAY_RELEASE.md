@@ -245,6 +245,22 @@ The wizard aggregate uses schema
 only the stated phone wizard scope; it does not itself authorize a Play upload,
 tablet support, broad Android parity, or public release.
 
+Design is a separate qualification policy authority, not a runtime dependency.
+`eng/design-policy-authority.json` pins the protected Design commit and tree,
+the raw matrix and validator digests, their schema identities, and the exact
+Android wizard-gate digest. Android independently validates the matrix's seven
+journeys and wizard-only scope; it never executes Design code as its own
+authorization decision. The hosted build still runs Design's own validator as
+an additional, independent check.
+
+The aggregate, P0 envelope, and ordered Review→Main common authority must all
+contain the same `policyAuthorities.design` binding. Missing, older, or
+substituted policy bindings fail closed even when artifact hashes are resealed.
+Release preparation compares this binding with the existing release-source
+graph's exact Design repository, commit, and tree. A Design pin change requires
+a new full PR gate, exact-main gate, and ordered qualification; previous
+eligibility receipts and detached approvals cannot authorize that new tree.
+
 ### General and public release gates — outside Preview.12 Internal
 
 The following broader checklist is not part of the seven-journey Preview.12

@@ -48,6 +48,7 @@
   "requiresExactMainCommit": true,
   "requiresExactReleaseIdentity": true,
   "requiresExactDependencyGraph": true,
+  "requiresExactDesignPolicyAuthority": true,
   "requiresExactSameAuthorityIdentities": true,
   "requiresCompatibleEnvironmentFingerprints": true,
   "requiresEnvironmentCompatibilityPass": true,

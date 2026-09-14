@@ -38,6 +38,9 @@ from api36_proof_environment_authority import (  # noqa: E402
     validate_receipt as validate_environment_receipt,
 )
 from api36_journey_producer_authority import JourneyProducerAuthority  # noqa: E402
+from android_design_policy_authority import (  # noqa: E402
+    validate_policy_authorities, verify_design_checkout,
+)
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -1311,11 +1314,13 @@ def validate_aggregate(
     apk_sha256: str,
     gate_contract_path: Path = DEFAULT_CONTRACT,
     journey_producer_authority: JourneyProducerAuthority | None = None,
+    policy_authorities: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if build_result != "success":
         raise ValueError(f"build job did not succeed: {build_result!r}")
     if matrix_result != "success":
         raise ValueError(f"phone journey matrix did not succeed: {matrix_result!r}")
+    policy_authorities = validate_policy_authorities(policy_authorities)
     if not POSITIVE_INTEGER.fullmatch(run_attempt):
         raise ValueError("run attempt must be one positive integer")
     if journey_producer_authority is not None and (
@@ -1640,6 +1645,7 @@ def validate_aggregate(
         "proofScope": PROOF_SCOPE,
         "publicationAuthorized": False,
         "gateAuthority": gate_authority,
+        "policyAuthorities": policy_authorities,
         "artifactAuthority": authority,
         "environmentAuthority": {
             "policyAuthority": expected_environment_policy,
@@ -1683,6 +1689,7 @@ def validate_aggregate_receipt(
         "proofScope",
         "publicationAuthorized",
         "gateAuthority",
+        "policyAuthorities",
         "artifactAuthority",
         "environmentAuthority",
         "requiredJourneyCount",
@@ -1692,6 +1699,7 @@ def validate_aggregate_receipt(
     }
     if set(value) != expected_fields:
         raise ValueError("wizard aggregate schema fields differ")
+    validate_policy_authorities(value.get("policyAuthorities"))
     if value.get("schema") != AGGREGATE_SCHEMA:
         raise ValueError("wizard aggregate schema is stale or unsupported")
     if (
@@ -1794,6 +1802,7 @@ def write_atomically(path: Path, value: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-root", type=Path, required=True)
+    parser.add_argument("--design-root", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--gate-contract", type=Path, default=DEFAULT_CONTRACT)
     parser.add_argument(
@@ -1830,8 +1839,10 @@ def main() -> int:
     if receipt_path.is_symlink():
         raise ValueError("aggregate receipt path must not be a symlink")
 
+    policy_authorities = verify_design_checkout(args.design_root.absolute())
     aggregate = validate_aggregate(
         evidence_root,
+        policy_authorities=policy_authorities,
         build_environment_receipt_path=args.build_environment_receipt,
         x64_apk_path=args.x64_apk,
         arm64_apk_path=args.arm64_apk,
@@ -1853,6 +1864,8 @@ def main() -> int:
             aggregate_attempt=int(args.run_attempt), head_sha=args.head_sha,
         ),
     )
+    if verify_design_checkout(args.design_root.absolute()) != policy_authorities:
+        raise ValueError("Design policy changed while aggregating journeys")
     write_atomically(receipt_path, aggregate)
     print(
         "api36_phone_evidence_aggregate=pass "
