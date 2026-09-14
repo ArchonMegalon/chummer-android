@@ -1405,12 +1405,15 @@ def _unsigned(
     validation: dict[str, Any],
     generated: str,
     nonce: str,
+    *,
+    key_id: str = VERIFY.RELEASE_BUILDER_KEY_ID,
 ) -> dict[str, Any]:
+    VERIFY._release_builder_key(key_id)
     graph_identity = claims["graph"]["releaseIdentity"]
     return {
         "contractName": CONTRACT,
         "algorithm": "ed25519",
-        "keyId": VERIFY.RELEASE_APPROVER_KEY_ID,
+        "keyId": key_id,
         "role": ROLE,
         "attestationScope": SCOPE,
         "generatedAtUtc": generated,
@@ -1591,7 +1594,9 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
     )
     if attestation_time > datetime.now(UTC) + VERIFY.APPROVAL_CLOCK_SKEW:
         raise ValueError("release build attestation is dated in the future")
-    VERIFY._verify_ed25519_signature(value, signature, label="release build attestation")
+    VERIFY._verify_ed25519_signature(
+        value, signature, label="release build attestation", builder_key_id=value.get("keyId"),
+    )
     validation = _validate_validation_claims(value.get("protectedValidation"))
     claims = _artifact_claims(aab, graph, sidecar, receipt, approval)
     identity = claims["graph"]["releaseIdentity"]
@@ -1607,6 +1612,7 @@ def verify(attestation: Path, aab: Path, graph: Path, sidecar: Path, receipt: Pa
         validation,
         value["generatedAtUtc"],
         value["challengeNonce"],
+        key_id=value["keyId"],
     )
     if value != expected or raw != _pretty({**value, "signatureBase64": signature}):
         raise ValueError("release build attestation differs from exact protected outputs")

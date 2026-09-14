@@ -150,7 +150,7 @@
       ],
       "properties": {
         "contractName": {
-          "const": "chummer.android.api36-ordered-review-main-green-eligibility/v2"
+          "const": "chummer.android.api36-ordered-review-main-green-eligibility/v3"
         },
         "receiptSha256": { "$ref": "#/$defs/sha256" },
         "protectedApproval": {
@@ -172,7 +172,7 @@
             "contractName": {
               "const": "chummer.android.two-green-release-approval/v1"
             },
-            "keyId": { "const": "local-release-builder-2026" },
+            "keyId": { "enum": ["local-release-builder-2026", "fleet-release-approver-2026-09"] },
             "role": { "const": "android_internal_release_approver" },
             "approvalScope": {
               "const": "android_internal_release_preparation"

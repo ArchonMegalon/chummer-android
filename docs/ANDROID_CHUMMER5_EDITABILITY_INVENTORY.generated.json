@@ -917,7 +917,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "eb07dabed200ecdab0e123e5b531e63c4f727761d4c13e6bf8e78096b976f766"
+        "sha256": "fa0baeece54ff98b259da4c43ca20cc5cd8216b759b1bc7a2b9cf302f87562fc"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -1047,7 +1047,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "34cb80d0c1c6457766e5406ea67a65b63e2ff5e56d2e48d0f21fdf62d7418ff4"
+        "sha256": "eec5ed7f9035ed65860cef0e450fcbbec009ee3627fcc272c900aeb60bb66528"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",

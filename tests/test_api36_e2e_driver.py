@@ -8754,6 +8754,15 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
         ]
 
+    def _documents_ui_empty_drawer(self) -> list[object]:
+        # Preserved DocumentsUI observation from main run 34790131968. The
+        # screenshot taken afterwards showed rows; this XML did not yet.
+        xml = (REPO_ROOT / "tests/fixtures/api36-documentsui-empty-roots-list.xml").read_text(
+            encoding="utf-8"
+        )
+        device = Mock(spec=DRIVER.Device)
+        return DRIVER.Device._parse_hierarchy(device, xml, "unused.txt")
+
     @staticmethod
     def _fake_clock() -> tuple[list[float], object, object]:
         now = [0.0]
@@ -8789,6 +8798,167 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertLessEqual(tap.kwargs["timeout"], 45)
         self.assertGreater(tap.kwargs["deadline"], 0)
         device.capture.assert_not_called()
+
+    def test_documents_ui_empty_roots_preserves_observed_structure_and_digest(self) -> None:
+        nodes = self._documents_ui_empty_drawer()
+        self.assertEqual([1, 1, 1, 2, 0, 0], [node.child_count for node in nodes])
+        flattened = [DRIVER.UiNode(node.attributes) for node in nodes]
+        self.assertEqual(nodes, flattened)
+        self.assertEqual(
+            DRIVER.Device._hierarchy_sha256(nodes),
+            DRIVER.Device._hierarchy_sha256(flattened),
+        )
+        self.assertTrue(DRIVER._documents_ui_roots_list_is_observed_empty(nodes))
+        self.assertFalse(DRIVER._documents_ui_roots_list_is_observed_empty(flattened))
+
+    def test_documents_ui_downloads_waits_for_observed_empty_roots_before_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [
+            self._documents_ui_empty_drawer(),
+            self._documents_ui_empty_drawer(),
+            self._documents_ui_drawer(bounds="[168,717][714,768]"),
+            self._documents_ui_destination(),
+        ]
+        device.node_has_tappable_bounds.return_value = True
+        now, monotonic, sleep = self._fake_clock()
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        self.assertEqual(1.5, now[0])
+        self.assertEqual([call(deadline=45.0)] * 4, device.hierarchy.call_args_list)
+        device.shell.assert_called_once_with(
+            "input", "tap", "441", "742", timeout=43.5, deadline=45.0,
+        )
+        device.node_has_tappable_bounds.assert_called_once()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_empty_roots_exhausts_same_deadline_without_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = self._documents_ui_empty_drawer()
+        now, monotonic, sleep = self._fake_clock()
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(RuntimeError, "observed roots list remained empty"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=2)
+
+        self.assertEqual(2.0, now[0])
+        self.assertEqual([call(deadline=2.0)] * 3, device.hierarchy.call_args_list)
+        device.shell.assert_not_called()
+        device.node_has_tappable_bounds.assert_not_called()
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_empty_roots_after_tap_does_not_replay_it(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        observations = iter([self._documents_ui_drawer()])
+        empty_drawer = self._documents_ui_empty_drawer()
+        device.hierarchy.side_effect = lambda **_kwargs: next(observations, empty_drawer)
+        device.node_has_tappable_bounds.return_value = True
+        now, monotonic, sleep = self._fake_clock()
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(RuntimeError, "observed roots list remained empty"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=6)
+
+        self.assertEqual(6.0, now[0])
+        device.shell.assert_called_once_with(
+            "input", "tap", "441", "642", timeout=6.0, deadline=6.0,
+        )
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_reacquires_after_loading_before_bounded_retap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        drawer = self._documents_ui_drawer()
+        device.hierarchy.side_effect = [
+            drawer, drawer, drawer, drawer, drawer,
+            self._documents_ui_empty_drawer(),
+            self._documents_ui_drawer(bounds="[168,817][714,868]"),
+            self._documents_ui_destination(),
+        ]
+        device.node_has_tappable_bounds.return_value = True
+        now, monotonic, sleep = self._fake_clock()
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        self.assertEqual(3.0, now[0])
+        self.assertEqual([call(deadline=45.0)] * 8, device.hierarchy.call_args_list)
+        self.assertEqual([
+            call("input", "tap", "441", "642", timeout=45.0, deadline=45.0),
+            call("input", "tap", "441", "842", timeout=42.0, deadline=45.0),
+        ], device.shell.call_args_list)
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_observation_failure_cannot_authorize_old_nodes(self) -> None:
+        for initial in (
+            self._documents_ui_empty_drawer(),
+            [self._documents_ui_drawer()[-1]],  # row without drawer authority
+        ):
+            with self.subTest(initial=initial):
+                device = Mock(spec=DRIVER.Device)
+                now, monotonic, sleep = self._fake_clock()
+                with (
+                    patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+                    patch.object(DRIVER.time, "sleep", side_effect=sleep),
+                    patch.object(
+                        DRIVER, "_documents_ui_observation_before_deadline",
+                        side_effect=[initial, None],
+                    ),
+                    self.assertRaisesRegex(RuntimeError, "Timed out waiting"),
+                ):
+                    DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+                self.assertEqual(0.75, now[0])
+                device.shell.assert_not_called()
+                device.node_has_tappable_bounds.assert_not_called()
+
+    def test_documents_ui_downloads_does_not_infer_empty_roots_from_missing_rows(self) -> None:
+        fixture = self._documents_ui_empty_drawer()
+        roots = fixture[-1]
+        invalid_lists = {
+            "absent": [],
+            "unknown-structure": [DRIVER.UiNode(roots.attributes)],
+            "nonempty": [DRIVER.UiNode(roots.attributes, child_count=1)],
+            "boolean-structure": [DRIVER.UiNode(roots.attributes, child_count=False)],
+            "duplicate": [roots, roots],
+            "disabled": [DRIVER.UiNode({**roots.attributes, "enabled": "false"}, child_count=0)],
+            "foreign": [DRIVER.UiNode({**roots.attributes, "package": "com.example.other"}, child_count=0)],
+            "wrong-class": [DRIVER.UiNode({**roots.attributes, "class": "android.widget.TextView"}, child_count=0)],
+            "wrong-id": [DRIVER.UiNode({**roots.attributes, "resource-id": "other:id/roots_list"}, child_count=0)],
+        }
+        for label, lists in invalid_lists.items():
+            with self.subTest(label=label):
+                device = Mock(spec=DRIVER.Device)
+                device.hierarchy.return_value = [*fixture[:-1], *lists]
+                with self.assertRaisesRegex(RuntimeError, "cardinality was 0"):
+                    DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+                device.hierarchy.assert_called_once()
+                device.shell.assert_not_called()
+
+    def test_documents_ui_downloads_empty_list_does_not_hide_present_invalid_rows(self) -> None:
+        valid_row = self._documents_ui_drawer()[-1]
+        other_row = self._documents_ui_node(text="Documents", resource_id="android:id/title")
+        disabled_row = self._documents_ui_drawer(enabled="false")[-1]
+        cases = [
+            ([other_row], "cardinality was 0"),
+            ([valid_row, valid_row], "cardinality was 2"),
+            ([disabled_row], "not enabled and tappable"),
+        ]
+        for extra_nodes, error in cases:
+            with self.subTest(error=error):
+                device = Mock(spec=DRIVER.Device)
+                device.hierarchy.return_value = [*self._documents_ui_empty_drawer(), *extra_nodes]
+                with self.assertRaisesRegex(RuntimeError, error):
+                    DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+                device.hierarchy.assert_called_once()
+                device.shell.assert_not_called()
 
     def test_documents_ui_downloads_reacquires_for_two_bounded_retaps(self) -> None:
         device = Mock(spec=DRIVER.Device)

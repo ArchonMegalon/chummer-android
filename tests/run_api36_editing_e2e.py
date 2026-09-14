@@ -15,7 +15,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1358,6 +1358,9 @@ class AdbSharedStoragePreflightError(RuntimeError):
 @dataclass(frozen=True)
 class UiNode:
     attributes: dict[str, str]
+    # Structural observation only: do not infer an empty container from missing
+    # flattened rows, or change the existing attribute-only identity/digest.
+    child_count: int | None = field(default=None, compare=False)
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
@@ -4741,7 +4744,10 @@ class Device:
                 encoding="utf-8",
             )
             return []
-        nodes = [UiNode(dict(node.attrib)) for node in root.iter("node")]
+        nodes = [
+            UiNode(dict(node.attrib), child_count=len(node))
+            for node in root.iter("node")
+        ]
         Device._raise_if_android_anr(
             self,
             nodes,
@@ -9383,8 +9389,38 @@ def _documents_ui_downloads_state(
     if destinations:
         return "destination"
     if drawer_markers:
+        if _documents_ui_roots_list_is_observed_empty(nodes):
+            return "drawer-loading"
         return "drawer"
     return "pending"
+
+
+def _documents_ui_roots_list_is_observed_empty(nodes: list[UiNode]) -> bool:
+    """Recognize an empty native list, never an absent/ambiguous Downloads row."""
+    roots_lists = [
+        node
+        for node in nodes
+        if node.attributes.get("resource-id")
+        == f"{DOCUMENTS_UI_PACKAGE}:id/roots_list"
+    ]
+    if len(roots_lists) != 1:
+        return False
+    roots = roots_lists[0]
+    if (
+        roots.attributes.get("package") != DOCUMENTS_UI_PACKAGE
+        or roots.attributes.get("class") != "android.widget.ListView"
+        or roots.attributes.get("enabled") != "true"
+        or type(roots.child_count) is not int
+        or roots.child_count != 0
+    ):
+        return False
+    # A row elsewhere in this snapshot contradicts the empty-list observation.
+    # Keep all existing exact-row, disabled-row and ambiguity checks in force.
+    return not _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DOWNLOADS_ROOT) and not any(
+        node.attributes.get("package") == DOCUMENTS_UI_PACKAGE
+        and node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == "title"
+        for node in nodes
+    )
 
 
 def _exact_enabled_documents_ui_downloads_row(
@@ -9479,7 +9515,7 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
                 break
             if not _documents_ui_sleep_before_deadline(deadline):
                 break
-        if not nodes or time.monotonic() >= deadline:
+        if last_state != "drawer" or not nodes or time.monotonic() >= deadline:
             break
 
         row = _exact_enabled_documents_ui_downloads_row(
@@ -9546,6 +9582,11 @@ def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> 
         raise RuntimeError(
             "DocumentsUI roots drawer remained open after "
             f"{DOCUMENTS_UI_MAX_DOWNLOADS_TAPS} exact Downloads taps"
+        )
+    if last_state == "drawer-loading":
+        raise RuntimeError(
+            "Timed out waiting for the exact DocumentsUI Downloads destination; "
+            "the observed roots list remained empty"
         )
     raise RuntimeError(
         "Timed out waiting for the exact DocumentsUI Downloads destination"

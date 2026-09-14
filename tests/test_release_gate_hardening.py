@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from email.message import Message
+import base64
 from contextlib import contextmanager
 import importlib.util
 import hashlib
@@ -1443,6 +1444,143 @@ class TrustedToolchainTreeTests(unittest.TestCase):
                 self.digest()
         with mock.patch.object(BUILD_ATTESTATION, "TRUSTED_TREE_MAX_ENTRIES", 4):
             self.assertEqual((1, 7), self.digest()[1:])
+
+
+class BuilderOnlyTrustTests(unittest.TestCase):
+    """Real synthetic Ed25519 signatures; no operational private keys or SDK."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.verify = BUILD_ATTESTATION.VERIFY
+        self.builder_id = self.verify.RELEASE_BUILDER_KEY_ID
+        self.legacy_id = self.verify.RELEASE_APPROVER_KEY_ID
+        self.approver_id = "fleet-release-approver-2026-09"
+        self.keys = {}
+        for name in (self.builder_id, self.legacy_id, self.approver_id):
+            private, public = self.root / f"{name}.private.pem", self.root / f"{name}.public.pem"
+            self.openssl("genpkey", "-algorithm", "ED25519", "-out", str(private))
+            private.chmod(0o600)
+            self.openssl("pkey", "-in", str(private), "-pubout", "-out", str(public))
+            self.keys[name] = (private, public, hashlib.sha256(public.read_bytes()).hexdigest())
+        for field, value in (
+            ("RELEASE_APPROVER_PUBLIC_KEY", self.keys[self.legacy_id][1]),
+            ("RELEASE_APPROVER_PUBLIC_KEY_SHA256", self.keys[self.legacy_id][2]),
+            ("RELEASE_BUILDER_ONLY_KEYS", {self.builder_id: self.keys[self.builder_id][1:]}),
+            ("RELEASE_APPROVAL_ONLY_KEYS", {self.approver_id: self.keys[self.approver_id][1:]}),
+        ):
+            patcher = mock.patch.object(self.verify, field, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def openssl(*args: str) -> bytes:
+        return subprocess.run(["/usr/bin/openssl", *args], check=True, capture_output=True,
+            timeout=20, env={"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}).stdout
+
+    def payload(self, key_id: str, *, external: bool = False) -> dict:
+        value = {
+            "contractName": "chummer.android.external-release-signer-attestation/v1" if external else BUILD_ATTESTATION.CONTRACT,
+            "algorithm": "ed25519", "keyId": key_id, "role": BUILD_ATTESTATION.ROLE,
+            "attestationScope": BUILD_ATTESTATION.SCOPE,
+            "publicationAuthorized": False, "googlePlayUploadAuthorized": False,
+        }
+        if not external:
+            value["signingAuthorized"] = False
+        return value
+
+    def signature(self, value: dict, signing_key_id: str) -> str:
+        payload = self.root / "payload.json"
+        payload.write_bytes(self.verify._canonical_json_bytes(value))
+        raw = self.openssl("pkeyutl", "-sign", "-inkey", str(self.keys[signing_key_id][0]),
+                           "-rawin", "-in", str(payload))
+        return base64.b64encode(raw).decode("ascii")
+
+    def test_each_builder_format_uses_only_the_selected_key_and_legacy_default_stays_old(self) -> None:
+        for external in (False, True):
+            for key_id in (self.legacy_id, self.builder_id):
+                value = self.payload(key_id, external=external)
+                for signer in self.keys:
+                    with self.subTest(external=external, key_id=key_id, signer=signer):
+                        signature = self.signature(value, signer)
+                        if signer == key_id:
+                            self.verify._verify_ed25519_signature(value, signature, label="test", builder_key_id=key_id)
+                        else:
+                            with self.assertRaisesRegex(ValueError, "signature is invalid"):
+                                self.verify._verify_ed25519_signature(value, signature, label="test", builder_key_id=key_id)
+        value = self.payload(self.legacy_id)
+        self.verify._verify_ed25519_signature(value, self.signature(value, self.legacy_id), label="historical")
+        with self.assertRaisesRegex(ValueError, "signature is invalid"):
+            self.verify._verify_ed25519_signature(value, self.signature(value, self.builder_id), label="historical")
+
+    def test_unknown_ids_algorithms_roles_and_authority_fail_before_key_or_openssl_access(self) -> None:
+        cases = []
+        for key_id in (None, [], {}, 7, True, "unknown", self.approver_id):
+            value = self.payload(key_id)
+            cases.append((value, {"builder_key_id": key_id}))
+        for field, wrong in (
+            ("algorithm", "rsa"), ("contractName", self.verify.RELEASE_APPROVAL_CONTRACT),
+            ("role", self.verify.RELEASE_APPROVER_ROLE), ("attestationScope", self.verify.RELEASE_APPROVAL_SCOPE),
+            ("keyId", self.legacy_id), ("publicationAuthorized", True),
+            ("googlePlayUploadAuthorized", True), ("signingAuthorized", None),
+        ):
+            value = {**self.payload(self.builder_id), field: wrong}
+            cases.append((value, {"builder_key_id": self.builder_id}))
+        cases.append(({**self.payload(self.builder_id, external=True), "signingAuthorized": False}, {"builder_key_id": self.builder_id}))
+        cases.append((self.payload(self.builder_id), {"builder_key_id": self.builder_id, "approval_key_id": self.approver_id}))
+        approval = {
+            "contractName": self.verify.RELEASE_APPROVAL_CONTRACT, "algorithm": "ed25519",
+            "keyId": self.builder_id, "role": self.verify.RELEASE_APPROVER_ROLE,
+            "approvalScope": self.verify.RELEASE_APPROVAL_SCOPE, "signingAuthorized": False,
+            "publicationAuthorized": False, "googlePlayUploadAuthorized": False,
+        }
+        cases.append((approval, {"approval_key_id": self.builder_id}))
+        with mock.patch.object(self.verify, "_stable_bytes") as reader, mock.patch.object(self.verify.subprocess, "run") as runner:
+            for value, selection in cases:
+                with self.subTest(value=value, selection=selection), self.assertRaises(ValueError):
+                    self.verify._verify_ed25519_signature(value, "invalid", label="test", **selection)
+            reader.assert_not_called()
+            runner.assert_not_called()
+
+    def test_builder_pem_capture_is_digest_checked_and_not_reopened(self) -> None:
+        value = self.payload(self.builder_id)
+        signature = self.signature(value, self.builder_id)
+        public = self.keys[self.builder_id][1]
+        original = public.read_bytes()
+        real_reader = self.verify._stable_bytes
+        def replace_after_capture(path, **kwargs):
+            raw = real_reader(path, **kwargs)
+            if path == public:
+                public.write_bytes(self.keys[self.approver_id][1].read_bytes())
+            return raw
+        with mock.patch.object(self.verify, "_stable_bytes", side_effect=replace_after_capture):
+            self.verify._verify_ed25519_signature(value, signature, label="test", builder_key_id=self.builder_id)
+        with self.assertRaisesRegex(ValueError, "digest differs"):
+            self.verify._verify_ed25519_signature(value, signature, label="test", builder_key_id=self.builder_id)
+        public.write_bytes(original)
+        link = self.root / "linked-public.pem"
+        link.symlink_to(public)
+        with mock.patch.dict(self.verify.RELEASE_BUILDER_ONLY_KEYS, {self.builder_id: (link, self.keys[self.builder_id][2])}):
+            with self.assertRaises((ValueError, OSError)):
+                self.verify._verify_ed25519_signature(value, signature, label="test", builder_key_id=self.builder_id)
+
+    def test_checked_in_builder_public_key_has_admitted_pem_and_spki_and_no_approval_role(self) -> None:
+        # Load untouched production pins rather than the synthetic fixture map.
+        production = load(REPO / "scripts/verify_api36_two_green_release_eligibility.py", "actual_builder_public_pins")
+        self.assertEqual("fleet-release-builder-2026-09", production.RELEASE_BUILDER_KEY_ID)
+        self.assertEqual({production.RELEASE_BUILDER_KEY_ID}, set(production.RELEASE_BUILDER_ONLY_KEYS))
+        public, digest = production._release_builder_key(production.RELEASE_BUILDER_KEY_ID)
+        raw = public.read_bytes()
+        self.assertEqual("ef44c5b7fcadaf0f115b5f0e0e7b1a65edb322bb002faf980acb654a5db8caaf", digest)
+        self.assertEqual(digest, hashlib.sha256(raw).hexdigest())
+        der = self.openssl("pkey", "-pubin", "-in", str(public), "-outform", "DER")
+        self.assertEqual("MCowBQYDK2VwAyEAdXOvq6FjTeUUqxBWMCrF+OJGqihEANWatNQ96HmLNEc=", base64.b64encode(der).decode("ascii"))
+        self.assertEqual("41b44078d037fafd85b091b967959f77a7a4aa9f160d03749fa49889a8b1b156", hashlib.sha256(der).hexdigest())
+        with self.assertRaisesRegex(ValueError, "not admitted"):
+            production._release_approval_key(production.RELEASE_BUILDER_KEY_ID)
+        self.assertEqual("local-release-builder-2026", production.RELEASE_APPROVER_KEY_ID)
+        self.assertEqual({"fleet-release-approver-2026-09"}, set(production.RELEASE_APPROVAL_ONLY_KEYS))
 
 
 if __name__ == "__main__":
