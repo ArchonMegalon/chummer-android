@@ -890,6 +890,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         )
         return AGGREGATE.validate_aggregate(
             root,
+            policy_authorities=__import__("android_design_policy_authority").load_policy_pin(),
             build_environment_receipt_path=build_environment_path,
             x64_apk_path=x64_apk,
             arm64_apk_path=arm64_apk,

@@ -138,6 +138,21 @@ def _load_two_green_module() -> Any:
 TWO_GREEN = _load_two_green_module()
 
 
+def _load_design_policy_module() -> Any:
+    specification = importlib.util.spec_from_file_location(
+        "android_release_design_policy_authority",
+        SCRIPT_DIRECTORY / "android_design_policy_authority.py",
+    )
+    if specification is None or specification.loader is None:
+        raise ValueError("cannot load the Android Design policy verifier")
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+DESIGN_POLICY = _load_design_policy_module()
+
+
 def _stable_bytes(
     path: Path,
     *,
@@ -953,6 +968,7 @@ def _validate_source_graph(
     version_name: str,
     version_code: int,
     sources: dict[str, dict[str, Any]],
+    policy_authorities: dict[str, Any],
     hub_package_sources: dict[str, str],
     package_owner_pins: dict[str, dict[str, Any]] | None,
 ) -> None:
@@ -1002,6 +1018,13 @@ def _validate_source_graph(
         raise ValueError("release source graph repository inventory is ambiguous")
     if set(by_name) != SOURCE_GRAPH_REQUIRED_REPOSITORIES:
         raise ValueError("release source graph repository inventory is not exact")
+    design = by_name["chummer6-design"]
+    qualified_design = policy_authorities["design"]
+    if (
+        design["commit"] != qualified_design["commit"]
+        or design["tree"] != qualified_design["tree"]
+    ):
+        raise ValueError("release source graph Design checkout differs from qualified policy")
     android = by_name.get("chummer-android")
     if (
         not isinstance(android, dict)
@@ -1104,10 +1127,13 @@ def verify_release_eligibility(
         "androidTree", "authorityClass", "proofScope", "dependencyGraph", "workflow",
         "wizardGate", "aggregateSchema", "requiredJourneys", "environmentPolicy",
         "buildEnvironmentCompatibilitySha256", "journeyEnvironmentCompatibilitySha256",
-        "environmentCompatibilityStatus",
+        "environmentCompatibilityStatus", "policyAuthorities",
     }
     if set(common) != common_fields:
         raise ValueError("two-green common authority fields are not exact")
+    policy_authorities = DESIGN_POLICY.validate_policy_authorities(
+        common.get("policyAuthorities"), android_root=android_root,
+    )
     expected_environment = TWO_GREEN.ENVIRONMENT.policy_binding(
         TWO_GREEN.StableFile(
             TWO_GREEN.ENVIRONMENT_POLICY_PATH,
@@ -1211,6 +1237,7 @@ def verify_release_eligibility(
             version_name=expected_version_name,
             version_code=version_code,
             sources=sources,
+            policy_authorities=policy_authorities,
             hub_package_sources=hub_package_sources,
             package_owner_pins=package_owner_pins,
         )

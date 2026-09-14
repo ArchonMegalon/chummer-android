@@ -41,6 +41,9 @@ from api36_wizard_gate_contract import (  # noqa: E402
     journey_map,
 )
 from read_android_version import read_project_version_bytes  # noqa: E402
+from android_design_policy_authority import (  # noqa: E402
+    validate_policy_authorities, verify_design_checkout,
+)
 
 
 def _load_p0_module() -> Any:
@@ -246,6 +249,7 @@ def expected_policy() -> dict[str, object]:
         "requiresExactMainCommit": True,
         "requiresExactReleaseIdentity": True,
         "requiresExactDependencyGraph": True,
+        "requiresExactDesignPolicyAuthority": True,
         "requiresExactSameAuthorityIdentities": True,
         "requiresCompatibleEnvironmentFingerprints": True,
         "requiresEnvironmentCompatibilityPass": True,
@@ -1399,6 +1403,8 @@ def validate_proof_artifacts(
     P0.validate_authority(p0)
     gate = contract_binding(DEFAULT_WIZARD_GATE)
     P0.validate_aggregate(aggregate, gate)
+    if p0.get("policyAuthorities") != aggregate.get("policyAuthorities"):
+        raise ValueError(f"{role} P0 and aggregate Design policy authorities differ")
     github_run = p0.get("githubRun")
     android_source = p0.get("androidSource")
     aggregate_binding = p0.get("aggregate")
@@ -1452,6 +1458,7 @@ def validate_proof_artifacts(
         "authorityClass": p0["authorityClass"],
         "proofScope": p0["proofScope"],
         "dependencyGraph": dependency_authority,
+        "policyAuthorities": validate_policy_authorities(p0.get("policyAuthorities")),
         "workflow": p0["workflow"],
         "wizardGate": gate,
         "aggregateSchema": aggregate["schema"],
@@ -1667,6 +1674,7 @@ def create_authority(
     )
     if review_common != main_common:
         raise ValueError("review and main authority or environment compatibility differs")
+    validate_policy_authorities(review_common.get("policyAuthorities"), android_root=android_root)
     if _sha40(review_event_sha, "review event SHA") != review["p0EventSha"]:
         raise ValueError("explicit review event SHA differs from the P0 authority")
     pull_request_authority = validate_review_pull_request_authority(
@@ -1763,6 +1771,7 @@ def validate_authority(value: dict[str, object]) -> dict[str, object]:
     ):
         raise ValueError("two-green main commit or aggregate authority is invalid")
     common = value["commonAuthority"]
+    validate_policy_authorities(common.get("policyAuthorities") if isinstance(common, dict) else None)
     if (
         not isinstance(common, dict)
         or common.get("androidTree") != value["sourceTree"]
@@ -1802,6 +1811,7 @@ def write_atomically(path: Path, value: dict[str, object]) -> None:
 
 def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--android-root", type=Path, required=True)
+    parser.add_argument("--design-root", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--environment-policy", type=Path, required=True)
     parser.add_argument("--source-workflow", type=Path, required=True)
@@ -1854,9 +1864,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     keyword_arguments = {
         key: value for key, value in vars(args).items()
-        if key not in {"command", "output", "authority"}
+        if key not in {"command", "output", "authority", "design_root"}
     }
+    policy_authorities = verify_design_checkout(args.design_root, android_root=args.android_root)
     expected = create_authority(**keyword_arguments)
+    if (expected["commonAuthority"]["policyAuthorities"] != policy_authorities
+            or verify_design_checkout(args.design_root, android_root=args.android_root) != policy_authorities):
+        raise ValueError("Design policy changed while creating ordered qualification")
     if args.command == "materialize":
         write_atomically(args.output, expected)
         print(

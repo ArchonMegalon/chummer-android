@@ -59,6 +59,19 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Check out the exact Design qualification policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-design
+          ref: e408e11bdfabc34898cb0eca6e2409a98d021e4d
+          path: chummer-design
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            products/chummer/ANDROID_PHONE_BETA_SUPPORT_MATRIX.yaml
+            scripts/ai/validate_android_phone_beta_contract.py
+          sparse-checkout-cone-mode: false
+
       - name: Query canonical Actions metadata and download exact proof archives
         shell: bash
         env:
@@ -191,6 +204,7 @@ jobs:
           output="$output_root/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
           common=(
             --android-root "$GITHUB_WORKSPACE/chummer-android"
+            --design-root "$GITHUB_WORKSPACE/chummer-design"
             --policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-two-consecutive-green-authority.json"
             --environment-policy "$GITHUB_WORKSPACE/chummer-android/eng/api36-proof-environment-authority.json"
             --source-workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml"

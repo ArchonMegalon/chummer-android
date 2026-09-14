@@ -321,6 +321,13 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
+        from android_design_policy_authority import load_policy_pin
+        self.policy_authorities = load_policy_pin()
+        # CLI custody verification is covered against real Git/blob fixtures by
+        # test_android_design_policy_authority; this fixture composes receipts.
+        checker = mock.patch.object(gate, "verify_design_checkout", return_value=self.policy_authorities)
+        checker.start()
+        self.addCleanup(checker.stop)
         self.approver_private_key = self.root / "release-approver.private.pem"
         self.approver_public_key = self.root / "release-approver.public.pem"
         self.github_token = self.root / "github-provenance.token"
@@ -370,6 +377,10 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.source_workflow.write_bytes(
             gate.SOURCE_WORKFLOW.read_bytes()
         )
+        for relative in ("eng/design-policy-authority.json", "eng/api36-sr5-wizard-gate-authority.json"):
+            target = self.android / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((REPO / relative).read_bytes())
         project = self.android / "src/Chummer.Android/Chummer.Android.csproj"
         project.parent.mkdir(parents=True)
         project.write_text(
@@ -383,7 +394,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.git("init", "--quiet")
         self.git("config", "user.name", "Two Green Test")
         self.git("config", "user.email", "test@example.invalid")
-        self.git("add", gate.WORKFLOW_PATH, "src/Chummer.Android/Chummer.Android.csproj")
+        self.git("add", gate.WORKFLOW_PATH, "src/Chummer.Android/Chummer.Android.csproj", "eng")
         self.git("commit", "--quiet", "-m", "base for realistic merge identities")
         self.tree = self.git("rev-parse", "HEAD^{tree}")
         self.base_commit = self.git("rev-parse", "HEAD")
@@ -502,6 +513,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             "proofScope": gate.PROOF_SCOPE,
             "publicationAuthorized": False,
             "gateAuthority": wizard_gate,
+            "policyAuthorities": self.policy_authorities,
             "artifactAuthority": {
                 "schema": "chummer.android.api36-apk-authority/v1",
                 "runId": run_id,
@@ -581,6 +593,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
                 "repository": "https://github.com/ArchonMegalon/chummer-android.git",
             },
             "dependencyGraph": self.dependency_graph(event_sha),
+            "policyAuthorities": self.policy_authorities,
             "workflow": {
                 "path": gate.WORKFLOW_PATH,
                 "sha256": sha256(self.source_workflow.read_bytes()),
@@ -1165,8 +1178,8 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
             {
                 "name": "chummer6-design",
                 "role": "validation",
-                "commit": "a" * 40,
-                "tree": "b" * 40,
+                "commit": self.policy_authorities["design"]["commit"],
+                "tree": self.policy_authorities["design"]["tree"],
                 "tree_sha256": "3" * 64,
                 "repository": "https://github.com/ArchonMegalon/chummer6-design.git",
             }
@@ -1307,6 +1320,7 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         self.assertTrue(result["internalTestingEligible"])
         self.assertFalse(result["publicationAuthorized"])
         self.assertFalse(result["googlePlayUploadAuthorized"])
+        self.assertEqual(self.policy_authorities, result["commonAuthority"]["policyAuthorities"])
         self.assertEqual(self.tree, result["sourceTree"])
         self.assertEqual("pull_request", result["reviewRun"]["run"]["event"])
         self.assertEqual("push", result["mainRun"]["run"]["event"])
@@ -1692,10 +1706,57 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
         return p0["aggregate"]["sha256"]
 
     def cli_inputs(self) -> list[str]:
-        arguments: list[str] = []
+        arguments: list[str] = ["--design-root", str(self.root / "design")]
         for key, value in self.inputs.items():
             arguments.extend(("--" + key.replace("_", "-"), str(value)))
         return arguments
+
+    def test_design_policy_cannot_be_removed_or_substituted_after_artifact_reseal(self) -> None:
+        originals = {key: value.read_bytes() for key, value in self.inputs.items() if isinstance(value, Path) and value.is_file()}
+        def restore():
+            for key, data in originals.items():
+                self.inputs[key].write_bytes(data)
+        cases = (("review", "aggregate", None), ("review", "p0", None),
+                 ("main", "aggregate", None), ("main", "p0", None),
+                 ("review", "both", "foreign"), ("both", "both", "foreign"))
+        for role, member, mutation in cases:
+            restore()
+            for changed_role in (("review", "main") if role == "both" else (role,)):
+                with zipfile.ZipFile(self.inputs[f"{changed_role}_aggregate_archive"]) as archive:
+                    aggregate = json.loads(archive.read("receipt.json"))
+                foreign = copy.deepcopy(self.policy_authorities)
+                foreign["design"]["matrix"]["sha256"] = "f" * 64
+                if member in ("aggregate", "both"):
+                    if mutation:
+                        aggregate["policyAuthorities"] = foreign
+                    else:
+                        aggregate.pop("policyAuthorities")
+                def mutate_p0(p0):
+                    if member in ("p0", "both"):
+                        if mutation:
+                            p0["policyAuthorities"] = foreign
+                        else:
+                            p0.pop("policyAuthorities")
+                self.rewrite_proof(changed_role, aggregate, mutate_p0=mutate_p0)
+            with self.subTest(role=role, member=member, mutation=mutation), self.assertRaises(ValueError):
+                self.create()
+        restore()
+        common_missing = self.create()
+        del common_missing["commonAuthority"]["policyAuthorities"]
+        common_missing["eligibilitySha256"] = gate.canonical_sha256({k: v for k, v in common_missing.items() if k != "eligibilitySha256"})
+        with self.assertRaisesRegex(ValueError, "Design"):
+            gate.validate_authority(common_missing)
+
+    def test_cli_authenticates_design_checkout_before_and_after_replay(self) -> None:
+        foreign = copy.deepcopy(self.policy_authorities)
+        foreign["design"]["commit"] = "f" * 40
+        for values in ((foreign,), (self.policy_authorities, foreign)):
+            with self.subTest(values=len(values)), mock.patch.object(
+                gate, "verify_design_checkout", side_effect=values,
+            ) as checker, self.assertRaisesRegex(ValueError, "Design"):
+                gate.main(["materialize", *self.cli_inputs(), "--output", str(self.output)])
+            self.assertEqual(len(values), checker.call_count)
+            self.assertFalse(self.output.exists())
 
     def test_wrong_event_order_tree_and_environment_fail_closed(self) -> None:
         cases: list[tuple[str, str, callable]] = [

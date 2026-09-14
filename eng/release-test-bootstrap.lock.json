@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "chummer.android.release-test-bootstrap/v1",
+  "python": "3.12",
+  "platform": "linux-x86_64",
+  "pipVersion": "26.2.1",
+  "sourceTestsOnly": true,
+  "artifacts": [
+    {
+      "fileName": "get-pip.py",
+      "sha256": "fb24e693bab954209a063d90953621412ccad4a500905a726286e038f508ddf6",
+      "sizeBytes": 2230488,
+      "source": "https://bootstrap.pypa.io/get-pip.py"
+    },
+    {
+      "fileName": "pip-26.2.1-py3-none-any.whl",
+      "sha256": "71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e",
+      "sizeBytes": 1816632,
+      "source": "https://files.pythonhosted.org/packages/f3/6e/1736e5b4ae2b778ef2f81c47d797de9f891d4d8acb047a24ca37a60294dd/pip-26.2.1-py3-none-any.whl"
+    }
+  ]
+}

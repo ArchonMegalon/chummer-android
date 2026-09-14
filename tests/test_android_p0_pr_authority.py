@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -26,6 +27,13 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
+        from android_design_policy_authority import load_policy_pin
+        self.policy_authorities = load_policy_pin()
+        # Git/blob/semantic authentication is adversarially exercised by the
+        # independent Design verifier suite; this suite isolates P0 composition.
+        checker = mock.patch.object(authority, "verify_design_checkout", return_value=self.policy_authorities)
+        checker.start()
+        self.addCleanup(checker.stop)
         self.android_root = self.root / "android"
         self.workflow = self.android_root / ".github/workflows/api36-editing-e2e.yml"
         self.workflow.parent.mkdir(parents=True)
@@ -156,6 +164,7 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
             "proofScope": authority.PROOF_SCOPE,
             "publicationAuthorized": False,
             "gateAuthority": gate,
+            "policyAuthorities": self.policy_authorities,
             "artifactAuthority": {
                 "schema": "chummer.android.api36-apk-authority/v1",
                 "runId": 424242,
@@ -202,6 +211,7 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
     def inputs(self) -> dict[str, Path]:
         return {
             "android_root": self.android_root,
+            "design_root": self.root / "design",
             "hosted_candidate": self.hosted,
             "aggregate": self.aggregate,
             "workflow": self.workflow,
@@ -237,6 +247,7 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
         arguments = [
             "verify",
             "--android-root", str(self.android_root),
+            "--design-root", str(self.root / "design"),
             "--hosted-candidate", str(self.hosted),
             "--aggregate", str(self.aggregate),
             "--workflow", str(self.workflow),
