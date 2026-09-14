@@ -198,9 +198,26 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("--index-url https://pypi.org/simple -r tests/requirements-ci.txt", step)
         requirements = (REPO_ROOT / "tests/requirements-ci.txt").read_text(encoding="utf-8")
         pinned_packages = [line for line in requirements.splitlines() if line and not line.startswith("#")]
-        self.assertEqual(5, len(pinned_packages))
+        expected_packages = {
+            "pytest": "9.0.2",
+            "iniconfig": "2.3.0",
+            "packaging": "26.3",
+            "pluggy": "1.6.0",
+            "pygments": "2.21.0",
+            "jsonschema": "4.25.1",
+            "attrs": "25.3.0",
+            "jsonschema-specifications": "2025.9.1",
+            "referencing": "0.36.2",
+            "rpds-py": "0.27.1",
+            "typing-extensions": "4.14.1",
+        }
+        self.assertEqual(len(expected_packages), len(pinned_packages))
         for line in pinned_packages:
-            self.assertRegex(line, r"^[a-z]+==[0-9]+(?:\.[0-9]+){1,2} --hash=sha256:[a-f0-9]{64}$")
+            self.assertRegex(line, r"^[a-z]+(?:-[a-z]+)*==[0-9]+(?:\.[0-9]+){1,2} --hash=sha256:[a-f0-9]{64}$")
+        self.assertEqual(expected_packages, dict(
+            line.split(" --hash=", 1)[0].split("==", 1)
+            for line in pinned_packages
+        ))
         self.assertIn('run_clean "$test_python_root/bin/python" -B -m unittest discover -s tests -v', step)
         self.assertIn("PYTEST_DISABLE_PLUGIN_AUTOLOAD=1", step)
         self.assertIn('run_clean "$test_python_root/bin/python" -B -m pytest -q -p no:cacheprovider', step)
