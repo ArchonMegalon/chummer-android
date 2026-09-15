@@ -38,7 +38,6 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
       EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
-      EVIDENCE: ${{ runner.temp }}/private-file-durability
     steps:
       - name: Check out exact tested source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -52,6 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          EVIDENCE="$RUNNER_TEMP/private-file-durability"
           mkdir -p "$EVIDENCE" "$RUNNER_TEMP/empty-feed"
           case "$EXPECTED_ARCHITECTURE:$(uname -m)" in
             arm64:aarch64|x64:x86_64) ;;
@@ -74,6 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          EVIDENCE="$RUNNER_TEMP/private-file-durability"
           project=tests/Chummer.Android.PrivateFileDurability.Tests/Chummer.Android.PrivateFileDurability.Tests.csproj
           dotnet restore "$project" --source "$RUNNER_TEMP/empty-feed" \
             -p:NuGetAudit=false 2>&1 | tee "$EVIDENCE/restore.log"
