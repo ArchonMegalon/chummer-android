@@ -4,7 +4,9 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -367,6 +369,337 @@ class TabletDispatchTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Unexpected enabled apply"):
             journey.absent_actions("apply")
         journey.device.swipe_up.assert_called_once()
+
+
+class TabletCheckpointObservationTests(unittest.TestCase):
+    def test_async_disk_publication_uses_only_the_remaining_transaction_label_budget(self):
+        for stale_ui in (False, True):
+            with self.subTest(stale_ui=stale_ui):
+                clock = [100.0]
+                in_memory = checkpoint()
+                disk = {driver.OWNER_KEY: OWNER, "unrelated-private-preference": "not-exported"}
+                device = Mock()
+                journey = driver.Journey(device, Mock())
+                journey.open_groups = Mock()
+                journey.select = Mock(side_effect=[driver.Selection(1, driver.DECOY, OWNER),
+                                                  driver.Selection(2, driver.TARGET, OWNER)])
+                journey.guard = Mock()
+                journey.tap = Mock()
+                journey.observe_home = Mock(side_effect=RuntimeError("stop after reviewed evidence"))
+
+                def transaction(selector, *, deadline):
+                    self.assertEqual(selector, driver.PREFIX + "transaction")
+                    self.assertEqual(deadline, 190.0)
+                    clock[0] = 189.4  # The existing UI wait already consumed almost its full budget.
+                    return OWNER if stale_ui else in_memory["Draft"]["Plan"]["TransactionId"]
+
+                journey.text = Mock(side_effect=transaction)
+
+                def raw_read(arguments, **kwargs):
+                    self.assertTrue(0 < kwargs["timeout"] <= 0.600001)
+                    if arguments[0] == "shell":
+                        self.assertEqual(arguments, ("shell", "run-as", driver.shared.PACKAGE,
+                            "find", "shared_prefs", "-type", "f", "-name", "*.xml"))
+                        return SimpleNamespace(stdout="shared_prefs/preferences.xml\n", returncode=0)
+                    self.assertEqual(arguments, ("exec-out", "run-as", driver.shared.PACKAGE,
+                                                "cat", "shared_prefs/preferences.xml"))
+                    root = ET.Element("map")
+                    for key, value in disk.items():
+                        ET.SubElement(root, "string", {"name": key}).text = value
+                    return SimpleNamespace(stdout=ET.tostring(root, encoding="unicode"), returncode=0)
+
+                def publish_after_delay(seconds):
+                    clock[0] += seconds
+                    disk[driver.CHECKPOINT_KEY] = json.dumps(in_memory)
+
+                device._invoke_once.side_effect = raw_read
+                expected_error = "Reviewed UI transaction differs" if stale_ui else "stop after reviewed evidence"
+                with patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+                     patch.object(driver.time, "sleep", side_effect=publish_after_delay) as sleep, \
+                     self.assertRaisesRegex(RuntimeError, expected_error):
+                    journey.run(state(), ET.Element("character"))
+                self.assertEqual(device._invoke_once.call_count, 4)  # Two read-only map snapshots.
+                sleep.assert_called_once_with(0.2)
+                journey.text.assert_called_once()
+                journey.tap.assert_called_once_with(driver.PREFIX + "review")
+                self.assertEqual(journey.issued, {"review": "review"})
+                self.assertLess(clock[0], 190.0)
+                device.run.assert_not_called()
+                device.shell.assert_not_called()
+                if stale_ui:
+                    journey.observe_home.assert_not_called()
+
+    def test_absent_checkpoint_expires_without_a_new_budget_or_mutation(self):
+        clock = [100.0]
+        journey = driver.Journey(Mock(), Mock())
+        journey.issued = {"review": "review"}
+        with patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+             patch.object(driver.time, "sleep", side_effect=lambda seconds: clock.__setitem__(0, clock[0] + seconds)), \
+             patch.object(driver, "preferences", return_value={driver.OWNER_KEY: OWNER}) as reads, \
+             self.assertRaisesRegex(RuntimeError, "not visible before the transaction phase deadline"):
+            journey.checkpoint(state(), OWNER, 0, deadline=100.5)
+        self.assertEqual(reads.call_count, 3)
+        self.assertTrue(all(call.kwargs == {"deadline": 100.5} for call in reads.call_args_list))
+        self.assertEqual(clock[0], 100.5)
+        self.assertEqual(journey.issued, {"review": "review"})
+        self.assertFalse(journey.checkpoint_observation["checkpointPresent"])
+        self.assertEqual(journey.device.mock_calls, [])
+
+    def test_label_exhausting_its_budget_never_starts_a_preference_read(self):
+        clock = [100.0]
+        journey = driver.Journey(Mock(), Mock())
+        journey.open_groups = Mock()
+        journey.select = Mock(side_effect=[driver.Selection(1, driver.DECOY, OWNER),
+                                          driver.Selection(2, driver.TARGET, OWNER)])
+        journey.guard = Mock()
+        journey.tap = Mock()
+
+        def late_label(selector, *, deadline):
+            clock[0] = deadline
+            return ACTION
+
+        journey.text = Mock(side_effect=late_label)
+        with patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+             patch.object(driver, "preferences") as reads, \
+             self.assertRaisesRegex(RuntimeError, "transaction phase deadline"):
+            journey.run(state(), ET.Element("character"))
+        reads.assert_not_called()
+        journey.text.assert_called_once_with(driver.PREFIX + "transaction", deadline=190)
+        journey.tap.assert_called_once_with(driver.PREFIX + "review")
+        self.assertEqual(journey.issued, {"review": "review"})
+
+    def test_present_invalid_or_foreign_checkpoint_is_never_retried(self):
+        stale = checkpoint()
+        stale["Draft"]["ExpectedContentRevision"] = 0
+        foreign = checkpoint()
+        foreign["Draft"]["OwnerId"] = ACTION
+        phase = checkpoint()
+        phase["Phase"] = 1
+        snapshots = [{}, {driver.OWNER_KEY: ACTION},
+            {driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: ""},
+            {driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: "malformed-private-json"},
+            *({driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: json.dumps(value)}
+              for value in (stale, foreign, phase)),
+            {driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: '{"Version":1,"Version":2}'}]
+        for snapshot in snapshots:
+            with self.subTest(snapshot=list(snapshot)):
+                journey = driver.Journey(Mock(), Mock())
+                with patch.object(driver.time, "monotonic", return_value=100), \
+                     patch.object(driver.time, "sleep") as sleep, \
+                     patch.object(driver, "preferences", return_value=snapshot) as reads, \
+                     self.assertRaises(Exception):
+                    journey.checkpoint(state(), OWNER, 0, deadline=101)
+                reads.assert_called_once()
+                sleep.assert_not_called()
+                self.assertEqual(journey.device.mock_calls, [])
+
+    def test_valid_checkpoint_finishing_after_deadline_is_not_admitted(self):
+        clock = [100.0]
+        journey = driver.Journey(Mock(), Mock())
+
+        def late_snapshot(*args, **kwargs):
+            clock[0] = 101.1
+            return {driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: json.dumps(checkpoint())}
+
+        with patch.object(driver.time, "monotonic", side_effect=lambda: clock[0]), \
+             patch.object(driver.time, "sleep") as sleep, \
+             patch.object(driver, "preferences", side_effect=late_snapshot) as reads, \
+             self.assertRaisesRegex(RuntimeError, "exceeded the transaction phase deadline"):
+            journey.checkpoint(state(), OWNER, 0, deadline=101)
+        reads.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_invalid_preference_map_or_checkpoint_type_is_not_treated_as_absence(self):
+        for raw in ('<not-a-map/>', '<map><int name="' + driver.CHECKPOINT_KEY + '" value="0"/></map>',
+                    '<map><string name="' + driver.CHECKPOINT_KEY + '"><node/></string></map>',
+                    '<map><string name="' + driver.OWNER_KEY + '"/><string name="' + driver.OWNER_KEY + '"/></map>',
+                    '<map>malformed-private-xml'):
+            with self.subTest(raw=raw):
+                device = Mock()
+                device._invoke_once.side_effect = [SimpleNamespace(stdout="shared_prefs/preferences.xml"),
+                                                  SimpleNamespace(stdout=raw)]
+                with patch.object(driver.time, "monotonic", return_value=100), \
+                     patch.object(driver.time, "sleep") as sleep, self.assertRaises(Exception):
+                    driver.Journey(device, Mock()).checkpoint(state(), OWNER, 0, deadline=101)
+                self.assertEqual(device._invoke_once.call_count, 2)
+                sleep.assert_not_called()
+                device.run.assert_not_called()
+
+    def test_preference_timeout_preserves_original_error_without_partial_secret_receipts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Mock(evidence=Path(directory))
+            secret = b'<map><string name="private-token">never-export-this'
+            original = subprocess.TimeoutExpired("adb", 0.5, output=secret)
+            device._invoke_once.side_effect = [SimpleNamespace(stdout="shared_prefs/preferences.xml"), original]
+            journey = driver.Journey(device, Mock())
+            with patch.object(driver.time, "monotonic", return_value=100), self.assertRaises(subprocess.TimeoutExpired) as raised:
+                journey.checkpoint(state(), OWNER, 0, deadline=100.5)
+            self.assertIs(raised.exception, original)
+            self.assertEqual(device._invoke_once.call_count, 2)
+            device.run.assert_not_called()
+            journey.capture_failure(original)
+            device._write_transport_event.assert_not_called()
+            self.assertNotIn(b"never-export-this", b"".join(path.read_bytes() for path in Path(directory).iterdir()))
+
+    def test_review_observation_precedes_strict_checkpoint_and_never_replays(self):
+        for outcome in ("valid", "empty", "owner-changed", "transaction-changed", "label-timeout"):
+            with self.subTest(outcome=outcome):
+                calls = []
+                journey = driver.Journey(Mock(), Mock())
+                journey.open_groups = Mock()
+                journey.select = Mock(side_effect=[driver.Selection(1, driver.DECOY, OWNER),
+                                                  driver.Selection(2, driver.TARGET, OWNER)])
+                journey.guard = Mock()
+                journey.tap = Mock(side_effect=lambda selector: calls.append(selector))
+
+                def transaction(selector, *, deadline):
+                    calls.append(selector)
+                    if outcome == "label-timeout":
+                        raise TimeoutError("transaction not rendered")
+                    return OWNER if outcome == "transaction-changed" else ACTION
+
+                journey.text = Mock(side_effect=transaction)
+                journey.observe_home = Mock(side_effect=RuntimeError("stop after reviewed evidence"))
+                values = {driver.OWNER_KEY: OWNER, driver.CHECKPOINT_KEY: json.dumps(checkpoint())}
+                if outcome == "empty":
+                    values[driver.CHECKPOINT_KEY] = ""
+                elif outcome == "owner-changed":
+                    values[driver.OWNER_KEY] = ACTION
+
+                def observe_preferences(_device, *, deadline):
+                    calls.append("checkpoint")
+                    return values
+
+                expected_error = {"valid": "stop after reviewed evidence",
+                    "empty": "absent or empty", "owner-changed": "Durable owner changed",
+                    "transaction-changed": "Reviewed UI transaction differs", "label-timeout": "not rendered"}[outcome]
+                with patch.object(driver, "preferences", side_effect=observe_preferences), \
+                     self.assertRaisesRegex(Exception, expected_error):
+                    journey.run(state(), ET.Element("character"))
+                self.assertEqual(calls, [driver.PREFIX + "review", driver.PREFIX + "transaction"]
+                                 + ([] if outcome == "label-timeout" else ["checkpoint"]))
+                self.assertEqual(journey.issued, {"review": "review"})
+                journey.tap.assert_called_once_with(driver.PREFIX + "review")
+                if outcome != "valid":
+                    journey.observe_home.assert_not_called()
+
+    def test_failure_capture_is_bounded_read_only_and_preserves_first_safe_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Mock()
+            device.evidence = Path(directory)
+            journey = driver.Journey(device, Mock())
+            journey.state = state()
+            journey.issued = {"review": "review"}
+            with patch.object(driver, "preferences", return_value={driver.OWNER_KEY: OWNER}), \
+                 self.assertRaisesRegex(RuntimeError, "absent or empty"):
+                journey.checkpoint(state(), OWNER, 0)
+            secret = "never-persist-this-preference-or-error"
+            hierarchy = ET.Element("hierarchy")
+            ET.SubElement(hierarchy, "node", {"package": driver.shared.PACKAGE,
+                "resource-id": driver.PREFIX + "transaction", "text": ACTION})
+            ET.SubElement(hierarchy, "node", {"password": "true", "text": secret,
+                "content-desc": secret, "hint": secret})
+            raw_hierarchy = ET.tostring(hierarchy)
+            metadata = SimpleNamespace(stdout=f"1:2:{len(raw_hierarchy)}:1700000000:81a4", returncode=0)
+            device.run.side_effect = [SimpleNamespace(stdout="1234", returncode=0),
+                                     SimpleNamespace(stdout=b"\x89PNG\r\n\x1a\nimage", returncode=0),
+                                     metadata, metadata]
+            device._invoke_once.return_value = SimpleNamespace(stdout=raw_hierarchy, returncode=0)
+            with patch.object(driver, "preferences") as preferences, \
+                 patch.object(driver.time, "monotonic", return_value=100):
+                journey.capture_failure(RuntimeError(secret))
+                before = {path.name: path.read_bytes() for path in Path(directory).iterdir()}
+                journey.capture_failure(RuntimeError("later failure"))
+                self.assertEqual(before, {path.name: path.read_bytes() for path in Path(directory).iterdir()})
+                preferences.assert_not_called()
+            context = json.loads(before["tablet-skill-group-failure.json"])
+            self.assertEqual(context["harnessIssuedActionFences"], {"review": "review"})
+            self.assertEqual(context["lastCheckpointObservation"], {"phase": 0, "ownerPresent": True,
+                "ownerMatchesExpected": True, "checkpointPresent": False, "checkpointNonempty": False})
+            self.assertEqual(context["expectedProcessId"], 1234)
+            self.assertEqual(context["hierarchyObservation"], "cached-last-observer-frame-not-fresh")
+            self.assertEqual(ET.fromstring(before["tablet-skill-group-failure.cached.xml"]).get("observation"),
+                             "cached-last-observer-frame-not-fresh")
+            cached = json.loads(before["tablet-skill-group-failure.cached.json"])
+            self.assertEqual(cached["sourceSha256"], hashlib.sha256(raw_hierarchy).hexdigest())
+            self.assertTrue(cached["sourceIdentityStable"])
+            self.assertEqual(cached["sourceMetadataBefore"], {"device": 1, "inode": 2,
+                "sizeBytes": len(raw_hierarchy), "modifiedEpochSeconds": 1700000000, "mode": 0x81a4})
+            self.assertNotIn(secret.encode(), b"".join(before.values()))
+            self.assertEqual(json.loads(before["tablet-skill-group-failure-process.json"])["processIds"], [1234])
+            self.assertEqual(device.run.call_count, 4)
+            self.assertEqual(device.run.call_args_list[0].args, ("shell", "pidof", driver.shared.PACKAGE))
+            self.assertEqual(device.run.call_args_list[1].args, ("exec-out", "screencap", "-p"))
+            device._invoke_once.assert_called_once_with(
+                ("exec-out", "cat", driver.shared.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                text=False, check=True, timeout=5)
+            self.assertEqual(device.run.call_args_list[2].args,
+                             ("shell", *driver.shared.ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS))
+            self.assertEqual(device.run.call_args_list[2], device.run.call_args_list[3])
+            self.assertEqual([call.kwargs["timeout"] for call in device.run.call_args_list], [5, 5, 2, 2])
+            self.assertTrue(all(call.kwargs["deadline"] == 115
+                                for call in device.run.call_args_list))
+            device.hierarchy.assert_not_called()  # No frame replacement or parser-triggered ANR capture.
+            device._parse_hierarchy.assert_not_called()
+            device.shell.assert_not_called()
+            device.capture.assert_not_called()  # No unrestricted logcat/preferences export.
+
+    def test_failure_capture_never_persists_unparsed_or_oversized_hierarchy(self):
+        for raw in (b"malformed-private-output", b"<hierarchy>" + b"x" * (4 * 1024**2)):
+            with self.subTest(size=len(raw)), tempfile.TemporaryDirectory() as directory:
+                device = Mock(evidence=Path(directory))
+                unavailable = SimpleNamespace(stdout="", returncode=1)
+                device.run.side_effect = [SimpleNamespace(stdout="", returncode=1),
+                    SimpleNamespace(stdout=b"", returncode=0), unavailable, unavailable]
+                device._invoke_once.return_value = SimpleNamespace(stdout=raw, returncode=0)
+                driver.Journey(device, Mock()).capture_failure(RuntimeError("original failure"))
+                self.assertFalse((Path(directory) / "tablet-skill-group-failure.cached.xml").exists())
+                expected = {"tablet-skill-group-failure.json", "tablet-skill-group-failure-process.json"}
+                if len(raw) <= 4 * 1024**2:
+                    expected.add("tablet-skill-group-failure.cached.json")
+                    cached = json.loads((Path(directory) / "tablet-skill-group-failure.cached.json").read_text())
+                    self.assertIsNone(cached["sourceMetadataBefore"])
+                    self.assertFalse(cached["sourceIdentityStable"])
+                    self.assertEqual(cached["sourceSha256"], hashlib.sha256(raw).hexdigest())
+                self.assertEqual({path.name for path in Path(directory).iterdir()},
+                                 expected)
+                device.hierarchy.assert_not_called()
+                device._parse_hierarchy.assert_not_called()
+                device.capture.assert_not_called()
+
+    def test_cached_read_timeout_does_not_export_partial_xml_or_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            device = Mock(evidence=Path(directory))
+            device.run.side_effect = [SimpleNamespace(stdout="", returncode=1),
+                SimpleNamespace(stdout=b"", returncode=0), SimpleNamespace(stdout="", returncode=1)]
+            secret = b'<hierarchy><node password="true" text="private-partial-output"'
+            device._invoke_once.side_effect = subprocess.TimeoutExpired("adb", 5, output=secret)
+            driver.Journey(device, Mock()).capture_failure(RuntimeError("original failure"))
+            device._invoke_once.assert_called_once()
+            device._write_transport_event.assert_not_called()
+            self.assertEqual({path.name for path in Path(directory).iterdir()},
+                             {"tablet-skill-group-failure.json", "tablet-skill-group-failure-process.json"})
+            self.assertNotIn(b"private-partial-output",
+                             b"".join(path.read_bytes() for path in Path(directory).iterdir()))
+
+    def test_capture_errors_cannot_replace_original_journey_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(adb=Path("/tmp/unused-adb"), serial="emulator-5554",
+                allow_mutate_disposable_runner=True, evidence=Path(directory) / "evidence",
+                receipt=Path(directory) / "receipt.json", proof_build_id="hosted-test",
+                gate_contract=Path(driver.__file__).resolve().parents[1] / "eng/api36-sr5-wizard-gate-authority.json")
+            original = RuntimeError("original journey failure")
+            journey = Mock()
+            journey.destination.side_effect = original
+            journey.capture_failure.side_effect = OSError("diagnostics unavailable")
+            with patch.object(driver.proof, "expected_build"), patch.object(driver, "TabletDevice"), \
+                 patch.object(driver, "tablet_environment", return_value={}), \
+                 patch.object(driver.shared, "launch_app"), patch.object(driver, "Journey", return_value=journey), \
+                 self.assertRaises(RuntimeError) as raised:
+                driver.execute(args)
+            self.assertIs(raised.exception, original)
+            journey.capture_failure.assert_called_once_with(original)
+            self.assertEqual(json.loads(args.receipt.read_text())["error"]["message"], str(original))
 
 
 if __name__ == "__main__":

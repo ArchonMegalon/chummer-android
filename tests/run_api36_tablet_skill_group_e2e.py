@@ -36,6 +36,7 @@ PREFIX = "tablet-career-skill-group-"
 ROUTE = "sr5-career/advancement/skill-group/review"
 LEDGER = "androidcareerskillgroupadvanceledger"
 CORE_CONTRACT = "chummer.core.sr5-career-skill-group-advance/v2"
+LABEL_OBSERVATION_TIMEOUT_SECONDS = 90  # Existing shared exact-label acquisition budget.
 CHECKPOINT_FIELDS = {"SchemaVersion", "Version", "RouteId", "Phase", "Draft", "Receipt", "IdempotencyKey"}
 RECEIPT_ORDER = (
     "TransactionId", "Identity", "GroupKarmaBefore", "GroupKarmaAfter",
@@ -300,16 +301,24 @@ def tap_initial_save_runner(device: TabletDevice) -> None:
     device.shell("input", "tap", *(str(value) for value in save.center))
 
 
-def preferences(device: shared.Device) -> dict[str, str]:
-    listing = device.shell("run-as", shared.PACKAGE, "find", "shared_prefs", "-type", "f", "-name", "*.xml")
+def preferences(device: shared.Device, *, deadline: float | None = None) -> dict[str, str]:
+    def read(*arguments: str) -> str:
+        # Preferences may contain secrets. Never let transport diagnostics
+        # persist complete or partial stdout, including on a failed read.
+        return device._invoke_once(tuple(arguments), text=True, check=True,
+            timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=120)).stdout
+
+    listing = read("shell", "run-as", shared.PACKAGE, "find", "shared_prefs", "-type", "f", "-name", "*.xml")
     found: dict[str, str] = {}
     for path in listing.splitlines():
         require(re.fullmatch(r"shared_prefs/[A-Za-z0-9_.-]+\.xml", path) is not None,
                 "Unexpected preference path")
-        root = ET.fromstring(device.run("exec-out", "run-as", shared.PACKAGE, "cat", path).stdout)
-        for value in root.findall("string"):
+        root = ET.fromstring(read("exec-out", "run-as", shared.PACKAGE, "cat", path))
+        require(root.tag == "map", "Malformed durable preferences document")
+        for value in root:
             key = value.get("name")
             if key in (CHECKPOINT_KEY, OWNER_KEY):
+                require(value.tag == "string" and not list(value), "Malformed durable owner/checkpoint value")
                 require(key not in found, "Duplicate durable owner/checkpoint")
                 found[key] = value.text or ""
     return found
@@ -351,6 +360,82 @@ class Journey:
         self.state: dict | None = None
         self.issued: dict[str, str] = {}
         self.composition_observations: list[dict] = []
+        self.checkpoint_observation: dict | None = None
+
+    def capture_failure(self, error: Exception) -> None:
+        """Retain bounded read-only diagnostics without exposing preference values."""
+        prefix = self.device.evidence / "tablet-skill-group-failure"
+        deadline = time.monotonic() + 15
+        context = {"schema": "chummer.android.tablet-skill-group-failure/v1",
+                   "errorType": type(error).__name__, "harnessIssuedActionFences": dict(self.issued),
+                   "lastCheckpointObservation": self.checkpoint_observation,
+                   "expectedProcessId": None if self.state is None else self.state["processId"],
+                   "hierarchyObservation": "cached-last-observer-frame-not-fresh",
+                   "CoreDispatchReplayAttested": False, "recoveryAttempted": False}
+        try:
+            shared._write_new_json_receipt(prefix.with_suffix(".json"), context)
+        except Exception:
+            return  # Preserve the first failure and its evidence on any subsequent call.
+        try:
+            result = self.device.run("shell", "pidof", shared.PACKAGE, check=False,
+                                     timeout=5, deadline=deadline)
+            raw = result.stdout.strip()
+            process_ids = [int(value) for value in raw.split()] if len(raw) <= 256 and re.fullmatch(r"[0-9]+(?: [0-9]+)*", raw) else []
+            shared._write_new_json_receipt(prefix.with_name(prefix.name + "-process.json"),
+                {"status": "observed" if result.returncode == 0 and process_ids else "unavailable",
+                 "processIds": process_ids if result.returncode == 0 else []})
+        except Exception:
+            pass
+        try:
+            result = self.device.run("exec-out", "screencap", "-p", text=False,
+                                     timeout=5, deadline=deadline)
+            if isinstance(result.stdout, bytes) and result.stdout.startswith(b"\x89PNG\r\n\x1a\n") and len(result.stdout) <= 8 * 1024**2:
+                with prefix.with_suffix(".png").open("xb") as stream:
+                    stream.write(result.stdout)
+        except Exception:
+            pass
+        try:
+            # Preserve the prior frame; hierarchy() can replace it and invoke
+            # unrestricted ANR/logcat capture before returning parsed nodes.
+            def metadata() -> dict | None:
+                try:
+                    result = self.device.run("shell", *shared.ADB_FILE_HIERARCHY_STAT_SHELL_ARGUMENTS,
+                                             timeout=2, deadline=deadline, check=False)
+                    return (shared._parse_file_hierarchy_metadata(result.stdout)
+                            if result.returncode == 0 and len(result.stdout) <= 256 else None)
+                except Exception:
+                    return None
+
+            before = metadata()
+            # The normal transport handler retains partial stdout on timeout;
+            # this one exact read must not export unredacted partial XML.
+            result = self.device._invoke_once(
+                ("exec-out", "cat", shared.ADB_FILE_HIERARCHY_REMOTE_PATH),
+                text=False, check=True,
+                timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=5))
+            after = metadata()
+            if isinstance(result.stdout, bytes) and len(result.stdout) <= 4 * 1024**2:
+                shared._write_new_json_receipt(prefix.with_suffix(".cached.json"), {
+                    "observation": "cached-last-observer-frame-not-fresh",
+                    "remotePath": shared.ADB_FILE_HIERARCHY_REMOTE_PATH,
+                    "copiedAtUtc": datetime.now(timezone.utc).isoformat(),
+                    "sourceBytes": len(result.stdout),
+                    "sourceSha256": hashlib.sha256(result.stdout).hexdigest(),
+                    "sourceMetadataBefore": before, "sourceMetadataAfter": after,
+                    "sourceIdentityStable": before is not None and before == after
+                        and before["sizeBytes"] == len(result.stdout)})
+                root = ET.fromstring(result.stdout)
+                if root.tag == "hierarchy":
+                    root.set("observation", "cached-last-observer-frame-not-fresh")
+                    for node in root.iter("node"):
+                        if node.get("password") == "true":
+                            node.attrib.update(text="", **{"content-desc": "", "hint": ""})
+                    encoded = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+                    if len(encoded) <= 4 * 1024**2:
+                        with prefix.with_suffix(".cached.xml").open("xb") as stream:
+                            stream.write(encoded)
+        except Exception:
+            pass
 
     def tap(self, selector: str) -> None:
         node = self.device.wait_exact_resource_id_bidirectional(
@@ -358,10 +443,11 @@ class Journey:
             evidence_prefix="tablet-tap", surface_name="Tablet exact control")
         self.device.shell("input", "tap", *(str(v) for v in node.center))
 
-    def text(self, selector: str) -> str:
+    def text(self, selector: str, *, deadline: float | None = None) -> str:
         return self.device.wait_exact_resource_id_bidirectional(
             selector, backward_scrolls=12, forward_scrolls=16, require_tappable=False,
-            evidence_prefix="tablet-read", surface_name="Tablet exact label").attributes.get("text", "")
+            evidence_prefix="tablet-read", surface_name="Tablet exact label",
+            timeout=LABEL_OBSERVATION_TIMEOUT_SECONDS, deadline=deadline).attributes.get("text", "")
 
     def absent_actions(self, *names: str, bottom_actions: tuple[str, ...] = ("resolve", "acknowledge")) -> None:
         require(self.text(PREFIX + "id") == TARGET, "Missing exact inspector before action-absence proof")
@@ -468,12 +554,31 @@ class Journey:
                 "harnessIssuedActionFences": dict(self.issued),
                 "CoreDispatchReplayAttested": False}
 
-    def checkpoint(self, initial: dict, owner: str, phase: int) -> dict:
-        values = preferences(self.device)
-        require(values.get(OWNER_KEY) == owner, "Durable owner changed")
-        value = strict_json(values[CHECKPOINT_KEY])
-        validate_checkpoint(value, initial["workspace"], owner, phase=phase)
-        return value
+    def checkpoint(self, initial: dict, owner: str, phase: int, *, deadline: float | None = None) -> dict:
+        require(deadline is None or phase == 0, "Only initial reviewed visibility may await disk publication")
+        while True:
+            if deadline is not None:
+                require(time.monotonic() < deadline,
+                        "Expected durable Skill Group checkpoint was not visible before the transaction phase deadline")
+            values = preferences(self.device, deadline=deadline)
+            self.checkpoint_observation = {"phase": phase, "ownerPresent": OWNER_KEY in values,
+                "ownerMatchesExpected": values.get(OWNER_KEY) == owner,
+                "checkpointPresent": CHECKPOINT_KEY in values,
+                "checkpointNonempty": bool(values.get(CHECKPOINT_KEY))}
+            require(values.get(OWNER_KEY) == owner, "Durable owner changed")
+            if CHECKPOINT_KEY not in values and deadline is not None:
+                # Preferences.Apply publishes memory before XML. Only absence
+                # under the already-proven owner may await that disk write.
+                shared._sleep_before_operation_deadline(
+                    min(0.2, max(0, deadline - time.monotonic())), deadline=deadline)
+                continue
+            require(CHECKPOINT_KEY in values and bool(values[CHECKPOINT_KEY]),
+                    "Expected durable Skill Group checkpoint is absent or empty")
+            value = strict_json(values[CHECKPOINT_KEY])
+            validate_checkpoint(value, initial["workspace"], owner, phase=phase)
+            if deadline is not None:
+                require(time.monotonic() < deadline, "Durable checkpoint observation exceeded the transaction phase deadline")
+            return value
 
     def receipt(self, checkpoint: dict) -> None:
         receipt = checkpoint["Receipt"]
@@ -489,8 +594,10 @@ class Journey:
         self.select(DECOY)
         selection = self.select(TARGET)
         self.issue_once("review", selection, fence="review")
-        reviewed = self.checkpoint(initial, selection.owner, 0)
-        require(self.text(PREFIX + "transaction") == reviewed["Draft"]["Plan"]["TransactionId"],
+        deadline = time.monotonic() + LABEL_OBSERVATION_TIMEOUT_SECONDS
+        transaction = self.text(PREFIX + "transaction", deadline=deadline)
+        reviewed = self.checkpoint(initial, selection.owner, 0, deadline=deadline)
+        require(transaction == reviewed["Draft"]["Plan"]["TransactionId"],
                 "Reviewed UI transaction differs")
         self.device.capture("tablet-skill-group-reviewed")
         unchanged = self.observe_home("tablet-reviewed-departure")
@@ -567,6 +674,7 @@ def execute(args: argparse.Namespace) -> dict:
                "CoreDispatchReplayAttested": False,
                "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
                "status": "fail", "executionStatus": "not-run"}
+    journey: Journey | None = None
     try:
         device.require_transport_stability()
         context["environment"] = tablet_environment(device)
@@ -607,6 +715,11 @@ def execute(args: argparse.Namespace) -> dict:
         context["retainedFixturePath"] = remote
     except Exception as error:
         context.update(status="fail", executionStatus="attempted", error={"type": type(error).__name__, "message": str(error)})
+        if journey is not None:
+            try:
+                journey.capture_failure(error)
+            except Exception:
+                pass  # Diagnostics cannot replace the original failure.
         raise
     finally:
         common.prepare_receipt_target(args.receipt)
