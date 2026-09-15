@@ -1057,7 +1057,7 @@
       {
         "path": "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs",
         "exists": true,
-        "sha256": "1e613d909e51ea32525d4b17d4b14ca57bcb5a4d30079713131b7d44af21e3ea"
+        "sha256": "eee20aedbbafd9245a9ee0289c9abd73d3412c4a58f9c8b0ae026fd9537cf5a5"
       },
       {
         "path": "tests/run_api36_editing_e2e.py",

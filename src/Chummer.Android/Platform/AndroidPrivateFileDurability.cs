@@ -10,7 +10,7 @@ internal static class AndroidPrivateFileDurability
     {
         if (!OperatingSystem.IsAndroid() && !OperatingSystem.IsLinux())
             throw new PlatformNotSupportedException("Private file directory sync requires Android/Linux.");
-        int descriptor = Open(directory, 0x10000 | 0x80000); // O_DIRECTORY | O_CLOEXEC
+        int descriptor = Open(directory, DirectoryOpenFlags(RuntimeInformation.ProcessArchitecture));
         if (descriptor < 0)
             throw new IOException("Cannot open private file directory for sync.",
                 new Win32Exception(Marshal.GetLastPInvokeError()));
@@ -22,6 +22,18 @@ internal static class AndroidPrivateFileDurability
         }
         finally { Close(descriptor); }
     }
+
+    // Linux UAPI values are architecture-specific, including Android bionic.
+    // arch/{arm,arm64}/include/uapi/asm/fcntl.h overrides asm-generic/fcntl.h:
+    // ARM O_DIRECTORY is 040000 (octal); 0x10000 is O_DIRECT, not O_DIRECTORY.
+    // O_RDONLY is zero and O_CLOEXEC is 02000000 for these supported ABIs.
+    // Do not silently reuse an emulator ABI for an unqualified architecture.
+    internal static int DirectoryOpenFlags(Architecture architecture) => architecture switch
+    {
+        Architecture.Arm or Architecture.Arm64 => 0x4000 | 0x80000,
+        Architecture.X86 or Architecture.X64 => 0x10000 | 0x80000,
+        _ => throw new PlatformNotSupportedException("Private directory sync requires a supported Android/Linux ABI.")
+    };
 
     [DllImport("libc", EntryPoint = "open", SetLastError = true)]
     private static extern int Open(string path, int flags);

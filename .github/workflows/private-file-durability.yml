@@ -1,0 +1,91 @@
+name: Native Linux directory durability
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/private-file-durability.yml"
+      - "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs"
+      - "src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs"
+      - "tests/Chummer.Android.PrivateFileDurability.Tests/**"
+  push:
+    branches:
+      - main
+      - "codex/android-arm-directory-durability-*"
+    paths:
+      - ".github/workflows/private-file-durability.yml"
+      - "src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs"
+      - "src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs"
+      - "tests/Chummer.Android.PrivateFileDurability.Tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-directory-sync:
+    name: Native Linux ${{ matrix.architecture }} directory fsync (not Android device proof)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+      EVIDENCE: ${{ runner.temp }}/private-file-durability
+    steps:
+      - name: Check out exact tested source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up the repository SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.110
+      - name: Record exact source and actual native environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE" "$RUNNER_TEMP/empty-feed"
+          case "$EXPECTED_ARCHITECTURE:$(uname -m)" in
+            arm64:aarch64|x64:x86_64) ;;
+            *) printf '%s\n' 'Host kernel architecture differs from the selected native runner.'; exit 1 ;;
+          esac
+          {
+            date -u +%Y-%m-%dT%H:%M:%SZ
+            git show -s --format='commit=%H%ntree=%T'
+            printf 'expected_architecture=%s\nrunner_image=%s\nrunner_image_version=%s\n' \
+              "$EXPECTED_ARCHITECTURE" "${ImageOS:-unreported}" "${ImageVersion:-unreported}"
+            uname -a
+            dotnet --info
+            sha256sum src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs \
+              src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs \
+              tests/Chummer.Android.PrivateFileDurability.Tests/Program.cs \
+              tests/Chummer.Android.PrivateFileDurability.Tests/Chummer.Android.PrivateFileDurability.Tests.csproj
+            printf '%s\n' 'Scope: native Linux syscall regression only; no Android APK, device, power-cut, signing, or Play authority.'
+          } | tee "$EVIDENCE/environment.log"
+      - name: Build and execute the actual production helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          project=tests/Chummer.Android.PrivateFileDurability.Tests/Chummer.Android.PrivateFileDurability.Tests.csproj
+          dotnet restore "$project" --source "$RUNNER_TEMP/empty-feed" \
+            -p:NuGetAudit=false 2>&1 | tee "$EVIDENCE/restore.log"
+          dotnet build "$project" --no-restore -m:1 -p:UseSharedCompilation=false \
+            -p:TreatWarningsAsErrors=true 2>&1 | tee "$EVIDENCE/build.log"
+          dotnet tests/Chummer.Android.PrivateFileDurability.Tests/bin/Debug/net10.0/Chummer.Android.PrivateFileDurability.Tests.dll \
+            --require-architecture "$EXPECTED_ARCHITECTURE" 2>&1 | tee "$EVIDENCE/tests.log"
+      - name: Retain exact native observations, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: private-file-durability-${{ matrix.architecture }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/private-file-durability/
+          if-no-files-found: error
+          retention-days: 14
