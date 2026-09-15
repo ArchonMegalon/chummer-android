@@ -3,6 +3,7 @@ using Chummer.Android.Native;
 using Chummer.Android.Platform;
 using Chummer.Application.Owners;
 using Chummer.Application.Workspaces;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
@@ -14,6 +15,9 @@ internal static class TabletInspectorBindingTests
 {
     private const string ItemAId = "11111111-1111-4111-8111-111111111111";
     private const string ItemBId = "22222222-2222-4222-8222-222222222222";
+    private static readonly Guid SkillSourceAId = Guid.Parse("33333333-3333-4333-8333-333333333333");
+    private static readonly Guid SkillSourceBId = Guid.Parse("44444444-4444-4444-8444-444444444444");
+    private static readonly OwnerContextStamp SkillDisplayOwner = new(new OwnerScope("tablet-skill-owner-a"), "controlled-tablet-skill-host", 1);
     private static readonly OwnerContextStamp LinkedDisplayOwner = new(OwnerScope.LocalSingleUser, "controlled-tablet-host", 0);
     private static readonly OwnerContextStamp ConditionDisplayOwner = new(new OwnerScope("tablet-condition-a"), "controlled-tablet-condition-host", 1);
     public static async Task RunAsync()
@@ -47,6 +51,15 @@ internal static class TabletInspectorBindingTests
         NestedChooserKeepsTheCurrentParent();
         await RejectedNestedAddRetainsDraftAsync();
         await LinkedPickerAndUnknownOutcomeRemainSafeAsync();
+        await SelectedCareerSkillKeepsExactTypedIdentityAsync();
+        await CareerSkillQuoteWaitRejectsChangedContextAsync();
+        await CareerSkillQuoteRejectsMissingOrAmbiguousIdentityAsync();
+        await CareerSkillFailedQuoteAllowsExplicitSamePanelRetryAsync();
+        await CareerSkillOldQuoteCleanupCannotClearNewerOperationAsync();
+        await CareerSkillApplyWaitRechecksContextAndRunsOnceAsync();
+        await CareerSkillCheckpointLeaseWaitRechecksContextAsync();
+        await CareerSkillCheckpointReadbackFailureCannotApplyAsync();
+        await CareerSkillVerifiedNotAppliedRestoresInlineReviewAsync();
         await LinkedCharacterBindingTests.RunAsync();
         Console.WriteLine("PASS tablet inspector action binding (managed native page/coordinator, not device persistence)");
     }
@@ -964,6 +977,396 @@ internal static class TabletInspectorBindingTests
             => Task.FromResult(file == Staged.FileName && hash == Staged.ContentSha256);
     }
 
+    private static async Task SelectedCareerSkillKeepsExactTypedIdentityAsync()
+    {
+        using var fixture = new Fixture(activeSkill: true);
+        Require(fixture.Button("tablet-career-active-skill-review").IsEnabled,
+            "The selected saved SR5 skill has no Career review action.");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        object review = fixture.ActiveSkillReview
+            ?? throw new InvalidOperationException("The selected skill did not produce an inline review.");
+        var draft = SkillReviewValue<Sr5CareerActiveSkillDraft>(review, "Draft");
+        var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+        Require(draft.Quote.Identity.SkillId == Guid.Parse(ItemBId)
+            && draft.Quote.Identity.SourceSkillId == SkillSourceBId,
+            "Equal display names selected the first skill or lost B's source GUID.");
+        Require(fixture.Label("tablet-career-active-skill-skill-id").Text.Contains(ItemBId, StringComparison.OrdinalIgnoreCase)
+            && fixture.Label("tablet-career-active-skill-source-id").Text.Contains(SkillSourceBId.ToString("D"), StringComparison.OrdinalIgnoreCase),
+            "The right-pane review did not show the exact selected skill/source identities.");
+        Require(fixture.Has("tablet-career-active-skill-rating") && fixture.Has("tablet-career-active-skill-cost")
+            && fixture.Button("tablet-career-active-skill-apply").IsEnabled,
+            "The selected skill did not expose its typed rating/cost review and explicit Apply.");
+        Require(store.TryRead(out var reviewed, out _) && reviewed.Phase == Sr5CareerCheckpointPhase.Reviewed
+            && reviewed.SkillId == draft.Quote.Identity.SkillId && reviewed.SourceSkillId == SkillSourceBId
+            && fixture.ActiveSkillRequests.Count == 0 && fixture.Requests.Count == 0,
+            "Review changed the runner, used generic collection editing, or checkpointed another skill.");
+        fixture.Click("tablet-career-active-skill-apply");
+        fixture.Click("tablet-career-active-skill-apply");
+        await fixture.ActiveSkillDispatchObserved.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Require(fixture.ActiveSkillRequests.Count == 1 && fixture.ActiveSkillRequests[0] == draft.ToRequest(),
+            "Apply did not dispatch the exact confirmed typed draft for B.");
+        Require(store.TryRead(out var applying, out _) && applying.Phase == Sr5CareerCheckpointPhase.Applying,
+            "A canceled dispatch invented an Applied receipt or cleared its unresolved checkpoint.");
+        Require(!fixture.Button("tablet-career-active-skill-apply").IsEnabled,
+            "An unresolved attempt exposed a retry-ready Apply control.");
+        Console.WriteLine("PASS tablet selected Career skill: exact typed identity/review/dispatch; canceled boundary, no persistence claim");
+    }
+
+    private static async Task CareerSkillQuoteWaitRejectsChangedContextAsync()
+    {
+        foreach (string change in new[]
+        {
+            "selection", "workspace", "revision", "saved-revision", "section", "editor", "refresh",
+            "departure", "owner-live", "owner-aba", "checkpoint-owner", "busy", "error"
+        })
+        {
+            using var fixture = new Fixture(activeSkill: true);
+            var pending = new TaskCompletionSource<CareerActiveSkillAdvanceEditorState?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            CareerActiveSkillAdvanceEditorState editor = fixture.ActiveSkills!;
+            fixture.ActiveSkillLoad = () => pending.Task;
+            Task load = fixture.ReviewActiveSkillAsync();
+            Require(!load.IsCompleted && fixture.ActiveSkillLoadCalls == 1,
+                "The quote test did not suspend inside the typed presenter load.");
+            ChangeSkillContext(fixture, change);
+            pending.SetResult(editor);
+            try { await AwaitSkillActionAsync(load); }
+            catch (InvalidOperationException) when (change is "workspace" or "revision") { }
+            Require(fixture.ActiveSkillReview is null
+                && (!fixture.Has("tablet-career-active-skill-apply") || !fixture.Button("tablet-career-active-skill-apply").IsEnabled)
+                && fixture.ActiveSkillRequests.Count == 0 && string.IsNullOrEmpty(fixture.ActiveSkillBackend.Read()),
+                $"A delayed quote survived {change} and created a usable review or checkpoint.");
+        }
+    }
+
+    private static async Task CareerSkillQuoteRejectsMissingOrAmbiguousIdentityAsync()
+    {
+        foreach (string change in new[] { "missing", "ambiguous-source", "duplicate", "stale-editor", "foreign-workspace" })
+        {
+            using var fixture = new Fixture(activeSkill: true);
+            var editor = fixture.ActiveSkills!;
+            fixture.ActiveSkills = change switch
+            {
+                "missing" => editor with { Skills = [editor.Skills[1]] },
+                "ambiguous-source" => editor with { Skills = [editor.Skills[0], SkillQuote(Guid.Parse(ItemAId), SkillSourceBId)] },
+                "duplicate" => editor with { Skills = [editor.Skills[0], editor.Skills[0]] },
+                "stale-editor" => editor with { ContentRevision = editor.ContentRevision + 1 },
+                _ => editor with { WorkspaceId = new("foreign-skill-runner") }
+            };
+            try { await AwaitSkillActionAsync(fixture.ReviewActiveSkillAsync()); }
+            catch (InvalidOperationException) when (change is "stale-editor" or "foreign-workspace") { }
+            Require(fixture.ActiveSkillReview is null && fixture.ActiveSkillRequests.Count == 0
+                && string.IsNullOrEmpty(fixture.ActiveSkillBackend.Read()),
+                $"The inline skill review accepted {change} quote authority.");
+        }
+    }
+
+    private static async Task CareerSkillFailedQuoteAllowsExplicitSamePanelRetryAsync()
+    {
+        foreach (string outcome in new[] { "null", "unavailable", "throw", "malformed-checkpoint" })
+        {
+            using var fixture = new Fixture(activeSkill: true);
+            var navigation = new NavigationPage(fixture.Page);
+            Button originalReview = fixture.Button("tablet-career-active-skill-review");
+            var panel = (VerticalStackLayout)originalReview.Parent!;
+            long generation = fixture.Generation;
+            CareerActiveSkillAdvanceEditorState editor = fixture.ActiveSkills!;
+            var failure = new InvalidOperationException("controlled prepare failure");
+            string originalCheckpoint = outcome == "malformed-checkpoint" ? "{controlled malformed checkpoint" : string.Empty;
+            fixture.ActiveSkillBackend.Write(originalCheckpoint);
+            fixture.ActiveSkillLoad = () => outcome switch
+            {
+                "null" => Task.FromResult<CareerActiveSkillAdvanceEditorState?>(null),
+                "unavailable" => Task.FromResult<CareerActiveSkillAdvanceEditorState?>(editor with { Skills = [] }),
+                "throw" => Task.FromException<CareerActiveSkillAdvanceEditorState?>(failure),
+                _ => Task.FromResult<CareerActiveSkillAdvanceEditorState?>(editor)
+            };
+            bool sawFailure = false;
+            try { await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (InvalidOperationException exception) when (ReferenceEquals(exception, failure)) { sawFailure = true; }
+            Require(sawFailure == (outcome == "throw") && fixture.ActiveSkillLoadCalls == 1
+                && fixture.ActiveSkillOperation is null && fixture.ActiveSkillReview is null
+                && fixture.ActiveSkillBackend.Read() == originalCheckpoint,
+                $"A {outcome} quote retained its unestablished operation, automatically retried, or changed the checkpoint.");
+            Require(ReferenceEquals(fixture.Button("tablet-career-active-skill-review"), originalReview)
+                && originalReview.IsEnabled && ReferenceEquals(originalReview.Parent, panel)
+                && fixture.Generation == generation && navigation.CurrentPage == fixture.Page
+                && navigation.Navigation.NavigationStack.Count == 1 && fixture.ActiveSkillRequests.Count == 0,
+                $"A {outcome} quote lost the same-panel explicit Review action or changed the runner.");
+
+            // Explicit fixture repair, not production deletion of a malformed recovery journal.
+            if (outcome == "malformed-checkpoint") fixture.ActiveSkillBackend.Remove();
+            fixture.ActiveSkillLoad = () => Task.FromResult<CareerActiveSkillAdvanceEditorState?>(editor);
+            await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            object review = fixture.ActiveSkillReview
+                ?? throw new InvalidOperationException($"Explicit same-panel retry after {outcome} did not establish a review.");
+            var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+            Require(store.TryRead(out var reviewed, out _) && reviewed.Phase == Sr5CareerCheckpointPhase.Reviewed
+                && reviewed.SkillId == Guid.Parse(ItemAId) && reviewed.SourceSkillId == SkillSourceAId
+                && fixture.ActiveSkillOperation is { IsCancellationRequested: false }
+                && !SkillReviewValue<CancellationToken>(review, "Token").IsCancellationRequested
+                && fixture.ActiveSkillLoadCalls == 2 && fixture.ActiveSkillRequests.Count == 0 && fixture.Requests.Count == 0
+                && ReferenceEquals(fixture.Button("tablet-career-active-skill-apply").Parent, panel)
+                && fixture.Generation == generation && navigation.CurrentPage == fixture.Page
+                && navigation.Navigation.NavigationStack.Count == 1,
+                $"Explicit retry after {outcome} failed to establish the exact live review in the original panel.");
+        }
+    }
+
+    private static async Task CareerSkillOldQuoteCleanupCannotClearNewerOperationAsync()
+    {
+        using var fixture = new Fixture(activeSkill: true);
+        var older = new TaskCompletionSource<CareerActiveSkillAdvanceEditorState?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var newer = new TaskCompletionSource<CareerActiveSkillAdvanceEditorState?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.ActiveSkillLoad = () => older.Task;
+        Task oldLoad = fixture.ReviewActiveSkillAsync();
+        CancellationTokenSource oldOperation = fixture.ActiveSkillOperation
+            ?? throw new InvalidOperationException("The older quote did not claim its operation slot.");
+        CancellationToken oldToken = oldOperation.Token;
+        Require(!oldLoad.IsCompleted && fixture.ActiveSkillLoadCalls == 1, "The older quote was not suspended.");
+        fixture.Click($"tablet-collection-item-{ItemBId}");
+        Require(oldToken.IsCancellationRequested && fixture.ActiveSkillOperation is null,
+            "Selecting B did not invalidate A's pending quote operation.");
+        fixture.ActiveSkillLoad = () => newer.Task;
+        Task newLoad = fixture.ReviewActiveSkillAsync();
+        CancellationTokenSource newOperation = fixture.ActiveSkillOperation
+            ?? throw new InvalidOperationException("B could not claim a fresh quote operation.");
+        CancellationToken newToken = newOperation.Token;
+        try
+        {
+            Require(!newLoad.IsCompleted && !ReferenceEquals(oldOperation, newOperation)
+                && fixture.ActiveSkillLoadCalls == 2, "B reused A's pending operation slot.");
+            older.SetResult(null);
+            await AwaitSkillActionAsync(oldLoad);
+            Require(ReferenceEquals(fixture.ActiveSkillOperation, newOperation) && !newToken.IsCancellationRequested
+                && !newLoad.IsCompleted && fixture.ActiveSkillReview is null && fixture.ActiveSkillLoadCalls == 2,
+                "The stale quote's cleanup cleared, canceled or completed B's newer operation.");
+            newer.SetResult(fixture.ActiveSkills);
+            await newLoad.WaitAsync(TimeSpan.FromSeconds(10));
+            object review = fixture.ActiveSkillReview!;
+            var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+            Require(store.TryRead(out var reviewed, out _) && reviewed.Phase == Sr5CareerCheckpointPhase.Reviewed
+                && reviewed.SkillId == Guid.Parse(ItemBId) && reviewed.SourceSkillId == SkillSourceBId
+                && ReferenceEquals(fixture.ActiveSkillOperation, newOperation) && !newToken.IsCancellationRequested
+                && fixture.ActiveSkillRequests.Count == 0 && fixture.Requests.Count == 0,
+                "B's newer quote lost its exact reviewed identity or automatically dispatched a mutation.");
+        }
+        finally
+        {
+            older.TrySetCanceled();
+            newer.TrySetCanceled();
+        }
+    }
+
+    private static async Task CareerSkillApplyWaitRechecksContextAndRunsOnceAsync()
+    {
+        foreach (string change in new[]
+        {
+            "selection", "workspace", "revision", "saved-revision", "section", "editor", "refresh",
+            "departure", "owner-live", "owner-aba", "checkpoint-owner", "busy", "error", "unchanged"
+        })
+        {
+            using var fixture = new Fixture(activeSkill: true);
+            await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            object review = fixture.ActiveSkillReview!;
+            var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+            var draft = SkillReviewValue<Sr5CareerActiveSkillDraft>(review, "Draft");
+            Require(fixture.ActivationGate.Wait(0), "Could not reserve the actual skill activation gate.");
+            Task first;
+            Task second;
+            try
+            {
+                first = fixture.ApplyActiveSkillAsync(review);
+                Require(!first.IsCompleted && fixture.ActiveSkillRequests.Count == 0,
+                    "The skill apply test did not wait inside the actual activation gate.");
+                second = fixture.ApplyActiveSkillAsync(review);
+                ChangeSkillContext(fixture, change);
+            }
+            finally { fixture.ActivationGate.Release(); }
+            await AwaitSkillActionAsync(first);
+            await AwaitSkillActionAsync(second);
+            Require(fixture.ActiveSkillRequests.Count == (change == "unchanged" ? 1 : 0),
+                $"A queued skill Apply dispatched after {change}, or a double tap duplicated the request.");
+            if (change == "unchanged")
+                Require(fixture.ActiveSkillRequests[0] == draft.ToRequest(),
+                    "The surviving Apply changed the exact reviewed request.");
+            Require(store.TryRead(out var checkpoint, out _) && checkpoint.Phase == Sr5CareerCheckpointPhase.Applying,
+                $"The attempted skill checkpoint was cleared or claimed Applied after {change} without authoritative resolution.");
+        }
+    }
+
+    private static async Task CareerSkillCheckpointLeaseWaitRechecksContextAsync()
+    {
+        foreach (string change in new[] { "selection", "revision", "owner-live", "owner-aba", "checkpoint-owner", "departure", "unchanged" })
+        {
+            using var fixture = new Fixture(activeSkill: true);
+            await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            object review = fixture.ActiveSkillReview!;
+            var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+            var draft = SkillReviewValue<Sr5CareerActiveSkillDraft>(review, "Draft");
+            var authority = SkillReviewValue<Sr5CareerActiveSkillCoordinator>(review, "Authority");
+            var reviewed = SkillReviewValue<Sr5CareerDraftCheckpoint>(review, "Checkpoint");
+            Require(store.TryBeginApply(Sr5CareerCheckpointCas.From(reviewed), out var applying, out string blocker), blocker);
+            review.GetType().GetProperty("Checkpoint", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+                .SetValue(review, applying);
+            using var acquisitionTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            IDisposable heldLease = await store.AcquireDurableApplyingLeaseAsync(applying, acquisitionTimeout.Token)
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            Task<Sr5CareerApplyResult> action;
+            try
+            {
+                action = authority.ApplyAsync(draft, applying, store);
+                Require(!action.IsCompleted && fixture.ActiveSkillRequests.Count == 0,
+                    "The lease test did not wait inside the actual checkpoint execution lease.");
+                ChangeSkillContext(fixture, change);
+            }
+            finally { heldLease.Dispose(); }
+            try { await action.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (OperationCanceledException) { }
+            catch (InvalidOperationException) when (change != "unchanged") { }
+            Require(fixture.ActiveSkillRequests.Count == (change == "unchanged" ? 1 : 0),
+                $"The checkpoint-lease continuation dispatched after {change} or lost the unchanged typed request.");
+            Require(store.TryRead(out var checkpoint, out _) && checkpoint.Phase == Sr5CareerCheckpointPhase.Applying,
+                "A lease-bound cancellation or authority change invented a resolved mutation outcome.");
+        }
+    }
+
+    private static async Task CareerSkillCheckpointReadbackFailureCannotApplyAsync()
+    {
+        using var fixture = new Fixture(activeSkill: true);
+        fixture.ActiveSkillBackend.DropWrites = true;
+        await AwaitSkillActionAsync(fixture.ReviewActiveSkillAsync());
+        Require((!fixture.Has("tablet-career-active-skill-apply") || !fixture.Button("tablet-career-active-skill-apply").IsEnabled)
+            && fixture.ActiveSkillRequests.Count == 0 && string.IsNullOrEmpty(fixture.ActiveSkillBackend.Read()),
+            "Failed exact checkpoint readback enabled Apply or dispatched a mutation.");
+    }
+
+    private static async Task AwaitSkillActionAsync(Task action)
+    {
+        try { await action.WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (OperationCanceledException) { } // The controlled typed request observer intentionally cancels.
+    }
+
+    private static async Task CareerSkillVerifiedNotAppliedRestoresInlineReviewAsync()
+    {
+        using var fixture = new Fixture(activeSkill: true);
+        var navigation = new NavigationPage(fixture.Page);
+        await fixture.ReviewActiveSkillAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        object review = fixture.ActiveSkillReview!;
+        var draft = SkillReviewValue<Sr5CareerActiveSkillDraft>(review, "Draft");
+        var store = SkillReviewValue<Sr5CareerDraftCheckpointStore>(review, "Store");
+        var authority = SkillReviewValue<Sr5CareerActiveSkillCoordinator>(review, "Authority");
+        var reviewed = SkillReviewValue<Sr5CareerDraftCheckpoint>(review, "Checkpoint");
+        var panel = SkillReviewValue<VerticalStackLayout>(review, "Panel");
+        Button oldApply = fixture.Button("tablet-career-active-skill-apply");
+        Label oldStatus = fixture.Label("tablet-career-active-skill-status");
+        Require(store.TryBeginApply(Sr5CareerCheckpointCas.From(reviewed), out var applying, out string blocker), blocker);
+        review.GetType().GetProperty("Checkpoint", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(review, applying);
+        review.GetType().GetField("Attempted", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(review, 1);
+        oldApply.IsEnabled = false;
+        // Controlled unchanged projections only: the actual coordinator signs the
+        // resolution and actual store validates it; this does not prove disk persistence.
+        fixture.ActiveSkillExpenses = new(draft.WorkspaceId, draft.ExpectedContentRevision,
+            draft.Quote.AvailableKarma, []);
+        Sr5CareerRecoveryResolution resolution = await authority.ResolveAsync(applying)
+            .WaitAsync(TimeSpan.FromSeconds(10));
+        Require(resolution.Status == Sr5CareerRecoveryStatus.NotAppliedVerified && resolution.Receipt is null
+            && fixture.ActiveSkillLoadCalls == 2 && fixture.ActiveSkillExpenseLoadCalls == 1,
+            "The real recovery boundary did not verify both unchanged controlled typed projections.");
+        typeof(TabletBuildPage).GetMethod("RecordTabletActiveSkillResolution", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(fixture.Page, [review, resolution, oldStatus]);
+        Button renewedApply = fixture.Button("tablet-career-active-skill-apply");
+        Require(store.TryRead(out var restored, out _) && restored.Phase == Sr5CareerCheckpointPhase.Reviewed
+            && restored.ActionId == reviewed.ActionId && restored.IdempotencyKey == reviewed.IdempotencyKey
+            && restored.Version > applying.Version,
+            "Verified no-mutation recovery did not restore the exact Reviewed action through the real store.");
+        Require(!ReferenceEquals(renewedApply, oldApply) && renewedApply.IsEnabled
+            && fixture.Button("tablet-career-active-skill-abandon").IsVisible
+            && !fixture.Button("tablet-career-active-skill-resolve").IsVisible
+            && ReferenceEquals(renewedApply.Parent, panel)
+            && ReferenceEquals(SkillReviewValue<Label>(review, "Status"), fixture.Label("tablet-career-active-skill-status"))
+            && navigation.CurrentPage == fixture.Page && navigation.Navigation.NavigationStack.Count == 1,
+            "Verified no-mutation recovery did not renew explicit Apply/Abandon in the same inspector pane.");
+        ((IButtonController)oldApply).SendClicked();
+        Require(fixture.ActiveSkillRequests.Count == 0 && fixture.Requests.Count == 0,
+            "Recovery automatically replayed the action or revived a detached Apply callback.");
+        Console.WriteLine("PASS tablet controlled NotApplied recovery: actual authority/store, renewed inline review; no durable storage claim");
+    }
+
+    private static T SkillReviewValue<T>(object review, string name)
+        => (T)review.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .GetValue(review)!;
+
+    private static void ChangeSkillContext(Fixture fixture, string change)
+    {
+        switch (change)
+        {
+            case "selection": fixture.Click($"tablet-collection-item-{ItemBId}"); break;
+            case "workspace": fixture.State = fixture.State with { WorkspaceId = new("other-skill-runner") }; break;
+            case "revision":
+            case "saved-revision":
+                var original = fixture.State.ActiveWorkspace!;
+                var changed = original with
+                {
+                    ContentRevision = change == "revision" ? original.ContentRevision + 1 : original.ContentRevision,
+                    SavedRevision = change == "revision" ? original.SavedRevision + 1 : original.SavedRevision - 1
+                };
+                fixture.State = fixture.State with
+                {
+                    OpenWorkspaces = [changed],
+                    Session = fixture.State.Session with { OpenWorkspaces = [changed] }
+                };
+                break;
+            case "section": fixture.State = fixture.State with { ActiveSectionId = "gear" }; break;
+            case "editor": fixture.State = fixture.State with
+                { ActiveCollectionEditor = fixture.State.ActiveCollectionEditor! with { Items = fixture.State.ActiveCollectionEditor!.Items.ToArray() } }; break;
+            case "refresh": fixture.Refresh(); break;
+            case "departure": fixture.Depart(); break;
+            case "owner-live": fixture.LiveSkillOwner = SkillDisplayOwner with { TransitionRevision = 2 }; break;
+            case "owner-aba":
+                fixture.LiveSkillOwner = SkillDisplayOwner with { Owner = new("tablet-skill-owner-b"), TransitionRevision = 2 };
+                fixture.State = fixture.State with { DisplayOwnerContext = fixture.LiveSkillOwner,
+                    Session = fixture.State.Session with { OwnerContext = fixture.LiveSkillOwner } };
+                fixture.LiveSkillOwner = SkillDisplayOwner with { TransitionRevision = 3 };
+                fixture.State = fixture.State with { DisplayOwnerContext = fixture.LiveSkillOwner,
+                    Session = fixture.State.Session with { OwnerContext = fixture.LiveSkillOwner } };
+                break;
+            case "checkpoint-owner": fixture.ActiveSkillOwner.CurrentOwnerId = Guid.NewGuid(); break;
+            case "busy": fixture.State = fixture.State with { IsBusy = true }; break;
+            case "error": fixture.State = fixture.State with { Error = "controlled source failure" }; break;
+        }
+    }
+
+    private static CharacterCareerActiveSkillAdvanceQuote SkillQuote(Guid skill, Guid source, int karmaPoints = 1)
+    {
+        CharacterCareerActiveSkillAdvanceInput input = new(
+            new CharacterCareerActiveSkillIdentity(skill, source), Created: true,
+            "Sneaking", "Physical Active", "Sneaking", BasePoints: 2, karmaPoints,
+            2 + karmaPoints, RatingMaximum: 12, 30,
+            new CharacterCareerActiveSkillAdvanceSettings(2, 2, 5, 5, false),
+            OtherGroupMembers: [], Modifiers: [],
+            RawSourceState: "<skill><name>Sneaking</name></skill>", RawRuleState: "<settings />");
+        Require(CharacterCareerActiveSkillAdvanceRules.TryCreateQuote(input, out var quote)
+            && CharacterCareerActiveSkillAdvanceRules.IsCoherent(quote), "The controlled skill quote is not coherent.");
+        return quote;
+    }
+
+    internal sealed class SkillCheckpointBackend : ISr5CareerCheckpointBackend
+    {
+        private string _payload = string.Empty;
+        public bool DropWrites;
+        public string Read() => _payload;
+        public void Write(string payload) { if (!DropWrites) _payload = payload; }
+        public void Remove() => _payload = string.Empty;
+    }
+
+    internal sealed class SkillCheckpointOwner : ISr5CareerCheckpointOwnerAuthority
+    {
+        public Guid CurrentOwnerId { get; set; } = Guid.Parse("55555555-5555-4555-8555-555555555555");
+    }
+
     internal sealed class Fixture : IDisposable
     {
         public CharacterOverviewState State = Program.NewCreationOverview(new("tablet-runner"), 5, 5) with
@@ -973,6 +1376,18 @@ internal static class TabletInspectorBindingTests
         };
         public readonly List<WorkspaceCollectionMutationRequest> Requests = [];
         public readonly List<ConditionMonitorEditRequest> ConditionRequests = [];
+        public readonly List<CareerActiveSkillAdvanceRequest> ActiveSkillRequests = [];
+        public readonly TaskCompletionSource ActiveSkillDispatchObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public readonly SkillCheckpointBackend ActiveSkillBackend = new();
+        public readonly SkillCheckpointBackend ActiveSkillMutationBackend = new();
+        public readonly SkillCheckpointOwner ActiveSkillOwner = new();
+        public CareerActiveSkillAdvanceEditorState? ActiveSkills;
+        public CareerKarmaExpenseEditorState? ActiveSkillExpenses;
+        public Func<Task<CareerActiveSkillAdvanceEditorState?>>? ActiveSkillLoad;
+        public int ActiveSkillLoadCalls;
+        public int ActiveSkillExpenseLoadCalls;
+        public OwnerContextStamp LiveSkillOwner = SkillDisplayOwner;
+        public bool IsActiveSkillFixture;
         // Controlled host inputs only. The separate real Core/native suite proves storage effects.
         public OwnerContextStamp LiveConditionOwner = ConditionDisplayOwner;
         public OwnerContextStamp ConditionShellOwner = ConditionDisplayOwner;
@@ -989,8 +1404,31 @@ internal static class TabletInspectorBindingTests
         public Fixture(bool condition = false, bool mutable = false, bool nested = false, bool rich = false,
             IAndroidLinkedCharacterFileService? linkedFiles = null, IAndroidAccountLinkService? account = null,
             IAndroidLinkedWorkspaceReader? linkedReader = null,
-            Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null)
+            Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null,
+            bool activeSkill = false)
         {
+            IsActiveSkillFixture = activeSkill;
+            if (activeSkill)
+            {
+                State = State with
+                {
+                    DisplayOwnerContext = SkillDisplayOwner,
+                    Session = State.Session with { OwnerContext = SkillDisplayOwner },
+                    Profile = State.Profile! with { Created = true },
+                    Rules = new CharacterRulesSection("SR5", "", "", 0, 0, 0, 0, []),
+                    ActiveSectionId = "skills",
+                    ActiveCollectionEditor = new("skills", WorkspaceCollectionKind.Skill, null,
+                    [
+                        Item(ItemAId, 0, "saved skill A") with
+                        { Target = new(WorkspaceCollectionKind.Skill, ItemAId), Label = "Sneaking" },
+                        Item(ItemBId, 1, "saved skill B") with
+                        { Target = new(WorkspaceCollectionKind.Skill, ItemBId), Label = "Sneaking" }
+                    ])
+                };
+                ActiveSkills = new(State.WorkspaceId ?? throw new InvalidOperationException("Missing skill workspace."), State.ContentRevision,
+                    [SkillQuote(Guid.Parse(ItemAId), SkillSourceAId),
+                        SkillQuote(Guid.Parse(ItemBId), SkillSourceBId, karmaPoints: 2)], 0);
+            }
             if (linkedFiles is not null)
                 State = State with { DisplayOwnerContext = LinkedDisplayOwner, ActiveSectionId = "contacts", ActiveCollectionEditor = new("contacts", WorkspaceCollectionKind.Contact, null,
                     State.ActiveCollectionEditor!.Items.Select(item => item with
@@ -1034,18 +1472,38 @@ internal static class TabletInspectorBindingTests
                 }};
             var presenter = TabletMutationProxy.Create(() => State, Requests.Add, ConditionRequests.Add,
                 request => CollectionResult?.Invoke(request) ?? Task.FromCanceled(new CancellationToken(true)),
-                condition ? () => LiveConditionOwner : null);
+                condition ? () => LiveConditionOwner : null,
+                activeSkill ? () =>
+                {
+                    ActiveSkillLoadCalls++;
+                    return ActiveSkillLoad?.Invoke() ?? Task.FromResult(ActiveSkills);
+                } : null,
+                activeSkill ? request =>
+                {
+                    ActiveSkillRequests.Add(request);
+                    ActiveSkillDispatchObserved.TrySetResult();
+                } : null,
+                activeSkill ? () =>
+                {
+                    ActiveSkillExpenseLoadCalls++;
+                    if (ActiveSkillExpenses is null)
+                        throw new InvalidOperationException("No controlled Karma expense projection was configured.");
+                    return Task.FromResult<CareerKarmaExpenseEditorState?>(ActiveSkillExpenses);
+                } : null);
             LinkedJournal = new AndroidLinkedCharacterIntentJournal(LinkedJournalDirectory);
             linkedReader ??= new ControlledLinkedReader(() => State);
             if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
             Coordinator = new RunnerSessionCoordinator(presenter,
-                condition ? TabletOwnerCaptureProxy.Create(() =>
+                activeSkill ? TabletOwnerCaptureProxy.Create(() => LiveSkillOwner)
+                : condition ? TabletOwnerCaptureProxy.Create(() =>
                 {
                     ConditionOwnerCaptureCalls++;
                     return LiveConditionOwner;
                 }) : null!,
                 null!, null!, null!, null!, null!,
-                condition ? StrictPageProxy.Create<IShellPresenter>(() => ShellState.Empty with
+                activeSkill ? StrictPageProxy.Create<IShellPresenter>(() => ShellState.Empty with
+                    { OwnerContext = LiveSkillOwner })
+                : condition ? StrictPageProxy.Create<IShellPresenter>(() => ShellState.Empty with
                     { OwnerContext = ConditionShellOwner }) : StrictPageProxy.Create<IShellPresenter>(),
                 null!, null!, null!, linkedFiles!, null!, account ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
                 null!, null!, linkedCharacterJournal: LinkedJournal, linkedWorkspaceReader: linkedReader);
@@ -1065,7 +1523,32 @@ internal static class TabletInspectorBindingTests
                 DialogCalls++;
                 Prompt = message;
                 return Confirmation;
-            });
+            },
+            IsActiveSkillFixture ? authority => new Sr5CareerDraftCheckpointStore(
+                ActiveSkillBackend, authority, new Sr5CareerMutationOwnerStore(ActiveSkillMutationBackend)) : null,
+            IsActiveSkillFixture ? ActiveSkillOwner : null,
+            IsActiveSkillFixture ? action => action() : null);
+
+        public object? ActiveSkillReview => typeof(TabletBuildPage).GetField("_activeSkillReview",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Page);
+
+        public CancellationTokenSource? ActiveSkillOperation => (CancellationTokenSource?)typeof(TabletBuildPage)
+            .GetField("_activeSkillOperation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Page);
+
+        public Task ReviewActiveSkillAsync()
+        {
+            var selected = (WorkspaceCollectionItemTarget)typeof(TabletBuildPage).GetField("_selectedTarget",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Page)!;
+            var item = State.ActiveCollectionEditor!.Items.Single(candidate => candidate.Target == selected);
+            var panel = (VerticalStackLayout)Button("tablet-career-active-skill-review").Parent!;
+            return (Task)typeof(TabletBuildPage).GetMethod("LoadTabletActiveSkillReviewAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page, [item, State, Generation, panel])!;
+        }
+
+        public Task ApplyActiveSkillAsync(object? review = null)
+            => (Task)typeof(TabletBuildPage).GetMethod("ApplyTabletActiveSkillAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Page,
+                    [review ?? ActiveSkillReview!, Label("tablet-career-active-skill-status")])!;
 
         public InputView Notes => Elements(Page).OfType<InputView>()
             .Single(input => input.AutomationId == "tablet-field-notes");
@@ -1199,12 +1682,18 @@ public class TabletMutationProxy : DispatchProxy
     private Action<ConditionMonitorEditRequest> _condition = null!;
     private Func<WorkspaceCollectionMutationRequest, Task>? _collectionResult;
     private Func<OwnerContextStamp>? _conditionOwner;
+    private Func<Task<CareerActiveSkillAdvanceEditorState?>>? _activeSkills;
+    private Action<CareerActiveSkillAdvanceRequest>? _activeSkillApply;
+    private Func<Task<CareerKarmaExpenseEditorState?>>? _activeSkillExpenses;
 
     public static ICharacterOverviewPresenter Create(Func<CharacterOverviewState> state,
         Action<WorkspaceCollectionMutationRequest> observe,
         Action<ConditionMonitorEditRequest> condition,
         Func<WorkspaceCollectionMutationRequest, Task>? collectionResult = null,
-        Func<OwnerContextStamp>? conditionOwner = null)
+        Func<OwnerContextStamp>? conditionOwner = null,
+        Func<Task<CareerActiveSkillAdvanceEditorState?>>? activeSkills = null,
+        Action<CareerActiveSkillAdvanceRequest>? activeSkillApply = null,
+        Func<Task<CareerKarmaExpenseEditorState?>>? activeSkillExpenses = null)
     {
         var instance = Create<ITabletOwnerBoundMutationTestPresenter, TabletMutationProxy>();
         var proxy = (TabletMutationProxy)(object)instance;
@@ -1213,6 +1702,9 @@ public class TabletMutationProxy : DispatchProxy
         proxy._condition = condition;
         proxy._collectionResult = collectionResult;
         proxy._conditionOwner = conditionOwner;
+        proxy._activeSkills = activeSkills;
+        proxy._activeSkillApply = activeSkillApply;
+        proxy._activeSkillExpenses = activeSkillExpenses;
         return instance;
     }
 
@@ -1222,6 +1714,19 @@ public class TabletMutationProxy : DispatchProxy
         if (name.StartsWith("add_", StringComparison.Ordinal) || name.StartsWith("remove_", StringComparison.Ordinal))
             return null;
         if (name == "get_State") return _state();
+        if (name == "PrepareCareerActiveSkillAdvanceAsync" && _activeSkills is not null)
+            return _activeSkills();
+        if (name == "PrepareCareerKarmaExpenseEditAsync" && _activeSkillExpenses is not null)
+            return _activeSkillExpenses();
+        if (name == "ApplyCareerActiveSkillAdvanceAsync" && _activeSkillApply is not null)
+        {
+            if (args is not [CareerActiveSkillAdvanceRequest request, CancellationToken token])
+                throw new InvalidOperationException("The host dropped the typed Career skill request.");
+            token.ThrowIfCancellationRequested();
+            _activeSkillApply(request);
+            // Observe dispatch only. No Core mutation, save, receipt or success projection is invented.
+            return Task.FromCanceled(new CancellationToken(canceled: true));
+        }
         if (name == "ApplyConditionMonitorEditAsync")
         {
             CharacterOverviewState current = _state();

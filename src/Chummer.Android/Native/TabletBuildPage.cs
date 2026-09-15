@@ -43,9 +43,15 @@ public sealed partial class TabletBuildPage : NativePageBase
     }
 
     internal TabletBuildPage(RunnerSessionCoordinator coordinator,
-        Func<string, string, string, string, Task<bool>>? confirm) : base(coordinator)
+        Func<string, string, string, string, Task<bool>>? confirm,
+        Func<ISr5CareerReviewedCheckpointAuthority, Sr5CareerDraftCheckpointStore>? activeSkillStoreFactory = null,
+        ISr5CareerCheckpointOwnerAuthority? activeSkillOwner = null,
+        Func<Func<Task<bool>>, Task<bool>>? activeSkillDispatch = null) : base(coordinator)
     {
         _confirm = confirm ?? ((title, message, accept, cancel) => DisplayAlertAsync(title, message, accept, cancel));
+        _activeSkillStoreFactory = activeSkillStoreFactory ?? Sr5CareerDraftCheckpointStore.CreateDefault;
+        _activeSkillOwner = activeSkillOwner;
+        _activeSkillDispatch = activeSkillDispatch ?? (action => Microsoft.Maui.Dispatching.DispatcherExtensions.DispatchAsync(Dispatcher, action));
         Title = "Build";
         AutomationId = "tablet-build-page";
         _navigationPane = CreatePane(_navigation, "tablet-build-navigation-pane");
@@ -80,6 +86,7 @@ public sealed partial class TabletBuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        InvalidateTabletActiveSkillReview();
         CaptureInspectorDraft();
         Coordinator.TabletInspectorDrafts.Release(_draftLease);
         _draftLease = 0;
@@ -320,6 +327,7 @@ public sealed partial class TabletBuildPage : NativePageBase
 
     private void BuildInspectorPane(WorkspaceCollectionEditorState? editor)
     {
+        InvalidateTabletActiveSkillReview();
         CaptureInspectorDraft();
         _renderedDraft = null;
         _draftConflict = false;
@@ -372,6 +380,7 @@ public sealed partial class TabletBuildPage : NativePageBase
         }
 
         _inspector.Add(NativeTheme.Title(item.Label, 23));
+        AddTabletActiveSkillInspector(item, state, generation);
         foreach (WorkspaceCollectionTextValueState value in item.TextValues)
         {
             AddTextInput(value);

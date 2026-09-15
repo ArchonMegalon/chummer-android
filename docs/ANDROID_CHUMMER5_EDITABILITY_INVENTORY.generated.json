@@ -1047,7 +1047,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "63d573d20dbd121f9e08dd3424378d7e71f5cd7769804ff745a4fc768c721366"
+        "sha256": "e66b9a09c611ef72a120d78948e70733e27286745789590c156035967c84f689"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
