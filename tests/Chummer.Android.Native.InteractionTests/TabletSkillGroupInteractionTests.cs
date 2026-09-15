@@ -13,6 +13,7 @@ using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Storage;
 
 // Real native page/coordinator/checkpoint and Core service/Android XML adapter.
 // The store is a private in-memory CAS fixture, not a physical-device durability proof.
@@ -29,6 +30,7 @@ internal static class TabletSkillGroupInteractionTests
 
     public static async Task RunAsync()
     {
+        PreferencesAreRestoredAfterFixtureLifetime();
         LoadControlRequiresSavedCareerOwner();
         await ExactIdentityReviewDoesNotMutateAsync();
         await UnboundMutationCannotUseAmbientOwnerAsync();
@@ -45,6 +47,32 @@ internal static class TabletSkillGroupInteractionTests
         await AbandonAndAcknowledgeArePhaseBoundAsync();
         await AfterRunAuthorityHarness.RunTabletSkillGroupActualOwnerCasesAsync();
         Console.WriteLine("PASS tablet skill-group managed interaction: real Core atomic command/ledger, controlled host/store; not Android device persistence");
+    }
+
+    private static void PreferencesAreRestoredAfterFixtureLifetime()
+    {
+        IPreferences prior = Preferences.Default;
+        using (var fixture = new Fixture())
+        {
+            Require(!ReferenceEquals(Preferences.Default, prior), "Fixture did not install isolated host preferences.");
+            Preferences.Default.Set("tablet-group-fixture", "isolated");
+            Require(Preferences.Default.Get("tablet-group-fixture", string.Empty) == "isolated",
+                "Fixture preferences did not retain an actual host write.");
+        }
+        Require(ReferenceEquals(Preferences.Default, prior), "Fixture disposal did not restore prior host preferences.");
+
+        var expected = new InvalidOperationException("Controlled fixture initialization failure.");
+        try
+        {
+            using var fixture = new Fixture(new ControlledOwners(() =>
+            {
+                Require(!ReferenceEquals(Preferences.Default, prior), "Preferences were not installed before owner capture.");
+                throw expected;
+            }));
+            throw new InvalidOperationException("Fixture initialization unexpectedly succeeded.");
+        }
+        catch (InvalidOperationException observed) when (ReferenceEquals(observed, expected)) { }
+        Require(ReferenceEquals(Preferences.Default, prior), "Failed fixture initialization did not restore prior host preferences.");
     }
 
     private static void LoadControlRequiresSavedCareerOwner()
@@ -470,6 +498,7 @@ internal static class TabletSkillGroupInteractionTests
 
     private sealed class Fixture : IDisposable
     {
+        private readonly PreferencesScope _preferences;
         public CharacterOverviewState State;
         public OwnerContextStamp LiveOwner = InitialOwner;
         public readonly Backend Backend = new();
@@ -485,37 +514,47 @@ internal static class TabletSkillGroupInteractionTests
 
         public Fixture(IOwnerContextLeaseAccessor? owners = null)
         {
-            Owners = owners ?? new ControlledOwners(() => LiveOwner);
-            LiveOwner = Owners.Capture();
-            Store.PartitionOwner = LiveOwner.Owner;
-            State = Program.NewCreationOverview(Workspace, 5, 5);
-            State = State with
+            _preferences = new PreferencesScope();
+            try
             {
-                DisplayOwnerContext = LiveOwner, Session = State.Session with { OwnerContext = LiveOwner },
-                Profile = State.Profile! with { Created = true },
-                Rules = new CharacterRulesSection("SR5", "", "", 0, 0, 0, 0, []),
-                ActiveSectionId = "skills", ActiveCollectionEditor = new("skills", WorkspaceCollectionKind.Skill, null, [])
-            };
-            Service = new(Store, Owners);
-            var presenter = TabletGroupTestProxy.Create<ICharacterOverviewPresenter>((name, args) => name switch
+                Owners = owners ?? new ControlledOwners(() => LiveOwner);
+                LiveOwner = Owners.Capture();
+                Store.PartitionOwner = LiveOwner.Owner;
+                State = Program.NewCreationOverview(Workspace, 5, 5);
+                State = State with
+                {
+                    DisplayOwnerContext = LiveOwner, Session = State.Session with { OwnerContext = LiveOwner },
+                    Profile = State.Profile! with { Created = true },
+                    Rules = new CharacterRulesSection("SR5", "", "", 0, 0, 0, 0, []),
+                    ActiveSectionId = "skills", ActiveCollectionEditor = new("skills", WorkspaceCollectionKind.Skill, null, [])
+                };
+                Service = new(Store, Owners);
+                var presenter = TabletGroupTestProxy.Create<ICharacterOverviewPresenter>((name, args) => name switch
+                {
+                    "get_State" => State,
+                    "PrepareCareerSkillGroupAdvanceAsync" => LoadOverride?.Invoke() ?? Task.FromResult<CareerSkillGroupAdvanceEditorState?>(Editor()),
+                    "LoadAsync" => LoadSaved(args),
+                    _ => throw new InvalidOperationException($"Unexpected group presenter call {name}; no compatibility mutation allowed.")
+                });
+                var shell = TabletGroupTestProxy.Create<IShellPresenter>((name, _) => name switch
+                {
+                    "get_State" => ShellState.Empty with { OwnerContext = Owners.Capture() },
+                    "SyncWorkspaceContextAsync" => Task.CompletedTask,
+                    _ => throw new InvalidOperationException($"Unexpected shell call {name}.")
+                });
+                Coordinator = new(presenter, TabletOwnerCaptureProxy.Create(() => Owners.Capture()), null!, null!, null!, null!, null!,
+                    shell, TabletGroupTestProxy.Create<IShellSurfaceResolver>((name, _) => name == "Resolve"
+                        ? ShellSurfaceState.Empty : throw new InvalidOperationException(name)), null!, null!, null!, null!,
+                    StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!, careerSkillGroupService: Service);
+                Page = NewPage();
+                Refresh();
+            }
+            catch
             {
-                "get_State" => State,
-                "PrepareCareerSkillGroupAdvanceAsync" => LoadOverride?.Invoke() ?? Task.FromResult<CareerSkillGroupAdvanceEditorState?>(Editor()),
-                "LoadAsync" => LoadSaved(args),
-                _ => throw new InvalidOperationException($"Unexpected group presenter call {name}; no compatibility mutation allowed.")
-            });
-            var shell = TabletGroupTestProxy.Create<IShellPresenter>((name, _) => name switch
-            {
-                "get_State" => ShellState.Empty with { OwnerContext = Owners.Capture() },
-                "SyncWorkspaceContextAsync" => Task.CompletedTask,
-                _ => throw new InvalidOperationException($"Unexpected shell call {name}.")
-            });
-            Coordinator = new(presenter, TabletOwnerCaptureProxy.Create(() => Owners.Capture()), null!, null!, null!, null!, null!,
-                shell, TabletGroupTestProxy.Create<IShellSurfaceResolver>((name, _) => name == "Resolve"
-                    ? ShellSurfaceState.Empty : throw new InvalidOperationException(name)), null!, null!, null!, null!,
-                StrictPageProxy.Create<IAndroidAccountLinkService>(), null!, null!, careerSkillGroupService: Service);
-            Page = NewPage();
-            Refresh();
+                try { Coordinator?.Dispose(); }
+                finally { _preferences.Dispose(); }
+                throw;
+            }
         }
 
         private Task LoadSaved(object?[]? args)
@@ -563,7 +602,43 @@ internal static class TabletSkillGroupInteractionTests
         public void Refresh() => typeof(TabletBuildPage).GetMethod("Refresh", Private)!.Invoke(Page, null);
         public void Depart() => typeof(TabletBuildPage).GetMethod("OnDisappearing", Private)!.Invoke(Page, null);
         public void RecreatePage() { Depart(); Page = NewPage(); Refresh(); }
-        public void Dispose() { Depart(); Coordinator.Dispose(); }
+        public void Dispose()
+        {
+            try { Depart(); }
+            finally
+            {
+                try { Coordinator.Dispose(); }
+                finally { _preferences.Dispose(); }
+            }
+        }
+    }
+
+    // Platformless managed tests still execute the real shell's preference write.
+    // Follow the existing native runtime fixture's MAUI test-adapter boundary.
+    private sealed class PreferencesScope : IDisposable
+    {
+        private readonly IPreferences _prior = Preferences.Default;
+        private readonly MethodInfo _setDefault = typeof(Preferences).GetMethod("SetDefault",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("MAUI Preferences test adapter entry is unavailable.");
+
+        public PreferencesScope() => _setDefault.Invoke(null, [new RuntimePreferences()]);
+        public void Dispose() => _setDefault.Invoke(null, [_prior]);
+    }
+
+    private sealed class RuntimePreferences : IPreferences
+    {
+        private readonly Dictionary<(string?, string), object> _values = new();
+        public bool ContainsKey(string key, string? sharedName = null)
+        { lock (_values) return _values.ContainsKey((sharedName, key)); }
+        public void Remove(string key, string? sharedName = null)
+        { lock (_values) _values.Remove((sharedName, key)); }
+        public void Clear(string? sharedName = null)
+        { lock (_values) foreach (var key in _values.Keys.Where(k => k.Item1 == sharedName).ToArray()) _values.Remove(key); }
+        public void Set<T>(string key, T value, string? sharedName = null)
+        { lock (_values) _values[(sharedName, key)] = value!; }
+        public T Get<T>(string key, T defaultValue, string? sharedName = null)
+        { lock (_values) return _values.TryGetValue((sharedName, key), out var value) ? (T)value : defaultValue; }
     }
 
     private sealed class Service(MemoryStore store, IOwnerContextLeaseAccessor owners) :
