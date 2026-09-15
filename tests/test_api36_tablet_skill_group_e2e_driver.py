@@ -221,6 +221,79 @@ class TabletSkillGroupValidatorTests(unittest.TestCase):
             driver.saved_root(device, state(authority))
 
 
+class TabletInitialSaveTests(unittest.TestCase):
+    def button(self, **changes):
+        # Shape from original hosted tablet failure artifact 10406340756.
+        return driver.shared.UiNode({"text": "Save runner", "resource-id": "", "content-desc": "",
+            "package": driver.shared.PACKAGE, "class": "android.widget.Button", "enabled": "true",
+            "clickable": "true", "focusable": "true", "bounds": "[2249,64][2432,160]", **changes})
+
+    def device(self, *nodes):
+        device = driver.TabletDevice.__new__(driver.TabletDevice)
+        device.hierarchy = Mock(return_value=list(nodes))
+        device.display_size = Mock(return_value=(2560, 1800))
+        device.dismiss_system_ui_anr = Mock(return_value=False)
+        device.capture = Mock()
+        device.shell = Mock()
+        device.wait_for_single_exact_text = Mock(wraps=device.wait_for_single_exact_text)
+        device.wait_for_single_exact_accessibility_value = Mock(side_effect=AssertionError("Wrong selector"))
+        return device
+
+    def test_recorded_text_only_button_is_selected_with_unchanged_timeout_and_live_bounds(self):
+        for bounds in ("[2249,64][2432,160]", "[100,50][300,150]"):
+            with self.subTest(bounds=bounds):
+                button = self.button(bounds=bounds)
+                device = self.device(button)
+                driver.tap_initial_save_runner(device)
+                device.wait_for_single_exact_text.assert_called_once_with(
+                    "Save runner", evidence_prefix="tablet-initial-save", surface_name="Tablet Save runner toolbar")
+                device.wait_for_single_exact_accessibility_value.assert_not_called()
+                device.shell.assert_called_once_with("input", "tap", *(str(value) for value in button.center))
+                device.display_size.assert_called_once()
+
+    def test_missing_prefix_whitespace_or_accessibility_only_match_never_taps(self):
+        candidates = [[], [self.button(text="Save runner now")], [self.button(text="Save runner ")],
+                      [self.button(text="save runner")], [self.button(text="", **{"content-desc": "Save runner"})],
+                      [self.button(text="", **{"resource-id": "Save runner"})]]
+        for nodes in candidates:
+            with self.subTest(nodes=nodes), patch.object(driver.shared.time, "monotonic", side_effect=[0, 0, 46]), \
+                 patch.object(driver.shared.time, "sleep"):
+                device = self.device(*nodes)
+                with self.assertRaisesRegex(RuntimeError, "Timed out waiting for exactly one"):
+                    driver.tap_initial_save_runner(device)
+                device.shell.assert_not_called()
+
+    def test_duplicate_exact_text_is_rejected_before_filtering_wrong_package(self):
+        for duplicate in (self.button(), self.button(package="other.application")):
+            with self.subTest(duplicate=duplicate):
+                device = self.device(self.button(), duplicate)
+                with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+                    driver.tap_initial_save_runner(device)
+                device.shell.assert_not_called()
+
+    def test_wrong_button_identity_state_or_bounds_never_taps(self):
+        changes = [{"package": "other.application"}, {"class": "android.widget.TextView"},
+                   {"enabled": "false"}, {"clickable": "false"}, {"focusable": "false"},
+                   {"resource-id": "build-save-runner"}, {"content-desc": "Save runner"}]
+        changes += [{"bounds": bounds} for bounds in ("", "invalid", "[0,0][0,0]", "[100,50][108,58]", "[20,0][10,10]",
+                    "[-10,0][100,100]", "[0,0][2561,100]", "[0,0][100,1801]", "[100,1750][300,1790]")]
+        for change in changes:
+            with self.subTest(change=change):
+                device = self.device(self.button(**change))
+                with self.assertRaisesRegex(RuntimeError, "exact tappable app button"):
+                    driver.tap_initial_save_runner(device)
+                device.shell.assert_not_called()
+
+    def test_unknown_initial_save_tap_outcome_is_not_retried(self):
+        device = self.device(self.button())
+        device.shell.side_effect = TimeoutError("Unknown Save runner outcome")
+        with self.assertRaisesRegex(TimeoutError, "Unknown Save runner outcome"):
+            driver.tap_initial_save_runner(device)
+        device.shell.assert_called_once()
+        device.wait_for_single_exact_text.assert_called_once()
+        device.wait_for_single_exact_accessibility_value.assert_not_called()
+
+
 class TabletDispatchTests(unittest.TestCase):
     def journey(self):
         journey = driver.Journey(Mock(), Mock())

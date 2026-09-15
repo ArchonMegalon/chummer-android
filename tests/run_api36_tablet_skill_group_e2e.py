@@ -286,6 +286,20 @@ def tablet_composition(nodes: list) -> dict:
     return result
 
 
+def tap_initial_save_runner(device: TabletDevice) -> None:
+    """The native tablet toolbar exposes exact text, not the phone's save ID."""
+    save = device.wait_for_single_exact_text(
+        "Save runner", evidence_prefix="tablet-initial-save", surface_name="Tablet Save runner toolbar")
+    expected = {"text": "Save runner", "resource-id": "", "content-desc": "",
+                "package": shared.PACKAGE, "class": "android.widget.Button",
+                "enabled": "true", "clickable": "true", "focusable": "true"}
+    require(all(save.attributes.get(key) == value for key, value in expected.items())
+            and device.node_has_tappable_bounds(save),
+            "Initial tablet Save runner is not the exact tappable app button")
+    # One mutation gesture; an unknown outcome propagates without replay.
+    device.shell("input", "tap", *(str(value) for value in save.center))
+
+
 def preferences(device: shared.Device) -> dict[str, str]:
     listing = device.shell("run-as", shared.PACKAGE, "find", "shared_prefs", "-type", "f", "-name", "*.xml")
     found: dict[str, str] = {}
@@ -580,10 +594,7 @@ def execute(args: argparse.Namespace) -> dict:
                 and imported["workspace"]["savedRevision"] == 0, "Import does not bind exact committed fixture")
         require(xml_shape(saved_root(device, imported)) == xml_shape(before), "Imported fixture changed")
         journey.destination("Build")
-        save = device.wait_for_single_exact_accessibility_value(
-            "Save runner", evidence_prefix="tablet-initial-save", surface_name="Tablet Save runner toolbar")
-        require(save.attributes.get("enabled") == "true", "Initial save unavailable")
-        device.shell("input", "tap", *(str(v) for v in save.center))
+        tap_initial_save_runner(device)
         # Home's existing observer follows the save; no tablet-only save notice is invented.
         initial = journey.observe_home("tablet-skill-group-initial-saved", initial_save=imported["workspace"])
         require(initial["workspace"] == {**imported["workspace"], "savedRevision": 1},
