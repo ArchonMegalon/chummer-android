@@ -16,6 +16,7 @@
     <Compile Include="AndroidWorkspaceContinuationRoamingTests.cs" />
     <Compile Include="AndroidWorkspaceContinuationNativeTests.cs" />
     <Compile Include="TabletInspectorBindingTests.cs" />
+    <Compile Include="TabletSkillGroupInteractionTests.cs" />
     <Compile Include="LinkedCharacterBindingTests.cs" />
     <Compile Include="LinkedCharacterDurabilityTests.cs" />
     <Compile Include="LinkedCharacterIntentJournalTests.cs" />

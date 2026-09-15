@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "07a8fd215423ced5d1a839dde349daacbf31a3c429d6818676d6b0921981de3b"
+        "sha256": "885f06fe905c289102eabcde914ac444ec64d66e21aab1af4a22864c964e9791"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "4543467e991ead8ea8ed74a4bb115e5de02d143fe601df95d9534956d73dcbcc"
+        "sha256": "99ee6080c17b4936fc6ec86a219cd707b378dfe45327b6996e441cc83be8d0d6"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -747,17 +747,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "5164ff2de83ff03062ca8120eaae0455dc816864ec24c5bf07030e8496126d42"
+        "sha256": "2967dc6319fb577dedb3c75eac6c45bfbd4c505990c60c4f5e1571e3cad4cf01"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "f6fe40c037ebe3b06da1c8fd50fb77a068d8f90baaaf72416ff55737ce5d239a"
+        "sha256": "0cb91eabdbf858c2994c4b1ee766d4ad2b1b2a019b580abd3f717e57b33b476a"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "3aaa9e7f0eb1d353ac617d0e23c27057d9d3da744575023d09ffe29ffa91722c"
+        "sha256": "dfc76df0fd346f5b1fd1e01847a4a9fe4496194a405b3b22d4e70ac3fc9aa586"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "a1c19279957f0a0e53ca715119c339a628718e8e219f76527c528075f757fee3"
+        "sha256": "0a83b6fb0ec25ac922d7079791b47ad140c17d97f90716fe5966d5894d32037d"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "357f7da68037f878b919430116a07bd414c04e418c8d22dd5bf85a41ff1a811b"
+        "sha256": "d763fc04ab6eaaafc8ef59e42c4cbf858cb472a671c555c940aae30828e087ab"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -937,7 +937,7 @@
       {
         "path": "tests/test_api36_proof_environment_receipt.py",
         "exists": true,
-        "sha256": "d408478b96786630f4ddf98ffabf4c24ba0f7a61f86486e131d825797ada1416"
+        "sha256": "8f34cdaf7e3cc5ef42daeada4b658b31d874ae0b72d6ddc67d117ff278d5925e"
       },
       {
         "path": "tests/test_api36_two_green_eligibility.py",
@@ -1047,7 +1047,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "63d573d20dbd121f9e08dd3424378d7e71f5cd7769804ff745a4fc768c721366"
+        "sha256": "96456a7dc971ae4d380f97ad39327009d9bdb8553aa186f5d248756f5170f2e6"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
@@ -1482,7 +1482,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "3827a5347d24069dfcae37ef807a4afd33386bb1d3639fc3fa4311735a32cdcc"
+        "sha256": "0409ecb704104bb4f9d795a3c682171da68606ed078f204c0e4fab1670183378"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

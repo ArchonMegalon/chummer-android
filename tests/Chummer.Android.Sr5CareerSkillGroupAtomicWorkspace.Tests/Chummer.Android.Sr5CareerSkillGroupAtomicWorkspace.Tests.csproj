@@ -10,6 +10,14 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="AtomicWorkspaceCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Owners/OwnerScope.cs"
+             Link="Core/OwnerScope.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/OwnerContextStamp.cs" Link="Core/OwnerContextStamp.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/IOwnerContextAccessor.cs" Link="Core/IOwnerContextAccessor.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/IOwnerContextLeaseAccessor.cs" Link="Core/IOwnerContextLeaseAccessor.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/IOwnerContextLease.cs" Link="Core/IOwnerContextLease.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Infrastructure/Owners/LocalOwnerContextAccessor.cs" Link="Core/LocalOwnerContextAccessor.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/AndroidOwnerBoundCareerSkillGroupService.cs" Link="Native/AndroidOwnerBoundCareerSkillGroupService.cs" />
     <Compile Include="../../src/Chummer.Android/Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs"
              Link="Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceRules.cs"

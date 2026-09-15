@@ -113,7 +113,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "AdvanceCareerSkillGroupAsync",
             "ICharacterCareerSkillGroupAdvanceService",
             "CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest",
-            "service.Advance(command)",
+            "bound.Advance(expectedOwner.Value, command)",
             "State.ContentRevision != result.CurrentWorkspaceRevision",
             "State.SavedRevision != result.CurrentWorkspaceRevision",
             "!State.IsDirty",

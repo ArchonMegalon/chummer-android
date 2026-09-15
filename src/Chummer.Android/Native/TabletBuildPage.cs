@@ -1,4 +1,5 @@
 using System.Globalization;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Rulesets;
@@ -43,9 +44,21 @@ public sealed partial class TabletBuildPage : NativePageBase
     }
 
     internal TabletBuildPage(RunnerSessionCoordinator coordinator,
-        Func<string, string, string, string, Task<bool>>? confirm) : base(coordinator)
+        Func<string, string, string, string, Task<bool>>? confirm,
+        Func<ISr5CareerReviewedCheckpointAuthority, Sr5CareerDraftCheckpointStore>? activeSkillStoreFactory = null,
+        ISr5CareerCheckpointOwnerAuthority? activeSkillOwner = null,
+        Func<Func<Task<bool>>, Task<bool>>? activeSkillDispatch = null,
+        Func<ISr5CareerSkillGroupCheckpointAuthority, Sr5CareerSkillGroupCheckpointStore>? skillGroupStoreFactory = null,
+        ISr5CareerCheckpointOwnerAuthority? skillGroupOwner = null,
+        Func<Func<Task<CharacterCareerSkillGroupAdvanceResult?>>, Task<CharacterCareerSkillGroupAdvanceResult?>>? skillGroupDispatch = null) : base(coordinator)
     {
         _confirm = confirm ?? ((title, message, accept, cancel) => DisplayAlertAsync(title, message, accept, cancel));
+        _activeSkillStoreFactory = activeSkillStoreFactory ?? Sr5CareerDraftCheckpointStore.CreateDefault;
+        _activeSkillOwner = activeSkillOwner;
+        _activeSkillDispatch = activeSkillDispatch ?? (action => Microsoft.Maui.Dispatching.DispatcherExtensions.DispatchAsync(Dispatcher, action));
+        _skillGroupStoreFactory = skillGroupStoreFactory ?? Sr5CareerSkillGroupCheckpointStore.CreateDefault;
+        _skillGroupOwner = skillGroupOwner;
+        _skillGroupDispatch = skillGroupDispatch ?? (action => Microsoft.Maui.Dispatching.DispatcherExtensions.DispatchAsync(Dispatcher, action));
         Title = "Build";
         AutomationId = "tablet-build-page";
         _navigationPane = CreatePane(_navigation, "tablet-build-navigation-pane");
@@ -80,6 +93,9 @@ public sealed partial class TabletBuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        InvalidateTabletActiveSkillReview();
+        InvalidateTabletSkillGroupReview();
+        _skillGroupLoadOperation?.Cancel();
         CaptureInspectorDraft();
         Coordinator.TabletInspectorDrafts.Release(_draftLease);
         _draftLease = 0;
@@ -213,6 +229,8 @@ public sealed partial class TabletBuildPage : NativePageBase
                 : RunnerSessionCoordinator.HumanizeId(editor.NestedKind?.ToString() ?? editor.Kind.ToString()),
             23));
 
+        if (AddTabletSkillGroupCollection(state, generation)) return;
+
         if (Coordinator.State.ActiveConditionMonitor is { } conditionMonitor)
         {
             foreach (ConditionMonitorTrackState track in conditionMonitor.Tracks)
@@ -307,6 +325,7 @@ public sealed partial class TabletBuildPage : NativePageBase
                 () =>
                 {
                     if (!IsCurrentCollection(generation, state)) return Task.CompletedTask;
+                    _selectedSkillGroup = null;
                     _selectedTarget = item.Target;
                     BuildCollectionPane(editor);
                     BuildInspectorPane(editor);
@@ -320,6 +339,8 @@ public sealed partial class TabletBuildPage : NativePageBase
 
     private void BuildInspectorPane(WorkspaceCollectionEditorState? editor)
     {
+        InvalidateTabletActiveSkillReview();
+        InvalidateTabletSkillGroupReview();
         CaptureInspectorDraft();
         _renderedDraft = null;
         _draftConflict = false;
@@ -338,6 +359,8 @@ public sealed partial class TabletBuildPage : NativePageBase
         _vehiclePhysicalDamagePicker = null;
         _matrixDamagePicker = null;
         _inspector.Add(NativeTheme.Eyebrow("Inspector"));
+
+        if (BuildTabletSkillGroupInspector(state, generation)) return;
 
         if (Coordinator.State.ActiveConditionMonitor is { } conditionMonitor)
         {
@@ -372,6 +395,7 @@ public sealed partial class TabletBuildPage : NativePageBase
         }
 
         _inspector.Add(NativeTheme.Title(item.Label, 23));
+        AddTabletActiveSkillInspector(item, state, generation);
         foreach (WorkspaceCollectionTextValueState value in item.TextValues)
         {
             AddTextInput(value);

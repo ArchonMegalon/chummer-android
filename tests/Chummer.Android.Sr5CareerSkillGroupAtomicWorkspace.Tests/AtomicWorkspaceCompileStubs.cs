@@ -40,6 +40,7 @@ namespace Chummer.Contracts.Workspaces
 
 namespace Chummer.Application.Workspaces
 {
+    using Chummer.Contracts.Owners;
     using Chummer.Contracts.Workspaces;
 
     public readonly record struct WorkspaceStoreEntry(
@@ -75,10 +76,22 @@ namespace Chummer.Application.Workspaces
     {
         WorkspaceStoreReadResult Get(CharacterWorkspaceId id);
 
+        // This standalone fixture proves only its local partition. Account
+        // overloads must never silently delegate to that local fixture store.
+        WorkspaceStoreReadResult Get(OwnerScope owner, CharacterWorkspaceId id)
+            => throw new NotSupportedException("Account partitions require the full native owner tests.");
+
         WorkspaceStoreMutationResult ReplaceWorkspaceDocumentAndCheckpoint(
             CharacterWorkspaceId id,
             long expectedContentRevision,
             WorkspaceDocument document);
+
+        WorkspaceStoreMutationResult ReplaceWorkspaceDocumentAndCheckpoint(
+            OwnerScope owner,
+            CharacterWorkspaceId id,
+            long expectedContentRevision,
+            WorkspaceDocument document)
+            => throw new NotSupportedException("Account partitions require the full native owner tests.");
     }
 }
 

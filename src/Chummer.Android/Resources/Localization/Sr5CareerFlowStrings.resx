@@ -1025,4 +1025,6 @@ Preview: {3}…</value></data>
   <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.</value></data>
   <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
   <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
+  <data name="Active skills" xml:space="preserve"><value>Active skills</value></data>
+  <data name="Another owner, workspace, revision, or skill-group action owns the checkpoint." xml:space="preserve"><value>Another owner, workspace, revision, or skill-group action owns the checkpoint.</value></data>
 </root>

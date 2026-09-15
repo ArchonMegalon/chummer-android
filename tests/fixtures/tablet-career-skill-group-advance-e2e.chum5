@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <name>TabletCareerSkillGroupE2E</name>
+  <alias>TabletCareerSkillGroupE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <gameedition>SR5</gameedition>
+  <karma>30</karma>
+  <nuyen>1000</nuyen>
+  <newskills>
+    <skillptsmax>0</skillptsmax>
+    <skillgrpsmax>0</skillgrpsmax>
+    <skills>
+      <skill>
+        <guid>aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1</guid>
+        <suid>788b387b-ee41-4e6a-bf22-481a8cc4cf9f</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Combat Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>target-firearms-automatics-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2</guid>
+        <suid>64088b25-de37-4d71-8800-4a430fde08af</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Combat Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>target-firearms-longarms-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3</guid>
+        <suid>adf31a50-b228-4e09-a09c-46ab9f5e59a1</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Combat Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>target-firearms-pistols-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1</guid>
+        <suid>1c14bf0d-cc69-4126-9a95-1f2429c11aa5</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Technical Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>decoy-electronics-computer-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2</guid>
+        <suid>41e184e0-7273-403a-9300-fa29a1707bf0</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Technical Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>decoy-electronics-hardware-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3</guid>
+        <suid>b693f3bf-48dc-4570-9743-d94d14ee698b</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Technical Active</skillcategory>
+        <base>0</base>
+        <karma>0</karma>
+        <notes>decoy-electronics-software-must-survive</notes>
+      </skill>
+    </skills>
+    <knoskills />
+    <skilljackknowledgeskills />
+    <groups>
+      <group>
+        <id>11111111-1111-4111-8111-111111111111</id>
+        <name>Firearms</name>
+        <base>0</base>
+        <karma>1</karma>
+        <isbroken>False</isbroken>
+        <notes>target-firearms-group-must-survive</notes>
+      </group>
+      <group>
+        <id>22222222-2222-4222-8222-222222222222</id>
+        <name>Electronics</name>
+        <base>0</base>
+        <karma>1</karma>
+        <isbroken>False</isbroken>
+        <notes>decoy-electronics-group-must-survive</notes>
+      </group>
+    </groups>
+  </newskills>
+  <improvements />
+  <expenses>
+    <expense>
+      <guid>cccccccc-cccc-4ccc-8ccc-cccccccccccc</guid>
+      <date>2081-05-01T08:00:00</date>
+      <amount>-1</amount>
+      <reason>Older expense</reason>
+      <type>Karma</type>
+      <refund>False</refund>
+      <forcecareervisible>False</forcecareervisible>
+    </expense>
+  </expenses>
+  <customstate>
+    <sentinel guid="nested-sentinel">keep-nested-structure</sentinel>
+  </customstate>
+</character>

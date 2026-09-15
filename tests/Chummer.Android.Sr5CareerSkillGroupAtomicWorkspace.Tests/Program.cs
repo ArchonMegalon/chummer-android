@@ -5,6 +5,8 @@ using Chummer.Application.Characters;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using Chummer.Application.Owners;
+using Chummer.Infrastructure.Owners;
 
 namespace Chummer.Android.Sr5CareerSkillGroupAtomicWorkspace.Tests;
 
@@ -32,6 +34,7 @@ internal static class Program
         Unknown_store_outcome_recovers_persisted_receipt();
         Stale_revision_and_corrupt_ledger_never_mutate();
         Missing_settings_authority_fails_closed();
+        Owner_bound_service_rejects_ambient_and_foreign_stamps();
         Console.WriteLine("SR5 Career skill-group atomic workspace tests passed.");
         return 0;
     }
@@ -76,6 +79,37 @@ internal static class Program
             "The exact applied-result digest must be durable.");
         Check(CharacterCareerSkillGroupAdvanceRules.IsCoherent(result.Receipt),
             "The returned receipt must remain Core-coherent.");
+    }
+
+    private static void Owner_bound_service_rejects_ambient_and_foreign_stamps()
+    {
+        TestWorkspaceStore store = Store();
+        var owner = new LocalOwnerContextAccessor();
+        var service = new AndroidOwnerBoundCareerSkillGroupService(
+            store, new SkillSourceResolver(), new SettingsCatalog(SettingsCatalogJson()), owner);
+        CharacterCareerSkillGroupAdvanceCommand command = Command(Service(store));
+        bool rejected = false;
+        try { service.Advance(command); }
+        catch (InvalidOperationException) { rejected = true; }
+        Check(rejected && store.AtomicReplaceCount == 0, "Ambient owner access authorized an unbound command.");
+        OwnerContextStamp stamp = owner.Capture();
+        foreach (OwnerContextStamp invalid in new[]
+        {
+            default(OwnerContextStamp), stamp with { TransitionRevision = stamp.TransitionRevision + 1 },
+            new LocalOwnerContextAccessor().Capture()
+        })
+        {
+            rejected = false;
+            try { service.Advance(invalid, command); }
+            catch (OperationCanceledException) { rejected = true; }
+            Check(rejected && store.AtomicReplaceCount == 0, "A stale or foreign issuer authorized a group mutation.");
+        }
+        Check(service.Quote(new(WorkspaceId, GroupIdentity)).Binding is not null,
+            "The bound service lost the actual Core quote.");
+        Check(service.Advance(stamp, command).Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Applied
+            && service.Advance(stamp, command).Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed
+            && store.AtomicReplaceCount == 1, "Bound dispatch/recovery failed or produced a duplicate mutation.");
+        Console.WriteLine("PASS bound skill-group Core dispatch: actual immutable local issuer; controlled store/source, not account/device proof");
     }
 
     private static void Restart_replays_before_stale_revision_and_collision_fails_closed()

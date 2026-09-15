@@ -1210,6 +1210,9 @@ class Api36ProofEnvironmentSourceContractTests(unittest.TestCase):
 
     def test_workflow_captures_build_environment_with_pinned_java_and_dotnet(self) -> None:
         workflow = (REPO / ".github/workflows/api36-editing-e2e.yml").read_text()
+        # The optional tablet job has its own raw engineering observation. These
+        # exact counts continue to govern the unchanged build/phone authority.
+        workflow = workflow.split("\n  tablet-skill-group-e2e:\n", 1)[0]
         self.assertEqual(
             2,
             workflow.count(
