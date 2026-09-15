@@ -684,6 +684,14 @@ internal static class TabletSkillGroupInteractionTests
     private sealed class Sources : ICharacterSourceDataResolver, ICharacterSourceDataContext
     {
         public ICharacterSourceDataContext? TryCreateContext(string characterXml) => this;
+        public bool TryResolveCyberwareGradeDeviceRating(
+            string gradeName, string improvementSource, out int deviceRating)
+            => throw new InvalidOperationException("The skill-group fixture must not resolve cyberware grades.");
+
+        public bool TryResolveVehicleModBonuses(
+            string sourceId, string name, out CharacterVehicleModSourceBonuses bonuses)
+            => throw new InvalidOperationException("The skill-group fixture must not resolve vehicle modifications.");
+
         public bool TryResolveActiveSkillSource(string sourceSkillId, out CharacterActiveSkillSource source)
         {
             if (!Guid.TryParse(sourceSkillId, out Guid id) || id != SourceA && id != SourceB)
