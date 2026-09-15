@@ -268,6 +268,24 @@ def tablet_environment(device: shared.Device) -> dict:
             "configuration": configuration, "deviceKind": "tablet-profile-emulator"}
 
 
+def tablet_composition(nodes: list) -> dict:
+    """Bind three nonoverlapping panes from one hierarchy, not a profile name."""
+    result = {}
+    for part in ("navigation", "collection", "inspector"):
+        matches = [node for node in nodes if shared.Device._has_exact_resource_id(
+            node, "tablet-build-" + part + "-pane")]
+        require(len(matches) == 1, f"Missing or duplicate tablet {part} pane")
+        match = shared.BOUNDS.fullmatch(matches[0].attributes.get("bounds", ""))
+        require(match is not None, f"Invalid tablet {part} bounds")
+        result[part] = list(map(int, match.groups()))
+    bounds = list(result.values())
+    require(all(x2 > x1 and y2 > y1 for x1, y1, x2, y2 in bounds)
+            and bounds[0][2] <= bounds[1][0] and bounds[1][2] <= bounds[2][0]
+            and max(b[1] for b in bounds) < min(b[3] for b in bounds),
+            "Tablet master/detail panes are not simultaneously laid out")
+    return result
+
+
 def preferences(device: shared.Device) -> dict[str, str]:
     listing = device.shell("run-as", shared.PACKAGE, "find", "shared_prefs", "-type", "f", "-name", "*.xml")
     found: dict[str, str] = {}
@@ -318,6 +336,7 @@ class Journey:
         self.selection: Selection | None = None
         self.state: dict | None = None
         self.issued: dict[str, str] = {}
+        self.composition_observations: list[dict] = []
 
     def tap(self, selector: str) -> None:
         node = self.device.wait_exact_resource_id_bidirectional(
@@ -386,12 +405,10 @@ class Journey:
 
     def open_groups(self) -> None:
         self.destination("Build")
-        panes = [self.device.wait_for_single_exact_resource_id("tablet-build-" + part + "-pane")
-                 for part in ("navigation", "collection", "inspector")]
-        bounds = [tuple(map(int, shared.BOUNDS.fullmatch(p.attributes["bounds"]).groups())) for p in panes]
-        require(all(x2 > x1 and y2 > y1 for x1, y1, x2, y2 in bounds)
-                and bounds[0][2] <= bounds[1][0] and bounds[1][2] <= bounds[2][0],
-                "Tablet master/detail panes are not simultaneously laid out")
+        for part in ("navigation", "collection", "inspector"):
+            self.device.wait_for_single_exact_resource_id("tablet-build-" + part + "-pane")
+        self.composition_observations.append({"selectionGeneration": self.generation,
+            "paneBounds": tablet_composition(self.device.hierarchy())})
         self.tap("tablet-build-tab-tab-skills")
         self.tap("tablet-build-action-tab-skills-skills")
         self.tap("tablet-career-skill-groups-load")
@@ -514,6 +531,7 @@ class Journey:
         require(CHECKPOINT_KEY not in preferences(self.device), "Acknowledgment did not remove applied checkpoint")
         return {"status": "device-pass", "executionStatus": "executed", "workspace": saved["workspace"],
                 "transactionId": receipt["TransactionId"], "receiptDigest": receipt["ReceiptDigest"],
+                "tabletCompositionObservations": list(self.composition_observations),
                 **self.gesture_receipt(),
                 "checks": ["tablet-master-detail-identity", "typed-three-member-group-quote", "reviewed-reselection",
                            "atomic-saved-successor", "same-process-reopen", "new-process-reselection", "no-duplicate-saved-mutation"]}

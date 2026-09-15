@@ -77,13 +77,14 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertNotIn("three-journey aggregate", self.play_release_text)
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
-        self.assertIn("api-level: 36", self.text)
-        self.assertIn("CHUMMER_E2E_PROFILE: phone", self.text)
-        self.assertIn("profile: pixel_6", self.text)
-        self.assertNotIn("profile: pixel_c", self.text)
-        self.assertNotIn("matrix.profile", self.text)
-        self.assertIn("launches only pixel_6", self.text)
-        self.assertIn("makes no tablet-readiness claim", self.text)
+        phone = self.text.split("\n  phone-wizard-e2e:\n", 1)[1].split("\n  phone-evidence-aggregate:\n", 1)[0]
+        self.assertIn("api-level: 36", phone)
+        self.assertIn("CHUMMER_E2E_PROFILE: phone", phone)
+        self.assertIn("profile: pixel_6", phone)
+        self.assertNotIn("profile: pixel_c", phone)
+        self.assertNotIn("matrix.profile", phone)
+        self.assertIn("launches only pixel_6", phone)
+        self.assertIn("makes no tablet-readiness claim", phone)
 
     def test_design_policy_pin_applies_to_build_aggregate_and_ordered_replay(self) -> None:
         pin = json.loads((REPO_ROOT / "eng/design-policy-authority.json").read_bytes())["design"]

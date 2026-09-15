@@ -23,6 +23,12 @@ on:
       - "src/**"
       - "tests/**"
   workflow_dispatch:
+    inputs:
+      run_tablet_skill_group:
+        description: Run supplemental native tablet Skill Group proof (not Preview.12 phone authority)
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   actions: read
@@ -709,6 +715,84 @@ jobs:
           name: chummer-android-p0-pr-authority-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chummer-android-p0-pr-authority/ANDROID_P0_PR_AUTHORITY.generated.json
           if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+
+  tablet-skill-group-e2e:
+    # Explicit supplemental engineering evidence; never a phone aggregate dependency.
+    name: Optional tablet API 36 x64 Skill Group persistence
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_tablet_skill_group == true }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CHUMMER_TABLET_SKILL_GROUP_OPT_IN: ${{ inputs.run_tablet_skill_group }}
+      CHUMMER_E2E_PROFILE: tablet
+      CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
+      CHUMMER_E2E_APK_ARTIFACT_DIGEST: ${{ needs.build.outputs.apk-artifact-digest }}
+      CHUMMER_E2E_APK_ARTIFACT_NAME: ${{ needs.build.outputs.apk-artifact-name }}
+      CHUMMER_E2E_APK_ARTIFACT_ATTEMPT: ${{ needs.build.outputs.apk-artifact-attempt }}
+      CHUMMER_E2E_APK_SHA256: ${{ needs.build.outputs.apk-sha256 }}
+    steps:
+      - name: Check out the exact tablet driver
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Install the governed tablet Java runtime
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download the exact shared proof APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.apk-artifact-id }}
+          path: ${{ runner.temp }}/chummer-android-apk
+          merge-multiple: true
+
+      - name: Verify tablet opt-in and shared artifact before emulator launch
+        run: python3 chummer-android/scripts/run-api36-tablet-skill-group-ci.py --preflight-only
+
+      - name: Enable KVM for the disposable tablet emulator
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the native tablet Skill Group journey
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_c
+          avd-name: test
+          force-avd-creation: true
+          # The pinned action owns HOME/.android/avd in this fresh hosted job.
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none -camera-front none -no-snapshot-save
+            -cores 2 -memory 2048
+            -stdouterr-file $RUNNER_TEMP/chummer-api36-emulator-live.log
+          disable-animations: true
+          pre-emulator-launch-script: python3 chummer-android/scripts/prepare-api36-emulator-live-log.py
+          script: python3 chummer-android/scripts/run-api36-tablet-skill-group-ci.py
+
+      - name: Upload supplemental tablet evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-api36-tablet-skill-group-x64-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-api36-tablet-skill-group-evidence
+          if-no-files-found: warn
           retention-days: 30
           compression-level: 0
           overwrite: false
