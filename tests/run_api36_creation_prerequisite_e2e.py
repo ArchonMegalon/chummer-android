@@ -1764,7 +1764,7 @@ class CreationDashboardContinuityGuard:
 
         The existing shared scanner owns bounded file-hierarchy acquisition.
         An absent dump is not a new route: it cannot establish entry, advance
-        the viewport, or replace the originally verified restart identity.
+        the viewport, or replace the originally verified launch identity.
         Every real frame still passes the exact continuity guard.
         """
         if not self._resources_acquisition:
@@ -10536,7 +10536,7 @@ def open_resources(
         # prove exact dashboard entry before a target or gesture is admitted.
         # Do not add a one-shot read here: an unavailable dump is not evidence
         # of route loss, and the caller's older UiNode is not fresh authority.
-        # The guard retains restart.restarted, never an arbitrary current PID.
+        # The guard retains the proven launch identity, never an arbitrary current PID.
         continuity_options["continuity_check"] = continuity_guard.require_resources_scan
     if observed_dashboard is not None:
         _require_canonical_chummer_resource_id(
@@ -12305,6 +12305,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     resources_initial_deadline = progress.active_phase_deadline(
         "resources-initial-authority"
     )
+    initial_resources_continuity = CreationDashboardContinuityGuard(
+        device,
+        initial_launch,
+        deadline=resources_initial_deadline,
+        phase_id="resources-initial-authority",
+        resources_acquisition=True,
+    )
     device.back(deadline=resources_initial_deadline)
     resources_dashboard = shared.open_creation_dashboard(
         device,
@@ -12318,6 +12325,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         deadline=resources_initial_deadline,
         observed_dashboard=resources_dashboard,
         authority_scan_owns_origin=True,
+        continuity_guard=initial_resources_continuity,
     )
     resources_before, resources_zero_option = read_resources_binding_with_zero_option(
         device,
