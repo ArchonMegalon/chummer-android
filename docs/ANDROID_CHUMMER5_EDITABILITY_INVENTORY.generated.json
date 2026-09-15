@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "07a8fd215423ced5d1a839dde349daacbf31a3c429d6818676d6b0921981de3b"
+        "sha256": "885f06fe905c289102eabcde914ac444ec64d66e21aab1af4a22864c964e9791"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "4543467e991ead8ea8ed74a4bb115e5de02d143fe601df95d9534956d73dcbcc"
+        "sha256": "99ee6080c17b4936fc6ec86a219cd707b378dfe45327b6996e441cc83be8d0d6"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -747,17 +747,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "5164ff2de83ff03062ca8120eaae0455dc816864ec24c5bf07030e8496126d42"
+        "sha256": "2967dc6319fb577dedb3c75eac6c45bfbd4c505990c60c4f5e1571e3cad4cf01"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "f6fe40c037ebe3b06da1c8fd50fb77a068d8f90baaaf72416ff55737ce5d239a"
+        "sha256": "0cb91eabdbf858c2994c4b1ee766d4ad2b1b2a019b580abd3f717e57b33b476a"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "3aaa9e7f0eb1d353ac617d0e23c27057d9d3da744575023d09ffe29ffa91722c"
+        "sha256": "dfc76df0fd346f5b1fd1e01847a4a9fe4496194a405b3b22d4e70ac3fc9aa586"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -1047,7 +1047,7 @@
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "e66b9a09c611ef72a120d78948e70733e27286745789590c156035967c84f689"
+        "sha256": "96456a7dc971ae4d380f97ad39327009d9bdb8553aa186f5d248756f5170f2e6"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",

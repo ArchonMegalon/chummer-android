@@ -106,8 +106,6 @@ public static class MauiProgram
             provider.GetRequiredService<Sr5AfterRunManualProposalSource>());
         builder.Services.AddSingleton<IAndroidCareerSkillGroupSettingsCatalog,
             PreferencesAndroidCareerSkillGroupSettingsCatalog>();
-        builder.Services.AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,
-            AndroidCharacterCareerSkillGroupAdvanceWorkspace>();
         builder.Services.AddChummerLocalRuntimeClient(
             contentPath,
             contentPath,
@@ -121,6 +119,9 @@ public static class MauiProgram
             provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
         builder.Services.AddSingleton<IOwnerContextLeaseAccessor>(provider =>
             provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
+        builder.Services.RemoveAll<ICharacterCareerSkillGroupAdvanceService>();
+        builder.Services.AddSingleton<ICharacterCareerSkillGroupAdvanceService,
+            AndroidOwnerBoundCareerSkillGroupService>();
         builder.Services.RemoveAll<IDesktopWorkspaceRoamingSync>();
         builder.Services.RemoveAll<IOwnerBoundDesktopWorkspaceRoamingSync>();
         builder.Services.AddSingleton<AndroidWorkspaceContinuationRoamingSync>(provider => new(

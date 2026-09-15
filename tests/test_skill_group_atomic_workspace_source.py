@@ -41,16 +41,19 @@ class SkillGroupAtomicWorkspaceSourceTests(unittest.TestCase):
         self.assertIn("TryComputeResultDigest", self.adapter)
         self.assertIn("TryCreateReceipt", self.adapter)
 
-    def test_android_composition_overrides_core_fail_closed_default_before_runtime(self) -> None:
+    def test_android_composition_uses_owner_bound_core_service_after_real_owner_registration(self) -> None:
         registration = (
-            "AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,\n"
-            "            AndroidCharacterCareerSkillGroupAdvanceWorkspace>()"
+            "AddSingleton<ICharacterCareerSkillGroupAdvanceService,\n"
+            "            AndroidOwnerBoundCareerSkillGroupService>()"
         )
         self.assertIn(registration, self.composition)
-        self.assertLess(
+        self.assertGreater(
             self.composition.index(registration),
-            self.composition.index("AddChummerLocalRuntimeClient("),
+            self.composition.index("AddSingleton<AndroidAccountOwnerContextAccessor>()"),
         )
+        self.assertNotIn("AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,", self.composition)
+        self.assertIn("_store.Get(_owner, workspaceId)", self.adapter)
+        self.assertIn("_owner, request.WorkspaceId, request.ExpectedWorkspaceRevision, replacement", self.adapter)
 
 
 if __name__ == "__main__":

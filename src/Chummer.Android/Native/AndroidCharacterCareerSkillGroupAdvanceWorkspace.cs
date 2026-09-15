@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using Chummer.Application.Characters;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
@@ -41,16 +42,19 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
     private readonly IWorkspaceStore _store;
     private readonly ICharacterSourceDataResolver _sourceData;
     private readonly IAndroidCareerSkillGroupSettingsCatalog _settingsCatalog;
+    private readonly OwnerScope _owner;
 
     public AndroidCharacterCareerSkillGroupAdvanceWorkspace(
         IWorkspaceStore store,
         ICharacterSourceDataResolver sourceData,
-        IAndroidCareerSkillGroupSettingsCatalog settingsCatalog)
+        IAndroidCareerSkillGroupSettingsCatalog settingsCatalog,
+        OwnerScope? owner = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _sourceData = sourceData ?? throw new ArgumentNullException(nameof(sourceData));
         _settingsCatalog = settingsCatalog
             ?? throw new ArgumentNullException(nameof(settingsCatalog));
+        _owner = owner ?? OwnerScope.LocalSingleUser;
     }
 
     public CharacterCareerSkillGroupWorkspaceReadResult Read(
@@ -241,10 +245,11 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
                 WorkspaceStoreMutationResult committed;
                 try
                 {
-                    committed = _store.ReplaceWorkspaceDocumentAndCheckpoint(
-                        request.WorkspaceId,
-                        request.ExpectedWorkspaceRevision,
-                        replacement);
+                    committed = _owner == OwnerScope.LocalSingleUser
+                        ? _store.ReplaceWorkspaceDocumentAndCheckpoint(
+                            request.WorkspaceId, request.ExpectedWorkspaceRevision, replacement)
+                        : _store.ReplaceWorkspaceDocumentAndCheckpoint(
+                            _owner, request.WorkspaceId, request.ExpectedWorkspaceRevision, replacement);
                 }
                 catch (Exception error) when (IsStoreFailure(error))
                 {
@@ -864,7 +869,8 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
     {
         try
         {
-            return _store.Get(workspaceId);
+            return _owner == OwnerScope.LocalSingleUser
+                ? _store.Get(workspaceId) : _store.Get(_owner, workspaceId);
         }
         catch (Exception error) when (IsStoreFailure(error))
         {

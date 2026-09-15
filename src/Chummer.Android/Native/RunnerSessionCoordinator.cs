@@ -5385,12 +5385,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     /// </summary>
     public async Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceCareerSkillGroupAsync(
         CharacterCareerSkillGroupAdvanceCommand command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        OwnerContextStamp? expectedOwner = null)
     {
         ArgumentNullException.ThrowIfNull(command);
+        expectedOwner ??= State.DisplayOwnerContext;
         if (!CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(
                 command,
                 out string commandDigest)
+            || expectedOwner is not { IsValid: true }
+            || State.DisplayOwnerContext != expectedOwner || State.Session.OwnerContext != expectedOwner
+            || !IsNativePersistenceOwnerCurrent(expectedOwner)
             || State.WorkspaceId != command.WorkspaceId
             || State.IsDirty
             || State.SavedRevision != State.ContentRevision
@@ -5402,14 +5407,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         ICharacterCareerSkillGroupAdvanceService? service = _careerSkillGroupService;
-        if (service is null)
+        if (service is not IAndroidOwnerBoundCareerSkillGroupService bound)
         {
             return null;
         }
 
         CharacterCareerSkillGroupAdvanceResult result = await Task.Run(
-            () => service.Advance(command),
+            () => bound.Advance(expectedOwner.Value, command),
             cancellationToken).ConfigureAwait(false);
+        if (!IsNativePersistenceOwnerCurrent(expectedOwner)
+            || State.DisplayOwnerContext != expectedOwner || State.Session.OwnerContext != expectedOwner)
+            throw new OperationCanceledException("The skill-group result belongs to a retired owner.", cancellationToken);
         if (!string.Equals(result.ContractName,
                 CharacterCareerSkillGroupAdvanceServiceSchemas.ResultV1,
                 StringComparison.Ordinal)
@@ -5429,6 +5437,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             await _presenter.LoadAsync(command.WorkspaceId, cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        if (!IsNativePersistenceOwnerCurrent(expectedOwner)
+            || State.DisplayOwnerContext != expectedOwner || State.Session.OwnerContext != expectedOwner)
+            throw new OperationCanceledException("The restored skill-group result belongs to a retired owner.", cancellationToken);
 
         if (result.Outcome is CharacterCareerSkillGroupAdvanceServiceOutcome.Applied
                 or CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed)

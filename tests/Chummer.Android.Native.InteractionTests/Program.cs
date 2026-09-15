@@ -147,6 +147,11 @@ internal static class Program
             await TabletInspectorBindingTests.RunAsync();
             return;
         }
+        if (args.Length == 1 && args[0] == "--tablet-skill-group")
+        {
+            await TabletSkillGroupInteractionTests.RunAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--linked-character-runtime-content-root")
         {
             await AfterRunAuthorityHarness.RunLinkedCharacterNativeRuntimeCasesAsync(args[1]);
@@ -177,6 +182,7 @@ internal static class Program
         (string Name, Func<Task> Run)[] tests =
         [
             (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
+            (nameof(TabletSkillGroupInteractionTests.RunAsync), TabletSkillGroupInteractionTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync), AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync),

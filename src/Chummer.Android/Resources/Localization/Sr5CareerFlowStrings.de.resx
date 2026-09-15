@@ -1025,4 +1025,6 @@ Vorschau: {3}…</value></data>
   <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Gespeicherte Prüfung für {0} (Runner-Stand {1}) verwerfen? Das entfernt nur die lokale Prüfung, keine Runner-Daten oder Vorschlagsfreigaben.</value></data>
   <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
   <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
+  <data name="Active skills" xml:space="preserve"><value>Aktionsfertigkeiten</value></data>
+  <data name="Another owner, workspace, revision, or skill-group action owns the checkpoint." xml:space="preserve"><value>Der Checkpoint gehört zu einem anderen Besitzer, Arbeitsbereich, Stand oder Fertigkeitsgruppen-Vorgang.</value></data>
 </root>

@@ -12,6 +12,40 @@ using Chummer.Infrastructure.Workspaces;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunTabletSkillGroupActualOwnerCasesAsync()
+    {
+        foreach (bool linked in new[] { false, true })
+        {
+            using var fixture = new ActualAccountFixture();
+            await fixture.Owner.InitializeAsync();
+            if (linked) await fixture.LinkAsync("skill-group-owner", "skill-group-grant-1");
+            await TabletSkillGroupInteractionTests.AssertActualOwnerRetirementBeforeDispatchAsync(
+                fixture.Owner, async () =>
+                {
+                    if (linked)
+                    {
+                        await fixture.Account.UnlinkAsync();
+                        await fixture.LinkAsync("skill-group-owner", "skill-group-grant-2");
+                    }
+                    else
+                    {
+                        await fixture.LinkAsync("skill-group-owner", "skill-group-grant-1");
+                        await fixture.Account.UnlinkAsync();
+                    }
+                });
+        }
+        foreach (bool linked in new[] { false, true })
+        {
+            using var fixture = new ActualAccountFixture();
+            await fixture.Owner.InitializeAsync();
+            if (linked) await fixture.LinkAsync("skill-group-owner", "skill-group-grant-1");
+            await TabletSkillGroupInteractionTests.AssertActualOwnerWriterExcludedFromCommitAsync(
+                fixture.Owner, linked ? () => fixture.Account.UnlinkAsync()
+                    : () => fixture.LinkAsync("skill-group-owner", "skill-group-grant-2"));
+        }
+        Console.WriteLine("PASS tablet skill-group real Android owner ABA and credential-writer exclusion; partitioned controlled CAS, not device persistence");
+    }
+
     public static async Task RunAndroidAccountOwnerCasesAsync(string contentRoot)
     {
         await RunOpaqueAccountOwnerKeyCasesAsync();
