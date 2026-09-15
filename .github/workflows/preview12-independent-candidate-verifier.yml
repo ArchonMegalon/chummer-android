@@ -1,0 +1,371 @@
+name: Preview.12 independent candidate rebuild verifier
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_main_sha:
+        description: Exact refs/heads/main commit used by the producer
+        required: true
+        type: string
+      producer_run_id:
+        description: Exact successful Preview.12 producer workflow run
+        required: true
+        type: string
+      producer_artifact_id:
+        description: Exact unsigned candidate artifact ID
+        required: true
+        type: string
+      producer_artifact_digest:
+        description: Exact GitHub artifact sha256 digest including prefix
+        required: true
+        type: string
+      producer_receipt_sha256:
+        description: Exact extracted producer receipt SHA-256
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: preview12-independent-verifier-${{ inputs.expected_main_sha }}-${{ inputs.producer_artifact_id }}
+  cancel-in-progress: false
+
+jobs:
+  independently-rebuild-and-verify:
+    name: Independently rebuild and compare Preview.12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      DOTNET_MULTILEVEL_LOOKUP: "0"
+    steps:
+      - name: Require explicit dormant-lane pins
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          PRODUCER_RUN_ID: ${{ inputs.producer_run_id }}
+          PRODUCER_ARTIFACT_ID: ${{ inputs.producer_artifact_id }}
+          PRODUCER_ARTIFACT_DIGEST: ${{ inputs.producer_artifact_digest }}
+          PRODUCER_RECEIPT_SHA256: ${{ inputs.producer_receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$EXPECTED_MAIN_SHA"
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$PRODUCER_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$PRODUCER_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$PRODUCER_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$PRODUCER_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$PRODUCER_RUN_ID" != "$GITHUB_RUN_ID"
+
+      - name: Check out the exact main candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.expected_main_sha }}
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Authenticate and download the exact producer artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          PRODUCER_RUN_ID: ${{ inputs.producer_run_id }}
+          PRODUCER_ARTIFACT_ID: ${{ inputs.producer_artifact_id }}
+          PRODUCER_ARTIFACT_DIGEST: ${{ inputs.producer_artifact_digest }}
+          PRODUCER_RECEIPT_SHA256: ${{ inputs.producer_receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/preview12-producer-input"
+          install -d -m 0700 "$evidence"
+          gh api -H 'Accept: application/vnd.github+json' \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$PRODUCER_RUN_ID" >"$evidence/run.json"
+          jq -e --arg sha "$EXPECTED_MAIN_SHA" \
+            '.status == "completed" and .conclusion == "success" and
+             .event == "workflow_dispatch" and .head_branch == "main" and
+             .head_sha == $sha and
+             .path == ".github/workflows/preview12-unsigned-candidate-producer.yml"' \
+            "$evidence/run.json" >/dev/null
+          gh api -H 'Accept: application/vnd.github+json' \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts/$PRODUCER_ARTIFACT_ID" \
+            >"$evidence/artifact.json"
+          jq -e --argjson run "$PRODUCER_RUN_ID" \
+            --argjson artifact "$PRODUCER_ARTIFACT_ID" \
+            --arg digest "$PRODUCER_ARTIFACT_DIGEST" \
+            '.id == $artifact and .workflow_run.id == $run and .expired == false and
+             (.size_in_bytes | type == "number" and . > 0 and . <= 603979776) and
+             (.name | startswith("chummer-android-preview12-unsigned-candidate-")) and
+             .digest == $digest' "$evidence/artifact.json" >/dev/null
+          gh api -H 'Accept: application/vnd.github+json' \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts/$PRODUCER_ARTIFACT_ID/zip" \
+            >"$evidence/artifact.zip"
+          test "$(sha256sum "$evidence/artifact.zip" | cut -d ' ' -f 1)" \
+            = "${PRODUCER_ARTIFACT_DIGEST#sha256:}"
+          python3 -I -E -S - "$evidence/artifact.zip" "$evidence" <<'PY'
+          import os, pathlib, stat, sys, zipfile
+          source, output = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+          limits = {
+              "chummer-android-0.1.0-preview.12-unsigned.aab": 512 * 1024 * 1024,
+              "AndroidManifest.xml": 16 * 1024 * 1024,
+              "PREVIEW12_TOOLCHAIN.generated.json": 16 * 1024 * 1024,
+              "PREVIEW12_UNSIGNED_CANDIDATE.generated.json": 16 * 1024 * 1024,
+              "ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json": 16 * 1024 * 1024,
+              "SHA256SUMS": 64 * 1024,
+          }
+          with zipfile.ZipFile(source) as archive:
+              rows = archive.infolist()
+              if {row.filename for row in rows} != set(limits) or len(rows) != len(limits):
+                  raise SystemExit("producer artifact member set differs")
+              total = 0
+              for row in rows:
+                  mode = (row.external_attr >> 16) & 0xffff
+                  limit = limits[row.filename]
+                  if (row.is_dir() or row.flag_bits & 1 or stat.S_IFMT(mode) == stat.S_IFLNK
+                          or row.file_size <= 0 or row.file_size > limit
+                          or row.compress_size > limit):
+                      raise SystemExit("producer artifact contains an unsafe member")
+                  total += row.file_size
+                  if total > sum(limits.values()):
+                      raise SystemExit("producer artifact expands beyond its aggregate bound")
+                  target = output / row.filename
+                  observed = 0
+                  descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                  with os.fdopen(descriptor, "wb") as destination, archive.open(row) as source_stream:
+                      while chunk := source_stream.read(1024 * 1024):
+                          observed += len(chunk)
+                          if observed > row.file_size or observed > limit:
+                              raise SystemExit("producer artifact member grew during extraction")
+                          destination.write(chunk)
+                      destination.flush()
+                      os.fsync(destination.fileno())
+                  if observed != row.file_size:
+                      raise SystemExit("producer artifact member size differs")
+          PY
+          test "$(sha256sum "$evidence/PREVIEW12_UNSIGNED_CANDIDATE.generated.json" | cut -d ' ' -f 1)" \
+            = "$PRODUCER_RECEIPT_SHA256"
+          (cd "$evidence" && sha256sum --check SHA256SUMS)
+
+      - name: Check out the exact presentation dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui
+          ref: a9e5bbd4fd44826177dd048b24417fad27397497
+          path: chummer-presentation
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            Chummer.Desktop.Runtime
+            Chummer.Presentation
+
+      - name: Check out the exact Core runtime dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: 60112dccb6a3faad330d32c3c98eef0aa81d97af
+          path: chummer-core-engine
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact Core content authority
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: c06f22c185c7b733637fdb76b3cf333f31716781
+          path: chummer-core-content
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            Chummer/data
+            Chummer/lang
+
+      - name: Check out the exact Hub contracts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub
+          ref: 4f335d6cebbd4101212fd2cc77265b50f252775c
+          path: chummer.run-services
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            Chummer.Campaign.Contracts
+            Chummer.Play.Contracts
+            Chummer.Run.Contracts
+
+      - name: Check out the exact Registry contracts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub-registry
+          ref: af9a7e19c3bf331e96411dfb8f9e7820a98cab29
+          path: chummer-hub-registry
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: Chummer.Hub.Registry.Contracts
+
+      - name: Check out the exact UI Kit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui-kit
+          ref: d51ecd99cf72098d4adc8db0192bff7bf9fd8e61
+          path: chummer-ui-kit
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: src/Chummer.Ui.Kit
+
+      - name: Check out the exact Media contracts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-media-factory
+          ref: 415c8163d3d90b1211e4014fef332bdec6d75f73
+          path: fleet/repos/chummer-media-factory
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: src/Chummer.Media.Contracts
+
+      - name: Verify the exact Core content authority
+        run: >-
+          python3 -I -E -S
+          chummer-android/scripts/verify_android_content_bundle.py
+          --repo-root chummer-android
+          --core-root chummer-core-content
+          --check
+
+      - name: Install the exact .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/preview12-verifier-dotnet-10.0.110
+        with:
+          dotnet-version: 10.0.110
+
+      - name: Install Java 17
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore the pinned MAUI workload independently
+        run: '"$RUNNER_TEMP/preview12-verifier-dotnet-10.0.110/dotnet" workload restore chummer-android/Chummer.Android.slnx'
+
+      - name: Acquire the pinned public bundletool binary independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/preview12-verifier-public-tools"
+          install -d -m 0700 "$tools"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar \
+            --output "$tools/bundletool-all-1.18.3.jar"
+          test "$(sha256sum "$tools/bundletool-all-1.18.3.jar" | cut -d ' ' -f 1)" \
+            = a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
+          chmod 0600 "$tools/bundletool-all-1.18.3.jar"
+
+      - name: Independently rebuild the unsigned Preview.12 candidate
+        shell: bash
+        env:
+          CHUMMER_DOTNET: ${{ runner.temp }}/preview12-verifier-dotnet-10.0.110/dotnet
+          CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
+          CHUMMER_PREVIEW12_OUTPUT_DIR: ${{ runner.temp }}/preview12-rebuild
+          CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
+          CHUMMER_CORE_RUNTIME_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_CORE_CONTENT_ROOT: ${{ github.workspace }}/chummer-core-content
+          CHUMMER_RUN_SERVICES_ROOT: ${{ github.workspace }}/chummer.run-services
+          CHUMMER_HUB_REGISTRY_ROOT: ${{ github.workspace }}/chummer-hub-registry
+          CHUMMER_UI_KIT_ROOT: ${{ github.workspace }}/chummer-ui-kit
+          CHUMMER_MEDIA_FACTORY_ROOT: ${{ github.workspace }}/fleet/repos/chummer-media-factory
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "$CHUMMER_PREVIEW12_OUTPUT_DIR"
+          chummer-android/scripts/build-preview12-unsigned-candidate.sh
+
+      - name: Compare independently rebuilt bytes and emit signer eligibility
+        shell: bash
+        env:
+          PRODUCER_RUN_ID: ${{ inputs.producer_run_id }}
+          PRODUCER_ARTIFACT_ID: ${{ inputs.producer_artifact_id }}
+          PRODUCER_ARTIFACT_DIGEST: ${{ inputs.producer_artifact_digest }}
+          GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          producer="$RUNNER_TEMP/preview12-producer-input"
+          rebuilt="$RUNNER_TEMP/preview12-rebuild"
+          output="$RUNNER_TEMP/preview12-signer-eligibility"
+          install -d -m 0700 "$output"
+          aab="$rebuilt/chummer-android-0.1.0-preview.12-unsigned.aab"
+          bundletool="$RUNNER_TEMP/preview12-verifier-public-tools/bundletool-all-1.18.3.jar"
+          java -jar "$bundletool" validate --bundle="$producer/chummer-android-0.1.0-preview.12-unsigned.aab"
+          java -jar "$bundletool" validate --bundle="$aab"
+          java -jar "$bundletool" dump manifest --bundle="$aab" >"$rebuilt/AndroidManifest.xml"
+          cmp --silent \
+            "$producer/chummer-android-0.1.0-preview.12-unsigned.aab" \
+            "$aab"
+          cmp --silent "$producer/AndroidManifest.xml" "$rebuilt/AndroidManifest.xml"
+          test "$(sha256sum "$producer/chummer-android-0.1.0-preview.12-unsigned.aab" | cut -d ' ' -f 1)" \
+            = "$(sha256sum "$aab" | cut -d ' ' -f 1)"
+          CHUMMER_EXPECTED_VERSION_NAME=0.1.0-preview.12 \
+          CHUMMER_EXPECTED_VERSION_CODE=12 \
+            python3 -I -E -S chummer-android/scripts/inspect_aab.py \
+              "$aab" "$rebuilt/AndroidManifest.xml"
+          python3 -I -E -S chummer-android/scripts/preview12_candidate_contract.py \
+            capture-toolchain \
+            --policy "$GITHUB_WORKSPACE/chummer-android/eng/preview12-unsigned-candidate-authority.json" \
+            --dotnet "$RUNNER_TEMP/preview12-verifier-dotnet-10.0.110/dotnet" \
+            --java-home "$JAVA_HOME" \
+            --android-sdk "$ANDROID_SDK_ROOT" \
+            --bundletool "$bundletool" \
+            --runner-image "$ImageOS" \
+            --runner-image-version "$ImageVersion" \
+            --output "$rebuilt/PREVIEW12_TOOLCHAIN.generated.json"
+          common=(
+            --android-root "$GITHUB_WORKSPACE/chummer-android"
+            --policy "$GITHUB_WORKSPACE/chummer-android/eng/preview12-unsigned-candidate-authority.json"
+            --two-green "$producer/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json"
+            --producer "$producer/PREVIEW12_UNSIGNED_CANDIDATE.generated.json"
+            --producer-aab "$producer/chummer-android-0.1.0-preview.12-unsigned.aab"
+            --producer-manifest "$producer/AndroidManifest.xml"
+            --toolchain "$rebuilt/PREVIEW12_TOOLCHAIN.generated.json"
+            --rebuilt-aab "$aab"
+            --rebuilt-manifest "$rebuilt/AndroidManifest.xml"
+            --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/preview12-independent-candidate-verifier.yml"
+            --github-run-id "$GITHUB_RUN_ID"
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT_VALUE"
+            --github-sha "$GITHUB_SHA"
+            --github-ref "$GITHUB_REF"
+            --producer-run-id "$PRODUCER_RUN_ID"
+            --producer-artifact-id "$PRODUCER_ARTIFACT_ID"
+            --producer-artifact-digest "$PRODUCER_ARTIFACT_DIGEST"
+          )
+          python3 -I -E -S chummer-android/scripts/preview12_candidate_contract.py \
+            rebuild "${common[@]}" --output "$output/PREVIEW12_INDEPENDENT_REBUILD.generated.json"
+          python3 -I -E -S chummer-android/scripts/preview12_candidate_contract.py \
+            verify-rebuild "${common[@]}" --receipt "$output/PREVIEW12_INDEPENDENT_REBUILD.generated.json"
+          python3 -I -E -S chummer-android/scripts/preview12_candidate_contract.py \
+            signer-eligibility \
+            --producer "$producer/PREVIEW12_UNSIGNED_CANDIDATE.generated.json" \
+            --rebuild "$output/PREVIEW12_INDEPENDENT_REBUILD.generated.json" \
+            --output "$output/PREVIEW12_SIGNER_ELIGIBILITY.generated.json"
+          python3 -I -E -S chummer-android/scripts/preview12_candidate_contract.py \
+            verify-signer-eligibility \
+            --producer "$producer/PREVIEW12_UNSIGNED_CANDIDATE.generated.json" \
+            --rebuild "$output/PREVIEW12_INDEPENDENT_REBUILD.generated.json" \
+            --receipt "$output/PREVIEW12_SIGNER_ELIGIBILITY.generated.json"
+          install -m 0600 "$producer/chummer-android-0.1.0-preview.12-unsigned.aab" "$output/"
+          install -m 0600 "$producer/PREVIEW12_UNSIGNED_CANDIDATE.generated.json" "$output/"
+          install -m 0600 "$producer/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json" "$output/"
+          (cd "$output" && sha256sum \
+            chummer-android-0.1.0-preview.12-unsigned.aab \
+            PREVIEW12_UNSIGNED_CANDIDATE.generated.json \
+            PREVIEW12_INDEPENDENT_REBUILD.generated.json \
+            PREVIEW12_SIGNER_ELIGIBILITY.generated.json \
+            ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json >SHA256SUMS)
+
+      - name: Upload signer-eligible unsigned bytes without signing authority
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-preview12-signer-eligible-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/preview12-signer-eligibility
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
