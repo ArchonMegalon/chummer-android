@@ -2806,6 +2806,73 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     continuity.require(final_nodes, "attempted-reuse", "forward", 1)
                 self.assertEqual(1, capture.call_count)
 
+    def test_initial_resources_foreground_loss_preserves_original_evidence_without_replay(self) -> None:
+        initial_launch = self.continuity_launch_state(("3076",))
+        launcher = driver.shared.LaunchState(
+            initial_launch.process_ids,
+            "com.google.android.apps.nexuslauncher/.NexusLauncherActivity",
+            "launcher resumed during initial Resources acquisition",
+        )
+        foreign_nodes = [driver.shared.UiNode({
+            "package": "com.google.android.apps.nexuslauncher",
+            "resource-id": "com.google.android.apps.nexuslauncher:id/apps_list_view",
+        })]
+        for prior_swipes in (0, 1):
+            with self.subTest(prior_swipes=prior_swipes), tempfile.TemporaryDirectory() as directory:
+                device = self.resources_continuity_device(
+                    ([self.resources_continuity_nodes(entry=True)] if prior_swipes else [])
+                    + [foreign_nodes]
+                )
+                device.evidence = Path(directory)
+                failure_path = device.evidence / f"{driver.CREATION_DASHBOARD_CONTINUITY_PREFIX}.json"
+                journal_path = device.evidence / f"{driver.CREATION_DASHBOARD_CONTINUITY_PREFIX}-scroll-journal.json"
+
+                def diagnostic(*arguments, **options):
+                    self.assertTrue(failure_path.is_file())
+                    self.assertTrue(journal_path.is_file())
+                    raw = b"original screenshot" if options.get("text") is False else "original diagnostic"
+                    return subprocess.CompletedProcess(arguments, 0, raw, "")
+
+                device.run.side_effect = diagnostic
+                deadline = driver.time.monotonic() + 180
+                continuity = driver.CreationDashboardContinuityGuard(
+                    device, initial_launch, deadline=deadline,
+                    phase_id="resources-initial-authority", resources_acquisition=True,
+                )
+                with (
+                    mock.patch.object(
+                        driver, "_strict_creation_dashboard_launch_state",
+                        side_effect=([initial_launch] if prior_swipes else []) + [launcher],
+                    ) as observe_launch,
+                    mock.patch.object(driver.shared.time, "sleep"),
+                    self.assertRaisesRegex(RuntimeError, "continuity"),
+                ):
+                    self.open_guarded_resources(device, continuity, deadline)
+
+                failure_bytes = failure_path.read_bytes()
+                journal_bytes = journal_path.read_bytes()
+                receipt = json.loads(failure_bytes)
+                self.assertEqual("resources-initial-authority", receipt["phaseId"])
+                self.assertEqual(driver.shared._launch_state_json(initial_launch), receipt["expected"])
+                self.assertEqual(driver.shared._launch_state_json(launcher), receipt["observed"])
+                self.assertEqual(["com.google.android.apps.nexuslauncher"], receipt["hierarchy"]["packages"])
+                self.assertEqual(prior_swipes, receipt["trigger"]["gesturesIssued"])
+                self.assertFalse(receipt["recoveryAttempted"])
+                self.assertFalse(receipt["furtherGesturesAttempted"])
+                self.assertTrue(receipt["noReplay"])
+                diagnostic_calls = device.run.call_count
+                with self.assertRaisesRegex(RuntimeError, "already failed"):
+                    continuity.require_resources_scan(foreign_nodes, "attempted-reuse", "forward", prior_swipes)
+                self.assertEqual(failure_bytes, failure_path.read_bytes())
+                self.assertEqual(journal_bytes, journal_path.read_bytes())
+                self.assertEqual(diagnostic_calls, device.run.call_count)
+                self.assertEqual(prior_swipes + 1, observe_launch.call_count)
+                self.assertEqual(prior_swipes, device.swipe_up.call_count)
+                device.swipe_down.assert_not_called()
+                device.shell.assert_not_called()
+                device.wait_for_single_exact_resource_id.assert_not_called()
+                self.assertFalse(any("input" in call.args or "start" in call.args for call in device.run.call_args_list))
+
     def test_resources_continuity_retains_target_cardinality_and_tappability(self) -> None:
         target = self.resources_continuity_nodes(target=True)[-1]
         disabled = self.canonical_node("creation-stage-resources", enabled="false")

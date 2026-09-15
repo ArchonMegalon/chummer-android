@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Native;
@@ -16,6 +17,7 @@ internal static class LinkedCharacterDurabilityTests
 
     public static async Task RunAsync()
     {
+        DirectoryFlagsMatchSupportedLinuxAbis();
         await DurabilityBarriersRunOffCallerContextAsync();
         await FaultsPreserveOnlyPostRenameFilesAsync();
         await CancellationRespectsRenameBoundaryAsync();
@@ -24,6 +26,27 @@ internal static class LinkedCharacterDurabilityTests
         await DefaultDurabilityUsesRealFilesAsync();
         await Task.Run(SharedDirectoryHelperPreservesJournalBackendBytes).WaitAsync(Bound);
         Console.WriteLine("PASS linked-character staging and journal storage acknowledgements (real codec/files/fsync and injected faults; no power-cut or device proof)");
+    }
+
+    private static void DirectoryFlagsMatchSupportedLinuxAbis()
+    {
+        Require(AndroidPrivateFileDurability.DirectoryOpenFlags(Architecture.Arm) == 0x84000,
+            "ARM directory sync must use ARM O_DIRECTORY with O_CLOEXEC, not O_DIRECT.");
+        Require(AndroidPrivateFileDurability.DirectoryOpenFlags(Architecture.Arm64) == 0x84000,
+            "ARM64 directory sync must use ARM O_DIRECTORY with O_CLOEXEC, not O_DIRECT.");
+        Require(AndroidPrivateFileDurability.DirectoryOpenFlags(Architecture.X86) == 0x90000,
+            "x86 directory sync flags changed.");
+        Require(AndroidPrivateFileDurability.DirectoryOpenFlags(Architecture.X64) == 0x90000,
+            "x64 directory sync flags changed.");
+        foreach (Architecture architecture in Enum.GetValues<Architecture>()
+            .Where(value => value is not (Architecture.Arm or Architecture.Arm64 or Architecture.X86 or Architecture.X64))
+            .Append((Architecture)(-1)).Append((Architecture)int.MaxValue))
+        {
+            bool rejected = false;
+            try { AndroidPrivateFileDurability.DirectoryOpenFlags(architecture); }
+            catch (PlatformNotSupportedException) { rejected = true; }
+            Require(rejected, "Directory sync silently admitted an unsupported ABI: " + architecture);
+        }
     }
 
     private static async Task DurabilityBarriersRunOffCallerContextAsync()

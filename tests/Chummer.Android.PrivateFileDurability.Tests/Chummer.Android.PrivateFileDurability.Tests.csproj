@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidPrivateFileDurability.cs" Link="Platform/AndroidPrivateFileDurability.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/FileSr5CareerCommandJournalBackend.cs" Link="Native/FileSr5CareerCommandJournalBackend.cs" />
+  </ItemGroup>
+</Project>
