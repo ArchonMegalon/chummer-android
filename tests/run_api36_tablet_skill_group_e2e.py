@@ -317,7 +317,7 @@ class Journey:
         self.generation = 0
         self.selection: Selection | None = None
         self.state: dict | None = None
-        self.issued: set[str] = set()
+        self.issued: dict[str, str] = {}
 
     def tap(self, selector: str) -> None:
         node = self.device.wait_exact_resource_id_bidirectional(
@@ -421,8 +421,21 @@ class Journey:
     def issue_once(self, action: str, selection: Selection, *, fence: str) -> None:
         require(fence not in self.issued, "Action already issued; mutation replay refused")
         self.guard(selection)
-        self.issued.add(fence)  # Unknown ADB outcomes keep the fence set.
+        self.issued[fence] = action  # Unknown ADB outcomes keep the fence set.
         self.tap(PREFIX + action)
+
+    def gesture_receipt(self) -> dict:
+        """Report harness gesture attempts, never inferred Core dispatch counts."""
+        apply_fences = [fence for fence, action in self.issued.items() if action == "apply"]
+        restore_fences = [fence for fence, action in self.issued.items() if action == "resolve"]
+        require(apply_fences == ["apply"] and set(restore_fences) == {
+            "same-process-reopen-resolve", "process-restart-resolve"},
+            "Incomplete or repeated harness apply/restore gestures cannot produce a passing receipt")
+        return {"applyTapCount": len(apply_fences),
+                "explicitAppliedReceiptRestoreCount": len(restore_fences),
+                "applyGestureRetries": max(0, len(apply_fences) - 1),
+                "harnessIssuedActionFences": dict(self.issued),
+                "CoreDispatchReplayAttested": False}
 
     def checkpoint(self, initial: dict, owner: str, phase: int) -> dict:
         values = preferences(self.device)
@@ -501,9 +514,9 @@ class Journey:
         require(CHECKPOINT_KEY not in preferences(self.device), "Acknowledgment did not remove applied checkpoint")
         return {"status": "device-pass", "executionStatus": "executed", "workspace": saved["workspace"],
                 "transactionId": receipt["TransactionId"], "receiptDigest": receipt["ReceiptDigest"],
-                "applyTapCount": 1, "explicitAppliedReceiptRestoreCount": 2, "mutationCommandsRetried": 0,
+                **self.gesture_receipt(),
                 "checks": ["tablet-master-detail-identity", "typed-three-member-group-quote", "reviewed-reselection",
-                           "atomic-saved-successor", "same-process-reopen", "new-process-reselection", "no-mutation-replay"]}
+                           "atomic-saved-successor", "same-process-reopen", "new-process-reselection", "no-duplicate-saved-mutation"]}
 
 
 def execute(args: argparse.Namespace) -> dict:
@@ -519,6 +532,7 @@ def execute(args: argparse.Namespace) -> dict:
     device = TabletDevice(args.adb, args.serial, args.evidence)
     context = {"schema": SCHEMA, "profile": "tablet", "physicalDeviceProof": False,
                "releaseEvidenceEligible": False, "managedOwnerGenerationRaceProof": False,
+               "CoreDispatchReplayAttested": False,
                "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
                "status": "fail", "executionStatus": "not-run"}
     try:

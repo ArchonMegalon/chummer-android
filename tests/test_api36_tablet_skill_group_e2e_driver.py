@@ -251,6 +251,24 @@ class TabletDispatchTests(unittest.TestCase):
                 journey.issue_once("apply", journey.selection, fence="apply")
         journey.tap.assert_called_once()
 
+    def test_receipt_counts_only_observed_harness_fences_not_core_dispatches(self):
+        journey = self.journey()
+        journey.issued = {"apply": "apply", "same-process-reopen-resolve": "resolve",
+                          "process-restart-resolve": "resolve"}
+        result = journey.gesture_receipt()
+        self.assertEqual(result["applyTapCount"], 1)
+        self.assertEqual(result["explicitAppliedReceiptRestoreCount"], 2)
+        self.assertEqual(result["applyGestureRetries"], 0)
+        self.assertEqual(result["harnessIssuedActionFences"], journey.issued)
+        self.assertIs(result["CoreDispatchReplayAttested"], False)
+        self.assertNotIn("mutationCommandsRetried", result)
+        journey.issued["unexpected-second-apply"] = "apply"
+        with self.assertRaisesRegex(RuntimeError, "repeated harness"):
+            journey.gesture_receipt()
+        journey.issued = {"apply": "apply"}
+        with self.assertRaisesRegex(RuntimeError, "Incomplete"):
+            journey.gesture_receipt()
+
     def test_changed_proof_generation_or_detail_prevents_dispatch(self):
         for change in ("generation", "detail"):
             journey = self.journey()
