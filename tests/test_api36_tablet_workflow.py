@@ -1,6 +1,8 @@
 """Contract checks for optional tablet evidence beside the unchanged phone gate."""
 
 from pathlib import Path
+import hashlib
+import json
 import re
 import unittest
 
@@ -153,6 +155,29 @@ class Api36TabletWorkflowTests(unittest.TestCase):
         self.assertIn("pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}", self.aggregate)
         self.assertNotIn("tablet-skill-group", self.phone)
         self.assertNotIn("tablet-skill-group", self.aggregate)
+
+    def test_supplemental_workflow_edits_keep_generated_source_hashes_current(self) -> None:
+        # The existing inventory authenticates these phone-gate inputs even when
+        # an edit only adds a supplemental job. Never exclude them to bypass drift.
+        inventory_path = REPO_ROOT / "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+        inventory = json.loads(inventory_path.read_bytes())
+        sources = inventory["generationInputs"]["androidAndPresenterSources"]
+        for relative in (".github/workflows/api36-editing-e2e.yml", "tests/test_api36_e2e_workflow.py",
+                         "tests/test_api36_proof_environment_receipt.py"):
+            with self.subTest(source=relative):
+                matches = [source for source in sources if source["path"] == relative]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0], {"path": relative, "exists": True,
+                    "sha256": hashlib.sha256((REPO_ROOT / relative).read_bytes()).hexdigest()})
+        settings = json.loads((REPO_ROOT / "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json").read_bytes())
+        bindings = [source for source in settings["sourceInputs"]
+                    if source["path"] == str(inventory_path.relative_to(REPO_ROOT))]
+        self.assertEqual(bindings, [{"path": str(inventory_path.relative_to(REPO_ROOT)),
+            "sha256": hashlib.sha256(inventory_path.read_bytes()).hexdigest()}])
+        self.assertIs(inventory["completionProven"], False)
+        gate = inventory["generationInputs"]["phoneBetaWizardGate"]
+        self.assertEqual(gate["requiredJourneys"], PHONE_JOURNEYS)
+        self.assertEqual(gate["inventoryCompletionCountContribution"], 0)
 
 
 if __name__ == "__main__":
