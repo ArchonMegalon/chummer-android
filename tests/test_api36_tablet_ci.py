@@ -148,10 +148,9 @@ class TabletCiTests(unittest.TestCase):
         avd.parent.mkdir(parents=True)
         avd.write_text("image.sysdir.1=system-images/android-36/google_apis/x86_64/\n"
                        "hw.cpu.arch=x86_64\ntag.id=google_apis\nhw.device.name=pixel_c\n")
-        java_home = self.path / "java"
-        java_home.mkdir()
+        java_env, _ = self.java_fixture()
         env = {**self.environment, "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "ImageOS": "ubuntu24",
-               "ImageVersion": "20260915.1.0", "ANDROID_AVD_HOME": str(avd_home), "JAVA_HOME": str(java_home),
+               "ImageVersion": "20260915.1.0", "ANDROID_AVD_HOME": str(avd_home), **java_env,
                "HOME": str(runner_home)}
         for relative in ("emulator", "platform-tools", "platforms/android-36", "system-images/android-36/google_apis/x86_64"):
             directory = sdk / relative
@@ -194,14 +193,19 @@ class TabletCiTests(unittest.TestCase):
         with ExitStack() as stack:
             stack.enter_context(patch.object(ci.stat, "S_ISCHR", return_value=True))
             stack.enter_context(patch.object(ci.authority, "sdk_executable", return_value=sdk / "mock-sdkmanager"))
-            run = stack.enter_context(patch.object(ci.authority, "_run", side_effect=[inventory, 'openjdk version "17.0.16"\n']))
+            run = stack.enter_context(patch.object(ci.authority, "_run", side_effect=[inventory, 'openjdk version "17.0.20"\n']))
             width = stack.enter_context(patch.object(ci.tablet, "tablet_environment", return_value=dict(android)))
             result, snapshots = ci.capture_environment(device, checked, env, sdk, evidence, kvm_path=kvm)
             self.assertEqual(result["android"]["smallestWidthDp"], 900)
             self.assertEqual(result["liveEmulator"]["version"], "36.2.6.0")
             self.assertIn({"package": ci.IMAGE, "version": "9"}, result["installedPackages"])
             self.assertEqual(result["avd"]["configSha256"], hashlib.sha256(avd.read_bytes()).hexdigest())
-            self.assertEqual(len(snapshots), 5)
+            self.assertEqual(len(snapshots), 6)
+            self.assertNotEqual(result["javaHomeBinding"]["advertisedJavaHome"],
+                                result["javaHomeBinding"]["canonicalJavaHome"])
+            self.assertEqual(run.call_args.args[0], [str(snapshots[-1].launcher.path), "-version"])
+            self.assertEqual((evidence / "java-version.txt").read_text(), result["javaVersionOutput"])
+            self.assertEqual((evidence / "java-release.txt").read_bytes(), snapshots[-1].release.data)
             width.assert_called_once_with(device)
             run.side_effect = [inventory.replace("36.2.6", "36.2.7")]
             with self.assertRaisesRegex(RuntimeError, "Live emulator version differs"):
@@ -214,6 +218,82 @@ class TabletCiTests(unittest.TestCase):
             device.run.return_value = SimpleNamespace(stdout="another-avd\nOK\n")
             with self.assertRaisesRegex(RuntimeError, "configured tablet AVD"):
                 ci.capture_environment(device, checked, env, sdk, evidence, kvm_path=kvm)
+
+    def java_fixture(self, *, alias=True):
+        cache = self.path / "hostedtoolcache"
+        advertised = cache / "Java_Temurin-Hotspot_jdk/17.0.20-1/x64"
+        advertised.parent.mkdir(parents=True)
+        canonical = self.path / "installed-temurin17" if alias else advertised
+        (canonical / "bin").mkdir(parents=True)
+        (canonical / "bin/java").write_bytes(b"mock Java launcher; never executed")
+        (canonical / "bin/java").chmod(0o755)
+        (canonical / "release").write_text('JAVA_VERSION="17.0.20"\nIMPLEMENTOR="Eclipse Adoptium"\n')
+        if alias:
+            advertised.symlink_to(canonical, target_is_directory=True)
+        return {"JAVA_HOME": str(advertised), "JAVA_HOME_17_X64": str(advertised),
+                "RUNNER_TOOL_CACHE": str(cache)}, canonical
+
+    def test_java_toolcache_alias_is_bound_without_weakening_canonical_paths(self):
+        environment, canonical = self.java_fixture()
+        with self.assertRaisesRegex(RuntimeError, "canonical directory"):
+            ci.canonical_directory(environment["JAVA_HOME"], "ordinary output")
+        binding = ci.bind_java_home(environment)
+        self.assertEqual(binding.launcher.path, canonical / "bin/java")
+        self.assertEqual(binding.observation["canonicalJavaHome"], str(canonical))
+        self.assertEqual(binding.observation["advertisedJavaHome"], environment["JAVA_HOME"])
+        self.assertEqual(binding.observation["releaseMetadataSha256"], hashlib.sha256((canonical / "release").read_bytes()).hexdigest())
+        binding.recheck()
+
+    def test_java_toolcache_canonical_install_is_also_accepted(self):
+        environment, canonical = self.java_fixture(alias=False)
+        binding = ci.bind_java_home(environment)
+        self.assertEqual(binding.observation["advertisedJavaHome"], str(canonical))
+        binding.recheck()
+
+    def test_java_alias_missing_cyclic_and_wrong_file_targets_fail_closed(self):
+        environment, canonical = self.java_fixture()
+        advertised = Path(environment["JAVA_HOME"])
+        for target in (self.path / "missing-target", advertised, canonical / "release"):
+            advertised.unlink()
+            advertised.symlink_to(target)
+            with self.subTest(target=target), self.assertRaises((OSError, RuntimeError, ValueError)):
+                ci.bind_java_home(environment)
+
+    def test_java_home_must_be_the_declared_temurin17_x64_toolcache_entry(self):
+        environment, canonical = self.java_fixture()
+        for change in ({"JAVA_HOME_17_X64": ""}, {"RUNNER_TOOL_CACHE": ""},
+                       {"JAVA_HOME": str(canonical), "JAVA_HOME_17_X64": str(canonical)},
+                       {"JAVA_HOME": "java", "JAVA_HOME_17_X64": "java"}):
+            with self.subTest(change=change), self.assertRaises((RuntimeError, ValueError)):
+                ci.bind_java_home({**environment, **change})
+
+    def test_java_alias_target_and_file_identity_changes_are_not_reusable(self):
+        environment, canonical = self.java_fixture()
+        advertised = Path(environment["JAVA_HOME"])
+        binding = ci.bind_java_home(environment)
+        advertised.rename(advertised.with_name("retired-alias"))
+        advertised.symlink_to(canonical)
+        with self.assertRaisesRegex(RuntimeError, "identity changed"):
+            binding.recheck()
+        binding = ci.bind_java_home(environment)
+        retired = canonical.with_name("retired-installation")
+        canonical.rename(retired)
+        (canonical / "bin").mkdir(parents=True)
+        (canonical / "bin/java").write_bytes((retired / "bin/java").read_bytes())
+        (canonical / "bin/java").chmod(0o755)
+        (canonical / "release").write_bytes((retired / "release").read_bytes())
+        with self.assertRaisesRegex(RuntimeError, "identity changed"):
+            binding.recheck()
+        for relative, snapshot_name in (("release", "release"), ("bin/java", "launcher")):
+            binding = ci.bind_java_home(environment)
+            snapshot = getattr(binding, snapshot_name)
+            target = canonical / relative
+            target.rename(target.with_name("retired-" + target.name))
+            target.write_bytes(snapshot.data)
+            if snapshot_name == "launcher":
+                target.chmod(0o755)
+            with self.subTest(file=relative), self.assertRaisesRegex(ValueError, "changed before receipt"):
+                binding.recheck()
 
     def execute_patches(self, stack):
         checked = self.preflight()
@@ -261,6 +341,23 @@ class TabletCiTests(unittest.TestCase):
         receipt = json.loads((self.path / "chummer-api36-tablet-skill-group-evidence/hosted-tablet-receipt.json").read_text())
         self.assertEqual(receipt["status"], "fail")
         self.assertEqual(receipt["executionStatus"], "attempted")
+
+    def test_java_identity_drift_after_capture_prevents_install_and_mutation(self):
+        environment, canonical = self.java_fixture()
+        binding = ci.bind_java_home(environment)
+        advertised = Path(environment["JAVA_HOME"])
+        advertised.rename(advertised.with_name("retired-alias"))
+        advertised.symlink_to(canonical)
+        with ExitStack() as stack:
+            _, device, capture, execute = self.execute_patches(stack)
+            capture.return_value = (capture.return_value[0], [binding])
+            with self.assertRaisesRegex(RuntimeError, "identity changed"):
+                ci.execute(self.environment)
+            device.install_verified.assert_not_called()
+            execute.assert_not_called()
+        receipt = json.loads((self.path / "chummer-api36-tablet-skill-group-evidence/hosted-tablet-receipt.json").read_text())
+        self.assertEqual(receipt["status"], "fail")
+        self.assertEqual(receipt["executionStatus"], "not-run")
 
     def test_conflicting_sdk_root_is_refused_before_device_provisioning(self):
         with ExitStack() as stack:
