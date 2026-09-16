@@ -23,6 +23,10 @@ PACKAGES = {
     "review": "Xamarin.Google.Android.Play.Review",
 }
 MAX_ARCHIVE = 4 * 1024 * 1024
+# Xamarin.Build.Download 0.11.4 moves Kind=Uncompressed archives into their
+# stem directory and writes this marker; the successful path retains its lock.
+# Exact admitted DLL evidence and method tokens: docs/ANDROID_AAR_CACHE_LAYOUT.md.
+UNPACKED_MARKER = b"This marks that the extraction completed successfully"
 
 
 def require(ok, reason):
@@ -104,21 +108,76 @@ def admit_archive(data):
         require({"androidmanifest.xml", "classes.jar"} <= files, "AAR required members missing")
 
 
+def empty_cache_lock(directory, name):
+    descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+    try:
+        before = os.fstat(descriptor)
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.getuid()
+                and not before.st_mode & 0o077 and before.st_nlink == 1 and before.st_size == 0,
+                "AAR cache lock must be private, singly linked and empty")
+        require(os.read(descriptor, 1) == b""
+                and _feed_identity(before) == _feed_identity(os.fstat(descriptor))
+                == _feed_identity(os.stat(name, dir_fd=directory, follow_symlinks=False)),
+                "AAR cache lock changed")
+    finally:
+        os.close(descriptor)
+
+
+def cache_layout(names, rows):
+    """Each pinned original is either flat or consumed, never absent or both."""
+    expected, consumed, valid = set(), set(), True
+    for row in rows:
+        name, stem = row["fileName"], Path(row["fileName"]).stem
+        if name in names:
+            expected.add(name)
+            valid = valid and stem not in names
+        else:
+            consumed.add(name)
+            expected.update((stem, stem + ".unpacked", stem + ".locked"))
+    if not valid or names != expected:
+        # Names only, bounded and escaped; never archive bytes or arbitrary state.
+        observed = [name[:96] for name in sorted(names)[:20]]
+        raise ValueError("AAR cache layout mismatch: expected=" + json.dumps(sorted(expected))
+                         + "; observed=" + json.dumps(observed) + "; count=" + str(len(names)))
+    return consumed
+
+
+def consumed_archive(directory, row):
+    name, stem = row["fileName"], Path(row["fileName"]).stem
+    descriptor = os.open(stem, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
+    try:
+        before = os.fstat(descriptor)
+        require(stat.S_ISDIR(before.st_mode) and before.st_uid == os.getuid() and not before.st_mode & 0o077,
+                "consumed AAR directory must be private and owner-owned")
+        require(set(_feed_names(descriptor).values()) == {name}, "unexpected consumed AAR entry")
+        data = _feed_read(descriptor, name, MAX_ARCHIVE)
+        require(_feed_read(directory, stem + ".unpacked", len(UNPACKED_MARKER)) == UNPACKED_MARKER,
+                "AAR cache completion marker differs")
+        empty_cache_lock(directory, stem + ".locked")
+        require(_feed_identity(before) == _feed_identity(os.fstat(descriptor))
+                == _feed_identity(os.stat(stem, dir_fd=directory, follow_symlinks=False)),
+                "consumed AAR directory changed")
+        return data
+    finally:
+        os.close(descriptor)
+
+
 def inventory(root, rows, *, generated=False):
     _private_directory(root, "AAR directory")
     descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         before = _feed_identity(os.fstat(descriptor))
-        names = _feed_names(descriptor)
+        names = set(_feed_names(descriptor).values())
         expected = {row["fileName"] for row in rows}
-        extras = set(names.values()) - expected
-        require(expected <= set(names.values()) and (generated or not extras), "AAR feed must contain exactly five originals")
-        for name in extras:
-            info = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
-            require(name in {Path(row["fileName"]).stem for row in rows} and stat.S_ISDIR(info.st_mode), "unexpected cache entry")
+        if generated:
+            consumed = cache_layout(names, rows)
+        else:
+            require(names == expected, "AAR feed must contain exactly five originals")
+            consumed = set()
         payloads = {}
         for row in rows:
-            data = _feed_read(descriptor, row["fileName"], MAX_ARCHIVE)
+            data = (consumed_archive(descriptor, row) if row["fileName"] in consumed
+                    else _feed_read(descriptor, row["fileName"], MAX_ARCHIVE))
             require(len(data) == row["sizeBytes"] and hashlib.sha256(data).hexdigest() == row["sha256"], "AAR byte pin mismatch")
             admit_archive(data)
             payloads[row["fileName"]] = data
