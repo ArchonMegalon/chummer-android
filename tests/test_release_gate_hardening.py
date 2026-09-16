@@ -307,6 +307,96 @@ class ReleaseGateHardeningTests(unittest.TestCase):
                 capture_output=True,
             )
 
+    @contextmanager
+    def _external_release_hash_fixture(self):
+        """Exercise output binding only; synthetic bytes are not a release AAB."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            repo = root / "workspace/chummer-android"
+            repo.mkdir(parents=True)
+            release_input = root / "private release inputs"
+            artifacts = release_input / "artifacts"
+            artifacts.mkdir(parents=True, mode=0o700)
+            aab, graph = root / "input.aab", root / "input.json"
+            aab.write_bytes(b"synthetic unsigned artifact bytes")
+            graph.write_bytes(b'{"publicationAuthorized":false}\n')
+            outputs = (artifacts / "release.aab", artifacts / "graph.json",
+                       artifacts / "release.aab.sha256")
+
+            def validate(aab_fd, graph_fd, sidecar_fd, descriptors):
+                self.assertEqual(aab.read_bytes(), aab_fd.read_bytes())
+                self.assertEqual(graph.read_bytes(), graph_fd.read_bytes())
+                self.assertEqual(3, len(descriptors))
+                self.assertEqual(2, len(sidecar_fd.read_bytes().splitlines()))
+
+            result = CAPTURE.transaction(aab, graph, *outputs, validate)
+            self.assertFalse(result["publicationAuthorized"])
+            yield root, repo, release_input, outputs, result
+
+    def _run_release_hash_gate(self, root, repo, release_input, outputs, result):
+        # Execute the production checksum gate and its real success/failure
+        # footer, without running restore, source tests, SDKs or any signer.
+        source = (REPO / "scripts/build-release.sh").read_text(encoding="utf-8")
+        gate_end = source.index('\n  || fail "sealed-hash-verification"\n')
+        gate_start = source.rfind("\n(cd ", 0, gate_end) + 1
+        self.assertGreater(gate_start, 0)
+        fail_start = source.index("fail() {\n")
+        fail_end = source.index("\n}\n", fail_start) + len("\n}\n")
+        return subprocess.run(
+            ["/bin/bash", "-p", "-c", "set -euo pipefail\n"
+             + source[fail_start:fail_end] + source[gate_start:]],
+            cwd=root, capture_output=True, text=True, timeout=10,
+            env={
+                "PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C",
+                "repo_dir": str(repo), "release_input_root": str(release_input),
+                "output_aab": str(outputs[0]), "output_graph": str(outputs[1]),
+                "output_hash": str(outputs[2]), "version_name": "0.1.0-preview.12",
+                "version_code": "12", "source_sha256": result["aabSha256"],
+                "graph_sha256": result["sourceGraphSha256"],
+                "external_signer_request": str(release_input / "synthetic-request.json"),
+                "eligibility_sha256": "0" * 64,
+            },
+        )
+
+    def test_release_hash_gate_uses_external_outputs_not_stale_repository_artifacts(self) -> None:
+        for repository_artifacts in ("absent", "mismatching"):
+            with self.subTest(repository_artifacts=repository_artifacts), \
+                    self._external_release_hash_fixture() as fixture:
+                _root, repo, _release_input, outputs, _result = fixture
+                if repository_artifacts == "mismatching":
+                    (repo / "artifacts").mkdir()
+                    for output in outputs[:2]:
+                        (repo / "artifacts" / output.name).write_bytes(b"stale repository decoy")
+                before = [path.read_bytes() for path in outputs]
+                completed = self._run_release_hash_gate(*fixture)
+                self.assertEqual(3, completed.returncode, completed.stderr)
+                self.assertIn("android_release=external-signer-required", completed.stdout)
+                for field in ("signing_authorized", "publication_authorized", "google_play_upload_authorized"):
+                    self.assertIn(f"{field}=false", completed.stdout)
+                self.assertEqual(before, [path.read_bytes() for path in outputs])
+
+    def test_release_hash_gate_rejects_bad_external_outputs_despite_matching_repository_decoys(self) -> None:
+        for output_index in (0, 1, 2):
+            for fault in ("missing", "corrupt"):
+                with self.subTest(output_index=output_index, fault=fault), \
+                        self._external_release_hash_fixture() as fixture:
+                    _root, repo, _release_input, outputs, _result = fixture
+                    (repo / "artifacts").mkdir()
+                    for output in outputs:
+                        (repo / "artifacts" / output.name).write_bytes(output.read_bytes())
+                    target = outputs[output_index]
+                    target.unlink()
+                    if fault == "corrupt":
+                        target.write_bytes(b"corrupt external output")
+                    before = {path: path.read_bytes() if path.exists() else None for path in outputs}
+                    completed = self._run_release_hash_gate(*fixture)
+                    self.assertEqual(1, completed.returncode, completed.stdout)
+                    self.assertIn("android_release=failed stage=sealed-hash-verification", completed.stderr)
+                    self.assertNotIn("android_release=external-signer-required", completed.stdout)
+                    self.assertEqual(before, {
+                        path: path.read_bytes() if path.exists() else None for path in outputs
+                    })
+
     def test_transaction_rejects_source_changed_during_descriptor_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

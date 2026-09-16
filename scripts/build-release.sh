@@ -671,7 +671,7 @@ python3 "$repo_dir/scripts/sign_android_release_build_attestation.py" prepare-ex
   || fail "unsigned-external-signer-handoff"
 source_sha256="$(sha256sum "$output_aab" | cut -d' ' -f1)"
 graph_sha256="$(sha256sum "$output_graph" | cut -d' ' -f1)"
-(cd "$repo_dir" && sha256sum --check "$output_hash" >/dev/null) \
+(cd "$release_input_root" && sha256sum --check "$output_hash" >/dev/null) \
   || fail "sealed-hash-verification"
 
 printf 'android_release=external-signer-required version=%s code=%s unsigned_aab=%s sha256=%s source_graph=%s source_graph_sha256=%s signer_request=%s two_green_receipt_sha256=%s signing_authorized=false publication_authorized=false google_play_upload_authorized=false\n' \
