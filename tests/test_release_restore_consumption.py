@@ -9,6 +9,7 @@ import io
 import json
 import os
 import struct
+import stat
 import subprocess
 import sys
 import tempfile
@@ -794,6 +795,93 @@ class ReleaseRestoreConsumptionTests(unittest.TestCase):
                 owner_feed=selected, routed_lock_root=routed_locks, project_lock=lock,
                 intermediate_root=intermediate.parent, phase="post-publish",
             )
+
+    def test_stable_file_rejects_each_custody_predicate_before_reading_bytes(self) -> None:
+        module = load_module()
+        cases = (
+            ("regularFile", stat.S_IFDIR | 0o700, os.getuid(), 1),
+            ("owner", stat.S_IFREG | 0o600, os.getuid() + 1, 1),
+            ("ownerOnly", stat.S_IFREG | 0o644, os.getuid(), 1),
+            ("nlink1", stat.S_IFREG | 0o600, os.getuid(), 2),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "candidate"
+            path.write_bytes(b"must not be read")
+            path.chmod(0o600)
+            for failed, mode, owner, nlink in cases:
+                observed = os.stat_result((mode, 7, 8, nlink, owner, os.getgid(), 14, 0, 0, 0))
+                with self.subTest(predicate=failed), mock.patch.object(module.os, "fstat", return_value=observed), \
+                        mock.patch.object(module.os, "read", side_effect=AssertionError("rejected bytes read")):
+                    with self.assertRaises(module.CustodyError) as raised:
+                        module._stable_file(path, "diagnostic candidate")
+                    self.assertFalse(raised.exception.custody[failed])
+                    self.assertEqual(1, sum(not raised.exception.custody[name] for name in (
+                        "regularFile", "owner", "ownerOnly", "nlink1")))
+                    self.assertEqual(14, raised.exception.custody["sizeBytes"])
+                    self.assertTrue(raised.exception.custody["fileType"] in "-d")
+            empty = Path(temporary) / "empty"
+            empty.write_bytes(b"")
+            empty.chmod(0o600)
+            data, info = module._stable_file(empty, "empty candidate")
+            self.assertEqual(b"", data)
+            self.assertEqual(0, info.st_size)
+            root_mode = stat.S_IFREG | 0o600
+            modeled_root_file = os.stat_result((root_mode, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+            with mock.patch.object(module.os, "fstat", return_value=modeled_root_file), \
+                    mock.patch.object(module.os, "getuid", return_value=0):
+                data, _ = module._stable_file(empty, "modeled root candidate")
+            self.assertEqual(b"", data)
+
+    def test_cli_blocked_json_retains_byte_free_custody_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "manifest.json"
+            manifest.write_bytes(b"{}")
+            manifest.chmod(0o644)
+            completed = subprocess.run(
+                [sys.executable, os.fspath(SCRIPT), "verify",
+                 "--input-root", os.fspath(root / "input"),
+                 "--workspace-root", os.fspath(root / "workspace"),
+                 "--intermediate-root", os.fspath(root / "intermediate"),
+                 "--phase", "post-publish", "--authority", os.fspath(root / "authority"),
+                 "--owner-feed", os.fspath(root / "feed"), "--packages-root", os.fspath(root / "packages"),
+                 "--routed-lock-root", os.fspath(root / "locks"), "--project-lock", os.fspath(root / "lock"),
+                 "--manifest", os.fspath(manifest)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(2, completed.returncode)
+            blocked = json.loads(completed.stdout)
+            self.assertEqual("blocked", blocked["status"])
+            self.assertEqual(
+                {"regularFile": True, "owner": True, "ownerOnly": False, "nlink1": True},
+                {name: blocked["custody"][name] for name in ("regularFile", "owner", "ownerOnly", "nlink1")},
+            )
+            self.assertEqual("0o644", blocked["custody"]["mode"])
+            self.assertEqual(os.getuid(), blocked["custody"]["uid"])
+            self.assertNotIn("must not be read", completed.stdout)
+
+    def test_real_fifo_cli_rejection_is_bounded_and_reports_no_path_or_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fifo = root / "rejected-fifo"
+            os.mkfifo(fifo, 0o600)
+            completed = subprocess.run(
+                [sys.executable, os.fspath(SCRIPT), "verify",
+                 "--input-root", os.fspath(root / "input"), "--workspace-root", os.fspath(root / "workspace"),
+                 "--intermediate-root", os.fspath(root / "intermediate"), "--phase", "post-publish",
+                 "--authority", os.fspath(root / "authority"), "--owner-feed", os.fspath(root / "feed"),
+                 "--packages-root", os.fspath(root / "packages"), "--routed-lock-root", os.fspath(root / "locks"),
+                 "--project-lock", os.fspath(root / "lock"), "--manifest", os.fspath(fifo)],
+                check=False, capture_output=True, text=True, timeout=2,
+            )
+            self.assertEqual(2, completed.returncode)
+            blocked = json.loads(completed.stdout)
+            self.assertFalse(blocked["publicationAuthorized"])
+            self.assertEqual({"regularFile": False, "owner": True, "ownerOnly": True, "nlink1": True},
+                             {name: blocked["custody"][name] for name in ("regularFile", "owner", "ownerOnly", "nlink1")})
+            self.assertEqual("p", blocked["custody"]["fileType"])
+            self.assertNotIn(os.fspath(fifo), completed.stdout)
+            self.assertNotIn("must not be read", completed.stdout)
 
     def test_inventory_drift_diagnostic_is_sorted_exact_and_byte_free(self) -> None:
         module = load_module()
