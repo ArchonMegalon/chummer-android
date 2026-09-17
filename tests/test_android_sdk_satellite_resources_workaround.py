@@ -408,9 +408,11 @@ class AndroidSdkSatelliteResourcesWorkaroundTests(unittest.TestCase):
 
     @staticmethod
     def _target() -> ET.Element:
-        target = ET.parse(WORKAROUND).getroot().find("Target")
-        assert target is not None
-        return target
+        targets = ET.parse(WORKAROUND).getroot().findall(
+            "Target[@Name='_ChummerStageAndroidSdk36169Satellites']"
+        )
+        assert len(targets) == 1
+        return targets[0]
 
 
 if __name__ == "__main__":

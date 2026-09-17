@@ -1,5 +1,76 @@
 <Project>
   <!--
+    ILLink 10.0.11 maps partial trimming to Copy for non-trimmable assemblies.
+    File.Copy preserves the public SDK runtime DLL's 0744 mode, even under
+    umask 077. Stage its pinned bytes as a fresh private input before the
+    official linker captures its items. Do not chmod SDK/cache/output trees or
+    loosen the post-publish custody verifier.
+
+    This internal extension is restricted to the governed Linux release lane
+    and Android SDK 36.1.69. Preserve every ResolvedFileToPublish metadata field
+    so downstream Android ProcessAssemblies sees the normal linked output.
+  -->
+  <Target Name="_ChummerStageAndroidSdk36169RuntimeInput"
+          BeforeTargets="_ComputeManagedAssemblyToLink"
+          Condition="'$(Configuration)' == 'Release' And '$(PublishTrimmed)' == 'true' And '$(AndroidNETSdkVersion)' == '36.1.69' And '$(ChummerReleaseIntermediateRoot)' != '' And $([MSBuild]::IsOSPlatform('Linux'))">
+    <PropertyGroup>
+      <_ChummerSdkRuntimeInputRoot>$([MSBuild]::EnsureTrailingSlash($([MSBuild]::NormalizePath('$(IntermediateOutputPath)'))))</_ChummerSdkRuntimeInputRoot>
+      <_ChummerSdkRuntimeStagedPath>$(_ChummerSdkRuntimeInputRoot)chummer-android-sdk-36.1.69-runtime/Mono.Android.Runtime.dll</_ChummerSdkRuntimeStagedPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ChummerSdkRuntimeSource Remove="@(_ChummerSdkRuntimeSource)" />
+      <_ChummerSdkRuntimeStaged Remove="@(_ChummerSdkRuntimeStaged)" />
+      <_ChummerSdkRuntimeSource Include="@(ResolvedFileToPublish)"
+          Condition="'%(ResolvedFileToPublish.Filename)%(ResolvedFileToPublish.Extension)' == 'Mono.Android.Runtime.dll'">
+        <ChummerOriginalSdkRuntimeIdentity>%(ResolvedFileToPublish.Identity)</ChummerOriginalSdkRuntimeIdentity>
+        <ChummerStagedSdkRuntimeIdentity>$(_ChummerSdkRuntimeStagedPath)</ChummerStagedSdkRuntimeIdentity>
+      </_ChummerSdkRuntimeSource>
+    </ItemGroup>
+    <Error Condition="'@(_ChummerSdkRuntimeSource->Count())' != '1'"
+           Text="Governed Android SDK 36.1.69 staging requires exactly one Mono.Android.Runtime publish input." />
+    <Error Condition="'%(_ChummerSdkRuntimeSource.PostprocessAssembly)' != 'true'"
+           Text="Governed Android SDK 36.1.69 runtime input must participate in the official linker pipeline." />
+    <Error Condition="$([System.String]::new('$(MSBuildThisFileDirectory)').Contains(';')) Or $([System.String]::new('%(_ChummerSdkRuntimeSource.Identity)').Contains(';')) Or $([System.String]::new('$(_ChummerSdkRuntimeInputRoot)').Contains(';'))"
+           Text="Governed Android SDK staging paths must not contain MSBuild environment-list separators." />
+    <!-- A constant shell command expands quoted environment variables only;
+         source/workspace paths never become shell command text. -->
+    <Exec Command="/usr/bin/python3 -I -E -S -B &quot;$CHUMMER_SDK_STAGING_SCRIPT&quot; --source &quot;$CHUMMER_SDK_STAGING_SOURCE&quot; --intermediate-root &quot;$CHUMMER_SDK_STAGING_ROOT&quot;"
+          EnvironmentVariables="CHUMMER_SDK_STAGING_SCRIPT=$(MSBuildThisFileDirectory)../../scripts/stage_android_sdk_runtime.py;CHUMMER_SDK_STAGING_SOURCE=%(_ChummerSdkRuntimeSource.Identity);CHUMMER_SDK_STAGING_ROOT=$(_ChummerSdkRuntimeInputRoot)" />
+    <Error Condition="!Exists('$(_ChummerSdkRuntimeStagedPath)')"
+           Text="Governed Android SDK runtime staging produced no private input." />
+    <ItemGroup>
+      <_ChummerSdkRuntimeStaged Include="@(_ChummerSdkRuntimeSource->'%(ChummerStagedSdkRuntimeIdentity)')" />
+      <ResolvedFileToPublish Remove="@(_ChummerSdkRuntimeSource)" />
+      <ResolvedFileToPublish Include="@(_ChummerSdkRuntimeStaged)" />
+      <FileWrites Include="@(_ChummerSdkRuntimeStaged)" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_ChummerSdkRuntimeInputStaged>true</_ChummerSdkRuntimeInputStaged>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_ChummerRequireStagedAndroidSdk36169RuntimeOutput"
+          AfterTargets="ILLink"
+          Condition="'$(_ChummerSdkRuntimeInputStaged)' == 'true'">
+    <PropertyGroup>
+      <_ChummerSdkRuntimeLinkedPath>$([MSBuild]::NormalizePath('$(IntermediateLinkDir)', 'Mono.Android.Runtime.dll'))</_ChummerSdkRuntimeLinkedPath>
+    </PropertyGroup>
+    <!-- This preserved framework assembly must survive. Do not allow a missing
+         output to leave original identities in the SDK's removed/deps lists. -->
+    <Error Condition="!Exists('$(IntermediateLinkDir)Mono.Android.Runtime.dll')"
+           Text="Governed Android SDK runtime staging lost its required linked output." />
+    <ItemGroup>
+      <_ChummerSdkRuntimePublished Remove="@(_ChummerSdkRuntimePublished)" />
+      <_ChummerSdkRuntimePublished Include="@(ResolvedFileToPublish)"
+          Condition="'%(ResolvedFileToPublish.Filename)%(ResolvedFileToPublish.Extension)' == 'Mono.Android.Runtime.dll'" />
+    </ItemGroup>
+    <Error Condition="'@(_ChummerSdkRuntimePublished->Count())' != '1'"
+           Text="Governed Android SDK runtime staging requires one linked publish output." />
+    <Error Condition="'%(_ChummerSdkRuntimePublished.FullPath)' != '$(_ChummerSdkRuntimeLinkedPath)'"
+           Text="Governed Android SDK runtime publish identity did not converge on its linked output." />
+  </Target>
+
+  <!--
     Microsoft.Android.Sdk.Linux 36.1.69 leaves untrimmed satellite resource
     assemblies in ResolvedAssemblies with their immutable NuGet-cache identity.
     The official post-link AssemblyModifierPipeline writes .jlo.xml/.typemap.xml
