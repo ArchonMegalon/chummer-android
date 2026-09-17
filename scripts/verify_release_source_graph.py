@@ -23,6 +23,7 @@ LOCKED_DEPENDENCY_MODE = "locked_package"
 SOURCE_COMPATIBILITY_MODE = "source_compatibility"
 SHA40 = 40
 SHA256 = 64
+MAX_SOURCE_GRAPH_BYTES = 16 * 1024 * 1024
 PACKAGE_VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?")
 RELEASE_VERSION_NAME_PATTERN = re.compile(
     r"[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
@@ -148,6 +149,14 @@ def _require_string(value: object, label: str) -> str:
 
 
 def _strict_json(path: Path) -> dict[str, object]:
+    try:
+        raw = path.read_bytes()
+    except OSError as error:
+        raise ValueError(f"cannot read release package authority: {error}") from error
+    return _strict_json_bytes(raw)
+
+
+def _strict_json_bytes(raw: bytes) -> dict[str, object]:
     def reject_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
         result: dict[str, object] = {}
         for key, value in pairs:
@@ -158,7 +167,7 @@ def _strict_json(path: Path) -> dict[str, object]:
 
     try:
         payload = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicates,
             parse_constant=lambda value: (_ for _ in ()).throw(
                 ValueError(f"package authority contains non-finite number {value}")
@@ -507,7 +516,10 @@ def write_graph_exclusive(path: Path, graph: dict[str, object]) -> None:
 def verify_existing_graph(path: Path, graph: dict[str, object]) -> None:
     if path.is_symlink() or not path.is_file():
         raise ValueError("release source graph is missing or not a regular file")
-    existing = _strict_json(path)
+    _verify_graph_value(_strict_json(path), graph)
+
+
+def _verify_graph_value(existing: dict[str, object], graph: dict[str, object]) -> None:
     if set(existing) != set(graph):
         raise ValueError("release source graph changed during packaging: structure")
     generated_at = existing.get("generatedAtUtc")
@@ -516,6 +528,60 @@ def verify_existing_graph(path: Path, graph: dict[str, object]) -> None:
     for field in graph:
         if field != "generatedAtUtc" and existing.get(field) != graph.get(field):
             raise ValueError(f"release source graph changed during packaging: {field}")
+
+
+def verify_existing_graph_fd(descriptor: int, graph: dict[str, object]) -> None:
+    """Verify only inherited, immutable anonymous bytes; never reopen a path.
+
+    The capture transaction holds the descriptor through validation and promotes
+    those same bytes. Ordinary --verify-existing paths retain their symlink ban.
+    """
+    import fcntl
+
+    if type(descriptor) is not int or not 3 <= descriptor <= 2**31 - 1:
+        raise ValueError("release source graph descriptor must be an inherited integer")
+    duplicate = None
+    try:
+        duplicate = os.dup(descriptor)
+        before = os.fstat(duplicate)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_nlink != 0
+            or before.st_uid != os.geteuid()
+            or not 0 < before.st_size <= MAX_SOURCE_GRAPH_BYTES
+        ):
+            raise ValueError("release source graph descriptor must be bounded, anonymous and owner-owned")
+        seals = fcntl.F_SEAL_SEAL | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_GROW | fcntl.F_SEAL_WRITE
+        if fcntl.fcntl(duplicate, fcntl.F_GET_SEALS) & seals != seals:
+            raise ValueError("release source graph descriptor lacks the complete immutable seal set")
+        chunks: list[bytes] = []
+        observed = 0
+        while observed < before.st_size:
+            chunk = os.pread(duplicate, min(65536, before.st_size - observed), observed)
+            if not chunk:
+                raise ValueError("release source graph descriptor ended before its bound")
+            chunks.append(chunk)
+            observed += len(chunk)
+        after = os.fstat(duplicate)
+        identity_fields = ("st_dev", "st_ino", "st_mode", "st_uid", "st_gid", "st_nlink",
+                           "st_size", "st_mtime_ns", "st_ctime_ns")
+        if (
+            any(getattr(before, field) != getattr(after, field) for field in identity_fields)
+            or fcntl.fcntl(duplicate, fcntl.F_GET_SEALS) & seals != seals
+        ):
+            raise ValueError("release source graph descriptor changed while reading")
+        _verify_graph_value(_strict_json_bytes(b"".join(chunks)), graph)
+    except (OSError, OverflowError, AttributeError) as error:
+        raise ValueError("release source graph descriptor cannot be verified") from error
+    finally:
+        if duplicate is not None:
+            os.close(duplicate)
+
+
+def _descriptor_argument(value: str) -> int:
+    if not re.fullmatch(r"[1-9][0-9]{0,9}", value) or not 3 <= int(value) <= 2**31 - 1:
+        raise argparse.ArgumentTypeError("descriptor must be a canonical inherited integer")
+    return int(value)
 
 
 def main() -> int:
@@ -529,6 +595,7 @@ def main() -> int:
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--output", type=Path)
     action.add_argument("--verify-existing", type=Path)
+    action.add_argument("--verify-existing-fd", type=_descriptor_argument)
     arguments = parser.parse_args()
     graph = build_graph(
         arguments.android_root,
@@ -541,6 +608,9 @@ def main() -> int:
     if arguments.output is not None:
         write_graph_exclusive(arguments.output, graph)
         print(f"release source graph local-review evidence written: {arguments.output}")
+    elif arguments.verify_existing_fd is not None:
+        verify_existing_graph_fd(arguments.verify_existing_fd, graph)
+        print("release source graph remained exact: sealed inherited descriptor")
     else:
         verify_existing_graph(arguments.verify_existing, graph)
         print(f"release source graph remained exact: {arguments.verify_existing}")

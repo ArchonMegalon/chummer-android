@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import secrets
 import stat
 import subprocess
@@ -795,6 +796,21 @@ def _trusted_tree_digest(root: Path, label: str) -> tuple[str, int, int]:
     return digest.hexdigest(), file_count, total_bytes
 
 
+def _source_graph_verification_arguments(
+    graph: Path, inherited_descriptors: tuple[int, ...]
+) -> list[str]:
+    if graph.parent == Path("/proc/self/fd"):
+        if not re.fullmatch(r"[1-9][0-9]{0,9}", graph.name):
+            raise ValueError("source graph descriptor path is not canonical")
+        descriptor = int(graph.name)
+        if not 3 <= descriptor <= 2**31 - 1 or not any(
+            type(value) is int and value == descriptor for value in inherited_descriptors
+        ):
+            raise ValueError("source graph descriptor is not explicitly inherited")
+        return ["--verify-existing-fd", str(descriptor)]
+    return ["--verify-existing", os.fspath(graph)]
+
+
 def _protected_validation_inputs(
     claims: dict[str, Any],
     aab: Path,
@@ -811,6 +827,7 @@ def _protected_validation_inputs(
     inherited_descriptors: tuple[int, ...] = (),
     signature_required: bool = True,
 ) -> dict[str, Any]:
+    graph_arguments = _source_graph_verification_arguments(graph, inherited_descriptors)
     workspace_root = _canonical_directory(workspace_root, "release workspace", owner_only=False)
     if ROOT.resolve(strict=True) != (workspace_root / "chummer-android").resolve(strict=True):
         raise ValueError("protected build attester is not running in the canonical Android workspace")
@@ -970,7 +987,7 @@ def _protected_validation_inputs(
                 "--authority-root", os.fspath(authority_root),
                 "--expected-version-name", str(identity["versionName"]),
                 "--expected-version-code", str(identity["versionCode"]),
-                "--verify-existing", os.fspath(graph),
+                *graph_arguments,
             ],
             source_environment,
             "canonical clean source graph",
