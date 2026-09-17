@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -20,6 +24,28 @@ AUTHORITY_PATHS = (
 )
 NEXT_VERSION_NAME = "0.1.0-preview.12"
 NEXT_VERSION_CODE = "12"
+IMMUTABLE_GRAPH_SEALS = (
+    fcntl.F_SEAL_SEAL | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_GROW | fcntl.F_SEAL_WRITE
+)
+
+
+@contextmanager
+def graph_descriptor(raw: bytes, *, seals: int = IMMUTABLE_GRAPH_SEALS, size: int | None = None):
+    descriptor = os.memfd_create("release-source-graph-test", os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
+    try:
+        remaining = memoryview(raw)
+        while remaining:
+            written = os.write(descriptor, remaining)
+            if written <= 0:
+                raise OSError("graph fixture write made no progress")
+            remaining = remaining[written:]
+        if size is not None:
+            os.ftruncate(descriptor, size)
+        fcntl.fcntl(descriptor, fcntl.F_ADD_SEALS, seals)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        yield descriptor
+    finally:
+        os.close(descriptor)
 
 
 def load_module():
@@ -454,6 +480,190 @@ class ReleaseSourceGraphTests(unittest.TestCase):
             output.write_text(json.dumps(payload), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "during packaging: ownerPackagePins"):
                 module.verify_existing_graph(output, graph)
+
+
+@unittest.skipUnless(hasattr(os, "memfd_create"), "immutable descriptors require Linux memfd")
+class ReleaseSourceGraphDescriptorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.root = Path(temporary.name)
+        (
+            cls.module, cls.workspace, cls.roots, cls.revisions,
+            cls.authority_root, cls.authority,
+        ) = seed_workspace(cls.root)
+        cls.graph = build_release_graph(
+            cls.module, cls.roots["chummer-android"], cls.workspace,
+            cls.authority, cls.authority_root, cls.revisions,
+        )
+        cls.raw = json.dumps(cls.graph).encode("utf-8")
+        cls.authority_path = cls.root / "package-authority.json"
+        cls.authority_path.write_text(json.dumps(cls.authority), encoding="utf-8")
+        cls.authority_path.chmod(0o600)
+
+    def test_sealed_graph_descriptor_matches_without_consuming_shared_offset(self) -> None:
+        with graph_descriptor(self.raw) as descriptor:
+            path = Path(f"/proc/self/fd/{descriptor}")
+            self.assertTrue(path.is_symlink())
+            self.assertTrue(path.is_file())
+            self.assertEqual(IMMUTABLE_GRAPH_SEALS, fcntl.fcntl(descriptor, fcntl.F_GET_SEALS))
+            os.lseek(descriptor, 7, os.SEEK_SET)
+            self.module.verify_existing_graph_fd(descriptor, self.graph)
+            self.assertEqual(7, os.lseek(descriptor, 0, os.SEEK_CUR))
+            with self.assertRaises(ValueError):
+                self.module.verify_existing_graph(path, self.graph)
+
+    def test_graph_descriptor_requires_every_immutable_seal(self) -> None:
+        for missing in (
+            fcntl.F_SEAL_SEAL, fcntl.F_SEAL_SHRINK, fcntl.F_SEAL_GROW, fcntl.F_SEAL_WRITE,
+        ):
+            with self.subTest(missing_seal=missing):
+                with graph_descriptor(self.raw, seals=IMMUTABLE_GRAPH_SEALS & ~missing) as descriptor:
+                    with self.assertRaises(ValueError):
+                        self.module.verify_existing_graph_fd(descriptor, self.graph)
+        with graph_descriptor(self.raw, seals=0) as descriptor:
+            with self.assertRaises(ValueError):
+                self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    def test_graph_descriptor_rejects_ordinary_files_directories_and_pipes(self) -> None:
+        with tempfile.TemporaryFile() as ordinary:
+            ordinary.write(self.raw)
+            ordinary.flush()
+            with self.assertRaises(ValueError):
+                self.module.verify_existing_graph_fd(ordinary.fileno(), self.graph)
+        directory = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY)
+        reader, writer = os.pipe()
+        try:
+            for descriptor in (directory, reader, writer):
+                with self.subTest(descriptor=descriptor):
+                    with self.assertRaises(ValueError):
+                        self.module.verify_existing_graph_fd(descriptor, self.graph)
+        finally:
+            os.close(directory)
+            os.close(reader)
+            os.close(writer)
+
+    def test_graph_descriptor_rejects_closed_reserved_and_noninteger_descriptors(self) -> None:
+        with graph_descriptor(self.raw) as descriptor:
+            closed_descriptor = descriptor
+        with self.assertRaises(ValueError):
+            self.module.verify_existing_graph_fd(closed_descriptor, self.graph)
+        for invalid in (-1, 0, 1, 2, True, False, "3", 3.0, None):
+            with self.subTest(descriptor=invalid):
+                with self.assertRaises(ValueError):
+                    self.module.verify_existing_graph_fd(invalid, self.graph)
+
+    def test_graph_descriptor_rejects_empty_and_oversize_snapshots(self) -> None:
+        self.assertEqual(16 * 1024 * 1024, self.module.MAX_SOURCE_GRAPH_BYTES)
+        for size in (0, self.module.MAX_SOURCE_GRAPH_BYTES + 1):
+            with self.subTest(size=size):
+                with graph_descriptor(b"", size=size) as descriptor:
+                    with self.assertRaises(ValueError):
+                        self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    def test_graph_descriptor_accepts_exact_size_limit(self) -> None:
+        raw = self.raw + b" " * (self.module.MAX_SOURCE_GRAPH_BYTES - len(self.raw))
+        with graph_descriptor(raw) as descriptor:
+            self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    @unittest.skipUnless(os.geteuid() == 0, "a real foreign-owner descriptor requires chown privilege")
+    def test_graph_descriptor_rejects_foreign_owner(self) -> None:
+        with graph_descriptor(self.raw) as descriptor:
+            os.fchown(descriptor, os.geteuid() + 1, -1)
+            with self.assertRaises(ValueError):
+                self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    def test_graph_descriptor_retains_strict_json_checks(self) -> None:
+        malformed = (
+            b"{", b"[]", b"\xff",
+            self.raw[:-1] + b', "contractName": "duplicate"}',
+            self.raw[:-1] + b', "extra": NaN}',
+        )
+        for index, raw in enumerate(malformed):
+            with self.subTest(case=index):
+                with graph_descriptor(raw) as descriptor:
+                    with self.assertRaises(ValueError):
+                        self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    def test_graph_descriptor_retains_structure_timestamp_and_field_checks(self) -> None:
+        missing = copy.deepcopy(self.graph)
+        del missing["repositories"]
+        extra = {**self.graph, "extra": "unbound"}
+        invalid_timestamp = {**self.graph, "generatedAtUtc": "not-utc"}
+        changed_identity = copy.deepcopy(self.graph)
+        changed_identity["releaseIdentity"]["versionCode"] += 1
+        changed_package = copy.deepcopy(self.graph)
+        changed_package["ownerPackagePins"][0]["size_bytes"] += 1
+        for changed, field in (
+            (missing, "structure"), (extra, "structure"),
+            (invalid_timestamp, "generatedAtUtc"),
+            (changed_identity, "releaseIdentity"), (changed_package, "ownerPackagePins"),
+        ):
+            with self.subTest(field=field):
+                with graph_descriptor(json.dumps(changed).encode("utf-8")) as descriptor:
+                    with self.assertRaisesRegex(ValueError, f"during packaging: {field}"):
+                        self.module.verify_existing_graph_fd(descriptor, self.graph)
+        later = {**self.graph, "generatedAtUtc": "2099-01-01T00:00:00Z"}
+        with graph_descriptor(json.dumps(later).encode("utf-8")) as descriptor:
+            self.module.verify_existing_graph_fd(descriptor, self.graph)
+
+    def test_ordinary_graph_path_still_rejects_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ordinary = root / "graph.json"
+            ordinary.write_bytes(self.raw)
+            linked = root / "graph-link.json"
+            linked.symlink_to(ordinary)
+            self.module.verify_existing_graph(ordinary, self.graph)
+            with self.assertRaises(ValueError):
+                self.module.verify_existing_graph(linked, self.graph)
+
+    def run_descriptor_cli(self, descriptor: int) -> subprocess.CompletedProcess[str]:
+        # The generated Git fixture has its own Presentation commit/tree. Match
+        # seed_workspace's fixture pins while exercising the real main(), graph
+        # rebuild, argparse, inherited descriptor and comparison in a child.
+        launcher = (
+            "import importlib.util, sys; "
+            "spec = importlib.util.spec_from_file_location('source_graph_cli', sys.argv[1]); "
+            "module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); "
+            "module.PRESENTATION_SOURCE_COMMIT = sys.argv[2]; "
+            "module.PRESENTATION_SOURCE_TREE = sys.argv[3]; "
+            "sys.argv = [sys.argv[1], *sys.argv[4:]]; "
+            "raise SystemExit(module.main())"
+        )
+        return subprocess.run(
+            [
+                sys.executable, "-I", "-B", "-S", "-c", launcher, str(SCRIPT),
+                self.module.PRESENTATION_SOURCE_COMMIT, self.module.PRESENTATION_SOURCE_TREE,
+                "--android-root", str(self.roots["chummer-android"]),
+                "--workspace-root", str(self.workspace),
+                "--package-authority", str(self.authority_path),
+                "--authority-root", str(self.authority_root),
+                "--expected-version-name", NEXT_VERSION_NAME,
+                "--expected-version-code", NEXT_VERSION_CODE,
+                "--verify-existing-fd", str(descriptor),
+            ],
+            env={
+                "PATH": os.defpath, "LANG": "C", "LC_ALL": "C",
+                "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_OPTIONAL_LOCKS": "0", **self.revisions,
+            },
+            pass_fds=(descriptor,), capture_output=True, text=True, timeout=30,
+        )
+
+    def test_cli_verifies_real_inherited_graph_descriptor(self) -> None:
+        with graph_descriptor(self.raw) as descriptor:
+            completed = self.run_descriptor_cli(descriptor)
+        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+
+    def test_cli_rejects_field_drift_in_real_inherited_graph_descriptor(self) -> None:
+        changed = copy.deepcopy(self.graph)
+        changed["releaseIdentity"]["versionCode"] += 1
+        with graph_descriptor(json.dumps(changed).encode("utf-8")) as descriptor:
+            completed = self.run_descriptor_cli(descriptor)
+        self.assertNotEqual(0, completed.returncode)
+        self.assertIn("during packaging: releaseIdentity", completed.stdout + completed.stderr)
 
 
 if __name__ == "__main__":

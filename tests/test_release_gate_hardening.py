@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from email.message import Message
 import base64
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import importlib.util
 import hashlib
 import json
@@ -44,6 +44,139 @@ TWO_GREEN_SIGNER = load(
 
 
 class ReleaseGateHardeningTests(unittest.TestCase):
+    def test_source_graph_descriptor_arguments_require_explicit_inheritance(self) -> None:
+        snapshot = CAPTURE._sealed_bytes(b"{}", "graph-arguments")
+        descriptor = snapshot["descriptor"]
+        try:
+            self.assertEqual(
+                ["--verify-existing-fd", str(descriptor)],
+                BUILD_ATTESTATION._source_graph_verification_arguments(
+                    CAPTURE._fd_path(snapshot), (descriptor,)
+                ),
+            )
+            for path, inherited in (
+                (CAPTURE._fd_path(snapshot), ()),
+                (Path(f"/proc/self/fd/0{descriptor}"), (descriptor,)),
+                (Path(f"/proc/self/fd/+{descriptor}"), (descriptor,)),
+                (Path("/proc/self/fd/1"), (True,)),
+                (Path("/proc/self/fd/2147483648"), (2147483648,)),
+            ):
+                with self.subTest(path=path), self.assertRaises(ValueError):
+                    BUILD_ATTESTATION._source_graph_verification_arguments(path, inherited)
+            self.assertEqual(
+                ["--verify-existing", "/example/graph.json"],
+                BUILD_ATTESTATION._source_graph_verification_arguments(Path("/example/graph.json"), ()),
+            )
+        finally:
+            os.close(descriptor)
+
+    def test_unsigned_handoff_runs_real_source_graph_cli_on_captured_descriptor(self) -> None:
+        """Real capture, attester wiring, leased script, CLI/Git and promotion.
+
+        Only certificate/SDK/AAB validators are modeled: this is not a signing
+        or APK test. The child substitutes the two Presentation fixture pins,
+        not verifier logic. A replaced input name must not replace held bytes.
+        """
+        fixtures = load(REPO / "tests/test_release_source_graph.py", "handoff_graph_fixture")
+        run_validator = BUILD_ATTESTATION._run_validator
+        run_process = subprocess.run
+        for invalid_graph in (False, True):
+            with self.subTest(invalid_graph=invalid_graph), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                module, workspace, roots, revisions, authority_root, authority = fixtures.seed_workspace(root)
+                graph_value = fixtures.build_release_graph(
+                    module, roots["chummer-android"], workspace, authority, authority_root, revisions
+                )
+                graph_value["publicationAuthorized"] = invalid_graph
+                graph = root / "graph.json"
+                graph_raw = json.dumps(graph_value).encode()
+                graph.write_bytes(graph_raw)
+                aab = root / "unsigned.aab"
+                aab.write_bytes(b"modeled-unsigned-aab")
+                package = root / "package.json"
+                package.write_text(json.dumps(authority))
+                package.chmod(0o600)
+                artifacts = root / "artifacts"
+                artifacts.mkdir(mode=0o700)
+                paths = {}
+                for name in ("java", "javac", "jarsigner", "keytool", "dotnet", "bundletool", "certificate"):
+                    paths[name] = root / name
+                    paths[name].write_bytes(f"public-test-{name}".encode())
+                    paths[name].chmod(0o600)
+                digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+                trusted = {
+                    "tools": {name: paths[name] for name in ("java", "javac", "jarsigner", "keytool")},
+                    "toolSha256": {name: digest(paths[name]) for name in ("java", "javac", "jarsigner", "keytool")},
+                    "dotnet": paths["dotnet"], "dotnetSha256": digest(paths["dotnet"]),
+                    **{name: "1" * 64 for name in ("observationSha256", "javaSdkTreeSha256",
+                        "javaVersionOutputSha256", "dotnetVersionOutputSha256", "dotnetSdkTreeSha256")},
+                }
+                source_calls = []
+
+                def certificate_or_real_process(arguments, **kwargs):
+                    if arguments[0] == "/usr/bin/openssl":
+                        return SimpleNamespace(returncode=0, stdout="sha256 Fingerprint=" +
+                            BUILD_ATTESTATION.EXPECTED_UPLOAD_CERTIFICATE_SHA256 + "\n")
+                    return run_process(arguments, **kwargs)
+
+                def validate(arguments, environment, label, timeout, *, pass_fds=()):
+                    if label != "canonical clean source graph":
+                        graph.write_bytes(b'{"replaced-input-name":true}')
+                        return "2" * 64
+                    self.assertIn("--verify-existing-fd", arguments)
+                    self.assertNotIn("--verify-existing", arguments)
+                    descriptor = int(arguments[arguments.index("--verify-existing-fd") + 1])
+                    self.assertIn(descriptor, pass_fds)
+                    self.assertEqual(graph_raw, os.pread(descriptor, len(graph_raw), 0))
+                    # Execute the actual held validator, using real fixture Git
+                    # repositories instead of production SHA constants.
+                    bootstrap = (
+                        "import runpy,sys; m=runpy.run_path(sys.argv[1]); "
+                        "g=m['main'].__globals__; "
+                        f"g['PRESENTATION_SOURCE_COMMIT']={module.PRESENTATION_SOURCE_COMMIT!r}; "
+                        f"g['PRESENTATION_SOURCE_TREE']={module.PRESENTATION_SOURCE_TREE!r}; "
+                        "sys.argv=sys.argv[1:]; raise SystemExit(m['main']())"
+                    )
+                    source_calls.append(descriptor)
+                    return run_validator(
+                        [*arguments[:4], "-c", bootstrap, *arguments[4:]],
+                        environment, label, timeout, pass_fds=pass_fds,
+                    )
+
+                with ExitStack() as stack:
+                    for name, value in (
+                        ("ROOT", roots["chummer-android"]),
+                        ("EXPECTED_BUNDLETOOL_SHA256", digest(paths["bundletool"])),
+                    ):
+                        stack.enter_context(mock.patch.object(BUILD_ATTESTATION, name, value))
+                    stack.enter_context(mock.patch.object(BUILD_ATTESTATION, "_load_trusted_java_toolchain", return_value=trusted))
+                    stack.enter_context(mock.patch.object(BUILD_ATTESTATION, "_trusted_system_executable", side_effect=lambda path, _: path))
+                    stack.enter_context(mock.patch.object(BUILD_ATTESTATION, "_run_validator", side_effect=validate))
+                    stack.enter_context(mock.patch.object(BUILD_ATTESTATION.subprocess, "run", side_effect=certificate_or_real_process))
+
+                    def prepare():
+                        return BUILD_ATTESTATION.prepare_external_signer_request(
+                            aab, graph, artifacts / "release.aab", artifacts / "graph.json",
+                            artifacts / "release.aab.sha256", root / "request.json",
+                            root / "receipt.json", root / "approval.json", workspace_root=workspace,
+                            package_authority=package, authority_root=authority_root,
+                            bundletool=paths["bundletool"], upload_certificate=paths["certificate"],
+                            java_tool_authority=root / "tool-authority.json",
+                        )
+
+                    if invalid_graph:
+                        with self.assertRaisesRegex(ValueError, "canonical clean source graph failed"):
+                            prepare()
+                        self.assertEqual([], list(artifacts.iterdir()))
+                        self.assertFalse((root / "request.json").exists())
+                    else:
+                        self.assertEqual("external-signer-required", prepare()["status"])
+                        self.assertEqual(graph_raw, (artifacts / "graph.json").read_bytes())
+                        request = json.loads((root / "request.json").read_text())
+                        self.assertFalse(request["publicationAuthorized"])
+                        self.assertFalse(request["signingAuthorized"])
+                    self.assertEqual(1, len(source_calls))
+
     def test_proof_verifier_requires_every_immutable_descriptor_seal(self) -> None:
         import fcntl
         fixtures = load(REPO / "tests/test_release_aab_proof_exclusion.py", "sealed_proof_fixture")
