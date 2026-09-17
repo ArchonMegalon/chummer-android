@@ -77,6 +77,14 @@ class InventoryDriftError(ValueError):
         self.diagnostic = dict(diagnostic)
 
 
+class CustodyError(ValueError):
+    """A byte-free descriptor custody rejection for the existing blocked result."""
+
+    def __init__(self, message: str, custody: Mapping[str, Any]) -> None:
+        super().__init__(message)
+        self.custody = dict(custody)
+
+
 def _strict_json_bytes(data: bytes, label: str) -> dict[str, Any]:
     def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -136,20 +144,35 @@ def _outside(root: Path, workspace: Path) -> None:
 
 
 def _stable_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    # O_NONBLOCK makes a rejected FIFO safe to inspect in a diagnostic test;
+    # regular-file reads retain the existing descriptor custody semantics.
+    flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
     try:
         descriptor = os.open(path, flags)
     except OSError as error:
         raise ValueError(f"cannot open {label} without following links: {error}") from error
     try:
         before = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(before.st_mode)
-            or before.st_uid != os.getuid()
-            or stat.S_IMODE(before.st_mode) & 0o077
-            or before.st_nlink != 1
-        ):
-            raise ValueError(f"{label} must be an owner-only, singly-linked regular file")
+        custody = {
+            "regularFile": stat.S_ISREG(before.st_mode),
+            "owner": before.st_uid == os.getuid(),
+            "ownerOnly": not stat.S_IMODE(before.st_mode) & 0o077,
+            "nlink1": before.st_nlink == 1,
+            "uid": before.st_uid,
+            "expectedUid": os.getuid(),
+            "mode": oct(stat.S_IMODE(before.st_mode)),
+            "linkCount": before.st_nlink,
+            "fileType": stat.filemode(before.st_mode)[0],
+            "sizeBytes": before.st_size,
+            "device": before.st_dev,
+            "inode": before.st_ino,
+        }
+        predicates = ("regularFile", "owner", "ownerOnly", "nlink1")
+        if not all(custody[name] for name in predicates):
+            raise CustodyError(
+                f"{label} must be an owner-only, singly-linked regular file",
+                custody,
+            )
         chunks: list[bytes] = []
         while True:
             chunk = os.read(descriptor, 1024 * 1024)
@@ -1312,6 +1335,8 @@ def main() -> int:
             "publicationAuthorized": False,
             "error": str(error),
         }
+        if isinstance(error, CustodyError):
+            blocked["custody"] = error.custody
         drift_output = getattr(args, "drift_diagnostic", None)
         if (
             isinstance(error, InventoryDriftError)
