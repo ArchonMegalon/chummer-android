@@ -1,0 +1,27 @@
+<Project>
+  <!-- AAPT otherwise embeds physical obj/lp/... paths in the protobuf source
+       pool. Resource IDs, values, configurations and file contents are kept. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(AndroidPackageFormats)' == 'aab'">
+    <AndroidAapt2LinkExtraArgs>$(AndroidAapt2LinkExtraArgs) --exclude-sources</AndroidAapt2LinkExtraArgs>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_ChummerResourceTaskProject>$(MSBuildThisFileDirectory)CanonicalizeAndroidResourceDesigner.proj</_ChummerResourceTaskProject>
+  </PropertyGroup>
+
+  <!-- SDK 36.1.69 passes DeterministicMvid but omits WriterParameters.Timestamp.
+       Correct this generated compiler input BEFORE Csc/linking/AOT. This never
+       rewrites an APK/AAB or changes the independent byte-equality check. -->
+  <Target Name="ChummerCanonicalizeResourceDesigner"
+          AfterTargets="_UpdateAndroidResgen" BeforeTargets="CoreCompile"
+          Condition="'$(Configuration)' == 'Release' And '$(DesignTimeBuild)' != 'true' And '$(AndroidUseDesignerAssembly)' == 'True'">
+    <Error Condition="'$(Deterministic)' != 'true'" Text="Release resource generation requires Deterministic=true." />
+    <Error Condition="'$(_GenerateResourceDesignerAssemblyOutput)' == ''" Text="Android SDK did not provide the generated resource-designer path." />
+    <Error Condition="'$(MonoAndroidToolsDirectory)' == ''" Text="Android SDK tools must be resolved before resource canonicalization." />
+    <!-- RoslynCodeTaskFactory expands Reference at project evaluation, while
+         the SDK discovers its tools during target execution. Evaluate this
+         tiny build-only project with the already resolved exact SDK path. -->
+    <MSBuild Projects="$(_ChummerResourceTaskProject)" Targets="Canonicalize" BuildInParallel="false"
+             Properties="DesignerFile=$([MSBuild]::Escape($([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(_GenerateResourceDesignerAssemblyOutput)'))));IntermediateRoot=$([MSBuild]::Escape($([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)'))));MonoAndroidToolsDirectory=$([MSBuild]::Escape('$(MonoAndroidToolsDirectory)'))" />
+  </Target>
+</Project>

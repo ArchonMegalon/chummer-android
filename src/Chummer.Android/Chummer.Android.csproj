@@ -131,4 +131,6 @@
     <Content Remove="wwwroot/**" />
     <None Remove="wwwroot/**" />
   </ItemGroup>
+
+  <Import Project="../../eng/AndroidDeterministicResources.targets" />
 </Project>
