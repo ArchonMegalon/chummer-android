@@ -261,6 +261,41 @@ graph's exact Design repository, commit, and tree. A Design pin change requires
 a new full PR gate, exact-main gate, and ordered qualification; previous
 eligibility receipts and detached approvals cannot authorize that new tree.
 
+### Automatic ordered qualification handoff
+
+`.github/workflows/api36-two-consecutive-green.yml` starts after a successful
+`push` to `main` completes the API 36 phone wizard workflow. The resolver
+authenticates the triggering repository, workflow, commit, run and attempt
+against GitHub, then requires exactly one merged same-repository PR and exactly
+one successful review run completed before that merge. It reads the review
+event SHA from the digest-verified P0 archive already collected by the existing
+downloader. The existing materializer and replay verifier make the qualification
+decision; automatic selection adds no signing, upload, or publication authority.
+
+The controller executes only the trusted default-branch implementation pinned
+to the workflow's `github.sha`. A separate checkout of the authenticated main
+candidate is read as data, including its exact source workflow and release
+identity. A newer main commit does not replace that candidate or its frozen
+dependencies. The existing validators still require compatible qualification
+policies and dependency pins: policy changes need a reviewed compatible gate,
+not execution of an older candidate's scripts. The workflow explicitly checks
+controller/candidate policy compatibility before replay.
+
+Automatic and manual invocations share concurrency by main run ID. The selected
+attempts are checked while collecting evidence and again before the eligibility
+artifact is emitted; a concurrent rerun fails the handoff instead of silently
+selecting another attempt. Repeated completed events can produce equivalent
+non-publication receipts, but cannot sign or upload anything. An aggregate rerun
+may still use its authenticated earlier APK producer attempt.
+
+`workflow_dispatch` retains all four explicit inputs for recovery. Missing,
+ambiguous or truncated automatic provenance fails closed; manual selection is
+still subject to the complete existing verification. The existing merge-graph
+contract requires the exact two-parent merge and matching review/main trees;
+this handoff does not make squash, rebase, fork, or stale-base proofs eligible.
+Only the qualification receipt is automated here. Protected signing and Play
+Internal delivery remain separate downstream work.
+
 ### General and public release gates — outside Preview.12 Internal
 
 The following broader checklist is not part of the seven-journey Preview.12

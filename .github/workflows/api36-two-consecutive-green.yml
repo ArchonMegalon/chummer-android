@@ -1,6 +1,10 @@
 name: API 36 ordered review-to-main green eligibility
 
 on:
+  workflow_run:
+    workflows: [API 36 phone beta SR5 wizard E2E]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       review_run_id:
@@ -27,37 +31,75 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: api36-two-green-${{ github.repository }}-${{ inputs.main_run_id }}
+  # Automatic events and manual recovery for the same run share one lane.
+  # Repeated events produce only eligibility; no signing or publication follows.
+  group: api36-two-green-${{ github.repository }}-${{ github.event.workflow_run.id || inputs.main_run_id }}
   cancel-in-progress: false
 
 jobs:
   verify-ordered-review-main-green:
     name: Verify an exact reviewed green followed by a later main green
+    if: >-
+      github.repository == 'ArchonMegalon/chummer-android' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Require an exact main dispatch and explicit run IDs
+      - name: Require trusted default-branch orchestration
         shell: bash
-        env:
-          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
-          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
-          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
-          MAIN_RUN_ID: ${{ inputs.main_run_id }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
-          [[ "$REVIEW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
-          [[ "$REVIEW_PULL_REQUEST_NUMBER" =~ ^[1-9][0-9]*$ ]]
-          [[ "$REVIEW_EVENT_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$MAIN_RUN_ID" =~ ^[1-9][0-9]*$ ]]
-          test "$REVIEW_RUN_ID" != "$MAIN_RUN_ID"
+          test "$GITHUB_REPOSITORY" = ArchonMegalon/chummer-android
 
-      - name: Check out the exact gate implementation
+      - name: Check out the trusted default-branch gate implementation
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.sha }}
+          path: chummer-android-controller
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Resolve exact review and main provenance
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -I -B chummer-android-controller/scripts/resolve-api36-two-green-inputs.py select \
+            --event-file "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" >>"$GITHUB_OUTPUT"
+
+      # This authenticated main checkout is data for the trusted verifier.
+      # Never execute its scripts or a reviewed PR checkout/artifact.
+      - name: Check out the frozen authenticated main candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer-android
+          ref: ${{ steps.resolve.outputs.main_head_sha }}
           path: chummer-android
           persist-credentials: false
           fetch-depth: 1
+
+      - name: Bind candidate HEAD and compatible qualification policies
+        shell: bash
+        env:
+          MAIN_HEAD_SHA: ${{ steps.resolve.outputs.main_head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C chummer-android rev-parse HEAD)" = "$MAIN_HEAD_SHA"
+          # Existing trusted validators use these controller policy defaults.
+          # Ordinary later main commits do not invalidate a frozen candidate.
+          for policy in api36-sr5-wizard-gate-authority.json design-policy-authority.json \
+            api36-proof-environment-authority.json api36-two-consecutive-green-authority.json; do
+            cmp "chummer-android-controller/eng/$policy" "chummer-android/eng/$policy" \
+              || { echo "Candidate qualification policy differs from trusted controller: $policy" >&2; exit 1; }
+          done
 
       - name: Check out the exact Design qualification policy
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -73,13 +115,18 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Query canonical Actions metadata and download exact proof archives
+        id: evidence
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
-          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
-          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
-          MAIN_RUN_ID: ${{ inputs.main_run_id }}
+          REVIEW_RUN_ID: ${{ steps.resolve.outputs.review_run_id }}
+          REVIEW_RUN_ATTEMPT: ${{ steps.resolve.outputs.review_run_attempt }}
+          REVIEW_HEAD_SHA: ${{ steps.resolve.outputs.review_head_sha }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ steps.resolve.outputs.review_pull_request_number }}
+          EXPLICIT_REVIEW_EVENT_SHA: ${{ steps.resolve.outputs.explicit_review_event_sha }}
+          MAIN_RUN_ID: ${{ steps.resolve.outputs.main_run_id }}
+          MAIN_RUN_ATTEMPT: ${{ steps.resolve.outputs.main_run_attempt }}
+          MAIN_HEAD_SHA: ${{ steps.resolve.outputs.main_head_sha }}
         run: |
           set -euo pipefail
           evidence="$RUNNER_TEMP/chummer-api36-two-green-inputs"
@@ -87,8 +134,12 @@ jobs:
           for role in review main; do
             if test "$role" = review; then
               run_id="$REVIEW_RUN_ID"
+              expected_attempt="$REVIEW_RUN_ATTEMPT"
+              expected_head="$REVIEW_HEAD_SHA"
             else
               run_id="$MAIN_RUN_ID"
+              expected_attempt="$MAIN_RUN_ATTEMPT"
+              expected_head="$MAIN_HEAD_SHA"
             fi
             role_root="$evidence/$role"
             install -d -m 0700 "$role_root"
@@ -98,6 +149,10 @@ jobs:
               "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               >"$role_root/run.json"
             run_attempt="$(jq -er '.run_attempt | select(type == "number" and . >= 1 and floor == .)' "$role_root/run.json")"
+            test "$run_attempt" = "$expected_attempt"
+            jq -e --arg sha "$expected_head" \
+              '.head_sha == $sha and .status == "completed" and .conclusion == "success"' \
+              "$role_root/run.json" >/dev/null
             gh api \
               -H 'Accept: application/vnd.github+json' \
               -H 'X-GitHub-Api-Version: 2022-11-28' \
@@ -126,8 +181,8 @@ jobs:
                 >"$role_root/$kind.zip"
             done
             producer_attempt="$(
-              PYTHONDONTWRITEBYTECODE=1 python3 \
-                chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+              python3 -I -B \
+                chummer-android-controller/scripts/materialize-api36-two-green-eligibility.py \
                 producer-attempt \
                 --p0-archive "$role_root/p0.zip" \
                 --run-id "$run_id" \
@@ -148,6 +203,9 @@ jobs:
               "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/attempts/$producer_attempt/jobs?per_page=100" \
               >"$role_root/producer-jobs.json"
           done
+          REVIEW_EVENT_SHA="$(python3 -I -B chummer-android-controller/scripts/resolve-api36-two-green-inputs.py \
+            review-event --evidence-root "$evidence" --explicit-event-sha "$EXPLICIT_REVIEW_EVENT_SHA")"
+          echo "review_event_sha=$REVIEW_EVENT_SHA" >>"$GITHUB_OUTPUT"
           gh api \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
@@ -187,14 +245,16 @@ jobs:
             -H 'X-GitHub-Api-Version: 2022-11-28' \
             "repos/$GITHUB_REPOSITORY/git/commits/$main_head_sha" \
             >"$evidence/main/commit.json"
+          python3 -I -B chummer-android-controller/scripts/resolve-api36-two-green-inputs.py \
+            check-runs --evidence-root "$evidence"
 
       - name: Materialize and replay eligibility without publication authority
         shell: bash
         env:
-          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
-          REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}
-          REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}
-          MAIN_RUN_ID: ${{ inputs.main_run_id }}
+          REVIEW_RUN_ID: ${{ steps.resolve.outputs.review_run_id }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ steps.resolve.outputs.review_pull_request_number }}
+          REVIEW_EVENT_SHA: ${{ steps.evidence.outputs.review_event_sha }}
+          MAIN_RUN_ID: ${{ steps.resolve.outputs.main_run_id }}
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           set -euo pipefail
@@ -234,18 +294,25 @@ jobs:
             --main-apk-archive "$evidence/main/apk.zip"
             --main-commit "$evidence/main/commit.json"
           )
-          python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+          python3 -I -B chummer-android-controller/scripts/materialize-api36-two-green-eligibility.py \
             materialize "${common[@]}" --output "$output"
-          python3 chummer-android/scripts/materialize-api36-two-green-eligibility.py \
+          python3 -I -B chummer-android-controller/scripts/materialize-api36-two-green-eligibility.py \
             verify "${common[@]}" --authority "$output"
           jq -e \
             '.eligible == true and .internalTestingEligible == true and .publicationAuthorized == false and .googlePlayUploadAuthorized == false' \
             "$output" >/dev/null
 
+      - name: Recheck attempts before emitting eligibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 -I -B chummer-android-controller/scripts/resolve-api36-two-green-inputs.py
+          check-runs --evidence-root "${{ runner.temp }}/chummer-api36-two-green-inputs"
+
       - name: Upload the non-publication eligibility receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-two-green-eligibility-${{ inputs.review_run_id }}-${{ inputs.main_run_id }}
+          name: chummer-android-api36-two-green-eligibility-${{ steps.resolve.outputs.review_run_id }}-${{ steps.resolve.outputs.main_run_id }}
           path: ${{ runner.temp }}/chummer-api36-two-green-output/ANDROID_API36_TWO_GREEN_ELIGIBILITY.generated.json
           if-no-files-found: error
           retention-days: 30

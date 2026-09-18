@@ -3026,7 +3026,7 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
 
-    def test_workflow_is_manual_read_only_and_main_ref_bound(self) -> None:
+    def test_workflow_preserves_manual_read_only_main_ref_bound_recovery(self) -> None:
         self.assertIn("workflow_dispatch:", self.text)
         self.assertIn("review_run_id:", self.text)
         self.assertIn("review_pull_request_number:", self.text)
@@ -3093,13 +3093,13 @@ class Api36TwoGreenWorkflowSourceTests(unittest.TestCase):
         self.assertTrue(run_blocks)
         for body in run_blocks:
             self.assertNotRegex(body, re.escape("${{ inputs."))
-        self.assertIn("REVIEW_RUN_ID: ${{ inputs.review_run_id }}", self.text)
+        self.assertIn("REVIEW_RUN_ID: ${{ steps.resolve.outputs.review_run_id }}", self.text)
         self.assertIn(
-            "REVIEW_PULL_REQUEST_NUMBER: ${{ inputs.review_pull_request_number }}",
+            "REVIEW_PULL_REQUEST_NUMBER: ${{ steps.resolve.outputs.review_pull_request_number }}",
             self.text,
         )
-        self.assertIn("REVIEW_EVENT_SHA: ${{ inputs.review_event_sha }}", self.text)
-        self.assertIn("MAIN_RUN_ID: ${{ inputs.main_run_id }}", self.text)
+        self.assertIn("REVIEW_EVENT_SHA: ${{ steps.evidence.outputs.review_event_sha }}", self.text)
+        self.assertIn("MAIN_RUN_ID: ${{ steps.resolve.outputs.main_run_id }}", self.text)
 
 
 if __name__ == "__main__":

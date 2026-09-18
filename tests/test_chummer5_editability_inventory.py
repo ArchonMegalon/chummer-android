@@ -6925,6 +6925,30 @@ public sealed class Demo
                     )
                     self.assertEqual("missing", drifted["status"])
 
+    def test_automatic_qualification_inputs_are_required_without_runtime_credit(self) -> None:
+        payload = json.loads(inventory.DEFAULT_OUTPUT.read_text(encoding="utf-8"))
+        bound = {
+            row["path"]: row
+            for row in payload["generationInputs"]["androidAndPresenterSources"]
+        }
+        authority_paths = inventory._sr5_table_wizard_authority_paths(PRESENTATION_ROOT)
+        for relative in (
+            "scripts/resolve-api36-two-green-inputs.py",
+            "tests/test_api36_two_green_input_resolver.py",
+        ):
+            with self.subTest(path=relative):
+                self.assertIn(relative, inventory.SR5_TABLE_WIZARD_GATE_INPUTS)
+                self.assertEqual(inventory._sha256_file(REPO / relative), bound[relative]["sha256"])
+                omitted = inventory._sr5_table_wizard_api36_recognition(
+                    [path for path in authority_paths if path != REPO / relative],
+                    PRESENTATION_ROOT,
+                )
+                self.assertIn(f"generation-input-missing:{relative}", omitted["blockers"])
+                self.assertEqual("blocked", omitted["sourceAuthorityStatus"])
+                self.assertEqual("not_executed", omitted["executionStatus"])
+                self.assertFalse(omitted["releaseClaim"])
+                self.assertEqual(0, omitted["completionCountContribution"])
+
     def test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

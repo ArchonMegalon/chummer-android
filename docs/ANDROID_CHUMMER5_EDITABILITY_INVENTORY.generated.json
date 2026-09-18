@@ -822,7 +822,7 @@
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
         "exists": true,
-        "sha256": "a055eb30749473d03578e9402fb5e81fc42355673f9517a55f127a5d2e6973ac"
+        "sha256": "a51a0f12eed470dd49c401a203ddc7587619d52e74155b139fb4d3cf571ebed6"
       },
       {
         "path": "eng/api36-proof-environment-authority.json",
@@ -885,6 +885,11 @@
         "sha256": "cfc76c70fd78a1bb94e85229be84dd6d2d1d97de0bce60e21cbb868cb4a94b9c"
       },
       {
+        "path": "scripts/resolve-api36-two-green-inputs.py",
+        "exists": true,
+        "sha256": "a437aefa909530b108764b3717dbdd6e8560bb67e64edda24d7c1112c5bc81b7"
+      },
+      {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
         "sha256": "4557fe6a4f2e03e7afd172fc92047ba5cdb53ed2b11651b78867afe8cdbd3583"
@@ -942,7 +947,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "8a165815bcc689f3b92cf0abe0613bc88e255e46d2ec26de918f2a4e728c0d1d"
+        "sha256": "9621d86a872922ece732baeeabf595b032491ac34b26ba4388a0993808423680"
+      },
+      {
+        "path": "tests/test_api36_two_green_input_resolver.py",
+        "exists": true,
+        "sha256": "c38f92722dc3d7b19d594906840420260fe435e86dd5cdbbb2fc14203ff75f23"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
@@ -1032,7 +1042,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "51385d28c3095857a5b015cb0d6fe67bba176f72faa33606e8a2beaca6b10361"
+        "sha256": "0b7f74f82dad1e7081216ead234fa1e7fd9ee95036bb0bfdf9d9c7979219946b"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -2924,6 +2934,7 @@
         "scripts/materialize-api36-emulator-live-observation.py",
         "scripts/materialize-api36-proof-environment-receipt.py",
         "scripts/materialize-api36-two-green-eligibility.py",
+        "scripts/resolve-api36-two-green-inputs.py",
         "scripts/materialize-android-p0-pr-authority.py",
         "scripts/prepare-api36-emulator-live-log.py",
         "scripts/run-api36-editing-e2e-ci.sh",
@@ -2936,6 +2947,7 @@
         "tests/test_api36_e2e_artifact_authority.py",
         "tests/test_api36_proof_environment_receipt.py",
         "tests/test_api36_two_green_eligibility.py",
+        "tests/test_api36_two_green_input_resolver.py",
         "tests/test_android_p0_pr_authority.py",
         "tests/test_android_design_policy_authority.py",
         "tests/test_current_phone_wizard_scope.py",
@@ -3043,7 +3055,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ff7960a99b2af047f6dbd73f249574949bc761c3272b03c1bb038aced1604129"
+      "sha256": "5f18933bccf8fbeb89019d14b865bde0b31ac54c346962d51f56e8eea40df592"
     }
   },
   "coverageByFamily": {
