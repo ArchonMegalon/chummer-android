@@ -7,4 +7,11 @@
     <BaseIntermediateOutputPath>$(ChummerReleaseIntermediateRoot)/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <MSBuildProjectExtensionsPath>$(ChummerReleaseIntermediateRoot)/$(MSBuildProjectName)/</MSBuildProjectExtensionsPath>
   </PropertyGroup>
+
+  <!-- Keep this an ordinary property: the SDK must prepend its Git SourceRoot
+       mappings so portable PDB document paths and SourceLink remain aligned.
+       Generated sources and CodeView PDB paths live outside those Git roots. -->
+  <PropertyGroup Condition="'$(ChummerReleaseDeterministicRoot)' != ''">
+    <PathMap>$([MSBuild]::ValueOrDefault('$(ChummerReleaseDeterministicRoot)', '').Replace(',', ',,').Replace('=', '=='))=/_/release,$(PathMap)</PathMap>
+  </PropertyGroup>
 </Project>
