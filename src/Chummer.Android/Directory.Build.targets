@@ -2,4 +2,7 @@
   <PropertyGroup>
     <AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Chummer.Android.AfterMicrosoftNETSdk.targets</AfterMicrosoftNETSdkTargets>
   </PropertyGroup>
+  <!-- Extend the SDK through its standard directory hook; keep the app's
+       implicit SDK imports and the existing late satellite hook unchanged. -->
+  <Import Project="../../eng/AndroidDeterministicResources.targets" />
 </Project>

@@ -1,0 +1,15 @@
+<Project>
+  <UsingTask TaskName="Chummer.Build.CanonicalizeAndroidResourceDesigner"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Reference Include="$(MonoAndroidToolsDirectory)/Mono.Cecil.dll" />
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)CanonicalizeAndroidResourceDesigner.cs" />
+    </Task>
+  </UsingTask>
+  <Target Name="Canonicalize">
+    <Error Condition="'$(DesignerFile)' == '' Or '$(IntermediateRoot)' == '' Or '$(MonoAndroidToolsDirectory)' == ''"
+           Text="Resource canonicalization requires explicit intermediate and SDK paths." />
+    <Chummer.Build.CanonicalizeAndroidResourceDesigner DesignerFile="$(DesignerFile)" IntermediateRoot="$(IntermediateRoot)" />
+  </Target>
+</Project>
