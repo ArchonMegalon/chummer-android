@@ -598,6 +598,10 @@ clean_exec "$dotnet_command" publish "$project_path" \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
+  -p:Deterministic=true \
+  -p:ContinuousIntegrationBuild=true \
+  -p:AndroidAotAdditionalArguments=deterministic \
+  -p:ChummerReleaseDeterministicRoot="$release_tmp" \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_id" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerPresentationRoot="$workspace_root/chummer-presentation" \

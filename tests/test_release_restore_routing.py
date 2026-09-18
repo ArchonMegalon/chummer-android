@@ -241,7 +241,9 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                     hostile_routing = ("CustomBeforeMicrosoftCommonProps", "CustomBeforeDirectoryBuildProps",
                                        "DirectoryBuildPropsPath", "ChummerReleaseLockRoot",
                                        "ChummerReleaseIntermediateRoot", "NuGetLockFilePath",
-                                       "BaseIntermediateOutputPath", "MSBuildProjectExtensionsPath")
+                                       "BaseIntermediateOutputPath", "MSBuildProjectExtensionsPath",
+                                       "PathMap", "ChummerReleaseDeterministicRoot", "Deterministic",
+                                       "ContinuousIntegrationBuild", "AndroidAotAdditionalArguments")
                     environment.update({name: "/hostile/wrong-root" for name in hostile_routing})
                     if offline:
                         environment["CHUMMER_ANDROID_RELEASE_OFFLINE_NUGET_FEED"] = str(external)
@@ -269,6 +271,16 @@ class ReleaseRestoreRoutingTests(unittest.TestCase):
                         self.assertEqual(1, len(observed))
                         self.assertIn("--no-restore", command)
                         self.assertIn("-p:AndroidKeyStore=false", command)
+                        for name, value in {
+                            "Deterministic": "true", "ContinuousIntegrationBuild": "true",
+                            "AndroidAotAdditionalArguments": "deterministic",
+                            "ChummerReleaseDeterministicRoot": str(input_dir),
+                        }.items():
+                            self.assertEqual([f"-p:{name}={value}"], [arg for arg in command
+                                             if arg.casefold().startswith(f"-p:{name}=".casefold())])
+                        self.assertFalse(any(arg.casefold().startswith("-p:pathmap=") for arg in command))
+                        self.assertNotIn("-p:AndroidEnableProfiledAot=false", command)
+                        self.assertNotIn("-p:DebugType=none", command)
                         self.assertEqual([f'-p:XamarinBuildDownloadDir={input_dir}/aar-cache/'],
                                          [arg for arg in command if "xamarinbuilddownloaddir" in arg.casefold()])
                     elif offline:
