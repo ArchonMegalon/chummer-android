@@ -131,6 +131,23 @@ class AndroidResourceReproducibilityTests(unittest.TestCase):
         </Project>''')
         return project
 
+    def test_real_app_loads_the_correction_once_through_the_sdk_directory_hook(self):
+        project = REPO / "src/Chummer.Android/Chummer.Android.csproj"
+        for configuration in ("Release", "Debug"):
+            options = self.run_process(
+                self.dotnet, "msbuild", project, "-nologo", "-v:quiet",
+                "-p:Configuration=" + configuration,
+                "-getProperty:AndroidAapt2LinkExtraArgs").stdout.strip()
+            self.assertEqual(["--exclude-sources"] if configuration == "Release" else [],
+                             shlex.split(options))
+        preprocessed = self.root / "app.preprocessed.xml"
+        self.run_process(self.dotnet, "msbuild", project, "-nologo",
+                         "-p:Configuration=Release", "-preprocess:" + str(preprocessed))
+        text = preprocessed.read_text()
+        self.assertEqual(1, text.count('<Target Name="ChummerCanonicalizeResourceDesigner"'))
+        self.assertEqual(1, text.count('<Target Name="_AfterILLinkAdditionalSteps"'))
+        self.assertEqual(1, text.count('<Target Name="_ChummerStageAndroidSdk36169Satellites"'))
+
     def test_real_designer_is_equal_across_paths_and_time_with_unchanged_values(self):
         outputs = []
         raw = []

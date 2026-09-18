@@ -19,6 +19,11 @@ and [Cecil writer](https://github.com/jbevain/cecil/blob/master/Mono.Cecil/Assem
   The task is restricted to the expected unsigned intermediate, rejects links,
   and does not rewrite an unchanged output. It never rewrites an APK or AAB.
 
+The app loads this extension through `src/Chummer.Android/Directory.Build.targets`.
+Its implicit SDK imports and existing late satellite-resource hook are unchanged.
+An actual-project evaluation/preprocessing test checks that the correction loads
+exactly once and that Debug retains its original AAPT options.
+
 The task source is outside the app's compilation directory. Debug/proof APKs,
 dependency pins, independent whole-AAB equality, approval and signing gates are
 unchanged. A changed Android tree still requires fresh qualification.
