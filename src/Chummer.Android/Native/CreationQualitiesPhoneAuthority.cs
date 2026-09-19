@@ -434,7 +434,11 @@ internal static class CreationQualitiesPhoneAuthority
     private static bool Canonical(string? value)
         => CharacterCreationQualitiesRules.IsCanonicalDigest(value);
 
-    private static bool CanonicalAuxiliary(string? value) => Canonical(value);
+    // Workspace auxiliary hashes are raw lowercase SHA-256, unlike this domain's
+    // sha256:-prefixed authority, preview and draft digests.
+    private static bool CanonicalAuxiliary(string? value)
+        => value is { Length: 64 }
+           && value.All(static character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
 
     private static bool Equal(string? left, string? right)
         => CharacterCreationQualitiesRules.DigestsEqual(left, right);

@@ -63,6 +63,15 @@ class CreationGearSourceContractTests(unittest.TestCase):
                                 paths.assert_called_once()
                                 self.assertEqual(expected, paths.call_args.kwargs["workspace_root"])
 
+    def test_catalog_render_does_not_reload_or_rehash_core(self) -> None:
+        page = source(PAGE)
+        render = page[page.index("protected override void Refresh()") : page.index("private void InitializeBasket(")]
+        self.assertNotIn("_gear.Load(", render)
+        self.assertNotIn("CreationGearPhoneAuthority.IsReady(", render)
+        self.assertIn("await Coordinator.LoadCreationGearForDisplayAsync", page)
+        self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(original)", render)
+        self.assertIn('AutomationId = "creation-gear-loading"', render)
+
     def test_phone_consumes_typed_renderer_neutral_presenter(self) -> None:
         page = source(PAGE)
         presenter = source(PRESENTER)

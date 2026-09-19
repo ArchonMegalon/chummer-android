@@ -58,7 +58,10 @@ public sealed class NativeDialogPage : ContentPage
     {
         _renderGeneration = _interactionGate.BeginRender();
         _renderedDialog = dialog;
-        string dialogTitle = AndroidDialogSettingsScope.Title(dialog);
+        bool newRunner = string.Equals(dialog.Id, "dialog.new_character", StringComparison.Ordinal);
+        string dialogTitle = newRunner
+            ? PhoneStrings.Get("NewRunnerTitle", "New runner")
+            : AndroidDialogSettingsScope.Title(dialog);
         Title = dialogTitle;
         _pendingTextFields.Clear();
         _interactiveElements.Clear();
@@ -82,7 +85,15 @@ public sealed class NativeDialogPage : ContentPage
             noticeLabel.AutomationId = "dialog-notice";
             body.Add(noticeLabel);
         }
-        string dialogMessage = AndroidDialogSettingsScope.Message(dialog);
+        DesktopDialogField? methodField = newRunner
+            ? dialog.Fields.SingleOrDefault(field => field.Id == "newCharacterBuildMethod")
+            : null;
+        string? selectedMethod = methodField?.Options?.FirstOrDefault(option =>
+            string.Equals(option.Value, methodField.Value, StringComparison.Ordinal))?.Label;
+        string dialogMessage = newRunner && selectedMethod is not null
+            ? PhoneStrings.Format("NewRunnerSelectedBuildMethod",
+                "Build method: {0}. Tap Create runner to continue.", selectedMethod)
+            : AndroidDialogSettingsScope.Message(dialog);
         if (!string.IsNullOrWhiteSpace(dialogMessage))
         {
             Label dialogMessageLabel = NativeTheme.Body(
@@ -90,6 +101,10 @@ public sealed class NativeDialogPage : ContentPage
                 AndroidDialogSettingsScope.IsCharacterSettings(dialog)
                     ? NativeTheme.Danger
                     : NativeTheme.Muted);
+            if (newRunner)
+            {
+                dialogMessageLabel.AutomationId = "dialog-selected-build-method";
+            }
             if (AndroidDialogSettingsScope.IsCharacterSettings(dialog))
             {
                 dialogMessageLabel.AutomationId = "dialog-settings-experimental";
@@ -105,6 +120,7 @@ public sealed class NativeDialogPage : ContentPage
             body.Add(NativeTheme.Card(scopeLabel));
         }
 
+        int newRunnerActionsIndex = body.Count;
         foreach (DesktopDialogField field in dialog.Fields)
         {
             if (string.Equals(field.LayoutSlot, DesktopDialogFieldLayoutSlots.Hidden, StringComparison.Ordinal))
@@ -132,7 +148,9 @@ public sealed class NativeDialogPage : ContentPage
         int index = 0;
         foreach (DesktopDialogAction action in dialog.Actions)
         {
-            string actionLabel = AndroidDialogSettingsScope.ActionLabel(dialog, action);
+            string actionLabel = newRunner && action.Id == CreateCharacterActionId
+                ? PhoneStrings.Get("NewRunnerCreate", "Create runner")
+                : AndroidDialogSettingsScope.ActionLabel(dialog, action);
             NativeDialogActionBinding binding = new(
                 _renderGeneration,
                 dialog.Id,
@@ -148,10 +166,10 @@ public sealed class NativeDialogPage : ContentPage
             actions.Add(button, index % 2, index / 2);
             index++;
         }
-        int actionsInsertIndex = body.Count;
+        int actionsInsertIndex = newRunner ? newRunnerActionsIndex : body.Count;
         if (dialog.Actions.Count > 0)
         {
-            body.Add(actions);
+            body.Insert(actionsInsertIndex, actions);
         }
 
         HorizontalStackLayout busy = new()
@@ -383,6 +401,18 @@ public sealed class NativeDialogPage : ContentPage
                     || string.Equals(field.Value, value, StringComparison.Ordinal))
                 {
                     return;
+                }
+
+                if (deferUntilNativeCallbackReturns && previous?.Id == "dialog.new_character")
+                {
+                    // A Picker rebuild must not lose text that has not delivered
+                    // Unfocused yet. Keep identity edits before changing method.
+                    await CommitPendingTextFieldsCoreAsync();
+                    if (!TryResolveActiveField(binding, out _))
+                    {
+                        return;
+                    }
+                    previous = _coordinator.State.ActiveDialog;
                 }
 
                 await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);

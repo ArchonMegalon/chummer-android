@@ -147,7 +147,7 @@ static CharacterCreationQualitiesState State()
         ContentRevision: 7,
         SavedRevision: 7,
         RawCharacterXmlDigest: Digest('5'),
-        AuxiliaryStateDigest: Digest('6'),
+        AuxiliaryStateDigest: new string('6', 64),
         PrerequisiteDraftRevision: 2,
         PrerequisiteDraftDigest: Digest('7'),
         AttributesDraftRevision: 3,
@@ -221,6 +221,8 @@ static CharacterCreationQualityCatalogOption Option(
         FollowUpChoiceId: null,
         FollowUpChoiceLabel: null,
         SourceAnchorIds: [$"qualities.xml#quality:{id}"],
+        SourceNodeXml: "<quality />",
+        SourceNodeDigest: CharacterCreationQualitiesRules.ComputeSourceNodeDigest("<quality />"),
         OptionDigest: string.Empty);
     return option with
     {

@@ -30,6 +30,9 @@ internal static partial class AfterRunAuthorityHarness
                 await runtime.Coordinator.CreateRunnerAsync();
                 var page = new Chummer.Android.Native.NativeDialogPage(runtime.Coordinator,
                     runtime.Coordinator.State.ActiveDialog!);
+                const string runnerName = "Selection survives";
+                IssuedElements(page).OfType<Entry>()
+                    .Single(item => item.AutomationId == "dialog-field-newcharactername").Text = runnerName;
                 foreach (string method in new[] { "SumToTen", "Karma", "LifeModule", "Priority", requestedMethod })
                 {
                     var dialog = runtime.Coordinator.State.ActiveDialog!;
@@ -52,6 +55,19 @@ internal static partial class AfterRunAuthorityHarness
                         && runtime.Coordinator.State.ActiveDialog!.Fields
                             .Single(item => item.Id == field.Id).Value == method,
                         "The queued native selection did not render the exact chosen method.");
+                    var currentBody = (VerticalStackLayout)((ScrollView)page.Content!).Content;
+                    var summary = IssuedElements(page).OfType<Label>()
+                        .Single(item => item.AutomationId == "dialog-selected-build-method");
+                    var createButton = IssuedElements(page).OfType<Button>()
+                        .Single(item => item.AutomationId == "dialog-action-create-character");
+                    Require(page.Title == "New runner"
+                        && summary.Text == $"Build method: {options[selected].Label}. Tap Create runner to continue."
+                        && createButton.Text == "Create runner"
+                        && currentBody.Children.IndexOf(currentBody.Children.OfType<Grid>().Single())
+                            < currentBody.Children.IndexOf(currentBody.Children.OfType<Border>().First())
+                        && runtime.Coordinator.State.ActiveDialog!.Fields
+                            .Single(item => item.Id == "newCharacterName").Value == runnerName,
+                        "Build selection must show its chosen value, expose Create above the fields, and retain unblurred name edits.");
                     // An event delivered by the removed Picker cannot overwrite its replacement.
                     var rendered = page.Content;
                     await ui.BeginAsyncVoid(() => picker.SelectedIndex = (selected + 1) % options.Count);

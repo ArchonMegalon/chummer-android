@@ -9,10 +9,376 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation.Overview;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunCreationEntryGearCasesAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+
+        var owners = new ControlledLinkedOwner();
+        QualitiesReadProbe? qualitiesProbe = null;
+        await using (var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true,
+            productionCreationOverview: true, qualitiesDecorator: actual => qualitiesProbe = new(actual, owners)))
+        {
+            var stored = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+            await HydrateFinalizationOwnerAsync(runtime, owners, stored);
+            var overview = runtime.Coordinator.State;
+            var loaded = runtime.Services.GetRequiredService<ICharacterCreationQualitiesService>().Load(new(runtime.Id));
+            Console.WriteLine("QUALITIES_ENTRY " + JsonSerializer.Serialize(new
+            {
+                loaded.Outcome, loaded.Blockers, overview.WorkspaceId, overview.ContentRevision, overview.SavedRevision,
+                created = overview.Profile?.Created, loaded.Value?.Binding, loaded.Value?.CanEdit,
+                stateBlockers = loaded.Value?.Blockers, pending = loaded.Value?.PendingDraft is not null,
+                matchesOverview = loaded.Value is { } value && CreationQualitiesPhoneAuthority.MatchesOverview(value, overview),
+                snapshotMatches = loaded.Value is { } snapshot && snapshot.SnapshotDigest == CharacterCreationQualitiesRules.ComputeStateDigest(snapshot)
+            }));
+            Require(loaded.Value is { PendingDraft: null } && CreationQualitiesPhoneAuthority.IsReady(loaded.Value, overview),
+                "Actual Core Qualities must be ready before its first draft exists.");
+            var stage = overview.CreationWizard!.Steps.Single(item => item.StepId == CharacterCreationWizardStepIds.Qualities);
+            Console.WriteLine("QUALITIES_STAGE " + JsonSerializer.Serialize(stage));
+            Require(stage.Blockers.SequenceEqual([CharacterCreationFinalizationBlockers.QualitiesDraftRequired]),
+                "Expected the actual wizard's own Qualities-draft finalization blocker.");
+            Require(BuildPageUiProjection.CanOpenExactTypedCreationStage(stage,
+                CharacterCreationWizardStepIds.Qualities, CreationQualitiesPhoneAuthority.IsReady(loaded.Value!, overview)),
+                "Actual Core-ready Qualities cannot open to author its first draft.");
+            Require(!CreationQualitiesPhoneAuthority.IsReady(loaded.Value! with { Binding = loaded.Value!.Binding with { ContentRevision = overview.ContentRevision + 1 } }, overview),
+                "Qualities accepted a stale revision.");
+            string digest = loaded.Value!.Binding.AuxiliaryStateDigest;
+            foreach (string invalid in new[] { "sha256:" + digest, digest.ToUpperInvariant(), digest[..63], new string('g', 64), "", " " + digest })
+                Require(!CreationQualitiesPhoneAuthority.MatchesOverview(loaded.Value with { Binding = loaded.Value.Binding with { AuxiliaryStateDigest = invalid } }, overview),
+                    "Qualities accepted a noncanonical workspace auxiliary hash.");
+            Require(!CreationQualitiesPhoneAuthority.MatchesOverview(loaded.Value with { Binding = loaded.Value.Binding with { RawCharacterXmlDigest = digest } }, overview),
+                "The auxiliary-hash fix relaxed another Qualities digest contract.");
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(() => VerifyQualitiesCatalogNavigationAsync(runtime, qualitiesProbe!, owners, ui));
+            Console.WriteLine("PASS actual Core Qualities entry before first draft, stale revision rejected");
+        }
+
+        owners = new ControlledLinkedOwner();
+        await using (var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true, productionCreationOverview: true))
+        {
+            var stored = PrepareActualFinalizationReadyContext(runtime);
+            await HydrateFinalizationOwnerAsync(runtime, owners, stored);
+            var overview = runtime.Coordinator.State;
+            var presenter = new CharacterCreationGearInteractionPresenter(runtime.Services.GetRequiredService<ICharacterCreationGearService>());
+            var loaded = presenter.Load(overview);
+            Require(loaded.State is not null, "Actual Core Gear did not load: " + loaded.Outcome);
+            var state = loaded.State!;
+            Require(CreationPrerequisitePhoneAuthority.IsCanonicalAuxiliaryStateDigest(state.Binding.AuxiliaryStateDigest),
+                "Actual Core Gear must return the raw lowercase workspace auxiliary hash.");
+            Require(CreationGearPhoneAuthority.IsReady(state, overview),
+                "Actual Core Gear was rejected by the native validator.");
+            string digest = state.Binding.AuxiliaryStateDigest;
+            foreach (string invalid in new[] { "sha256:" + digest, digest.ToUpperInvariant(), digest[..63], new string('g', 64), "", " " + digest })
+                Require(!CreationGearPhoneAuthority.IsReady(state with { Binding = state.Binding with { AuxiliaryStateDigest = invalid } }, overview),
+                    "Gear accepted a noncanonical workspace auxiliary hash.");
+            Require(!CreationGearPhoneAuthority.IsReady(state with { Binding = state.Binding with { ContentRevision = overview.ContentRevision + 1 } }, overview),
+                "Gear accepted a stale workspace revision.");
+            Require(!CreationGearPhoneAuthority.IsReady(state with { Binding = state.Binding with { RawCharacterXmlDigest = digest } }, overview),
+                "The auxiliary-hash fix relaxed a different digest contract.");
+            var flashlight = state.Authority.Options.Single(option => option.OptionId == "gear:c49a893a-d445-4aac-bec0-c8501cba4c2c");
+            var prepared = presenter.Prepare(overview, [new(flashlight.OptionId, 1)]);
+            Require(prepared.PreparedPreview is not null, "Real Gear receipt fixture did not prepare: " + JsonSerializer.Serialize(prepared.Blockers));
+            var proposal = prepared.PreparedPreview!;
+            var confirmed = presenter.Confirm(overview, new(proposal, proposal.Preview.PreviewDigest, proposal.IdempotencyKey, true));
+            Console.WriteLine("GEAR_CONFIRM " + JsonSerializer.Serialize(new
+            {
+                confirmed.Outcome, confirmed.Blockers, confirmed.Receipt,
+                receiptMatches = confirmed.Receipt is { } r && CreationGearPhoneAuthority.ReceiptMatches(proposal, r),
+                refreshedMatches = confirmed.Receipt is { } receipt && confirmed.RefreshedState is { } refreshed
+                    && CreationGearPhoneAuthority.RefreshedStateMatches(proposal, receipt, refreshed),
+                budget = confirmed.RefreshedState?.Budget, draftBudget = confirmed.RefreshedState?.PendingDraft?.Budget
+            }));
+            Require(confirmed.Outcome == CharacterCreationGearOutcomes.Applied && confirmed.Receipt is { } saved
+                && confirmed.RefreshedState is { } current && CreationGearPhoneAuthority.ReceiptMatches(proposal, saved)
+                && CreationGearPhoneAuthority.RefreshedStateMatches(proposal, saved, current),
+                "Actual nonempty Gear receipt was rejected by the native boundary.");
+            var persisted = confirmed.RefreshedState!;
+            var savedReceipt = confirmed.Receipt!;
+            var copiedBudget = persisted.Budget with { Blockers = new List<string>(persisted.Budget.Blockers) };
+            Require(CreationGearPhoneAuthority.RefreshedStateMatches(proposal, savedReceipt, persisted with { Budget = copiedBudget }),
+                "Equal deserialized budget values must not depend on collection reference identity.");
+            foreach (var corrupt in new[]
+            {
+                copiedBudget with { TotalStartingNuyen = copiedBudget.TotalStartingNuyen + 1 },
+                copiedBudget with { BasketCost = copiedBudget.BasketCost + 1 },
+                copiedBudget with { RemainingNuyen = copiedBudget.RemainingNuyen + 1 },
+                copiedBudget with { Overspend = copiedBudget.Overspend + 1 },
+                copiedBudget with { IsExact = false },
+                copiedBudget with { Blockers = ["unexpected-budget-blocker"] }
+            })
+                Require(!CreationGearPhoneAuthority.RefreshedStateMatches(proposal, savedReceipt, persisted with { Budget = corrupt }),
+                    "Gear receipt accepted a changed budget value or blocker list.");
+            await HydrateFinalizationOwnerAsync(runtime, owners, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            var cold = presenter.Load(runtime.Coordinator.State);
+            Require(cold.State is { } reopened && CreationGearPhoneAuthority.RefreshedStateMatches(proposal, savedReceipt, reopened),
+                "Gear receipt failed after a fresh persisted-state load.");
+            Console.WriteLine("PASS actual nonempty Gear receipt, cold reload, value-equal budgets and hostile budget deltas");
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(() => VerifyGearCatalogNavigationAsync(runtime, presenter, owners, ui));
+            Console.WriteLine("PASS actual Core Gear raw auxiliary digest, hostile formats and stale revision rejected");
+        }
+    }
+
+    private static async Task VerifyQualitiesCatalogNavigationAsync(NativeRewardRuntime runtime,
+        QualitiesReadProbe probe, ControlledLinkedOwner owners, IssuedPageUiContext ui)
+    {
+        var before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        var page = new CreationQualitiesPage(runtime.Coordinator);
+        var refresh = typeof(CreationQualitiesPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var filter = typeof(CreationQualitiesPage).GetMethod("ApplyFilter", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var prepare = typeof(CreationQualitiesPage).GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Task Prepare(CreationQualitiesPage target, CancellationToken token = default)
+            => (Task)prepare.Invoke(target, [token])!;
+        VerticalStackLayout Body() => (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        Border[] Rows() => Body().Children.OfType<Border>()
+            .Where(row => row.Content is Grid grid && grid.Children.OfType<Button>()
+                .Any(button => button.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true)).ToArray();
+        string OptionId(Border row) => ((Grid)row.Content!).Children.OfType<Button>().Single().AutomationId;
+        Button Pager(string suffix) => Body().Children.OfType<HorizontalStackLayout>()
+            .SelectMany(row => row.Children.OfType<Button>())
+            .Single(button => button.AutomationId == "creation-qualities-catalog-" + suffix);
+
+        probe.UiThreadId = Environment.CurrentManagedThreadId;
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.BeforeLoad = () =>
+        {
+            entered.TrySetResult();
+            Require(release.Wait(TimeSpan.FromSeconds(10)), "Qualities test read was never released.");
+        };
+        Task loading = Prepare(page);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Require(!loading.IsCompleted && Rows().Length == 0
+                    && Body().Children.OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                "Qualities must show loading without exposing actions before Core completes.");
+            var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ui.Post(_ => heartbeat.SetResult(), null);
+            await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally { release.Set(); }
+        await loading;
+        probe.BeforeLoad = null;
+        refresh.Invoke(page, null);
+        string[] first = Rows().Select(OptionId).ToArray();
+        Require(first.Length == 20 && Pager("next").IsEnabled && !Pager("previous").IsEnabled,
+            "The real catalog must render only the first bounded page, with honest navigation.");
+        Button review = Body().Children.OfType<Button>().Single(button => button.AutomationId == "creation-qualities-open-review");
+        Require(review.IsEnabled && Body().Children.IndexOf(review) < Body().Children.IndexOf(Rows()[0]),
+            "Review must be available before the catalog, including an empty valid selection.");
+
+        ((IButtonController)Pager("next")).SendClicked();
+        Require(Rows().Length == 20 && !Rows().Select(OptionId).Intersect(first).Any()
+                && Pager("previous").IsEnabled,
+            "Next must show another bounded set of exact Core identities.");
+        ((IButtonController)Pager("previous")).SendClicked();
+        Require(Rows().Select(OptionId).SequenceEqual(first),
+            "Previous must restore the same exact identities.");
+
+        filter.Invoke(page, ["no-such-quality-regression-20260919"]);
+        Require(Rows().Length == 0 && !Pager("next").IsEnabled && !Pager("previous").IsEnabled,
+            "An empty search must not leave stale rows or enabled navigation.");
+        var search = Body().Children.OfType<SearchBar>().Single();
+        search.Text = string.Empty;
+        Require(Rows().Select(OptionId).SequenceEqual(first),
+            "Clearing search must return to the first catalog page.");
+        Require(probe.LoadCalls == 1,
+            "Rendering, paging and filtering must not reload Core after appearance preparation.");
+
+        // Cancellation may not stop Core's synchronous read, but must discard
+        // its result and release both the activation gate and original-owner lease.
+        var canceledPage = new CreationQualitiesPage(runtime.Coordinator);
+        using var cancellation = new CancellationTokenSource();
+        release.Reset();
+        entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.BeforeLoad = () =>
+        {
+            entered.TrySetResult();
+            Require(release.Wait(TimeSpan.FromSeconds(10)), "Canceled Qualities read was never released.");
+        };
+        Task canceled = Prepare(canceledPage, cancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            cancellation.Cancel();
+        }
+        finally { release.Set(); }
+        try { await canceled; throw new InvalidOperationException("Canceled Qualities load was accepted."); }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        Require(typeof(CreationQualitiesPage).GetField("_loaded", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(canceledPage) is null && owners.ActiveLeases == 0,
+            "A departed appearance retained Core data or its owner lease.");
+        probe.BeforeLoad = null;
+
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task stale;
+        try
+        {
+            stale = Prepare(new CreationQualitiesPage(runtime.Coordinator));
+            owners.Set(ContactsOwnerB);
+            owners.Set(OwnerScope.LocalSingleUser);
+        }
+        finally { gate.Release(); }
+        await stale;
+        Require(probe.LoadCalls == 2, "Queued Qualities load crossed an owner A→B→A transition.");
+        refresh.Invoke(page, null);
+        Require(Rows().Length == 0 && !Body().Children.OfType<Button>()
+                .Any(button => button.AutomationId == "creation-qualities-open-review"),
+            "An old cached catalog remained actionable after an owner transition.");
+
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        Require(runtime.Coordinator.State.ContentRevision == before.ContentRevision,
+            "Catalog navigation must not mutate the workspace or increment its revision.");
+        Console.WriteLine("PASS native Qualities background read, live UI heartbeat, one-read paging/search, canceled load and owner ABA rejection");
+    }
+
+    private static async Task VerifyGearCatalogNavigationAsync(NativeRewardRuntime runtime,
+        ICharacterCreationGearInteractionPresenter presenter, ControlledLinkedOwner owners, IssuedPageUiContext ui)
+    {
+        var before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        var probe = new GearReadProbe(presenter, owners) { UiThreadId = Environment.CurrentManagedThreadId };
+        var page = new CreationGearPage(runtime.Coordinator, probe, runtime.Presenter);
+        var refresh = typeof(CreationGearPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var prepare = typeof(CreationGearPage).GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Task Prepare(CreationGearPage target, CancellationToken token = default) => (Task)prepare.Invoke(target, [token])!;
+        VerticalStackLayout Body() => (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        string[] Rows() => Body().Children.OfType<Border>().SelectMany(row => row.Content is Grid grid
+                ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())
+            .Where(button => button.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true)
+            .Select(button => button.AutomationId).ToArray();
+        Button Pager(string suffix) => Body().Children.OfType<HorizontalStackLayout>()
+            .SelectMany(row => row.Children.OfType<Button>())
+            .Single(button => button.AutomationId == "creation-gear-catalog-" + suffix);
+
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.BeforeLoad = () =>
+        {
+            entered.TrySetResult();
+            Require(release.Wait(TimeSpan.FromSeconds(10)), "Gear test read was never released.");
+        };
+        Task loading = Prepare(page);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Require(!loading.IsCompleted && Rows().Length == 0
+                && Body().Children.OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                "Gear must render loading without exposing catalog actions before Core completes.");
+            var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ui.Post(_ => heartbeat.SetResult(), null);
+            await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally { release.Set(); }
+        await loading;
+        probe.BeforeLoad = null;
+        refresh.Invoke(page, null);
+        string[] first = Rows();
+        Require(first.Length == 40 && Pager("next").IsEnabled, "Gear did not render a bounded catalog.");
+        ((IButtonController)Pager("next")).SendClicked();
+        Require(!Rows().Intersect(first).Any() && Pager("previous").IsEnabled, "Gear paging did not advance exact identities.");
+        ((IButtonController)Pager("previous")).SendClicked();
+        Require(Rows().SequenceEqual(first), "Gear previous page changed identities.");
+        typeof(CreationGearPage).GetMethod("ApplyFilter", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, ["Flashlight"]);
+        Require(Rows().Length > 0 && Rows().Length < first.Length, "Real Gear search did not filter the catalog.");
+        Body().Children.OfType<SearchBar>().Single().Text = string.Empty;
+        Require(Rows().SequenceEqual(first) && probe.LoadCalls == 1,
+            "Gear search, clear and paging must reuse one accepted Core read.");
+
+        var canceledPage = new CreationGearPage(runtime.Coordinator, probe, runtime.Presenter);
+        using var cancellation = new CancellationTokenSource();
+        release.Reset();
+        entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.BeforeLoad = () =>
+        {
+            entered.TrySetResult();
+            Require(release.Wait(TimeSpan.FromSeconds(10)), "Canceled Gear read was never released.");
+        };
+        Task canceled = Prepare(canceledPage, cancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            cancellation.Cancel();
+        }
+        finally { release.Set(); }
+        try { await canceled; throw new InvalidOperationException("Canceled Gear load was accepted."); }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        Require(typeof(CreationGearPage).GetField("_loaded", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(canceledPage) is null && owners.ActiveLeases == 0,
+            "Canceled Gear read retained its result or original-owner lease.");
+        probe.BeforeLoad = null;
+
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task stale;
+        try
+        {
+            stale = Prepare(new CreationGearPage(runtime.Coordinator, probe, runtime.Presenter));
+            owners.Set(ContactsOwnerB);
+            owners.Set(OwnerScope.LocalSingleUser);
+        }
+        finally { gate.Release(); }
+        await stale;
+        refresh.Invoke(page, null);
+        Require(probe.LoadCalls == 2 && Rows().Length == 0,
+            "Gear loaded or retained actionable rows across an owner A→B→A transition.");
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        Console.WriteLine("PASS native Gear background read, UI heartbeat, one-read paging/search, cancellation and owner ABA rejection");
+    }
+
+    private sealed class GearReadProbe(ICharacterCreationGearInteractionPresenter inner,
+        ControlledLinkedOwner owners) : ICharacterCreationGearInteractionPresenter
+    {
+        public int UiThreadId { get; init; }
+        public int LoadCalls { get; private set; }
+        public Action? BeforeLoad { get; set; }
+        public CharacterCreationGearInteractionLoadResult Load(CharacterOverviewState overview)
+        {
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
+                "Gear read must run off UI with the original owner lease.");
+            LoadCalls++;
+            BeforeLoad?.Invoke();
+            return inner.Load(overview);
+        }
+        public CharacterCreationGearInteractionPrepareResult Prepare(CharacterOverviewState overview,
+            IReadOnlyList<CharacterCreationGearSelection> basket) => inner.Prepare(overview, basket);
+        public CharacterCreationGearInteractionConfirmResult Confirm(CharacterOverviewState overview,
+            CharacterCreationGearConfirmation confirmation) => inner.Confirm(overview, confirmation);
+        public CharacterCreationGearInteractionReceiptLookupResult LookupReceipt(CharacterOverviewState overview,
+            string idempotencyKey) => inner.LookupReceipt(overview, idempotencyKey);
+    }
+
+    private sealed class QualitiesReadProbe(ICharacterCreationQualitiesService inner,
+        ControlledLinkedOwner owners) : ICharacterCreationQualitiesService
+    {
+        public int UiThreadId { get; set; }
+        public int LoadCalls { get; private set; }
+        public Action? BeforeLoad { get; set; }
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(CharacterCreationQualitiesLoadRequest request)
+        {
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
+                "Qualities Core read must run off UI with the original owner lease.");
+            LoadCalls++;
+            BeforeLoad?.Invoke();
+            return inner.Load(request);
+        }
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(CharacterCreationQualitiesPreviewRequest request)
+            => inner.Preview(request);
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> Confirm(CharacterCreationQualitiesConfirmRequest request)
+            => inner.Confirm(request);
+    }
+
     public static async Task RunCreationFinalizationOwnerCasesAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
@@ -377,7 +743,7 @@ internal static partial class AfterRunAuthorityHarness
         Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         { stored.Id, stored.Document, stored.ContentRevision, stored.SavedRevision }))).ToLowerInvariant();
 
-    private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime)
+    private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime, bool stopBeforeQualities = false)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority/Human/Mundane, actual services issue every draft and receipt.
@@ -433,6 +799,8 @@ internal static partial class AfterRunAuthorityHarness
             "native-finalization-skills", true));
         Require(skillReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual Skills failed: " + JsonSerializer.Serialize(skillReceipt));
+        if (stopBeforeQualities)
+            return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var qualities = services.GetRequiredService<ICharacterCreationQualitiesService>();
         var qualityPreview = qualities.Preview(new(qualities.Load(new(runtime.Id)).Value!.Binding, [])).Value!;
         var qualityReceipt = qualities.Confirm(new(qualityPreview.Binding, [], qualityPreview.PreviewDigest,

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Qualities.Loading" xml:space="preserve"><value>Cargando ventajas y desventajas…</value></data>
+  <data name="Gear.Loading" xml:space="preserve"><value>Cargando equipo…</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
@@ -223,6 +225,11 @@
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Revisar cualidades</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>Cambió la vista previa de Core, la autoridad de fuente o la revisión del espacio de trabajo.</value></data>
   <data name="Qualities.ReviewSelected" xml:space="preserve"><value>Revisar {0} cualidades seleccionadas</value></data>
+  <data name="Qualities.Search" xml:space="preserve"><value>Buscar cualidades</value></data>
+  <data name="Qualities.NoMatches" xml:space="preserve"><value>No hay cualidades coincidentes</value></data>
+  <data name="Qualities.Showing" xml:space="preserve"><value>Mostrando {0}–{1} de {2}</value></data>
+  <data name="Qualities.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Qualities.Next" xml:space="preserve"><value>Siguiente</value></data>
   <data name="Qualities.StableOption" xml:space="preserve"><value>Opción estable</value></data>
   <data name="Qualities.Step1" xml:space="preserve"><value>Prioridad SR5 · 1 de 4</value></data>
   <data name="Qualities.Step2" xml:space="preserve"><value>Prioridad SR5 · 2 de 4</value></data>

@@ -17,6 +17,20 @@ internal sealed class CreationQualitiesPhoneDraft
 
     public CharacterCreationQualitiesPreview? Preview => _preview;
 
+    // A worker prepares its own draft; a departed page or child editor must
+    // never share a mutable selection set with an in-flight display read.
+    public CreationQualitiesPhoneDraft Copy()
+    {
+        var copy = new CreationQualitiesPhoneDraft
+        {
+            _binding = _binding,
+            _snapshotDigest = _snapshotDigest,
+            _preview = _preview
+        };
+        copy._selectedOptionIds.UnionWith(_selectedOptionIds);
+        return copy;
+    }
+
     public void Bind(CharacterCreationQualitiesState state, CharacterOverviewState overview)
     {
         if (Matches(state, overview))

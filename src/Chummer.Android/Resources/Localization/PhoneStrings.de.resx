@@ -254,4 +254,7 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="OnlineContinuationReview" xml:space="preserve"><value>{0} mit dem vollständigen Wizard-Verlauf öffnen? Inhaltsrevision: {1}; gespeicherte Revision: {2}. Lokale Konflikte werden nicht überschrieben.</value></data>
   <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Wiederherstellen und öffnen</value></data>
   <data name="InitialRunnerRouteUnavailable" xml:space="preserve"><value>Der Runner konnte nicht automatisch geöffnet werden. Öffne ihn unter Runner.</value></data>
+  <data name="NewRunnerTitle" xml:space="preserve"><value>Neuer Runner</value></data>
+  <data name="NewRunnerSelectedBuildMethod" xml:space="preserve"><value>Bauart: {0}. Tippe auf Runner erstellen, um fortzufahren.</value></data>
+  <data name="NewRunnerCreate" xml:space="preserve"><value>Runner erstellen</value></data>
 </root>

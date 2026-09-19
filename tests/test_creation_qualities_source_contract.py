@@ -7,6 +7,29 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_catalog_render_does_not_repeat_core_or_digest_work(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        render = page[page.index("protected override void Refresh()") : page.index("private void AddBinding(")]
+        for forbidden in ("LoadCreationQualities", "IsReady(", "ProjectEditor(", "_draft.Bind(", "_draft.Matches("):
+            self.assertNotIn(forbidden, render)
+        self.assertIn("await Task.Run(() =>", page)
+        self.assertIn("CreationQualitiesPhoneDraft draft = _draft.Copy();", page)
+        self.assertIn("cancellationToken.ThrowIfCancellationRequested();", page)
+        self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(original)", render)
+
+    def test_catalog_is_bounded_and_review_precedes_it(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        self.assertIn("matches.Skip(_catalogOffset).Take(CatalogPageSize)", page)
+        self.assertLess(page.index("AddReview(state, checkpointOwnsLane);"),
+                        page.index("AddOptions(state, editor, checkpointOwnsLane);"))
+        self.assertIn("search.SearchButtonPressed +=", page)
+        self.assertIn("ApplyFilter(search.Text)", page)
+        for locale in ("", ".de", ".es"):
+            resources = (REPO / "src/Chummer.Android/Resources/Localization" /
+                         f"CreationFlowStrings{locale}.resx").read_text(encoding="utf-8")
+            for key in ("Search", "NoMatches", "Showing", "Previous", "Next"):
+                self.assertIn(f'name="Qualities.{key}"', resources)
+
     def test_phone_journey_is_purpose_built_and_core_bound(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         for marker in (

@@ -1390,6 +1390,27 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
 
     private async Task<GrantContract?> RecoverStagedGrantCommitAsync()
     {
+        // Callers already serialize account operations with _gate. Foreground
+        // resume normally has no staged commit: that read-only probe must not
+        // exclude an unchanged owner's concurrent local Shell bootstrap.
+        // Presence is only a hint to enter recovery, never grant authority;
+        // recovery re-reads and validates the stage under credential exclusion.
+        try
+        {
+            if (string.IsNullOrWhiteSpace(await _metadataStore.GetAsync(
+                    StagedGrantCommitKey, CancellationToken.None)))
+                return null;
+        }
+        catch
+        {
+            // Unreadable storage is not proof of absence. Preserve the original
+            // fail-closed invalidation, without tearing an admitted Core lease.
+            await _credentialCommitGate.WaitAsync(CancellationToken.None);
+            try { OwnerAuthority.Invalidate(); }
+            finally { _credentialCommitGate.Release(); }
+            throw;
+        }
+
         await _credentialCommitGate.WaitAsync(CancellationToken.None);
         try
         {
