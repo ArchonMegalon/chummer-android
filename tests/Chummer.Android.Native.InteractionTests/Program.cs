@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--native-build-method-content-root")
+        {
+            await AfterRunAuthorityHarness.RunNativeBuildMethodSelectionAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--commerce-owner-stores")
         {
             CommerceSelectionRuntimeTests.VerifyProductionOwnerStores();

@@ -76,6 +76,12 @@ public sealed class NativeDialogPage : ContentPage
             errorLabel.AutomationId = "dialog-error";
             body.Add(errorLabel);
         }
+        else if (!string.IsNullOrWhiteSpace(_coordinator.State.Notice))
+        {
+            Label noticeLabel = NativeTheme.Body(_coordinator.State.Notice!);
+            noticeLabel.AutomationId = "dialog-notice";
+            body.Add(noticeLabel);
+        }
         string dialogMessage = AndroidDialogSettingsScope.Message(dialog);
         if (!string.IsNullOrWhiteSpace(dialogMessage))
         {
@@ -216,7 +222,8 @@ public sealed class NativeDialogPage : ContentPage
                 {
                     if (picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Count)
                     {
-                        await UpdateFieldAsync(binding, options[picker.SelectedIndex].Value);
+                        await UpdateFieldAsync(binding, options[picker.SelectedIndex].Value,
+                            deferUntilNativeCallbackReturns: true);
                     }
                 };
             }
@@ -354,9 +361,21 @@ public sealed class NativeDialogPage : ContentPage
         => string.Concat((options ?? []).Select(static option =>
             $"{option.Value.Length}:{option.Value}{option.Label.Length}:{option.Label};"));
 
-    private Task UpdateFieldAsync(NativeDialogFieldBinding binding, string? value)
+    private Task UpdateFieldAsync(
+        NativeDialogFieldBinding binding,
+        string? value,
+        bool deferUntilNativeCallbackReturns = false)
         => _interactionGate.RunFieldUpdateAsync(binding.RenderGeneration, async () =>
         {
+            // Android's Picker dismisses its native popup after raising the selection
+            // callback. Replacing Content inside that callback disconnects the Picker
+            // before dismissal and can leave its input channel swallowing every tap.
+            // Enqueue first to retain selection-before-submit ordering, then let the
+            // native callback unwind before updating or replacing any controls.
+            if (deferUntilNativeCallbackReturns)
+            {
+                await Task.Yield();
+            }
             try
             {
                 DesktopDialogState? previous = _coordinator.State.ActiveDialog;
