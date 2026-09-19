@@ -1,6 +1,31 @@
 # Play release contract
 
-## Current observed Internal release: Preview 14 — September 19, 2026
+## Current observed Internal release: Preview 15 — September 19, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-19T12:03:30Z` shows
+`15 (0.1.0-preview.15)` as **Available to internal testers** on the active
+Internal track. The [tester install/update link](https://play.google.com/apps/internaltest/4700678198570024687)
+is unchanged. See the [local transaction and observed availability](../play/evidence/preview15-internal-observation.md).
+
+This update guards Cyberware/custom-drug selectors against overlapping actions
+and stale drafts and includes canonical customdata packs needed by existing
+profiles such as Full House. Two targeted API36 draft/new-process checks passed;
+no purchase/recipe was confirmed. No claim of exhaustive wizard, full-editing,
+tablet, Rook or physical Play-install readiness is made.
+
+Release source `d05d2a40c1110924d7d2e3b35d4760a6b6d7207a` was built locally
+in offline keyless Docker, signed separately with the existing upload key and
+independently verified. PR80 merged the same tree to
+`a005691bf4073eb1e99fefc28ef8a16785a3eddf`; the later merge is not relabelled
+as the bundle producer. Play parsed version15, API24+, target36 and arm64-v8a.
+Provider availability is observed, not inferred from build or source-check CI.
+
+The provider displays `19 Sept 14:03`; that is not asserted as a UTC timestamp.
+No Production/tester/security/billing change occurred. Code15 is consumed;
+the next upload must use a higher unused code. Physical installation/update
+still needs an actual Play-installed device check.
+
+## Historical observed Internal release: Preview 14 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T10:20:53Z` shows
 `14 (0.1.0-preview.14)` as **Available to internal testers** on the active
@@ -74,7 +99,7 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 Upload keys and passwords are never committed or admitted to ordinary builds.
 The hosted protocol below assigns them to a separate protected Fleet signer,
-which is not implemented by this repository. Previews 12, 13 and 14 instead used the
+which is not implemented by this repository. Previews 12 through 15 instead used the
 explicitly approved isolated local signing boundary documented above:
 
 - `AndroidSigningKeyStore`

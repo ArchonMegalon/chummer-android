@@ -1,0 +1,1 @@
+Internal SR5 phone update: Cyberware and custom-drug selections now reject overlapping taps and stale drafts. Bundled custom-data packs restore profile-dependent catalogs, including Full House. Targeted draft/reopen/restart checks passed. No claim of complete editing or tablet support.

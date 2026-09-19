@@ -1,0 +1,1 @@
+Actualización interna SR5 para móvil: las selecciones de ciberware y drogas personalizadas rechazan pulsaciones simultáneas y borradores obsoletos. Los paquetes de datos incluidos restauran los catálogos de perfiles como Full House. Pruebas específicas de borrador y reinicio superadas; no implica edición completa ni soporte para tabletas.
