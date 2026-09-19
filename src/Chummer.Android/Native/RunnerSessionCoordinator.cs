@@ -1997,6 +1997,84 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             blockers);
     }
 
+    internal bool IsCreationCatalogDisplayCurrent(CharacterOverviewState original)
+        => original.Profile?.Created == false
+           && original.DisplayOwnerContext is { IsValid: true }
+           && original.Session.OwnerContext == original.DisplayOwnerContext
+           && IsNativeEditDisplayCurrent(original);
+
+    internal Task<CharacterCreationFoundationResult<CharacterCreationQualitiesState>>
+        LoadCreationQualitiesForDisplayAsync(
+            CharacterOverviewState original, CancellationToken cancellationToken)
+        => WithWorkspaceActivationGateAsync(
+            () => Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_creationQualitiesService is null
+                    || !IsCreationCatalogDisplayCurrent(original)
+                    || original.WorkspaceId is not { } workspaceId
+                    || original.DisplayOwnerContext is not { IsValid: true } owner
+                    || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
+                    return QualitiesDisplayUnavailable();
+
+                // The Core store reads the ambient owner. Acquire the captured
+                // display owner on this worker and retain it only for this
+                // synchronous read, never across await or page rendering.
+                bool admitted = owners.TryAcquire(owner, out var lease);
+                using (lease)
+                {
+                    if (!admitted || lease is null || lease.Stamp != original.DisplayOwnerContext
+                        || !IsCreationCatalogDisplayCurrent(original))
+                        return QualitiesDisplayUnavailable();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var result = _creationQualitiesService.Load(new(workspaceId));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return IsCreationCatalogDisplayCurrent(original)
+                           && (result.Value is null
+                               || CreationQualitiesPhoneAuthority.MatchesOverview(result.Value, original))
+                        ? result
+                        : QualitiesDisplayUnavailable();
+                }
+            }, cancellationToken), cancellationToken);
+
+    private static CharacterCreationFoundationResult<CharacterCreationQualitiesState> QualitiesDisplayUnavailable()
+        => new(CharacterCreationFoundationOutcomes.Conflict, null,
+            [CharacterCreationQualitiesBlockers.RevisionConflict]);
+
+    internal Task<(CharacterCreationGearInteractionLoadResult Load, bool Ready)>
+        LoadCreationGearForDisplayAsync(ICharacterCreationGearInteractionPresenter gear,
+            CharacterOverviewState original, CancellationToken cancellationToken)
+        => WithWorkspaceActivationGateAsync(
+            () => Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!IsCreationCatalogDisplayCurrent(original)
+                    || original.DisplayOwnerContext is not { IsValid: true } owner
+                    || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
+                    return GearDisplayUnavailable();
+
+                bool admitted = owners.TryAcquire(owner, out var lease);
+                using (lease)
+                {
+                    if (!admitted || lease is null || lease.Stamp != owner
+                        || !IsCreationCatalogDisplayCurrent(original))
+                        return GearDisplayUnavailable();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var load = gear.Load(original);
+                    // Full catalog/digest validation is part of preparation,
+                    // never a UI render, search, paging or quantity callback.
+                    bool ready = load.State is { } state
+                        && CreationGearPhoneAuthority.IsReady(state, original);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return IsCreationCatalogDisplayCurrent(original)
+                        ? (load, ready) : GearDisplayUnavailable();
+                }
+            }, cancellationToken), cancellationToken);
+
+    private static (CharacterCreationGearInteractionLoadResult Load, bool Ready) GearDisplayUnavailable()
+        => (new(CharacterCreationGearOutcomes.Blocked, null,
+            [CharacterCreationGearInteractionBlockers.BindingMismatch]), false);
+
     public CharacterCreationFoundationResult<CharacterCreationQualitiesState>
         LoadCreationQualities()
     {

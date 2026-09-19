@@ -254,4 +254,7 @@ No change has been saved yet.</value></data>
   <data name="OnlineContinuationReview" xml:space="preserve"><value>Open {0} with its complete wizard history? Content revision: {1}; saved revision: {2}. Local conflicts will not be overwritten.</value></data>
   <data name="OnlineContinuationConfirm" xml:space="preserve"><value>Restore and open</value></data>
   <data name="InitialRunnerRouteUnavailable" xml:space="preserve"><value>The runner could not be opened automatically. Use Runners to open it.</value></data>
+  <data name="NewRunnerTitle" xml:space="preserve"><value>New runner</value></data>
+  <data name="NewRunnerSelectedBuildMethod" xml:space="preserve"><value>Build method: {0}. Tap Create runner to continue.</value></data>
+  <data name="NewRunnerCreate" xml:space="preserve"><value>Create runner</value></data>
 </root>

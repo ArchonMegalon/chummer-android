@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "9b09ecf02373e80c3c57eedf1126fc81b2d58ed900ec6678f1bc0c77d9e465c7"
+        "sha256": "bc6067749ddd482e3ed374fb6f6162e70817fd6db15bc7ba0d78d3627e8ca8fd"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "f600cc00fca1c3dec5690ff161366bcf25bbbfb6af3fbcbbb26688445db1dc0b"
+        "sha256": "38b93eedd9d29cf5dbd264da6b451f829c4110491e840ff185402605af77a317"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "a6993ea1d7d23a3746aca0ccfe9405476196d2b73d9f889489b4d847cefa8a69"
+        "sha256": "7259d0ce958c51b1e9abdb2c02616cc364c9f59101aa7ac548b34dcdd453264a"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",

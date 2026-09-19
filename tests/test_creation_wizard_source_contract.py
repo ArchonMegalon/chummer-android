@@ -17,20 +17,31 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         # separate wiring guard covers both card and Continue-route call sites:
         # forwarding stage.StepId would wrongly authorize a different domain.
         calls = re.findall(
-            r"bool canOpen(Attributes|Skills|Contacts|Resources)\s*=\s*"
+            r"bool canOpen(Attributes|Skills|Qualities|Contacts|Resources)\s*=\s*\w+(?:Stage|Step)\s*&&\s*"
             r"BuildPageUiProjection\.CanOpenExactTypedCreationStage\(\s*stage,\s*"
-            r"CharacterCreationWizardStepIds\.(\w+),\s*(HasAuthoritative\w+)\(",
+            r"CharacterCreationWizardStepIds\.(\w+),\s*readiness\.(\w+)\)",
             source,
         )
         expected = {
-            "Attributes": ("Attributes", "HasAuthoritativeAttributes"),
-            "Skills": ("Skills", "HasAuthoritativeSkills"),
-            "Contacts": ("ContactsLifestyles", "HasAuthoritativeCreationContacts"),
-            "Resources": ("Resources", "HasAuthoritativeResources"),
+            "Attributes": ("Attributes", "Attributes"),
+            "Skills": ("Skills", "Skills"),
+            "Qualities": ("Qualities", "Qualities"),
+            "Contacts": ("ContactsLifestyles", "Contacts"),
+            "Resources": ("Resources", "Resources"),
         }
-        self.assertEqual(8, len(calls))
+        self.assertEqual(10, len(calls))
         for route, (step, predicate) in expected.items():
             self.assertEqual(2, calls.count((route, step, predicate)), route)
+
+    def test_readiness_is_local_to_one_dashboard_render(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        self.assertEqual(1, source.count("new CreationDashboardRenderReadiness("))
+        self.assertIn("var readiness = new CreationDashboardRenderReadiness(", source)
+        self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness)", source)
+        self.assertEqual(2, source.count("creationResources, readiness);"))
+        for method in ("AddBudgetRibbon", "AddWizardStages", "AddLegalNextSteps"):
+            section = source.split(f"private void {method}(", 1)[1].split(f"private ", 1)[0]
+            self.assertNotRegex(section, r"HasAuthoritative(?:Attributes|Skills|Qualities|MagicResonance|CreationContacts|Resources)\(", method)
 
     def test_synchronous_creation_completions_drain_and_render_current_progress(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")

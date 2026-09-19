@@ -10,7 +10,10 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationQualitiesPage : NativePageBase
 {
-    private readonly CreationQualitiesPhoneDraft _draft = new();
+    private const int CatalogPageSize = 20;
+    private int _catalogOffset;
+    private string _filter = string.Empty;
+    private CreationQualitiesPhoneDraft _draft = new();
     private readonly CharacterCreationQualitiesCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
     {
@@ -18,6 +21,12 @@ public sealed class CreationQualitiesPage : NativePageBase
         Spacing = 14
     };
     private IReadOnlyList<string> _localBlockers = [];
+    private CharacterOverviewState? _loadedDisplay;
+    private CharacterCreationFoundationResult<CharacterCreationQualitiesState>? _loaded;
+    private CharacterCreationQualitiesEditorState? _editor;
+    private bool _canReview;
+    private string? _reviewCheckpointDigest;
+    private bool _loading = true;
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault())
@@ -32,6 +41,55 @@ public sealed class CreationQualitiesPage : NativePageBase
         Title = CreationFlowStrings.Get("Qualities.PageTitle", "Qualities");
         AutomationId = "creation-qualities-page";
         Content = new ScrollView { Content = _body };
+        Refresh();
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loaded = null;
+        _loadedDisplay = null;
+        _editor = null;
+        _canReview = false;
+        _reviewCheckpointDigest = null;
+        _loading = true;
+        Refresh();
+        CharacterOverviewState original = Coordinator.State;
+        CreationQualitiesPhoneDraft draft = _draft.Copy();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationQualitiesForDisplayAsync(original, cancellationToken);
+            // Digest checks and Presentation projection are substantial too
+            // (especially Android's crypto interop). Keep them off the UI,
+            // not merely the initial Core store read.
+            var prepared = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (loaded.Value is not { } state || !CreationQualitiesPhoneAuthority.IsReady(state, original))
+                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null);
+                draft.Bind(state, original);
+                if (!draft.Matches(state, original))
+                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null);
+                var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
+                bool canReview = CreationQualitiesPhoneAuthority.CanConfirmPreview(
+                    state, original, draft.Preview ?? state.Preview, draft.SelectedOptionIds);
+                string? checkpointDigest = _store.TryRead(out var checkpoint, out _)
+                    && checkpoint.OwnsExactReview(state, original) ? checkpoint.CheckpointDigest : null;
+                cancellationToken.ThrowIfCancellationRequested();
+                return (Editor: editor, CanReview: canReview, CheckpointDigest: checkpointDigest);
+            }, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loadedDisplay = original;
+            _loaded = loaded;
+            _editor = prepared.Editor;
+            _canReview = prepared.CanReview;
+            _reviewCheckpointDigest = prepared.CheckpointDigest;
+            _draft = draft;
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+                _loading = false;
+        }
     }
 
     protected override void Refresh()
@@ -45,42 +103,38 @@ public sealed class CreationQualitiesPage : NativePageBase
                 "Every row is a fixed-cost, source-anchored Core option. Unsupported requirements, variable costs and unresolved custom overlays stay disabled."),
             NativeTheme.Muted));
 
-        CharacterCreationFoundationResult<CharacterCreationQualitiesState> load =
-            Coordinator.LoadCreationQualities();
-        if (load.Value is not { } state
-            || !CreationQualitiesPhoneAuthority.IsReady(state, Coordinator.State))
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-qualities-loading" });
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get(
+                "Qualities.Loading", "Loading qualities…"), NativeTheme.Muted));
+            return;
+        }
+        if (_loaded is not { } load || _loadedDisplay is not { } original
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+        {
+            AddBlockers([CharacterCreationQualitiesBlockers.RevisionConflict]);
+            return;
+        }
+
+        // Search, paging and coordinator renders consume only this appearance's
+        // accepted snapshot. Preview/Confirm still revalidate through Core.
+        if (load.Value is not { } state || _editor is not { } editor
+            || !CreationQualitiesPhoneAuthority.MatchesOverview(state, Coordinator.State))
         {
             AddBlockers(load.Blockers.Count == 0
                 ? [CharacterCreationQualitiesBlockers.AuthorityUnavailable]
                 : load.Blockers);
             return;
         }
-        _draft.Bind(state, Coordinator.State);
-        if (!_draft.Matches(state, Coordinator.State))
-        {
-            AddBlockers([CharacterCreationQualitiesBlockers.RevisionConflict]);
-            return;
-        }
-
-        CharacterCreationQualitiesEditorState editor;
-        try
-        {
-            editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, Coordinator.State);
-        }
-        catch (InvalidOperationException exception)
-        {
-            AddBlockers([exception.Message]);
-            return;
-        }
-
         AddBinding(state);
         AddBudgets(_draft.Preview ?? state.Preview);
         CharacterCreationQualitiesCheckpoint? checkpoint = AddRecovery(state);
         bool checkpointOwnsLane = checkpoint is not null || HasMalformedCheckpoint();
-        AddGranted(state);
-        AddOptions(state, editor, checkpointOwnsLane);
         AddReview(state, checkpointOwnsLane);
         AddBlockers(_localBlockers);
+        AddGranted(state);
+        AddOptions(state, editor, checkpointOwnsLane);
     }
 
     private void AddBinding(CharacterCreationQualitiesState state)
@@ -206,7 +260,8 @@ public sealed class CreationQualitiesPage : NativePageBase
             NativeTheme.Muted));
 
         if (checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
-            && checkpoint.OwnsExactReview(state, Coordinator.State))
+            && _reviewCheckpointDigest is not null
+            && checkpoint.CheckpointDigest == _reviewCheckpointDigest)
         {
             Button resume = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
                 "Qualities.Recovery.Resume",
@@ -296,12 +351,72 @@ public sealed class CreationQualitiesPage : NativePageBase
         CharacterCreationQualitiesEditorState editor,
         bool checkpointOwnsLane)
     {
+        SearchBar search = new()
+        {
+            AutomationId = "creation-qualities-search",
+            Placeholder = CreationFlowStrings.Get("Qualities.Search", "Search qualities"),
+            Text = _filter,
+            BackgroundColor = NativeTheme.Surface,
+            TextColor = NativeTheme.Text,
+            PlaceholderColor = NativeTheme.Muted
+        };
+        search.SearchButtonPressed += (_, _) => ApplyFilter(search.Text);
+        search.TextChanged += (_, args) =>
+        {
+            if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
+                ApplyFilter(string.Empty);
+        };
+        _body.Add(search);
+
+        CharacterCreationQualitiesDesktopOption[] matches = editor.Options
+            .Where(option => string.IsNullOrWhiteSpace(_filter)
+                             || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
+                             || (option.FollowUpChoiceLabel?.Contains(_filter, StringComparison.CurrentCultureIgnoreCase) ?? false))
+            .OrderBy(option => option.Type)
+            .ThenBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(option => option.OptionId, StringComparer.Ordinal)
+            .ToArray();
+        _catalogOffset = Math.Min(_catalogOffset, Math.Max(0, matches.Length - 1) / CatalogPageSize * CatalogPageSize);
+        int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
+        Label range = NativeTheme.Body(matches.Length == 0
+            ? CreationFlowStrings.Get("Qualities.NoMatches", "No matching qualities")
+            : CreationFlowStrings.Format("Qualities.Showing", "Showing {0}–{1} of {2}", _catalogOffset + 1, end, matches.Length),
+            NativeTheme.Muted);
+        range.AutomationId = "creation-qualities-catalog-range";
+        _body.Add(range);
+
+        // Keep navigation ahead of the bounded rows; neither review nor paging should
+        // require scrolling through the entire Core catalog. Paging never edits the draft.
+        HorizontalStackLayout pager = new() { Spacing = 10 };
+        Button previous = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Qualities.Previous", "Previous"));
+        previous.AutomationId = "creation-qualities-catalog-previous";
+        previous.IsEnabled = _catalogOffset > 0;
+        previous.Clicked += (_, _) =>
+        {
+            _catalogOffset = Math.Max(0, _catalogOffset - CatalogPageSize);
+            Refresh();
+        };
+        pager.Add(previous);
+        Button next = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Qualities.Next", "Next"));
+        next.AutomationId = "creation-qualities-catalog-next";
+        next.IsEnabled = end < matches.Length;
+        next.Clicked += (_, _) =>
+        {
+            _catalogOffset += CatalogPageSize;
+            Refresh();
+        };
+        pager.Add(next);
+        _body.Add(pager);
+
+        CharacterCreationQualitiesDesktopOption[] visible = matches.Skip(_catalogOffset).Take(CatalogPageSize).ToArray();
         foreach (CharacterCreationQualityType type in Enum.GetValues<CharacterCreationQualityType>())
         {
+            if (!visible.Any(option => option.Type == type))
+                continue;
             _body.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
                 ? CreationFlowStrings.Get("Qualities.Positive", "Positive qualities")
                 : CreationFlowStrings.Get("Qualities.Negative", "Negative qualities")));
-            foreach (CharacterCreationQualitiesDesktopOption option in editor.Options
+            foreach (CharacterCreationQualitiesDesktopOption option in visible
                          .Where(candidate => candidate.Type == type))
             {
                 bool selected = _draft.IsSelected(option.OptionId);
@@ -337,23 +452,24 @@ public sealed class CreationQualitiesPage : NativePageBase
         }
     }
 
+    private void ApplyFilter(string? value)
+    {
+        _filter = value?.Trim() ?? string.Empty;
+        _catalogOffset = 0;
+        Refresh();
+    }
+
     private void AddReview(
         CharacterCreationQualitiesState state,
         bool checkpointOwnsLane)
     {
-        CharacterCreationQualitiesPreview preview = _draft.Preview ?? state.Preview;
         Button review = NativeTheme.PrimaryButton(
             CreationFlowStrings.Format(
                 "Qualities.ReviewSelected",
                 "Review {0} selected qualities",
                 _draft.SelectedOptionIds.Count.ToString(CultureInfo.InvariantCulture)));
         review.AutomationId = "creation-qualities-open-review";
-        review.IsEnabled = !checkpointOwnsLane
-                           && CreationQualitiesPhoneAuthority.CanConfirmPreview(
-                               state,
-                               Coordinator.State,
-                               preview,
-                               _draft.SelectedOptionIds);
+        review.IsEnabled = !checkpointOwnsLane && _canReview;
         review.Clicked += async (_, _) => await RunAsync(() => OpenReviewAsync(state));
         _body.Add(review);
         Label finalization = NativeTheme.Body(
@@ -378,6 +494,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                 _draft.SelectedOptionIds))
         {
             _localBlockers = result.Blockers;
+            _canReview = false;
             Refresh();
             return;
         }

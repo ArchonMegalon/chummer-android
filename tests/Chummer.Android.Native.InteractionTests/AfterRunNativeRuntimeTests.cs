@@ -557,7 +557,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<Chummer.Application.Owners.IOwnerContextAccessor, Chummer.Application.Owners.IOwnerContextAccessor?>? damageJournalAccessorDecorator = null,
             bool creationPrerequisite = false,
             Func<IOwnerBoundCharacterCreationPrerequisiteService, IOwnerBoundCharacterCreationPrerequisiteService?>? prerequisiteDecorator = null,
-            bool productionCreationOverview = false)
+            bool productionCreationOverview = false,
+            Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -667,6 +668,9 @@ internal static partial class AfterRunAuthorityHarness
                         : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
                     creationFinalizationService: creationFinalization || productionCreationOverview
                         ? _provider.GetRequiredService<ICharacterCreationFinalizationService>() : null,
+                    creationQualitiesService: productionCreationOverview
+                        ? qualitiesDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationQualitiesService>())
+                            ?? _provider.GetRequiredService<ICharacterCreationQualitiesService>() : null,
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,

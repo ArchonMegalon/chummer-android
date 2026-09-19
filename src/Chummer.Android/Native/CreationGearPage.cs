@@ -23,6 +23,10 @@ public sealed class CreationGearPage : NativePageBase
     private string? _initializedSnapshotDigest;
     private string _filter = string.Empty;
     private int _catalogOffset;
+    private CharacterOverviewState? _loadedDisplay;
+    private CharacterCreationGearInteractionLoadResult? _loaded;
+    private bool _ready;
+    private bool _loading = true;
 
     public CreationGearPage(
         RunnerSessionCoordinator coordinator,
@@ -35,6 +39,30 @@ public sealed class CreationGearPage : NativePageBase
         Title = _copy["Gear.PageTitle"];
         AutomationId = "creation-gear-page";
         Content = new ScrollView { Content = _body };
+        Refresh();
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loaded = null;
+        _loadedDisplay = null;
+        _ready = false;
+        _loading = true;
+        Refresh();
+        CharacterOverviewState original = Coordinator.State;
+        try
+        {
+            var prepared = await Coordinator.LoadCreationGearForDisplayAsync(_gear, original, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loadedDisplay = original;
+            _loaded = prepared.Load;
+            _ready = prepared.Ready;
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+                _loading = false;
+        }
     }
 
     protected override void Refresh()
@@ -44,7 +72,22 @@ public sealed class CreationGearPage : NativePageBase
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
         _body.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
 
-        CharacterCreationGearInteractionLoadResult load = _gear.Load(Coordinator.State);
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-gear-loading" });
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Gear.Loading", "Loading gear…"), NativeTheme.Muted));
+            return;
+        }
+        if (_loaded is not { } load || _loadedDisplay is not { } original
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+        {
+            AddBlockers(_copy["Gear.AuthorityUnavailable"],
+                [CharacterCreationGearInteractionBlockers.BindingMismatch], "creation-gear-unavailable");
+            return;
+        }
+
+        // Render only this appearance's validated snapshot. Preview/Confirm
+        // retain fresh Core validation; browsing does not read or mutate Core.
         if (!string.Equals(load.Outcome, CharacterCreationGearOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state)
         {
@@ -58,7 +101,7 @@ public sealed class CreationGearPage : NativePageBase
         InitializeBasket(state);
         AddBinding(state);
         AddPersistedBudget(state);
-        if (!CreationGearPhoneAuthority.IsReady(state, Coordinator.State))
+        if (!_ready)
         {
             AddBlockers(
                 _copy["Gear.AuthorityBlocked"],
@@ -749,11 +792,21 @@ internal static class CreationGearPhoneAuthority
         && draft.Lines.Count == receipt.LineCount
         && draft.Budget.BasketCost == receipt.BasketCost
         && draft.Budget.RemainingNuyen == receipt.RemainingNuyen
-        && refreshed.Budget == draft.Budget
+        && BudgetsEqual(refreshed.Budget, draft.Budget)
         && !draft.CharacterEffectsApplied
         && refreshed.Budget.IsExact
         && refreshed.Blockers.Count == 0
         && CharacterCreationGearRules.IsCanonicalDigest(refreshed.SnapshotDigest);
+
+    private static bool BudgetsEqual(CharacterCreationGearBudget left, CharacterCreationGearBudget right)
+        // The persisted draft is deserialized: collection identity is not
+        // budget identity. Compare every scalar and ordered blocker instead.
+        => left.TotalStartingNuyen == right.TotalStartingNuyen
+           && left.BasketCost == right.BasketCost
+           && left.RemainingNuyen == right.RemainingNuyen
+           && left.Overspend == right.Overspend
+           && left.IsExact == right.IsExact
+           && left.Blockers.SequenceEqual(right.Blockers, StringComparer.Ordinal);
 
     private static bool IsBound(
         CharacterCreationGearInteractionState state,
@@ -769,7 +822,7 @@ internal static class CreationGearPhoneAuthority
         && CharacterCreationGearRules.DigestsEqual(state.Binding.RawCharacterXmlDigest, wizard.ContentDigest)
         && CharacterCreationGearRules.IsCanonicalDigest(state.SnapshotDigest)
         && CharacterCreationGearRules.IsCanonicalDigest(state.Binding.RawCharacterXmlDigest)
-        && CharacterCreationGearRules.IsCanonicalDigest(state.Binding.AuxiliaryStateDigest)
+        && CreationPrerequisitePhoneAuthority.IsCanonicalAuxiliaryStateDigest(state.Binding.AuxiliaryStateDigest)
         && CharacterCreationGearRules.IsCanonicalDigest(state.Binding.ResourcesDraftDigest)
         && CharacterCreationGearRules.IsCanonicalDigest(state.Binding.AuthorityDigest)
         && CharacterCreationGearRules.IsCanonicalDigest(state.Binding.SourceDigest)

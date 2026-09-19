@@ -12,6 +12,29 @@ public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
 
+/// <summary>
+/// One synchronous dashboard render only. Full packet checks are shared by its
+/// budget cards, stage cards and Continue links, never retained across refreshes
+/// or used to admit a mutation. Page/action boundaries still revalidate Core state.
+/// </summary>
+internal sealed class CreationDashboardRenderReadiness(
+    Func<bool> attributes, Func<bool> skills, Func<bool> qualities,
+    Func<bool> magicResonance, Func<bool> contacts, Func<bool> resources)
+{
+    private readonly Lazy<bool> _attributes = new(attributes);
+    private readonly Lazy<bool> _skills = new(skills);
+    private readonly Lazy<bool> _qualities = new(qualities);
+    private readonly Lazy<bool> _magicResonance = new(magicResonance);
+    private readonly Lazy<bool> _contacts = new(contacts);
+    private readonly Lazy<bool> _resources = new(resources);
+    public bool Attributes => _attributes.Value;
+    public bool Skills => _skills.Value;
+    public bool Qualities => _qualities.Value;
+    public bool MagicResonance => _magicResonance.Value;
+    public bool Contacts => _contacts.Value;
+    public bool Resources => _resources.Value;
+}
+
 // Finalization has its own owner-bound queue key; other creation phases retain
 // their existing contracts. A same-ID account switch must retire this request.
 internal sealed record CreationFinalizationProjectionBinding(
@@ -310,7 +333,7 @@ public static class BuildPageUiProjection
     /// <summary>
     /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
     /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
-    /// placeholder is not a competing domain authority: Attributes, Skills, Contacts, and
+    /// placeholder is not a competing domain authority: Attributes, Skills, Qualities, Contacts, and
     /// Resources are opened only by their dedicated typed projections, whose domain
     /// must match the destination step. A finalization
     /// requirement for this same stage's not-yet-authored draft is likewise not an editor
@@ -329,6 +352,7 @@ public static class BuildPageUiProjection
             || !string.Equals(stage.StepId, authorityStepId, StringComparison.Ordinal)
             || stage.StepId is not (CharacterCreationWizardStepIds.Attributes
                 or CharacterCreationWizardStepIds.Skills
+                or CharacterCreationWizardStepIds.Qualities
                 or CharacterCreationWizardStepIds.ContactsLifestyles
                 or CharacterCreationWizardStepIds.Resources))
         {
@@ -339,6 +363,13 @@ public static class BuildPageUiProjection
             stage.Status, CharacterCreationWizardStepStatuses.Complete, StringComparison.Ordinal);
         if (stage.IsComplete || hasCompleteStatus)
             return stage.IsComplete && hasCompleteStatus && stage.Blockers.Count == 0;
+
+        // Core can expose the Qualities editor as available while finalization
+        // still requires its first draft. This is not an editor prerequisite.
+        if (stage.StepId == CharacterCreationWizardStepIds.Qualities
+            && stage.Blockers.Count == 1
+            && stage.Blockers[0] == CharacterCreationFinalizationBlockers.QualitiesDraftRequired)
+            return true;
 
         if (stage.IsAvailable)
             return stage.Blockers.Count == 0;
@@ -356,6 +387,7 @@ public static class BuildPageUiProjection
         {
             CharacterCreationWizardStepIds.Attributes => CharacterCreationFinalizationBlockers.AttributesDraftRequired,
             CharacterCreationWizardStepIds.Skills => CharacterCreationFinalizationBlockers.SkillsDraftRequired,
+            CharacterCreationWizardStepIds.Qualities => CharacterCreationFinalizationBlockers.QualitiesDraftRequired,
             CharacterCreationWizardStepIds.Resources => CharacterCreationFinalizationBlockers.ResourcesDraftRequired,
             _ => null
         };
@@ -1176,7 +1208,14 @@ public sealed class BuildPage : NativePageBase
             loading.AutomationId = "creation-dashboard-authority-partial-loading";
             _body.Add(NativeTheme.Card(loading));
         }
-        AddBudgetRibbon(snapshot, attributes, skills);
+        // Local to this render: no authority survives a changed revision, owner,
+        // asynchronous phase completion, or route departure through this object.
+        var readiness = new CreationDashboardRenderReadiness(
+            () => HasAuthoritativeAttributes(attributes), () => HasAuthoritativeSkills(skills),
+            HasAuthoritativeQualities, HasAuthoritativeMagicResonance,
+            () => HasAuthoritativeCreationContacts(creationContacts),
+            () => HasAuthoritativeResources(creationResources));
+        AddBudgetRibbon(snapshot, attributes, skills, readiness);
         AddWizardStages(
             snapshot,
             projection,
@@ -1184,7 +1223,7 @@ public sealed class BuildPage : NativePageBase
             attributes,
             skills,
             creationContacts,
-            creationResources);
+            creationResources, readiness);
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(
             snapshot,
@@ -1193,7 +1232,7 @@ public sealed class BuildPage : NativePageBase
             attributes,
             skills,
             creationContacts,
-            creationResources);
+            creationResources, readiness);
         AddFinalizationReviewAction();
     }
 
@@ -2056,7 +2095,8 @@ public sealed class BuildPage : NativePageBase
     private void AddBudgetRibbon(
         CharacterCreationWizardSnapshot snapshot,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
-        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills)
+        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills,
+        CreationDashboardRenderReadiness readiness)
     {
         _body.Add(NativeTheme.Eyebrow("Budgets"));
         if (snapshot.Budgets.Count == 0)
@@ -2076,7 +2116,7 @@ public sealed class BuildPage : NativePageBase
         };
         foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
         {
-            CharacterCreationBudgetState budget = HasAuthoritativeSkills(skills)
+            CharacterCreationBudgetState budget = readiness.Skills
                                                      && skills!.Value is { } skillState
                 ? projectedBudget.BudgetId switch
                 {
@@ -2085,7 +2125,7 @@ public sealed class BuildPage : NativePageBase
                     CharacterCreationBudgetIds.KnowledgeSkills => skillState.KnowledgeSkillPointBudget,
                     _ => projectedBudget
                 }
-                : HasAuthoritativeAttributes(attributes) && attributes!.Value is { } attributeState
+                : readiness.Attributes && attributes!.Value is { } attributeState
                     ? projectedBudget.BudgetId switch
                     {
                         CharacterCreationBudgetIds.NormalAttributes => attributeState.NormalPointBudget,
@@ -2127,7 +2167,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills,
         CharacterCreationContactsInteractionLoadResult? creationContacts,
-        CharacterCreationResourcesInteractionLoadResult? creationResources)
+        CharacterCreationResourcesInteractionLoadResult? creationResources,
+        CreationDashboardRenderReadiness readiness)
     {
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
@@ -2169,39 +2210,38 @@ public sealed class BuildPage : NativePageBase
                 stage.StepId,
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
-            bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenAttributes = attributeStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Attributes,
-                HasAuthoritativeAttributes(attributes));
+                readiness.Attributes);
             bool skillStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
-            bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenSkills = skillStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Skills,
-                HasAuthoritativeSkills(skills));
+                readiness.Skills);
             bool qualitiesStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.Qualities,
                 StringComparison.Ordinal);
-            bool canOpenQualities = qualitiesStage
-                                    && stage.IsAvailable
-                                    && HasAuthoritativeQualities();
+            bool canOpenQualities = qualitiesStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.Qualities, readiness.Qualities);
             bool magicResonanceStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.MagicResonance,
                 StringComparison.Ordinal);
             bool canOpenMagicResonance = magicResonanceStage
                                          && stage.IsAvailable
-                                         && HasAuthoritativeMagicResonance();
+                                         && readiness.MagicResonance;
             bool contactsStage = IsContactsStage(stage.StepId);
-            bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenContacts = contactsStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.ContactsLifestyles,
-                HasAuthoritativeCreationContacts(creationContacts));
+                readiness.Contacts);
             bool resourcesStage = IsResourcesStage(stage.StepId);
-            bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenResources = resourcesStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Resources,
-                HasAuthoritativeResources(creationResources));
+                readiness.Resources);
             bool identityStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.IdentityStory,
@@ -2319,9 +2359,10 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult,
         CharacterCreationContactsInteractionLoadResult? creationContacts,
-        CharacterCreationResourcesInteractionLoadResult? creationResources)
+        CharacterCreationResourcesInteractionLoadResult? creationResources,
+        CreationDashboardRenderReadiness readiness)
     {
-        if (!HasAuthoritativeSkills(skillsResult)
+        if (!readiness.Skills
             && snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Skills))
         {
             // This opens a separate read-only recovery check, never the blocked
@@ -2334,22 +2375,22 @@ public sealed class BuildPage : NativePageBase
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
             .Concat(active?.LegalNextStepIds ?? [])
-            .Concat(HasAuthoritativeAttributes(attributeResult)
+            .Concat(readiness.Attributes
                 ? [CharacterCreationWizardStepIds.Attributes]
                 : [])
-            .Concat(HasAuthoritativeSkills(skillsResult)
+            .Concat(readiness.Skills
                 ? [CharacterCreationWizardStepIds.Skills]
                 : [])
-            .Concat(HasAuthoritativeQualities()
+            .Concat(readiness.Qualities
                 ? [CharacterCreationWizardStepIds.Qualities]
                 : [])
-            .Concat(HasAuthoritativeMagicResonance()
+            .Concat(readiness.MagicResonance
                 ? [CharacterCreationWizardStepIds.MagicResonance]
                 : [])
-            .Concat(HasAuthoritativeCreationContacts(creationContacts)
+            .Concat(readiness.Contacts
                 ? [CharacterCreationWizardStepIds.ContactsLifestyles]
                 : [])
-            .Concat(HasAuthoritativeResources(creationResources)
+            .Concat(readiness.Resources
                 ? [CharacterCreationWizardStepIds.Resources]
                 : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
@@ -2392,36 +2433,35 @@ public sealed class BuildPage : NativePageBase
                                      && !lifeModuleStep
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
-            bool canOpenAttributes = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenAttributes = attributeStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Attributes,
-                HasAuthoritativeAttributes(attributeResult));
+                readiness.Attributes);
             bool skillStep = string.Equals(stepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
-            bool canOpenSkills = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenSkills = skillStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Skills,
-                HasAuthoritativeSkills(skillsResult));
+                readiness.Skills);
             bool qualitiesStep = string.Equals(stepId, CharacterCreationWizardStepIds.Qualities, StringComparison.Ordinal);
-            bool canOpenQualities = qualitiesStep
-                                    && stage.IsAvailable
-                                    && HasAuthoritativeQualities();
+            bool canOpenQualities = qualitiesStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.Qualities, readiness.Qualities);
             bool magicResonanceStep = string.Equals(
                 stepId,
                 CharacterCreationWizardStepIds.MagicResonance,
                 StringComparison.Ordinal);
             bool canOpenMagicResonance = magicResonanceStep
                                          && stage.IsAvailable
-                                         && HasAuthoritativeMagicResonance();
+                                         && readiness.MagicResonance;
             bool contactsStep = IsContactsStage(stepId);
-            bool canOpenContacts = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenContacts = contactsStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.ContactsLifestyles,
-                HasAuthoritativeCreationContacts(creationContacts));
+                readiness.Contacts);
             bool resourcesStep = IsResourcesStage(stepId);
-            bool canOpenResources = BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            bool canOpenResources = resourcesStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
                 CharacterCreationWizardStepIds.Resources,
-                HasAuthoritativeResources(creationResources));
+                readiness.Resources);
             bool identityStep = string.Equals(
                 stepId,
                 CharacterCreationWizardStepIds.IdentityStory,

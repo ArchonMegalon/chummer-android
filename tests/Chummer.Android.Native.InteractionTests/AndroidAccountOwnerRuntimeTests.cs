@@ -9,11 +9,13 @@ using Chummer.Application.Owners;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation.Shell;
 
 internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunAndroidAccountOwnerCasesAsync(string contentRoot)
     {
+        await RunAccountResumeAdmissionCasesAsync(contentRoot);
         await RunOpaqueAccountOwnerKeyCasesAsync();
         await RunUnknownAccountStartupCasesAsync(contentRoot);
         using var fixture = new ActualAccountFixture();
@@ -234,6 +236,92 @@ internal static partial class AfterRunAuthorityHarness
         Require(store.Get(localRunner).Success && store.Get(linked.Owner, linkedRunner).Success,
             "Credential transitions deleted unrelated durable runner data.");
         Console.WriteLine("PASS actual torn credential commit → exact local recovery, no false Core authority or runner adoption");
+    }
+
+    public static async Task RunAccountResumeAdmissionCasesAsync(string contentRoot)
+    {
+        const string stagedKey = "chummer.account.staged-grant-commit.v1";
+        foreach (bool linked in new[] { false, true })
+        {
+            using var account = new ActualAccountFixture();
+            await account.Owner.InitializeAsync();
+            if (linked) await account.LinkAsync("resume-owner", "resume-grant");
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account);
+            var owner = account.Owner.Capture();
+            int requests = account.Requests;
+            var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            account.Metadata.BeforeReadAsync = async key =>
+            {
+                if (key != stagedKey) return;
+                observed.TrySetResult();
+                await release.Task;
+            };
+            Task resume = account.Account.ResumePendingLinkAsync();
+            try
+            {
+                await observed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                // MainActivity.OnResume and local Shell startup really overlap.
+                // A slow *empty* recovery probe must not claim credential-write
+                // exclusion or reject this unchanged owner's local projection.
+                var bootstrap = await ((IOwnerBoundShellStateClient)runtime.Client)
+                    .GetShellBootstrapAsync(owner, "sr5", default).WaitAsync(TimeSpan.FromSeconds(10));
+                Require(bootstrap.Workspaces.Count == 0 && account.Owner.Capture() == owner,
+                    "No-op foreground recovery blocked or changed the original-owner Shell bootstrap.");
+            }
+            finally
+            {
+                release.TrySetResult();
+                await resume.WaitAsync(TimeSpan.FromSeconds(10));
+                account.Metadata.BeforeReadAsync = null;
+            }
+            Require(account.Owner.Capture() == owner && account.Requests == requests,
+                "No-op foreground recovery changed owner authority or contacted Hub.");
+            Console.WriteLine($"PASS actual {(linked ? "linked" : "local")} Shell bootstrap during empty account-resume probe");
+        }
+
+        using (var staged = new ActualAccountFixture())
+        {
+            await staged.Owner.InitializeAsync();
+            var owner = staged.Owner.Capture();
+            staged.Metadata.Rows[stagedKey] = "{malformed-stage";
+            int stageReads = 0;
+            var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            staged.Metadata.BeforeReadAsync = async key =>
+            {
+                if (key != stagedKey || Interlocked.Increment(ref stageReads) != 2) return;
+                observed.TrySetResult();
+                await release.Task;
+            };
+            Task resume = staged.Account.ResumePendingLinkAsync();
+            try
+            {
+                await observed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                bool admitted = staged.Owner.TryAcquire(owner, out var lease);
+                lease?.Dispose();
+                Require(!admitted,
+                    "A present stage bypassed credential exclusion during validation/recovery.");
+            }
+            finally
+            {
+                release.TrySetResult();
+                await resume.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            Require(staged.Requests == 0, "Malformed local recovery contacted Hub.");
+            Console.WriteLine("PASS present account stage is re-read under credential exclusion");
+        }
+
+        using var unreadable = new ActualAccountFixture();
+        await unreadable.Owner.InitializeAsync();
+        unreadable.Metadata.BeforeReadAsync = key => key == stagedKey
+            ? Task.FromException(new IOException("Injected staged-account read failure"))
+            : Task.CompletedTask;
+        await unreadable.Account.ResumePendingLinkAsync();
+        Require(!unreadable.Owner.Capture().IsValid && unreadable.Requests == 0,
+            "Unreadable recovery metadata was mistaken for an empty stage and retained owner authority.");
+        Console.WriteLine("PASS unreadable account-resume probe still invalidates owner authority");
     }
 
     private static async Task RunOpaqueAccountOwnerKeyCasesAsync()
@@ -532,8 +620,13 @@ internal static partial class AfterRunAuthorityHarness
     {
         internal readonly Dictionary<string, string> Rows = new(StringComparer.Ordinal);
         internal Action<string>? BeforeWrite;
-        public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
-        { cancellationToken.ThrowIfCancellationRequested(); lock (Rows) return Task.FromResult(Rows.GetValueOrDefault(key)); }
+        internal Func<string, Task>? BeforeReadAsync;
+        public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (BeforeReadAsync is { } beforeRead) await beforeRead(key);
+            lock (Rows) return Rows.GetValueOrDefault(key);
+        }
         public Task SetAsync(string key, string value, CancellationToken cancellationToken = default)
         { cancellationToken.ThrowIfCancellationRequested(); BeforeWrite?.Invoke(key); lock (Rows) Rows[key] = value; return Task.CompletedTask; }
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)

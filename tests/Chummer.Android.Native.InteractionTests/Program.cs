@@ -13,6 +13,23 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--creation-dashboard-render")
+        {
+            await CreationDashboardReadinessIsRenderScopedAsync();
+            await ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync();
+            await ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync();
+            await ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync();
+            Console.WriteLine("PASS creation dashboard render scope and exact typed entry guards");
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-entry-gear-content-root")
+        {
+            await ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync();
+            await ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync();
+            await ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync();
+            await AfterRunAuthorityHarness.RunCreationEntryGearCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--native-build-method-content-root")
         {
             await AfterRunAuthorityHarness.RunNativeBuildMethodSelectionAsync(args[1]);
@@ -112,6 +129,11 @@ internal static class Program
         if (args.Length == 1 && args[0] == "--android-continuation-roaming")
         {
             await AfterRunAuthorityHarness.RunAndroidContinuationRoamingCasesAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--account-resume-admission-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAccountResumeAdmissionCasesAsync(args[1]);
             return;
         }
         if (args.Length == 2 && args[0] == "--android-account-owner-content-root")
@@ -245,6 +267,7 @@ internal static class Program
             (nameof(PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync), PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync),
             (nameof(PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync), PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(CreationDashboardReadinessIsRenderScopedAsync), CreationDashboardReadinessIsRenderScopedAsync),
             (nameof(CapturedCreationAuthorityAvoidsUiThreadReloadAsync), CapturedCreationAuthorityAvoidsUiThreadReloadAsync),
             (nameof(CreationProjectionSchedulingPrioritizesWizardAllocationAsync), CreationProjectionSchedulingPrioritizesWizardAllocationAsync),
             (nameof(CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync), CreationSkillsCatalogPagingBoundsNativeControlMaterializationAsync),
@@ -1004,6 +1027,41 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task CreationDashboardReadinessIsRenderScopedAsync()
+    {
+        int[] calls = new int[6];
+        bool[] authority = [true, false, true, false, true, false];
+        bool Evaluate(int domain) { calls[domain]++; return authority[domain]; }
+        CreationDashboardRenderReadiness NewRender() => new(
+            () => Evaluate(0), () => Evaluate(1), () => Evaluate(2),
+            () => Evaluate(3), () => Evaluate(4), () => Evaluate(5));
+        static bool[] Read(CreationDashboardRenderReadiness render) =>
+            [render.Attributes, render.Skills, render.Qualities, render.MagicResonance, render.Contacts, render.Resources];
+        var first = NewRender();
+        Require(calls.All(count => count == 0), "Creating a render eagerly validated unused domains.");
+        for (int row = 0; row < 40; row++)
+            Require(Read(first).SequenceEqual(authority), "Render reused another domain's readiness.");
+        Require(calls.All(count => count == 1), "Dashboard rows repeatedly validated the same domain packet.");
+        authority = authority.Select(value => !value).ToArray();
+        var next = NewRender();
+        Require(Read(next).SequenceEqual(authority) && calls.All(count => count == 2),
+            "A later render reused readiness from the previous state.");
+
+        int failedCalls = 0;
+        var failure = new CreationDashboardRenderReadiness(
+            () => { failedCalls++; throw new InvalidOperationException("invalid packet"); },
+            () => false, () => false, () => false, () => false, () => false);
+        for (int row = 0; row < 2; row++)
+        {
+            bool failedClosed = false;
+            try { _ = failure.Attributes; }
+            catch (InvalidOperationException) { failedClosed = true; }
+            Require(failedClosed, "A validator exception became a ready editor.");
+        }
+        Require(failedCalls == 1 && !failure.Skills, "Failure was retried per row or leaked into another domain.");
+        return Task.CompletedTask;
+    }
+
     private static Task ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync()
     {
         // This uses the existing phone-authority fixture, not a claimed capture of
@@ -1077,6 +1135,7 @@ internal static class Program
         [
             (CharacterCreationWizardStepIds.Attributes, "creation-finalization-attributes-draft-required"),
             (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
+            (CharacterCreationWizardStepIds.Qualities, "creation-finalization-qualities-draft-required"),
             (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
         ];
         foreach ((string stepId, string ownDraftRequired) in mappings)
@@ -1124,15 +1183,14 @@ internal static class Program
                     $"The {stepId} editor bypassed the {foreignStepId} missing-draft boundary.");
             }
             Require(
-                !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     own with { IsAvailable = true },
                     stepId,
-                    exactTypedAuthorityReady: true),
-                $"The {stepId} entry mapping accepted a contradictory available flag with a blocker.");
+                    exactTypedAuthorityReady: true) == (stepId == CharacterCreationWizardStepIds.Qualities),
+                $"The {stepId} entry mapping did not preserve the domain's available/missing-draft contract.");
             foreach (string unownedStepId in new[]
             {
                 CharacterCreationWizardStepIds.ContactsLifestyles,
-                CharacterCreationWizardStepIds.Qualities,
                 CharacterCreationWizardStepIds.MagicResonance,
                 CharacterCreationWizardStepIds.Review,
                 "unknown-created-stage"
@@ -1264,6 +1322,7 @@ internal static class Program
             CharacterCreationWizardStepIds.Attributes,
             CharacterCreationWizardStepIds.Skills,
             CharacterCreationWizardStepIds.ContactsLifestyles,
+            CharacterCreationWizardStepIds.Qualities,
             CharacterCreationWizardStepIds.Resources
         })
         {
@@ -1292,6 +1351,7 @@ internal static class Program
                     completed with { Blockers = ["creation-wizard-legal-options-authority-unavailable"] },
                     completed with { Blockers = ["creation-finalization-attributes-draft-required"] },
                     completed with { Blockers = ["creation-finalization-skills-draft-required"] },
+                    completed with { Blockers = ["creation-finalization-qualities-draft-required"] },
                     completed with { Blockers = ["creation-finalization-resources-draft-required"] },
                     completed with { Blockers = ["creation-stage-prerequisite-incomplete"] }
                 ];
@@ -1316,6 +1376,7 @@ internal static class Program
             (CharacterCreationWizardStepIds.Attributes, "creation-finalization-attributes-draft-required"),
             (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
             (CharacterCreationWizardStepIds.ContactsLifestyles, null),
+            (CharacterCreationWizardStepIds.Qualities, "creation-finalization-qualities-draft-required"),
             (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
         ];
         foreach ((string stageId, string? draftRequired) in domains)
