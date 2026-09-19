@@ -13,7 +13,8 @@ and signed separately with the existing upload key. A separate keyless container
 verified the exact signed AAB before upload. This replaces the three hosted
 signing jobs and shared remote storage; it is not an execution of the hosted protocol
 described below, and no hosted attestation or v4 publication receipt is claimed.
-The repository's existing hosted validators remain unchanged.
+The hosted artifact and eligibility validators retain their original semantics;
+the local publication does not manufacture their receipts.
 
 The displayed release time is `19 Sept 11:14`; the readback was observed at
 `2026-09-19T09:14:08Z`. Physical Play installation/update is still unverified.
@@ -243,32 +244,39 @@ toolchain directory outside this repository, and proves the current Debug
 worktree compiles before writing its path-only environment file. Merely running
 `scripts/build-release.sh` never installs dependencies or accepts licenses.
 
-## Required gates
+## Source integration and local delivery
 
-Release documentation has a narrow lightweight CI path. Only changes to this
-document and the specifically named `play/evidence/previewN` browser-readback,
-local-signing, local-verification and observation files qualify. The complete
-Git tree diff must contain regular non-executable documents only; scripts,
-workflows, generated inventories, schemas, package pins, listing text and app
-changes take the runtime path. The classifier is taken from the base revision,
-so a change cannot exempt its own classification policy. Missing policy and
-manual dispatch default to runtime verification; malformed comparisons fail.
+Routine source review uses the separately named **Android source and safety
+checks** job: exact diff hygiene, repository private-key exclusion, and bounded
+workflow/artifact-verifier regression tests. It needs no Android workload,
+cross-repository checkout, signing credential or device. It grants no APK,
+API-36 aggregate, two-green eligibility, signing or Play publication authority.
+Local builds and affected-route tests remain required for app changes; signing
+still uses the isolated existing-key boundary and exact artifact verification.
 
-For a docs-only change the required aggregate check reports documentation
-validation, with APK builds and journeys explicitly skipped. It emits no APK,
-aggregate receipt, P0 authority or two-green eligibility. This check status is
-not runtime evidence. JSON syntax, the existing browser-readback contract and
-whitespace are checked without rebuilding unchanged app bytes. The initial CI
-policy change itself still requires the normal runtime lane.
+The extended `api36-editing-e2e.yml` workflow is manual-only, for an explicitly
+requested broad qualification. Its seven real journeys, negative tests and
+fail-closed aggregate are retained. A dispatch always takes the runtime path;
+it cannot pass by classifying the dispatch as a documentation change.
 
-The pull-request API 36 beta gate is currently phone-only. Tablet acceptance is
+The branch-protection transition is a separate owner-approved administration
+step. Until the required context is explicitly changed, the former aggregate
+requirement still applies; do not bypass it or report a source check under its
+name. Other branch protections must be preserved. Historical ordered
+Review-to-Main receipts remain historical: manual runs are not review/push
+events and cannot be fed to that verifier as if they were. The local delivery
+lane does not require or fabricate a replacement two-green receipt.
+
+## Optional extended runtime qualification
+
+The manual API 36 beta gate is currently phone-only. Tablet acceptance is
 explicitly deferred: that lane does not start a tablet emulator, and a passing
 phone receipt is not a tablet-readiness claim or a substitute for the tablet
 journeys required before a general Play release.
 
 The current phone-beta runtime authority is narrower than general Chummer5 edit
 parity. It is the exact SR5 wizard-only contract in
-`eng/api36-sr5-wizard-gate-authority.json`. The protected aggregate check
+`eng/api36-sr5-wizard-gate-authority.json`. The extended aggregate check
 requires exactly these seven digest-bound API-36 journeys against one APK:
 
 1. Creation Prerequisite;

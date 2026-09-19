@@ -1,28 +1,9 @@
 name: API 36 phone beta SR5 wizard E2E
 
+# Extended qualification is opt-in. Routine builds, affected-route smoke tests,
+# signing and hosting are local; source review has a separately named check.
+# A source-check success is never an API-36 aggregate or release receipt.
 on:
-  pull_request:
-  merge_group:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/api36-editing-e2e.yml"
-      - ".github/workflows/api36-two-consecutive-green.yml"
-      - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
-      - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
-      - "docs/editability-evidence/**"
-      - "docs/PLAY_RELEASE.md"
-      - "eng/api36-proof-environment-authority.json"
-      - "eng/api36-sr5-wizard-gate-authority.json"
-      - "eng/api36-two-consecutive-green-authority.json"
-      - "eng/design-policy-authority.json"
-      - "eng/release-test-bootstrap.lock.json"
-      - "global.json"
-      - "play/**"
-      - "scripts/**"
-      - "src/**"
-      - "tests/**"
   workflow_dispatch:
 
 permissions:
