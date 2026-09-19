@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Maui.Controls;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
@@ -10,6 +11,100 @@ using Chummer.Presentation.Shell;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunNativeBuildMethodSelectionAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string requestedMethod in new[] { "SumToTen", "Karma", "LifeModule", "Priority" })
+            {
+                await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                    productionCreationOverview: true);
+                var observedErrors = new List<string>();
+                runtime.Presenter.StateChanged += (_, _) =>
+                {
+                    if (runtime.Presenter.State.Error is { } error) observedErrors.Add(error);
+                };
+                await runtime.Coordinator.InitializeAsync();
+                await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                await runtime.Coordinator.CreateRunnerAsync();
+                var page = new Chummer.Android.Native.NativeDialogPage(runtime.Coordinator,
+                    runtime.Coordinator.State.ActiveDialog!);
+                foreach (string method in new[] { "SumToTen", "Karma", "LifeModule", "Priority", requestedMethod })
+                {
+                    var dialog = runtime.Coordinator.State.ActiveDialog!;
+                    var field = dialog.Fields.Single(item => item.Id == "newCharacterBuildMethod");
+                    var options = field.Options ?? throw new InvalidOperationException("Build methods unavailable.");
+                    int selected = options.ToList().FindIndex(item => item.Value == method);
+                    var body = (VerticalStackLayout)((ScrollView)page.Content!).Content;
+                    var picker = body.Children.OfType<Border>()
+                        .SelectMany(card => ((VerticalStackLayout)card.Content!).Children.OfType<Picker>())
+                        .Single(item => item.AutomationId == "dialog-field-newcharacterbuildmethod");
+                    if (picker.SelectedIndex == selected) continue;
+                    View previousContent = page.Content!;
+                    Task selection = ui.BeginAsyncVoid(() => picker.SelectedIndex = selected);
+                    bool callbackUnwoundBeforeRender = ReferenceEquals(page.Content, previousContent)
+                        && ReferenceEquals(runtime.Coordinator.State.ActiveDialog, dialog);
+                    await selection;
+                    Require(callbackUnwoundBeforeRender,
+                        "Build-method selection rebuilt/disconnected its Android Picker inside the native callback.");
+                    Require(!ReferenceEquals(page.Content, previousContent)
+                        && runtime.Coordinator.State.ActiveDialog!.Fields
+                            .Single(item => item.Id == field.Id).Value == method,
+                        "The queued native selection did not render the exact chosen method.");
+                    // An event delivered by the removed Picker cannot overwrite its replacement.
+                    var rendered = page.Content;
+                    await ui.BeginAsyncVoid(() => picker.SelectedIndex = (selected + 1) % options.Count);
+                    Require(ReferenceEquals(page.Content, rendered)
+                        && runtime.Coordinator.State.ActiveDialog!.Fields
+                            .Single(item => item.Id == field.Id).Value == method,
+                        "An obsolete Picker overwrote the current build method.");
+                }
+                Require(new FileWorkspaceStore(runtime.StateDirectory).List().Count == 0,
+                    "Selecting a build method created a workspace before explicit confirmation.");
+                var buttons = ((VerticalStackLayout)((ScrollView)page.Content!).Content)
+                    .Children.OfType<Grid>().Single().Children.OfType<Button>();
+                Button create = buttons.Single(item => item.AutomationId == "dialog-action-create-character");
+                await ui.BeginAsyncVoid(() => ((IButtonController)create).SendClicked());
+                Require(runtime.Coordinator.State.Error is null
+                    && runtime.Coordinator.State.ActiveDialog is null
+                    && runtime.Coordinator.State.Profile?.Created == false
+                    && runtime.Coordinator.State.WorkspaceId is not null
+                    && new FileWorkspaceStore(runtime.StateDirectory).List().Count == 1,
+                    "Create after native build-method changes did not open exactly one creation runner: "
+                        + JsonSerializer.Serialize(new { requestedMethod, runtime.Coordinator.State.Error,
+                            runtime.Coordinator.State.Notice, dialog = runtime.Coordinator.State.ActiveDialog?.Id,
+                            runtime.Coordinator.State.WorkspaceId, runtime.Coordinator.State.Profile,
+                            count = new FileWorkspaceStore(runtime.StateDirectory).List().Count, observedErrors }));
+                var created = new FileWorkspaceStore(runtime.StateDirectory)
+                    .Get(runtime.Coordinator.State.WorkspaceId!.Value);
+                string canonicalMethod = requestedMethod == "SumToTen"
+                    ? CharacterCreationBuildMethods.SumToTen : requestedMethod;
+                Require(created.Success && created.Value?.Document.AuxiliaryState
+                    .CharacterCreationBootstrapBinding?.BuildMethod == canonicalMethod,
+                    "The created runner did not persist the selected canonical build method: " + requestedMethod);
+                Console.WriteLine("PASS native build-method callback unwind, stale Picker rejection and explicit create: " + requestedMethod);
+                if (requestedMethod == "Priority")
+                {
+                    await runtime.Coordinator.CreateRunnerAsync();
+                    var guardedPage = new Chummer.Android.Native.NativeDialogPage(runtime.Coordinator,
+                        runtime.Coordinator.State.ActiveDialog!);
+                    Button guardedCreate = IssuedElements(guardedPage).OfType<Button>()
+                        .Single(item => item.AutomationId == "dialog-action-create-character");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)guardedCreate).SendClicked());
+                    Require(runtime.Coordinator.State.ActiveDialog?.Id == "dialog.new_character"
+                        && new FileWorkspaceStore(runtime.StateDirectory).List().Count == 1
+                        && IssuedElements(guardedPage).OfType<Label>().Any(item =>
+                            item.AutomationId == "dialog-notice"
+                            && item.Text == runtime.Coordinator.State.Notice
+                            && item.Text.Contains("Save or discard", StringComparison.Ordinal)),
+                        "The unsaved-runner guard must explain why Create was blocked without creating a duplicate.");
+                    Console.WriteLine("PASS native Create displays the unsaved-runner guard");
+                }
+            }
+        });
+    }
+
     public static async Task RunCreationBootstrapProductionOverviewAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
