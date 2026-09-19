@@ -9,6 +9,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
     <Compile Include="NativeCompileStubs.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CareerCommerceCatalogPage.cs" Link="Native/CareerCommerceCatalogPage.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/WizardStrings.cs" Link="Native/WizardStrings.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCyberwarePurchaseRules.cs"
              Link="Core/CharacterCyberwarePurchaseRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCustomDrugRules.cs"

@@ -1,11 +1,9 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
 
-public sealed class PreferencesSr5CareerCyberwarePurchaseCheckpointStore
+public sealed class PreferencesSr5CareerCyberwarePurchaseCheckpointStore(CareerCommerceOwnerAdmission admission)
     : ISr5CareerCyberwarePurchaseCheckpointStore
 {
     private const string KeyPrefix = "chummer.android.sr5-career-cyberware-purchase.v1.";
@@ -44,11 +42,5 @@ public sealed class PreferencesSr5CareerCyberwarePurchaseCheckpointStore
     public void Clear(CharacterWorkspaceId workspaceId)
         => Preferences.Default.Remove(Key(workspaceId));
 
-    private static string Key(CharacterWorkspaceId workspaceId)
-    {
-        string digest = Convert.ToHexString(
-                SHA256.HashData(Encoding.UTF8.GetBytes(workspaceId.Value)))
-            .ToLowerInvariant();
-        return KeyPrefix + digest;
-    }
+    private string Key(CharacterWorkspaceId workspaceId) => admission.CheckpointKey(KeyPrefix, workspaceId);
 }

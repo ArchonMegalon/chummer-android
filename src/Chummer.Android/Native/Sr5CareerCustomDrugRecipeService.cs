@@ -33,6 +33,34 @@ public sealed class Sr5CareerCustomDrugRecipeService(
         }
     }
 
+    internal Sr5CareerCustomDrugWorkspaceSnapshot? CaptureLoad(CharacterWorkspaceId workspaceId)
+    {
+        lock (_gate) return workspaces.Read(workspaceId);
+    }
+
+    // No workspace/checkpoint access on the background thread.
+    internal CharacterCustomDrugPreparation PrepareLoad(Sr5CareerCustomDrugWorkspaceSnapshot captured)
+        => authority.Prepare(captured.Document.Content, captured.ContentRevision, CharacterCustomDrugContext.Career);
+
+    internal Sr5CareerCustomDrugRecipeSnapshot CompleteLoad(
+        Sr5CareerCustomDrugWorkspaceSnapshot captured, CharacterCustomDrugPreparation preparation)
+    {
+        lock (_gate)
+        {
+            var current = workspaces.Read(captured.WorkspaceId);
+            if (current is null || preparation.ContentRevision != captured.ContentRevision
+                || preparation.Context != CharacterCustomDrugContext.Career
+                || preparation.Purpose != CharacterCustomDrugQuotePurpose.RecipeDefinition
+                || current.ContentRevision != captured.ContentRevision
+                || current.SavedRevision != captured.SavedRevision
+                || current.ContentRevision != current.SavedRevision
+                || current.Document.Content != captured.Document.Content)
+                return Sr5CareerCustomDrugRecipeSnapshot.Blocked(captured.WorkspaceId,
+                    CharacterCustomDrugBlockers.StaleRevision);
+            return CompleteLoadLocked(current, preparation);
+        }
+    }
+
     public Sr5CareerCustomDrugRecipeSnapshot UpdateSelection(
         CharacterWorkspaceId workspaceId,
         CharacterCustomDrugSelection selection)
@@ -287,6 +315,13 @@ public sealed class Sr5CareerCustomDrugRecipeService(
             stored.Document.Content,
             stored.ContentRevision,
             CharacterCustomDrugContext.Career);
+        return CompleteLoadLocked(stored, preparation);
+    }
+
+    private Sr5CareerCustomDrugRecipeSnapshot CompleteLoadLocked(
+        Sr5CareerCustomDrugWorkspaceSnapshot stored, CharacterCustomDrugPreparation preparation)
+    {
+        CharacterWorkspaceId workspaceId = stored.WorkspaceId;
         Sr5CareerCustomDrugRecipeCheckpoint? checkpoint = checkpoints.Read(workspaceId);
         bool discardedInvalidCheckpoint = false;
         if (checkpoint?.Phase is Sr5CareerCustomDrugRecipePhase.Applying

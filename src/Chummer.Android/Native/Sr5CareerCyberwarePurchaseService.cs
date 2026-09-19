@@ -34,6 +34,34 @@ public sealed class Sr5CareerCyberwarePurchaseService(
         }
     }
 
+    // Three separate steps: capture on the admitted owner thread, pure Core
+    // preparation on a worker, and checkpoint reconciliation only after the
+    // caller has reacquired that exact owner and page/revision authority.
+    internal Sr5CareerCyberwareWorkspaceSnapshot? CaptureLoad(CharacterWorkspaceId workspaceId)
+    {
+        lock (_gate) return workspaces.Read(workspaceId);
+    }
+
+    internal CharacterCyberwarePurchasePreparation PrepareLoad(Sr5CareerCyberwareWorkspaceSnapshot captured)
+        => authority.Prepare(captured.Document.Content, captured.ContentRevision);
+
+    internal Sr5CareerCyberwarePurchaseSnapshot CompleteLoad(
+        Sr5CareerCyberwareWorkspaceSnapshot captured, CharacterCyberwarePurchasePreparation preparation)
+    {
+        lock (_gate)
+        {
+            var current = workspaces.Read(captured.WorkspaceId);
+            if (current is null || preparation.ContentRevision != captured.ContentRevision
+                || current.ContentRevision != captured.ContentRevision
+                || current.SavedRevision != captured.SavedRevision
+                || current.ContentRevision != current.SavedRevision
+                || current.Document.Content != captured.Document.Content)
+                return Sr5CareerCyberwarePurchaseSnapshot.Blocked(captured.WorkspaceId,
+                    CharacterCyberwarePurchaseBlockers.StaleRevision);
+            return CompleteLoadLocked(current, preparation);
+        }
+    }
+
     public Sr5CareerCyberwarePurchaseSnapshot UpdateSelection(
         CharacterWorkspaceId workspaceId,
         CharacterCyberwarePurchaseSelection selection)
@@ -282,6 +310,13 @@ public sealed class Sr5CareerCyberwarePurchaseService(
         CharacterCyberwarePurchasePreparation preparation = authority.Prepare(
             stored.Document.Content,
             stored.ContentRevision);
+        return CompleteLoadLocked(stored, preparation);
+    }
+
+    private Sr5CareerCyberwarePurchaseSnapshot CompleteLoadLocked(
+        Sr5CareerCyberwareWorkspaceSnapshot stored, CharacterCyberwarePurchasePreparation preparation)
+    {
+        CharacterWorkspaceId workspaceId = stored.WorkspaceId;
         Sr5CareerCyberwarePurchaseCheckpoint? checkpoint = checkpoints.Read(workspaceId);
         if (checkpoint?.Phase is Sr5CareerCyberwarePurchasePhase.Applying
                 or Sr5CareerCyberwarePurchasePhase.Applied

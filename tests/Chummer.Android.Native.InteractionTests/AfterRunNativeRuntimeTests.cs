@@ -800,7 +800,7 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private sealed class RuntimePreferences : IPreferences
+    internal sealed class RuntimePreferences : IPreferences
     {
         private readonly Dictionary<(string?, string), object> _values = new();
         public bool FailSelectedWorkspaceWrite { get; set; }

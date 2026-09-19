@@ -156,6 +156,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<OriginDossierLifeModulePhoneRuntime>();
         builder.Services.AddSingleton<ICareerQualityAtomicWorkspace,
             AndroidCareerQualityAtomicWorkspace>();
+        builder.Services.AddSingleton<CareerCommerceOwnerAdmission>();
         builder.Services.AddSingleton<ISr5CareerCyberwarePurchaseCheckpointStore,
             PreferencesSr5CareerCyberwarePurchaseCheckpointStore>();
         builder.Services.AddSingleton<ISr5CareerCyberwareWorkspaceStore,

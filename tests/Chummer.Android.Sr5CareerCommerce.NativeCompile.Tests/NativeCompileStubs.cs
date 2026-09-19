@@ -44,39 +44,39 @@ namespace Chummer.Android.Native
         public bool CanEnterCareerVehicleWorkshop => false;
         public bool IsTabEnabled(NavigationTabDefinition tab) => tab.IsEnabled;
         public Task SelectTabAsync(string tabId) => Task.CompletedTask;
+        internal Task<Sr5CareerCyberwarePurchaseSnapshot> LoadCareerCyberwarePurchaseAsync(CancellationToken token, Func<bool> current)
+            => Task.FromResult(LoadCareerCyberwarePurchase());
+        internal Task<Sr5CareerCustomDrugRecipeSnapshot> LoadCareerCustomDrugRecipeAsync(CancellationToken token, Func<bool> current)
+            => Task.FromResult(LoadCareerCustomDrugRecipe());
         public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase()
             => Sr5CareerCyberwarePurchaseSnapshot.Blocked(
                 default,
                 CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
         public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
-            CharacterCyberwarePurchaseSelection selection) => LoadCareerCyberwarePurchase();
-        public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
             Sr5CareerCyberwarePurchaseSnapshot expected,
             CharacterCyberwarePurchaseSelection selection) => LoadCareerCyberwarePurchase();
-        public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase()
+        public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase(Sr5CareerCyberwarePurchaseSnapshot expected)
             => LoadCareerCyberwarePurchase();
-        public Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync()
+        public Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync(Sr5CareerCyberwarePurchaseSnapshot expected)
             => Task.FromResult(LoadCareerCyberwarePurchase());
-        public Task<Sr5CareerCyberwarePurchaseSnapshot> UndoCareerCyberwarePurchaseAsync()
+        public Task<Sr5CareerCyberwarePurchaseSnapshot> UndoCareerCyberwarePurchaseAsync(Sr5CareerCyberwarePurchaseSnapshot expected)
             => Task.FromResult(LoadCareerCyberwarePurchase());
-        public Sr5CareerCyberwarePurchaseSnapshot ReopenCareerCyberwarePurchase()
+        public Sr5CareerCyberwarePurchaseSnapshot ReopenCareerCyberwarePurchase(Sr5CareerCyberwarePurchaseSnapshot expected)
             => LoadCareerCyberwarePurchase();
         public Sr5CareerCustomDrugRecipeSnapshot LoadCareerCustomDrugRecipe()
             => Sr5CareerCustomDrugRecipeSnapshot.Blocked(
                 default,
                 CharacterCustomDrugBlockers.AuthorityUnavailable);
         public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
-            CharacterCustomDrugSelection selection) => LoadCareerCustomDrugRecipe();
-        public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
             Sr5CareerCustomDrugRecipeSnapshot expected,
             CharacterCustomDrugSelection selection) => LoadCareerCustomDrugRecipe();
-        public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe()
+        public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe(Sr5CareerCustomDrugRecipeSnapshot expected)
             => LoadCareerCustomDrugRecipe();
-        public Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync()
+        public Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync(Sr5CareerCustomDrugRecipeSnapshot expected)
             => Task.FromResult(LoadCareerCustomDrugRecipe());
-        public Task<Sr5CareerCustomDrugRecipeSnapshot> UndoCareerCustomDrugRecipeAsync()
+        public Task<Sr5CareerCustomDrugRecipeSnapshot> UndoCareerCustomDrugRecipeAsync(Sr5CareerCustomDrugRecipeSnapshot expected)
             => Task.FromResult(LoadCareerCustomDrugRecipe());
-        public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe()
+        public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe(Sr5CareerCustomDrugRecipeSnapshot expected)
             => LoadCareerCustomDrugRecipe();
         public Sr5CareerVehicleWorkshopSnapshot LoadCareerVehicleWorkshop()
             => Sr5CareerVehicleWorkshopSnapshot.Blocked(
@@ -135,6 +135,8 @@ namespace Chummer.Android.Native
             => Coordinator = coordinator;
         protected RunnerSessionCoordinator Coordinator { get; }
         protected abstract void Refresh();
+        protected long CaptureAppearanceGeneration() => 1;
+        protected bool IsCurrentAppearanceGeneration(long generation) => generation == 1;
         protected async Task RunAsync(Func<Task> action) => await action();
         protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action) => await action();
         protected new Task<bool> DisplayAlertAsync(
