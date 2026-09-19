@@ -1,0 +1,73 @@
+name: Android source review
+
+# Review only: no Android build, device execution, signing or publication.
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-source-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-checks:
+    name: Android source and safety checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source without retained credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check the exact source diff
+        env:
+          CHUMMER_CHECK_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          CHUMMER_CHECK_EVENT: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$CHUMMER_CHECK_EVENT" == workflow_dispatch ]]; then
+            CHUMMER_CHECK_BASE="$(git rev-parse HEAD^)"
+          fi
+          [[ "$CHUMMER_CHECK_BASE" =~ ^[0-9a-f]{40}$ ]]
+          git cat-file -e "$CHUMMER_CHECK_BASE^{commit}"
+          git diff --check "$CHUMMER_CHECK_BASE" HEAD
+          # Retain the existing bounded document validation when applicable.
+          # Its classification is informational here, not a runtime-test skip.
+          python3 -I -B scripts/classify_android_ci_changes.py \
+            --repository "$GITHUB_WORKSPACE" \
+            --base "$CHUMMER_CHECK_BASE" --head "$(git rev-parse HEAD)"
+      - name: Reject repository private signing material
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B scripts/verify_release_private_key_hygiene.py --repo-root "$GITHUB_WORKSPACE"
+      - name: Run bounded source and verifier regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for suite in \
+            test_android_source_checks_workflow.py \
+            test_android_ci_change_scope.py \
+            test_api36_e2e_workflow.py \
+            test_release_artifact_hygiene.py \
+            test_release_aab_proof_exclusion.py; do
+            python3 -B -m unittest discover -s tests -p "$suite" -v
+          done
+          cd tests
+          python3 -B -m unittest -v \
+            test_release_gate_hardening.ReleaseGateHardeningTests.test_private_key_hygiene_rejects_tracked_and_ignored_key_material
+      - name: State the limited result
+        shell: bash
+        run: |
+          printf '%s\n' \
+            'Source and verifier checks passed. No APK/AAB was built, signed or uploaded.' \
+            'No API-36 execution, aggregate, two-green or publication authority is asserted.' \
+            'Affected builds and route tests remain the local delivery responsibility.' >> "$GITHUB_STEP_SUMMARY"

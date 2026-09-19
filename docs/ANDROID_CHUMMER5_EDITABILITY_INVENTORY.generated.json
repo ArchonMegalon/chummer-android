@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "7e0823c865b5dcf74fecdb3cb56eec3d8c58505e1e886362d07a27264454c761"
+        "sha256": "1596598a7ccc2af30087adf611ff148dfb2f5e62670b0d3931c6de7c27747528"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "87562d8793d6efadd9b0f1472ab3e2606ec5d92a9374516f6c207743696eaf72"
+        "sha256": "5925aabcfec49482f4b643320fb4ceba307cfdfd1c411cf0a9098aed9b06c2d6"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
