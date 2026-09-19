@@ -7,6 +7,43 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Sr5CareerRunContextualContractTests(unittest.TestCase):
+    def test_career_navigation_does_not_load_catalogs_or_reconcile_checkpoints(self) -> None:
+        native = ROOT / "src/Chummer.Android/Native"
+        career = (native / "Sr5CareerWizardPage.cs").read_text(encoding="utf-8")
+        commerce = (native / "Sr5CareerCommercePages.cs").read_text(encoding="utf-8")
+        chooser = commerce.split("public sealed class Sr5CareerCyberwarePurchasePage", 1)[0]
+        for source in (career, chooser):
+            for lane in ("CyberwarePurchase", "CustomDrugRecipe", "VehicleWorkshop"):
+                self.assertNotIn(f"Coordinator.LoadCareer{lane}()", source)
+        self.assertIn("Coordinator.CanEnterCareerCommerce", career)
+        for lane in ("CyberwarePurchase", "CustomDrugRecipe", "VehicleWorkshop"):
+            self.assertIn(f"enabled: Coordinator.CanEnterCareer{lane}", chooser)
+
+    def test_commerce_navigation_is_not_quote_or_mutation_authority(self) -> None:
+        native = ROOT / "src/Chummer.Android/Native"
+        coordinator = (native / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        navigation = coordinator.split("private bool HasSavedCareerCommerceContext", 1)[1]
+        navigation = navigation.split("public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase", 1)[0]
+        for guard in ("State.WorkspaceId", "State.Profile?.Created == true",
+                      "State.Rules?.GameEdition", "!State.IsDirty", "!IsBusy",
+                      "State.ContentRevision > 0", "State.ContentRevision == State.SavedRevision",
+                      "string.IsNullOrWhiteSpace(State.Error)"):
+            self.assertIn(guard, navigation)
+        for service in ("_careerCyberwarePurchaseService", "_careerCustomDrugRecipeService",
+                        "_careerVehicleWorkshopService"):
+            self.assertIn(f"{service} is not null", navigation)
+        for call in (".Load(", ".Prepare(", ".Review(", ".Confirm(", ".Write(", ".Clear("):
+            self.assertNotIn(call, navigation)
+        for file, loader in (
+            ("Sr5CareerCommercePages.cs", "CyberwarePurchase"),
+            ("Sr5CareerCustomDrugRecipePages.cs", "CustomDrugRecipe"),
+            ("Sr5CareerVehicleWorkshopPages.cs", "VehicleWorkshop"),
+        ):
+            page = (native / file).read_text(encoding="utf-8")
+            self.assertIn(f"Coordinator.LoadCareer{loader}()", page)
+            self.assertIn("!snapshot.IsReady", page)
+            self.assertIn("snapshot.Preparation is not", page)
+
     def test_table_load_preserves_ui_context_for_visual_refresh(self) -> None:
         table = (ROOT / "src/Chummer.Android/Native/Sr5TableWizardPage.cs").read_text(
             encoding="utf-8"

@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "07a8fd215423ced5d1a839dde349daacbf31a3c429d6818676d6b0921981de3b"
+        "sha256": "93bb1c511a181b7615323986dd541f43438656e11fda40c3461b9843ec966540"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "4543467e991ead8ea8ed74a4bb115e5de02d143fe601df95d9534956d73dcbcc"
+        "sha256": "07783accf389b37db2359d83048257d31b2285521d1a294848ea13b01ae0b969"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -682,7 +682,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "c712d33c4b052e6f24591cf7d677d13ff44598cab0efbb4f5f48aa5799fbf48a"
+        "sha256": "9fc83f1704bfb6fd503f0b5594f9527eac34269ac107c40217f4e714707b0078"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "2136ed6fc22d335845df8d2a08c9724bfb3fce4760cc5484fd9ff6cdba1e99e7"
+        "sha256": "27d93f106817ae77823d6e7538c1c8bbbc472739dd4f9214b0c52f4aa777b874"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -1027,7 +1027,7 @@
       {
         "path": "tests/test_api36_sr5_career_run_contextual_contract.py",
         "exists": true,
-        "sha256": "40fecc02573ef39ebe355b16dcaae5d920cbe11777cf3e0ac6aa3117087333d7"
+        "sha256": "40450e6a694a991f96b316e679afccc2d0570a662295fdb49c802bf47ac56896"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",

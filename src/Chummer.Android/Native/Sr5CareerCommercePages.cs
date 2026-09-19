@@ -45,26 +45,23 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
             return;
         }
 
-        Sr5CareerCyberwarePurchaseSnapshot cyberware = Coordinator.LoadCareerCyberwarePurchase();
         _body.Add(NativeTheme.NavigationRow(
             Text("Purchase cyberware"),
             Text("Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCyberwarePurchasePage(Coordinator)),
-            enabled: cyberware.IsReady,
+            enabled: Coordinator.CanEnterCareerCyberwarePurchase,
             automationId: "sr5-career-purchase-cyberware"));
-        Sr5CareerCustomDrugRecipeSnapshot customDrug = Coordinator.LoadCareerCustomDrugRecipe();
         _body.Add(NativeTheme.NavigationRow(
             Text("Define custom drug"),
             Text("Exact components and levels → Core quote → free initial dose → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCustomDrugRecipePage(Coordinator)),
-            enabled: customDrug.IsReady,
+            enabled: Coordinator.CanEnterCareerCustomDrugRecipe,
             automationId: "sr5-career-custom-drug-recipe"));
-        Sr5CareerVehicleWorkshopSnapshot workshop = Coordinator.LoadCareerVehicleWorkshop();
         _body.Add(NativeTheme.NavigationRow(
             Text("Vehicle and drone workshop"),
             Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt"),
             () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
-            enabled: workshop.IsReady,
+            enabled: Coordinator.CanEnterCareerVehicleWorkshop,
             automationId: "sr5-career-vehicle-workshop"));
         AddUnavailableLane(
             Text("Installed gear"),

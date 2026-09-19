@@ -39,6 +39,9 @@ namespace Chummer.Android.Native
     {
         public CompileState State { get; } = new(null, null, null, false, 0, 0, null, null);
         public CompileSurface Surface { get; } = new([]);
+        public bool CanEnterCareerCyberwarePurchase => false;
+        public bool CanEnterCareerCustomDrugRecipe => false;
+        public bool CanEnterCareerVehicleWorkshop => false;
         public bool IsTabEnabled(NavigationTabDefinition tab) => tab.IsEnabled;
         public Task SelectTabAsync(string tabId) => Task.CompletedTask;
         public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase()

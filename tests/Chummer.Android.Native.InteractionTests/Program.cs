@@ -13,6 +13,18 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--wizard-metric-layout")
+        {
+            await WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync();
+            Console.WriteLine("Wizard metric layout regression passed.");
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--career-commerce-navigation")
+        {
+            await CareerCommerceNavigationDoesNotLoadAuthoritiesAsync();
+            Console.WriteLine("Career commerce navigation regression passed.");
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-bootstrap-production-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationBootstrapProductionOverviewAsync(args[1]);
@@ -176,6 +188,7 @@ internal static class Program
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync), WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync),
             (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
             (nameof(AfterRunAuthorityHarness.RunNativePageCasesAsync), AfterRunAuthorityHarness.RunNativePageCasesAsync),
@@ -235,6 +248,7 @@ internal static class Program
             (nameof(ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync), ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync),
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
             (nameof(ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync), ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync),
+            (nameof(CareerCommerceNavigationDoesNotLoadAuthoritiesAsync), CareerCommerceNavigationDoesNotLoadAuthoritiesAsync),
             (nameof(ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync), ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync),
             (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
@@ -4099,6 +4113,109 @@ internal static class Program
             IsExact: true,
             [],
             "points");
+
+    private static Task WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync()
+    {
+        foreach (string caption in new[] { "Settings profile", "Einstellungsprofil", "Perfil de configuración" })
+        foreach (string value in new[]
+        {
+            "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+            new string('a', 64), "1", "1000 nuyen", "", " "
+        })
+        {
+            Grid metric = NativeTheme.Metric(caption, value);
+            Label[] labels = metric.Children.OfType<Label>().ToArray();
+            Require(metric.ColumnDefinitions.Count == 2
+                && metric.ColumnDefinitions.All(column => column.Width.IsStar)
+                && metric.ColumnDefinitions[0].Width.Value == metric.ColumnDefinitions[1].Width.Value,
+                "A long value must not claim unbounded Auto width or squeeze the caption column.");
+            Require(labels.Length == 2 && labels[0].Text == caption
+                && labels[1].Text == (string.IsNullOrWhiteSpace(value) ? "—" : value),
+                "Metric labels and nonempty values must remain exact, without truncating identifiers.");
+            Require(Grid.GetColumn(labels[0]) == 0 && Grid.GetColumn(labels[1]) == 1
+                && labels[0].LineBreakMode == LineBreakMode.WordWrap
+                && labels[1].LineBreakMode == LineBreakMode.CharacterWrap
+                && labels[1].HorizontalTextAlignment == TextAlignment.End,
+                "Captions should word-wrap while identifiers wrap inside the bounded trailing column.");
+            Require(metric.HeightRequest == -1
+                && labels.All(label => label.HeightRequest == -1 && label.MaxLines == -1
+                    && label.FontAutoScalingEnabled),
+                "Narrow screens and accessibility font scaling must be allowed to grow the metric row.");
+        }
+        return Task.CompletedTask;
+    }
+
+    private static Task CareerCommerceNavigationDoesNotLoadAuthoritiesAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("career-commerce-navigation");
+        CharacterOverviewState creation = NewCreationOverview(workspaceId, 7, 7);
+        CharacterOverviewState ready = creation with
+        {
+            Profile = creation.Profile! with { Created = true },
+            Rules = new CharacterRulesSection("SR5", "", "", 0, 0, 0, 0, [])
+        };
+        foreach (int registered in new[] { 0, 1, 2, 4, 7 })
+        {
+            CharacterOverviewState state = ready;
+            using var coordinator = new RunnerSessionCoordinator(
+                StrictPageProxy.Create<ICharacterOverviewPresenter>(() => state),
+                null!, null!, null!, null!, null!, null!,
+                StrictPageProxy.Create<Chummer.Presentation.Shell.IShellPresenter>(),
+                null!, null!, null!, null!, null!,
+                StrictPageProxy.Create<Chummer.Android.Platform.IAndroidAccountLinkService>(), null!, null!,
+                // Real services with deliberately unavailable IO dependencies:
+                // drawing either menu must never invoke their Load methods.
+                careerCyberwarePurchaseService: (registered & 1) != 0
+                    ? new Sr5CareerCyberwarePurchaseService(null!, null!, null!) : null,
+                careerCustomDrugRecipeService: (registered & 2) != 0
+                    ? new Sr5CareerCustomDrugRecipeService(null!, null!, null!) : null,
+                careerVehicleWorkshopService: (registered & 4) != 0
+                    ? new Sr5CareerVehicleWorkshopService(null!, null!, null!, null!) : null);
+
+            Require(coordinator.CanEnterCareerCommerce == (registered != 0),
+                "The parent menu must include vehicle-only installations, not just Cyberware/drugs.");
+            var page = new Sr5CareerCommerceHubPage(coordinator);
+            var refresh = typeof(Sr5CareerCommerceHubPage).GetMethod("Refresh",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            for (int redraw = 0; redraw < 3; redraw++)
+            {
+                refresh.Invoke(page, null);
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content;
+                Button[] buttons = body.Children.OfType<Border>()
+                    .Where(card => card.Content is Grid)
+                    .SelectMany(card => ((Grid)card.Content!).Children.OfType<Button>()).ToArray();
+                foreach ((string id, int mask) in new[]
+                {
+                    ("sr5-career-purchase-cyberware", 1),
+                    ("sr5-career-custom-drug-recipe", 2),
+                    ("sr5-career-vehicle-workshop", 4)
+                })
+                    Require(buttons.Single(button => button.AutomationId == id).IsEnabled
+                        == ((registered & mask) != 0), "Only installed commerce lanes should be navigable.");
+            }
+
+            foreach (CharacterOverviewState blocked in new[]
+            {
+                ready with { WorkspaceId = null },
+                ready with { Profile = creation.Profile },
+                ready with { Rules = ready.Rules! with { GameEdition = "SR6" } },
+                ready with { IsBusy = true },
+                ready with { Error = "workspace unavailable" },
+                NewCreationOverview(workspaceId, 8, 7) with { Profile = ready.Profile, Rules = ready.Rules },
+                NewCreationOverview(workspaceId, 0, 0) with { Profile = ready.Profile, Rules = ready.Rules }
+            })
+            {
+                state = blocked;
+                Require(!coordinator.CanEnterCareerCommerce
+                    && !coordinator.CanEnterCareerCyberwarePurchase
+                    && !coordinator.CanEnterCareerCustomDrugRecipe
+                    && !coordinator.CanEnterCareerVehicleWorkshop,
+                    "Missing, unsaved, non-Career, wrong-edition, busy or invalid states must block navigation.");
+                refresh.Invoke(page, null);
+            }
+        }
+        return Task.CompletedTask;
+    }
 
     private static Task ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync()
     {

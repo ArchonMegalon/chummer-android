@@ -180,13 +180,17 @@ internal static class NativeTheme
             ColumnDefinitions =
             {
                 new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Auto)
+                // Reserve space for both sides. An Auto value column can
+                // measure a GUID at full width and squeeze the caption away.
+                new ColumnDefinition(GridLength.Star)
             },
             ColumnSpacing = 12
         };
         grid.Add(Body(label, Muted));
         Label valueLabel = Body(string.IsNullOrWhiteSpace(value) ? "—" : value);
         valueLabel.FontAttributes = FontAttributes.Bold;
+        valueLabel.LineBreakMode = LineBreakMode.CharacterWrap;
+        valueLabel.HorizontalTextAlignment = TextAlignment.End;
         grid.Add(valueLabel, 1);
         return grid;
     }

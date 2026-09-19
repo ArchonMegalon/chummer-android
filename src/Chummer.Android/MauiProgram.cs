@@ -214,7 +214,9 @@ public static class MauiProgram
         builder.Services.AddTransient<CampaignPage>();
         builder.Services.AddTransient<MorePage>();
         builder.Services.AddTransient<PhoneMorePage>();
-        builder.Services.AddSingleton<MainShell>();
+        builder.Services.AddTransient<MainShell>();
+        builder.Services.AddSingleton<Func<MainShell>>(provider =>
+            () => provider.GetRequiredService<MainShell>());
 
 #if DEBUG
         builder.Logging.AddDebug();
