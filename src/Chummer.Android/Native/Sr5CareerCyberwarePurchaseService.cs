@@ -37,11 +37,35 @@ public sealed class Sr5CareerCyberwarePurchaseService(
     public Sr5CareerCyberwarePurchaseSnapshot UpdateSelection(
         CharacterWorkspaceId workspaceId,
         CharacterCyberwarePurchaseSelection selection)
+        => UpdateSelection(workspaceId, selection, expected: null);
+
+    public Sr5CareerCyberwarePurchaseSnapshot UpdateSelection(
+        Sr5CareerCyberwarePurchaseSnapshot expected,
+        CharacterCyberwarePurchaseSelection selection)
+        => UpdateSelection(expected.WorkspaceId, selection, expected);
+
+    private Sr5CareerCyberwarePurchaseSnapshot UpdateSelection(
+        CharacterWorkspaceId workspaceId,
+        CharacterCyberwarePurchaseSelection selection,
+        Sr5CareerCyberwarePurchaseSnapshot? expected)
     {
         ArgumentNullException.ThrowIfNull(selection);
         lock (_gate)
         {
             Sr5CareerCyberwarePurchaseSnapshot live = RequireReady(LoadLocked(workspaceId));
+            // A selector belongs to the catalog and draft actually shown. Check
+            // inside the same gate as the write, not just when the page opens.
+            if (expected is not null
+                && (!expected.IsReady
+                    || expected.Preparation!.ContentRevision != live.Preparation!.ContentRevision
+                    || expected.Preparation.CharacterDigest != live.Preparation.CharacterDigest
+                    || expected.Preparation.CatalogDigest != live.Preparation.CatalogDigest
+                    || expected.Selection != live.Selection
+                    || expected.Checkpoint?.Phase != live.Checkpoint?.Phase))
+            {
+                throw new InvalidOperationException(
+                    "The Cyberware selection changed. Open the selector again.");
+            }
             if (live.Checkpoint?.Phase is Sr5CareerCyberwarePurchasePhase.Applying
                     or Sr5CareerCyberwarePurchasePhase.Applied
                     or Sr5CareerCyberwarePurchasePhase.RecoveryUnknown)

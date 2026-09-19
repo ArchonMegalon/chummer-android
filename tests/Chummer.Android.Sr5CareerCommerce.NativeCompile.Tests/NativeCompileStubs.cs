@@ -50,6 +50,9 @@ namespace Chummer.Android.Native
                 CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
         public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
             CharacterCyberwarePurchaseSelection selection) => LoadCareerCyberwarePurchase();
+        public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
+            Sr5CareerCyberwarePurchaseSnapshot expected,
+            CharacterCyberwarePurchaseSelection selection) => LoadCareerCyberwarePurchase();
         public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase()
             => LoadCareerCyberwarePurchase();
         public Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync()
@@ -63,6 +66,9 @@ namespace Chummer.Android.Native
                 default,
                 CharacterCustomDrugBlockers.AuthorityUnavailable);
         public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
+            CharacterCustomDrugSelection selection) => LoadCareerCustomDrugRecipe();
+        public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
+            Sr5CareerCustomDrugRecipeSnapshot expected,
             CharacterCustomDrugSelection selection) => LoadCareerCustomDrugRecipe();
         public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe()
             => LoadCareerCustomDrugRecipe();
@@ -130,6 +136,7 @@ namespace Chummer.Android.Native
         protected RunnerSessionCoordinator Coordinator { get; }
         protected abstract void Refresh();
         protected async Task RunAsync(Func<Task> action) => await action();
+        protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action) => await action();
         protected new Task<bool> DisplayAlertAsync(
             string title,
             string message,
