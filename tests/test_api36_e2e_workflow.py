@@ -92,7 +92,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             refs = re.findall(r"repository: ArchonMegalon/chummer6-design\s+ref: ([^\s]+)", text)
             self.assertEqual([pin["commit"]] * expected_count, refs)
             self.assertIn('--design-root "$GITHUB_WORKSPACE/chummer-design"', text)
-        self.assertIn('"eng/design-policy-authority.json"', self.text.split("workflow_dispatch:")[0])
+        self.assertIn("workflow_dispatch:", self.text.split("permissions:")[0])
         self.assertIn("scripts/android_design_policy_authority.py", self.text)
         self.assertIn('--design-root "${{ github.workspace }}/chummer-design"', self.text)
 
@@ -582,24 +582,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
-    def test_every_review_event_runs_the_phone_gate_while_push_stays_bounded(self) -> None:
+    def test_extended_phone_gate_requires_explicit_dispatch(self) -> None:
         trigger_block = self.text[self.text.index("on:\n") : self.text.index("permissions:\n")]
-        self.assertIn("  pull_request:\n  merge_group:\n  push:\n", trigger_block)
-        self.assertNotIn("  pull_request:\n    paths:", trigger_block)
-        self.assertNotIn("  merge_group:\n    paths:", trigger_block)
-        self.assertIn("  push:\n    branches:\n      - main\n    paths:\n", trigger_block)
-        self.assertEqual(
-            1,
-            self.text.count(
-                '"docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"'
-            ),
-        )
-        self.assertEqual(
-            1,
-            self.text.count('"docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"'),
-        )
-        self.assertEqual(1, self.text.count('"docs/editability-evidence/**"'))
-        self.assertEqual(1, self.text.count('"scripts/**"'))
+        self.assertEqual("on:\n  workflow_dispatch:\n\n", trigger_block)
 
     def test_preview_release_remains_independently_commit_pinned(self) -> None:
         self.assertNotIn("uses: actions/checkout@v", self.preview_text)
