@@ -838,7 +838,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
 
     def test_aggregate_requires_every_stable_wizard_authority_bound_receipt(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
-        self.assertIn("needs:\n      - build\n      - phone-wizard-e2e", aggregate)
+        self.assertIn(
+            "needs:\n      - change-scope\n      - build\n      - phone-wizard-e2e", aggregate
+        )
         self.assertIn("if: ${{ always() }}", aggregate)
         self.assertIn(
             "pattern: chummer-android-api36-phone-*-evidence-"

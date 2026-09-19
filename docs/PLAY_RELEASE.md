@@ -237,6 +237,22 @@ worktree compiles before writing its path-only environment file. Merely running
 
 ## Required gates
 
+Release documentation has a narrow lightweight CI path. Only changes to this
+document and the specifically named `play/evidence/previewN` browser-readback,
+local-signing, local-verification and observation files qualify. The complete
+Git tree diff must contain regular non-executable documents only; scripts,
+workflows, generated inventories, schemas, package pins, listing text and app
+changes take the runtime path. The classifier is taken from the base revision,
+so a change cannot exempt its own classification policy. Missing policy and
+manual dispatch default to runtime verification; malformed comparisons fail.
+
+For a docs-only change the required aggregate check reports documentation
+validation, with APK builds and journeys explicitly skipped. It emits no APK,
+aggregate receipt, P0 authority or two-green eligibility. This check status is
+not runtime evidence. JSON syntax, the existing browser-readback contract and
+whitespace are checked without rebuilding unchanged app bytes. The initial CI
+policy change itself still requires the normal runtime lane.
+
 The pull-request API 36 beta gate is currently phone-only. Tablet acceptance is
 explicitly deferred: that lane does not start a tablet emulator, and a passing
 phone receipt is not a tablet-readiness claim or a substitute for the tablet
