@@ -1,5 +1,35 @@
 # Play release contract
 
+## Current observed Internal release: Preview 13 — September 19, 2026
+
+The Chummer-scoped Play Console reports `13 (0.1.0-preview.13)` as **Available
+to internal testers** on the active Internal track. The existing
+[tester install/update link](https://play.google.com/apps/internaltest/4700678198570024687)
+is unchanged. See the [local build, signing and Play observation](../play/evidence/preview13-internal-observation.md).
+
+The owner explicitly requested local builds and local hosting, then publication
+of this locally built candidate. Preview 13 was built offline in local Docker
+and signed separately with the existing upload key. A separate keyless container
+verified the exact signed AAB before upload. This replaces the three hosted
+signing jobs and shared remote storage; it is not an execution of the hosted protocol
+described below, and no hosted attestation or v4 publication receipt is claimed.
+The repository's existing hosted validators remain unchanged.
+
+The displayed release time is `19 Sept 11:14`; the readback was observed at
+`2026-09-19T09:14:08Z`. Physical Play installation/update is still unverified.
+Provider availability is not phone-beta completion, public release, tablet
+readiness, full editing parity or live Rook authority. Preview 12 and older
+records remain immutable historical observations. Code 13 is consumed; the next
+release needs a higher unused code rather than another upload of Preview 13.
+
+This rolling update defers Career/Commerce catalog preparation until a leaf
+wizard is opened. It was built from commit
+`dd5e6addc00971009de0449a028e9e1c42d51847` on the pushed menu-fix branch, not
+from an Android `main` merge. Source integration is a separate step; a later
+merge must not be relabelled as this bundle's producer. The affected-route Debug
+smoke and exact Release bundle checks are recorded with their limits in the
+observation, not promoted to whole-app or hosted seven-journey authority.
+
 ## Identity
 
 - package id: `com.myexternalbrain.chummer`
@@ -18,8 +48,10 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 ## Secret boundary
 
-Upload keys and passwords are never committed. They belong only to a separate
-protected Fleet signer, which is not implemented by this repository:
+Upload keys and passwords are never committed or admitted to ordinary builds.
+The hosted protocol below assigns them to a separate protected Fleet signer,
+which is not implemented by this repository. Previews 12 and 13 instead used the
+explicitly approved isolated local signing boundary documented above:
 
 - `AndroidSigningKeyStore`
 - `ChummerAndroidSigningStorePass`
@@ -213,6 +245,22 @@ worktree compiles before writing its path-only environment file. Merely running
 
 ## Required gates
 
+Release documentation has a narrow lightweight CI path. Only changes to this
+document and the specifically named `play/evidence/previewN` browser-readback,
+local-signing, local-verification and observation files qualify. The complete
+Git tree diff must contain regular non-executable documents only; scripts,
+workflows, generated inventories, schemas, package pins, listing text and app
+changes take the runtime path. The classifier is taken from the base revision,
+so a change cannot exempt its own classification policy. Missing policy and
+manual dispatch default to runtime verification; malformed comparisons fail.
+
+For a docs-only change the required aggregate check reports documentation
+validation, with APK builds and journeys explicitly skipped. It emits no APK,
+aggregate receipt, P0 authority or two-green eligibility. This check status is
+not runtime evidence. JSON syntax, the existing browser-readback contract and
+whitespace are checked without rebuilding unchanged app bytes. The initial CI
+policy change itself still requires the normal runtime lane.
+
 The pull-request API 36 beta gate is currently phone-only. Tablet acceptance is
 explicitly deferred: that lane does not start a tablet emulator, and a passing
 phone receipt is not a tablet-readiness claim or a substitute for the tablet
@@ -341,7 +389,11 @@ Automatic review can be disabled at build time with
 `CHUMMER_DISABLE_PLAY_REVIEW=1`. The manual store-listing action remains
 available under either kill switch.
 
-## Publication boundary
+## Publication boundary — hosted protocol
+
+This section documents the existing hosted-protocol verifier, not the local
+Preview 12 exception. The separate browser observation above must not be
+presented as output of that verifier.
 
 A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
@@ -412,7 +464,7 @@ Keep the generated receipt
 outside the repository until a real readback has occurred and its exact evidence
 has been reviewed; this lane deliberately provides no Preview.12 receipt.
 
-The recorded Preview.10 Internal-testing publication truth is
+The historical Preview.10 Internal-testing publication truth is
 `play/evidence/preview10-internal-publication.json`. Verify the durable record
 with `scripts/verify_play_internal_publication_receipt.py`. Its Play application,
 track, release status, displayed release time, and join URL came from an
@@ -424,9 +476,9 @@ support, full edit parity, live Rook rule authority, or Play-side artifact-byte
 retrievability. The Console exposed the release time only as `3 Sept 01:04`,
 without an authoritative timezone; no UTC instant is invented.
 
-## Current preview.7 release evidence (source 2026-08-12, Play 2026-08-14)
+## Historical preview.7 release evidence (source 2026-08-12, Play 2026-08-14)
 
-The current app is version code 7 (`0.1.0-preview.7`). It supersedes preview.6
+At that checkpoint the app was version code 7 (`0.1.0-preview.7`). It superseded preview.6
 because the older native deletion explanation presented target retention windows
 as an unconditional promise while the live public privacy policy still marks
 Hosted Build retention and whole-account erasure proof as review-required.

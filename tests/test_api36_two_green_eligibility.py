@@ -1842,7 +1842,10 @@ class Api36TwoGreenEligibilityTests(unittest.TestCase):
     def test_jobs_artifact_metadata_and_archive_tampering_fail_closed(self) -> None:
         for key, mutate in (
             ("review_jobs", lambda value: value["jobs"][0].update({"conclusion": "failure"})),
+            # A successful docs-only aggregate check is not runtime qualification.
+            ("review_jobs", lambda value: value["jobs"][0].update({"conclusion": "skipped"})),
             ("review_jobs", lambda value: value.update({"total_count": 100})),
+            ("review_artifacts", lambda value: value.update({"total_count": 0, "artifacts": []})),
             ("review_artifacts", lambda value: value["artifacts"][0].update({"expired": True})),
             ("review_artifacts", lambda value: value["artifacts"][0].update({"digest": "sha256:" + "0" * 64})),
         ):
