@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "07a8fd215423ced5d1a839dde349daacbf31a3c429d6818676d6b0921981de3b"
+        "sha256": "93bb1c511a181b7615323986dd541f43438656e11fda40c3461b9843ec966540"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
