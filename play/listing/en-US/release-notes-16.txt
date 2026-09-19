@@ -1,0 +1,1 @@
+Cyberware and drug catalogs load in the background to keep their pages responsive. Drafts stay bound to the correct account; stale actions are rejected after an account switch. Improved draft restoration after restarting the app.
