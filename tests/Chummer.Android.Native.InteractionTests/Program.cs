@@ -13,6 +13,17 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--commerce-owner-stores")
+        {
+            CommerceSelectionRuntimeTests.VerifyProductionOwnerStores();
+            await CommerceSelectionRuntimeTests.RunOwnerActionsAsync();
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--commerce-background")
+        {
+            await CommerceSelectionRuntimeTests.RunBackgroundAsync();
+            return;
+        }
         if (args.Length == 1 && args[0] == "--commerce-selection")
         {
             await CommerceSelectionRuntimeTests.RunAsync();

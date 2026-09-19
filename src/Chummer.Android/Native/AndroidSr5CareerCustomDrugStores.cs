@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
@@ -7,18 +5,20 @@ using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
 
-public sealed class AndroidSr5CareerCustomDrugWorkspaceStore(IWorkspaceStore store)
+public sealed class AndroidSr5CareerCustomDrugWorkspaceStore(
+    IWorkspaceStore store, CareerCommerceOwnerAdmission admission)
     : ISr5CareerCustomDrugWorkspaceStore
 {
     public Sr5CareerCustomDrugWorkspaceSnapshot? Read(CharacterWorkspaceId workspaceId)
     {
-        WorkspaceStoreReadResult read = store.Get(workspaceId);
+        var owner = admission.RequireOwner(workspaceId);
+        WorkspaceStoreReadResult read = owner.IsLocalSingleUser ? store.Get(workspaceId) : store.Get(owner, workspaceId);
         return read.Success && read.Value is { } value
-            ? new Sr5CareerCustomDrugWorkspaceSnapshot(
+            ? admission.BindSnapshot(workspaceId, new Sr5CareerCustomDrugWorkspaceSnapshot(
                 workspaceId,
                 value.ContentRevision,
                 value.SavedRevision,
-                value.Document)
+                value.Document))
             : null;
     }
 
@@ -28,14 +28,15 @@ public sealed class AndroidSr5CareerCustomDrugWorkspaceStore(IWorkspaceStore sto
     {
         ArgumentNullException.ThrowIfNull(expected);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterXml);
+        admission.RequireSnapshot(expected.WorkspaceId, expected);
         WorkspaceDocument replacement = expected.Document with
         {
             State = expected.Document.State with { Payload = characterXml }
         };
-        WorkspaceStoreMutationResult result = store.ReplaceWorkspaceDocumentAndCheckpoint(
-            expected.WorkspaceId,
-            expected.ContentRevision,
-            replacement);
+        var owner = admission.RequireOwner(expected.WorkspaceId);
+        WorkspaceStoreMutationResult result = owner.IsLocalSingleUser
+            ? store.ReplaceWorkspaceDocumentAndCheckpoint(expected.WorkspaceId, expected.ContentRevision, replacement)
+            : store.ReplaceWorkspaceDocumentAndCheckpoint(owner, expected.WorkspaceId, expected.ContentRevision, replacement);
         return result.Entry is { } entry
             ? new Sr5CareerCustomDrugWorkspaceWriteResult(
                 result.Success,
@@ -52,7 +53,7 @@ public sealed class AndroidSr5CareerCustomDrugWorkspaceStore(IWorkspaceStore sto
     }
 }
 
-public sealed class PreferencesSr5CareerCustomDrugRecipeCheckpointStore
+public sealed class PreferencesSr5CareerCustomDrugRecipeCheckpointStore(CareerCommerceOwnerAdmission admission)
     : ISr5CareerCustomDrugRecipeCheckpointStore
 {
     private const string KeyPrefix = "chummer.android.sr5-career-custom-drug-recipe.v1.";
@@ -128,11 +129,5 @@ public sealed class PreferencesSr5CareerCustomDrugRecipeCheckpointStore
             }
             : Sr5CareerCustomDrugRecipeService.EmptySelection;
 
-    private static string Key(CharacterWorkspaceId workspaceId)
-    {
-        string digest = Convert.ToHexString(
-                SHA256.HashData(Encoding.UTF8.GetBytes(workspaceId.Value)))
-            .ToLowerInvariant();
-        return KeyPrefix + digest;
-    }
+    private string Key(CharacterWorkspaceId workspaceId) => admission.CheckpointKey(KeyPrefix, workspaceId);
 }

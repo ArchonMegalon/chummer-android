@@ -431,13 +431,15 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IAndroidLinkedWorkspaceReader? linkedWorkspaceReader = null,
         IOwnerBoundCharacterCreationFinalizationService? ownerBoundCreationFinalizationService = null,
         IOwnerContextAccessor? damageJournalOwnerAccessor = null,
-        IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService = null)
+        IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService = null,
+        CareerCommerceOwnerAdmission? commerceOwnerAdmission = null)
     {
         _presenter = presenter;
         _client = client;
         // Maui's existing IOwnerContextAccessor registration is the same issuing
         // accessor used by Core. Hosts that omit this capability fail closed.
         _damageJournalOwnerAccessor = damageJournalOwnerAccessor;
+        _commerceOwnerAdmission = commerceOwnerAdmission;
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _originLifeModuleRuntime = originLifeModuleRuntime;
@@ -719,219 +721,108 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
            || CanEnterCareerVehicleWorkshop;
 
     public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase()
-    {
-        if (_careerCyberwarePurchaseService is null
-            || State.WorkspaceId is not { } workspaceId
-            || State.Profile?.Created != true
-            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
-            || State.IsDirty
-            || State.ContentRevision != State.SavedRevision
-            || !string.IsNullOrWhiteSpace(State.Error))
-        {
-            return Sr5CareerCyberwarePurchaseSnapshot.Blocked(
-                State.WorkspaceId ?? default,
-                CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
-        }
-        Sr5CareerCyberwarePurchaseSnapshot snapshot =
-            _careerCyberwarePurchaseService.Load(workspaceId);
-        return snapshot.Preparation is { } preparation
-               && preparation.ContentRevision == State.ContentRevision
-            ? snapshot
-            : Sr5CareerCyberwarePurchaseSnapshot.Blocked(
-                workspaceId,
-                CharacterCyberwarePurchaseBlockers.StaleRevision);
-    }
-
-    public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
-        CharacterCyberwarePurchaseSelection selection)
-    {
-        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
-        return _careerCyberwarePurchaseService!.UpdateSelection(workspaceId, selection);
-    }
-
-    public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase()
-    {
-        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
-        return _careerCyberwarePurchaseService!.Review(workspaceId);
-    }
+        => LoadCommerceCurrent(id => _careerCyberwarePurchaseService?.Load(id),
+            snapshot => snapshot.Preparation?.ContentRevision == State.ContentRevision,
+            id => Sr5CareerCyberwarePurchaseSnapshot.Blocked(id, CharacterCyberwarePurchaseBlockers.StaleRevision));
 
     public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
         Sr5CareerCyberwarePurchaseSnapshot expected,
         CharacterCyberwarePurchaseSelection selection)
-    {
-        if (State.WorkspaceId != expected.WorkspaceId)
-            throw new InvalidOperationException("The Cyberware selector belongs to another runner.");
-        _ = RequireCareerCyberwarePurchaseWorkspace();
-        return _careerCyberwarePurchaseService!.UpdateSelection(expected, selection);
-    }
+        => WithCyberwareSnapshot(expected, id => _careerCyberwarePurchaseService!.UpdateSelection(expected, selection));
+
+    public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase(Sr5CareerCyberwarePurchaseSnapshot expected)
+        => WithCyberwareSnapshot(expected, id => _careerCyberwarePurchaseService!.Review(id));
 
     public async Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync(
+        Sr5CareerCyberwarePurchaseSnapshot expected,
         CancellationToken cancellationToken = default)
     {
-        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterOverviewState original = RequireCommerceIssuance(expected);
         Sr5CareerCyberwarePurchaseSnapshot result =
-            _careerCyberwarePurchaseService!.Confirm(workspaceId);
+            WithCyberwareSnapshot(expected, id => _careerCyberwarePurchaseService!.Confirm(id));
         if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
-        {
-            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
-            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
-            NotifyChanged();
-        }
+            await RefreshCommerceReceiptAsync(original, cancellationToken);
         return result;
     }
 
     public async Task<Sr5CareerCyberwarePurchaseSnapshot> UndoCareerCyberwarePurchaseAsync(
+        Sr5CareerCyberwarePurchaseSnapshot expected,
         CancellationToken cancellationToken = default)
     {
-        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterOverviewState original = RequireCommerceIssuance(expected);
         Sr5CareerCyberwarePurchaseSnapshot result =
-            _careerCyberwarePurchaseService!.Undo(workspaceId);
+            WithCyberwareSnapshot(expected, id => _careerCyberwarePurchaseService!.Undo(id));
         if (string.Equals(
                 result.Notice,
                 Sr5CareerCyberwarePurchaseNotices.UndoApplied,
                 StringComparison.Ordinal)
             || result.IsRecoveryUnknown)
-        {
-            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
-            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
-            NotifyChanged();
-        }
+            await RefreshCommerceReceiptAsync(original, cancellationToken);
         return result;
     }
 
-    public Sr5CareerCyberwarePurchaseSnapshot ReopenCareerCyberwarePurchase()
-    {
-        if (State.WorkspaceId is not { } workspaceId
-            || _careerCyberwarePurchaseService is null)
+    public Sr5CareerCyberwarePurchaseSnapshot ReopenCareerCyberwarePurchase(Sr5CareerCyberwarePurchaseSnapshot expected)
+        => WithCyberwareSnapshot(expected, id =>
         {
-            throw new InvalidOperationException(
-                CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
-        }
-        Sr5CareerCyberwarePurchaseSnapshot current = LoadCareerCyberwarePurchase();
-        if (!current.HasAppliedReceipt)
-            throw new InvalidOperationException("Only a verified applied receipt can be closed.");
-        return _careerCyberwarePurchaseService.Reopen(workspaceId);
-    }
-
-    private CharacterWorkspaceId RequireCareerCyberwarePurchaseWorkspace()
-    {
-        Sr5CareerCyberwarePurchaseSnapshot live = LoadCareerCyberwarePurchase();
-        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
-        {
-            throw new InvalidOperationException(
-                live.Blockers.FirstOrDefault()
-                ?? CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
-        }
-        return workspaceId;
-    }
+            if (!expected.HasAppliedReceipt)
+                throw new InvalidOperationException("Only a verified applied receipt can be closed.");
+            return _careerCyberwarePurchaseService!.Reopen(id);
+        });
 
     public Sr5CareerCustomDrugRecipeSnapshot LoadCareerCustomDrugRecipe()
-    {
-        if (_careerCustomDrugRecipeService is null
-            || State.WorkspaceId is not { } workspaceId
-            || State.Profile?.Created != true
-            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
-            || State.IsDirty
-            || State.ContentRevision != State.SavedRevision
-            || !string.IsNullOrWhiteSpace(State.Error))
-        {
-            return Sr5CareerCustomDrugRecipeSnapshot.Blocked(
-                State.WorkspaceId ?? default,
-                CharacterCustomDrugBlockers.AuthorityUnavailable);
-        }
-        Sr5CareerCustomDrugRecipeSnapshot snapshot =
-            _careerCustomDrugRecipeService.Load(workspaceId);
-        return snapshot.Preparation is { } preparation
-               && preparation.Context == CharacterCustomDrugContext.Career
-               && preparation.Purpose == CharacterCustomDrugQuotePurpose.RecipeDefinition
-               && preparation.ContentRevision == State.ContentRevision
-            ? snapshot
-            : Sr5CareerCustomDrugRecipeSnapshot.Blocked(
-                workspaceId,
-                CharacterCustomDrugBlockers.StaleRevision);
-    }
-
-    public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
-        CharacterCustomDrugSelection selection)
-    {
-        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
-        return _careerCustomDrugRecipeService!.UpdateSelection(workspaceId, selection);
-    }
-
-    public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe()
-    {
-        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
-        return _careerCustomDrugRecipeService!.Review(workspaceId);
-    }
+        => LoadCommerceCurrent(id => _careerCustomDrugRecipeService?.Load(id),
+            snapshot => snapshot.Preparation is { Context: CharacterCustomDrugContext.Career,
+                Purpose: CharacterCustomDrugQuotePurpose.RecipeDefinition } preparation
+                && preparation.ContentRevision == State.ContentRevision,
+            id => Sr5CareerCustomDrugRecipeSnapshot.Blocked(id, CharacterCustomDrugBlockers.StaleRevision));
 
     public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
         Sr5CareerCustomDrugRecipeSnapshot expected,
         CharacterCustomDrugSelection selection)
-    {
-        if (State.WorkspaceId != expected.WorkspaceId)
-            throw new InvalidOperationException("The custom-drug selector belongs to another runner.");
-        _ = RequireCareerCustomDrugRecipeWorkspace();
-        return _careerCustomDrugRecipeService!.UpdateSelection(expected, selection);
-    }
+        => WithDrugSnapshot(expected, id => _careerCustomDrugRecipeService!.UpdateSelection(expected, selection));
+
+    public Sr5CareerCustomDrugRecipeSnapshot ReviewCareerCustomDrugRecipe(Sr5CareerCustomDrugRecipeSnapshot expected)
+        => WithDrugSnapshot(expected, id => _careerCustomDrugRecipeService!.Review(id));
 
     public async Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync(
+        Sr5CareerCustomDrugRecipeSnapshot expected,
         CancellationToken cancellationToken = default)
     {
-        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterOverviewState original = RequireCommerceIssuance(expected);
         Sr5CareerCustomDrugRecipeSnapshot result =
-            _careerCustomDrugRecipeService!.Confirm(workspaceId);
+            WithDrugSnapshot(expected, id => _careerCustomDrugRecipeService!.Confirm(id));
         if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
-        {
-            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
-            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
-            NotifyChanged();
-        }
+            await RefreshCommerceReceiptAsync(original, cancellationToken);
         return result;
     }
 
     public async Task<Sr5CareerCustomDrugRecipeSnapshot> UndoCareerCustomDrugRecipeAsync(
+        Sr5CareerCustomDrugRecipeSnapshot expected,
         CancellationToken cancellationToken = default)
     {
-        CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterOverviewState original = RequireCommerceIssuance(expected);
         Sr5CareerCustomDrugRecipeSnapshot result =
-            _careerCustomDrugRecipeService!.Undo(workspaceId);
+            WithDrugSnapshot(expected, id => _careerCustomDrugRecipeService!.Undo(id));
         if (string.Equals(
                 result.Notice,
                 Sr5CareerCustomDrugRecipeNotices.UndoApplied,
                 StringComparison.Ordinal)
             || result.IsRecoveryUnknown)
-        {
-            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
-            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
-            NotifyChanged();
-        }
+            await RefreshCommerceReceiptAsync(original, cancellationToken);
         return result;
     }
 
-    public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe()
-    {
-        if (State.WorkspaceId is not { } workspaceId
-            || _careerCustomDrugRecipeService is null)
+    public Sr5CareerCustomDrugRecipeSnapshot ReopenCareerCustomDrugRecipe(Sr5CareerCustomDrugRecipeSnapshot expected)
+        => WithDrugSnapshot(expected, id =>
         {
-            throw new InvalidOperationException(CharacterCustomDrugBlockers.AuthorityUnavailable);
-        }
-        Sr5CareerCustomDrugRecipeSnapshot current = LoadCareerCustomDrugRecipe();
-        if (!current.HasAppliedReceipt)
-            throw new InvalidOperationException("Only a verified custom-drug receipt can be closed.");
-        return _careerCustomDrugRecipeService.Reopen(workspaceId);
-    }
-
-    private CharacterWorkspaceId RequireCareerCustomDrugRecipeWorkspace()
-    {
-        Sr5CareerCustomDrugRecipeSnapshot live = LoadCareerCustomDrugRecipe();
-        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
-        {
-            throw new InvalidOperationException(
-                live.Blockers.FirstOrDefault()
-                ?? CharacterCustomDrugBlockers.AuthorityUnavailable);
-        }
-        return workspaceId;
-    }
+            if (!expected.HasAppliedReceipt)
+                throw new InvalidOperationException("Only a verified custom-drug receipt can be closed.");
+            return _careerCustomDrugRecipeService!.Reopen(id);
+        });
 
     public Sr5CareerVehicleWorkshopSnapshot LoadCareerVehicleWorkshop()
     {

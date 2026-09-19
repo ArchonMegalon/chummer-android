@@ -4,7 +4,7 @@ using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
-public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
+public sealed class Sr5CareerCustomDrugRecipePage : CareerCommerceCatalogPage<Sr5CareerCustomDrugRecipeSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -20,7 +20,11 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCustomDrugRecipeSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCustomDrugRecipeAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCustomDrugRecipeSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Free initial dose")));
@@ -29,7 +33,6 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
             Text("Name the recipe, choose one exact grade and exactly one Foundation, then add bounded Blocks or Enhancers. Core calculates every effect and saves one unstolen free initial dose."),
             NativeTheme.Muted));
 
-        Sr5CareerCustomDrugRecipeSnapshot snapshot = Coordinator.LoadCareerCustomDrugRecipe();
         if (!snapshot.IsReady || snapshot.Preparation is not { } preparation)
         {
             AddBlockers(snapshot.Blockers);
@@ -121,7 +124,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
         update.AutomationId = "career-custom-drug-recipe-update";
         update.Clicked += async (_, _) => await RunAsync(() =>
         {
-            Coordinator.UpdateCareerCustomDrugRecipeSelection(selection with
+            Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot, selection with
             {
                 Name = name.Text ?? string.Empty
             });
@@ -157,7 +160,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
         {
             List<CharacterCustomDrugComponentSelection> components = snapshot.Selection.Components.ToList();
             components.RemoveAt(index);
-            Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot.Selection with
+            Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot, snapshot.Selection with
             {
                 Components = components
             });
@@ -223,7 +226,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
             review.AutomationId = "career-custom-drug-review";
             review.Clicked += async (_, _) => await RunAsync(() =>
             {
-                Sr5CareerCustomDrugRecipeSnapshot reviewed = Coordinator.ReviewCareerCustomDrugRecipe();
+                Sr5CareerCustomDrugRecipeSnapshot reviewed = Coordinator.ReviewCareerCustomDrugRecipe(snapshot);
                 _operationNotice = reviewed.Notice;
                 return Task.CompletedTask;
             });
@@ -245,7 +248,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
             if (!accepted)
                 return;
             Sr5CareerCustomDrugRecipeSnapshot result =
-                await Coordinator.ConfirmCareerCustomDrugRecipeAsync();
+                await Coordinator.ConfirmCareerCustomDrugRecipeAsync(snapshot);
             _operationNotice = result.Notice;
         });
         _body.Add(confirm);
@@ -307,7 +310,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
             if (!accepted)
                 return;
             Sr5CareerCustomDrugRecipeSnapshot result =
-                await Coordinator.UndoCareerCustomDrugRecipeAsync();
+                await Coordinator.UndoCareerCustomDrugRecipeAsync(snapshot);
             _operationNotice = result.Notice;
         });
         card.Add(undo);
@@ -323,7 +326,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
                 Text("Keep receipt"));
             if (!accepted)
                 return;
-            Sr5CareerCustomDrugRecipeSnapshot result = Coordinator.ReopenCareerCustomDrugRecipe();
+            Sr5CareerCustomDrugRecipeSnapshot result = Coordinator.ReopenCareerCustomDrugRecipe(snapshot);
             _operationNotice = result.Notice;
         });
         card.Add(next);
@@ -406,7 +409,7 @@ public sealed class Sr5CareerCustomDrugRecipePage : NativePageBase
         };
 }
 
-public sealed class Sr5CareerCustomDrugGradePage : NativePageBase
+public sealed class Sr5CareerCustomDrugGradePage : CareerCommerceCatalogPage<Sr5CareerCustomDrugRecipeSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -421,12 +424,15 @@ public sealed class Sr5CareerCustomDrugGradePage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCustomDrugRecipeSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCustomDrugRecipeAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCustomDrugRecipeSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("Source-authorized custom-drug grades")));
         _body.Add(NativeTheme.Title(Text("Choose custom-drug grade")));
-        Sr5CareerCustomDrugRecipeSnapshot snapshot = Coordinator.LoadCareerCustomDrugRecipe();
         if (!snapshot.IsReady || snapshot.Preparation is not { } preparation)
         {
             AddUnavailable();
@@ -468,7 +474,7 @@ public sealed class Sr5CareerCustomDrugGradePage : NativePageBase
     }
 }
 
-public sealed class Sr5CareerCustomDrugComponentPage : NativePageBase
+public sealed class Sr5CareerCustomDrugComponentPage : CareerCommerceCatalogPage<Sr5CareerCustomDrugRecipeSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -483,7 +489,11 @@ public sealed class Sr5CareerCustomDrugComponentPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCustomDrugRecipeSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCustomDrugRecipeAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCustomDrugRecipeSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("Exact component identities and levels")));
@@ -491,7 +501,6 @@ public sealed class Sr5CareerCustomDrugComponentPage : NativePageBase
         _body.Add(NativeTheme.Body(
             Text("Choosing a Foundation replaces the previous Foundation. Blocks and Enhancers may repeat only within their source limit and the Core maximum."),
             NativeTheme.Muted));
-        Sr5CareerCustomDrugRecipeSnapshot snapshot = Coordinator.LoadCareerCustomDrugRecipe();
         if (!snapshot.IsReady || snapshot.Preparation is not { } preparation)
         {
             AddUnavailable();

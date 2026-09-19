@@ -373,7 +373,7 @@ internal static partial class AfterRunAuthorityHarness
 
     // A serial managed UI pump, not a native dispatcher emulator. It tracks the
     // actual async-void methods via their BCL lifecycle, not a forged Task result.
-    private sealed class IssuedPageUiContext : SynchronizationContext, IDispatcherProvider, IDispatcher, IDisposable
+    internal sealed class IssuedPageUiContext : SynchronizationContext, IDispatcherProvider, IDispatcher, IDisposable
     {
         private readonly BlockingCollection<Action> _queue = new();
         private readonly Thread _thread;

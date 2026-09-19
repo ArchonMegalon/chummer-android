@@ -101,7 +101,7 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
 /// Native renderer for Core's bounded SR5 Career top-level Cyberware purchase
 /// authority. The page owns navigation and explicit confirmation only.
 /// </summary>
-public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
+public sealed class Sr5CareerCyberwarePurchasePage : CareerCommerceCatalogPage<Sr5CareerCyberwarePurchaseSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -117,7 +117,11 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCyberwarePurchaseSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCyberwarePurchaseAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCyberwarePurchaseSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Atomic purchase receipt")));
@@ -126,7 +130,6 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             Text("Select one exact top-level Cyberware source and grade, review Core's current Nuyen and Essence quote, then confirm separately."),
             NativeTheme.Muted));
 
-        Sr5CareerCyberwarePurchaseSnapshot snapshot = Coordinator.LoadCareerCyberwarePurchase();
         if (!snapshot.IsReady || snapshot.Preparation is not { } preparation)
         {
             AddBlockers(snapshot.Blockers);
@@ -240,7 +243,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             {
                 throw new InvalidOperationException(Text("Discount and markup must be exact invariant numbers."));
             }
-            Coordinator.UpdateCareerCyberwarePurchaseSelection(original with
+            Coordinator.UpdateCareerCyberwarePurchaseSelection(snapshot, original with
             {
                 EssenceDiscountPercent = discount,
                 MarkupPercent = markupPercent,
@@ -317,7 +320,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             review.AutomationId = "career-cyberware-purchase-review";
             review.Clicked += async (_, _) => await RunAsync(() =>
             {
-                Sr5CareerCyberwarePurchaseSnapshot reviewed = Coordinator.ReviewCareerCyberwarePurchase();
+                Sr5CareerCyberwarePurchaseSnapshot reviewed = Coordinator.ReviewCareerCyberwarePurchase(snapshot);
                 _operationNotice = reviewed.Notice;
                 return Task.CompletedTask;
             });
@@ -340,7 +343,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             if (!accepted)
                 return;
             Sr5CareerCyberwarePurchaseSnapshot result =
-                await Coordinator.ConfirmCareerCyberwarePurchaseAsync();
+                await Coordinator.ConfirmCareerCyberwarePurchaseAsync(snapshot);
             _operationNotice = result.Notice;
         });
         _body.Add(confirm);
@@ -407,7 +410,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             if (!accepted)
                 return;
             Sr5CareerCyberwarePurchaseSnapshot result =
-                await Coordinator.UndoCareerCyberwarePurchaseAsync();
+                await Coordinator.UndoCareerCyberwarePurchaseAsync(snapshot);
             _operationNotice = result.Notice;
         });
         card.Add(undo);
@@ -423,7 +426,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
                 Text("Keep receipt"));
             if (!accepted)
                 return;
-            Sr5CareerCyberwarePurchaseSnapshot result = Coordinator.ReopenCareerCyberwarePurchase();
+            Sr5CareerCyberwarePurchaseSnapshot result = Coordinator.ReopenCareerCyberwarePurchase(snapshot);
             _operationNotice = result.Notice;
         });
         card.Add(next);
@@ -521,7 +524,7 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
         => value.Length <= 19 ? value : value[..19] + "…";
 }
 
-public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
+public sealed class Sr5CareerCyberwareCatalogPage : CareerCommerceCatalogPage<Sr5CareerCyberwarePurchaseSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -536,12 +539,15 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCyberwarePurchaseSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCyberwarePurchaseAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCyberwarePurchaseSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("Pinned effective cyberware catalog")));
         _body.Add(NativeTheme.Title(Text("Choose cyberware")));
-        Sr5CareerCyberwarePurchaseSnapshot snapshot = Coordinator.LoadCareerCyberwarePurchase();
         if (!snapshot.IsReady || snapshot.Preparation is not { } preparation)
         {
             AddUnavailable();
@@ -602,7 +608,7 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
 
 }
 
-public sealed class Sr5CareerCyberwareGradePage : NativePageBase
+public sealed class Sr5CareerCyberwareGradePage : CareerCommerceCatalogPage<Sr5CareerCyberwarePurchaseSnapshot>
 {
     private readonly VerticalStackLayout _body = new()
     {
@@ -617,12 +623,15 @@ public sealed class Sr5CareerCyberwareGradePage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
-    protected override void Refresh()
+    protected override VerticalStackLayout CatalogBody => _body;
+    protected override Task<Sr5CareerCyberwarePurchaseSnapshot> LoadCatalogAsync(CancellationToken token, Func<bool> isCurrentPage)
+        => Coordinator.LoadCareerCyberwarePurchaseAsync(token, isCurrentPage);
+
+    protected override void RenderCatalog(Sr5CareerCyberwarePurchaseSnapshot snapshot)
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("Source-authorized grades")));
         _body.Add(NativeTheme.Title(Text("Choose grade")));
-        Sr5CareerCyberwarePurchaseSnapshot snapshot = Coordinator.LoadCareerCyberwarePurchase();
         CharacterCyberwarePurchaseCatalogEntry? source = snapshot.Preparation?.Entries.SingleOrDefault(candidate =>
             candidate.SourceId == snapshot.Selection.SourceId);
         if (!snapshot.IsReady || source is null)

@@ -1549,7 +1549,7 @@ internal static partial class AfterRunAuthorityHarness
     // Test-only authority shared by the actual Core client and native reader.
     // Its writer uses the same gate as live leases; it is not a runtime adapter
     // over Current and does not stand in for Desktop install-writer evidence.
-    private sealed class ControlledLinkedOwner : IOwnerContextLeaseAccessor
+    internal sealed class ControlledLinkedOwner : IOwnerContextLeaseAccessor
     {
         private readonly object _gate = new();
         private readonly string _authorityId = Guid.NewGuid().ToString("N");

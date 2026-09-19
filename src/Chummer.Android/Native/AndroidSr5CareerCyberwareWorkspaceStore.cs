@@ -7,18 +7,20 @@ namespace Chummer.Android.Native;
 /// Narrow CAS adapter. Only XML returned by the typed Core purchase authority
 /// reaches this boundary.
 /// </summary>
-public sealed class AndroidSr5CareerCyberwareWorkspaceStore(IWorkspaceStore store)
+public sealed class AndroidSr5CareerCyberwareWorkspaceStore(
+    IWorkspaceStore store, CareerCommerceOwnerAdmission admission)
     : ISr5CareerCyberwareWorkspaceStore
 {
     public Sr5CareerCyberwareWorkspaceSnapshot? Read(CharacterWorkspaceId workspaceId)
     {
-        WorkspaceStoreReadResult read = store.Get(workspaceId);
+        var owner = admission.RequireOwner(workspaceId);
+        WorkspaceStoreReadResult read = owner.IsLocalSingleUser ? store.Get(workspaceId) : store.Get(owner, workspaceId);
         return read.Success && read.Value is { } value
-            ? new Sr5CareerCyberwareWorkspaceSnapshot(
+            ? admission.BindSnapshot(workspaceId, new Sr5CareerCyberwareWorkspaceSnapshot(
                 workspaceId,
                 value.ContentRevision,
                 value.SavedRevision,
-                value.Document)
+                value.Document))
             : null;
     }
 
@@ -28,14 +30,15 @@ public sealed class AndroidSr5CareerCyberwareWorkspaceStore(IWorkspaceStore stor
     {
         ArgumentNullException.ThrowIfNull(expected);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterXml);
+        admission.RequireSnapshot(expected.WorkspaceId, expected);
         WorkspaceDocument replacement = expected.Document with
         {
             State = expected.Document.State with { Payload = characterXml }
         };
-        WorkspaceStoreMutationResult result = store.ReplaceWorkspaceDocumentAndCheckpoint(
-            expected.WorkspaceId,
-            expected.ContentRevision,
-            replacement);
+        var owner = admission.RequireOwner(expected.WorkspaceId);
+        WorkspaceStoreMutationResult result = owner.IsLocalSingleUser
+            ? store.ReplaceWorkspaceDocumentAndCheckpoint(expected.WorkspaceId, expected.ContentRevision, replacement)
+            : store.ReplaceWorkspaceDocumentAndCheckpoint(owner, expected.WorkspaceId, expected.ContentRevision, replacement);
         return result.Entry is { } entry
             ? new Sr5CareerCyberwareWorkspaceWriteResult(
                 result.Success,
