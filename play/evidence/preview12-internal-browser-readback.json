@@ -1,0 +1,33 @@
+{
+  "contractName": "chummer.android.play-internal-browser-readback/v1",
+  "observedAtUtc": "2026-09-19T04:35:27Z",
+  "surface": "google_play_console_internal_testing",
+  "status": "observed",
+  "application": {
+    "name": "Chummer",
+    "packageId": "com.myexternalbrain.chummer",
+    "playApplicationId": "4975957268242186974"
+  },
+  "track": {
+    "name": "internal",
+    "consoleName": "Internal testing",
+    "trackId": "4700678198570024687",
+    "active": true,
+    "joinUrl": "https://play.google.com/apps/internaltest/4700678198570024687"
+  },
+  "release": {
+    "name": "12 (0.1.0-preview.12)",
+    "versionCode": 12,
+    "versionName": "0.1.0-preview.12",
+    "status": "Available to internal testers",
+    "releasedAt": {
+      "consoleDisplay": "19 Sept 06:31",
+      "normalizedUtc": null,
+      "precision": "console_minute",
+      "timeZoneAuthority": "not_exposed_by_browser_readback"
+    },
+    "supportedAndroidDevices": 13517
+  },
+  "fieldsObserved": ["application", "track", "release", "join_url"],
+  "credentialOrSessionDataRecorded": false
+}
