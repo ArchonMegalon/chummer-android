@@ -1,0 +1,45 @@
+{
+  "execution": "local-docker-source-assembly",
+  "hostedQualificationClaimed": false,
+  "sealedPackageAuthorityClaimed": false,
+  "releaseIdentity": {
+    "packageId": "com.myexternalbrain.chummer",
+    "versionName": "0.1.0-preview.17",
+    "versionCode": 17,
+    "intendedTrack": "internal"
+  },
+  "android": {
+    "commit": "7276c7008087e55d08ef405d812f96a27a6b04a9",
+    "tree": "3420bc3c7d4240ef6a01bbeaedc801ca4468cacb"
+  },
+  "sourceCommits": {
+    "presentation": "ce487f3b5eb21129b7ffbac5dcd17ad8b2b64255",
+    "coreRuntime": "e66adccf06fb8bee96264b9a9112f970508e6e97",
+    "hub": "e35db6feca8f194161302064a9f77d4f8e60fe14",
+    "registry": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
+    "uiKit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
+    "media": "f3c955488210c69abdf96689dd3b3d67afba80d2"
+  },
+  "contentValidationCommit": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
+  "inventoryDesignCommit": "e408e11bdfabc34898cb0eca6e2409a98d021e4d",
+  "builderImage": "sha256:9795253a6f2218f9a757cefaea59ebd8a9d3e056fb6e4d9011b5179b42862be5",
+  "bundletoolSha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
+  "nugetCacheMode": "existing-preview13-cache-mounted-readonly",
+  "productTests": {
+    "coreCreationBootstrap": 72,
+    "presentationMethodBoundary": 9,
+    "nativeMethods": [
+      "Priority",
+      "SumToTen",
+      "Karma",
+      "LifeModule"
+    ],
+    "stalePickerRejected": true,
+    "selectionBeforeCreateOrdered": true,
+    "unsavedRunnerNoticeVisible": true,
+    "physicalPlayInstallVerified": false,
+    "debugApkVersion": 16,
+    "releaseDelta": "version identity and generated inventory hashes only",
+    "deviceScope": "Picker selection and scroll; Sum-to-Ten creation/save/reopen. Final Karma smoke pending; no exhaustive wizard or Full Editing claim."
+  }
+}

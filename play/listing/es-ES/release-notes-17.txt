@@ -1,0 +1,1 @@
+Corrige el bloqueo al elegir un método, la selección Sum-to-Ten y los avisos de guardar/descartar. Los borradores Karma/Life Modules pueden abrirse. El siguiente paso de creación Karma sigue sin estar disponible; no todos los métodos están completos.

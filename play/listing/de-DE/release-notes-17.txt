@@ -1,0 +1,1 @@
+Behebt das Einfrieren nach der Methodenwahl, die Sum-to-Ten-Auswahl und fehlende Speichern/Verwerfen-Hinweise. Karma-/Life-Modules-Entwürfe lassen sich öffnen. Der nächste Karma-Erstellungsschritt fehlt weiterhin; nicht alle Methoden sind vollständig nutzbar.

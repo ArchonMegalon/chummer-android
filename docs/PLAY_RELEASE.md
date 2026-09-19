@@ -1,6 +1,25 @@
 # Play release contract
 
-## Current observed Internal release: Preview 16 — September 19, 2026
+## Current observed Internal release: Preview 17 — September 19, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-19T14:59:43Z` shows
+`17 (0.1.0-preview.17)` as **Available to internal testers** on the active
+Internal track. [Install/update link](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [bounded fixes, exact sources and observed availability](../play/evidence/preview17-internal-observation.md).
+
+This fixes the native build-method Picker freeze, Sum-to-Ten identifier and
+invisible save/discard notices. Pending Karma/LifeModule drafts can open, but
+the next Karma creation editor remains unavailable; not all methods are usable.
+Core72/Presentation9 and native selection/Create regressions passed, plus a
+local API36 Sum-to-Ten create/save/reopen/editor slice.
+
+The local keyless Docker build used exact source exports, followed by isolated
+old-key signing and independent verification. This is not a resealed package
+graph: Core61/UI177 package reseals remain separate. No hosted runtime,
+physical Play install, full-editor, tablet, Rook or public-ready claim is made.
+Code17 is consumed; the next upload needs18 or a higher unused code.
+
+## Historical observed Internal release: Preview 16 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T13:39:31Z` shows
 `16 (0.1.0-preview.16)` as **Available to internal testers** on the active
