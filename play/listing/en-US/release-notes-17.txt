@@ -1,0 +1,1 @@
+Fixes freezing after choosing a build method, Sum-to-Ten selection, and missing save/discard feedback. Pending Karma/Life Modules drafts can reopen. Karma's next creation step is still unavailable; this is not a complete all-method wizard release.
