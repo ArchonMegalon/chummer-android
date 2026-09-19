@@ -1,8 +1,1108 @@
 {
   "schema": "chummer.android.content-bundle/v1",
   "coreRevision": "1d8cf694d0412b3bd9f4a241fb95244fad341160",
-  "bundleDigest": "85f484c6d67c076ded1b78bfb611526485596a8054e3b90b88e5bfb0cf0e253c",
+  "bundleDigest": "66c8f82cf338d359ac8a8f1ff5bafc73ec208a36dbc87c40acdb7fa9b09cf2be",
   "files": [
+    {
+      "path": "customdata/4e Critters Conversion/custom_books.xml",
+      "size": 3500,
+      "sha256": "9dce5d2be0a4c42b1b7965beebf466920858452dcd82943d15a97dc426f6708f"
+    },
+    {
+      "path": "customdata/4e Critters Conversion/custom_critters.xml",
+      "size": 710132,
+      "sha256": "0cf4c333dca9784324f1d41e3e1b7fc51a79392472589b4e3faa0e40544715d8"
+    },
+    {
+      "path": "customdata/4e Critters Conversion/manifest.xml",
+      "size": 1754,
+      "sha256": "4898cc59e44de2d3fc83b5d0c6414cf0a0a27aad0fdeeaf5064e9f2ccb683e33"
+    },
+    {
+      "path": "customdata/Adapsin Applied as Multiplier, Not Grade/amend_AdapsinMultiplier_bioware.xml",
+      "size": 1099,
+      "sha256": "c94d7111234a516ce3c536ade84c5cde59eb84e8d534e69c4ce214b8e708bdb5"
+    },
+    {
+      "path": "customdata/Adapsin Applied as Multiplier, Not Grade/manifest.xml",
+      "size": 1475,
+      "sha256": "a81d250e11c7d23a3d981a8de17f3ce63fdccb268337ccd8060adb2348ebe1f4"
+    },
+    {
+      "path": "customdata/Add Schattenload Items/custom_books.xml",
+      "size": 1435,
+      "sha256": "7b7310f3bdd5c73c953843a65defa8e331f4d4e61089962f2e98eee1ca9c1a73"
+    },
+    {
+      "path": "customdata/Add Schattenload Items/custom_vehicles.xml",
+      "size": 7239,
+      "sha256": "48f73f318848e40f52e3be9496aaaea0c9f3d130a0b717022d5534e4fd323e3f"
+    },
+    {
+      "path": "customdata/Add Schattenload Items/custom_weapons.xml",
+      "size": 5505,
+      "sha256": "267a5a91f74fadbb05879c43818a90fa8eb40131b2e3221a64a5b4f4dff6470b"
+    },
+    {
+      "path": "customdata/Add Schattenload Items/manifest.xml",
+      "size": 2098,
+      "sha256": "e6a6ab55b98ec1f2b6513ef2f597ef2929a02a74628eec3f7d565be144827d69"
+    },
+    {
+      "path": "customdata/Ammo Skip Internal Mount/amend_weapons.xml",
+      "size": 1009,
+      "sha256": "fcef5e880963c83a986dadff6ff7b45a86695496da02f1d9eb2329a0e8d7f8fd"
+    },
+    {
+      "path": "customdata/Ammo Skip Internal Mount/manifest.xml",
+      "size": 1471,
+      "sha256": "119d40feb20733eb784c063c6d9c8220afa3c4960ccea6132445f6850a469354"
+    },
+    {
+      "path": "customdata/Bone Lacing Adds to Body/amend_cyberware.xml",
+      "size": 2222,
+      "sha256": "1d0ee3e328446d230c52dd4473cbc9da764a445af91bf9ef398ed7f99a87fa79"
+    },
+    {
+      "path": "customdata/Bone Lacing Adds to Body/manifest.xml",
+      "size": 1308,
+      "sha256": "1336db807df11423367918ac76ba31539eab6384bae033a270ca6cb56a2e944c"
+    },
+    {
+      "path": "customdata/Chrome Flesh Stealth Errata/amend_cyberware.xml",
+      "size": 1196,
+      "sha256": "089b7b7eb30cf9679f4a2eb13adc36d2ac8840f91e49911a216e755574e3a3d3"
+    },
+    {
+      "path": "customdata/Chrome Flesh Stealth Errata/manifest.xml",
+      "size": 1450,
+      "sha256": "8a7cd85eaf8d35fb1011bfa80c7b8f8a0c9a58fb276384497c8cbc3a462414cd"
+    },
+    {
+      "path": "customdata/College Education Qualities Stack/amend_qualities.xml",
+      "size": 999,
+      "sha256": "fd80ab555f526e3f4357a5a9975aea9aedf486ea3e729b30354011a42864131e"
+    },
+    {
+      "path": "customdata/College Education Qualities Stack/manifest.xml",
+      "size": 1490,
+      "sha256": "a16ba8dd97739f03730de34fce4ec6e00600b4decb929c71304c1358656329a7"
+    },
+    {
+      "path": "customdata/Critter Prices/Manifest.xml",
+      "size": 1708,
+      "sha256": "46a92f883fb8606e47aabb99b9cf7bca7b49e1cdbce87441f2e514218c7e872f"
+    },
+    {
+      "path": "customdata/Critter Prices/amend_gear.xml",
+      "size": 32834,
+      "sha256": "94a110e95696afa4a5aa58b7d9f6b7aac97249b1b1c8d8bdc93f53361626d82f"
+    },
+    {
+      "path": "customdata/Critter Prices/amend_lifestyles.xml",
+      "size": 4789,
+      "sha256": "c129ab2536e4bad98b216c3633023d7c54083070a129cbc1a0548d0144473b8a"
+    },
+    {
+      "path": "customdata/Custom Fit (Stack) Does Not Encumber/amend_encumbrance_armor.xml",
+      "size": 982,
+      "sha256": "dd1f5f679a214e8fb736754fdb7093dadce7e163c65ab1cc4864b2aa9fcdadc6"
+    },
+    {
+      "path": "customdata/Custom Fit (Stack) Does Not Encumber/manifest.xml",
+      "size": 1447,
+      "sha256": "b893fd41528f0e4deec9151e77f17d57e3002d7371f8a78916a0f52553528015"
+    },
+    {
+      "path": "customdata/Cyberlimb Customisation Does Not Incur Grade Costs/amend_cyberware.xml",
+      "size": 1168,
+      "sha256": "1ba170fd1ebbd1291473dc3e7bb249eec32137f8c7aabb8173a932f8646a0a80"
+    },
+    {
+      "path": "customdata/Cyberlimb Customisation Does Not Incur Grade Costs/manifest.xml",
+      "size": 1472,
+      "sha256": "9ac5d8d59c5b0c5bf7f05008222abca6b0931f7e86fb99b4492e19a9ccc6d873"
+    },
+    {
+      "path": "customdata/Cyberlimbs Cannot Add Headware/amend_cyberlimbheadware_cyberware.xml",
+      "size": 1145,
+      "sha256": "199c063269a5cd3fa65136375b50de20a3ec3e22f45522502059b3f982d45c69"
+    },
+    {
+      "path": "customdata/Cyberlimbs Cannot Add Headware/manifest.xml",
+      "size": 1390,
+      "sha256": "8f9b772616c56824fab78676e025b88eaa2ac061d3bf2e391a09d9d2ad2241a8"
+    },
+    {
+      "path": "customdata/Dark Terrors Stealth Errata/amend_qualities.xml",
+      "size": 1729,
+      "sha256": "75264afd58d9f06de7b6c790fc6ac768fe857c4d1ab77bfc9a8d2de4bed591ad"
+    },
+    {
+      "path": "customdata/Dark Terrors Stealth Errata/manifest.xml",
+      "size": 1450,
+      "sha256": "11f5ee9c845f155cf9731b762fba0d112e6393781b1c59d373f4097148c09ca7"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_armor.xml",
+      "size": 1339,
+      "sha256": "f75348ff618b6326e0f0b8985c78c6d70a4b0f1b743908247613e132272ee8c1"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_bioware.xml",
+      "size": 2454,
+      "sha256": "7df7af6dc23be5befbc27be4427b5c29048c8a2a0fa6fd57d4b5e700fc262105"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_critterpowers.xml",
+      "size": 1179,
+      "sha256": "1d4431674ae10326548cf1ec317c131a42dae60a3d1bed5dee904c2bdb6707aa"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_critters.xml",
+      "size": 3482,
+      "sha256": "a023c4913a8a28080a0fc3d68831a996d25e34fb19f36ea378f027bde0d71969"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_cyberware.xml",
+      "size": 3736,
+      "sha256": "9a6a8ce0f8b04bdd874ecaf793c7ceab464c09fdcc2cc54c4f2ee679f9cfbc6e"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_gear.xml",
+      "size": 5075,
+      "sha256": "7998bae3a6f1daf18d4c84e2ccfc81a98571f5240acfaa63cd3e35bcc90f2163"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_lifemodules.xml",
+      "size": 12387,
+      "sha256": "24e4bc9e0f786c6cb92764b73d5e32cbf38a80fcd3574ad5b214d3217492ab2d"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_martialarts.xml",
+      "size": 1657,
+      "sha256": "12b829c0ee0deeb8f68940fee61e173b7b5bd840ca4e31c72f0cfb444431d0b4"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_mentors.xml",
+      "size": 19792,
+      "sha256": "2d8c3e08952112d136a240e40c73e57fa8f20b2e0403ed29020db30071211ce0"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_metatypes.xml",
+      "size": 4564,
+      "sha256": "e4b0bfc0b3c663564ea6489855050bddbc63f999cf8e99a189b92de1b6200fdb"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_paragons.xml",
+      "size": 2103,
+      "sha256": "43f1f04dd10c8240f83d18358c0dab95dade299708fdfa26bada1f9e06ad46b9"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_powers.xml",
+      "size": 3984,
+      "sha256": "e019dd1e69b71a8e4de28f76ef35b913ceb7ad2efaddb9e0630fe5e7e664c153"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_priorities.xml",
+      "size": 2184,
+      "sha256": "76c18f16dfc1c4cfaef36e95cb7007b708db6a230d97d69a991b3361793e77af"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_qualities.xml",
+      "size": 21333,
+      "sha256": "e2b19952406ce223dd38139bdf0f82685ffb70f7bb8ce4db69b776f07247d5a8"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_skills.xml",
+      "size": 27353,
+      "sha256": "bde72fd9a8e123b60dfafaf4acdeef0de6987d054ff152a7bb7303d6963e46b8"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_spells.xml",
+      "size": 1072,
+      "sha256": "7d5f0953cb72110e4492793f70fea6ed24958b4f8a8ea7af82ae12334d1b5329"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_streams.xml",
+      "size": 1218,
+      "sha256": "b9db5580b3cdcb0bb7507c278b19642141e8e1a725e7f4904c2cc0f6b0d32ff0"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_traditions.xml",
+      "size": 3935,
+      "sha256": "78426b4b6edd337e426bece6c89a2242e728b9d2d6a22276d409251da83ed511"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/amend_weapons.xml",
+      "size": 27859,
+      "sha256": "59fc91a33c687792eede8c839e81e0b4b2dcabf3812ae5112861608d7ca0925b"
+    },
+    {
+      "path": "customdata/Delnar Skills Remake/manifest.xml",
+      "size": 2050,
+      "sha256": "fd907c2db2d558def8504128c15c9f8079ae5769d6337c0f4c5fac4f9a4ea80e"
+    },
+    {
+      "path": "customdata/Delnar's One Karma Qualities/amend_qualities.xml",
+      "size": 1112,
+      "sha256": "d18f701565dfa33af9fea88529819d6d50c34e4a485da8a895297203a385469a"
+    },
+    {
+      "path": "customdata/Delnar's One Karma Qualities/custom_books.xml",
+      "size": 1278,
+      "sha256": "18b871dbc5d92b53e3d603026a8b3facbd5a25d32c48290951915ce2851d6c70"
+    },
+    {
+      "path": "customdata/Delnar's One Karma Qualities/custom_qualities.xml",
+      "size": 4861,
+      "sha256": "30539dea6cb49f32079079adb5500d1d689cf80631453d6500327410360cf157"
+    },
+    {
+      "path": "customdata/Delnar's One Karma Qualities/manifest.xml",
+      "size": 1715,
+      "sha256": "ceaef0b603a7c50b2044cd44f6bf542ea5707ad7f5b7c19808056891df80d15c"
+    },
+    {
+      "path": "customdata/Disable Street Grimoire's Commanding Voice Errata/amend_powers.xml",
+      "size": 1373,
+      "sha256": "7c25bdd322ee2c507184448b686f6fce1ec71a026e0f24d8a47a6527cd3ab62b"
+    },
+    {
+      "path": "customdata/Disable Street Grimoire's Commanding Voice Errata/manifest.xml",
+      "size": 1483,
+      "sha256": "efd3fa04f544aed7c0fa64af61911352e7faa01faf0f2f80a8e9e5ceea7f9012"
+    },
+    {
+      "path": "customdata/Education Qualities Apply Karma Discount in Create Mode/amend_qualities.xml",
+      "size": 1900,
+      "sha256": "66030aeedaeede0152a71c08c3114c0fbc71961c24523610c8a694685c268ed7"
+    },
+    {
+      "path": "customdata/Education Qualities Apply Karma Discount in Create Mode/manifest.xml",
+      "size": 1489,
+      "sha256": "6a101506c24b9ec1af75a8b458f8309f63b5fe8b061febb38b101409e195f80b"
+    },
+    {
+      "path": "customdata/Exclude German sourcebooks/amend_german_books.xml",
+      "size": 1323,
+      "sha256": "deb4ed2f9225fb47231b4bbc064d440b20029b0f35cc17061bdb7db2f3c77ca2"
+    },
+    {
+      "path": "customdata/Exclude German sourcebooks/manifest.xml",
+      "size": 1646,
+      "sha256": "1a34a25a5ab3f2098919d0b5f444d6ed6926fd9af413e67dc4194e162d75d578"
+    },
+    {
+      "path": "customdata/Fixed Nitama Sporter Stats/amend_weapons.xml",
+      "size": 1075,
+      "sha256": "bce93a74c513c9ab6c536cbe294be1f23a505e049f2ddd9a3e843717df0df377"
+    },
+    {
+      "path": "customdata/Fixed Nitama Sporter Stats/manifest.xml",
+      "size": 1408,
+      "sha256": "8e598340640ddd816890b28ad342e43a56466daddc69a3383fff11fd39e91946"
+    },
+    {
+      "path": "customdata/Flashback System Enables Cyberzombies/amend_cyberware.xml",
+      "size": 1063,
+      "sha256": "c62e190fd69e81c5fa308c11f34f3c73ef52627e0fcb52c065135abb775ac694"
+    },
+    {
+      "path": "customdata/Flashback System Enables Cyberzombies/manifest.xml",
+      "size": 1525,
+      "sha256": "366109205a8df720747973653e49447113aaa99dea09c2c7b2db08a5727f1494"
+    },
+    {
+      "path": "customdata/Forbidden Arcana Stealth Errata/amend_qualities.xml",
+      "size": 1231,
+      "sha256": "79b1bf65ca2d99c0cb3631ae057df5ab2427e69f72cb4f08bc9f149414ef2a6d"
+    },
+    {
+      "path": "customdata/Forbidden Arcana Stealth Errata/manifest.xml",
+      "size": 1454,
+      "sha256": "571dfb1754ee9dc44250b4168a7eedaa7c65312d2555d5a3523650f00aabf1a2"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_armor.xml",
+      "size": 1139,
+      "sha256": "51f9be09b88617a76eac9083f4fe25fad80a6e51dc0cfee87e91b52c4c245c29"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_cyberware.xml",
+      "size": 1201,
+      "sha256": "00c8a065d919bf539d707bc3a9e2bb6904aed3308c8b13a3b699a921a0656f2f"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_gear.xml",
+      "size": 2007,
+      "sha256": "d7d16d513b822a4735c77415a1109cf8c03f6beaca805b0f3850e918a3aa2f4c"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_lifestyles.xml",
+      "size": 1415,
+      "sha256": "88819160e608bc218ff766d87e67ef0a7c089e19f4dd3563ecab35b373a85a6a"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_martialarts.xml",
+      "size": 1660,
+      "sha256": "0fb0d53f7bdf173fd7635f0f6cf8c48c7a6e033f4568cc9eaccfda08906f043e"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_mentors.xml",
+      "size": 2521,
+      "sha256": "9ed8b232d1baeb3a00eadcea6535e46d5b088f97198d485c77ff268ecc8bdab8"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_powers.xml",
+      "size": 2836,
+      "sha256": "dd4f5f3412058a9f9d1b8121bdacc72f843162f0027d1d667ea203edb0ca409e"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_qualities.xml",
+      "size": 1546,
+      "sha256": "4251b4ec811c1cbec10157a61cffb772289275b94fdfc0f9a867ade82cc7d5e4"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_spells.xml",
+      "size": 1018,
+      "sha256": "ae5a0a05908e181fdf170e39455fdd1b6d807a3b8229741208fab2ec95f04565"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_vehicles.xml",
+      "size": 5576,
+      "sha256": "60d68b4c9d46df88d89a48ef4a53fd1fb935e94e8a66d947fda661e8fa5e912d"
+    },
+    {
+      "path": "customdata/German Data Changes/amend_weapons.xml",
+      "size": 2740,
+      "sha256": "976ed5eb01f88d1e5b38d00ed9a3a54355a66abd94e06981c554c4401aeb1609"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_gear.xml",
+      "size": 3251,
+      "sha256": "8043f597b4b2aace153011b45da1107ca9b503adf9c1dc5ba5da2ca7e42429ff"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_lifemodules.xml",
+      "size": 25572,
+      "sha256": "c68c73485476d7bd4c4dc6feccc22f1deb7ed02811540ae37f7241af114a8c6f"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_lifestyles.xml",
+      "size": 2126,
+      "sha256": "8670070fe8e78774ff3d1c74a8fcb28c41749780aecd8999097b0a50fb04d980"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_mentors.xml",
+      "size": 9312,
+      "sha256": "498621a07bf0d6c18609a1ec45e013457f32c9362942619746ec1fbf25047e45"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_spells.xml",
+      "size": 1203,
+      "sha256": "1ef980d8fee4d7a36eb31831ea4b4a42a36923085fd4c7b8e37e6e60cefdded9"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_traditions.xml",
+      "size": 2948,
+      "sha256": "4c25e72388870aa6a9dd1baa5d15dfb295f9a8ed1296cd46b045115df18a7680"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_vehicles.xml",
+      "size": 14870,
+      "sha256": "06e694b16de892b3b711f69f1947ca97d2bcd0e638eb620dbddb9915370f62f5"
+    },
+    {
+      "path": "customdata/German Data Changes/custom_weapons.xml",
+      "size": 4265,
+      "sha256": "2188d7659ebeaf2e959d63dbea6363093dcc170529212cc27115590cded35138"
+    },
+    {
+      "path": "customdata/German Data Changes/manifest.xml",
+      "size": 1759,
+      "sha256": "e7a20987a61dd573d901363cea2ceee1f690bf73ff12c8d4aa67a6f15fcf5d8b"
+    },
+    {
+      "path": "customdata/Hand-Based Cyberware Can Go Anywhere/amend_cyberware.xml",
+      "size": 1681,
+      "sha256": "cb041ec6a585de1c7bf64ce29cf77aff09e67886a3637ef03d78cfbbd93b168c"
+    },
+    {
+      "path": "customdata/Hand-Based Cyberware Can Go Anywhere/manifest.xml",
+      "size": 1431,
+      "sha256": "ad6f1db626d3a45865ed7d198abb97394fd1b5e070cc98e7d0caf5ae18dda507"
+    },
+    {
+      "path": "customdata/Helmets Are Mods, SWAT and MilSpec Are FBA/amend_armor.xml",
+      "size": 5764,
+      "sha256": "b6eaf277d1e6408139933910d044fa0d956de5fa5a9cc4031c22e2b3df19cf85"
+    },
+    {
+      "path": "customdata/Helmets Are Mods, SWAT and MilSpec Are FBA/manifest.xml",
+      "size": 1598,
+      "sha256": "e7ca57ef30ee6f80286d9ccc793e0970bf832f9776607621ab56e56d8df4a81d"
+    },
+    {
+      "path": "customdata/Herolab Vehicle Ram Plate Stats/amend_ramplate_vehicles.xml",
+      "size": 1111,
+      "sha256": "bd7c73dfa538bd598ab60281fbe90b743834bacb980e484e1d2f7c06f3021ca4"
+    },
+    {
+      "path": "customdata/Herolab Vehicle Ram Plate Stats/manifest.xml",
+      "size": 1469,
+      "sha256": "3ded7f7225b412f0fd6897e470ccdb0728f301f0487d37ce1614778db5ace701"
+    },
+    {
+      "path": "customdata/In Debt Does Not Contribute to BP/amend_qualities.xml",
+      "size": 975,
+      "sha256": "dcb6e67268d6a70753a338ec15ce7e529ded12f6f684a4e8f4022089000b2a4b"
+    },
+    {
+      "path": "customdata/In Debt Does Not Contribute to BP/manifest.xml",
+      "size": 1403,
+      "sha256": "3323fa39913c3e708bee7cea9db9eb54c2bb13991bc4fef35534ddbc87f6be21"
+    },
+    {
+      "path": "customdata/Jack of All Trades Applies Karma Modifiers in Create Mode/amend_qualities.xml",
+      "size": 1336,
+      "sha256": "6783132d8131a4d081bc3bd211d50fa0885aea86968d2809a1b9180c9ce337de"
+    },
+    {
+      "path": "customdata/Jack of All Trades Applies Karma Modifiers in Create Mode/manifest.xml",
+      "size": 1424,
+      "sha256": "c44de8d19f189bb607af4723dd5053d187e161171d8d7f70ca56f8bb71e999d3"
+    },
+    {
+      "path": "customdata/Kill Code Sprite Optional Powers/amend_sprite_critters.xml",
+      "size": 1455,
+      "sha256": "bb2fe655aa14351c836d54fa463c999d06eb5a055462447d2886c82c284504b3"
+    },
+    {
+      "path": "customdata/Kill Code Sprite Optional Powers/manifest.xml",
+      "size": 1392,
+      "sha256": "fea680f555517dec409477e8a98289fd726e5d09a200cad533dee524812afd74"
+    },
+    {
+      "path": "customdata/Krime Stopper Shotgun Weapon Category/amend_weapons.xml",
+      "size": 391,
+      "sha256": "b0b2de5fda1773bfca0e91f86ea11c55b9ee220f3f8041e65480e6824a9db420"
+    },
+    {
+      "path": "customdata/Krime Stopper Shotgun Weapon Category/manifest.xml",
+      "size": 1473,
+      "sha256": "93daa229c1e719fad70d8012ba3799c11c113171027b8eb16be4a70c4dc978cb"
+    },
+    {
+      "path": "customdata/Legal SIN and Licenses/amend_gear.xml",
+      "size": 2628,
+      "sha256": "b7e9f9ae40715f76f2f098fbde180f7dc9264ffab1ac60baca610c62a3e3224c"
+    },
+    {
+      "path": "customdata/Legal SIN and Licenses/manifest.xml",
+      "size": 1357,
+      "sha256": "590a2ca78b08d1ae3b55181b7bb8d967c03dfc48c560e152d0d695bac49a6796"
+    },
+    {
+      "path": "customdata/Liminal Centaur Legs Prevent Digigrade/amend_digigradeleg_cyberware.xml",
+      "size": 1087,
+      "sha256": "85c1a9ca9e3b2230d20904c656d52996046412a3652d7685e9cc1da887714d4f"
+    },
+    {
+      "path": "customdata/Liminal Centaur Legs Prevent Digigrade/manifest.xml",
+      "size": 1436,
+      "sha256": "7678d19d4c433ea8805c2c330c11cf792d032fbb9e70d405977f712a5b684a6d"
+    },
+    {
+      "path": "customdata/Morrissey Alta Availability/amend_weapons.xml",
+      "size": 955,
+      "sha256": "1eb33e50770b083402bda095fa80bf014d8f8466f42fa9086f5f7f85fc8cb76a"
+    },
+    {
+      "path": "customdata/Morrissey Alta Availability/manifest.xml",
+      "size": 1374,
+      "sha256": "f63542c624cfe86dbf7fcdbdce930653967ce08eea4de91858d33353528315a5"
+    },
+    {
+      "path": "customdata/Neon Anarchy Energy Weapon Standardization/amend_energy_weapons.xml",
+      "size": 2049,
+      "sha256": "29331faabe583da51fbe9b9c8072c9554bc0ba20a8d8aa2759e8b6add285839f"
+    },
+    {
+      "path": "customdata/Neon Anarchy Energy Weapon Standardization/custom_energy_weapons.xml",
+      "size": 1518,
+      "sha256": "be615c8af2d4d3ba5b42de95bf85c753f004128fde17864a65ffcace7a0df2ec"
+    },
+    {
+      "path": "customdata/Neon Anarchy Energy Weapon Standardization/manifest.xml",
+      "size": 1722,
+      "sha256": "5dca0114c98abd781c6b5e64997e1d03c29efa4d2b84935e7c74874b6bb7c8b6"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_armor.xml",
+      "size": 1633,
+      "sha256": "d661d1f7907cf01a8f5983d962b749ed2976356a5ad0ad124b7548ea950593f6"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_bioware.xml",
+      "size": 1213,
+      "sha256": "b9ee7c98bc667094f951702534930e79f936d16c6680e32bd50b485459486c59"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_contacts.xml",
+      "size": 4640,
+      "sha256": "bd3cd02b4b43596d4a9fe0b8509b792b4af2e508c198452bafb9d2d42096be29"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_cyberware.xml",
+      "size": 1623,
+      "sha256": "e1749e7d1d76665d8bc50c8db3a7fb11fd600a0d85cda772b5632c4847c4ad00"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_drugcomponents.xml",
+      "size": 1093,
+      "sha256": "1539c62ac52f110bb0dcb96a0b3ff3de70cc5863614e0e9cd0e63ff90c731b6e"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_echoes.xml",
+      "size": 1066,
+      "sha256": "c461b4919e6f4a09e9f222e10f52626189a34ba9abea26d0a8fcbe3f4e9ed734"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_gear.xml",
+      "size": 2828,
+      "sha256": "98c02fdc1390488788255624ab33f765d20b369d85f92278dd4f3c75c73da101"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_licenses.xml",
+      "size": 1729,
+      "sha256": "135ba607c292fb914c0d05729b894495b966599ca9e7543699bfc51eb10339ae"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_lifestyles.xml",
+      "size": 1146,
+      "sha256": "14baf282bc467bd554057740196567e4b69d4ea3ae6155c6a849dbcaf64a61a9"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_martialarts.xml",
+      "size": 1564,
+      "sha256": "b2e717fcab725590fd558ac61a462e3513c196d848159960eae1fd000c765877"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_mentors.xml",
+      "size": 4681,
+      "sha256": "f73422f9a0c799b0006b82a1e0128b4d675ee366d8fa8a6f8b760554f9f4bbc9"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_metamagic.xml",
+      "size": 1339,
+      "sha256": "7f6971568b32162eee4830c18b4d708cafbfb2bbad1e6924b48a9e1ebc295ab3"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_metatypes.xml",
+      "size": 3079,
+      "sha256": "40579e87af56086c1f8a308e3c2ac8810872344399dca10c399408354d4c441b"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_powers.xml",
+      "size": 1301,
+      "sha256": "a211647c6acaa0bc5078ba17215e573255d82ea4c366380454765e49685cfa91"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_qualities.xml",
+      "size": 21658,
+      "sha256": "094f33eb29e241f8e29ca4a91ea6993a6961f62fd5685c77ff1087259bff9a06"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_skills.xml",
+      "size": 4712,
+      "sha256": "674f60ea93b2f9f62c30e8f2a2d27913aa626b30e0e2d1af538cb07e78f39996"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_spells.xml",
+      "size": 1730,
+      "sha256": "085f4e90387ab5721ec8be58b77847f25ce4025231faf1f334befeb0599da104"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_traditions.xml",
+      "size": 1273,
+      "sha256": "05c09e7e0672e4037fcfa4a2238a92c0dbf12f7eded9014c8ba82f663d54e3ab"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_vehicles.xml",
+      "size": 6796,
+      "sha256": "28eb5be1f414995689c3643e7a0737d232b115ba8fad78a94e1ebdf2f1382e99"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/amend_weapons.xml",
+      "size": 8515,
+      "sha256": "62c7cb7b1b7d5660855ed415adab6e976c02eb86e1d676255d1a3fe0850328f2"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_animals_gear.xml",
+      "size": 25053,
+      "sha256": "41528c966672f98b63a67a6b38c58bc798f26b1fea2a76c9e9b7c7fd027c4999"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_books.xml",
+      "size": 1245,
+      "sha256": "5afb7d047fd965dcad21af95269257e04e4017d7f0370a40a946d37728640de5"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_critterpowers.xml",
+      "size": 16494,
+      "sha256": "1fb0988c0d2b2887e7e93f8b5de5c48c58df8815639c3b06af01cef497141ae2"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_gear.xml",
+      "size": 7655,
+      "sha256": "52a607e0a56b074d05cd738c29e4e90c1167ee49aadcec530d2d64a59b266fa0"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_lifestyles.xml",
+      "size": 2315,
+      "sha256": "90209eefe7e7a91348075400b50fee58614a540a2128e79f95e070792e5aea26"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_metamagic.xml",
+      "size": 1500,
+      "sha256": "13c5dd6684702c5e70a62b490ea078e4e15bcd0f8620a2fa7f8058c8c95a3803"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_qualities.xml",
+      "size": 1875,
+      "sha256": "af2b20640cbe325621d38b87c324383a2b722b30b45596e0754b6a82ffdd5336"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_ranges.xml",
+      "size": 1155,
+      "sha256": "ed45c490734456a90c440a1c0d71e47d6b19eb9037d1b63359f45843072dc30c"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_skills.xml",
+      "size": 3718,
+      "sha256": "f6491583d0ee80fe90b179c35d6e05108d6e7d42e86148d58a7b8fd7b41d0eca"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/custom_weapons.xml",
+      "size": 3859,
+      "sha256": "2f28509f1ec0e6544c1cb850e2c96a9f1f44fb29fe8c9d792bfb78309b34f944"
+    },
+    {
+      "path": "customdata/Neon Anarchy House Rules/manifest.xml",
+      "size": 1716,
+      "sha256": "1f30f992a1888cc5950b308e1032b8ed7e1c0e9343778dcec6cac0014d023ced"
+    },
+    {
+      "path": "customdata/No Future Stealth Errata/amend_cyberware.xml",
+      "size": 1795,
+      "sha256": "546b81824521b17c300c3925a9ffdf5830ca24f7087f634d2af2f46077ba872c"
+    },
+    {
+      "path": "customdata/No Future Stealth Errata/manifest.xml",
+      "size": 1447,
+      "sha256": "dd577cb4c9e658d4de840cbb43bb3143e78f37d923828f20788d87ca0182b669"
+    },
+    {
+      "path": "customdata/Only Allow Basic Metatypes at Character Creation/amend_metatypes.xml",
+      "size": 1230,
+      "sha256": "cec5346c4e3f8ee1066e5bc242ad4d8a2d8fbffd655090a64f8eb5c5a67ec63e"
+    },
+    {
+      "path": "customdata/Only Allow Basic Metatypes at Character Creation/amend_qualities.xml",
+      "size": 1238,
+      "sha256": "011a9d2d305d5da7cbab2ff196a3fc0eb2971c81934bba5bab0a530a373e4168"
+    },
+    {
+      "path": "customdata/Only Allow Basic Metatypes at Character Creation/manifest.xml",
+      "size": 1458,
+      "sha256": "855fa47c73892a262cc7fb3faea65b7fc0553d0b3561eee3782db4669ccdf5b6"
+    },
+    {
+      "path": "customdata/Optical Imaging Scopes/custom_weapons.xml",
+      "size": 1315,
+      "sha256": "2ec4d81038fbac7de5f177027af04673ec5d005026add92ba8c1a55a5eae6f1f"
+    },
+    {
+      "path": "customdata/Optical Imaging Scopes/manifest.xml",
+      "size": 1434,
+      "sha256": "89eaf556a0ded7adcf0dd986419680c46517b4fe959720e0f5a8b011dd5d7352"
+    },
+    {
+      "path": "customdata/Orks Have Natural Weapon Tusks/amend_orktusk_metatypes.xml",
+      "size": 1466,
+      "sha256": "f37b23b5c8ccff8bc06324aa200e3d43a20c8d415553bb443ef22474d721a30d"
+    },
+    {
+      "path": "customdata/Orks Have Natural Weapon Tusks/custom_orktusk_qualities.xml",
+      "size": 1798,
+      "sha256": "51ffa8dc156b38d514532f9d41a837822106de3ec9d7216bb020a81cd5e8efd1"
+    },
+    {
+      "path": "customdata/Orks Have Natural Weapon Tusks/manifest.xml",
+      "size": 1371,
+      "sha256": "6762d3fc170c01645aae9df2468510e8bc526e6b5a4e07e86bcda096b377025b"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_bioware.xml",
+      "size": 1182,
+      "sha256": "7d47d07d7df0c91818a39a2d98d0ef416ef7e75d9ad69efd26449e2d803cc80c"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_echoes.xml",
+      "size": 1630,
+      "sha256": "ba7b178ba4a76cf805923e80cdbd89a42fafe8acbee61773b40f758b12ae8d6a"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_gear.xml",
+      "size": 1002,
+      "sha256": "d173c01a16afb4a4f54c6f8cc2f4d4ec08c6ce490c397be8c421715c15f626d3"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_mentors.xml",
+      "size": 1495,
+      "sha256": "0a1f88b230565fc2a90cf7540e2ca9c0c533f67ef0d44b2b1611c2fa1df11f04"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_metatypes.xml",
+      "size": 8470,
+      "sha256": "498fbfd3977e7dbb0ec8fe63ac7cf5f045d4fee35e5ca3357ec5c26bf39ca8a1"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_powers.xml",
+      "size": 1131,
+      "sha256": "654bb35601a0697344671e2e6526308b403f87ae7de24fc5ef7f4b76ce688f2b"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_priorities.xml",
+      "size": 61352,
+      "sha256": "3d6ad729ac2f7814960c2733c63d1eb8dbfaab08d275c629f0f3af3a40c8411a"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_qualities.xml",
+      "size": 9198,
+      "sha256": "3916c6e8c8b8a58ae9d135cb84f56e75d7750e05950566de434ab8fc3d99cc18"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/amend_skills.xml",
+      "size": 1328,
+      "sha256": "d140e85f1baa2352613651f9d8308738f6766b1a247d35d318c4075d47299183"
+    },
+    {
+      "path": "customdata/Point Priority Chargen/manifest.xml",
+      "size": 2060,
+      "sha256": "f0876c9e1c7a986a26257d97836b93290d50727a89450410ccd512c2e057075c"
+    },
+    {
+      "path": "customdata/Purchasable X-Ray Sensor Function/amend_purchasablexraysensorfunction_gear.xml",
+      "size": 1094,
+      "sha256": "927bf0e883b8e8dd8bfc7b5c9abcadf03ec1d2ef221ec9af654a1fb598fb0337"
+    },
+    {
+      "path": "customdata/Purchasable X-Ray Sensor Function/manifest.xml",
+      "size": 1405,
+      "sha256": "c185dbf006cee15abcd120acd1b9dd1bca15ea33d204f1ff30115573b81bd2c9"
+    },
+    {
+      "path": "customdata/Radar Sensor as Sensor Function/custom_radarsensorfunction_gear.xml",
+      "size": 1330,
+      "sha256": "b39f408e771d2219e13f10921549f75ba27e964c466181f74fe50ba199e76208"
+    },
+    {
+      "path": "customdata/Radar Sensor as Sensor Function/manifest.xml",
+      "size": 1395,
+      "sha256": "108dbf0c050fb69cd885b332ea1edb9eb796540969c054870176901d6dd53f66"
+    },
+    {
+      "path": "customdata/Rainforest Carbine Missions Errata/amend_weapons.xml",
+      "size": 1072,
+      "sha256": "4b1980844827e973fff086b8d1c357459d49f225d76c15ee39fccc0a18811eae"
+    },
+    {
+      "path": "customdata/Rainforest Carbine Missions Errata/manifest.xml",
+      "size": 2322,
+      "sha256": "851fa835cd4f7f49f32231539365df524a4fbd33225ab140d594227379f632e5"
+    },
+    {
+      "path": "customdata/Ranger Sliver Has Standard Crossbow Ammo Capacity/amend_weapons.xml",
+      "size": 1101,
+      "sha256": "b48b2464c5187233fb859db88c54f51368c71a348a46ab93f73b3b75f73a3a3d"
+    },
+    {
+      "path": "customdata/Ranger Sliver Has Standard Crossbow Ammo Capacity/manifest.xml",
+      "size": 1462,
+      "sha256": "b6da160624b114883399b8365cbc0443de29654fac9d38526aacc06fca41b547"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_critters.xml",
+      "size": 1850,
+      "sha256": "ee10053307e879d7e69409a4f62349795ae105026ff8fdba6d2fc3853839f508"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_cyberware.xml",
+      "size": 1171,
+      "sha256": "cdbfed46d146a4a1eb94b5eb3a209e8cf8431e69b0122e59a6f19093a72df3d9"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_lifemodules.xml",
+      "size": 1012,
+      "sha256": "584ceb0659f64da669aebdab3f6aa4857ccf723352ddd97c92848e8c05854dc6"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_martialarts.xml",
+      "size": 1290,
+      "sha256": "3080b20cb7f374dec41ce1f1898b91adbe86e66ec833e7b6068929f7d364066a"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_mentors.xml",
+      "size": 1033,
+      "sha256": "e7ad0237e9e027e56bc516f25d0c0d87e3e07da0ccbb11e147df253a6b74c474"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_skills.xml",
+      "size": 2283,
+      "sha256": "b1947e2df869f627c30ed5218081d4a7341ed80833d6fba4c977c8f63ba9a5e0"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/amend_weapons.xml",
+      "size": 2678,
+      "sha256": "461326b82dad2c86465be58d08c456977a4fbbc74e7abc1f4d61f6b4c6c1ff06"
+    },
+    {
+      "path": "customdata/Remove Automatics as a Skill/manifest.xml",
+      "size": 1485,
+      "sha256": "1776278dac437e0395d8c3c17d15bd86c6937c57e7749ca229d194ad23cf07f1"
+    },
+    {
+      "path": "customdata/Rigger 5 Weapon Mounts - Allow Sporting Rifles/amend_r5_vehicles.xml",
+      "size": 1924,
+      "sha256": "1ebec7f2f5586a1a981b0878243cf28b0dcd155c093735ed7fa7a0c335fb9b07"
+    },
+    {
+      "path": "customdata/Rigger 5 Weapon Mounts - Allow Sporting Rifles/manifest.xml",
+      "size": 1414,
+      "sha256": "5843d9df63937ebbe6f5ec42f6c45bcf5abc2444d215a8f285e1c4a24d9221ad"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Animal Prices/custom_gear.xml",
+      "size": 12136,
+      "sha256": "8d18aa8fbc3a5e284f7f6905a374f0af7d14b01defb742dea7a615bbad7715e6"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Animal Prices/manifest.xml",
+      "size": 2375,
+      "sha256": "ecdf437e8abcb51515a68af7351d8baf1044fbb9ef78d7e15096e9ba1d07a2e4"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Neotokyo Rules/amend_gear.xml",
+      "size": 1114,
+      "sha256": "bb702bfa0c6309c92f14e45be74cef9e06cff95e29fb5a7cf91d967937f5c340"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Neotokyo Rules/amend_qualities.xml",
+      "size": 1017,
+      "sha256": "98bb166565b60546c36d85bbd39a6e6cd8115a3589aa3024381f60aa3c63a3ec"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Neotokyo Rules/amend_weapons.xml",
+      "size": 3057,
+      "sha256": "8c4b31b76423ca4f8f84c9f113b26b0760c0516447e02d48471ec8ea3052a204"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Neotokyo Rules/manifest.xml",
+      "size": 2409,
+      "sha256": "3dc62ab65173e108ef1b53fbbf2adced415e8ff3755d7edd4cba0ac59a5e765a"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_armor.xml",
+      "size": 999,
+      "sha256": "6bca4745403a9592f33904999905bf8adfd600955b63dd9d5b1e7225863c0ac6"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_bioware.xml",
+      "size": 937,
+      "sha256": "1f872e0835f3545482f3eed86800e575c240de3eae035c5f77d332b557dbb67c"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_books.xml",
+      "size": 2852,
+      "sha256": "ecae727a6e5233ceced7a76894c0cf7aa30ff67817a7e05508d3f85ec2dba9e9"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_cyberware.xml",
+      "size": 1803,
+      "sha256": "7d8203538249ef4d93d339eeb65029083cd78b6cdcb1d6d70ddaf68d75361409"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_gear.xml",
+      "size": 1044,
+      "sha256": "19f39432805f7ffa57dcce8693782ebb854a9a4dd715be572bd15142893568be"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_lifestyles.xml",
+      "size": 1936,
+      "sha256": "8c1d5e053e608936af50904f63194c45aaf9dfd6c0ab2ce87fd916ea86635954"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_mentors.xml",
+      "size": 1928,
+      "sha256": "83a9066bed7e1b73a220c2057aea13264ff29f5cbdcb81275ca597def164f1ef"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_metamagic.xml",
+      "size": 1644,
+      "sha256": "6c0ec96cd400d914ccefc9fd4a6e57ea924af457de826aa0024bbe4de91925b3"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_metatypes.xml",
+      "size": 1233,
+      "sha256": "dae833597f7685df371a5414e50536031db861051478159d5895038c5696d69c"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_qualities.xml",
+      "size": 14784,
+      "sha256": "97d6e148f9d298e2200fc7a2bf8c45e7175e82aa3502c4e6a204c58e21eb6468"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_skills.xml",
+      "size": 951,
+      "sha256": "70eb6a2c56bd94a4f8a27253f8aa06b151b60648a1d96703f2aa57bb058b636e"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_spells.xml",
+      "size": 2716,
+      "sha256": "89728d623bd37a173637b5ef6ee6aa9e2a376f3c66d72c52f62d5a98456f0238"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_traditions.xml",
+      "size": 3134,
+      "sha256": "5c2cb9e961020f472733b4e02b7bc893929b7333cd2ecd1c4b47cab1b5214333"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_vehicles.xml",
+      "size": 3686,
+      "sha256": "03327699b34d02f338b929b0e1954c029bd6c1dc69c84fbd50c3f590c56b844f"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/amend_weapons.xml",
+      "size": 2142,
+      "sha256": "f124d33073da122481e4bb1d79ea1f816b96b4443238114cb329cf46d14286ba"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/custom_gear.xml",
+      "size": 12136,
+      "sha256": "8d18aa8fbc3a5e284f7f6905a374f0af7d14b01defb742dea7a615bbad7715e6"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/custom_weapons.xml",
+      "size": 1481,
+      "sha256": "4ea6767679ba042c76a81a691960b31fd69caec1d38cbf565fd5c442501ea650"
+    },
+    {
+      "path": "customdata/Shadowrun Missions Rules/manifest.xml",
+      "size": 2915,
+      "sha256": "79d521bdaf8c55e92445c994510ee95b94f2f6e20ffba7829385aefa3776ee16"
+    },
+    {
+      "path": "customdata/Shapeshifter Initiative Bonus/amend_shapeshifter_metatypes.xml",
+      "size": 1674,
+      "sha256": "a13884c317af450da2a9296f4c72fec42717f7f22425653230b0e88ff3a01725"
+    },
+    {
+      "path": "customdata/Shapeshifter Initiative Bonus/manifest.xml",
+      "size": 1481,
+      "sha256": "b3f2cd98e03a03f4b0120010bf9e69deb2fdc096ce4dfacefc1193de221d9444"
+    },
+    {
+      "path": "customdata/Shapeshifter Provisional Run Faster Errata/amend_shapeshifter_metatypes.xml",
+      "size": 1591,
+      "sha256": "d57ebb3251e315af2b1ddfdda299a994afd5d85ce75f1ed3a8381dcf561d92f1"
+    },
+    {
+      "path": "customdata/Shapeshifter Provisional Run Faster Errata/manifest.xml",
+      "size": 1492,
+      "sha256": "35ea60d5898246f805bcfdbbf2b6044ea44e9435fada6a49e3e917c7a963607b"
+    },
+    {
+      "path": "customdata/Stolen Gear Contributes to BP/amend_qualities.xml",
+      "size": 983,
+      "sha256": "ea604efdc97250f0d603a4364db77025a77c38c249117f869fa320357d69878d"
+    },
+    {
+      "path": "customdata/Stolen Gear Contributes to BP/manifest.xml",
+      "size": 1384,
+      "sha256": "ae775b86e2af108c8986d8522354886fb50c3a9105fd97c067484676e5f256b9"
+    },
+    {
+      "path": "customdata/Sum-to-Ten Improved/amend_priorities.xml",
+      "size": 925,
+      "sha256": "6fae68d8d51b556b3dae4c59711caff7196795b700a16ab649a3ccc27f4367a3"
+    },
+    {
+      "path": "customdata/Sum-to-Ten Improved/manifest.xml",
+      "size": 1821,
+      "sha256": "6ae82e7a7c78554bedf3f2c58c66d7a6eac83a5578d35b19f8f28e1873ea87ee"
+    },
+    {
+      "path": "customdata/Toxic Mentors Only Require Toxic Tradition/amend_mentors.xml",
+      "size": 1794,
+      "sha256": "2b94d16e380c097295530f029aaeb5e942c3a26c138d50b19d67614db46a6a2a"
+    },
+    {
+      "path": "customdata/Toxic Mentors Only Require Toxic Tradition/manifest.xml",
+      "size": 1430,
+      "sha256": "cee964939a5423b720a805db91909cd059478fa664f96a9500259fe49a1cd99f"
+    },
+    {
+      "path": "customdata/Toxic Tradition Has No Requirement/amend_traditions.xml",
+      "size": 1071,
+      "sha256": "ffd221c9ec8566a6ff8a26ed12b2994875d583d8a2b38963d810f46850195de6"
+    },
+    {
+      "path": "customdata/Toxic Tradition Has No Requirement/manifest.xml",
+      "size": 1377,
+      "sha256": "4d849d1f31b772cd89bd450aae31edc4b6402f2dace685dd48c1b8ed3355784f"
+    },
+    {
+      "path": "customdata/Trolls Have Natural Weapon Horns/amend_trollhorn_metatypes.xml",
+      "size": 1470,
+      "sha256": "37b681f82ccfcd98f1beb8b53227d3ea9fbdd2265e36c3458c43651296c9702a"
+    },
+    {
+      "path": "customdata/Trolls Have Natural Weapon Horns/custom_trollhorn_qualities.xml",
+      "size": 1781,
+      "sha256": "8932c32aefe7d5e977c0a638c152ec70811ec17977609ca4f31adde0d04f72f8"
+    },
+    {
+      "path": "customdata/Trolls Have Natural Weapon Horns/manifest.xml",
+      "size": 1373,
+      "sha256": "6efd19fdc0eb40a84bfa8aabf67277d768a9071c2fb34f9adff52cb2e2173e02"
+    },
+    {
+      "path": "customdata/Unrestricted Kill Code Qualities/amend_qualities.xml",
+      "size": 4523,
+      "sha256": "fb26f42423670e9374ee1fe106f9ee62f79c78ff45de9809d403b3a29fede91b"
+    },
+    {
+      "path": "customdata/Unrestricted Kill Code Qualities/manifest.xml",
+      "size": 1600,
+      "sha256": "5bc97a8b5b47e2b77746b5ed803053eca30b6837c10103d3a29ba00130f871dc"
+    },
+    {
+      "path": "customdata/Visible Rigid Stock/amend_weapons.xml",
+      "size": 975,
+      "sha256": "b23c0170539195ebfba8911351d3e210ae1eb7d270eb4e692519f14cc57bdeac"
+    },
+    {
+      "path": "customdata/Visible Rigid Stock/manifest.xml",
+      "size": 1365,
+      "sha256": "c2ce5ead39f61f5ff60e33405c545fe381b86ad77f8b2f013590e00e0b3c2ba5"
+    },
+    {
+      "path": "customdata/manifest.xsd",
+      "size": 3579,
+      "sha256": "a79d5c8c63af79564fa08def8b2a4c094cd42e28466319e122ec1d6898bad14d"
+    },
     {
       "path": "data/SchemaExtensions.xsd",
       "size": 380,

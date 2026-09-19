@@ -113,6 +113,7 @@ jobs:
           sparse-checkout: |
             Chummer/data
             Chummer/lang
+            Chummer/customdata
 
       - name: Check out the pinned Hub contract dependencies
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

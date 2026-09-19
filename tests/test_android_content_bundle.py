@@ -49,6 +49,8 @@ class AndroidContentBundleTests(unittest.TestCase):
             "data/nested/catalog.xml": b"<chummer />",
             "lang/en-us.xml": b"<chummer />",
             "lang/nested/de-de.xml": b"<chummer />",
+            "customdata/Chrome Flesh Stealth Errata/manifest.xml": b"<manifest />",
+            "customdata/Chrome Flesh Stealth Errata/amend_cyberware.xml": b"<chummer />",
         }
 
     def write_apk(
@@ -89,8 +91,11 @@ class AndroidContentBundleTests(unittest.TestCase):
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         self.assertEqual([], validate_manifest(manifest))
         self.assertEqual(CORE_REVISION, manifest["coreRevision"])
-        self.assertEqual(110, len(manifest["files"]))
-        self.assertEqual(17_371_170, sum(entry["size"] for entry in manifest["files"]))
+        self.assertEqual(330, len(manifest["files"]))
+        self.assertEqual(18_852_395, sum(entry["size"] for entry in manifest["files"]))
+        custom_paths = [entry["path"] for entry in manifest["files"] if entry["path"].startswith("customdata/")]
+        self.assertEqual(220, len(custom_paths))
+        self.assertIn("customdata/Chrome Flesh Stealth Errata/manifest.xml", custom_paths)
 
     def test_verifier_receipt_is_self_contained_and_digest_bound(self) -> None:
         verifier = (
@@ -132,6 +137,30 @@ class AndroidContentBundleTests(unittest.TestCase):
             packaged_count, issues = verify_apk(apk_path, manifest, manifest_bytes)
             self.assertEqual(len(files) - 1, packaged_count)
             self.assertTrue(any("canonical-content-missing" in issue for issue in issues))
+
+    def test_profile_customdata_cannot_be_omitted_or_tampered(self) -> None:
+        files = self.make_catalogs()
+        manifest, manifest_bytes = self.make_manifest(files)
+        target = "customdata/Chrome Flesh Stealth Errata/amend_cyberware.xml"
+        self.assertEqual([], validate_manifest(manifest))
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            apk_path = Path(temporary_directory) / "candidate.apk"
+            self.write_apk(apk_path, files, manifest_bytes, omit=target)
+            _, missing = verify_apk(apk_path, manifest, manifest_bytes)
+            self.assertTrue(any("canonical-content-missing" in issue and target in issue for issue in missing))
+            self.write_apk(apk_path, files, manifest_bytes, tamper=target)
+            _, tampered = verify_apk(apk_path, manifest, manifest_bytes)
+            self.assertTrue(any("sha256-mismatch" in issue and target in issue for issue in tampered))
+
+    def test_customdata_paths_preserve_the_same_traversal_boundary(self) -> None:
+        for unsafe in ("customdata/../outside.xml", "customdata/pack/../../outside.xml",
+                       "customdata//pack/manifest.xml", "customdata/pack/./manifest.xml",
+                       "customdata/pack\\manifest.xml", "customdata/C:/manifest.xml",
+                       "/customdata/pack/manifest.xml", "private/manifest.xml"):
+            with self.subTest(unsafe=unsafe):
+                files = self.make_catalogs() | {unsafe: b"<manifest />"}
+                manifest, _ = self.make_manifest(files)
+                self.assertTrue(any("path-unsafe" in issue for issue in validate_manifest(manifest)))
 
     def test_signed_apk_verifier_rejects_tampering_and_duplicate_members(self) -> None:
         files = self.make_catalogs()

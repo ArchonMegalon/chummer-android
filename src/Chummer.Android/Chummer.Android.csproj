@@ -96,6 +96,8 @@
                   LogicalName="chummer-content/data/%(RecursiveDir)%(Filename)%(Extension)" />
     <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/lang/**"
                   LogicalName="chummer-content/lang/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/customdata/**"
+                  LogicalName="chummer-content/customdata/%(RecursiveDir)%(Filename)%(Extension)" />
     <AndroidAsset Include="Content/chummer-content-manifest.json"
                   LogicalName="chummer-content/manifest.json" />
   </ItemGroup>

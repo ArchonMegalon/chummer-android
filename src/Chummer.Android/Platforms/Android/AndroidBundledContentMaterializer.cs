@@ -274,7 +274,8 @@ public static class AndroidBundledContentMaterializer
             || relativePath.Contains(':', StringComparison.Ordinal)
             || relativePath.Split('/').Any(segment => segment is "" or "." or "..")
             || !(relativePath.StartsWith("data/", StringComparison.Ordinal)
-                || relativePath.StartsWith("lang/", StringComparison.Ordinal)))
+                || relativePath.StartsWith("lang/", StringComparison.Ordinal)
+                || relativePath.StartsWith("customdata/", StringComparison.Ordinal)))
         {
             throw new InvalidDataException(
                 $"Packaged Chummer content path '{relativePath}' is not a safe canonical path.");

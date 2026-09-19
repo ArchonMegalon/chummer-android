@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "1596598a7ccc2af30087adf611ff148dfb2f5e62670b0d3931c6de7c27747528"
+        "sha256": "153b0ef3ee36074fc592586ea5fd3d55a4177415df7131b9f6b93dacc14ce77e"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "75c5ee2d842566e19e5cce4aef26cf92b16104d96d5349916275dfb26af71a5c"
+        "sha256": "7793c44c2504254549b8434a9565a227d4f86af52bff04c9966bb9184aaa2eea"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
