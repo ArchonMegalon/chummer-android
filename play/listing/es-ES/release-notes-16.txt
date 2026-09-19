@@ -1,0 +1,1 @@
+Los catálogos de ciberware y drogas se cargan en segundo plano para mantener las páginas ágiles. Los borradores permanecen asociados a la cuenta correcta; las acciones obsoletas se rechazan tras cambiar de cuenta. Mejorada la restauración de borradores al reiniciar la app.

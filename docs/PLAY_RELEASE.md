@@ -1,6 +1,31 @@
 # Play release contract
 
-## Current observed Internal release: Preview 15 — September 19, 2026
+## Current observed Internal release: Preview 16 — September 19, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-19T13:39:31Z` shows
+`16 (0.1.0-preview.16)` as **Available to internal testers** on the active
+Internal track. The [tester install/update link](https://play.google.com/apps/internaltest/4700678198570024687)
+is unchanged. See the [local transaction and observed availability](../play/evidence/preview16-internal-observation.md).
+
+Six Cyberware/custom-drug catalog pages now prepare off-thread. Draft storage
+and wizard actions bind the original owner, workspace and revision, rejecting
+stale owner transitions and stale or forged snapshots. This is not a claim
+that all synchronous wizard work or all Android freezes have been eliminated.
+
+Release source `85b1c3eb8bfbf7b766578e31ca46a7eb898ce3cd` was built locally
+in keyless offline Docker, signed separately with the existing upload key and
+independently verified. PR83 merged the identical source tree as
+`22436bf121c849fe73ee634fbb3e07f706dcbb3a`. Product tests belong to the preceding
+PR82 product tree; only version and inventory hashes changed for this build.
+Play parsed version16, API24+, target36 and arm64-v8a.
+
+Provider availability is observed, not inferred from builds or source-check CI.
+The localized display was `19 Sept 15:39`, not an asserted UTC publication time.
+Physical Play installation/update, exhaustive wizard or full-editing parity,
+tablet and Rook remain unverified. No Production, tester, billing or security
+setting changed. Code16 is consumed; the next upload needs17 or higher unused.
+
+## Historical observed Internal release: Preview 15 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T12:03:30Z` shows
 `15 (0.1.0-preview.15)` as **Available to internal testers** on the active
@@ -99,7 +124,7 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 Upload keys and passwords are never committed or admitted to ordinary builds.
 The hosted protocol below assigns them to a separate protected Fleet signer,
-which is not implemented by this repository. Previews 12 through 15 instead used the
+which is not implemented by this repository. Previews 12 through 16 instead used the
 explicitly approved isolated local signing boundary documented above:
 
 - `AndroidSigningKeyStore`

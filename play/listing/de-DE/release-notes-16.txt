@@ -1,0 +1,1 @@
+Cyberware- und Drogenkataloge laden im Hintergrund, damit die Seiten bedienbar bleiben. Entwürfe bleiben dem richtigen Konto zugeordnet; veraltete Aktionen werden nach einem Kontowechsel abgewiesen. Entwurfswiederherstellung nach App-Neustart verbessert.
