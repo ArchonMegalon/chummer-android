@@ -558,7 +558,8 @@ internal static partial class AfterRunAuthorityHarness
             bool creationPrerequisite = false,
             Func<IOwnerBoundCharacterCreationPrerequisiteService, IOwnerBoundCharacterCreationPrerequisiteService?>? prerequisiteDecorator = null,
             bool productionCreationOverview = false,
-            Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null)
+            Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null,
+            Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -684,7 +685,9 @@ internal static partial class AfterRunAuthorityHarness
                     ownerBoundCreationPrerequisiteService: !creationPrerequisite ? null
                         : prerequisiteDecorator is null
                             ? _provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()
-                            : prerequisiteDecorator(_provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()));
+                            : prerequisiteDecorator(_provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()),
+                    ownerBoundCreationKarmaService: karmaDecorator?.Invoke(
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationKarmaMetatypeService>()));
             }
             catch
             {
