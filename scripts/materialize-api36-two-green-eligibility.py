@@ -100,6 +100,7 @@ MAX_JSON_ARTIFACT_BYTES = 16 * 1024 * 1024
 MAX_APK_BYTES = 256 * 1024 * 1024
 REQUIRED_JOB_NAMES = (
     "Build x64 emulator and ARM64 hosted debug candidates",
+    "Classify and validate release documentation changes",
     "phone API 36 SR5 wizard persistence (creation-prerequisite)",
     "phone API 36 SR5 wizard persistence (career-active-skill-advance)",
     "phone API 36 SR5 wizard persistence (career-weapon-fire)",
