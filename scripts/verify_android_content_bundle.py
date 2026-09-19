@@ -19,7 +19,7 @@ SCHEMA = "chummer.android.content-bundle/v1"
 CORE_REVISION = "1d8cf694d0412b3bd9f4a241fb95244fad341160"
 PACKAGED_ROOT = "assets/chummer-content"
 MANIFEST_ENTRY = f"{PACKAGED_ROOT}/manifest.json"
-CANONICAL_SEGMENTS = ("data", "lang")
+CANONICAL_SEGMENTS = ("data", "lang", "customdata")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
@@ -101,8 +101,7 @@ def collect_canonical_files(
                 "ls-files",
                 "-z",
                 "--",
-                "Chummer/data",
-                "Chummer/lang",
+                *(f"Chummer/{segment}" for segment in CANONICAL_SEGMENTS),
             ],
             check=True,
             capture_output=True,
@@ -116,8 +115,7 @@ def collect_canonical_files(
                 "--porcelain=v1",
                 "--untracked-files=all",
                 "--",
-                "Chummer/data",
-                "Chummer/lang",
+                *(f"Chummer/{segment}" for segment in CANONICAL_SEGMENTS),
             ],
             check=True,
             capture_output=True,
@@ -253,6 +251,8 @@ def verify_project_contract(repo_root: Path) -> list[str]:
         'LogicalName="chummer-content/data/%(RecursiveDir)%(Filename)%(Extension)"',
         '<AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/lang/**"',
         'LogicalName="chummer-content/lang/%(RecursiveDir)%(Filename)%(Extension)"',
+        '<AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/customdata/**"',
+        'LogicalName="chummer-content/customdata/%(RecursiveDir)%(Filename)%(Extension)"',
         '<AndroidAsset Include="Content/chummer-content-manifest.json"',
         'LogicalName="chummer-content/manifest.json"',
     )
@@ -296,6 +296,7 @@ def verify_project_contract(repo_root: Path) -> list[str]:
         '$"{ManifestSchema}\\n{CanonicalCoreRevision}\\n"',
         "SHA256.HashData(stream)",
         "ResolveDestinationPath(stagingRoot, relativePath)",
+        'relativePath.StartsWith("customdata/", StringComparison.Ordinal)',
     )
     for fragment in required_materializer_fragments:
         if fragment not in materializer:

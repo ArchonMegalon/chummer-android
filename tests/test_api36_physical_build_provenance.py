@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 from unittest import mock
+import xml.etree.ElementTree as ET
 import zipfile
 
 from scripts import api36_arm64_physical_contract as physical_contract
@@ -28,6 +29,7 @@ class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
         )
         self.assertEqual(manifest["coreRevision"], physical_contract.TRUSTED_CORE_CONTENT_COMMIT)
         self.assertEqual(manifest["coreRevision"], provenance.CORE_CONTENT_REVISION)
+        self.assertEqual(manifest["bundleDigest"], provenance.CORE_CONTENT_DIGEST)
 
     def test_physical_proof_constants_match_the_checked_in_package_authority(self) -> None:
         raw = (REPO_ROOT / "eng/internal-phone-beta-package-authority.json").read_bytes()
@@ -107,6 +109,21 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             REPO_ROOT / "src/Chummer.Android/Chummer.Android.csproj",
             self.android / "src/Chummer.Android/Chummer.Android.csproj",
         )
+        # This synthetic graph deliberately models preview.12, including its
+        # hostile preview.13 substitutions. Keep its copied project consistent
+        # before sealing it, independently of the real application's version.
+        project_path = self.android / "src/Chummer.Android/Chummer.Android.csproj"
+        project = ET.parse(project_path)
+        identity = consumer_contract_tests.Api36Arm64PhysicalContractTests.graph_payload()["releaseIdentity"]
+        for name, value in (
+            ("ApplicationId", identity["packageId"]),
+            ("ApplicationDisplayVersion", identity["versionName"]),
+            ("ApplicationVersion", str(identity["versionCode"])),
+        ):
+            nodes = project.findall(f".//{name}")
+            self.assertEqual(1, len(nodes))
+            nodes[0].text = value
+        project.write(project_path, encoding="utf-8")
         write_json(self.content_manifest, {
             "schema": provenance.CONTENT_CONTRACT,
             "coreRevision": self.core_commit,

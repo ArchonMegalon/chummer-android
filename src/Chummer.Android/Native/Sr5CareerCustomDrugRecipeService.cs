@@ -36,11 +36,36 @@ public sealed class Sr5CareerCustomDrugRecipeService(
     public Sr5CareerCustomDrugRecipeSnapshot UpdateSelection(
         CharacterWorkspaceId workspaceId,
         CharacterCustomDrugSelection selection)
+        => UpdateSelection(workspaceId, selection, expected: null);
+
+    public Sr5CareerCustomDrugRecipeSnapshot UpdateSelection(
+        Sr5CareerCustomDrugRecipeSnapshot expected,
+        CharacterCustomDrugSelection selection)
+        => UpdateSelection(expected.WorkspaceId, selection, expected);
+
+    private Sr5CareerCustomDrugRecipeSnapshot UpdateSelection(
+        CharacterWorkspaceId workspaceId,
+        CharacterCustomDrugSelection selection,
+        Sr5CareerCustomDrugRecipeSnapshot? expected)
     {
         ArgumentNullException.ThrowIfNull(selection);
         lock (_gate)
         {
             Sr5CareerCustomDrugRecipeSnapshot live = RequireReady(LoadLocked(workspaceId));
+            // Components are value selections; a deserialized list is not the
+            // same object as the list captured by the selector.
+            if (expected is not null
+                && (!expected.IsReady
+                    || expected.Preparation!.ContentRevision != live.Preparation!.ContentRevision
+                    || expected.Preparation.CharacterDigest != live.Preparation.CharacterDigest
+                    || expected.Preparation.CatalogDigest != live.Preparation.CatalogDigest
+                    || expected.Preparation.RulesDigest != live.Preparation.RulesDigest
+                    || !Sr5CareerCustomDrugRecipeSelections.Equal(expected.Selection, live.Selection)
+                    || expected.Checkpoint?.Phase != live.Checkpoint?.Phase))
+            {
+                throw new InvalidOperationException(
+                    "The custom-drug selection changed. Open the selector again.");
+            }
             if (live.Checkpoint?.Phase is Sr5CareerCustomDrugRecipePhase.Reviewed
                     or Sr5CareerCustomDrugRecipePhase.Applying
                     or Sr5CareerCustomDrugRecipePhase.Applied

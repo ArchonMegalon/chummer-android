@@ -571,12 +571,13 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
         }
     }
 
-    private async Task SelectAsync(
+    private Task SelectAsync(
         Sr5CareerCyberwarePurchaseSnapshot snapshot,
         CharacterCyberwarePurchaseCatalogEntry entry)
+        => RunWithConditionalRefreshAsync(async () =>
     {
         CharacterCyberwarePurchaseGrade grade = entry.Grades.First();
-        Coordinator.UpdateCareerCyberwarePurchaseSelection(snapshot.Selection with
+        Coordinator.UpdateCareerCyberwarePurchaseSelection(snapshot, snapshot.Selection with
         {
             SourceId = entry.SourceId,
             GradeId = grade.Id,
@@ -587,7 +588,8 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
             FreeCost = false
         });
         await Navigation.PopAsync();
-    }
+        return false;
+    });
 
     private void AddUnavailable()
     {
@@ -647,14 +649,16 @@ public sealed class Sr5CareerCyberwareGradePage : NativePageBase
         }
     }
 
-    private async Task SelectAsync(
+    private Task SelectAsync(
         Sr5CareerCyberwarePurchaseSnapshot snapshot,
         CharacterCyberwarePurchaseGrade grade)
+        => RunWithConditionalRefreshAsync(async () =>
     {
-        Coordinator.UpdateCareerCyberwarePurchaseSelection(snapshot.Selection with
+        Coordinator.UpdateCareerCyberwarePurchaseSelection(snapshot, snapshot.Selection with
         {
             GradeId = grade.Id
         });
         await Navigation.PopAsync();
-    }
+        return false;
+    });
 }

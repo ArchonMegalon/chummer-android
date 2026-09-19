@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="IssuedArmConditionPageRuntimeTests.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="CommerceSelectionRuntimeTests.cs" />
     <Compile Include="ArmConditionOwnerRuntimeTests.cs" />
     <Compile Include="AndroidAccountOwnerRuntimeTests.cs" />
     <Compile Include="AndroidInitialPhoneRouteRuntimeTests.cs" />

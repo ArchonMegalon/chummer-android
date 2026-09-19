@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--commerce-selection")
+        {
+            await CommerceSelectionRuntimeTests.RunAsync();
+            return;
+        }
         if (args.Length == 1 && args[0] == "--wizard-metric-layout")
         {
             await WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync();
@@ -249,6 +254,7 @@ internal static class Program
             (nameof(ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async), ResourcesAuxiliaryStateDigestUsesRawLowerSha256Async),
             (nameof(ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync), ResourcesTechnicalDisclosureIsReadOnlyAndLocalizedAsync),
             (nameof(CareerCommerceNavigationDoesNotLoadAuthoritiesAsync), CareerCommerceNavigationDoesNotLoadAuthoritiesAsync),
+            (nameof(CommerceSelectionRuntimeTests), CommerceSelectionRuntimeTests.RunAsync),
             (nameof(ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync), ResourcesRawCharacterXmlDigestNormalizationFailsClosedAsync),
             (nameof(ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync), ResourcesStageRehydrationRejectsEveryHostileAuthorityShapeAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),

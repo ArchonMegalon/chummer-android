@@ -445,16 +445,18 @@ public sealed class Sr5CareerCustomDrugGradePage : NativePageBase
         }
     }
 
-    private async Task SelectAsync(
+    private Task SelectAsync(
         Sr5CareerCustomDrugRecipeSnapshot snapshot,
         CharacterCustomDrugGrade grade)
+        => RunWithConditionalRefreshAsync(async () =>
     {
-        Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot.Selection with
+        Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot, snapshot.Selection with
         {
             GradeId = grade.Id
         });
         await Navigation.PopAsync();
-    }
+        return false;
+    });
 
     private void AddUnavailable()
     {
@@ -529,10 +531,11 @@ public sealed class Sr5CareerCustomDrugComponentPage : NativePageBase
         }
     }
 
-    private async Task SelectAsync(
+    private Task SelectAsync(
         Sr5CareerCustomDrugRecipeSnapshot snapshot,
         CharacterCustomDrugComponentSource source,
         CharacterCustomDrugEffectLevel effect)
+        => RunWithConditionalRefreshAsync(async () =>
     {
         List<CharacterCustomDrugComponentSelection> components = snapshot.Selection.Components.ToList();
         if (source.Category == CharacterCustomDrugComponentCategory.Foundation)
@@ -544,12 +547,13 @@ public sealed class Sr5CareerCustomDrugComponentPage : NativePageBase
             components.RemoveAll(selected => foundations.Contains(selected.ComponentId));
         }
         components.Add(new CharacterCustomDrugComponentSelection(source.Id, effect.Level));
-        Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot.Selection with
+        Coordinator.UpdateCareerCustomDrugRecipeSelection(snapshot, snapshot.Selection with
         {
             Components = components
         });
         await Navigation.PopAsync();
-    }
+        return false;
+    });
 
     private void AddUnavailable()
     {

@@ -755,6 +755,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return _careerCyberwarePurchaseService!.Review(workspaceId);
     }
 
+    public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
+        Sr5CareerCyberwarePurchaseSnapshot expected,
+        CharacterCyberwarePurchaseSelection selection)
+    {
+        if (State.WorkspaceId != expected.WorkspaceId)
+            throw new InvalidOperationException("The Cyberware selector belongs to another runner.");
+        _ = RequireCareerCyberwarePurchaseWorkspace();
+        return _careerCyberwarePurchaseService!.UpdateSelection(expected, selection);
+    }
+
     public async Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync(
         CancellationToken cancellationToken = default)
     {
@@ -852,6 +862,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     {
         CharacterWorkspaceId workspaceId = RequireCareerCustomDrugRecipeWorkspace();
         return _careerCustomDrugRecipeService!.Review(workspaceId);
+    }
+
+    public Sr5CareerCustomDrugRecipeSnapshot UpdateCareerCustomDrugRecipeSelection(
+        Sr5CareerCustomDrugRecipeSnapshot expected,
+        CharacterCustomDrugSelection selection)
+    {
+        if (State.WorkspaceId != expected.WorkspaceId)
+            throw new InvalidOperationException("The custom-drug selector belongs to another runner.");
+        _ = RequireCareerCustomDrugRecipeWorkspace();
+        return _careerCustomDrugRecipeService!.UpdateSelection(expected, selection);
     }
 
     public async Task<Sr5CareerCustomDrugRecipeSnapshot> ConfirmCareerCustomDrugRecipeAsync(

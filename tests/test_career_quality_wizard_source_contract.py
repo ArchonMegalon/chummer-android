@@ -225,8 +225,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertEqual(
             manifest["coreRevision"], "1d8cf694d0412b3bd9f4a241fb95244fad341160"
         )
-        self.assertEqual(manifest["bundleDigest"], "85f484c6d67c076ded1b78bfb611526485596a8054e3b90b88e5bfb0cf0e253c")
-        self.assertEqual(len(manifest["files"]), 110)
+        self.assertEqual(manifest["bundleDigest"], "66c8f82cf338d359ac8a8f1ff5bafc73ec208a36dbc87c40acdb7fa9b09cf2be")
+        self.assertEqual(len(manifest["files"]), 330)
         runtime_core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)
         self.assertIsNotNone(runtime_core)
         self.assertNotEqual(runtime_core.group(1), manifest["coreRevision"])
