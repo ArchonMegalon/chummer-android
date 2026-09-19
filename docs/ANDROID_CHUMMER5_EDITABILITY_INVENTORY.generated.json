@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "6f75750e8fd4de52f162be769c108af831cfaae4748daedd67b0bf975e0c3bbe"
+        "sha256": "d27d7cb3bc4f00aefb0143b833dccff5a16723af302e423e1052b12356d0f00f"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
