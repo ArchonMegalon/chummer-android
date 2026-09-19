@@ -1,26 +1,34 @@
 # Play release contract
 
-## Current observed Internal release: Preview 12 — September 19, 2026
+## Current observed Internal release: Preview 13 — September 19, 2026
 
-The Chummer-scoped Play Console reports `12 (0.1.0-preview.12)` as **Available
+The Chummer-scoped Play Console reports `13 (0.1.0-preview.13)` as **Available
 to internal testers** on the active Internal track. The existing
 [tester install/update link](https://play.google.com/apps/internaltest/4700678198570024687)
-is unchanged. See the [browser readback](../play/evidence/preview12-internal-browser-readback.json)
-and [local signing and publication observation](../play/evidence/preview12-internal-observation.md).
+is unchanged. See the [local build, signing and Play observation](../play/evidence/preview13-internal-observation.md).
 
-For this release the owner explicitly approved isolated local Docker signing
-with the existing upload key, replacing the three hosted signing jobs and
-shared remote storage. A separate keyless container verified the exact signed
-AAB before upload. This is not a successful execution of the hosted protocol
+The owner explicitly requested local builds and local hosting, then publication
+of this locally built candidate. Preview 13 was built offline in local Docker
+and signed separately with the existing upload key. A separate keyless container
+verified the exact signed AAB before upload. This replaces the three hosted
+signing jobs and shared remote storage; it is not an execution of the hosted protocol
 described below, and no hosted attestation or v4 publication receipt is claimed.
 The repository's existing hosted validators remain unchanged.
 
-The displayed release time is `19 Sept 06:31`; the readback was observed at
-`2026-09-19T04:35:27Z`. Physical Play installation/update is still unverified.
+The displayed release time is `19 Sept 11:14`; the readback was observed at
+`2026-09-19T09:14:08Z`. Physical Play installation/update is still unverified.
 Provider availability is not phone-beta completion, public release, tablet
-readiness, full editing parity or live Rook authority. Preview 10 and older
-records below are historical. Code 12 is consumed; the next release needs a
-higher unused code rather than another upload of Preview 12.
+readiness, full editing parity or live Rook authority. Preview 12 and older
+records remain immutable historical observations. Code 13 is consumed; the next
+release needs a higher unused code rather than another upload of Preview 13.
+
+This rolling update defers Career/Commerce catalog preparation until a leaf
+wizard is opened. It was built from commit
+`dd5e6addc00971009de0449a028e9e1c42d51847` on the pushed menu-fix branch, not
+from an Android `main` merge. Source integration is a separate step; a later
+merge must not be relabelled as this bundle's producer. The affected-route Debug
+smoke and exact Release bundle checks are recorded with their limits in the
+observation, not promoted to whole-app or hosted seven-journey authority.
 
 ## Identity
 
@@ -42,7 +50,7 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 Upload keys and passwords are never committed or admitted to ordinary builds.
 The hosted protocol below assigns them to a separate protected Fleet signer,
-which is not implemented by this repository. Preview 12 instead used the
+which is not implemented by this repository. Previews 12 and 13 instead used the
 explicitly approved isolated local signing boundary documented above:
 
 - `AndroidSigningKeyStore`
