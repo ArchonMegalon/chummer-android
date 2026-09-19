@@ -12,6 +12,7 @@ on:
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
       - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
+      - "docs/PLAY_RELEASE.md"
       - "eng/api36-proof-environment-authority.json"
       - "eng/api36-sr5-wizard-gate-authority.json"
       - "eng/api36-two-consecutive-green-authority.json"
@@ -33,8 +34,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  change-scope:
+    name: Classify and validate release documentation changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      docs-only: ${{ steps.scope.outputs.docs-only }}
+    steps:
+      - name: Check out the complete comparison graph
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Use the base revision policy, defaulting to runtime validation
+        id: scope
+        env:
+          CHUMMER_CHANGE_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          CHUMMER_CHANGE_EVENT: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Manual qualification is always a real runtime run. Bootstrap policy
+          # changes also take that path; a PR cannot exempt its own classifier.
+          if [[ "$CHUMMER_CHANGE_EVENT" == workflow_dispatch ]] || \
+             [[ ! "$CHUMMER_CHANGE_BASE" =~ ^[0-9a-f]{40}$ ]] || \
+             ! git cat-file -e "$CHUMMER_CHANGE_BASE:scripts/classify_android_ci_changes.py"; then
+            echo 'docs-only=false' >> "$GITHUB_OUTPUT"
+          else
+            git show "$CHUMMER_CHANGE_BASE:scripts/classify_android_ci_changes.py" \
+              > "$RUNNER_TEMP/classify_android_ci_changes.py"
+            python3 -I -B "$RUNNER_TEMP/classify_android_ci_changes.py" \
+              --repository "$GITHUB_WORKSPACE" \
+              --base "$CHUMMER_CHANGE_BASE" --head "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build x64 emulator and ARM64 hosted debug candidates
+    needs: change-scope
+    if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -590,13 +627,38 @@ jobs:
   phone-evidence-aggregate:
     name: Aggregate exact API 36 phone evidence
     needs:
+      - change-scope
       - build
       - phone-wizard-e2e
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - name: Require a valid change-scope decision
+        env:
+          SCOPE_RESULT: ${{ needs.change-scope.result }}
+          DOCS_ONLY: ${{ needs.change-scope.outputs.docs-only }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          JOURNEY_RESULT: ${{ needs.phone-wizard-e2e.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = success
+          case "$DOCS_ONLY" in
+            true)
+              test "$BUILD_RESULT" = skipped
+              test "$JOURNEY_RESULT" = skipped
+              echo 'Release documentation checks passed; no API-36 execution or release eligibility is asserted.' >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            false)
+              test "$BUILD_RESULT" = success
+              test "$JOURNEY_RESULT" = success
+              ;;
+            *) exit 1 ;;
+          esac
+
       - name: Check out the exact aggregate verifier
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: chummer-android
@@ -604,6 +666,7 @@ jobs:
           fetch-depth: 1
 
       - name: Download the stable wizard evidence artifacts
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
@@ -611,6 +674,7 @@ jobs:
           merge-multiple: false
 
       - name: Check out the exact Design qualification policy
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-design
@@ -624,6 +688,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download the exact x64 APK authority input
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           artifact-ids: ${{ needs.build.outputs.apk-artifact-id }}
@@ -631,6 +696,7 @@ jobs:
           merge-multiple: true
 
       - name: Download the exact ARM64 hosted candidate authority input
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           artifact-ids: ${{ needs.build.outputs.arm64-artifact-id }}
@@ -638,6 +704,7 @@ jobs:
           merge-multiple: true
 
       - name: Require one shared authority and every required wizard journey
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         env:
           GH_TOKEN: ${{ github.token }}
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
@@ -672,6 +739,7 @@ jobs:
           --apk-sha256 "$CHUMMER_E2E_APK_SHA256"
 
       - name: Materialize and replay the machine-only P0 PR authority
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -693,6 +761,7 @@ jobs:
             verify "${common[@]}" --authority "$authority"
 
       - name: Upload the aggregate phone authority receipt
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: chummer-android-api36-phone-sr5-wizard-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
@@ -704,6 +773,7 @@ jobs:
           include-hidden-files: false
 
       - name: Upload the machine-only P0 PR authority
+        if: ${{ needs.change-scope.outputs.docs-only == 'false' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: chummer-android-p0-pr-authority-${{ github.run_id }}-${{ github.run_attempt }}

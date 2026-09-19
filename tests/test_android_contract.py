@@ -733,9 +733,15 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("no assistant-prompt", data_safety)
         self.assertNotIn("Assistant prompt/context and generated response", data_safety)
         self.assertNotIn("Support report and user-selected diagnostics", data_safety)
-        normalized_release = re.sub(r"\s+", " ", release)
-        self.assertIn("version code 7 (`0.1.0-preview.7`)", normalized_release)
-        self.assertIn("supersedes preview.6", normalized_release)
+        # Preserve the deletion-policy correction as historical evidence, not
+        # a requirement to keep Preview 7 labelled as the current release.
+        self.assertNotIn("## Current preview.7 release evidence", release)
+        historical_release = release.split(
+            "## Historical preview.7 release evidence", maxsplit=1
+        )[1].split("\n## ", maxsplit=1)[0]
+        normalized_history = re.sub(r"\s+", " ", historical_release)
+        self.assertIn("version code 7 (`0.1.0-preview.7`)", normalized_history)
+        self.assertIn("superseded preview.6", normalized_history)
 
         more_account = more[more.index("private void AddAccount()"):more.index("private void AddApp()")]
         linked_branch = more_account.index("if (Coordinator.Account.IsLinked)")
