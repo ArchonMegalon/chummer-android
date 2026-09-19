@@ -1,6 +1,29 @@
 # Play release contract
 
-## Current observed Internal release: Preview 13 — September 19, 2026
+## Current observed Internal release: Preview 14 — September 19, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-19T10:20:53Z` shows
+`14 (0.1.0-preview.14)` as **Available to internal testers** on the active
+Internal track. The [tester install/update link](https://play.google.com/apps/internaltest/4700678198570024687)
+is unchanged. See the [local transaction and observed availability](../play/evidence/preview14-internal-observation.md).
+
+This small update fixes the observed crash when Android recreates its window
+after a system-font change, and keeps wizard labels and long values readable.
+It preserves the existing supported-workflow scope; it does not establish
+whole-app, tablet, full-editing, Rook or physical Play installation authority.
+
+The exact source `503b076d3085ee83e66826e5219650cc42d35833` was built locally
+in isolated offline Docker, signed separately with the existing upload key,
+independently verified, and uploaded to Internal only. PR77 merged an identical
+tree to `facb4c97f35178da165033b03417eaad7dcc7aa8`. The later merge is not
+relabeled as the bundle producer. Short hosted source checks are not APK or
+runtime qualification, and no hosted signing/eligibility receipt is claimed.
+
+The provider displays `19 Sept 12:19`; this is not asserted as a UTC timestamp.
+Production, tester lists and previous release evidence remain unchanged.
+Code14 is consumed. The next upload requires a higher unused code.
+
+## Historical observed Internal release: Preview 13 — September 19, 2026
 
 The Chummer-scoped Play Console reports `13 (0.1.0-preview.13)` as **Available
 to internal testers** on the active Internal track. The existing
@@ -51,7 +74,7 @@ documented at https://support.google.com/googleplay/android-developer/answer/119
 
 Upload keys and passwords are never committed or admitted to ordinary builds.
 The hosted protocol below assigns them to a separate protected Fleet signer,
-which is not implemented by this repository. Previews 12 and 13 instead used the
+which is not implemented by this repository. Previews 12, 13 and 14 instead used the
 explicitly approved isolated local signing boundary documented above:
 
 - `AndroidSigningKeyStore`

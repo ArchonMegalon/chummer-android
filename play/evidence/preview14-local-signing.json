@@ -1,0 +1,12 @@
+{
+  "completedAt": "2026-09-19T10:16:04.280782+00:00",
+  "mode": "user-approved-local-docker",
+  "unsignedSha256": "b8bbfa2c4ca100f1d05d5ec6247d90b7ab50064d103314c8b56d6dc6b3abffd9",
+  "signedSha256": "4c2ac471b12c57f69cfa4fc90eedece7f5080529c8c601e55fbc43907b20bd30",
+  "sourceInputsSha256": "8f4c3ecf9fd96a8af29f7b35aebac47ea55cc1959bbe67fe74a833abc22e1421",
+  "certificateSha256": "d9c4b635121544d5522abf1ec2dfda3c1938aab93d6726bb93c9871ec9ed1d15",
+  "privateKeyExported": false,
+  "signingPerformed": true,
+  "independentVerificationPassed": false,
+  "playUploadPerformed": false
+}
