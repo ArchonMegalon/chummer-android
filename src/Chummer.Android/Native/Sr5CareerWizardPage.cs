@@ -130,11 +130,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 NativeTheme.Muted);
         }
 
-        Sr5CareerCyberwarePurchaseSnapshot commerce =
-            Coordinator.LoadCareerCyberwarePurchase();
-        Sr5CareerCustomDrugRecipeSnapshot customDrug =
-            Coordinator.LoadCareerCustomDrugRecipe();
-        bool canOpenCommerce = commerce.IsReady || customDrug.IsReady;
+        bool canOpenCommerce = Coordinator.CanEnterCareerCommerce;
         if (!state.Snapshot.CanOpenAnyAction && !canOpenCommerce)
         {
             AddStatus(
@@ -225,9 +221,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         if (!canOpenCommerce)
         {
             Label commerceBlocker = NativeTheme.Body(
-                commerce.Blockers.FirstOrDefault()
-                ?? customDrug.Blockers.FirstOrDefault()
-                ?? Sr5CareerFlowStrings.Text(
+                Sr5CareerFlowStrings.Text(
                     "No typed Career commerce authority is available for this exact runner revision."),
                 NativeTheme.Danger);
             commerceBlocker.AutomationId = "sr5-career-commerce-blocker";

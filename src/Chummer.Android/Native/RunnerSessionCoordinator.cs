@@ -689,6 +689,35 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
 
+    // Menu availability is only a navigation hint. Loading commerce snapshots
+    // parses Core catalogs and may reconcile durable checkpoints; never do that
+    // while drawing a chooser. Each destination still loads and validates its
+    // exact authority before configuration, review, confirmation or recovery.
+    private bool HasSavedCareerCommerceContext
+        => State.WorkspaceId is { } workspaceId
+           && !string.IsNullOrWhiteSpace(workspaceId.Value)
+           && State.Profile?.Created == true
+           && string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+           && !State.IsDirty
+           && !IsBusy
+           && State.ContentRevision > 0
+           && State.ContentRevision == State.SavedRevision
+           && string.IsNullOrWhiteSpace(State.Error);
+
+    public bool CanEnterCareerCyberwarePurchase
+        => _careerCyberwarePurchaseService is not null && HasSavedCareerCommerceContext;
+
+    public bool CanEnterCareerCustomDrugRecipe
+        => _careerCustomDrugRecipeService is not null && HasSavedCareerCommerceContext;
+
+    public bool CanEnterCareerVehicleWorkshop
+        => _careerVehicleWorkshopService is not null && HasSavedCareerCommerceContext;
+
+    public bool CanEnterCareerCommerce
+        => CanEnterCareerCyberwarePurchase
+           || CanEnterCareerCustomDrugRecipe
+           || CanEnterCareerVehicleWorkshop;
+
     public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase()
     {
         if (_careerCyberwarePurchaseService is null
