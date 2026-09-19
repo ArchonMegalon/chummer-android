@@ -1,6 +1,25 @@
 # Play release contract
 
-## Current observed Internal release: Preview 17 — September 19, 2026
+## Current observed Internal release: Preview 18 — September 19, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-19T20:58:28Z` shows
+`18 (0.1.0-preview.18)` as **Available to internal testers** on the active
+Internal track. [Install/update link](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and observed availability](../play/evidence/preview18-internal-observation.md).
+
+This fixes New runner confirmation, blocked Qualities/Gear steps and persisted
+Gear receipt validation. A minimal Priority runner reached Career and reopened
+after process restart at revision 9/9. Catalog work is reduced on the UI thread;
+some first loads remain slow. Karma's next Creation step remains unavailable.
+Other methods and all Career actions are not fully verified.
+
+Local offline Docker build, isolated existing-key signing and independent
+artifact verification passed. This is an explicit source assembly, not a claim
+of one shared sealed package graph, hosted qualification, physical Play install,
+Full Editing, tablet or Rook readiness. Source integration remains separate.
+Code18 is consumed; the next upload requires19 or a higher unused code.
+
+## Historical observed Internal release: Preview 17 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T14:59:43Z` shows
 `17 (0.1.0-preview.17)` as **Available to internal testers** on the active
