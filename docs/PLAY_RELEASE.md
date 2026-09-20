@@ -1,5 +1,18 @@
 # Play release contract
 
+## Active delivery model — local Internal updates
+
+The owner-approved local Docker build/signing model is canonical for routine
+Internal updates. Follow [Local Internal delivery](LOCAL_INTERNAL_DELIVERY.md),
+which binds the current Design policy and preserves focused app checks, key
+isolation, artifact/certificate verification and real Play readback. A local
+candidate does not require or impersonate a hosted two-green receipt.
+
+The hosted builder/signer and ordered Review-to-Main sections below are retained
+for historical replay only. Their guards and original policy bindings remain;
+they are not extra prerequisites for the local lane. Optional full E2E remains
+manual. Source-only CI cannot be reported as compile/runtime or release success.
+
 ## Current observed Internal release: Preview 18 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T20:58:28Z` shows
@@ -423,10 +436,11 @@ an additional, independent check.
 The aggregate, P0 envelope, and ordered Review→Main common authority must all
 contain the same `policyAuthorities.design` binding. Missing, older, or
 substituted policy bindings fail closed even when artifact hashes are resealed.
-Release preparation compares this binding with the existing release-source
-graph's exact Design repository, commit, and tree. A Design pin change requires
-a new full PR gate, exact-main gate, and ordered qualification; previous
-eligibility receipts and detached approvals cannot authorize that new tree.
+Historical hosted release preparation compares this binding with the existing release-source
+graph's exact Design repository, commit, and tree. Within that historical
+protocol, a changed pin cannot reuse prior ordered qualification or detached
+approvals. This does not impose a double full run on current local delivery,
+which independently binds `eng/local-internal-design-policy-authority.json`.
 
 ### General and public release gates — outside Preview.12 Internal
 
