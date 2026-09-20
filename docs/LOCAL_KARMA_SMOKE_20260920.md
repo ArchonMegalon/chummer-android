@@ -95,3 +95,43 @@ The owned emulator and temporary builders are stopped; Arr remains stopped.
 This is still a pending Karma draft. Awakened choices, remaining domains and
 whole-runner finalization are unfinished. No full-gear/parity, release signing,
 new package seal, main merge or Play publication claim is made.
+
+## Equipment hashing performance increment
+
+Core `a73f502146cc1c04464bd3265eac0475041be6d6` removes intermediate JSON
+trees from the source-node/option/catalog hash hot paths without changing the
+canonical bytes or persisted contracts. Karma no longer checks the full catalog
+twice inside one basket evaluation: the existing basket projector still admits
+every row. Fresh-source, budget, history, revision and atomic-write checks remain.
+
+Eleven focused Core tests pass, including every real catalog row against the
+unchanged generic digest oracle, Unicode/null/decimal cases, unselected tampering,
+stale sources, atomic source drift and the existing Priority gear regressions.
+The expanded opt-in native source profiler uses the real 1,598-row catalog and
+a saved history with equipment. Catalog-validation allocations fell from
+47,698,968 to 23,454,360 bytes per call; sampled Core saved Open fell from
+682.8 to 483.2 ms. These are local diagnostics, not a Release performance gate.
+
+The local JIT Debug APK built with zero warnings/errors, no proof instrumentation
+or upload key. SHA-256:
+`47a6be559d428e18f1982da8ed5a2a00d35c31e955976507313dde7073d42fbd`.
+Both old and new installed APK hashes were read back. In the same emulator on
+the same retained draft, overview readiness improved from 30.84 to 21.13s;
+equipment readiness from 27.07 to 17.02s. This includes UIAutomator overhead;
+it is a single paired observation, not acceptable Release responsiveness proof.
+Review navigation still took about 20s. A System UI boot ANR was retained and
+dismissed separately from the app route; no clean-boot claim is made.
+
+The upgrade and unconfirmed quantity change preserved the complete workspace
+bytes. One confirmation saved revision 13/13, quantity 2, 50 nuyen spent and
+20,950 remaining. All eleven preceding decisions, other auxiliary fields and
+the character Envelope were unchanged. A verified force-stop/new PID reopened
+the actual equipment page with the same quantity, revision and budgets.
+Saved/reopened workspace SHA-256:
+`30b34ac0160bdde1e4652bbde69a4c202c656acb80155aa5faa759e4b42ffdf6`.
+Raw local packet: `karma-gear-performance-20260920.mye1ktSJ`.
+
+This remains local feature-branch work, not a merged/sealed release or a Play
+upload. Karma finalization and awakened choices remain incomplete; remaining
+load/navigation latency still needs work. Temporary builders and the owned
+emulator were stopped after the check. Arr was not restarted.

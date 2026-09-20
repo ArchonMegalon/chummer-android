@@ -32,8 +32,8 @@ internal static partial class AfterRunAuthorityHarness
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 long start = Stopwatch.GetTimestamp();
-                var loaded = service.Load(id, includeSkills: true, includeQualities: true);
-                Require(loaded.Value is { SkillsCatalog: not null, Talents: not null, QualitiesCatalog: not null },
+                var loaded = service.Load(id, includeSkills: true, includeQualities: true, includeGear: true);
+                Require(loaded.Value is { SkillsCatalog: not null, Talents: not null, QualitiesCatalog: not null, GearAuthority: not null },
                     "Profile load failed: " + string.Join(",", loaded.Blockers));
                 var state = loaded.Value!;
                 Console.WriteLine($"SOURCE load {attempt}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms");
@@ -44,10 +44,12 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     ProfileQualityDigests(state.QualitiesCatalog.Options);
                     ProfileQualityCatalogDigest(state.QualitiesCatalog);
+                    ProfileGearAuthority(state.GearAuthority!);
                 }
                 start = Stopwatch.GetTimestamp();
                 var human = state.Options.Single(option => option.Label == "Human");
-                var preview = service.Preview(state.Binding, human.OptionId, "mundane", [], new([], []), qualityOptionIds: []);
+                var preview = service.Preview(state.Binding, human.OptionId, "mundane", [], new([], []),
+                    resourceKarmaInvestment: 10.5m, qualityOptionIds: [], gearSelections: []);
                 Require(preview.Value is not null, "Profile preview failed: " + string.Join(",", preview.Blockers));
                 Console.WriteLine($"SOURCE preview {attempt}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms");
             }
@@ -63,7 +65,7 @@ internal static partial class AfterRunAuthorityHarness
             var writer = new CharacterCreationKarmaMetatypeService(store, resolver);
             for (int decision = 0; decision < 7; decision++)
             {
-                var state = writer.Load(id, includeSkills: true, includeQualities: true).Value!;
+                var state = writer.Load(id, includeSkills: true, includeQualities: true, includeGear: decision == 6).Value!;
                 var human = state.Options.Single(option => option.Label == "Human");
                 var english = state.SkillsCatalog!.KnowledgeSkills.Single(skill => skill.Name == "English");
                 var pistols = state.SkillsCatalog.ActiveSkills.Single(skill => skill.Name == "Pistols");
@@ -72,10 +74,13 @@ internal static partial class AfterRunAuthorityHarness
                     new(pistols.SourceSkillId, pistols.Kind, 1)];
                 var skills = new CharacterCreationKarmaSkillsSelection(allocations, []);
                 string[] qualities = [state.QualitiesCatalog!.Options.Single(item => item.Name == "Unsteady Hands").OptionId];
-                var quote = writer.Preview(state.Binding, human.OptionId, "mundane", [], skills, 10.5m, qualities).Value!;
+                CharacterCreationGearSelection[]? gear = decision == 6
+                    ? [new(state.GearAuthority!.Options.First(option => option.IsSelectable && option.Name.Contains("Flashlight", StringComparison.Ordinal)).OptionId, 1)]
+                    : null;
+                var quote = writer.Preview(state.Binding, human.OptionId, "mundane", [], skills, 10.5m, qualities, gear).Value!;
                 Require(quote.CanSelect, "History profile quote failed.");
                 Require(writer.Confirm(new(quote.Binding, human.OptionId, quote.QuoteDigest,
-                    Guid.NewGuid(), true, "mundane", [], skills, 10.5m, qualities)).Value is not null,
+                    Guid.NewGuid(), true, "mundane", [], skills, 10.5m, qualities, gear)).Value is not null,
                     "History profile confirmation failed.");
             }
             long historyStart = Stopwatch.GetTimestamp();
@@ -93,6 +98,26 @@ internal static partial class AfterRunAuthorityHarness
                 && saved.SavedRevision == reopened.SavedRevision, "Profiling a saved draft changed it.");
             Console.WriteLine("PASS Karma source profile: seven real confirmations, read-only reopen");
         });
+    }
+
+    private static void ProfileGearAuthority(CharacterCreationGearAuthority authority)
+    {
+        Console.WriteLine($"SOURCE gear catalog: options={authority.Options.Count}, "
+            + $"json-bytes={System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(authority).Length}");
+        for (int round = 0; round < 3; round++)
+        {
+            Measure("option validation", () => Require(authority.Options.All(CharacterCreationGearRules.IsValidOption), "Invalid gear row."));
+            Measure("authority hash", () => Require(CharacterCreationGearRules.ComputeAuthorityDigest(authority) == authority.AuthorityDigest, "Invalid gear digest."));
+            Measure("authority validation", () => Require(CharacterCreationGearRules.IsValidAuthority(authority), "Invalid gear authority."));
+        }
+        void Measure(string kind, Action work)
+        {
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            long start = Stopwatch.GetTimestamp();
+            work();
+            Console.WriteLine($"SOURCE gear {kind}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms, "
+                + $"allocated={GC.GetAllocatedBytesForCurrentThread() - allocated}");
+        }
     }
 
     private static void ProfileQualityDigests(IReadOnlyList<CharacterCreationQualityCatalogOption> options)
