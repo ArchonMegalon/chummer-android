@@ -1,7 +1,9 @@
 # Local Karma draft and runtime check — 20 September 2026
 
-This is local Debug/API-36 evidence, not a Play publication or completed Karma
-creation. It supplements the Priority walkthrough; it does not supersede it.
+This is local Debug/API-36 evidence, not a Play publication or complete Karma
+coverage. The latest increment below completes a supported Mundane Karma runner
+into Career; earlier sections remain historical pending-draft evidence. It
+supplements the Priority walkthrough; it does not supersede it.
 
 ## Earlier quality-catalog source and narrow change
 
@@ -157,3 +159,68 @@ starting-cash input, Core completion review/confirmation and fresh Career naviga
 then smoke that route including real save/reopen/process restart. Awakened completion,
 Contacts, purchased lifestyles and remaining creation domains are still unfinished.
 No main merge, package reseal, release signature or Play publication is claimed.
+
+## Native Mundane Karma completion — saved Career after process restart
+
+Core `db0f87f7e5b4d704fd110f4f889e46851ea832d3` and Android product source
+`4c156becbbed6841fe32531a8996a8d48922932e` now expose a separate completion page
+for a saved supported Karma foundation. Presentation remains
+`ce487f3b5eb21129b7ffbac5dcd17ad8b2b64255`. These are local feature branches and
+explicit source roots, not a new sealed release package graph.
+
+Starting-cash terms come from Core. The player enters an explicit dice total;
+there is no preselected roll, generated roll or automatic confirmation. Preview
+shows the Core plan, costs, carryover/discard deltas and source anchors. Editing
+the roll invalidates the displayed review. Confirmation retains the original
+owner, workspace, revision, source and issued-review identities. Unknown outcomes
+are not replayed; a known durable receipt survives canceled/departed UI delivery.
+
+Focused verification:
+
+- Two affected Core completion/terms cases passed, including read-only terms,
+  forged/stale terms, source drift and invalid dice rejection.
+- The Core-backed native phone-page route passed through saved draft, completion,
+  single confirmation and managed Career reopen, including stale controls,
+  explicit consent and DE/ES copy.
+- Four native admission cases passed: owner A→B→A rejection, post-commit
+  cancellation, departed route and lost-result/no-replay recovery.
+- Localization passed for 266 keys, locale fallbacks and source boundaries.
+- The local offline keyless JIT Debug APK built with zero warnings/errors in
+  1m44.57s. No upload key or proof instrumentation was included.
+
+APK SHA-256 (also read back from the installed package):
+`1ce1620ced625028feaca2b1adbf05150a49523b59603098900db4030eb454da`.
+The APK was built before the Android source commit from those unchanged product
+files. Later documentation does not change its binary identity.
+
+Actual API-36 visible route, using the retained isolated Karma fixture:
+
+1. Replacement install preserved the complete revision-13/13 workspace bytes.
+2. The saved Mundane Karma overview exposed explicit completion. Blank starting
+   cash had no enabled preview/confirmation; entering 4 produced a source-owned
+   Street 1d6×20 ¥ review. Preview did not change workspace bytes.
+3. The review showed creation funding 21,000 ¥, Career Karma 7 and Career cash
+   5,080 ¥, including explicit rounding, carryover, discard and starting-cash
+   deltas. These are this fixture's values, not universal defaults.
+4. One visible confirmation saved revision 14/14 and exactly one finalization
+   receipt. The archive retained the entire prior auxiliary state, including all
+   twelve decisions. Final character XML was created=true, Karma build method,
+   AGI 5, Karma 7, nuyen 5,080 and the retained two-item equipment quantity.
+5. The saved receipt opened Career. PID 4134 was force-stopped and its absence
+   verified. A new PID 4864 reopened the Career runner and the actual SR5 Career
+   wizard at revision 14/14, without replaying confirmation.
+6. Saved, restarted and Career-wizard-reopened workspace files were byte-identical:
+   `9fcc5711c5274e5b9f9e25588f9161d4b69a49e173966f0436c0801e78d10c00`.
+
+Raw local packet: `karma-completion-20260920.946omiNy` under the active-worktrees
+directory, including APK, logs, hierarchies, screenshots and before/after files.
+A System UI boot ANR occurred before the app route and was retained and dismissed;
+this is not a clean-boot or Release responsiveness claim. The owned emulator and
+temporary builders are stopped. Arr was not restarted; shared services remain.
+
+Supported Mundane completion now has real phone-route evidence. Awakened
+completion, Contacts, purchased lifestyles, other creation domains and remaining
+load/review UX work are still incomplete. No all-method/parity claim, main merge,
+package reseal, signed release AAB, physical Play install or new Play upload follows
+from this smoke. The stale Design/Android local-versus-hosted qualification-policy
+conflict identified by the September 20 audit remains separate unresolved work.
