@@ -12,6 +12,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
+        if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }
         string[] scenarios = ["commit", "cancel-after-commit", "lost-return",
             "owner-aba", "owner-aba-during-load", "owner-aba-during-preview",
             "route-left", "stale-review", "forged-review", "invalid-budget",

@@ -31,6 +31,7 @@
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />
     <Compile Include="CreationKarmaNativeRuntimeTests.cs" />
     <Compile Include="CreationKarmaPhonePageTests.cs" />
+    <Compile Include="CreationKarmaSourceProfileTests.cs" />
     <Compile Include="CreationResourcesPrerequisiteRebindRuntimeTests.cs" />
     <Compile Include="CreationFinalizationAdmissionRuntimeTests.cs" />
     <Compile Include="CreationBootstrapOwnerRuntimeTests.cs" />
