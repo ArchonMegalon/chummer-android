@@ -11,6 +11,7 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunCreationKarmaAsync(string contentRoot, string? onlyScenario = null)
     {
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
+        if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
         string[] scenarios = ["commit", "cancel-after-commit", "lost-return",
             "owner-aba", "owner-aba-during-load", "owner-aba-during-preview",
             "route-left", "stale-review", "forged-review", "invalid-budget",
@@ -169,19 +170,35 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class KarmaNativeProbe(IOwnerBoundCharacterCreationKarmaMetatypeService actual,
         SynchronizationContext ui) : IOwnerBoundCharacterCreationKarmaMetatypeService
     {
+        public int LoadCalls, PreviewCalls;
+        public TimeSpan LoadTime, PreviewTime;
         public int ConfirmCalls;
+        public bool FailReads;
         public Action? AfterLoad, AfterPreview, AfterConfirm;
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> Load(
             OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false)
-        { AssertBackground(); var result = actual.Load(owner, id, includeSkills); AfterLoad?.Invoke(); return result; }
+        {
+            AssertBackground(); LoadCalls++;
+            if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var result = actual.Load(owner, id, includeSkills);
+            LoadTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
+            AfterLoad?.Invoke(); return result;
+        }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote> Preview(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string optionId,
             string? talentOptionId = null, IReadOnlyList<CharacterCreationKarmaAttributeAllocation>? attributeAllocations = null,
             CharacterCreationKarmaSkillsSelection? skillsSelection = null)
         {
-            AssertBackground(); var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection);
+            AssertBackground(); PreviewCalls++;
+            if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection);
+            PreviewTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterPreview?.Invoke(); return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeCommit> Confirm(

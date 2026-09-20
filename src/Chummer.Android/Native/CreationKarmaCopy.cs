@@ -3,6 +3,7 @@ namespace Chummer.Android.Native;
 internal static class CreationKarmaCopy
 {
     public static string Title => CreationAllocationStrings.Get("Karma.Title", "Karma foundation");
+    public static string Loading => CreationAllocationStrings.Get("Karma.Loading", "Checking rules and saved choices… Your draft is kept while this page loads.");
     public static string Metatype => CreationAllocationStrings.Get("Karma.Metatype", "Metatype");
     public static string Talent => CreationAllocationStrings.Get("Karma.Talent", "Talent");
     public static string Attributes => CreationAllocationStrings.Get("Karma.Attributes", "Attributes");
@@ -18,6 +19,7 @@ internal static class CreationKarmaCopy
     public static string Preview => CreationAllocationStrings.Get("Karma.Preview", "Refresh preview");
     public static string Active => CreationAllocationStrings.Get("Karma.Active", "Active skills");
     public static string Knowledge => CreationAllocationStrings.Get("Karma.Knowledge", "Knowledge points");
+    public static string KnowledgeSkills => CreationAllocationStrings.Get("Karma.KnowledgeSkills", "Knowledge skills");
     public static string Search => CreationAllocationStrings.Get("Karma.Search", "Search catalog");
     public static string Previous => CreationAllocationStrings.Get("Karma.Previous", "Previous page");
     public static string Next => CreationAllocationStrings.Get("Karma.Next", "Next page");

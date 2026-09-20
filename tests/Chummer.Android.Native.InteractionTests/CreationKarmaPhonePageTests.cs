@@ -42,7 +42,11 @@ internal static partial class AfterRunAuthorityHarness
             oldAgility.Value = 1;
             Require(Element<Label>("creation-karma-budget").Text == CreationKarmaCopy.Pending,
                 "Attribute editing displayed stale budget totals as current.");
+            int loadsBeforeBack = probe!.LoadCalls;
+            int previewsBeforeBack = probe.PreviewCalls;
             await Back();
+            Require(probe.LoadCalls == loadsBeforeBack && probe.PreviewCalls == previewsBeforeBack + 1,
+                "Returning to the overview must freshly preview, without a redundant preceding Load.");
             await Click("karma-open-attributes");
             Require(Element<Stepper>("karma-attribute-AGI").Value == 1,
                 "Back navigation silently dropped the uncommitted attribute selection.");
@@ -52,6 +56,8 @@ internal static partial class AfterRunAuthorityHarness
             await Back();
             await Click("karma-open-skills");
             await Click("karma-filter-knowledge");
+            Require(Element<Button>("karma-filter-knowledge").Text == CreationKarmaCopy.KnowledgeSkills,
+                "The catalog filter must not use the knowledge-point payment caption.");
             await Search("English");
             var english = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "English");
             await Click(english.AutomationId);
@@ -104,6 +110,7 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { CultureInfo.CurrentUICulture = prior; }
             ui.AssertHealthy();
+            Console.WriteLine($"Karma phone source work: loads={probe!.LoadCalls}, previews={probe.PreviewCalls}, load-ms={probe.LoadTime.TotalMilliseconds:F0}, preview-ms={probe.PreviewTime.TotalMilliseconds:F0}");
             Console.WriteLine("PASS Karma native phone deep pages: explicit choices, stale controls, draft Back, review/save, cold reopen, DE/ES resources");
 
             CreationKarmaPage Current() => (CreationKarmaPage)navigation.Navigation.NavigationStack.Last();
@@ -133,6 +140,83 @@ internal static partial class AfterRunAuthorityHarness
             }
             async Task Search(string term)
             { Element<SearchBar>("karma-skill-search").Text = term; await Click("karma-search"); }
+        });
+    }
+
+    private static async Task RunKarmaPhoneRevalidationAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            KarmaNativeProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners,
+                karmaDecorator: actual => probe = new(actual, ui));
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", "Karma", default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var session = new CreationKarmaPhoneSession(runtime.Coordinator);
+            await session.ReloadAsync(false, default, () => true);
+            var state = session.Authority!;
+            var draft = new CreationKarmaPhoneSelection(state.Options.Single(o => o.Label == "Human").OptionId,
+                "mundane", []);
+            session.Change(draft);
+            await session.PreviewAsync(default, () => true);
+            var firstQuote = session.Quote;
+            int loads = probe!.LoadCalls, previews = probe.PreviewCalls;
+            await session.ReloadAsync(false, default, () => true);
+            Require(session.QuoteCurrent && !ReferenceEquals(firstQuote, session.Quote)
+                && ReferenceEquals(state, session.Authority)
+                && probe.LoadCalls == loads && probe.PreviewCalls == previews + 1,
+                "Revisit reused an old quote or redundantly loaded before fresh Core revalidation.");
+
+            session.Change(draft with { Attributes = [new("AGI", 99)] });
+            await session.ReloadAsync(false, default, () => true);
+            Require(session.Ready && session.QuoteCurrent && session.Quote is { CanSelect: false }
+                && probe.LoadCalls == loads,
+                "An invalid allocation must remain editable with a freshly validated blocked quote.");
+            session.Change(draft);
+            await session.ReloadAsync(false, default, () => true);
+            Require(session.QuoteCurrent && session.Quote!.CanSelect, "Valid edit failed to recover the draft.");
+
+            probe.FailReads = true;
+            await session.ReloadAsync(false, default, () => true);
+            await session.ConfirmAsync(default, () => true);
+            Require(!session.Ready && !session.QuoteCurrent && probe.ConfirmCalls == 0
+                && probe.LoadCalls == loads + 1 && session.Blockers.Contains(CharacterCreationKarmaMetatypeBlockers.StaleBinding),
+                "A failed fresh read fell back to cached source or permitted confirmation.");
+            probe.FailReads = false;
+            await session.ReloadAsync(false, default, () => true);
+            await session.PreviewAsync(default, () => true);
+            Require(session.QuoteCurrent && session.Selection is { TalentOptionId: "mundane", Attributes.Count: 0 }
+                && session.Selection.MetatypeOptionId == draft.MetatypeOptionId,
+                "Successful reread lost the unsaved selection or failed to reissue the review.");
+
+            bool current = true;
+            probe.AfterPreview = () => current = false;
+            await session.ReloadAsync(false, default, () => current);
+            Require(!session.QuoteCurrent, "A departed page admitted a completed review.");
+            current = true;
+            probe.AfterPreview = null;
+            await session.ReloadAsync(false, default, () => current);
+            Require(session.QuoteCurrent, "Returning to the original frame did not freshly revalidate.");
+
+            probe.AfterPreview = () => { owners.Set(ContactsOwnerB); owners.Set(Chummer.Contracts.Owners.OwnerScope.LocalSingleUser); };
+            await session.ReloadAsync(false, default, () => current);
+            await session.ConfirmAsync(default, () => current);
+            var after = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            Require(!session.Ready && !session.QuoteCurrent && probe.ConfirmCalls == 0
+                && after.ContentRevision == before.ContentRevision
+                && after.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest
+                && owners.ActiveLeases == 0,
+                "Owner A→B→A admitted cached authority, changed state or leaked a lease.");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS Karma phone revalidation: one fresh Preview, editable invalid draft, failed source, departed page, owner ABA, no writes");
         });
     }
 }

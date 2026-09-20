@@ -219,6 +219,8 @@
   <data name="Karma.Preview" xml:space="preserve"><value>Actualizar vista previa</value></data>
   <data name="Karma.Active" xml:space="preserve"><value>Habilidades activas</value></data>
   <data name="Karma.Knowledge" xml:space="preserve"><value>Puntos de conocimiento</value></data>
+  <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Habilidades de conocimiento</value></data>
+  <data name="Karma.Loading" xml:space="preserve"><value>Comprobando reglas y elecciones guardadas… Tu borrador se conserva mientras se carga esta página.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Buscar en el catálogo</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Página anterior</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Página siguiente</value></data>

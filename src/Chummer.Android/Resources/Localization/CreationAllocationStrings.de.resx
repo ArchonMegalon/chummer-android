@@ -219,6 +219,8 @@
   <data name="Karma.Preview" xml:space="preserve"><value>Vorschau aktualisieren</value></data>
   <data name="Karma.Active" xml:space="preserve"><value>Aktionsfertigkeiten</value></data>
   <data name="Karma.Knowledge" xml:space="preserve"><value>Wissenspunkte</value></data>
+  <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Wissensfertigkeiten</value></data>
+  <data name="Karma.Loading" xml:space="preserve"><value>Regeln und gespeicherte Auswahl werden geprüft… Dein Entwurf bleibt beim Laden erhalten.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Katalog durchsuchen</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Vorherige Seite</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Nächste Seite</value></data>

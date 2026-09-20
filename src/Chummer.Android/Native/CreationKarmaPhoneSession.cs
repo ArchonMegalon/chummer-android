@@ -49,6 +49,19 @@ internal sealed class CreationKarmaPhoneSession
     {
         if (Halted || !FrameCurrent || !isCurrentPage()) return;
         var previous = Authority;
+        _quotedVersion = -1;
+        if (Ready && Selection is not null && (!includeSkills || previous?.SkillsCatalog is not null))
+        {
+            // Core Preview already reloads the live workspace and source inputs,
+            // then requires the exact original binding/snapshot. Do not precede
+            // that with another identical catalog load on every deep-page visit.
+            // Only a freshly issued quote permits reuse, never elapsed time or
+            // an unchanged owner/workspace ID alone.
+            await PreviewAsync(ct, isCurrentPage);
+            if (QuoteCurrent || !FrameCurrent || !isCurrentPage()) return;
+            // A missing quote may mean source drift or an editable invalid
+            // choice. Load below distinguishes these without trusting old data.
+        }
         var result = await _coordinator.LoadCreationKarmaAsync(
             includeSkills || previous?.SkillsCatalog is not null, ct, () => FrameCurrent && isCurrentPage());
         if (!FrameCurrent || !isCurrentPage()) return;
@@ -69,6 +82,8 @@ internal sealed class CreationKarmaPhoneSession
         }
         Authority = state;
         if (previous is null) Selection = CreationKarmaPhoneSelection.Restore(state);
+        Quote = null;
+        Access = null;
         _quotedVersion = -1;
         Blockers = [];
     }

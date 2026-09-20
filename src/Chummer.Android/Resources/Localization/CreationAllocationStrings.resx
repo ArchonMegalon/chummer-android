@@ -219,6 +219,8 @@
   <data name="Karma.Preview" xml:space="preserve"><value>Refresh preview</value></data>
   <data name="Karma.Active" xml:space="preserve"><value>Active skills</value></data>
   <data name="Karma.Knowledge" xml:space="preserve"><value>Knowledge points</value></data>
+  <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Knowledge skills</value></data>
+  <data name="Karma.Loading" xml:space="preserve"><value>Checking rules and saved choices… Your draft is kept while this page loads.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Search catalog</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Previous page</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Next page</value></data>

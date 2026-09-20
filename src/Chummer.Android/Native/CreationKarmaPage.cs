@@ -13,6 +13,7 @@ internal sealed class CreationKarmaPage : NativePageBase
     private readonly string? _sourceId, _instanceId, _sourceKind;
     private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
     private readonly ActivityIndicator _loading = new() { HeightRequest = 24 };
+    private readonly Label _loadingText = NativeTheme.Body(CreationKarmaCopy.Loading, NativeTheme.Muted);
     private Label? _status;
     private long _render;
     private string _search = string.Empty;
@@ -31,6 +32,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         _session = session; _step = step; _sourceId = sourceId; _instanceId = instanceId; _sourceKind = sourceKind;
         Title = StepTitle(step);
         AutomationId = "creation-karma-" + step.ToString().ToLowerInvariant();
+        _loadingText.AutomationId = "creation-karma-loading";
         Content = new ScrollView { Content = _body };
     }
 
@@ -49,6 +51,7 @@ internal sealed class CreationKarmaPage : NativePageBase
     {
         _body.IsEnabled = false;
         if (!_body.Children.Contains(_loading)) _body.Children.Insert(0, _loading);
+        if (!_body.Children.Contains(_loadingText)) _body.Children.Insert(1, _loadingText);
         _loading.IsRunning = true;
         base.OnAppearing();
     }
@@ -64,14 +67,21 @@ internal sealed class CreationKarmaPage : NativePageBase
     {
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.FrameCurrent;
+        MarkVisitedStage();
         await _session.ReloadAsync(_step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group,
             cancellationToken, Current);
         if (!Current() || !_session.Ready) return;
-        if (_step == CreationKarmaStep.Attributes && _session.Selection is { TalentOptionId: not null, Attributes: null } attributes)
-            _session.Change(attributes with { Attributes = [] });
-        if (_step == CreationKarmaStep.Skills && _session.Selection is { Attributes: not null, Skills: null } skills)
-            _session.Change(skills with { Skills = new([], []) });
-        await _session.PreviewAsync(cancellationToken, Current);
+        MarkVisitedStage();
+        if (!_session.QuoteCurrent) await _session.PreviewAsync(cancellationToken, Current);
+
+        void MarkVisitedStage()
+        {
+            if (!Current() || !_session.Ready) return;
+            if (_step == CreationKarmaStep.Attributes && _session.Selection is { TalentOptionId: not null, Attributes: null } attributes)
+                _session.Change(attributes with { Attributes = [] });
+            if (_step == CreationKarmaStep.Skills && _session.Selection is { Attributes: not null, Skills: null } skills)
+                _session.Change(skills with { Skills = new([], []) });
+        }
     }
 
     protected override void Refresh()
@@ -251,7 +261,7 @@ internal sealed class CreationKarmaPage : NativePageBase
             AddButton(source.Name, "karma-selected-group-" + source.GroupId, () => Open(CreationKarmaStep.Group, source.GroupId));
         }
         AddButton(CreationKarmaCopy.Active, "karma-filter-active", () => Filter(CharacterCreationSkillKinds.Active));
-        AddButton(CreationKarmaCopy.Knowledge, "karma-filter-knowledge", () => Filter(CharacterCreationSkillKinds.Knowledge));
+        AddButton(CreationKarmaCopy.KnowledgeSkills, "karma-filter-knowledge", () => Filter(CharacterCreationSkillKinds.Knowledge));
         AddButton(CreationKarmaCopy.Groups, "karma-filter-groups", () => Filter("groups"));
         var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-skill-search" };
         long render = _render, appearance = CaptureAppearanceGeneration();
