@@ -7,18 +7,24 @@ internal static class CreationKarmaCopy
     public static string Metatype => CreationAllocationStrings.Get("Karma.Metatype", "Metatype");
     public static string Talent => CreationAllocationStrings.Get("Karma.Talent", "Talent");
     public static string Attributes => CreationAllocationStrings.Get("Karma.Attributes", "Attributes");
+    public static string Qualities => CreationAllocationStrings.Get("Karma.Qualities", "Qualities");
+    public static string QualityHelp => CreationAllocationStrings.Get("Karma.QualityHelp", "Choose qualities from your active sources. Source costs are shown per rating; Core applies profile multipliers and limits to the totals. Choices with unresolved effects or requirements are disabled. Only the final review saves the draft.");
+    public static string QualityUnavailable => CreationAllocationStrings.Get("Karma.QualityUnavailable", "Unavailable in this draft");
+    public static string Selected => CreationAllocationStrings.Get("Karma.Selected", "Selected");
+    public static string QualitySourceCost(string name, int rating, int cost) => CreationAllocationStrings.Format("Karma.QualitySourceCost", "{0} · rating {1} · source cost {2} Karma", name, rating, cost);
+    public static string QualityTotals(int positive, int negative, int net) => CreationAllocationStrings.Format("Karma.QualityTotals", "Qualities: cost {0} · credit {1} · net {2} Karma", positive, negative, net);
     public static string Skills => CreationAllocationStrings.Get("Karma.Skills", "Skills");
     public static string Groups => CreationAllocationStrings.Get("Karma.Groups", "Skill groups");
     public static string Resources => CreationAllocationStrings.Get("Karma.Resources", "Resources");
     public static string ResourceInvestment => CreationAllocationStrings.Get("Karma.ResourceInvestment", "Karma to invest");
-    public static string ResourceHelp => CreationAllocationStrings.Get("Karma.ResourceHelp", "Preview profile-funded nuyen. Qualities, equipment purchases and final starting cash are not included yet. Use this amount in the draft, then review to save.");
+    public static string ResourceHelp => CreationAllocationStrings.Get("Karma.ResourceHelp", "Preview profile-funded nuyen. Quality-based nuyen modifiers, equipment purchases and final starting cash are not included yet. Use this amount in the draft, then review to save.");
     public static string InvalidNumber => CreationAllocationStrings.Get("Karma.InvalidNumber", "Enter a non-negative number using your language's decimal separator, without thousands separators.");
     public static string ResourceLimit(decimal maximum) => CreationAllocationStrings.Format("Karma.ResourceLimit", "Profile limit: {0} Karma", maximum);
-    public static string ResourceFunding(decimal karma, decimal nuyen) => CreationAllocationStrings.Format("Karma.ResourceFunding", "Resources: {0} Karma → {1} ¥ (before qualities and equipment)",
+    public static string ResourceFunding(decimal karma, decimal nuyen) => CreationAllocationStrings.Format("Karma.ResourceFunding", "Resources: {0} Karma → {1} ¥ (profile funding, before equipment)",
         karma.ToString("G29", System.Globalization.CultureInfo.CurrentCulture),
         nuyen.ToString("N2", System.Globalization.CultureInfo.CurrentCulture));
     public static string Review => CreationAllocationStrings.Get("Karma.Review", "Review draft");
-    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma foundation: metatype, talent, attributes, skills and resource funding. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.");
+    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma foundation: metatype, talent, attributes, supported qualities, skills and resource funding. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.");
     public static string Stale => CreationAllocationStrings.Get("Karma.Stale", "This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.");
     public static string Saved => CreationAllocationStrings.Get("Karma.Saved", "Pending Karma draft saved. The runner has not been finalized.");
     public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose explicitly");

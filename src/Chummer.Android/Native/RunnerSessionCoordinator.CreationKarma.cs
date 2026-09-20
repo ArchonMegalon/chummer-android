@@ -13,11 +13,13 @@ internal sealed record CreationKarmaPhoneSelection(
     string? TalentOptionId = null,
     IReadOnlyList<CharacterCreationKarmaAttributeAllocation>? Attributes = null,
     CharacterCreationKarmaSkillsSelection? Skills = null,
-    decimal? ResourceKarmaInvestment = null)
+    decimal? ResourceKarmaInvestment = null,
+    IReadOnlyList<string>? QualityOptionIds = null)
 {
     public CreationKarmaPhoneSelection Freeze() => this with
     {
         Attributes = Attributes is null ? null : Array.AsReadOnly(Attributes.ToArray()),
+        QualityOptionIds = QualityOptionIds is null ? null : Array.AsReadOnly(QualityOptionIds.ToArray()),
         Skills = Skills is null ? null : Skills with
         {
             Skills = Array.AsReadOnly(Skills.Skills.ToArray()),
@@ -28,7 +30,7 @@ internal sealed record CreationKarmaPhoneSelection(
     public static CreationKarmaPhoneSelection? Restore(CharacterCreationKarmaMetatypeState state)
         => state.Selection is { Command: { } command }
             ? new CreationKarmaPhoneSelection(command.MetatypeOptionId, command.TalentOptionId,
-                command.AttributeAllocations, command.SkillsSelection, command.ResourceKarmaInvestment).Freeze()
+                command.AttributeAllocations, command.SkillsSelection, command.ResourceKarmaInvestment, command.QualityOptionIds).Freeze()
             : null;
 }
 
@@ -103,7 +105,8 @@ public sealed partial class RunnerSessionCoordinator
            && IsKarmaDisplayCurrent(original) && KarmaMatchesDisplay(state, State);
 
     internal Task<CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState>> LoadCreationKarmaAsync(
-        bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null)
+        bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null,
+        bool includeQualities = false)
     {
         var original = State;
         return WithWorkspaceActivationGateAsync(async () =>
@@ -113,7 +116,7 @@ public sealed partial class RunnerSessionCoordinator
                 || original.DisplayOwnerContext is not { IsValid: true } owner
                 || original.WorkspaceId is not { } workspace)
                 return KarmaStale<CharacterCreationKarmaMetatypeState>();
-            var result = await Task.Run(() => service.Load(owner, workspace, includeSkills), cancellationToken);
+            var result = await Task.Run(() => service.Load(owner, workspace, includeSkills, includeQualities), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original))
                 return KarmaStale<CharacterCreationKarmaMetatypeState>();
@@ -122,7 +125,8 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     internal Task<CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen>> OpenCreationKarmaAsync(
-        bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null)
+        bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null,
+        bool includeQualities = false)
     {
         var original = State;
         return WithWorkspaceActivationGateAsync(async () =>
@@ -134,7 +138,7 @@ public sealed partial class RunnerSessionCoordinator
                 return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
             _karmaCurrentState = null;
             _karmaCurrentReview = null;
-            var result = await Task.Run(() => service.Open(owner, workspace, includeSkills), cancellationToken);
+            var result = await Task.Run(() => service.Open(owner, workspace, includeSkills, includeQualities), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original))
                 return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
@@ -186,7 +190,7 @@ public sealed partial class RunnerSessionCoordinator
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
             _karmaCurrentReview = null;
             var result = await Task.Run(() => service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
-                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment), cancellationToken);
+                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment, frozen.QualityOptionIds), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsCreationKarmaStateCurrent(state))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
@@ -206,13 +210,16 @@ public sealed partial class RunnerSessionCoordinator
                 || quote.Metatype.OptionId != frozen.MetatypeOptionId
                 || quote.Talent?.OptionId != frozen.TalentOptionId
                 || quote.Resources?.KarmaInvestment != frozen.ResourceKarmaInvestment
+                || (quote.Qualities is null) != (frozen.QualityOptionIds is null)
+                || quote.Qualities is { } qualities && !qualities.Selections.Select(item => item.OptionId)
+                    .SequenceEqual(frozen.QualityOptionIds!.Order(StringComparer.Ordinal), StringComparer.Ordinal)
                 || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(quote.QuoteDigest))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
             // The operation ID and exact reviewed command are issued once,
             // not rebuilt from mutable page controls on the Confirm click.
             var command = new CharacterCreationKarmaMetatypeConfirmRequest(state.Binding,
                 frozen.MetatypeOptionId, quote.QuoteDigest, Guid.NewGuid(), true,
-                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment);
+                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment, frozen.QualityOptionIds);
             _karmaReviews.Add(quote, new(state, original, command));
             _karmaCurrentReview = quote;
         }

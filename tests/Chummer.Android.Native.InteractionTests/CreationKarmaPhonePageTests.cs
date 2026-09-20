@@ -72,6 +72,29 @@ internal static partial class AfterRunAuthorityHarness
             Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
                 && probe!.ConfirmCalls == 0, "Selecting phone options mutated the workspace without review.");
             await Back();
+            await Click("karma-open-qualities");
+            await QualitySearch("Code of Honor");
+            Require(IssuedElements(Current()).OfType<Button>().Any(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true)
+                && IssuedElements(Current()).OfType<Button>().Where(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true).All(b => !b.IsEnabled),
+                "An unresolved source prompt must not be offered as an ordinary purchase.");
+            await QualitySearch("Unsteady Hands");
+            var addNegative = IssuedElements(Current()).OfType<Button>().Single(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true);
+            string negativeId = addNegative.AutomationId["karma-add-quality-".Length..];
+            await Click(addNegative.AutomationId);
+            Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(0, 7, -7),
+                "Quality credit was not projected from the current Core quote.");
+            await Click("karma-remove-quality-" + negativeId);
+            await ui.BeginAsyncVoid(() => ((IButtonController)addNegative).SendClicked());
+            Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(0, 0, 0),
+                "An obsolete quality button restored a removed choice.");
+            await Click("karma-add-quality-" + negativeId);
+            await QualitySearch("Overclocker");
+            var addPositive = IssuedElements(Current()).OfType<Button>().Single(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true);
+            await Click(addPositive.AutomationId);
+            Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(5, 7, -2)
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision,
+                "Quality selection must show Core net costs without persisting before review.");
+            await Back();
             await Click("karma-open-resources");
             var resourceInput = Element<Entry>("karma-resource-investment");
             var numberCulture = CultureInfo.CurrentCulture;
@@ -108,7 +131,9 @@ internal static partial class AfterRunAuthorityHarness
                 && decision.Quote.Skills!.Skills.Single(s => s.Name == "Pistols").Rating == 1
                 && decision.Quote.Skills.NativeLanguagesUsed == 1
                 && decision.Command.ResourceKarmaInvestment == 10.5m
-                && decision.Quote.Resources!.NuyenFromKarma == 21000m,
+                && decision.Quote.Resources!.NuyenFromKarma == 21000m
+                && decision.Command.QualityOptionIds!.Count == 2
+                && decision.Quote.Qualities!.Costs.NetKarmaSpent == -2,
                 "Native review did not persist exactly the selected source-bound pending foundation.");
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
@@ -142,6 +167,11 @@ internal static partial class AfterRunAuthorityHarness
             Require(Element<Entry>("karma-resource-investment").Text == 10.5m.ToString(CultureInfo.CurrentCulture),
                 "Cold reopen lost the resource investment.");
             await Back();
+            await Click("karma-open-qualities");
+            Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-remove-quality-", StringComparison.Ordinal) == true) == 2
+                && Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(5, 7, -2),
+                "Cold reopen lost the selected quality identities or recalculated profile costs.");
+            await Back();
             await Click("karma-open-skills");
             Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-selected-skill-", StringComparison.Ordinal) == true) == 2,
                 "Reopened phone page lost the native language or active skill.");
@@ -151,8 +181,10 @@ internal static partial class AfterRunAuthorityHarness
             {
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
                 Require(CreationKarmaCopy.Title == "Karma-Grunddaten", "German regional resources are missing.");
+                Require(CreationKarmaCopy.Qualities == "Vor- und Nachteile", "German quality resources are missing.");
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
                 Require(CreationKarmaCopy.Confirm == "Confirmar y guardar borrador", "Spanish regional resources are missing.");
+                Require(CreationKarmaCopy.Qualities == "Cualidades", "Spanish quality resources are missing.");
             }
             finally { CultureInfo.CurrentUICulture = prior; }
             ui.AssertHealthy();
@@ -186,6 +218,8 @@ internal static partial class AfterRunAuthorityHarness
             }
             async Task Search(string term)
             { Element<SearchBar>("karma-skill-search").Text = term; await Click("karma-search"); }
+            async Task QualitySearch(string term)
+            { Element<SearchBar>("karma-quality-search").Text = term; await Click("karma-quality-search-go"); }
         });
     }
 

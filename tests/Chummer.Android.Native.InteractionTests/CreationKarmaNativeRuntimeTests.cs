@@ -75,7 +75,7 @@ internal static partial class AfterRunAuthorityHarness
                     continue;
                 }
                 if (scenario == "owner-aba-during-load") probe!.AfterLoad = Aba;
-                var loaded = await runtime.Coordinator.LoadCreationKarmaAsync(includeSkills: true);
+                var loaded = await runtime.Coordinator.LoadCreationKarmaAsync(includeSkills: true, includeQualities: true);
                 if (scenario == "owner-aba-during-load")
                 {
                     Require(loaded.Value is null && probe!.ConfirmCalls == 0 && Unchanged(),
@@ -95,14 +95,16 @@ internal static partial class AfterRunAuthorityHarness
                 var skillItems = new[] {
                     new CharacterCreationKarmaSkillAllocation(english.SourceSkillId, english.Kind, 0, IsNativeLanguage: true),
                     new CharacterCreationKarmaSkillAllocation(pistol.SourceSkillId, pistol.Kind, 1) };
+                var qualityIds = new[] { state.QualitiesCatalog!.Options.Single(item => item.Name == "Unsteady Hands").OptionId };
                 var selection = new CreationKarmaPhoneSelection(human.OptionId, "mundane", attributes,
-                    new(skillItems, []), 10.5m);
+                    new(skillItems, []), 10.5m, qualityIds);
                 if (scenario == "owner-aba-during-preview") probe!.AfterPreview = Aba;
                 // Mutate the caller's lists AFTER scheduling: worker must retain
                 // the original reviewed input, not the page's next edit.
                 var previewTask = runtime.Coordinator.PreviewCreationKarmaAsync(state, selection);
                 attributes[0] = new("LOG", 99);
                 skillItems[1] = skillItems[1] with { KarmaLevels = 99 };
+                qualityIds[0] = "caller-mutated";
                 var preview = await previewTask;
                 if (scenario == "owner-aba-during-preview")
                 {
@@ -116,6 +118,9 @@ internal static partial class AfterRunAuthorityHarness
                     && preview.Value.Skills.Selection.Skills.Single(s => !s.IsNativeLanguage).KarmaLevels == 1,
                     "Preview lost source identity, background execution or frozen input: " + string.Join(",", preview.Blockers));
                 var quote = preview.Value!;
+                Require(quote.Qualities is { Costs.NetKarmaSpent: -7 }
+                    && quote.Qualities.Selections.Single().Name == "Unsteady Hands",
+                    "Native preview lost the frozen quality source choice or its Core-owned credit.");
                 var notExplicit = await runtime.Coordinator.ConfirmCreationKarmaAsync(quote, false);
                 Require(notExplicit.Commit is null && probe!.ConfirmCalls == 0,
                     "A preview cannot implicitly authorize persistence.");
@@ -184,6 +189,8 @@ internal static partial class AfterRunAuthorityHarness
                         && draft.Attributes!.Single().KarmaLevels == 1
                         && draft.Skills!.Skills.Single(s => !s.IsNativeLanguage).KarmaLevels == 1
                         && draft.ResourceKarmaInvestment == 10.5m
+                        && draft.QualityOptionIds!.SequenceEqual(quote.Qualities!.Selections.Select(item => item.OptionId))
+                        && restored.Value!.Selection!.Quote.Qualities!.Costs.NetKarmaSpent == -7
                         && restored.Value!.Selection!.Quote.Resources!.NuyenFromKarma == 21000m,
                         "Native reopen lost persisted Karma foundation or substituted Priority defaults.");
                 }
@@ -207,39 +214,41 @@ internal static partial class AfterRunAuthorityHarness
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen> Open(
-            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false)
+            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false)
         {
             AssertBackground(); OpenCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Open(owner, id, includeSkills);
+            var result = actual.Open(owner, id, includeSkills, includeQualities);
             OpenTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             if (result.Value is { } value && TransformOpen is { } transform)
                 result = result with { Value = transform(value) };
             AfterOpen?.Invoke(); return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> Load(
-            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false)
+            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false)
         {
             AssertBackground(); LoadCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Load(owner, id, includeSkills);
+            var result = actual.Load(owner, id, includeSkills, includeQualities);
             LoadTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterLoad?.Invoke(); return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote> Preview(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string optionId,
             string? talentOptionId = null, IReadOnlyList<CharacterCreationKarmaAttributeAllocation>? attributeAllocations = null,
-            CharacterCreationKarmaSkillsSelection? skillsSelection = null, decimal? resourceKarmaInvestment = null)
+            CharacterCreationKarmaSkillsSelection? skillsSelection = null, decimal? resourceKarmaInvestment = null,
+            IReadOnlyList<string>? qualityOptionIds = null)
         {
             AssertBackground(); PreviewCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection, resourceKarmaInvestment);
+            var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection,
+                resourceKarmaInvestment, qualityOptionIds);
             PreviewTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterPreview?.Invoke(); return result;
         }

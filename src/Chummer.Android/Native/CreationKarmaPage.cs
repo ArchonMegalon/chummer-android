@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Skills, Skill, Group, Resources, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
 internal sealed class CreationKarmaPage : NativePageBase
@@ -42,6 +42,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Metatype => CreationKarmaCopy.Metatype,
         CreationKarmaStep.Talent => CreationKarmaCopy.Talent,
         CreationKarmaStep.Attributes => CreationKarmaCopy.Attributes,
+        CreationKarmaStep.Qualities => CreationKarmaCopy.Qualities,
         CreationKarmaStep.Skills or CreationKarmaStep.Skill => CreationKarmaCopy.Skills,
         CreationKarmaStep.Group => CreationKarmaCopy.Groups,
         CreationKarmaStep.Resources => CreationKarmaCopy.Resources,
@@ -71,7 +72,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.FrameCurrent;
         MarkVisitedStage();
         await _session.ReloadAsync(_step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group,
-            cancellationToken, Current);
+            cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
         if (!_session.QuoteCurrent) await _session.PreviewAsync(cancellationToken, Current);
@@ -83,6 +84,9 @@ internal sealed class CreationKarmaPage : NativePageBase
                 _session.Change(attributes with { Attributes = [] });
             if (_step == CreationKarmaStep.Skills && _session.Selection is { Attributes: not null, Skills: null } skills)
                 _session.Change(skills with { Skills = new([], []) });
+            if (_step == CreationKarmaStep.Qualities && _session.Authority?.QualitiesCatalog is not null
+                && _session.Selection is { Attributes: not null, QualityOptionIds: null } qualities)
+                _session.Change(qualities with { QualityOptionIds = [] });
         }
     }
 
@@ -124,6 +128,7 @@ internal sealed class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Metatype: AddMetatypes(); break;
             case CreationKarmaStep.Talent: AddTalents(); break;
             case CreationKarmaStep.Attributes: AddAttributes(); break;
+            case CreationKarmaStep.Qualities: AddQualities(); break;
             case CreationKarmaStep.Skills: AddSkills(); break;
             case CreationKarmaStep.Skill: AddSkillEditor(); break;
             case CreationKarmaStep.Group: AddGroupEditor(); break;
@@ -173,6 +178,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Metatype, "karma-open-metatype", () => Open(CreationKarmaStep.Metatype));
         AddButton(CreationKarmaCopy.Talent, "karma-open-talent", () => Open(CreationKarmaStep.Talent), selection is not null);
         AddButton(CreationKarmaCopy.Attributes, "karma-open-attributes", () => Open(CreationKarmaStep.Attributes), selection?.TalentOptionId is not null);
+        AddButton(CreationKarmaCopy.Qualities, "karma-open-qualities", () => Open(CreationKarmaStep.Qualities), selection?.Attributes is not null);
         AddButton(CreationKarmaCopy.Skills, "karma-open-skills", () => Open(CreationKarmaStep.Skills), selection?.Attributes is not null);
         AddButton(CreationKarmaCopy.Resources, "karma-open-resources", () => Open(CreationKarmaStep.Resources),
             selection?.Attributes is not null && _session.Authority?.ResourcesPolicy is not null);
@@ -240,6 +246,62 @@ internal sealed class CreationKarmaPage : NativePageBase
                 }));
         }
         AddButton(CreationKarmaCopy.Preview, "karma-preview-attributes", Preview);
+    }
+
+    private void AddQualities()
+    {
+        if (_session.Selection is not { Attributes: not null, QualityOptionIds: { } selected }
+            || _session.Authority?.QualitiesCatalog is not { } catalog) return;
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.QualityHelp, NativeTheme.Muted));
+        AddQualityTotals();
+        // Selected rows stay available for removal even when another choice has
+        // made the combined draft invalid. No UI-side eligibility calculation.
+        foreach (string id in selected)
+        {
+            var option = catalog.Options.Single(item => item.OptionId == id);
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.QualitySourceCost(option.Name, option.Rating, option.KarmaCost)));
+            AddButton(CreationKarmaCopy.Remove, "karma-remove-quality-" + id, async () =>
+            {
+                Change(_session.Selection! with { QualityOptionIds = _session.Selection!.QualityOptionIds!.Where(item => item != id).ToArray() });
+                await Preview();
+            });
+        }
+        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-quality-search" };
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
+        _body.Add(search);
+        AddButton(CreationKarmaCopy.Search, "karma-quality-search-go", () => { _page = 0; return Task.CompletedTask; });
+        var rows = catalog.Options.Where(item => item.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        _page = Math.Min(_page, Math.Max(0, (rows.Length - 1) / PageSize));
+        foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
+        {
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.QualitySourceCost(option.Name, option.Rating, option.KarmaCost)));
+            if (!option.IsSelectable)
+                _body.Add(NativeTheme.Body(CreationKarmaCopy.QualityUnavailable + " · " + option.DisableReasonKey, NativeTheme.Muted));
+            foreach (string anchor in option.SourceAnchorIds) _body.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
+            bool alreadySelected = selected.Contains(option.OptionId, StringComparer.Ordinal);
+            AddButton(alreadySelected ? CreationKarmaCopy.Selected : CreationKarmaCopy.UseSelection,
+                "karma-add-quality-" + option.OptionId, async () =>
+                {
+                    // Changing a rating replaces that source choice, never buys
+                    // a second instance or accumulates an earlier cost/credit.
+                    var retained = _session.Selection!.QualityOptionIds!.Where(id =>
+                        catalog.Options.Single(item => item.OptionId == id).SelectionKey != option.SelectionKey);
+                    Change(_session.Selection with { QualityOptionIds = retained.Append(option.OptionId).ToArray() });
+                    await Preview();
+                }, option.IsSelectable && !alreadySelected);
+        }
+        AddButton(CreationKarmaCopy.Previous, "karma-quality-previous", () => { _page--; return Task.CompletedTask; }, _page > 0);
+        AddButton(CreationKarmaCopy.Next, "karma-quality-next", () => { _page++; return Task.CompletedTask; }, (_page + 1) * PageSize < rows.Length);
+    }
+
+    private void AddQualityTotals()
+    {
+        if (!_session.QuoteCurrent || _session.Quote?.Qualities is not { } qualities) return;
+        var totals = NativeTheme.Body(CreationKarmaCopy.QualityTotals(qualities.Costs.PositiveKarmaSpent,
+            qualities.Costs.NegativeKarmaGranted, qualities.Costs.NetKarmaSpent));
+        totals.AutomationId = "karma-quality-totals";
+        _body.Add(totals);
     }
 
     private void AddSkills()
@@ -382,6 +444,9 @@ internal sealed class CreationKarmaPage : NativePageBase
         if (!_session.QuoteCurrent || _session.Quote is not { } quote) return;
         _body.Add(NativeTheme.Body(CreationKarmaCopy.Cost(quote.Metatype.Label, quote.Metatype.KarmaCost)));
         if (quote.Talent is { } talent) _body.Add(NativeTheme.Body(CreationKarmaCopy.Cost(talent.Name, talent.KarmaCost)));
+        AddQualityTotals();
+        foreach (var quality in quote.Qualities?.Selections ?? [])
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.QualitySourceCost(quality.Name, quality.Rating, quality.KarmaCost)));
         foreach (var attribute in quote.Attributes?.Attributes ?? [])
             _body.Add(NativeTheme.Body(CreationKarmaCopy.ValueCost(CreationAllocationStrings.AttributeName(attribute.AttributeId),
                 attribute.Current, attribute.KarmaCost)));

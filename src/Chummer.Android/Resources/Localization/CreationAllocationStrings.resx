@@ -210,13 +210,13 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma foundation: metatype, talent, attributes, skills and resource funding. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma foundation: metatype, talent, attributes, supported qualities, skills and resource funding. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
-  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen. Qualities, equipment purchases and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen. Quality-based nuyen modifiers, equipment purchases and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
   <data name="Karma.InvalidNumber" xml:space="preserve"><value>Enter a non-negative number using your language's decimal separator, without thousands separators.</value></data>
   <data name="Karma.ResourceLimit" xml:space="preserve"><value>Profile limit: {0} Karma</value></data>
-  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Resources: {0} Karma → {1} ¥ (before qualities and equipment)</value></data>
+  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Resources: {0} Karma → {1} ¥ (profile funding, before equipment)</value></data>
   <data name="Karma.Stale" xml:space="preserve"><value>This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.</value></data>
   <data name="Karma.Saved" xml:space="preserve"><value>Pending Karma draft saved. The runner has not been finalized.</value></data>
   <data name="Karma.Choose" xml:space="preserve"><value>Choose explicitly</value></data>
@@ -247,4 +247,10 @@
   <data name="Karma.Levels" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Knowledge points: {0} / {1}</value></data>
   <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
+  <data name="Karma.Qualities" xml:space="preserve"><value>Qualities</value></data>
+  <data name="Karma.QualityHelp" xml:space="preserve"><value>Choose qualities from your active sources. Source costs are shown per rating; Core applies profile multipliers and limits to the totals. Choices with unresolved effects or requirements are disabled. Only the final review saves the draft.</value></data>
+  <data name="Karma.QualityUnavailable" xml:space="preserve"><value>Unavailable in this draft</value></data>
+  <data name="Karma.Selected" xml:space="preserve"><value>Selected</value></data>
+  <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · rating {1} · source cost {2} Karma</value></data>
+  <data name="Karma.QualityTotals" xml:space="preserve"><value>Qualities: cost {0} · credit {1} · net {2} Karma</value></data>
 </root>

@@ -210,13 +210,13 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Fertigkeiten</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Entwurf prüfen</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Grunddaten: Metatyp, Talent, Attribute, Fertigkeiten und Ressourcenfinanzierung. Gespeichert wird ein Entwurf, kein fertiger Runner. Weitere Erstellungsschritte und der Abschluss sind noch nicht verfügbar.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Grunddaten: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten und Ressourcenfinanzierung. Gespeichert wird ein Entwurf, kein fertiger Runner. Weitere Erstellungsschritte und der Abschluss sind noch nicht verfügbar.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
-  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel. Vor- und Nachteile, Ausrüstungskäufe und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel. Nuyen-Modifikatoren durch Vor-/Nachteile, Ausrüstungskäufe und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
   <data name="Karma.InvalidNumber" xml:space="preserve"><value>Eine nicht negative Zahl mit dem Dezimaltrennzeichen deiner Sprache eingeben, ohne Tausendertrennzeichen.</value></data>
   <data name="Karma.ResourceLimit" xml:space="preserve"><value>Profilgrenze: {0} Karma</value></data>
-  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Ressourcen: {0} Karma → {1} ¥ (vor Vor-/Nachteilen und Ausrüstung)</value></data>
+  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Ressourcen: {0} Karma → {1} ¥ (Profilfinanzierung, vor Ausrüstung)</value></data>
   <data name="Karma.Stale" xml:space="preserve"><value>Dieser Entwurf ist nicht mehr bereit. Zum Runner zurückkehren und neu öffnen; keine Auswahl wird automatisch übernommen.</value></data>
   <data name="Karma.Saved" xml:space="preserve"><value>Karma-Entwurf gespeichert. Der Runner wurde noch nicht abgeschlossen.</value></data>
   <data name="Karma.Choose" xml:space="preserve"><value>Ausdrücklich auswählen</value></data>
@@ -247,4 +247,10 @@
   <data name="Karma.Levels" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Wissenspunkte: {0} / {1}</value></data>
   <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
+  <data name="Karma.Qualities" xml:space="preserve"><value>Vor- und Nachteile</value></data>
+  <data name="Karma.QualityHelp" xml:space="preserve"><value>Auswahl aus deinen aktiven Quellen. Quellenkosten gelten für die angezeigte Stufe; Core berechnet Profilfaktoren und Grenzen in der Bilanz. Nicht aufgelöste Wirkungen oder Voraussetzungen sind gesperrt. Erst die abschließende Prüfung speichert den Entwurf.</value></data>
+  <data name="Karma.QualityUnavailable" xml:space="preserve"><value>In diesem Entwurf nicht verfügbar</value></data>
+  <data name="Karma.Selected" xml:space="preserve"><value>Ausgewählt</value></data>
+  <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · Stufe {1} · Quellenkosten {2} Karma</value></data>
+  <data name="Karma.QualityTotals" xml:space="preserve"><value>Vor-/Nachteile: Kosten {0} · Gutschrift {1} · netto {2} Karma</value></data>
 </root>
