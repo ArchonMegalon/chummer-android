@@ -256,5 +256,14 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeCommit> Confirm(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeConfirmRequest request)
         { AssertBackground(); ConfirmCalls++; var result = actual.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
+        public CharacterCreationFoundationResult<CharacterCreationKarmaFinalizationBudgetQuote> PreviewFinalizationBudget(
+            OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal)
+        { AssertBackground(); return actual.PreviewFinalizationBudget(owner, binding, quoteDigest, diceTotal); }
+        public CharacterCreationFoundationResult<CharacterCreationFinalizationReview> ReviewFinalization(
+            OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal)
+        { AssertBackground(); return actual.ReviewFinalization(owner, binding, quoteDigest, diceTotal); }
+        public CharacterCreationFoundationResult<CharacterCreationFinalizationReceipt> ConfirmFinalization(
+            OwnerContextStamp owner, CharacterCreationKarmaFinalizationConfirmRequest request)
+        { AssertBackground(); return actual.ConfirmFinalization(owner, request); }
     }
 }

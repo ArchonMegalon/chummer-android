@@ -135,3 +135,25 @@ This remains local feature-branch work, not a merged/sealed release or a Play
 upload. Karma finalization and awakened choices remain incomplete; remaining
 load/navigation latency still needs work. Temporary builders and the owned
 emulator were stopped after the check. Arr was not restarted.
+
+## Core completion follow-up — not yet a phone route
+
+The local Core worktree now has a source-bound whole-Karma review and an isolated
+atomic completion transaction, with saved selections archived rather than lost.
+Human/Elf composition, source/profile cash limits, explicit dice total, concurrent
+confirmation, owner isolation, injected pre/post-rename failure and cold receipt
+recovery have focused passing Core tests. A completed runner also passed its first
+Core Career reputation and After Run reward mutations after cold reopen.
+
+The managed native phone-page harness was rebuilt against these Core interfaces.
+Its existing pending-draft route passed (selection, stale controls, Back,
+review/save, managed cold reopen, German/Spanish copy). The test decorator now
+forwards the new completion operations while retaining its UI-thread guard.
+
+This is not Android finalization proof: the phone completion page is not yet
+wired, no new APK was built in this follow-up, and the prior physical/emulator
+artifact remains pending-draft evidence only. Next: integrate explicit source-owned
+starting-cash input, Core completion review/confirmation and fresh Career navigation;
+then smoke that route including real save/reopen/process restart. Awakened completion,
+Contacts, purchased lifestyles and remaining creation domains are still unfinished.
+No main merge, package reseal, release signature or Play publication is claimed.
