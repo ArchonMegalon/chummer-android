@@ -32,14 +32,18 @@ internal static partial class AfterRunAuthorityHarness
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 long start = Stopwatch.GetTimestamp();
-                var loaded = service.Load(id, includeSkills: true);
-                Require(loaded.Value is { SkillsCatalog: not null, Talents: not null },
+                var loaded = service.Load(id, includeSkills: true, includeQualities: true);
+                Require(loaded.Value is { SkillsCatalog: not null, Talents: not null, QualitiesCatalog: not null },
                     "Profile load failed: " + string.Join(",", loaded.Blockers));
                 var state = loaded.Value!;
                 Console.WriteLine($"SOURCE load {attempt}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms");
+                Console.WriteLine($"SOURCE catalogs: skills={state.SkillsCatalog!.ActiveSkills.Count + state.SkillsCatalog.KnowledgeSkills.Count}, "
+                    + $"qualities={state.QualitiesCatalog!.Options.Count}, selectable={state.QualitiesCatalog.Options.Count(option => option.IsSelectable)}, "
+                    + $"quality-json-bytes={System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(state.QualitiesCatalog).Length}");
+                if (attempt == 0) ProfileQualityDigests(state.QualitiesCatalog.Options);
                 start = Stopwatch.GetTimestamp();
                 var human = state.Options.Single(option => option.Label == "Human");
-                var preview = service.Preview(state.Binding, human.OptionId, "mundane", [], new([], []));
+                var preview = service.Preview(state.Binding, human.OptionId, "mundane", [], new([], []), qualityOptionIds: []);
                 Require(preview.Value is not null, "Profile preview failed: " + string.Join(",", preview.Blockers));
                 Console.WriteLine($"SOURCE preview {attempt}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms");
             }
@@ -49,7 +53,69 @@ internal static partial class AfterRunAuthorityHarness
                 && before.Document.AuxiliaryStateDigest == after.Document.AuxiliaryStateDigest,
                 "Read-only profiling changed the workspace.");
             Console.WriteLine("PASS Karma source profile: real catalog/preview, no workspace writes");
+
+            // The emulator draft has seven saved decisions. Measure that shape
+            // too; an empty history cannot explain save/reopen costs.
+            var writer = new CharacterCreationKarmaMetatypeService(store, resolver);
+            for (int decision = 0; decision < 7; decision++)
+            {
+                var state = writer.Load(id, includeSkills: true, includeQualities: true).Value!;
+                var human = state.Options.Single(option => option.Label == "Human");
+                var english = state.SkillsCatalog!.KnowledgeSkills.Single(skill => skill.Name == "English");
+                var pistols = state.SkillsCatalog.ActiveSkills.Single(skill => skill.Name == "Pistols");
+                CharacterCreationKarmaSkillAllocation[] allocations =
+                [new(english.SourceSkillId, english.Kind, 0, IsNativeLanguage: true),
+                    new(pistols.SourceSkillId, pistols.Kind, 1)];
+                var skills = new CharacterCreationKarmaSkillsSelection(allocations, []);
+                string[] qualities = [state.QualitiesCatalog!.Options.Single(item => item.Name == "Unsteady Hands").OptionId];
+                var quote = writer.Preview(state.Binding, human.OptionId, "mundane", [], skills, 10.5m, qualities).Value!;
+                Require(quote.CanSelect, "History profile quote failed.");
+                Require(writer.Confirm(new(quote.Binding, human.OptionId, quote.QuoteDigest,
+                    Guid.NewGuid(), true, "mundane", [], skills, 10.5m, qualities)).Value is not null,
+                    "History profile confirmation failed.");
+            }
+            long historyStart = Stopwatch.GetTimestamp();
+            var saved = store.Get(id).Value!;
+            Console.WriteLine($"SOURCE saved read: {Stopwatch.GetElapsedTime(historyStart).TotalMilliseconds:F1} ms");
+            historyStart = Stopwatch.GetTimestamp();
+            Require(CharacterCreationKarmaMetatypeTransaction.IsValidHistory(saved), "History profile is invalid.");
+            Console.WriteLine($"SOURCE history validation: {Stopwatch.GetElapsedTime(historyStart).TotalMilliseconds:F1} ms");
+            historyStart = Stopwatch.GetTimestamp();
+            Require(service.Open(id).Value?.Quote?.CanSelect == true, "Profile saved Open failed.");
+            Console.WriteLine($"SOURCE saved Open: {Stopwatch.GetElapsedTime(historyStart).TotalMilliseconds:F1} ms");
+            var reopened = store.Get(id).Value!;
+            Require(saved == reopened || saved.Document.AuxiliaryStateDigest == reopened.Document.AuxiliaryStateDigest
+                && saved.Document.Content == reopened.Document.Content && saved.ContentRevision == reopened.ContentRevision
+                && saved.SavedRevision == reopened.SavedRevision, "Profiling a saved draft changed it.");
+            Console.WriteLine("PASS Karma source profile: seven real confirmations, read-only reopen");
         });
+    }
+
+    private static void ProfileQualityDigests(IReadOnlyList<CharacterCreationQualityCatalogOption> options)
+    {
+        // Compare with the unchanged generic canonical serializer on identical
+        // real rows in one process. Reflection is confined to this diagnostic.
+        var legacy = typeof(CharacterCreationQualitiesRules).Assembly
+            .GetType("Chummer.Contracts.Characters.CharacterCreationQualitiesDigest", throwOnError: true)!
+            .GetMethod("Compute", BindingFlags.Static | BindingFlags.Public)!
+            .MakeGenericMethod(typeof(CharacterCreationQualityCatalogOption))
+            .CreateDelegate<Func<CharacterCreationQualityCatalogOption, string>>();
+        foreach (var option in options)
+            Require(legacy(option with { OptionDigest = string.Empty }) == CharacterCreationQualitiesRules.ComputeOptionDigest(option),
+                "Canonical quality digest changed: " + option.OptionId);
+        for (int round = 0; round < 3; round++)
+        {
+            Measure("legacy", option => legacy(option with { OptionDigest = string.Empty }));
+            Measure("direct", CharacterCreationQualitiesRules.ComputeOptionDigest);
+        }
+        void Measure(string kind, Func<CharacterCreationQualityCatalogOption, string> hash)
+        {
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            long start = Stopwatch.GetTimestamp();
+            foreach (var option in options) _ = hash(option);
+            Console.WriteLine($"SOURCE option hashes {kind}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms, "
+                + $"allocated={GC.GetAllocatedBytesForCurrentThread() - allocated}");
+        }
     }
 
     private sealed class KarmaSourceResolverProbe(ICharacterSourceDataResolver actual) : ICharacterSourceDataResolver
