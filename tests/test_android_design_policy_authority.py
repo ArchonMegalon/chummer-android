@@ -19,6 +19,9 @@ SPEC.loader.exec_module(policy)
 
 
 class DesignPolicyAuthorityTests(unittest.TestCase):
+    pin_path = policy.PIN_PATH
+    local_internal = False
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -73,19 +76,31 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
         self.write_pin()
 
     def write_pin(self):
-        (self.android / policy.PIN_PATH).write_text(json.dumps({"schema": policy.PIN_SCHEMA, **self.expected}))
+        (self.android / self.pin_path).write_text(json.dumps({"schema": policy.PIN_SCHEMA, **self.expected}))
+        if self.local_internal:
+            workflow = self.android / policy.EXTENDED_WORKFLOW
+            workflow.parent.mkdir(parents=True, exist_ok=True)
+            if not workflow.exists():
+                workflow.write_text("on:\n  workflow_dispatch:\n\npermissions:\n  contents: read\n")
         for args in (("init", "-q"), ("config", "user.name", "Android Policy Fixture"),
-                     ("config", "user.email", "policy@example.invalid"), ("add", "eng"),
+                     ("config", "user.email", "policy@example.invalid"), ("add", "."),
                      ("commit", "-q", "--allow-empty", "-m", "admitted Design pin")):
             subprocess.run(["git", "-C", str(self.android), *args], check=True, capture_output=True)
 
     def verify(self):
-        return policy.verify_design_checkout(self.design, android_root=self.android)
+        return policy.verify_design_checkout(self.design, android_root=self.android,
+                                             local_internal=self.local_internal)
 
     def test_authenticates_actual_git_and_raw_bytes_without_executing_design(self):
         self.assertEqual(self.expected, self.verify())
 
     def test_rejects_missing_extra_stale_and_substituted_bindings(self):
+        # Historical receipt validation deliberately remains on the historical pin.
+        if self.local_internal:
+            self.assertNotEqual(self.pin_path, policy.PIN_PATH)
+            with self.assertRaises(FileNotFoundError):
+                policy.load_policy_pin(android_root=self.android)
+            return
         for value in (None, {}, {"design": {}}, {**self.expected, "other": {}},
                       {"design": {**self.expected["design"], "commit": "a" * 40}}):
             with self.subTest(value=value), self.assertRaises(ValueError):
@@ -143,9 +158,9 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
             self.verify()
 
     def test_android_policy_pin_hidden_by_index_flags_still_fails(self):
-        subprocess.run(["git", "-C", str(self.android), "update-index", "--assume-unchanged", policy.PIN_PATH.as_posix()],
+        subprocess.run(["git", "-C", str(self.android), "update-index", "--assume-unchanged", self.pin_path.as_posix()],
                        check=True, capture_output=True)
-        path = self.android / policy.PIN_PATH
+        path = self.android / self.pin_path
         path.write_bytes(path.read_bytes() + b"\n")
         with self.assertRaisesRegex(ValueError, "exact HEAD blob"):
             self.verify()
@@ -175,7 +190,7 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
                 policy._json(data)
 
     def test_fifo_policy_input_fails_without_waiting_for_a_writer(self):
-        target = self.android / policy.PIN_PATH
+        target = self.android / self.pin_path
         target.unlink()
         os.mkfifo(target)
         with self.assertRaisesRegex(ValueError, "bounded regular file"):
@@ -185,7 +200,7 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
         self.expected["design"]["wizardAggregateSchema"] = "chummer.android.api36-sr5-wizard-e2e-aggregate/v1"
         self.write_pin()
         with self.assertRaisesRegex(ValueError, "schema"):
-            policy.load_policy_pin(android_root=self.android)
+            policy.load_policy_pin(android_root=self.android, local_internal=self.local_internal)
 
     def test_post_verification_head_drift_fails_closed(self):
         real = policy._git
@@ -199,6 +214,60 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
             return real(root, *args)
         with mock.patch.object(policy, "_git", side_effect=changing), self.assertRaisesRegex(ValueError, "changed"):
             self.verify()
+
+
+class LocalInternalDesignPolicyTests(DesignPolicyAuthorityTests):
+    pin_path = policy.LOCAL_PIN_PATH
+    local_internal = True
+
+    def setUp(self):
+        super().setUp()
+        self.matrix["internalDeliveryPolicy"] = copy.deepcopy(policy.INTERNAL_DELIVERY_POLICY)
+        self.matrix["evidenceAuthority"]["qualificationUse"] = "optional_extended_runtime"
+        (self.design / policy.MATRIX_PATH).write_text(json.dumps(self.matrix))
+        self.seal()
+
+    def test_rejects_obsolete_hosted_requirement_and_weakened_safety_after_reseal(self):
+        original = copy.deepcopy(self.matrix)
+        for key, value in (
+            ("orderedReviewMainRequired", True), ("hostedRuntimeRequired", True),
+            ("securityChangesRequireNegativeTests", False),
+            ("persistenceChangesRequireProcessRestart", False),
+            ("existingUploadKeyRequired", False), ("isolatedSignerRequired", False),
+            ("keylessBuildAndVerification", False), ("exactArtifactAndCertificateChecks", False),
+            ("playReadbackRequired", False), ("physicalPlayInstallRequiredForBetaClaim", False),
+            ("policyAuthorizesUpload", True), ("sourceCheckIsRuntimeEvidence", True),
+            ("orderedReviewMainRequired", 0), ("isolatedSignerRequired", 1),
+        ):
+            matrix = copy.deepcopy(original)
+            matrix["internalDeliveryPolicy"][key] = value
+            (self.design / policy.MATRIX_PATH).write_text(json.dumps(matrix))
+            self.seal()
+            with self.subTest(key=key, value=value), self.assertRaisesRegex(ValueError, "delivery policy"):
+                self.verify()
+
+    def test_old_matrix_is_not_current_local_delivery_authority(self):
+        del self.matrix["internalDeliveryPolicy"]
+        (self.design / policy.MATRIX_PATH).write_text(json.dumps(self.matrix))
+        self.seal()
+        with self.assertRaisesRegex(ValueError, "delivery policy"):
+            self.verify()
+
+    def test_automatic_runtime_workflow_conflicts_with_local_policy(self):
+        (self.android / policy.EXTENDED_WORKFLOW).write_text(
+            "on:\n  pull_request:\n  push:\n    branches: [main]\npermissions:\n  contents: read\n")
+        self.write_pin()
+        with self.assertRaisesRegex(ValueError, "manual-only"):
+            self.verify()
+
+    def test_local_cli_reports_policy_only_not_eligibility(self):
+        with mock.patch("sys.argv", ["policy", "--local-internal", "--android-root", str(self.android),
+                                     "--design-root", str(self.design)]), mock.patch("builtins.print") as output:
+            self.assertEqual(0, policy.main())
+        result = json.loads(output.call_args.args[0])
+        self.assertFalse(result["publicationAuthorized"])
+        self.assertNotIn("eligible", result)
+        self.assertNotIn("googlePlayUploadAuthorized", result)
 
 
 if __name__ == "__main__":

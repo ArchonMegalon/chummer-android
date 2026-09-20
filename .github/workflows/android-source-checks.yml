@@ -55,6 +55,7 @@ jobs:
           set -euo pipefail
           for suite in \
             test_android_source_checks_workflow.py \
+            test_android_design_policy_authority.py \
             test_android_ci_change_scope.py \
             test_api36_e2e_workflow.py \
             test_release_artifact_hygiene.py \
