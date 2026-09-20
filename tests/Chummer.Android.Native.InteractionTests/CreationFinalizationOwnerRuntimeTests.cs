@@ -488,6 +488,87 @@ internal static partial class AfterRunAuthorityHarness
             => inner.Confirm(request);
     }
 
+    public static async Task RunStartingCashPhonePagesAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(async () =>
+            {
+                var owners = new ControlledLinkedOwner();
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true);
+                await runtime.Coordinator.InitializeAsync();
+                await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+                await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var loaded = runtime.Coordinator.LoadCreationFinalization().Value!;
+                Require(runtime.Coordinator.IsCreationFinalizationStateCurrent(loaded), "Starting cash needs an issued current state.");
+                var source = loaded.StartingCashSource!;
+                var page = new CreationStartingCashPage(runtime.Coordinator, loaded);
+                var navigation = new NavigationPage(new ContentPage());
+                await navigation.PushAsync(page, false);
+                var window = new Window(navigation);
+                using var alerts = new IssuedPageAlerts(page, window);
+                await alerts.PreflightAsync();
+                await Appear();
+                var input = Element<Entry>("creation-starting-cash-roll");
+                Require(string.IsNullOrEmpty(input.Text) && !Element<Button>("creation-starting-cash-preview").IsEnabled,
+                    "Starting cash must not implicitly choose or roll a value.");
+                input.Text = "not a roll";
+                Require(!Element<Button>("creation-starting-cash-preview").IsEnabled, "Invalid text was admitted.");
+                input.Text = int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                await Click("creation-starting-cash-preview");
+                Require(ReferenceEquals(Current(), page), "An out-of-range total reached confirm.");
+                input = Element<Entry>("creation-starting-cash-roll");
+                input.Text = source.Dice.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                await Click("creation-starting-cash-preview");
+                Require(Current() is CreationFinalizationPage, "Explicit legal roll did not reach the actual review.");
+                var review = (CharacterCreationFinalizationReview)typeof(CreationFinalizationPage)
+                    .GetField("_review", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Current())!;
+                Require(review.Plan!.StartingCash == new CharacterCreationStartingCashChoice(source.AuthorityDigest, source.Dice),
+                    "The native review did not retain the displayed source and explicit total.");
+                input.Text = "999";
+                Require(review.Plan.StartingCash?.DiceTotal == source.Dice, "A departed Entry changed the sealed review.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                await Click("creation-finalization-confirm");
+                Require(Current() is CreationFinalizationReceiptPage, "The actual confirm did not show its receipt.");
+                var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                var receipt = cold.Document.AuxiliaryState.CharacterCreationFinalizationReceipts!.Single().Receipt;
+                Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
+                    && receipt.StartingCash == review.Plan.StartingCash
+                    && receipt.StartingCashAuthorityDigest == review.Plan.StartingCashAuthorityDigest,
+                    "The native confirm lost its cash choice or saved more than one revision.");
+                owners.Set(ContactsOwnerB);
+                owners.Set(OwnerScope.LocalSingleUser);
+                Require(!runtime.Coordinator.IsCreationFinalizationStateCurrent(loaded), "Owner ABA revived the old cash page.");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS " + method + " starting-cash page: explicit roll, Core rejection, preview, stale Entry, confirm and cold receipt");
+
+                NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
+                T Element<T>(string id) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == id);
+                async Task Appear()
+                {
+                    if (IssuedPageField<int>(Current(), "_subscribed") == 0)
+                        await ui.BeginAsyncVoid(() => IssuedPageLifecycle(Current(), "OnAppearing"));
+                }
+                async Task Click(string id)
+                {
+                    var previous = Current();
+                    var button = Element<Button>(id);
+                    Require(button.IsEnabled, "Button disabled: " + id);
+                    await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                    if (!ReferenceEquals(previous, Current()) && IssuedPageField<int>(previous, "_subscribed") != 0)
+                        IssuedPageLifecycle(previous, "OnDisappearing");
+                    await Appear();
+                }
+            });
+        }
+    }
+
+    private static CharacterCreationStartingCashChoice FinalizationFixtureCash(CharacterCreationFinalizationState state)
+        => state.StartingCashSource is { } source ? new(source.AuthorityDigest, source.Dice)
+            : throw new InvalidOperationException("The actual finalization fixture has no Core-owned starting cash source.");
+
     public static async Task RunCreationFinalizationOwnerCasesAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
@@ -539,7 +620,7 @@ internal static partial class AfterRunAuthorityHarness
         var loaded = runtime.Coordinator.LoadCreationFinalization();
         Require(loaded.Value is { CanReview: true }, "Local native finalization Load failed: " + JsonSerializer.Serialize(loaded));
         var review = await StartFromUiContext(uiContext,
-            () => runtime.Coordinator.ReviewCreationFinalizationAsync(loaded.Value!.Binding));
+            () => runtime.Coordinator.ReviewCreationFinalizationAsync(loaded.Value!.Binding, FinalizationFixtureCash(loaded.Value)));
         Require(review.Value is { CanConfirm: true, Plan: not null },
             "Local native finalization Review failed: " + JsonSerializer.Serialize(review));
         var store = new FileWorkspaceStore(runtime.StateDirectory);
@@ -593,7 +674,7 @@ internal static partial class AfterRunAuthorityHarness
         var before = ColdPartitions();
         var loaded = runtime.Coordinator.LoadCreationFinalization();
         var reviewed = loaded.Value is { CanReview: true }
-            ? runtime.Coordinator.ReviewCreationFinalization(loaded.Value.Binding) : null;
+            ? runtime.Coordinator.ReviewCreationFinalization(loaded.Value.Binding, FinalizationFixtureCash(loaded.Value)) : null;
         Require(ColdPartitions().All(pair => pair.Value == before[pair.Key]),
             "Native finalization Load/Review mutated an owner partition.");
         CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>? result = null;
@@ -732,7 +813,7 @@ internal static partial class AfterRunAuthorityHarness
         string bBefore = FinalizationDocumentDigest(store.Get(ContactsOwnerB, runtime.Id).Value!);
         var loaded = coordinator.LoadCreationFinalization();
         Require(loaded.Value is { CanReview: true }, "Postcommit fixture did not load a real ready draft.");
-        var reviewed = coordinator.ReviewCreationFinalization(loaded.Value!.Binding);
+        var reviewed = coordinator.ReviewCreationFinalization(loaded.Value!.Binding, FinalizationFixtureCash(loaded.Value));
         Require(reviewed.Value is { CanConfirm: true, Plan: not null }, "Postcommit fixture has no actual reviewed plan.");
         CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> result;
         try
@@ -962,7 +1043,7 @@ internal static partial class AfterRunAuthorityHarness
         var finalizer = services.GetRequiredService<ICharacterCreationFinalizationService>();
         var loaded = finalizer.Load(new(runtime.Id));
         Require(loaded.Value is { CanReview: true }, "Core ReadyContext is not ready: " + JsonSerializer.Serialize(loaded));
-        var preview = finalizer.Review(new(loaded.Value!.Binding));
+        var preview = finalizer.Review(new(loaded.Value!.Binding) { StartingCash = FinalizationFixtureCash(loaded.Value) });
         Require(preview.Value is { CanConfirm: true, Plan: not null },
             "Core ReadyContext is not confirmable: " + JsonSerializer.Serialize(preview));
         var read = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id);

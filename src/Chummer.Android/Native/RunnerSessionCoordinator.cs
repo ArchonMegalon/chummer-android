@@ -1503,13 +1503,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             original.SavedRevision);
     }
 
+    internal bool IsCreationFinalizationStateCurrent(CharacterCreationFinalizationState state)
+        => state is { CanReview: true, StartingCashSource: not null }
+           && _finalizationLoads.TryGetValue(state.Binding, out var original)
+           && IsCreationFinalizationDisplayCurrent(original);
+
     public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>
         ReviewCreationFinalizationAsync(CharacterCreationFinalizationBinding binding,
             CancellationToken cancellationToken = default)
         => Task.Run(() => ReviewCreationFinalization(binding), cancellationToken);
 
+    public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>
+        ReviewCreationFinalizationAsync(CharacterCreationFinalizationBinding binding,
+            CharacterCreationStartingCashChoice startingCash, CancellationToken cancellationToken = default)
+        => Task.Run(() => ReviewCreationFinalization(binding, startingCash), cancellationToken);
+
     public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>
-        ReviewCreationFinalization(CharacterCreationFinalizationBinding binding)
+        ReviewCreationFinalization(CharacterCreationFinalizationBinding binding,
+            CharacterCreationStartingCashChoice? startingCash = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         if (!_finalizationLoads.TryGetValue(binding, out CharacterOverviewState? original))
@@ -1526,9 +1537,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     ? load.Blockers
                     : [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
         }
+        var request = new CharacterCreationFinalizationReviewRequest(binding) { StartingCash = startingCash };
         var reviewed = original.DisplayOwnerContext is { IsValid: true } owner
-            ? _ownerBoundFinalizationService?.Review(owner, new(binding))
-            : CanUseLegacyFinalization(original) ? _creationFinalizationService!.Review(new(binding)) : null;
+            ? _ownerBoundFinalizationService?.Review(owner, request)
+            : CanUseLegacyFinalization(original) ? _creationFinalizationService!.Review(request) : null;
         if (!IsCreationFinalizationDisplayCurrent(original) || reviewed is null)
             return FinalizationUnavailable<CharacterCreationFinalizationReview>();
         if (reviewed.Value is { } issued)
@@ -1582,7 +1594,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 review.PreviewDigest,
                 review.Plan.PlanDigest,
                 idempotencyKey,
-                ExplicitlyConfirmed: true);
+                ExplicitlyConfirmed: true) { StartingCash = review.Plan.StartingCash };
             // Core acquires, uses and releases its thread-affine owner lease
             // inside this one synchronous worker delegate, never on the UI thread.
             result = await Task.Run(() =>

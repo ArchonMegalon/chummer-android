@@ -3,6 +3,104 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
+/// <summary>Collects an explicit dice total; only Core may quote the resulting cash.</summary>
+internal sealed class CreationStartingCashPage : NativePageBase
+{
+    private readonly CharacterCreationFinalizationState _authority;
+    private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
+    private string _roll = string.Empty;
+    private IReadOnlyList<string> _blockers = [];
+    private long _render, _inputVersion;
+
+    internal CreationStartingCashPage(RunnerSessionCoordinator coordinator, CharacterCreationFinalizationState authority)
+        : base(coordinator)
+    {
+        _authority = authority;
+        Title = CreationAllocationStrings.Get("Finalization.StartingCashTitle", "Starting cash");
+        AutomationId = "creation-starting-cash-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        _render++;
+        _body.IsEnabled = false;
+        base.OnDisappearing();
+    }
+
+    protected override void Refresh()
+    {
+        long render = ++_render, appearance = CaptureAppearanceGeneration();
+        _body.Clear();
+        _body.IsEnabled = true;
+        _body.Add(NativeTheme.Title(Title));
+        if (!Coordinator.IsCreationFinalizationStateCurrent(_authority)
+            || _authority.StartingCashSource is not { } source)
+        {
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.Stale, NativeTheme.Danger));
+            return;
+        }
+        _body.Add(NativeTheme.Body(CreationAllocationStrings.Get("Finalization.StartingCashHelp",
+            "Enter the starting-cash dice total for the displayed lifestyle. Core applies the carryover limits before adding this cash. Nothing is saved until you confirm the next review."), NativeTheme.Muted));
+        var terms = NativeTheme.Body(CreationKarmaCopy.StartingCash(source.Name, source.Dice, source.Multiplier));
+        terms.AutomationId = "creation-starting-cash-source";
+        _body.Add(terms);
+        _body.Add(NativeTheme.Body(source.SourceBook + " · " + source.Page, NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.DiceTotal));
+        var input = new Entry { Text = _roll, Keyboard = Keyboard.Numeric, AutomationId = "creation-starting-cash-roll" };
+        var preview = NativeTheme.PrimaryButton(CreationKarmaCopy.PreviewCompletion);
+        preview.AutomationId = "creation-starting-cash-preview";
+        preview.IsEnabled = TryRoll(out _);
+        input.TextChanged += (_, _) =>
+        {
+            if (!Current()) return;
+            _roll = input.Text ?? string.Empty;
+            _inputVersion++;
+            preview.IsEnabled = TryRoll(out _);
+        };
+        preview.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (!Current() || !TryRoll(out int dice)) return;
+            long version = _inputVersion;
+            _body.IsEnabled = false;
+            preview.Text = CreationKarmaCopy.Loading;
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result;
+            try
+            {
+                result = await Coordinator.ReviewCreationFinalizationAsync(_authority.Binding,
+                    new CharacterCreationStartingCashChoice(source.AuthorityDigest, dice));
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                // A departed page must not show an old asynchronous error or navigate.
+                if (!Current() || version != _inputVersion) return;
+                throw;
+            }
+            finally
+            {
+                if (Current() && version == _inputVersion)
+                {
+                    _body.IsEnabled = true;
+                    preview.Text = CreationKarmaCopy.PreviewCompletion;
+                }
+            }
+            if (!Current() || version != _inputVersion) return;
+            _blockers = result.Blockers;
+            if (result is { Outcome: CharacterCreationFinalizationOutcomes.Available, Value.CanConfirm: true }
+                && Coordinator.IsCreationFinalizationReviewCurrent(result.Value))
+                await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
+        });
+        _body.Add(input);
+        _body.Add(preview);
+        foreach (string blocker in _blockers)
+            _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+
+        bool Current() => render == _render && IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationFinalizationStateCurrent(_authority);
+        bool TryRoll(out int dice) => int.TryParse(_roll, NumberStyles.None, CultureInfo.InvariantCulture, out dice);
+    }
+}
+
 /// <summary>
 /// Read-only projection of Core's sealed whole-build plan.  This surface never
 /// edits XML or recomputes rules; it can only submit the exact reviewed plan for
@@ -88,7 +186,7 @@ public sealed class CreationFinalizationPage : NativePageBase
         VerticalStackLayout budget = new() { Spacing = 6 };
         budget.Add(NativeTheme.Eyebrow("After finalization"));
         budget.Add(NativeTheme.Metric("Karma remaining", Number(_review.Plan.KarmaRemaining)));
-        budget.Add(NativeTheme.Metric("Starting nuyen", Number(_review.Plan.StartingNuyen)));
+        budget.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Finalization.StartingCashTitle", "Starting cash"), Number(_review.Plan.StartingNuyen)));
         budget.Add(NativeTheme.Metric("Nuyen remaining", Number(_review.Plan.NuyenRemaining)));
         Border budgetCard = NativeTheme.Card(budget);
         budgetCard.AutomationId = "creation-finalization-costs";

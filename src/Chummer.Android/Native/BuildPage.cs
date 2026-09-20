@@ -1655,36 +1655,10 @@ public sealed class BuildPage : NativePageBase
             ScheduleCreationNavigationPressCancellation(pressGeneration);
         review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
         {
-            long originalAppearance = _creationDashboardAppearanceGeneration;
-            if (!IsCurrentCreationDashboardPage()) return;
-            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result;
-            try
-            {
-                result = await Coordinator.ReviewCreationFinalizationAsync(authority.Value.Binding);
-            }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
-            {
-                // A departed/recreated appearance must not surface an old worker
-                // failure through the shared navigation error handler.
-                if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
-                    return;
-                throw;
-            }
-            if (originalAppearance != _creationDashboardAppearanceGeneration || !IsCurrentCreationDashboardPage())
+            if (!IsCurrentCreationDashboardPage()
+                || !Coordinator.IsCreationFinalizationStateCurrent(authority.Value))
                 return;
-            if (result is not
-                {
-                    Outcome: CharacterCreationFinalizationOutcomes.Available,
-                    Value.CanConfirm: true
-                })
-            {
-                throw new InvalidOperationException(
-                    result.Blockers.FirstOrDefault()
-                    ?? "The final creation authority changed. Reload the runner and review again.");
-            }
-            if (!Coordinator.IsCreationFinalizationReviewCurrent(result.Value))
-                return;
-            await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
+            await Navigation.PushAsync(new CreationStartingCashPage(Coordinator, authority.Value));
         }, pressGeneration);
         _body.Add(review);
     }
