@@ -2,6 +2,8 @@ namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
 {
+    public static string MetatypeBonuses(int armor, int reach, int lifestylePercent) => CreationAllocationStrings.Format(
+        "Karma.MetatypeBonuses", "Base metatype effects: armor +{0} · reach +{1} · lifestyle cost +{2}%", armor, reach, lifestylePercent);
     public static string ChooseStepFirst(string step) => CreationAllocationStrings.Format("Karma.ChooseStepFirst", "Choose {0} first.", step);
     public static string ReviewStepFirst(string step) => CreationAllocationStrings.Format("Karma.ReviewStepFirst", "Open {0} and review your choices first.", step);
     public static string ReviewOptionalStepFirst(string step) => CreationAllocationStrings.Format("Karma.ReviewOptionalStepFirst", "Open {0} first, even if you keep the selection empty.", step);

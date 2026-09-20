@@ -77,6 +77,15 @@ foreach ((string locale, string expected) in new[]
         "Talent grant copy must use the real regional satellite and preserve Core's rating: " + locale);
 
 CultureInfo previousCulture = CultureInfo.CurrentUICulture;
+foreach ((string locale, string expected) in new[]
+{
+    ("en-GB", "Base metatype effects: armor +1 · reach +1 · lifestyle cost +100%"),
+    ("de-AT", "Metatyp-Effekte: Panzerung +1 · Reichweite +1 · Lebensstilkosten +100%"),
+    ("es-MX", "Efectos del metatipo: armadura +1 · alcance +1 · coste del estilo de vida +100%")
+})
+    Assert(CreationAllocationStrings.Format(CultureInfo.GetCultureInfo(locale),
+        "Karma.MetatypeBonuses", "fallback", 1, 1, 100) == expected,
+        "Metatype effects must preserve Core values in each regional locale: " + locale);
 foreach ((string locale, string step, string expected) in new[]
 {
     ("en-GB", "Qualities", "Open Qualities first, even if you keep the selection empty."),

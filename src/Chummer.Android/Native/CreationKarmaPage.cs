@@ -248,12 +248,24 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         foreach (var option in _session.Authority!.Options)
         {
             _body.Add(NativeTheme.Body(CreationKarmaCopy.Cost(option.Label, option.KarmaCost)));
+            AddMetatypeDetails(option);
             AddButton(option.Label, "karma-metatype-" + option.OptionId, async () =>
             {
                 Change((_session.Selection ?? new(option.OptionId)) with { MetatypeOptionId = option.OptionId });
                 await Navigation.PopAsync();
             }, option.IsEnabled && option.Blockers.Count == 0);
         }
+    }
+
+    private void AddMetatypeDetails(CharacterCreationMetatypeOptionProjection option)
+    {
+        if (option.GrantedQualities.Count > 0)
+            _body.Add(NativeTheme.Body(string.Join(" · ", option.GrantedQualities.Select(item => item.Name)), NativeTheme.Muted));
+        if (option.BaseBonuses is not { } bonuses) return;
+        var label = NativeTheme.Body(CreationKarmaCopy.MetatypeBonuses(bonuses.Armor, bonuses.Reach,
+            bonuses.LifestyleCostPercent), NativeTheme.Muted);
+        label.AutomationId = "karma-metatype-bonuses-" + option.OptionId;
+        _body.Add(label);
     }
 
     private void AddTalents()
@@ -500,6 +512,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         if (!_session.QuoteCurrent || _session.Quote is not { } quote) return;
         _body.Add(NativeTheme.Body(CreationKarmaCopy.Cost(quote.Metatype.Label, quote.Metatype.KarmaCost)));
+        AddMetatypeDetails(quote.Metatype);
         if (quote.Talent is { } talent) _body.Add(NativeTheme.Body(CreationKarmaCopy.Cost(talent.Name, talent.KarmaCost)));
         AddQualityTotals();
         foreach (var quality in quote.Qualities?.Selections ?? [])
