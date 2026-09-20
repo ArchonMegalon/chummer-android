@@ -117,6 +117,24 @@ internal static partial class AfterRunAuthorityHarness
             resourceInput.Text = "99";
             Require(Element<Label>("karma-resource-funding").Text == CreationKarmaCopy.ResourceFunding(10.5m, 21000m),
                 "An obsolete resource entry altered the selected draft: " + Element<Label>("karma-resource-funding").Text);
+            await Click("karma-open-gear");
+            Element<SearchBar>("karma-gear-search").Text = "Flashlight";
+            await Click("karma-gear-search-go");
+            var addGear = IssuedElements(Current()).OfType<Button>().First(b => b.IsEnabled
+                && b.AutomationId?.StartsWith("karma-add-gear-", StringComparison.Ordinal) == true);
+            string gearId = addGear.AutomationId["karma-add-gear-".Length..];
+            await Click(addGear.AutomationId);
+            var oldQuantity = Element<Stepper>("karma-gear-quantity-" + gearId);
+            oldQuantity.Value = 2;
+            await Click("karma-preview-gear");
+            Require(Element<Label>("karma-gear-totals").Text == CreationKarmaCopy.GearTotals(21000m, 50m, 20950m, 0m),
+                "Gear quantity was not priced from the current Core resource quote.");
+            oldQuantity.Value = 3;
+            Require(Element<Stepper>("karma-gear-quantity-" + gearId).Value == 2,
+                "An obsolete quantity control changed the current basket.");
+            Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
+                && probe!.ConfirmCalls == 0, "Editing gear persisted without review.");
+            await Back();
             await Click("karma-open-review");
             Require(Element<Button>("karma-confirm").IsEnabled, "The exact Human/Mundane/native-language/Pistols review is not confirmable.");
             await Click("karma-confirm");
@@ -133,7 +151,9 @@ internal static partial class AfterRunAuthorityHarness
                 && decision.Command.ResourceKarmaInvestment == 10.5m
                 && decision.Quote.Resources!.NuyenFromKarma == 21000m
                 && decision.Command.QualityOptionIds!.Count == 2
-                && decision.Quote.Qualities!.Costs.NetKarmaSpent == -2,
+                && decision.Quote.Qualities!.Costs.NetKarmaSpent == -2
+                && decision.Command.GearSelections!.Single().Quantity == 2
+                && decision.Quote.Gear!.Budget.BasketCost == 50m,
                 "Native review did not persist exactly the selected source-bound pending foundation.");
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
@@ -167,6 +187,11 @@ internal static partial class AfterRunAuthorityHarness
             Require(Element<Entry>("karma-resource-investment").Text == 10.5m.ToString(CultureInfo.CurrentCulture),
                 "Cold reopen lost the resource investment.");
             await Back();
+            await Click("karma-open-gear");
+            Require(Element<Stepper>("karma-gear-quantity-" + gearId).Value == 2
+                && Element<Label>("karma-gear-totals").Text == CreationKarmaCopy.GearTotals(21000m, 50m, 20950m, 0m),
+                "Cold reopen lost equipment identity, quantity or funding binding.");
+            await Back();
             await Click("karma-open-qualities");
             Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-remove-quality-", StringComparison.Ordinal) == true) == 2
                 && Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(5, 7, -2),
@@ -182,9 +207,11 @@ internal static partial class AfterRunAuthorityHarness
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
                 Require(CreationKarmaCopy.Title == "Karma-Grunddaten", "German regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Vor- und Nachteile", "German quality resources are missing.");
+                Require(CreationKarmaCopy.Gear == "Ausrüstung", "German equipment resources are missing.");
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
                 Require(CreationKarmaCopy.Confirm == "Confirmar y guardar borrador", "Spanish regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Cualidades", "Spanish quality resources are missing.");
+                Require(CreationKarmaCopy.Gear == "Equipo", "Spanish equipment resources are missing.");
             }
             finally { CultureInfo.CurrentUICulture = prior; }
             ui.AssertHealthy();

@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
 internal sealed class CreationKarmaPage : NativePageBase
@@ -46,6 +46,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Skills or CreationKarmaStep.Skill => CreationKarmaCopy.Skills,
         CreationKarmaStep.Group => CreationKarmaCopy.Groups,
         CreationKarmaStep.Resources => CreationKarmaCopy.Resources,
+        CreationKarmaStep.Gear => CreationKarmaCopy.Gear,
         CreationKarmaStep.Review => CreationKarmaCopy.Review,
         _ => CreationKarmaCopy.Title
     };
@@ -72,7 +73,8 @@ internal sealed class CreationKarmaPage : NativePageBase
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.FrameCurrent;
         MarkVisitedStage();
         await _session.ReloadAsync(_step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group,
-            cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities);
+            cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities,
+            includeGear: _step == CreationKarmaStep.Gear);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
         if (!_session.QuoteCurrent) await _session.PreviewAsync(cancellationToken, Current);
@@ -87,6 +89,9 @@ internal sealed class CreationKarmaPage : NativePageBase
             if (_step == CreationKarmaStep.Qualities && _session.Authority?.QualitiesCatalog is not null
                 && _session.Selection is { Attributes: not null, QualityOptionIds: null } qualities)
                 _session.Change(qualities with { QualityOptionIds = [] });
+            if (_step == CreationKarmaStep.Gear && _session.Authority?.GearAuthority is not null
+                && _session.Selection is { ResourceKarmaInvestment: not null, GearSelections: null } gear)
+                _session.Change(gear with { GearSelections = [] });
         }
     }
 
@@ -133,6 +138,7 @@ internal sealed class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Skill: AddSkillEditor(); break;
             case CreationKarmaStep.Group: AddGroupEditor(); break;
             case CreationKarmaStep.Resources: AddResources(); break;
+            case CreationKarmaStep.Gear: AddGear(); break;
             case CreationKarmaStep.Review: AddReview(); break;
         }
         AddBlockers();
@@ -182,6 +188,8 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Skills, "karma-open-skills", () => Open(CreationKarmaStep.Skills), selection?.Attributes is not null);
         AddButton(CreationKarmaCopy.Resources, "karma-open-resources", () => Open(CreationKarmaStep.Resources),
             selection?.Attributes is not null && _session.Authority?.ResourcesPolicy is not null);
+        AddButton(CreationKarmaCopy.Gear, "karma-open-gear", () => Open(CreationKarmaStep.Gear),
+            selection?.ResourceKarmaInvestment is not null);
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
         AddSelectionSummary();
     }
@@ -476,6 +484,68 @@ internal sealed class CreationKarmaPage : NativePageBase
             funding.AutomationId = "karma-resource-funding";
             _body.Add(funding);
         }
+        AddGearTotals();
+        foreach (var line in quote.Gear?.Lines ?? [])
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.GearLine(line.Name, line.Quantity, line.TotalCost)));
+    }
+
+    private void AddGearTotals()
+    {
+        if (!_session.QuoteCurrent || _session.Quote?.Gear?.Budget is not { } budget) return;
+        var totals = NativeTheme.Body(CreationKarmaCopy.GearTotals(budget.TotalStartingNuyen, budget.BasketCost,
+            budget.RemainingNuyen, budget.Overspend));
+        totals.AutomationId = "karma-gear-totals";
+        _body.Add(totals);
+    }
+
+    private void AddGear()
+    {
+        if (_session.Authority?.GearAuthority is not { } authority)
+        { _body.Add(NativeTheme.Body(CreationKarmaCopy.GearUnavailable, NativeTheme.Danger)); return; }
+        if (_session.Selection is not { GearSelections: { } selections }) return;
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.GearHelp, NativeTheme.Muted));
+        AddGearTotals();
+        foreach (var selected in selections)
+        {
+            var option = authority.Options.Single(item => item.OptionId == selected.OptionId);
+            AddLevels(option.Name, "karma-gear-quantity-" + option.OptionId, selected.Quantity,
+                authority.MaximumQuantityPerLine, quantity => Change(_session.Selection! with
+                {
+                    GearSelections = _session.Selection!.GearSelections!.Where(item => item.OptionId != option.OptionId)
+                        .Concat(quantity > 0 ? [new CharacterCreationGearSelection(option.OptionId, quantity)] : []).ToArray()
+                }));
+            AddButton(CreationKarmaCopy.Remove, "karma-remove-gear-" + option.OptionId, async () =>
+            {
+                Change(_session.Selection! with { GearSelections = _session.Selection!.GearSelections!
+                    .Where(item => item.OptionId != option.OptionId).ToArray() });
+                await Preview();
+            });
+        }
+        AddButton(CreationKarmaCopy.Preview, "karma-preview-gear", Preview);
+        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-gear-search" };
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
+        _body.Add(search);
+        AddButton(CreationKarmaCopy.Search, "karma-gear-search-go", () => { _page = 0; return Task.CompletedTask; });
+        var rows = authority.Options.Where(item => item.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        _page = Math.Min(_page, Math.Max(0, (rows.Length - 1) / PageSize));
+        foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
+        {
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.GearLine(option.Name, option.PackageQuantity, option.PackageCost)));
+            _body.Add(NativeTheme.Body(option.SourceBook + " · " + option.Page, NativeTheme.Muted));
+            if (!option.IsSelectable)
+                _body.Add(NativeTheme.Body(CreationKarmaCopy.GearUnavailable + " · " + string.Join(", ", option.Blockers), NativeTheme.Muted));
+            bool selected = selections.Any(item => item.OptionId == option.OptionId);
+            AddButton(selected ? CreationKarmaCopy.Selected : CreationKarmaCopy.UseSelection,
+                "karma-add-gear-" + option.OptionId, async () =>
+                {
+                    Change(_session.Selection! with { GearSelections = _session.Selection!.GearSelections!
+                        .Append(new CharacterCreationGearSelection(option.OptionId, option.PackageQuantity)).ToArray() });
+                    await Preview();
+                }, option.IsSelectable && !selected);
+        }
+        AddButton(CreationKarmaCopy.Previous, "karma-gear-previous", () => { _page--; return Task.CompletedTask; }, _page > 0);
+        AddButton(CreationKarmaCopy.Next, "karma-gear-next", () => { _page++; return Task.CompletedTask; }, (_page + 1) * PageSize < rows.Length);
     }
 
     private void AddResources()

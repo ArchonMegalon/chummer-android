@@ -210,10 +210,15 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Base de Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades y financiación de recursos. Se guarda un borrador, no un personaje terminado. Las demás etapas y la finalización aún no están disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Creación de Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, financiación de recursos y equipo compatible. Se guarda un borrador, no un personaje terminado. Las demás etapas y la finalización aún no están disponibles.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
-  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil. Aún no incluye modificadores de nuyen por cualidades, compras de equipo ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
+  <data name="Karma.Gear" xml:space="preserve"><value>Equipo</value></data>
+  <data name="Karma.GearHelp" xml:space="preserve"><value>Elige equipo de las fuentes activas. Las cantidades son unidades; añadir selecciona un paquete de la fuente. Core comprueba costes y disponibilidad. Revisa y confirma para guardar el borrador.</value></data>
+  <data name="Karma.GearUnavailable" xml:space="preserve"><value>No disponible en este borrador de equipo</value></data>
+  <data name="Karma.GearLine" xml:space="preserve"><value>{0} · {1} unidades · {2:N2} ¥</value></data>
+  <data name="Karma.GearTotals" xml:space="preserve"><value>Equipo: {0:N2} ¥ disponibles · {1:N2} ¥ gastados · {2:N2} ¥ restantes · {3:N2} ¥ sobre el presupuesto</value></data>
   <data name="Karma.InvalidNumber" xml:space="preserve"><value>Introduce un número no negativo con el separador decimal de tu idioma, sin separadores de miles.</value></data>
   <data name="Karma.ResourceLimit" xml:space="preserve"><value>Límite del perfil: {0} Karma</value></data>
   <data name="Karma.ResourceFunding" xml:space="preserve"><value>Recursos: {0} Karma → {1} ¥ (financiación del perfil, antes del equipo)</value></data>

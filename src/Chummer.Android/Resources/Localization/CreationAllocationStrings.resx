@@ -210,10 +210,15 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma foundation: metatype, talent, attributes, supported qualities, skills and resource funding. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resource funding and supported equipment. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
-  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen. Quality-based nuyen modifiers, equipment purchases and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
+  <data name="Karma.Gear" xml:space="preserve"><value>Equipment</value></data>
+  <data name="Karma.GearHelp" xml:space="preserve"><value>Choose equipment from active sources. Quantities are units; adding an item selects one source package. Core checks costs and availability. Review and confirm to save the draft.</value></data>
+  <data name="Karma.GearUnavailable" xml:space="preserve"><value>Unavailable in this equipment draft</value></data>
+  <data name="Karma.GearLine" xml:space="preserve"><value>{0} · {1} units · {2:N2} ¥</value></data>
+  <data name="Karma.GearTotals" xml:space="preserve"><value>Equipment: {0:N2} ¥ available · {1:N2} ¥ spent · {2:N2} ¥ remaining · {3:N2} ¥ over budget</value></data>
   <data name="Karma.InvalidNumber" xml:space="preserve"><value>Enter a non-negative number using your language's decimal separator, without thousands separators.</value></data>
   <data name="Karma.ResourceLimit" xml:space="preserve"><value>Profile limit: {0} Karma</value></data>
   <data name="Karma.ResourceFunding" xml:space="preserve"><value>Resources: {0} Karma → {1} ¥ (profile funding, before equipment)</value></data>
