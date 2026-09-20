@@ -1360,14 +1360,18 @@ public sealed class BuildPage : NativePageBase
         bool canOpenPrerequisite = prerequisiteMethod
                                    && HasAuthoritativePrerequisiteOptions(prerequisite);
         bool canOpenLifeModule = lifeModuleMethod && Coordinator.CanOpenSr5LifeModuleOrigin();
-        bool canOpen = canOpenPrerequisite || canOpenLifeModule;
+        bool canOpenKarma = snapshot.BuildMethod == CharacterCreationBuildMethods.Karma
+            && Coordinator.CanOpenCreationKarma();
+        bool canOpen = canOpenPrerequisite || canOpenLifeModule || canOpenKarma;
         Func<Task> selected = canOpenPrerequisite
             ? () => OpenCreationPrerequisiteAsync(prerequisite!.Value!)
             : canOpenLifeModule
                 ? OpenSr5LifeModuleOriginAsync
-                : static () => Task.CompletedTask;
+                : canOpenKarma
+                    ? () => Navigation.PushAsync(new CreationKarmaPage(Coordinator))
+                    : static () => Task.CompletedTask;
 
-        string authorityDetail = canOpenPrerequisite
+        string authorityDetail = canOpenKarma ? CreationKarmaCopy.Scope : canOpenPrerequisite
             ? PrerequisiteStageDetail(prerequisite!.Value!)
             : canOpenLifeModule
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"

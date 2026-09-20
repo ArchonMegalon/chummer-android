@@ -50,6 +50,25 @@ public sealed partial class RunnerSessionCoordinator
     private CharacterCreationKarmaMetatypeState? _karmaCurrentState;
     private CharacterCreationKarmaMetatypeQuote? _karmaCurrentReview;
 
+    internal bool CanOpenCreationKarma()
+        => _ownerBoundKarmaService is not null && IsKarmaDisplayCurrent(State);
+
+    internal async Task<CharacterCreationKarmaSkillAccess?> LoadCreationKarmaSkillAccessAsync(
+        CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection selection,
+        CancellationToken cancellationToken, Func<bool> isCurrentPage)
+    {
+        if (!isCurrentPage() || !IsCreationKarmaStateCurrent(state)
+            || state.SkillsCatalog is not { } catalog || state.Talents is not { } talents
+            || selection.TalentOptionId is not { } talent
+            || state.Options.SingleOrDefault(o => o.OptionId == selection.MetatypeOptionId) is not { } metatype)
+            return null;
+        string? unlock = selection.Skills?.TalentUnlock;
+        var result = await Task.Run(() => CharacterCreationKarmaSkillAccessRules.Evaluate(
+            catalog, talents, metatype, talent, unlock), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return isCurrentPage() && IsCreationKarmaStateCurrent(state) ? result : null;
+    }
+
     private sealed record KarmaReview(CharacterCreationKarmaMetatypeState State,
         CharacterOverviewState Original, CharacterCreationKarmaMetatypeConfirmRequest Command)
     {

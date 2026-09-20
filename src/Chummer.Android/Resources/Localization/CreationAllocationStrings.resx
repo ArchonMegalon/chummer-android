@@ -203,4 +203,40 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>native</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Check older Skills choices for re-review</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No supported historical Skills draft is available for this runner. Nothing was changed.</value></data>
+  <data name="Karma.Title" xml:space="preserve"><value>Karma foundation</value></data>
+  <data name="Karma.Metatype" xml:space="preserve"><value>Metatype</value></data>
+  <data name="Karma.Talent" xml:space="preserve"><value>Talent</value></data>
+  <data name="Karma.Attributes" xml:space="preserve"><value>Attributes</value></data>
+  <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
+  <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
+  <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma foundation: metatype, talent, attributes and skills only. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
+  <data name="Karma.Stale" xml:space="preserve"><value>This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.</value></data>
+  <data name="Karma.Saved" xml:space="preserve"><value>Pending Karma draft saved. The runner has not been finalized.</value></data>
+  <data name="Karma.Choose" xml:space="preserve"><value>Choose explicitly</value></data>
+  <data name="Karma.Pending" xml:space="preserve"><value>Selection changed — refresh the preview for current totals and costs.</value></data>
+  <data name="Karma.LevelHelp" xml:space="preserve"><value>Adjust purchased levels. Core recalculates final ratings, limits and costs when you refresh the preview.</value></data>
+  <data name="Karma.Preview" xml:space="preserve"><value>Refresh preview</value></data>
+  <data name="Karma.Active" xml:space="preserve"><value>Active skills</value></data>
+  <data name="Karma.Knowledge" xml:space="preserve"><value>Knowledge points</value></data>
+  <data name="Karma.Search" xml:space="preserve"><value>Search catalog</value></data>
+  <data name="Karma.Previous" xml:space="preserve"><value>Previous page</value></data>
+  <data name="Karma.Next" xml:space="preserve"><value>Next page</value></data>
+  <data name="Karma.SkillHelp" xml:space="preserve"><value>Choose the payment and source option, then use this selection in the draft. Only the final review saves it.</value></data>
+  <data name="Karma.KarmaLevels" xml:space="preserve"><value>Karma-paid levels</value></data>
+  <data name="Karma.KnowledgeLevels" xml:space="preserve"><value>Knowledge-point levels</value></data>
+  <data name="Karma.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
+  <data name="Karma.Specialization" xml:space="preserve"><value>Specialization / exotic identity</value></data>
+  <data name="Karma.None" xml:space="preserve"><value>None</value></data>
+  <data name="Karma.Payment" xml:space="preserve"><value>Specialization payment</value></data>
+  <data name="Karma.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Karma.UseSelection" xml:space="preserve"><value>Use selection in draft</value></data>
+  <data name="Karma.Remove" xml:space="preserve"><value>Remove from draft</value></data>
+  <data name="Karma.Confirm" xml:space="preserve"><value>Confirm and save pending draft</value></data>
+  <data name="Karma.Binding" xml:space="preserve"><value>Revision {0} · saved {1}</value></data>
+  <data name="Karma.Budget" xml:space="preserve"><value>Karma: {0} / {1} · remaining {2}</value></data>
+  <data name="Karma.Cost" xml:space="preserve"><value>{0} · {1} Karma</value></data>
+  <data name="Karma.Levels" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Knowledge points: {0} / {1}</value></data>
+  <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
 </root>
