@@ -77,6 +77,16 @@ foreach ((string locale, string expected) in new[]
         "Talent grant copy must use the real regional satellite and preserve Core's rating: " + locale);
 
 CultureInfo previousCulture = CultureInfo.CurrentUICulture;
+foreach ((string locale, string step, string expected) in new[]
+{
+    ("en-GB", "Qualities", "Open Qualities first, even if you keep the selection empty."),
+    ("de-AT", "Vor- und Nachteile", "Öffne zuerst „Vor- und Nachteile“, auch wenn du dort nichts auswählst."),
+    ("es-MX", "Cualidades", "Abre «Cualidades» primero, aunque dejes la selección vacía.")
+})
+    Assert(CreationAllocationStrings.Format(CultureInfo.GetCultureInfo(locale),
+        "Karma.ReviewOptionalStepFirst", "fallback", step) == expected,
+        "Empty-choice prerequisite hints must use regional resources: " + locale);
+
 try
 {
     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
@@ -103,7 +113,7 @@ string[] surfaceFiles =
 Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(
              native,
-             ["CreationAllocationStrings.cs", "BuildPage.cs"]))
+             ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs"]))
 {
     usedCopy.TryAdd(key, fallback);
 }
@@ -258,9 +268,10 @@ static void AssertAuthorityBoundary(string native)
 
 static void AssertHelperScope(string native, IReadOnlyCollection<string> surfaceFiles)
 {
-    // BuildPage owns only allocation route captions; its other existing copy
-    // belongs to other catalogs, not this allocation-only visible-copy check.
+    // BuildPage owns allocation route captions; CreationFinalizationPage owns
+    // shared starting-cash copy. Their other copy belongs to other catalogs.
     string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs").Append("BuildPage.cs")
+        .Append("CreationFinalizationPage.cs")
         .Order(StringComparer.Ordinal)
         .ToArray();
     string[] actual = Directory.EnumerateFiles(native, "*.cs", SearchOption.TopDirectoryOnly)

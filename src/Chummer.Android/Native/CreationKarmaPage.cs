@@ -166,7 +166,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private bool Current(long render, long appearance) => render == _render
         && IsCurrentAppearanceGeneration(appearance) && _session.Ready;
 
-    private void AddButton(string text, string id, Func<Task> action, bool enabled = true)
+    private void AddButton(string text, string id, Func<Task> action, bool enabled = true, string? disabledReason = null)
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
         var button = NativeTheme.SecondaryButton(text);
@@ -179,6 +179,12 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             if (Current(render, appearance) && enabled) await action();
         });
         _body.Add(button);
+        if (!enabled && disabledReason is not null)
+        {
+            var hint = NativeTheme.Body(disabledReason, NativeTheme.Muted);
+            hint.AutomationId = id + "-prerequisite";
+            _body.Add(hint);
+        }
     }
 
     private Task Open(CreationKarmaStep step, string? sourceId = null, string? instanceId = null, string? sourceKind = null)
@@ -201,6 +207,19 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private void AddOverview()
     {
         var selection = _session.Selection;
+        // Describe the existing navigation prerequisites, not rule eligibility.
+        // Empty reviewed choices differ from a step the player has not opened.
+        string? reviewedChoicesHint = selection is null
+            ? CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype)
+            : selection.TalentOptionId is null
+                ? CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent)
+                : selection.Attributes is null
+                    ? CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes)
+                    : selection.Skills is null
+                        ? CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Skills)
+                        : selection.QualityOptionIds is null
+                            ? CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Qualities)
+                            : null;
         AddButton(CreationKarmaCopy.Metatype, "karma-open-metatype", () => Open(CreationKarmaStep.Metatype));
         AddButton(CreationKarmaCopy.Talent, "karma-open-talent", () => Open(CreationKarmaStep.Talent), selection is not null);
         AddButton(CreationKarmaCopy.Attributes, "karma-open-attributes", () => Open(CreationKarmaStep.Attributes), selection?.TalentOptionId is not null);
@@ -212,9 +231,13 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             selection?.ResourceKarmaInvestment is not null);
         AddButton(CreationKarmaCopy.Contacts, "karma-open-contacts", () => Open(CreationKarmaStep.Contacts),
             selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null }
-                && _session.Authority?.ContactsPolicy is not null);
+                && _session.Authority?.ContactsPolicy is not null,
+            reviewedChoicesHint ?? CreationKarmaCopy.UnavailableInCurrentRules(CreationKarmaCopy.Contacts));
         AddButton(CreationKarmaCopy.Lifestyles, "karma-open-lifestyles", () => Open(CreationKarmaStep.Lifestyles),
-            selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null, GearSelections: not null });
+            selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null, GearSelections: not null },
+            reviewedChoicesHint ?? (selection?.ResourceKarmaInvestment is null
+                ? CreationKarmaCopy.ApplyResourcesFirst(CreationKarmaCopy.Resources)
+                : CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Gear)));
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
         AddCompletionButton();
         AddSelectionSummary();

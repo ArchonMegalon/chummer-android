@@ -232,6 +232,11 @@
   <data name="Karma.Knowledge" xml:space="preserve"><value>Wissenspunkte</value></data>
   <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Wissensfertigkeiten</value></data>
   <data name="Karma.Loading" xml:space="preserve"><value>Regeln und gespeicherte Auswahl werden geprüft… Dein Entwurf bleibt beim Laden erhalten.</value></data>
+  <data name="Karma.ChooseStepFirst" xml:space="preserve"><value>Wähle zuerst eine Option unter „{0}“.</value></data>
+  <data name="Karma.ReviewStepFirst" xml:space="preserve"><value>Öffne zuerst „{0}“ und prüfe deine Auswahl.</value></data>
+  <data name="Karma.ReviewOptionalStepFirst" xml:space="preserve"><value>Öffne zuerst „{0}“, auch wenn du dort nichts auswählst.</value></data>
+  <data name="Karma.ApplyResourcesFirst" xml:space="preserve"><value>Öffne „{0}“ und übernimm einen Betrag in den Entwurf (0 ist erlaubt).</value></data>
+  <data name="Karma.UnavailableInCurrentRules" xml:space="preserve"><value>„{0}“ ist mit den aktuellen Regeleinstellungen nicht verfügbar.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Katalog durchsuchen</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Vorherige Seite</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Nächste Seite</value></data>
