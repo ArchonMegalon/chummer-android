@@ -167,14 +167,76 @@ internal static partial class AfterRunAuthorityHarness
             Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
                 && probe!.ConfirmCalls == 0, "Editing gear persisted without review.");
             await Back();
+            await Click("karma-open-lifestyles");
+            var addLow = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Low");
+            await Click(addLow.AutomationId);
+            var oldLifestyleName = Element<Entry>("karma-lifestyle-name");
+            oldLifestyleName.Text = "Home ü & <Safe>";
+            Element<Entry>("karma-lifestyle-city").Text = "Madrid";
+            Element<Entry>("karma-lifestyle-increments").Text = "invalid";
+            Require(!Element<Button>("karma-use-lifestyle").IsEnabled
+                && Element<Label>("karma-lifestyle-invalid").IsVisible,
+                "Invalid lifestyle input must not retain an earlier usable amount.");
+            Element<Entry>("karma-lifestyle-increments").Text = "200";
+            await Click("karma-use-lifestyle");
+            string lowId = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Home ü & <Safe>").AutomationId;
+            Require(Element<Label>("karma-lifestyle-totals").Text == CreationKarmaCopy.LifestyleTotals(21000m, 50m, 400000m, -379050m, 379050m),
+                "An oversized lifestyle must display Core's actual shared-budget overspend.");
+            oldLifestyleName.Text = "obsolete lifestyle callback";
+            await Click(lowId);
+            Require(Element<Entry>("karma-lifestyle-name").Text == "Home ü & <Safe>",
+                "A departed lifestyle editor changed the current selection.");
+            Element<Entry>("karma-lifestyle-increments").Text = "2";
+            await Click("karma-use-lifestyle");
+            Require(IssuedElements(Current()).OfType<Label>().Any(label => label.AutomationId
+                == "karma-blocker-creation-karma-starting-lifestyle-required"),
+                "Adding a lifestyle must not silently select starting cash.");
+            await Click("karma-starting-lifestyle-" + lowId["karma-lifestyle-".Length..]);
+            var addMedium = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Medium");
+            await Click(addMedium.AutomationId);
+            await Click("karma-use-lifestyle");
+            // Catalog and owned rows share source names; resolve the owned row by stable instance ID.
+            string mediumId = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Medium"
+                && b.AutomationId?.StartsWith("karma-lifestyle-", StringComparison.Ordinal) == true).AutomationId;
+            await Click("karma-starting-lifestyle-" + mediumId["karma-lifestyle-".Length..]);
+            await Click(mediumId);
+            var removedLifestyleControl = Element<Entry>("karma-lifestyle-name");
+            await Click("karma-remove-lifestyle");
+            removedLifestyleControl.Text = "obsolete removed lifestyle";
+            Require(IssuedElements(Current()).OfType<Label>().Any(label => label.AutomationId
+                == "karma-blocker-creation-karma-starting-lifestyle-required")
+                && !IssuedElements(Current()).OfType<Button>().Any(button => button.AutomationId == mediumId),
+                "Deleting the starting lifestyle must clear its selection without choosing another one or replaying a stale control.");
+            await Click(addMedium.AutomationId);
+            await Click("karma-use-lifestyle");
+            string replacementMediumId = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Medium"
+                && b.AutomationId?.StartsWith("karma-lifestyle-", StringComparison.Ordinal) == true).AutomationId;
+            Require(replacementMediumId != mediumId, "A newly purchased lifestyle reused a deleted instance identity.");
+            mediumId = replacementMediumId;
+            await Click("karma-starting-lifestyle-" + mediumId["karma-lifestyle-".Length..]);
+            Require(Element<Label>("karma-lifestyle-totals").Text == CreationKarmaCopy.LifestyleTotals(21000m, 50m, 9000m, 11950m, 0m)
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
+                && probe.ConfirmCalls == 0,
+                "Lifestyle and equipment costs must share one Core budget without a pre-review save.");
+            await Back();
             await Click("karma-open-review");
             Require(Element<Button>("karma-confirm").IsEnabled, "The exact Human/Mundane/native-language/Pistols review is not confirmable.");
+            var reviewedSession = (CreationKarmaPhoneSession)typeof(CreationKarmaPage)
+                .GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
+            Console.WriteLine("Karma lifestyle review bytes: "
+                + System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(reviewedSession.Quote).Length
+                + "; lifestyle projection bytes: "
+                + System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(reviewedSession.Quote!.Lifestyles!.ProjectionAuthority).Length);
             await Click("karma-confirm");
-            Require(Element<Label>("creation-karma-saved").Text == CreationKarmaCopy.Saved
+            Require(IssuedElements(Current()).OfType<Label>().Any(label => label.AutomationId == "creation-karma-saved"
+                    && label.Text == CreationKarmaCopy.Saved)
                 && !IssuedElements(Current()).OfType<Button>().Any(b => b.AutomationId == "karma-confirm" && b.IsEnabled),
-                "Saved review did not expose its known result or offered another write.");
+                "Saved review did not expose its known result or offered another write: "
+                    + string.Join(" | ", IssuedElements(Current()).OfType<Label>().Select(label => label.Text)));
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
             var decision = cold.Document.AuxiliaryState.CharacterCreationKarmaMetatypeDecisions!.Single();
+            Require(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(decision).Length <= 128 * 1024,
+                "The ordinary multi-domain draft no longer fits the unchanged bounded Core decision ledger.");
             Require(probe!.ConfirmCalls == 1 && cold.ContentRevision == before.ContentRevision + 1
                 && cold.Document.Content == before.Document.Content
                 && decision.Quote.Attributes!.Attributes.Single(a => a.AttributeId == "AGI").Current == 2
@@ -187,7 +249,11 @@ internal static partial class AfterRunAuthorityHarness
                 && decision.Command.GearSelections!.Single().Quantity == 2
                 && decision.Quote.Gear!.Budget.BasketCost == 50m
                 && decision.Command.ContactSelections!.Count == 2
-                && decision.Quote.Contacts!.KarmaUsed == 3,
+                && decision.Quote.Contacts!.KarmaUsed == 3
+                && decision.Command.LifestyleSelections!.Count == 2
+                && decision.Quote.Lifestyles!.LifestyleNuyenUsed == 9000m
+                && decision.Quote.Lifestyles.Budget.Remaining == 11950m
+                && decision.Command.StartingLifestyleId!.Value.ToString("D") == mediumId["karma-lifestyle-".Length..],
                 "Native review did not persist exactly the selected source-bound pending foundation.");
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
@@ -234,8 +300,18 @@ internal static partial class AfterRunAuthorityHarness
             await Back();
             await Click("karma-open-gear");
             Require(Element<Stepper>("karma-gear-quantity-" + gearId).Value == 2
-                && Element<Label>("karma-gear-totals").Text == CreationKarmaCopy.GearTotals(21000m, 50m, 20950m, 0m),
+                && Element<Label>("karma-lifestyle-totals").Text == CreationKarmaCopy.LifestyleTotals(21000m, 50m, 9000m, 11950m, 0m),
                 "Cold reopen lost equipment identity, quantity or funding binding.");
+            await Back();
+            await Click("karma-open-lifestyles");
+            Require(!Element<Button>("karma-starting-lifestyle-" + mediumId["karma-lifestyle-".Length..]).IsEnabled,
+                "Cold reopen lost the explicitly selected starting lifestyle.");
+            await Click(lowId);
+            Require(Element<Entry>("karma-lifestyle-name").Text == "Home ü & <Safe>"
+                && Element<Entry>("karma-lifestyle-city").Text == "Madrid"
+                && Element<Entry>("karma-lifestyle-increments").Text == "2",
+                "Cold reopen lost lifestyle identity, location or duration.");
+            await Back();
             await Back();
             await Click("karma-open-qualities");
             Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-remove-quality-", StringComparison.Ordinal) == true) == 2
@@ -278,6 +354,12 @@ internal static partial class AfterRunAuthorityHarness
                 && Element<Button>("karma-completion-open-career").IsEnabled && probe.FinalConfirmCalls == 1,
                 "Atomic completion did not reopen the saved Career runner.");
             var completed = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var finalRoot = System.Xml.Linq.XDocument.Parse(completed.Document.Content).Root!;
+            var finalLifestyles = finalRoot.Element("lifestyles")!.Elements("lifestyle").ToArray();
+            Require(finalLifestyles.Length == 2
+                && finalLifestyles.Single(row => row.Element("name")!.Value == "Home ü & <Safe>").Element("city")!.Value == "Madrid"
+                && finalRoot.Element("nuyen")!.Value == "5400",
+                "Career transition lost purchased lifestyles or used default Street starting cash.");
             var finalContacts = System.Xml.Linq.XDocument.Parse(completed.Document.Content).Root!.Element("contacts")!.Elements("contact").ToArray();
             Require(finalContacts.Length == 2
                 && finalContacts.Single(item => item.Element("name")!.Value == "Mara ü & <Fixer>").Element("notes")!.Value == "Madrid — información"
@@ -308,11 +390,13 @@ internal static partial class AfterRunAuthorityHarness
                 Require(CreationKarmaCopy.Title == "Karma-Grunddaten", "German regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Vor- und Nachteile", "German quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Ausrüstung", "German equipment resources are missing.");
+                Require(CreationKarmaCopy.Lifestyles == "Lebensstile", "German lifestyle resources are missing.");
                 Require(CreationKarmaCopy.Finish == "Karma-Erstellung abschließen", "German completion resources are missing.");
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
                 Require(CreationKarmaCopy.Confirm == "Confirmar y guardar borrador", "Spanish regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Cualidades", "Spanish quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Equipo", "Spanish equipment resources are missing.");
+                Require(CreationKarmaCopy.Lifestyles == "Estilos de vida", "Spanish lifestyle resources are missing.");
                 Require(CreationKarmaCopy.Finish == "Finalizar creación con Karma", "Spanish completion resources are missing.");
             }
             finally { CultureInfo.CurrentUICulture = prior; }

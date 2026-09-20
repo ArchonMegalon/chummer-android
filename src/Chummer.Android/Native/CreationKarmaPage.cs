@@ -3,10 +3,10 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Contacts, Contact, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Contacts, Contact, Lifestyles, Lifestyle, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
-internal sealed class CreationKarmaPage : NativePageBase
+internal sealed partial class CreationKarmaPage : NativePageBase
 {
     private readonly CreationKarmaPhoneSession _session;
     private readonly CreationKarmaStep _step;
@@ -49,6 +49,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Resources => CreationKarmaCopy.Resources,
         CreationKarmaStep.Gear => CreationKarmaCopy.Gear,
         CreationKarmaStep.Contacts or CreationKarmaStep.Contact => CreationKarmaCopy.Contacts,
+        CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle => CreationKarmaCopy.Lifestyles,
         CreationKarmaStep.Review => CreationKarmaCopy.Review,
         _ => CreationKarmaCopy.Title
     };
@@ -76,7 +77,8 @@ internal sealed class CreationKarmaPage : NativePageBase
         MarkVisitedStage();
         await _session.ReloadAsync(_step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group,
             cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities,
-            includeGear: _step == CreationKarmaStep.Gear);
+            includeGear: _step == CreationKarmaStep.Gear,
+            includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
         if (!_session.QuoteCurrent) await _session.PreviewAsync(cancellationToken, Current);
@@ -98,6 +100,10 @@ internal sealed class CreationKarmaPage : NativePageBase
                 && _session.Selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null,
                     ContactSelections: null } contacts)
                 _session.Change(contacts with { ContactSelections = [] });
+            if (_step == CreationKarmaStep.Lifestyles && _session.Authority?.LifestylesAuthority is not null
+                && _session.Selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null,
+                    GearSelections: not null, LifestyleSelections: null } lifestyles)
+                _session.Change(lifestyles with { LifestyleSelections = [] });
         }
     }
 
@@ -147,6 +153,8 @@ internal sealed class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Gear: AddGear(); break;
             case CreationKarmaStep.Contacts: AddContacts(); break;
             case CreationKarmaStep.Contact: AddContactEditor(); break;
+            case CreationKarmaStep.Lifestyles: AddKarmaLifestyles(); break;
+            case CreationKarmaStep.Lifestyle: AddKarmaLifestyleEditor(); break;
             case CreationKarmaStep.Review: AddReview(); break;
         }
         AddBlockers();
@@ -201,6 +209,8 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Contacts, "karma-open-contacts", () => Open(CreationKarmaStep.Contacts),
             selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null }
                 && _session.Authority?.ContactsPolicy is not null);
+        AddButton(CreationKarmaCopy.Lifestyles, "karma-open-lifestyles", () => Open(CreationKarmaStep.Lifestyles),
+            selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null, GearSelections: not null });
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
         AddCompletionButton();
         AddSelectionSummary();
@@ -503,6 +513,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         foreach (var line in quote.Contacts?.Lines ?? [])
             _body.Add(NativeTheme.Body(CreationKarmaCopy.ContactLine(line.Selection.Identity.Name,
                 line.Selection.Connection, line.Selection.Loyalty, line.PointCost)));
+        AddLifestyleLines();
     }
 
     private void AddContactTotals()
@@ -602,6 +613,8 @@ internal sealed class CreationKarmaPage : NativePageBase
 
     private void AddGearTotals()
     {
+        if (_session.QuoteCurrent && _session.Quote?.Lifestyles is not null)
+        { AddLifestyleTotals(); return; }
         if (!_session.QuoteCurrent || _session.Quote?.Gear?.Budget is not { } budget) return;
         var totals = NativeTheme.Body(CreationKarmaCopy.GearTotals(budget.TotalStartingNuyen, budget.BasketCost,
             budget.RemainingNuyen, budget.Overspend));

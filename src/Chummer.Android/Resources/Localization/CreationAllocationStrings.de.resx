@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Fertigkeiten</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Entwurf prüfen</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen, Ausrüstung und Kontakte. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen, Ausrüstung, Kontakte und Standard-Lebensstile. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel für den Ausrüstungsentwurf. Nuyen-Modifikatoren durch Vor-/Nachteile und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
@@ -286,4 +286,19 @@
   <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Einfluss {1} · Loyalität {2} · {3} Kontaktpunkte</value></data>
   <data name="Karma.ContactTotals" xml:space="preserve"><value>Kontaktpunkte: {0}/{1} · Hohe Positionen: {2}/{3} · zusätzliches Karma: {4}</value></data>
   <data name="Karma.GroupContactCost" xml:space="preserve"><value>Gruppenkontakte: {0} Karma vor Zusatzkosten · genutztes Vorteilslimit einschließlich Gruppen: {1}</value></data>
+  <data name="Karma.Lifestyles" xml:space="preserve"><value>Lebensstile</value></data>
+  <data name="Karma.LifestyleHelp" xml:space="preserve"><value>Standard-Lebensstile im Entwurf konfigurieren und einen gekauften Lebensstil ausdrücklich für das Startvermögen wählen. Ausrüstung und Lebensstile teilen dasselbe Budget; der spätere Würfelwurf bezahlt keine Käufe. Erweiterte Aspekte und optionale Lebensstilqualitäten fehlen hier noch. Erst die Entwurfsbestätigung speichert.</value></data>
+  <data name="Karma.UseStartingLifestyle" xml:space="preserve"><value>Für Startvermögen wählen</value></data>
+  <data name="Karma.StartingLifestyleSelected" xml:space="preserve"><value>Für Startvermögen ausgewählt</value></data>
+  <data name="Karma.LifestyleIncrements" xml:space="preserve"><value>Anzahl der Quellzeiträume</value></data>
+  <data name="Karma.LifestylePercentage" xml:space="preserve"><value>Kosten in Prozent</value></data>
+  <data name="Karma.LifestyleRoommates" xml:space="preserve"><value>Mitbewohner</value></data>
+  <data name="Karma.LifestyleSplit" xml:space="preserve"><value>Kosten mit Mitbewohnern teilen</value></data>
+  <data name="Karma.LifestyleTrustFund" xml:space="preserve"><value>Treuhandfonds nutzen (Core muss Berechtigung bestätigen)</value></data>
+  <data name="Karma.LifestyleCity" xml:space="preserve"><value>Stadt</value></data>
+  <data name="Karma.LifestyleDistrict" xml:space="preserve"><value>Bezirk</value></data>
+  <data name="Karma.LifestyleBorough" xml:space="preserve"><value>Stadtteil</value></data>
+  <data name="Karma.LifestyleSource" xml:space="preserve"><value>{0} · Grundkosten {1:N2} ¥ pro {2}</value></data>
+  <data name="Karma.LifestyleLine" xml:space="preserve"><value>{0} · {1} · gesamt {2:N2} ¥</value></data>
+  <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Budget: {0:N2} ¥ · Ausrüstung: {1:N2} ¥ · Lebensstile: {2:N2} ¥ · übrig: {3:N2} ¥ · Überschreitung: {4:N2} ¥</value></data>
 </root>

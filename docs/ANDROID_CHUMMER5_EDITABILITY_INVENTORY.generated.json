@@ -2497,7 +2497,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "7c07c7559eb0830b47c75a4f61476a2866080683169d4fe3790c415138a3016c"
+        "sha256": "e23993bc57542433c7dd95be378b2b9da8a7cd55fbdc878476f35763d98f4f43"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2517,7 +2517,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "eeebaa38ea8bdd0e3fb65d47a4aa2507c419aab28b5ad0739bb24e0a29d8f3c8"
+        "sha256": "3cf7dbead82ffcf43750c9447abe8faf97c333f6192b88ad373596c16f78253f"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
