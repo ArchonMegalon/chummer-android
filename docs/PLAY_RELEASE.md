@@ -13,7 +13,25 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 21 — September 20, 2026
+## Current observed Internal release: Preview 22 — September 20, 2026
+
+Authenticated scoped Console readback at `2026-09-20T16:27:39Z` shows
+`22 (0.1.0-preview.22)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview22-internal-observation.md).
+
+The minimal Human/Mundane Sum-to-Ten wizard now reaches Career, with explicit
+Save and verified process restart preserving the same workspace and receipt.
+The local Debug route crossed diagnostic upgrades; it is not an entire fresh
+Creation journey on one APK. Prior native crashes led to a nonconcurrent GC
+mitigation, not a claim of a proven root cause or Release performance fix.
+The ARM64 AAB was locally built, separately old-key signed, independently
+verified and accepted by Play Internal. Physical Play installation and
+awakened/resonant or all-method/Career coverage remain unverified/incomplete.
+This is source assembly, not package-only or hosted runtime qualification.
+Code22 is consumed; the next artifact needs23 or a higher unused code.
+
+## Historical observed Internal release: Preview 21 — September 20, 2026
 
 Authenticated scoped Console readback at `2026-09-20T13:59:16Z` shows
 `21 (0.1.0-preview.21)` as **Available to internal testers**.
