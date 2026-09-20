@@ -15,6 +15,115 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunCreationMagicBackgroundAsync(string contentRoot, string sourceDirectory,
+        CharacterWorkspaceId id, CharacterCreationMagicResonanceDesktopDraft draft)
+    {
+        var owners = new ControlledLinkedOwner();
+        MagicReadProbe? probe = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            productionCreationOverview: true, creationSkillsSeed: target =>
+            {
+                foreach (string source in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+                {
+                    string destination = Path.Combine(target, Path.GetRelativePath(sourceDirectory, source));
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(source, destination);
+                }
+            }, magicDecorator: actual => probe = new(actual, owners));
+        runtime.Id = id;
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var before = store.Get(id).Value!;
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            probe!.UiThreadId = Environment.CurrentManagedThreadId;
+            var original = runtime.Coordinator.State;
+            var page = new CreationMagicResonancePage(runtime.Coordinator);
+            var prepare = typeof(CreationMagicResonancePage).GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var refresh = typeof(CreationMagicResonancePage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            using var release = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            probe.BeforeRead = () =>
+            {
+                entered.TrySetResult();
+                Require(release.Wait(TimeSpan.FromSeconds(10)), "Magic test read was not released.");
+            };
+            Task loading = (Task)prepare.Invoke(page, [CancellationToken.None])!;
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(!loading.IsCompleted, "Core read unexpectedly completed before release.");
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            }
+            finally { release.Set(); }
+            await loading;
+            probe.BeforeRead = null;
+            refresh.Invoke(page, null);
+            refresh.Invoke(page, null);
+            Require(probe.Loads == 1, "Rendering reloaded the entire Magic catalog.");
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            Require(body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review" && button.IsEnabled),
+                "Background catalog did not expose the actual Core-ready editor.");
+            var review = await runtime.Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, original.CreationMagicResonanceEditor!, draft);
+            Require(review.Preview.CanConfirm && probe.Previews == 1 && owners.ActiveLeases == 0,
+                "Background preview lost authority or retained an owner lease.");
+
+            using var canceled = new CancellationTokenSource();
+            probe.BeforeRead = canceled.Cancel;
+            try
+            {
+                await runtime.Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, canceled.Token);
+                throw new Exception("Canceled Magic read returned authority.");
+            }
+            catch (OperationCanceledException) when (canceled.IsCancellationRequested) { }
+            probe.BeforeRead = null;
+            Require(owners.ActiveLeases == 0, "Canceled read retained its owner lease.");
+            int reads = probe.Loads;
+            var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(runtime.Coordinator)!;
+            await gate.WaitAsync();
+            Task stale;
+            try
+            {
+                stale = runtime.Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, original.CreationMagicResonanceEditor!, draft);
+                owners.Set(ContactsOwnerB);
+                owners.Set(OwnerScope.LocalSingleUser);
+            }
+            finally { gate.Release(); }
+            try { await stale; throw new Exception("Owner ABA accepted an old Magic preview."); }
+            catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
+            Require(probe.Loads == reads && owners.ActiveLeases == 0, "Stale Magic worker entered Core.");
+            refresh.Invoke(page, null);
+            Require(!body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review"),
+                "Owner transition left the old Magic catalog actionable.");
+        });
+        RequireSameRewardDocument(before, store.Get(id).Value!);
+        Console.WriteLine("PASS Magic background catalog/preview, UI heartbeat, render without reload, cancellation, owner ABA and unchanged workspace");
+    }
+
+    private sealed class MagicReadProbe(ICharacterCreationMagicResonanceService inner, ControlledLinkedOwner owners)
+        : ICharacterCreationMagicResonanceService
+    {
+        public int UiThreadId { get; set; }
+        public int Loads { get; private set; }
+        public int Previews { get; private set; }
+        public Action? BeforeRead { get; set; }
+        private void Check()
+        {
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
+                "Magic read must run off UI with the original owner lease.");
+            BeforeRead?.Invoke();
+        }
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load(CharacterCreationMagicResonanceLoadRequest request)
+        { Check(); Loads++; return inner.Load(request); }
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonancePreview> Preview(CharacterCreationMagicResonancePreviewRequest request)
+        { Check(); Previews++; return inner.Preview(request); }
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceReceipt> Confirm(CharacterCreationMagicResonanceConfirmRequest request)
+            => throw new InvalidOperationException("Read-only background test must not confirm.");
+    }
+
     public static async Task RunCreationEntryGearCasesAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))

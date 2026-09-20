@@ -106,15 +106,15 @@
   <data name="Magic.Binding" xml:space="preserve"><value>Revisión {0} · requisito {1} · atributos {2}</value></data>
   <data name="Magic.BudgetSummary" xml:space="preserve"><value>{0} / {1} {2}</value></data>
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core no proyectó identidades seleccionables para esta categoría. No existe una alternativa basada en etiquetas ni personalizada.</value></data>
-  <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>Prioridad SR5 · Borrador · Catálogo</value></data>
+  <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Borrador · Catálogo</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
   <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} {2} restantes · {3} opciones de Core</value></data>
-  <data name="Magic.DraftEyebrow" xml:space="preserve"><value>Prioridad SR5 · Borrador</value></data>
+  <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Borrador</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core previsualizó este borrador, pero los presupuestos restantes exactos o los bloqueos impiden confirmarlo.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Presupuestos exactos de Core</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirmar solo guarda el estado auxiliar de creación de Core. CharacterDocumentChanged debe seguir en false hasta la finalización completa.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magia y Resonancia</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>El talento pertenece al requisito de Prioridad. Este paso solo selecciona identidades tipadas emitidas por Core; las semánticas personalizadas incompatibles y el talento de inteligencia artificial permanecen bloqueados de forma segura.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>El talento pertenece a los requisitos de creación. Este paso solo selecciona identidades tipadas emitidas por Core; las semánticas personalizadas incompatibles y el talento de inteligencia artificial permanecen bloqueados de forma segura.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adepto</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Puntos de poderes de adepto</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Mago especializado</value></data>
@@ -130,10 +130,10 @@
   <data name="Magic.Kind.Technomancer" xml:space="preserve"><value>Tecnomante</value></data>
   <data name="Magic.Kind.Tradition" xml:space="preserve"><value>Tradición</value></data>
   <data name="Magic.Left" xml:space="preserve"><value>{0} restantes</value></data>
-  <data name="Magic.NotAllowed" xml:space="preserve"><value>No permitido por el talento exacto de Prioridad</value></data>
+  <data name="Magic.NotAllowed" xml:space="preserve"><value>No permitido por el talento seleccionado</value></data>
   <data name="Magic.Option.Decrease" xml:space="preserve"><value>Reducir nivel</value></data>
   <data name="Magic.Option.Drain" xml:space="preserve"><value>Drenaje</value></data>
-  <data name="Magic.Option.Eyebrow" xml:space="preserve"><value>Prioridad SR5 · Borrador · Selección</value></data>
+  <data name="Magic.Option.Eyebrow" xml:space="preserve"><value>SR5 · Borrador · Selección</value></data>
   <data name="Magic.Option.Increase" xml:space="preserve"><value>Aumentar nivel</value></data>
   <data name="Magic.Option.Levels" xml:space="preserve"><value>Niveles</value></data>
   <data name="Magic.Option.MaximumLevels" xml:space="preserve"><value>Niveles máximos</value></data>
@@ -143,7 +143,7 @@
   <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Niveles seleccionados: {0}</value></data>
   <data name="Magic.PageTitle" xml:space="preserve"><value>Magia / Resonancia</value></data>
   <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Borrador actual</value></data>
-  <data name="Magic.Receipt.Eyebrow" xml:space="preserve"><value>Prioridad SR5 · Confirmación</value></data>
+  <data name="Magic.Receipt.Eyebrow" xml:space="preserve"><value>SR5 · Confirmación</value></data>
   <data name="Magic.Receipt.FormsRemaining" xml:space="preserve"><value>Formas complejas restantes</value></data>
   <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Repetición idempotente</value></data>
   <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Recibo de Magia/Resonancia</value></data>
@@ -160,7 +160,7 @@
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revisión {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core confirma atómicamente solo el registro auxiliar de creación. Aquí no se modifica XML ni ningún efecto del personaje.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
-  <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>Prioridad SR5 · Revisión</value></data>
+  <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar borrador tipado exacto</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento exacto no requiere identidades posteriores.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Revisar Magia / Resonancia</value></data>
@@ -170,7 +170,7 @@
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Metatipos prohibidos</value></data>
   <data name="Magic.Talent.PriorityRank" xml:space="preserve"><value>Rango de Prioridad</value></data>
   <data name="Magic.Talent.PrioritySourceId" xml:space="preserve"><value>ID de fuente de Prioridad</value></data>
-  <data name="Magic.Talent.ReadOnly" xml:space="preserve"><value>Talento de Prioridad · solo lectura</value></data>
+  <data name="Magic.Talent.ReadOnly" xml:space="preserve"><value>Talento · solo lectura</value></data>
   <data name="Magic.Talent.RequiredCategories" xml:space="preserve"><value>Categorías de metatipo requeridas</value></data>
   <data name="Magic.Talent.RequiredMetatypes" xml:space="preserve"><value>Metatipos requeridos</value></data>
   <data name="Magic.Talent.SelectionId" xml:space="preserve"><value>ID de selección de talento</value></data>

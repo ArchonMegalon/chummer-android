@@ -181,7 +181,9 @@ internal static partial class AfterRunAuthorityHarness
         try
         {
             typeof(BuildPage).GetMethod("AddLegalNextSteps", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(build,
-                [coordinator.State.CreationWizard, null, null, null, coordinator.LoadCreationSkills(), null, null]);
+                [coordinator.State.CreationWizard, null, null, null, coordinator.LoadCreationSkills(), null, null,
+                    new CreationDashboardRenderReadiness(() => false, () => false, () => false,
+                        () => false, () => false, () => false)]);
             var body = (VerticalStackLayout)((ScrollView)build.Content!).Content;
             var recovery = body.Children.OfType<Border>().SelectMany(border => border.Content is Grid grid
                     ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())

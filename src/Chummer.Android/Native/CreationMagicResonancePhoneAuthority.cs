@@ -4,7 +4,7 @@ using Chummer.Presentation.Overview;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Android trust boundary for the SR5 Standard Priority Magic/Resonance journey. It verifies
+/// Android trust boundary for the SR5 Priority/Sum-to-Ten Magic/Resonance journey. It verifies
 /// binding and projection identity, then delegates every draft, preview and confirmation to the
 /// renderer-neutral Presentation workflow and Core service. It never interprets XML, custom data,
 /// prerequisites, costs, budgets, or character effects.

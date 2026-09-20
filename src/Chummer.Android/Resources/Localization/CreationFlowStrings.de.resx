@@ -106,15 +106,15 @@
   <data name="Magic.Binding" xml:space="preserve"><value>Revision {0} · Voraussetzung {1} · Attribute {2}</value></data>
   <data name="Magic.BudgetSummary" xml:space="preserve"><value>{0} / {1} {2}</value></data>
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core hat für diese Kategorie keine auswählbaren Identitäten bereitgestellt. Es gibt keine Beschriftungs- oder Custom-Ausweichlösung.</value></data>
-  <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf · Katalog</value></data>
+  <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Entwurf · Katalog</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
   <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} ausgewählt · {1} {2} verbleibend · {3} Core-Optionen</value></data>
-  <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf</value></data>
+  <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Entwurf</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core hat diesen Entwurf geprüft, aber exakte Restbudgets oder Blockaden verhindern die Bestätigung.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exakte Core-Budgets</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Die Bestätigung speichert nur den Core-Hilfszustand der Erschaffung. CharacterDocumentChanged muss bis zur Gesamtfinalisierung false bleiben.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magie und Resonanz</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>Das Talent gehört zur Prioritätsvoraussetzung. Dieser Schritt wählt nur von Core ausgegebene typisierte Identitäten; nicht unterstützte Custom-Semantik und das Künstliche-Intelligenz-Talent bleiben sicher gesperrt.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Das Talent gehört zu den Erschaffungsvoraussetzungen. Dieser Schritt wählt nur von Core ausgegebene typisierte Identitäten; nicht unterstützte Custom-Semantik und das Künstliche-Intelligenz-Talent bleiben sicher gesperrt.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Adeptenkraftpunkte</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Aspektmagier</value></data>
@@ -130,10 +130,10 @@
   <data name="Magic.Kind.Technomancer" xml:space="preserve"><value>Technomancer</value></data>
   <data name="Magic.Kind.Tradition" xml:space="preserve"><value>Tradition</value></data>
   <data name="Magic.Left" xml:space="preserve"><value>{0} verbleibend</value></data>
-  <data name="Magic.NotAllowed" xml:space="preserve"><value>Vom exakten Prioritätstalent nicht erlaubt</value></data>
+  <data name="Magic.NotAllowed" xml:space="preserve"><value>Vom gewählten Talent nicht erlaubt</value></data>
   <data name="Magic.Option.Decrease" xml:space="preserve"><value>Stufe senken</value></data>
   <data name="Magic.Option.Drain" xml:space="preserve"><value>Entzug</value></data>
-  <data name="Magic.Option.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf · Auswahl</value></data>
+  <data name="Magic.Option.Eyebrow" xml:space="preserve"><value>SR5 · Entwurf · Auswahl</value></data>
   <data name="Magic.Option.Increase" xml:space="preserve"><value>Stufe erhöhen</value></data>
   <data name="Magic.Option.Levels" xml:space="preserve"><value>Stufen</value></data>
   <data name="Magic.Option.MaximumLevels" xml:space="preserve"><value>Maximale Stufen</value></data>
@@ -143,7 +143,7 @@
   <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Ausgewählte Stufen: {0}</value></data>
   <data name="Magic.PageTitle" xml:space="preserve"><value>Magie / Resonanz</value></data>
   <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Aktueller Entwurf</value></data>
-  <data name="Magic.Receipt.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Bestätigung</value></data>
+  <data name="Magic.Receipt.Eyebrow" xml:space="preserve"><value>SR5 · Bestätigung</value></data>
   <data name="Magic.Receipt.FormsRemaining" xml:space="preserve"><value>Verbleibende komplexe Formen</value></data>
   <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Idempotente Wiederholung</value></data>
   <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Magie-/Resonanzbeleg</value></data>
@@ -160,7 +160,7 @@
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core speichert atomar nur das Hilfsbuch der Erschaffung. Hier werden weder XML noch Charaktereffekte verändert.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Magie-/Resonanzentwurf der Erschaffung bestätigen</value></data>
-  <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Prüfung</value></data>
+  <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Prüfung</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Exakten typisierten Entwurf prüfen</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Für dieses exakte Talent sind keine Folgeidentitäten erforderlich.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Magie / Resonanz prüfen</value></data>
@@ -170,7 +170,7 @@
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Verbotene Metatypen</value></data>
   <data name="Magic.Talent.PriorityRank" xml:space="preserve"><value>Prioritätsrang</value></data>
   <data name="Magic.Talent.PrioritySourceId" xml:space="preserve"><value>Prioritätsquellen-ID</value></data>
-  <data name="Magic.Talent.ReadOnly" xml:space="preserve"><value>Prioritätstalent · schreibgeschützt</value></data>
+  <data name="Magic.Talent.ReadOnly" xml:space="preserve"><value>Talent · schreibgeschützt</value></data>
   <data name="Magic.Talent.RequiredCategories" xml:space="preserve"><value>Erforderliche Metatypkategorien</value></data>
   <data name="Magic.Talent.RequiredMetatypes" xml:space="preserve"><value>Erforderliche Metatypen</value></data>
   <data name="Magic.Talent.SelectionId" xml:space="preserve"><value>Talentauswahl-ID</value></data>
