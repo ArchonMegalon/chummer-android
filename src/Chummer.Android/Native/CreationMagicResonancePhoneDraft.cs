@@ -16,6 +16,26 @@ internal sealed class CreationMagicResonancePhoneDraft
     public CharacterCreationMagicResonanceSelections Selections => _selections;
     public CharacterCreationMagicResonanceReview? Review => _review;
 
+    // Immutable editor/selection/review values may be validated on a worker.
+    // Publishing a prepared copy must not overwrite a newer local selection.
+    public CreationMagicResonancePhoneDraft Copy() => new()
+    {
+        _editor = _editor, _selections = _selections, _review = _review
+    };
+
+    public bool TryAdoptPrepared(CreationMagicResonancePhoneDraft original,
+        CreationMagicResonancePhoneDraft prepared)
+    {
+        if (!ReferenceEquals(_editor, original._editor)
+            || !ReferenceEquals(_selections, original._selections)
+            || !ReferenceEquals(_review, original._review))
+            return false;
+        _editor = prepared._editor;
+        _selections = prepared._selections;
+        _review = prepared._review;
+        return true;
+    }
+
     public void Bind(
         CharacterCreationMagicResonanceEditorState editor,
         CharacterOverviewState overview)

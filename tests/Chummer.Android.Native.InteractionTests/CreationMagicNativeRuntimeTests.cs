@@ -16,6 +16,24 @@ internal static class CreationMagicNativeRuntimeTests
 {
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
 
+    public static void RunSumToTen(string contentRoot)
+    {
+        RunTalent(contentRoot, technomancer: false, buildMethod: CharacterCreationBuildMethods.SumToTen);
+        RunTalent(contentRoot, technomancer: true, buildMethod: CharacterCreationBuildMethods.SumToTen);
+        RunTalent(contentRoot, technomancer: false, mysticAdept: true, buildMethod: CharacterCreationBuildMethods.SumToTen);
+        RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery", buildMethod: CharacterCreationBuildMethods.SumToTen);
+    }
+
+    // Test-only fixture export for a bounded real Android editor/save/restart smoke.
+    // Core performs bootstrap and prerequisite mutations; no hand-written authority.
+    public static void ExportSumToTenMagicSeed(string contentRoot, string directory)
+    {
+        Require(Path.IsPathFullyQualified(directory) && Directory.Exists(directory)
+            && !Directory.EnumerateFileSystemEntries(directory).Any(), "Seed destination must be explicit and empty.");
+        RunTalent(contentRoot, technomancer: false, buildMethod: CharacterCreationBuildMethods.SumToTen,
+            seedDirectory: directory);
+    }
+
     public static void Run(string contentRoot)
     {
         foreach ((string locale, string title) in new[]
@@ -38,7 +56,8 @@ internal static class CreationMagicNativeRuntimeTests
     }
 
     private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false,
-        string? aspectedGroup = null)
+        string? aspectedGroup = null, string buildMethod = CharacterCreationBuildMethods.Priority,
+        string? seedDirectory = null)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -56,8 +75,10 @@ internal static class CreationMagicNativeRuntimeTests
                 new RulesetWorkspaceCodecResolver([codec]), queries, resolver);
             var created = bootstrap.Create(new(CharacterCreationBootstrapSchemas.RequestV1,
                 CharacterCreationBootstrapStages.AwaitingFoundationSelection, RulesetDefaults.Sr5,
-                "Awakened phone projection", technomancer ? "Technomancer" : "Adept", CharacterCreationBuildMethods.Priority,
-                CharacterCreationBootstrapProfiles.PrioritySettingsProfileId));
+                "Awakened phone projection", technomancer ? "Technomancer" : "Adept", buildMethod,
+                buildMethod == CharacterCreationBuildMethods.SumToTen
+                    ? CharacterCreationBootstrapProfiles.SumToTenSettingsProfileId
+                    : CharacterCreationBootstrapProfiles.PrioritySettingsProfileId));
             Require(created.Outcome == CharacterCreationBootstrapOutcomes.Success, string.Join(",", created.Blockers));
             var id = created.Value!.WorkspaceId;
             var prerequisites = new CharacterCreationPrerequisiteService(store, queries, resolver);
@@ -70,6 +91,12 @@ internal static class CreationMagicNativeRuntimeTests
                 [CharacterCreationPriorityCategoryIds.Skills] = "B",
                 [CharacterCreationPriorityCategoryIds.Resources] = aspectedGroup is null ? "D" : "C"
             };
+            if (buildMethod == CharacterCreationBuildMethods.SumToTen)
+            {
+                // Repeated ranks: E/C/A/C/C or E/D/A/C/B, both ten points.
+                ranks[CharacterCreationPriorityCategoryIds.Skills] = "C";
+                ranks[CharacterCreationPriorityCategoryIds.Resources] = aspectedGroup is null ? "C" : "B";
+            }
             var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == "E").HeritageOptions.First(item => item.IsEnabled && item.MetatypeName == "Human" && item.MetavariantSourceId is null);
             var talent = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
@@ -143,6 +170,21 @@ internal static class CreationMagicNativeRuntimeTests
             var service = new CharacterCreationMagicResonanceService(store, resolver);
             var state = service.Load(new(id)).Value!;
             Require(state.CanEdit, string.Join(",", state.Blockers));
+            Require(state.PrerequisiteDraft!.BuildMethod == buildMethod,
+                "Magic must retain the exact Core creation method rather than relabel Sum-to-Ten as Priority.");
+            Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out _),
+                $"Actual {buildMethod} Core state rejected by Presentation: " + ProjectionDiagnostics(state));
+            if (seedDirectory is not null)
+            {
+                foreach (string source in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(seedDirectory, Path.GetRelativePath(directory, source));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(source, target, overwrite: false);
+                }
+                Console.WriteLine($"SEED {id.Value} revision={state.Binding.ContentRevision}/{state.Binding.SavedRevision}");
+                return;
+            }
             if (aspectedGroup is not null)
             {
                 RunAspected(store, resolver, service, state, id, directory, aspectedGroup);
@@ -207,10 +249,19 @@ internal static class CreationMagicNativeRuntimeTests
                     editor.AdeptPowers.Single(item => item.Name == choice.Name).Identity, choice.Levels)).ToArray();
             var draft = CreationMagicResonancePhoneAuthority.CreateDraft(editor, new(null, null, powers, [], []));
             var review = CharacterCreationMagicResonanceWorkflow.Review(service, editor, draft);
+            var beforePrepared = phone.Copy();
+            var preparedPhone = beforePrepared.Copy();
+            Require(preparedPhone.TryAdopt(editor, overview, review)
+                && phone.TryAdoptPrepared(beforePrepared, preparedPhone), "Background review was not adopted.");
+            Require(!phone.TryAdoptPrepared(beforePrepared, beforePrepared), "A late worker overwrote a newer local choice.");
+            Require(phone.Review == review, "Rejected stale copy changed the current draft.");
             Require(review.Preview.CanConfirm && phone.TryAdopt(editor, overview, review), "Native review lost exact Core budget authority.");
+            AfterRunAuthorityHarness.RunCreationMagicBackgroundAsync(contentRoot, directory, id, draft)
+                .GetAwaiter().GetResult();
             string beforeXml = store.Get(id).Value!.Document.Content;
             string key = CreationMagicResonancePhoneAuthority.ComputeIdempotencyKey(review);
             var confirmed = CharacterCreationMagicResonanceWorkflow.Confirm(service, review, key, explicitlyConfirmed: true);
+            VerifyReceiptHydration(review, confirmed);
             var coldStore = new FileWorkspaceStore(directory);
             var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);
             var cold = coldService.Load(new(id)).Value!;
@@ -652,6 +703,48 @@ internal static class CreationMagicNativeRuntimeTests
             && coldStore.Get(id).Value!.Document.Content == beforeXml,
             "Phone purchase mutated character XML before finalization or replayed a write.");
         Console.WriteLine("PASS actual Mystic Adept profile/raised MAG → native PP purchase/powers/spells → cold file-store reopen/replay");
+    }
+
+    private static void VerifyReceiptHydration(CharacterCreationMagicResonanceReview review,
+        CharacterCreationMagicResonanceConfirmation confirmation)
+    {
+        var backend = new MagicCheckpointBackend();
+        var journal = new CharacterCreationMagicResonanceCheckpointStore(backend);
+        Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
+            out var reviewed, out var blocker), blocker);
+        Require(journal.TryBeginConfirm(CharacterCreationMagicResonanceCheckpointCas.From(reviewed),
+            out var confirming, out blocker), blocker);
+        Require(journal.TryRecordConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(confirming),
+            confirmation, out var stored, out blocker), blocker);
+        Require(stored.IsStructurallyValid() && stored.Confirmation != confirmation,
+            "Fixture must exercise the durable JSON round-trip, not the same in-memory record.");
+        // Constructors only: no appearance/render or simulated Activity claim.
+        _ = new CreationMagicResonanceReceiptPage(null!, stored, confirmation, journal);
+        var coldJournal = new CharacterCreationMagicResonanceCheckpointStore(backend);
+        Require(coldJournal.TryRead(out var reopened, out blocker), blocker);
+        _ = new CreationMagicResonanceReceiptPage(null!, reopened, confirmation, coldJournal);
+        foreach (var altered in new[]
+        {
+            confirmation with { IsCurrentDraft = false },
+            confirmation with { IsIdempotentReplay = !confirmation.IsIdempotentReplay },
+            confirmation with { PersistedState = confirmation.PersistedState with
+                { CoreSnapshotDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8("other-snapshot") } },
+            confirmation with { Receipt = confirmation.Receipt with { SavedRevision = 999 } }
+        })
+            ExpectRejected(() => _ = new CreationMagicResonanceReceiptPage(null!, reopened, altered, coldJournal));
+        ExpectRejected(() => _ = new CreationMagicResonanceReceiptPage(null!, confirming, confirmation, coldJournal));
+        Require(coldJournal.TryRead(out var unchanged, out blocker)
+            && unchanged.CheckpointDigest == stored.CheckpointDigest,
+            "Receipt display or rejected substitutions changed the durable journal.");
+        Console.WriteLine("PASS receipt constructor accepts durable round-trip; changed flags, snapshot, revision and phase remain rejected");
+    }
+
+    private sealed class MagicCheckpointBackend : ICharacterCreationMagicResonanceCheckpointBackend
+    {
+        private string _payload = string.Empty;
+        public string Read() => _payload;
+        public void Write(string payload) => _payload = payload;
+        public void Remove() => _payload = string.Empty;
     }
 
     private static void Require(bool condition, string message)

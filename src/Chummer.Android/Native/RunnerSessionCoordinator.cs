@@ -2303,6 +2303,40 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             : result;
     }
 
+    internal Task<CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>>
+        LoadCreationMagicResonanceForDisplayAsync(CharacterOverviewState original, CancellationToken token)
+        => WithCreationMagicReadAsync(original, LoadCreationMagicResonance, token);
+
+    internal Task<CharacterCreationMagicResonanceReview> ReviewCreationMagicResonanceForDisplayAsync(
+        CharacterOverviewState original, CharacterCreationMagicResonanceEditorState editor,
+        CharacterCreationMagicResonanceDesktopDraft draft, CancellationToken token = default)
+        => WithCreationMagicReadAsync(original, () => ReviewCreationMagicResonance(editor, draft), token);
+
+    private Task<T> WithCreationMagicReadAsync<T>(CharacterOverviewState original, Func<T> read,
+        CancellationToken token)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+            if (!IsCreationCatalogDisplayCurrent(original)
+                || original.DisplayOwnerContext is not { IsValid: true } owner
+                || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
+                throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
+            bool admitted = owners.TryAcquire(owner, out var lease);
+            // Core's ambient-owner read is synchronous. Never carry this lease
+            // across an await, and reject owner/revision changes before delivery.
+            using (lease)
+            {
+                if (!admitted || lease is null || lease.Stamp != owner
+                    || !IsCreationCatalogDisplayCurrent(original))
+                    throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
+                T result = read();
+                token.ThrowIfCancellationRequested();
+                if (!IsCreationCatalogDisplayCurrent(original))
+                    throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
+                return result;
+            }
+        }, token), token);
+
     internal CharacterCreationMagicResonanceReview ReviewCreationMagicResonance(
         CharacterCreationMagicResonanceEditorState expectedEditor,
         CharacterCreationMagicResonanceDesktopDraft draft)

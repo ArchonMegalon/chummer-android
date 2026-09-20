@@ -238,6 +238,16 @@ internal static class Program
             CreationMagicNativeRuntimeTests.Run(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-sum-to-ten-magic-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunSumToTen(args[1]);
+            return;
+        }
+        if (args.Length == 3 && args[0] == "--creation-sum-to-ten-magic-seed")
+        {
+            CreationMagicNativeRuntimeTests.ExportSumToTenMagicSeed(args[1], args[2]);
+            return;
+        }
         if (args.Length != 0 && (args.Length != 2 || args[0] != "--after-run-runtime-content-root"))
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =

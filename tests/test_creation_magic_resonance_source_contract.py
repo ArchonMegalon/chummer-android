@@ -1,5 +1,6 @@
 import ast
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -8,6 +9,45 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationMagicResonanceSourceContractTests(unittest.TestCase):
+    def test_core_reads_and_previews_are_async_and_render_uses_prepared_snapshot(self) -> None:
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        refresh = page[page.index("protected override void Refresh()") : page.index("internal static bool HasUnsupportedSeparateMagicProfile")]
+        self.assertNotIn("Coordinator.LoadCreationMagicResonance", refresh)
+        self.assertNotIn("TryProject(", refresh)
+        self.assertNotIn("_draft.Matches(", refresh)
+        self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(original)", refresh)
+        self.assertNotIn("Coordinator.ReviewCreationMagicResonance(", page)
+        self.assertNotIn("Coordinator.LoadCreationMagicResonance()", page)
+        self.assertIn("IsCurrentAppearanceGeneration(generation)", page)
+        self.assertIn("_draft.TryAdoptPrepared(before, prepared)", page)
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        worker = coordinator[coordinator.index("private Task<T> WithCreationMagicReadAsync<T>") : coordinator.index("internal CharacterCreationMagicResonanceReview ReviewCreationMagicResonance(")]
+        for marker in ("WithWorkspaceActivationGateAsync", "Task.Run(", "owners.TryAcquire(owner", "lease.Stamp != owner", "T result = read();"):
+            self.assertIn(marker, worker)
+        self.assertGreaterEqual(worker.count("IsCreationCatalogDisplayCurrent(original)"), 3)
+
+    def test_receipt_acknowledgement_returns_through_attached_phone_shell(self) -> None:
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        action = page[page.index("private async Task AcknowledgeAsync()") :]
+        action = action[:action.index("private static void AddDigest(")]
+        self.assertIn("_store.TryAcknowledgeConfirmed(", action)
+        self.assertIn("MainShell { UsesTabletComposition: false } shell", action)
+        self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", action)
+        self.assertNotIn("Navigation.Pop", action)
+
+    def test_shared_magic_copy_does_not_mislabel_sum_to_ten_as_priority(self) -> None:
+        keys = (
+            "Magic.DraftEyebrow", "Magic.Catalog.Eyebrow", "Magic.Option.Eyebrow",
+            "Magic.Review.Eyebrow", "Magic.Receipt.Eyebrow", "Magic.Intro",
+            "Magic.NotAllowed", "Magic.Talent.ReadOnly",
+        )
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            values = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
+            for key in keys:
+                self.assertTrue(values[key], (locale, key))
+                self.assertNotIn("prior", values[key].lower(), (locale, key))
+
     def test_phone_journey_is_deep_typed_and_core_presentation_bound(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(
             encoding="utf-8"
@@ -18,8 +58,8 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             'AutomationId = "creation-magic-resonance-option-page"',
             'AutomationId = "creation-magic-resonance-review-page"',
             'AutomationId = "creation-magic-resonance-receipt-page"',
-            "Coordinator.LoadCreationMagicResonance()",
-            "Coordinator.ReviewCreationMagicResonance(",
+            "Coordinator.LoadCreationMagicResonanceForDisplayAsync(",
+            "Coordinator.ReviewCreationMagicResonanceForDisplayAsync(",
             "Coordinator.ConfirmCreationMagicResonanceAsync(",
             "CharacterCreationMagicResonanceDesktopDraft",
             "CharacterCreationMagicResonanceReview",

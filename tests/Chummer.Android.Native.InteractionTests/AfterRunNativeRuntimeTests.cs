@@ -559,7 +559,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<IOwnerBoundCharacterCreationPrerequisiteService, IOwnerBoundCharacterCreationPrerequisiteService?>? prerequisiteDecorator = null,
             bool productionCreationOverview = false,
             Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null,
-            Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null)
+            Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
+            Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -672,6 +673,7 @@ internal static partial class AfterRunAuthorityHarness
                     creationQualitiesService: productionCreationOverview
                         ? qualitiesDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationQualitiesService>())
                             ?? _provider.GetRequiredService<ICharacterCreationQualitiesService>() : null,
+                    creationMagicResonanceService: magicDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationMagicResonanceService>()),
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,

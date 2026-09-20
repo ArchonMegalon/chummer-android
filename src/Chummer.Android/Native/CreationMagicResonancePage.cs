@@ -5,7 +5,7 @@ using Chummer.Presentation.Overview;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Native phone Draft step for SR5 Standard Priority Magic/Resonance. Every displayed cost,
+/// Native phone Draft step for SR5 Priority/Sum-to-Ten Magic/Resonance. Every displayed cost,
 /// budget, prerequisite, blocker and source comes from the current Core/Presentation projection.
 /// </summary>
 public sealed class CreationMagicResonancePage : NativePageBase
@@ -18,6 +18,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
         Spacing = 14
     };
     private IReadOnlyList<string> _localBlockers = [];
+    private CharacterOverviewState? _loadedDisplay;
+    private CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>? _loaded;
+    private CharacterCreationMagicResonanceEditorState? _editor;
+    private bool _loading = true;
 
     public CreationMagicResonancePage(RunnerSessionCoordinator coordinator)
         : this(
@@ -36,19 +40,66 @@ public sealed class CreationMagicResonancePage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loading = true;
+        _loadedDisplay = null;
+        _loaded = null;
+        _editor = null;
+        Refresh();
+        CharacterOverviewState original = Coordinator.State;
+        var before = _draft.Copy();
+        var preparedDraft = before.Copy();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, cancellationToken);
+            var editor = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (loaded.Value is not { } core
+                    || !CharacterCreationMagicResonanceWorkflow.TryProject(core, out var projected)
+                    || projected is null
+                    || !CreationMagicResonancePhoneAuthority.IsReady(core, projected, original))
+                    return null;
+                preparedDraft.Bind(projected, original);
+                return preparedDraft.Matches(projected, original) ? projected : null;
+            }, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(original)
+                || !_draft.TryAdoptPrepared(before, preparedDraft))
+                return;
+            _loadedDisplay = original;
+            _loaded = loaded;
+            _editor = editor;
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested) _loading = false;
+        }
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.DraftEyebrow", "SR5 Priority · Draft")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.DraftEyebrow", "SR5 · Draft")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Magic.Heading", "Magic and Resonance")));
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Magic.Intro",
-                "The Talent is owned by the Priority prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed."),
+                "The Talent is owned by the Creation prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed."),
             NativeTheme.Muted));
 
-        CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
-            Coordinator.LoadCreationMagicResonance();
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-magic-resonance-loading" });
+            return;
+        }
+        if (_loaded is not { } load || _loadedDisplay is not { } original
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+        {
+            AddBlockers([CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision]);
+            return;
+        }
         if (load.Value is { } profileState && HasUnsupportedSeparateMagicProfile(profileState))
         {
             var notice = NativeTheme.Body(CreationFlowStrings.Get("Magic.Mystic.SeparateAttributeUnsupported",
@@ -56,27 +107,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
             notice.AutomationId = "creation-magic-resonance-separate-attribute-unavailable";
             _body.Add(notice);
         }
-        if (load.Value is not { } core
-            || !CharacterCreationMagicResonanceWorkflow.TryProject(
-                core,
-                out CharacterCreationMagicResonanceEditorState? editor)
-            || editor is null
-            || !CreationMagicResonancePhoneAuthority.IsReady(
-                core,
-                editor,
-                Coordinator.State))
+        if (_editor is not { } editor)
         {
             AddBlockers(load.Blockers.Count == 0
                 ? [CharacterCreationMagicResonanceBlockers.AuthorityUnavailable]
                 : load.Blockers);
-            return;
-        }
-
-        _draft.Bind(editor, Coordinator.State);
-        if (!_draft.Matches(editor, Coordinator.State))
-        {
-            AddBlockers(
-                [CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision]);
             return;
         }
 
@@ -135,12 +170,26 @@ public sealed class CreationMagicResonancePage : NativePageBase
         try
         {
             var candidate = _draft.CreateMysticPowerPointCandidate(powerPoints);
-            var review = await Task.Run(() => Coordinator.ReviewCreationMagicResonance(editor, candidate));
-            _localBlockers = _draft.TryAdopt(editor, Coordinator.State, review)
-                ? review.Preview.Blockers : [CharacterCreationMagicResonanceBlockers.DraftConflict];
+            var review = await PreviewDraftAsync(editor, candidate);
+            _localBlockers = review.Preview.Blockers;
         }
         catch (InvalidOperationException exception) { _localBlockers = [exception.Message]; }
-        Refresh();
+    }
+
+    private async Task<CharacterCreationMagicResonanceReview> PreviewDraftAsync(
+        CharacterCreationMagicResonanceEditorState editor, CharacterCreationMagicResonanceDesktopDraft candidate)
+    {
+        long generation = CaptureAppearanceGeneration();
+        CharacterOverviewState original = Coordinator.State;
+        var before = _draft.Copy();
+        var prepared = before.Copy();
+        var review = await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, candidate);
+        bool valid = await Task.Run(() => prepared.TryAdopt(editor, original, review));
+        if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+        if (!valid || !Coordinator.IsCreationCatalogDisplayCurrent(original)
+            || !_draft.TryAdoptPrepared(before, prepared))
+            throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.DraftConflict);
+        return review;
     }
 
     private void AddBinding(CharacterCreationMagicResonanceEditorState editor)
@@ -166,7 +215,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
     private void AddTalent(CharacterCreationMagicResonanceTalentProjection talent)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Talent.ReadOnly", "Priority Talent · read only")));
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Talent.ReadOnly", "Talent · read only")));
         card.Add(NativeTheme.Title(talent.Name, 22));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), KindLabel(talent.Kind)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PriorityRank", "Priority rank"), talent.Rank));
@@ -415,7 +464,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 options.Count.ToString(CultureInfo.InvariantCulture))
             : CreationFlowStrings.Get(
                 "Magic.NotAllowed",
-                "Not allowed by the exact Priority Talent");
+                "Not allowed by the selected Talent");
         _body.Add(NativeTheme.NavigationRow(
             label,
             detail,
@@ -490,16 +539,14 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 CreationMagicResonancePhoneAuthority.CreateDraft(
                     editor,
                     _draft.Selections);
-            review = Coordinator.ReviewCreationMagicResonance(editor, draft);
+            review = await PreviewDraftAsync(editor, draft);
         }
         catch (InvalidOperationException exception)
         {
             _localBlockers = [exception.Message];
-            Refresh();
             return;
         }
-        if (!_draft.TryAdopt(editor, Coordinator.State, review)
-            || !CreationMagicResonancePhoneAuthority.ReviewMatches(
+        if (!CreationMagicResonancePhoneAuthority.ReviewMatches(
                 editor,
                 review,
                 requireConfirmable: true))
@@ -507,7 +554,6 @@ public sealed class CreationMagicResonancePage : NativePageBase
             _localBlockers = review.Preview.Blockers.Count == 0
                 ? [CharacterCreationMagicResonanceBlockers.DraftInvalid]
                 : review.Preview.Blockers;
-            Refresh();
             return;
         }
 
@@ -522,7 +568,6 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 CreationFlowStrings.Get("Common.ReviewNotCheckpointed", "Review not checkpointed"),
                 blocker,
                 CreationFlowStrings.Get("Common.OK", "OK"));
-            Refresh();
             return;
         }
         await Navigation.PushAsync(new CreationMagicResonanceReviewPage(
@@ -537,10 +582,13 @@ public sealed class CreationMagicResonancePage : NativePageBase
     {
         try
         {
+            long generation = CaptureAppearanceGeneration();
+            CharacterOverviewState original = Coordinator.State;
             CharacterCreationMagicResonanceReview refreshed =
-                Coordinator.ReviewCreationMagicResonance(
-                    editor,
-                    checkpoint.Review.Draft);
+                await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, checkpoint.Review.Draft);
+            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
+                throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
             if (!checkpoint.OwnsExactReview(editor, Coordinator.State)
                 || !CreationMagicResonancePhoneAuthority.ReviewsEqual(
                     checkpoint.Review,
@@ -740,6 +788,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
 /// <summary>Phone-deep list for one Core option kind.</summary>
 public sealed class CreationMagicResonanceCatalogPage : NativePageBase
 {
+    private CharacterOverviewState? _display;
+    private bool _ready;
     private readonly CharacterCreationMagicResonanceEditorState _editor;
     private readonly string _kind;
     private readonly IReadOnlyList<CharacterCreationMagicResonanceOptionProjection> _options;
@@ -766,14 +816,27 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _ready = false;
+        _display = null;
+        var original = Coordinator.State;
+        var draft = _draft.Copy();
+        bool ready = await Task.Run(() => draft.Matches(_editor, original), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+        _display = original;
+        _ready = ready;
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Magic.Catalog.Eyebrow",
-            "SR5 Priority · Draft · Catalog")));
+            "SR5 · Draft · Catalog")));
         _body.Add(NativeTheme.Title(CreationMagicResonancePage.KindLabel(_kind)));
-        if (!_draft.Matches(_editor, Coordinator.State))
+        if (!_ready || _display is null || !Coordinator.IsCreationCatalogDisplayCurrent(_display))
         {
             _body.Add(NativeTheme.Body(
                 CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision,
@@ -821,6 +884,8 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
 /// <summary>Deep immutable details and one typed selection/level mutation.</summary>
 public sealed class CreationMagicResonanceOptionPage : NativePageBase
 {
+    private CharacterOverviewState? _display;
+    private bool _ready;
     private readonly CharacterCreationMagicResonanceEditorState _editor;
     private readonly CharacterCreationMagicResonanceOptionProjection _option;
     private readonly CreationMagicResonancePhoneDraft _draft;
@@ -845,12 +910,26 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _ready = false;
+        _display = null;
+        var original = Coordinator.State;
+        var draft = _draft.Copy();
+        bool ready = await Task.Run(() => draft.Matches(_editor, original)
+            && CreationMagicResonancePhoneAuthority.IsOptionConfigurable(_editor, _option), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+        _display = original;
+        _ready = ready;
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Magic.Option.Eyebrow",
-            "SR5 Priority · Draft · Choice")));
+            "SR5 · Draft · Choice")));
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
         details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
@@ -875,10 +954,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         card.AutomationId = "creation-magic-resonance-option-authority";
         _body.Add(card);
 
-        bool exact = _draft.Matches(_editor, Coordinator.State)
-                     && CreationMagicResonancePhoneAuthority.IsOptionConfigurable(
-                         _editor,
-                         _option);
+        bool exact = _ready && _display is not null && Coordinator.IsCreationCatalogDisplayCurrent(_display);
         if (string.Equals(
                 _option.Identity.Kind,
                 CharacterCreationMagicResonanceKinds.AdeptPower,
@@ -932,7 +1008,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         }
     }
 
-    private Task ToggleAsync()
+    private async Task ToggleAsync()
     {
         try
         {
@@ -941,36 +1017,39 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
                     or CharacterCreationMagicResonanceKinds.Stream
                     ? _draft.CreateSingleCandidate(_option)
                     : _draft.CreateToggleCandidate(_option);
-            Adopt(candidate);
+            await AdoptAsync(candidate);
         }
         catch (InvalidOperationException exception)
         {
             _blockers = [exception.Message];
         }
-        Refresh();
-        return Task.CompletedTask;
     }
 
-    private Task ChangePowerLevelAsync(int levels)
+    private async Task ChangePowerLevelAsync(int levels)
     {
         try
         {
-            Adopt(_draft.CreatePowerLevelCandidate(_option, levels));
+            await AdoptAsync(_draft.CreatePowerLevelCandidate(_option, levels));
         }
         catch (InvalidOperationException exception)
         {
             _blockers = [exception.Message];
         }
-        Refresh();
-        return Task.CompletedTask;
     }
 
-    private void Adopt(CharacterCreationMagicResonanceDesktopDraft candidate)
+    private async Task AdoptAsync(CharacterCreationMagicResonanceDesktopDraft candidate)
     {
+        long generation = CaptureAppearanceGeneration();
+        CharacterOverviewState original = Coordinator.State;
+        var before = _draft.Copy();
+        var prepared = before.Copy();
         CharacterCreationMagicResonanceReview review =
-            Coordinator.ReviewCreationMagicResonance(_editor, candidate);
+            await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, _editor, candidate);
+        bool valid = await Task.Run(() => prepared.TryAdopt(_editor, original, review));
+        if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
         _blockers = review.Preview.Blockers;
-        if (!_draft.TryAdopt(_editor, Coordinator.State, review))
+        if (!valid || !Coordinator.IsCreationCatalogDisplayCurrent(original)
+            || !_draft.TryAdoptPrepared(before, prepared))
             _blockers = _blockers.Append(
                     CharacterCreationMagicResonanceBlockers.DraftConflict)
                 .Distinct(StringComparer.Ordinal)
@@ -1015,7 +1094,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         _body.Clear();
         CharacterCreationMagicResonanceReview review = _checkpoint.Review;
         CharacterCreationMagicResonancePreview preview = review.Preview;
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.Eyebrow", "SR5 Priority · Review")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.Eyebrow", "SR5 · Review")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
             "Magic.Review.Heading",
             "Review exact typed draft")));
@@ -1073,8 +1152,13 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             return;
         try
         {
+            long generation = CaptureAppearanceGeneration();
+            CharacterOverviewState original = Coordinator.State;
             CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
-                Coordinator.LoadCreationMagicResonance();
+                await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, CancellationToken.None);
+            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
+                throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
             if (load.Value is not { } core
                 || !CharacterCreationMagicResonanceWorkflow.TryProject(
                     core,
@@ -1089,9 +1173,10 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
                 return;
             }
             CharacterCreationMagicResonanceReview refreshed =
-                Coordinator.ReviewCreationMagicResonance(
-                    editor,
-                    _checkpoint.Review.Draft);
+                await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, _checkpoint.Review.Draft);
+            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
+                throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
             if (!CreationMagicResonancePhoneAuthority.ReviewsEqual(
                     refreshed,
                     _checkpoint.Review))
@@ -1246,7 +1331,13 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         if (!_checkpoint.IsStructurallyValid()
             || _checkpoint.Phase !=
             CharacterCreationMagicResonanceCheckpointPhase.Confirmed
-            || _checkpoint.Confirmation != _confirmation)
+            || _checkpoint.Confirmation is null
+            // The store returns a deserialized confirmation. Its nested option
+            // collections have new references, so record equality is not a
+            // durable identity check. Compare the complete canonical content.
+            || !CharacterCreationMagicResonanceDigest.EqualsFixedTime(
+                CharacterCreationMagicResonanceDigest.Compute(_checkpoint.Confirmation),
+                CharacterCreationMagicResonanceDigest.Compute(_confirmation)))
         {
             throw new InvalidOperationException(
                 "The receipt page requires one exact durable Confirmed checkpoint.");
@@ -1260,7 +1351,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
     {
         _body.Clear();
         CharacterCreationMagicResonanceReceipt receipt = _confirmation.Receipt;
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Receipt.Eyebrow", "SR5 Priority · Confirm")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Receipt.Eyebrow", "SR5 · Confirm")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(
@@ -1335,15 +1426,11 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
                 CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
-        await Navigation.PopAsync(animated: false);
-        while (Navigation.NavigationStack.LastOrDefault() is
-               (CreationMagicResonanceReviewPage
-                   or CreationMagicResonanceCatalogPage
-                   or CreationMagicResonanceOptionPage
-                   or CreationMagicResonancePage))
-        {
-            await Navigation.PopAsync(animated: false);
-        }
+        // Keep navigation attached while returning to the runner. Popping this
+        // receipt first detaches its proxy and can strand the user in Magic.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+            throw new InvalidOperationException("Creation returns through the phone Runner route.");
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private static void AddDigest(
