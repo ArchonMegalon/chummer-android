@@ -13,6 +13,12 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-sum-to-ten-content-root")
+        {
+            await CreationProjectionSchedulingPrioritizesWizardAllocationAsync();
+            await AfterRunAuthorityHarness.RunSumToTenFinalizationAsync(args[1]);
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--creation-karma-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationKarmaAsync(args[1], args.Length == 3 ? args[2] : null);
@@ -2246,6 +2252,8 @@ internal static class Program
     {
         CreationDashboardAuthorityPhaseProgress initial =
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.Priority);
+        Require(CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.SumToTen) == initial,
+            "Sum-to-Ten must load the same typed Skills authority as Priority, not mark it NotApplicable.");
         Require(
             CreationDashboardProjectionScheduler.NextBatch(initial).SequenceEqual(
                 [CreationDashboardAuthorityPhase.Prerequisite]),

@@ -231,10 +231,10 @@
   <data name="Qualities.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Qualities.Next" xml:space="preserve"><value>Siguiente</value></data>
   <data name="Qualities.StableOption" xml:space="preserve"><value>Opción estable</value></data>
-  <data name="Qualities.Step1" xml:space="preserve"><value>Prioridad SR5 · 1 de 4</value></data>
-  <data name="Qualities.Step2" xml:space="preserve"><value>Prioridad SR5 · 2 de 4</value></data>
-  <data name="Qualities.Step3" xml:space="preserve"><value>Prioridad SR5 · 3 de 4</value></data>
-  <data name="Qualities.Step4" xml:space="preserve"><value>Prioridad SR5 · 4 de 4</value></data>
+  <data name="Qualities.Step1" xml:space="preserve"><value>SR5 · 1 de 4</value></data>
+  <data name="Qualities.Step2" xml:space="preserve"><value>SR5 · 2 de 4</value></data>
+  <data name="Qualities.Step3" xml:space="preserve"><value>SR5 · 3 de 4</value></data>
+  <data name="Qualities.Step4" xml:space="preserve"><value>SR5 · 4 de 4</value></data>
   <data name="Magic.Mystic.Title" xml:space="preserve"><value>Puntos de poder del adepto místico</value></data>
   <data name="Magic.Mystic.Summary" xml:space="preserve"><value>{0} / {1} puntos de poder · {2} Karma · {3} plazas de hechizos intercambiadas · {4} elecciones de hechizos restantes</value></data>
   <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>El Karma se descuenta en la revisión final del personaje. Las plazas intercambiadas reducen tus opciones de hechizos.</value></data>

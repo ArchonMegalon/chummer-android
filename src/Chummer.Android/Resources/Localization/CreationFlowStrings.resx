@@ -231,10 +231,10 @@
   <data name="Qualities.Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Qualities.Next" xml:space="preserve"><value>Next</value></data>
   <data name="Qualities.StableOption" xml:space="preserve"><value>Stable option</value></data>
-  <data name="Qualities.Step1" xml:space="preserve"><value>SR5 Priority · 1 of 4</value></data>
-  <data name="Qualities.Step2" xml:space="preserve"><value>SR5 Priority · 2 of 4</value></data>
-  <data name="Qualities.Step3" xml:space="preserve"><value>SR5 Priority · 3 of 4</value></data>
-  <data name="Qualities.Step4" xml:space="preserve"><value>SR5 Priority · 4 of 4</value></data>
+  <data name="Qualities.Step1" xml:space="preserve"><value>SR5 · 1 of 4</value></data>
+  <data name="Qualities.Step2" xml:space="preserve"><value>SR5 · 2 of 4</value></data>
+  <data name="Qualities.Step3" xml:space="preserve"><value>SR5 · 3 of 4</value></data>
+  <data name="Qualities.Step4" xml:space="preserve"><value>SR5 · 4 of 4</value></data>
   <data name="Magic.Mystic.Title" xml:space="preserve"><value>Mystic Adept power points</value></data>
   <data name="Magic.Mystic.Summary" xml:space="preserve"><value>{0} / {1} power points · {2} Karma · {3} exchanged spell slots · {4} spell choices left</value></data>
   <data name="Magic.Mystic.Boundary" xml:space="preserve"><value>Karma is reserved in the final build review. Exchanged spell slots reduce your spell choices.</value></data>

@@ -10,8 +10,8 @@
     <MauiVersion>10.0.20</MauiVersion>
     <ApplicationTitle>Chummer</ApplicationTitle>
     <ApplicationId>com.myexternalbrain.chummer</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0-preview.21</ApplicationDisplayVersion>
-    <ApplicationVersion>21</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0-preview.22</ApplicationDisplayVersion>
+    <ApplicationVersion>22</ApplicationVersion>
     <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
     <TargetSdkVersion>36</TargetSdkVersion>
     <AndroidMinSdkVersion>24</AndroidMinSdkVersion>
@@ -20,6 +20,10 @@
     <EmbedAssembliesIntoApk Condition="'$(Configuration)' == 'Debug'">true</EmbedAssembliesIntoApk>
     <AndroidUseAapt2>true</AndroidUseAapt2>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
+    <!-- Catalog restore reproduced native Mono/SGen crashes with marksweep-conc.
+         Use the nonconcurrent collector while qualifying this runtime mitigation;
+         keep Debug and Release aligned. See dotnet/runtime#100311. -->
+    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     <ChummerAndroidRuntimeIdentifier Condition="'$(ChummerAndroidRuntimeIdentifier)' == ''">android-arm64</ChummerAndroidRuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>
     <_GlobalPropertiesToRemoveFromProjectReferences>$(_GlobalPropertiesToRemoveFromProjectReferences);RuntimeIdentifier;RuntimeIdentifiers;SelfContained</_GlobalPropertiesToRemoveFromProjectReferences>

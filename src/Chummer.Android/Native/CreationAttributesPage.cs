@@ -4,7 +4,7 @@ using Chummer.Contracts.Characters;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone deep-navigation entry for Core's draft-only SR5 Priority Attributes authority.
+/// Phone deep-navigation entry for Core's draft-only SR5 priority-table Attributes authority.
 /// </summary>
 public sealed class CreationAttributesPage : NativePageBase
 {
@@ -39,7 +39,7 @@ public sealed class CreationAttributesPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationAllocationStrings.Get(
                 "Attributes.Intro",
-                "Every value, limit, and cost below is projected by Core for this exact Priority draft."),
+                "Every value, limit, and cost below is projected by Core for this exact draft."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
@@ -755,15 +755,17 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             "Common.BackToBuild",
             "Back to Build"));
         back.AutomationId = "creation-attributes-back-to-build";
-        back.Clicked += async (_, _) => await BackToBuildAsync();
+        back.Clicked += async (_, _) => await RunAsync(BackToBuildAsync);
         _body.Add(back);
     }
 
     private async Task BackToBuildAsync()
     {
-        await Navigation.PopAsync(animated: false);
-        if (Navigation.NavigationStack.LastOrDefault() is CreationAttributesPage)
-            await Navigation.PopAsync();
+        // Child pops detach this page's navigation proxy before the parent pop.
+        // Shell must own the return and attach the authored Runner root.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+            throw new InvalidOperationException("Creation returns through the phone Runner route.");
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private void AddDigest(string automationId, string digest)

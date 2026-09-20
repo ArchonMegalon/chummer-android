@@ -108,7 +108,7 @@ public sealed record CreationPriorityLegalPathProjection(
             ? value!["sha256:".Length..]
             : null;
 
-    public static CharacterCreationFinalizationReceipt? ResolvePersistedPriorityReceipt(
+    public static CharacterCreationFinalizationReceipt? ResolvePersistedPriorityTableReceipt(
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? result,
         CharacterWorkspaceId workspaceId,
         long contentRevision,
@@ -163,13 +163,11 @@ public sealed record CreationPriorityLegalPathProjection(
             || !CharacterCreationFinalizationDigest.EqualsFixedTime(
                 state.Binding.AuthorityDigest,
                 receipt.AuthorityDigest)
-            || !string.Equals(
-                state.Binding.BuildMethod,
-                CharacterCreationBuildMethods.Priority,
-                StringComparison.Ordinal)
+            || state.Binding.BuildMethod is not (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen)
             || !string.Equals(
                 receipt.BuildMethod,
-                CharacterCreationBuildMethods.Priority,
+                state.Binding.BuildMethod,
                 StringComparison.Ordinal)
             || !CharacterCreationFinalizationDigest.IsCanonical(receipt.PlanDigest)
             || !CharacterCreationFinalizationDigest.IsCanonical(receipt.PreviewDigest)

@@ -402,7 +402,15 @@ internal static partial class AfterRunAuthorityHarness
         Require(failures.Count == 0, "Native finalization original-owner regressions:\n" + string.Join("\n", failures));
     }
 
-    private static async Task RunCreationFinalizationLocalBaselineAsync(string contentRoot)
+    public static Task RunSumToTenFinalizationAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        return RunCreationFinalizationLocalBaselineAsync(contentRoot, CharacterCreationBuildMethods.SumToTen);
+    }
+
+    private static async Task RunCreationFinalizationLocalBaselineAsync(string contentRoot,
+        string method = CharacterCreationBuildMethods.Priority)
     {
         var owners = new ControlledLinkedOwner();
         var uiContext = new SynchronizationContext();
@@ -410,8 +418,15 @@ internal static partial class AfterRunAuthorityHarness
         await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true,
             finalizationDecorator: actual => threadProbe = new FinalizationThreadProbe(actual, uiContext));
         Require(owners.Current == OwnerScope.LocalSingleUser, "Local positive control did not retain the trusted local scope.");
-        var before = PrepareActualFinalizationReadyContext(runtime);
+        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
         await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        var qualities = runtime.Services.GetRequiredService<ICharacterCreationQualitiesService>()
+            .Load(new(runtime.Id));
+        Require(qualities.Value is { } exactQualities
+            && CreationQualitiesPhoneAuthority.IsReady(exactQualities, runtime.Coordinator.State),
+            "The real method-bound Qualities state must be admitted on the phone: "
+            + JsonSerializer.Serialize(new { qualities.Outcome, qualities.Blockers,
+                method = qualities.Value?.Binding.BuildMethod, qualities.Value?.CanEdit }));
         var loaded = runtime.Coordinator.LoadCreationFinalization();
         Require(loaded.Value is { CanReview: true }, "Local native finalization Load failed: " + JsonSerializer.Serialize(loaded));
         var review = await StartFromUiContext(uiContext,
@@ -436,9 +451,15 @@ internal static partial class AfterRunAuthorityHarness
             && runtime.Coordinator.State.ContentRevision == cold.ContentRevision
             && runtime.Coordinator.State.SavedRevision == cold.SavedRevision,
             "Local baseline did not preserve the actual atomic finalization receipt/checkpoint and live owner.");
+        Require(applied.Value!.BuildMethod == method
+            && runtime.Coordinator.LoadPersistedPriorityTableCreationReceipt()?.ReceiptDigest == applied.Value.ReceiptDigest,
+            "The native Career route must retain the exact method's persisted receipt.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, cold, expectedCreated: true);
+        Require(runtime.Coordinator.LoadPersistedPriorityTableCreationReceipt()?.ReceiptDigest == applied.Value.ReceiptDigest,
+            "A fresh native display from the cold store lost the finalization receipt.");
         Console.WriteLine("FINALIZATION_LOCAL_BASELINE " + JsonSerializer.Serialize(new
         {
-            applied.Outcome, before.ContentRevision, before.SavedRevision,
+            applied.Outcome, applied.Value.BuildMethod, before.ContentRevision, before.SavedRevision,
             afterContentRevision = cold.ContentRevision, afterSavedRevision = cold.SavedRevision,
             receiptDigest = applied.Value!.ReceiptDigest,
             beforeDigest = FinalizationDocumentDigest(before), afterDigest = FinalizationDocumentDigest(cold)
@@ -722,7 +743,7 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static async Task HydrateFinalizationOwnerAsync(NativeRewardRuntime runtime,
-        ControlledLinkedOwner owners, WorkspaceStoredDocument expected)
+        ControlledLinkedOwner owners, WorkspaceStoredDocument expected, bool expectedCreated = false)
     {
         // Same real lifecycle order as native owner initialization. A same-ID
         // Switch shortcut can legitimately skip Load after Initialize.
@@ -731,7 +752,7 @@ internal static partial class AfterRunAuthorityHarness
         await runtime.Presenter.LoadAsync(expected.Id, default);
         var state = runtime.Coordinator.State;
         Require(state.WorkspaceId == expected.Id && state.Session.ActiveWorkspaceId == expected.Id
-            && state.Profile?.Created == false && state.Error is null && !state.IsBusy
+            && state.Profile?.Created == expectedCreated && state.Error is null && !state.IsBusy
             && state.DisplayOwnerContext == owners.Capture() && state.Session.OwnerContext == owners.Capture()
             && runtime.Shell.State.OwnerContext == owners.Capture()
             && state.ContentRevision == expected.ContentRevision && state.SavedRevision == expected.SavedRevision,
@@ -743,19 +764,21 @@ internal static partial class AfterRunAuthorityHarness
         Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         { stored.Id, stored.Document, stored.ContentRevision, stored.SavedRevision }))).ToLowerInvariant();
 
-    private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime, bool stopBeforeQualities = false)
+    private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
+        bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
-        // canonical Priority/Human/Mundane, actual services issue every draft and receipt.
+        // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
+        // actual services issue every draft and receipt.
         // No manual auxiliary state, fake admission, finalization plan or receipt.
         var services = runtime.Services;
         var store = services.GetRequiredService<IWorkspaceStore>();
         var bootstrap = services.GetRequiredService<ICharacterCreationBootstrapService>();
         Require(CharacterCreationBootstrapProfiles.TryResolveCanonicalSettingsProfileId(
-            CharacterCreationBuildMethods.Priority, out string profile), "Canonical Priority profile missing.");
+            buildMethod, out string profile), "Canonical build-method profile missing.");
         var created = bootstrap.Create(new(CharacterCreationBootstrapSchemas.RequestV1,
             CharacterCreationBootstrapStages.AwaitingFoundationSelection, "sr5", "Finalization Runner", "Finalizer",
-            CharacterCreationBuildMethods.Priority, profile));
+            buildMethod, profile));
         Require(created.Outcome == CharacterCreationBootstrapOutcomes.Success && created.Value is not null,
             "Actual Bootstrap failed: " + JsonSerializer.Serialize(created));
         runtime.Id = created.Value!.WorkspaceId;
@@ -769,8 +792,15 @@ internal static partial class AfterRunAuthorityHarness
             [CharacterCreationPriorityCategoryIds.Skills] = "C",
             [CharacterCreationPriorityCategoryIds.Resources] = "D"
         };
+        if (buildMethod == CharacterCreationBuildMethods.SumToTen)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
+            ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "C";
+        }
         var human = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
-                && item.Rank == "A").HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null
                 && item.MetatypeName == "Human");
         var mundane = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
                 && item.Rank == "E").TalentOptions.First(item => item.IsEnabled

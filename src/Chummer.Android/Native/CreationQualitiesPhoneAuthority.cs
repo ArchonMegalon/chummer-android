@@ -4,7 +4,7 @@ using Chummer.Presentation.Overview;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Trust boundary for Core's SR5 Standard Priority quality projection. Android validates
+/// Trust boundary for Core's SR5 Standard priority-table quality projection. Android validates
 /// identity, revision and digest shape, but never derives eligibility, price, limits or Karma.
 /// </summary>
 internal static class CreationQualitiesPhoneAuthority
@@ -41,10 +41,8 @@ internal static class CreationQualitiesPhoneAuthority
                 CharacterCreationQualitiesRules.ComputeStateDigest(state))
             || state.Binding.CharacterCreated
             || !string.Equals(state.Binding.RulesetId, "sr5", StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(
-                state.Binding.BuildMethod,
-                CharacterCreationBuildMethods.Priority,
-                StringComparison.Ordinal)
+            || state.Binding.BuildMethod is not (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen)
             || state.Binding.PrerequisiteDraftRevision <= 0
             || state.Binding.AttributesDraftRevision <= 0
             || state.PrerequisiteDraft is not { } prerequisite
@@ -72,7 +70,7 @@ internal static class CreationQualitiesPhoneAuthority
     {
         if (!IsReady(state, overview))
             throw new InvalidOperationException(
-                "The SR5 Priority quality editor requires one exact Core state projection.");
+                "The SR5 priority-table quality editor requires one exact Core state projection.");
         CharacterCreationQualitiesAuthoritySnapshot snapshot = new(
             new CharacterCreationQualitiesInput(
                 state.Binding,

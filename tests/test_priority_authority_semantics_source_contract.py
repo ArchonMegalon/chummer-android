@@ -112,7 +112,7 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             "using Chummer.Contracts.Workspaces;",
             "original.Profile?.Created != true",
             "LoadFinalizationForDisplay(original, workspaceId)",
-            "ResolvePersistedPriorityReceipt(",
+            "ResolvePersistedPriorityTableReceipt(",
             "LastReceipt: { } receipt",
             "CharacterCreationFinalizationOutcomes.Blocked",
             "CharacterCreationFinalizationBlockers.CharacterAlreadyCreated",
@@ -127,7 +127,7 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             "receipt.SavedRevision != savedRevision",
         ):
             self.assertIn(marker, coordinator + projection)
-        self.assertIn("Coordinator.LoadPersistedPriorityCreationReceipt()", build)
+        self.assertIn("Coordinator.LoadPersistedPriorityTableCreationReceipt()", build)
         for forbidden in (
             "Preferences.Default.Set",
             "ReceiptDigest =",
@@ -139,7 +139,7 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
     def test_persisted_receipt_load_is_owner_bound_and_fenced_before_and_after_read(self) -> None:
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         load = coordinator.split(
-            "internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityCreationReceipt()", 1
+            "internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityTableCreationReceipt()", 1
         )[1].split(
             "public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>", 1
         )[0]
@@ -147,7 +147,7 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
         before = load.index("!IsCreationFinalizationDisplayCurrent(original)")
         dispatch = load.index("LoadFinalizationForDisplay(original, workspaceId)")
         after = load.index("!IsCreationFinalizationDisplayCurrent(original)", before + 1)
-        projection = load.index("ResolvePersistedPriorityReceipt(")
+        projection = load.index("ResolvePersistedPriorityTableReceipt(")
         self.assertLess(capture, before)
         self.assertLess(before, dispatch)
         self.assertLess(dispatch, after)
@@ -220,14 +220,15 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             "receipt current revision drift",
             "receipt/state authority drift",
             "receipt/state raw digest drift",
-            "non-Priority build method",
+            "non-priority-table build method",
+            "Sum-to-Ten receipt bound to a Priority state",
             "receipt schema drift",
             "noncanonical receipt plan digest",
             "noncanonical receipt preview digest",
             "tampered receipt digest",
         ):
             self.assertIn(f'"{scenario}"', product_tests)
-        self.assertIn("SR5 Priority legal-path projection tests passed: 6", product_tests)
+        self.assertIn("SR5 Priority/Sum-to-Ten legal-path projection tests passed: 7", product_tests)
 
 
 if __name__ == "__main__":

@@ -662,15 +662,17 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             "Common.BackToBuild",
             "Back to Build"));
         back.AutomationId = "creation-skills-back-to-build";
-        back.Clicked += async (_, _) => await BackToBuildAsync();
+        back.Clicked += async (_, _) => await RunAsync(BackToBuildAsync);
         _body.Add(back);
     }
 
     private async Task BackToBuildAsync()
     {
-        await Navigation.PopAsync(animated: false);
-        if (Navigation.NavigationStack.LastOrDefault() is CreationSkillsPage)
-            await Navigation.PopAsync();
+        // Child pops detach this page's navigation proxy before the parent pop.
+        // Shell must own the return and attach the authored Runner root.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+            throw new InvalidOperationException("Creation returns through the phone Runner route.");
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private void AddDigest(string automationId, string digest)

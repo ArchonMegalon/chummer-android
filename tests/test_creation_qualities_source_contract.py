@@ -7,6 +7,16 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_acknowledged_receipt_returns_through_phone_shell(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        action = page[page.index("private async Task AcknowledgeAsync()") :]
+        action = action[:action.index("private static void AddDigest(")]
+        self.assertIn("await RunAsync(AcknowledgeAsync)", page)
+        self.assertIn("_store.TryAcknowledgeApplied(", action)
+        self.assertIn("MainShell { UsesTabletComposition: false } shell", action)
+        self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", action)
+        self.assertNotIn("Navigation.Pop", action)
+
     def test_catalog_render_does_not_repeat_core_or_digest_work(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         render = page[page.index("protected override void Refresh()") : page.index("private void AddBinding(")]
