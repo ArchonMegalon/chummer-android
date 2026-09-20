@@ -224,3 +224,50 @@ load/review UX work are still incomplete. No all-method/parity claim, main merge
 package reseal, signed release AAB, physical Play install or new Play upload follows
 from this smoke. The stale Design/Android local-versus-hosted qualification-policy
 conflict identified by the September 20 audit remains separate unresolved work.
+
+## Contacts increment — exact local save and process-restart proof
+
+Core semantic `9bc3524f10c61d0f81c7667109fab62cc8d512e1` and Android product
+`67f02b9b2bd77f1b96955cf14cc3e7ce71d4e348` add Contacts to the Karma wizard.
+Core owns ordinary/high-places pools, overflow Karma, group-contact cost in the
+shared quality limit, preview validation and final contact XML. Android presents
+explicit contact selection, review and save in DE/EN/ES; it does not calculate
+the rules. Invalid selections remain editable and cannot authorize persistence.
+
+Verification:
+
+- 340 relevant Core Karma/Contacts/Qualities regressions passed before the final
+  null-guard/editable-preview correction. Final focused tests: 57/57 passed.
+- Real Core-backed managed native page test passed, including stale controls,
+  ordinary/group selections, invalid loyalty repair, no implicit writes,
+  cold reopen and exact final Career XML.
+- Final local Debug x64 APK: zero build warnings/errors, no proof instrumentation
+  or upload key. SHA-256, independently matched to the installed base APK:
+  `1fc05f2344b2830f8c210883280b602ac52fc2b604b87893adfe92b0cf9d4a00`.
+- Actual API36 route: Human/Mundane, base attributes, empty Qualities, English
+  native language; Mara / Fixer / Seattle / `Contacts smoke`, Connection 1,
+  Loyalty 1, Family and Blackmail. Core preview: 5 contact points against 3 free,
+  2 Karma spent, 798 remaining. Preview did not persist this contact.
+- One explicit confirmation persisted revision/saved revision 2/2 and exactly
+  one decision. A verified force-stop removed the old process; a distinct cold
+  process reopened the same contact identity, text, flags, costs and revision.
+- Saved and post-restart workspace bytes were identical, SHA-256
+  `52da63dafc80dc9f203ce8445799a2d6da2213d642e4108c0f2496f91b9847fc`.
+  Reopening the contact editor showed all four text fields unchanged.
+
+Packet: `karma-contacts-core-20260920.d9uIxeEy` in local active-worktrees.
+The test used an isolated Debug package, not the Play-installed application.
+The owned emulator was stopped afterwards. System UI/Google startup failures
+preceded the app route and are retained separately; this is not clean-boot,
+ARM64 Release-performance, physical Play-install or broad wizard qualification.
+
+Core package recipe `aec0f7b30e8de4aa3ac628005aa8ef41524f686d` has 100 passing
+authority tests; package build/merge status belongs to Core PR63, not this smoke.
+The APK used explicit source roots. Existing optional package-only and historical
+hosted receipts are not repurposed as proof of these new interfaces.
+
+The earlier local-versus-hosted policy conflict is historical: Design PR31 and
+Android PR88 established the current local delivery policy. Preview19 remains
+the separately observed Play Internal release; this Contacts smoke does not
+publish Preview20. Purchased lifestyles, awakened completion, advanced roaming
+continuation, all-method coverage and responsiveness improvements remain open.
