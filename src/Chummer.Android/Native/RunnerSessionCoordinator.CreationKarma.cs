@@ -15,13 +15,15 @@ internal sealed record CreationKarmaPhoneSelection(
     CharacterCreationKarmaSkillsSelection? Skills = null,
     decimal? ResourceKarmaInvestment = null,
     IReadOnlyList<string>? QualityOptionIds = null,
-    IReadOnlyList<CharacterCreationGearSelection>? GearSelections = null)
+    IReadOnlyList<CharacterCreationGearSelection>? GearSelections = null,
+    IReadOnlyList<CharacterCreationKarmaContactSelection>? ContactSelections = null)
 {
     public CreationKarmaPhoneSelection Freeze() => this with
     {
         Attributes = Attributes is null ? null : Array.AsReadOnly(Attributes.ToArray()),
         QualityOptionIds = QualityOptionIds is null ? null : Array.AsReadOnly(QualityOptionIds.ToArray()),
         GearSelections = GearSelections is null ? null : Array.AsReadOnly(GearSelections.ToArray()),
+        ContactSelections = ContactSelections is null ? null : Array.AsReadOnly(ContactSelections.ToArray()),
         Skills = Skills is null ? null : Skills with
         {
             Skills = Array.AsReadOnly(Skills.Skills.ToArray()),
@@ -33,7 +35,7 @@ internal sealed record CreationKarmaPhoneSelection(
         => state.Selection is { Command: { } command }
             ? new CreationKarmaPhoneSelection(command.MetatypeOptionId, command.TalentOptionId,
                 command.AttributeAllocations, command.SkillsSelection, command.ResourceKarmaInvestment, command.QualityOptionIds,
-                command.GearSelections).Freeze()
+                command.GearSelections, command.ContactSelections).Freeze()
             : null;
 }
 
@@ -194,7 +196,7 @@ public sealed partial class RunnerSessionCoordinator
             _karmaCurrentReview = null;
             var result = await Task.Run(() => service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
                 frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment, frozen.QualityOptionIds,
-                frozen.GearSelections), cancellationToken);
+                frozen.GearSelections, frozen.ContactSelections), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsCreationKarmaStateCurrent(state))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
@@ -220,6 +222,12 @@ public sealed partial class RunnerSessionCoordinator
                 || (quote.Gear is null) != (frozen.GearSelections is null)
                 || quote.Gear is { CanSelect: true } gear && !gear.Lines.Select(line => new CharacterCreationGearSelection(line.OptionId, line.Quantity))
                     .SequenceEqual(frozen.GearSelections!.OrderBy(item => item.OptionId, StringComparer.Ordinal))
+                || quote.Contacts is not null && frozen.ContactSelections is null
+                || quote.Contacts is null && frozen.ContactSelections is not null && quote.CanSelect
+                || quote.Contacts is { } contacts && (contacts.Lines is null
+                    || contacts.Lines.Any(line => line?.Selection is null)
+                    || !contacts.Lines.Select(line => line.Selection)
+                        .SequenceEqual(frozen.ContactSelections!.OrderBy(item => item.ContactId)))
                 || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(quote.QuoteDigest))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
             // The operation ID and exact reviewed command are issued once,
@@ -227,7 +235,7 @@ public sealed partial class RunnerSessionCoordinator
             var command = new CharacterCreationKarmaMetatypeConfirmRequest(state.Binding,
                 frozen.MetatypeOptionId, quote.QuoteDigest, Guid.NewGuid(), true,
                 frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment, frozen.QualityOptionIds,
-                frozen.GearSelections);
+                frozen.GearSelections, frozen.ContactSelections);
             _karmaReviews.Add(quote, new(state, original, command));
             _karmaCurrentReview = quote;
         }
