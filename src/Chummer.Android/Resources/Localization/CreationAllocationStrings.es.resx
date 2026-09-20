@@ -210,7 +210,13 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Base de Karma experimental: solo metatipo, talento, atributos y habilidades. Se guarda un borrador, no un personaje terminado. Las demás etapas y la finalización aún no están disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Base de Karma experimental: metatipo, talento, atributos, habilidades y financiación de recursos. Se guarda un borrador, no un personaje terminado. Las demás etapas y la finalización aún no están disponibles.</value></data>
+  <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
+  <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil. Aún no incluye cualidades, compras de equipo ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
+  <data name="Karma.InvalidNumber" xml:space="preserve"><value>Introduce un número no negativo con el separador decimal de tu idioma, sin separadores de miles.</value></data>
+  <data name="Karma.ResourceLimit" xml:space="preserve"><value>Límite del perfil: {0} Karma</value></data>
+  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Recursos: {0} Karma → {1} ¥ (antes de cualidades y equipo)</value></data>
   <data name="Karma.Stale" xml:space="preserve"><value>Este borrador ya no está listo. Vuelve al personaje y ábrelo de nuevo; ninguna selección se aplica automáticamente.</value></data>
   <data name="Karma.Saved" xml:space="preserve"><value>Borrador de Karma guardado. El personaje aún no está finalizado.</value></data>
   <data name="Karma.Choose" xml:space="preserve"><value>Elegir explícitamente</value></data>

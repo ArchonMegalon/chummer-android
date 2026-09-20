@@ -12,7 +12,8 @@ internal sealed record CreationKarmaPhoneSelection(
     string MetatypeOptionId,
     string? TalentOptionId = null,
     IReadOnlyList<CharacterCreationKarmaAttributeAllocation>? Attributes = null,
-    CharacterCreationKarmaSkillsSelection? Skills = null)
+    CharacterCreationKarmaSkillsSelection? Skills = null,
+    decimal? ResourceKarmaInvestment = null)
 {
     public CreationKarmaPhoneSelection Freeze() => this with
     {
@@ -27,7 +28,7 @@ internal sealed record CreationKarmaPhoneSelection(
     public static CreationKarmaPhoneSelection? Restore(CharacterCreationKarmaMetatypeState state)
         => state.Selection is { Command: { } command }
             ? new CreationKarmaPhoneSelection(command.MetatypeOptionId, command.TalentOptionId,
-                command.AttributeAllocations, command.SkillsSelection).Freeze()
+                command.AttributeAllocations, command.SkillsSelection, command.ResourceKarmaInvestment).Freeze()
             : null;
 }
 
@@ -185,7 +186,7 @@ public sealed partial class RunnerSessionCoordinator
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
             _karmaCurrentReview = null;
             var result = await Task.Run(() => service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
-                frozen.TalentOptionId, frozen.Attributes, frozen.Skills), cancellationToken);
+                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsCreationKarmaStateCurrent(state))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
@@ -204,13 +205,14 @@ public sealed partial class RunnerSessionCoordinator
                 || quote.Schema != CharacterCreationKarmaMetatypeSchemas.QuoteV1
                 || quote.Metatype.OptionId != frozen.MetatypeOptionId
                 || quote.Talent?.OptionId != frozen.TalentOptionId
+                || quote.Resources?.KarmaInvestment != frozen.ResourceKarmaInvestment
                 || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(quote.QuoteDigest))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
             // The operation ID and exact reviewed command are issued once,
             // not rebuilt from mutable page controls on the Confirm click.
             var command = new CharacterCreationKarmaMetatypeConfirmRequest(state.Binding,
                 frozen.MetatypeOptionId, quote.QuoteDigest, Guid.NewGuid(), true,
-                frozen.TalentOptionId, frozen.Attributes, frozen.Skills);
+                frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment);
             _karmaReviews.Add(quote, new(state, original, command));
             _karmaCurrentReview = quote;
         }

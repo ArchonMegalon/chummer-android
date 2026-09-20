@@ -72,6 +72,28 @@ internal static partial class AfterRunAuthorityHarness
             Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
                 && probe!.ConfirmCalls == 0, "Selecting phone options mutated the workspace without review.");
             await Back();
+            await Click("karma-open-resources");
+            var resourceInput = Element<Entry>("karma-resource-investment");
+            var numberCulture = CultureInfo.CurrentCulture;
+            try
+            {
+                foreach (string language in new[] { "de-AT", "en-US", "es-ES" })
+                {
+                    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(language);
+                    resourceInput.Text = "not-a-number";
+                    Require(!Element<Button>("karma-use-resources").IsEnabled
+                        && Element<Label>("karma-resource-invalid").IsVisible,
+                        "Invalid resource text must not reuse an earlier amount.");
+                    resourceInput.Text = 10.5m.ToString(CultureInfo.CurrentCulture);
+                    Require(Element<Button>("karma-use-resources").IsEnabled, "Localized decimal amount was rejected.");
+                }
+            }
+            finally { CultureInfo.CurrentCulture = numberCulture; }
+            resourceInput.Text = 10.5m.ToString(CultureInfo.CurrentCulture);
+            await Click("karma-use-resources");
+            resourceInput.Text = "99";
+            Require(Element<Label>("karma-resource-funding").Text == CreationKarmaCopy.ResourceFunding(10.5m, 21000m),
+                "An obsolete resource entry altered the selected draft: " + Element<Label>("karma-resource-funding").Text);
             await Click("karma-open-review");
             Require(Element<Button>("karma-confirm").IsEnabled, "The exact Human/Mundane/native-language/Pistols review is not confirmable.");
             await Click("karma-confirm");
@@ -84,7 +106,9 @@ internal static partial class AfterRunAuthorityHarness
                 && cold.Document.Content == before.Document.Content
                 && decision.Quote.Attributes!.Attributes.Single(a => a.AttributeId == "AGI").Current == 2
                 && decision.Quote.Skills!.Skills.Single(s => s.Name == "Pistols").Rating == 1
-                && decision.Quote.Skills.NativeLanguagesUsed == 1,
+                && decision.Quote.Skills.NativeLanguagesUsed == 1
+                && decision.Command.ResourceKarmaInvestment == 10.5m
+                && decision.Quote.Resources!.NuyenFromKarma == 21000m,
                 "Native review did not persist exactly the selected source-bound pending foundation.");
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
@@ -113,6 +137,10 @@ internal static partial class AfterRunAuthorityHarness
                 "Reopening a saved wizard must use one Core Open, without a second Load/Preview or a write.");
             await Click("karma-open-attributes");
             Require(Element<Stepper>("karma-attribute-AGI").Value == 1, "Reopened phone page lost its durable allocation.");
+            await Back();
+            await Click("karma-open-resources");
+            Require(Element<Entry>("karma-resource-investment").Text == 10.5m.ToString(CultureInfo.CurrentCulture),
+                "Cold reopen lost the resource investment.");
             await Back();
             await Click("karma-open-skills");
             Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-selected-skill-", StringComparison.Ordinal) == true) == 2,
@@ -182,7 +210,7 @@ internal static partial class AfterRunAuthorityHarness
             await session.ReloadAsync(false, default, () => true);
             var state = session.Authority!;
             var draft = new CreationKarmaPhoneSelection(state.Options.Single(o => o.Label == "Human").OptionId,
-                "mundane", []);
+                "mundane", [], ResourceKarmaInvestment: 10.5m);
             session.Change(draft);
             await session.PreviewAsync(default, () => true);
             var firstQuote = session.Quote;

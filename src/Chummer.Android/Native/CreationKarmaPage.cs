@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Skills, Skill, Group, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Skills, Skill, Group, Resources, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
 internal sealed class CreationKarmaPage : NativePageBase
@@ -22,6 +22,7 @@ internal sealed class CreationKarmaPage : NativePageBase
     private const int PageSize = 20;
     private CharacterCreationKarmaSkillAllocation? _editingSkill;
     private bool _skillInitialized;
+    private string? _resourceInput;
 
     internal CreationKarmaPage(RunnerSessionCoordinator coordinator) : this(coordinator,
         new CreationKarmaPhoneSession(coordinator), CreationKarmaStep.Overview) { }
@@ -43,6 +44,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Attributes => CreationKarmaCopy.Attributes,
         CreationKarmaStep.Skills or CreationKarmaStep.Skill => CreationKarmaCopy.Skills,
         CreationKarmaStep.Group => CreationKarmaCopy.Groups,
+        CreationKarmaStep.Resources => CreationKarmaCopy.Resources,
         CreationKarmaStep.Review => CreationKarmaCopy.Review,
         _ => CreationKarmaCopy.Title
     };
@@ -125,6 +127,7 @@ internal sealed class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Skills: AddSkills(); break;
             case CreationKarmaStep.Skill: AddSkillEditor(); break;
             case CreationKarmaStep.Group: AddGroupEditor(); break;
+            case CreationKarmaStep.Resources: AddResources(); break;
             case CreationKarmaStep.Review: AddReview(); break;
         }
         AddBlockers();
@@ -171,6 +174,8 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Talent, "karma-open-talent", () => Open(CreationKarmaStep.Talent), selection is not null);
         AddButton(CreationKarmaCopy.Attributes, "karma-open-attributes", () => Open(CreationKarmaStep.Attributes), selection?.TalentOptionId is not null);
         AddButton(CreationKarmaCopy.Skills, "karma-open-skills", () => Open(CreationKarmaStep.Skills), selection?.Attributes is not null);
+        AddButton(CreationKarmaCopy.Resources, "karma-open-resources", () => Open(CreationKarmaStep.Resources),
+            selection?.Attributes is not null && _session.Authority?.ResourcesPolicy is not null);
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
         AddSelectionSummary();
     }
@@ -400,6 +405,59 @@ internal sealed class CreationKarmaPage : NativePageBase
         }
         foreach (var group in quote.Skills?.Groups ?? [])
             _body.Add(NativeTheme.Body(CreationKarmaCopy.ValueCost(group.Name, group.Allocation.KarmaLevels, group.KarmaCost)));
+        if (quote.Resources is { } resources)
+        {
+            var funding = NativeTheme.Body(CreationKarmaCopy.ResourceFunding(resources.KarmaInvestment, resources.NuyenFromKarma));
+            funding.AutomationId = "karma-resource-funding";
+            _body.Add(funding);
+        }
+    }
+
+    private void AddResources()
+    {
+        if (_session.Selection is not { Attributes: not null } selection
+            || _session.Authority?.ResourcesPolicy is not { } policy) return;
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceHelp, NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceLimit(policy.MaximumKarmaInvestment)));
+        _body.Add(NativeTheme.Body(policy.FundingExpression, NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceInvestment));
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        _resourceInput ??= (selection.ResourceKarmaInvestment ?? 0m).ToString(CultureInfo.CurrentCulture);
+        var input = new Entry { Text = _resourceInput, Keyboard = Keyboard.Numeric,
+            AutomationId = "karma-resource-investment" };
+        var invalid = NativeTheme.Body(CreationKarmaCopy.InvalidNumber, NativeTheme.Danger);
+        invalid.AutomationId = "karma-resource-invalid";
+        var use = NativeTheme.SecondaryButton(CreationKarmaCopy.UseSelection);
+        use.AutomationId = "karma-use-resources";
+        void Validate()
+        {
+            bool valid = TryInvestment(input.Text, out _);
+            use.IsEnabled = valid;
+            invalid.IsVisible = !valid;
+        }
+        input.TextChanged += (_, _) =>
+        {
+            if (!Current(render, appearance)) return;
+            _resourceInput = input.Text;
+            Validate();
+        };
+        use.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            await Task.Yield();
+            if (!Current(render, appearance) || !TryInvestment(input.Text, out decimal investment)) return;
+            Change(selection with { ResourceKarmaInvestment = investment });
+            await Navigation.PopAsync();
+        });
+        Validate();
+        _body.Add(input);
+        _body.Add(invalid);
+        _body.Add(use);
+        if (_session.QuoteCurrent && _session.Quote?.Resources is { } resources)
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceFunding(resources.KarmaInvestment, resources.NuyenFromKarma)));
+
+        static bool TryInvestment(string? text, out decimal value) => decimal.TryParse(text,
+            NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowDecimalPoint,
+            CultureInfo.CurrentCulture, out value);
     }
 
     private void AddReview()
