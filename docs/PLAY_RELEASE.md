@@ -13,7 +13,32 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 23 — September 20, 2026
+## Current observed Internal release: Preview 25 — September 21, 2026
+
+Scoped authenticated Console readback at `2026-09-20T23:04:11Z` shows
+`25 (0.1.0-preview.25)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview25-internal-observation.md).
+
+Fresh Mundane Karma Ork Creation now reaches Career with source-based costs,
+attributes and Low-Light Vision. The ordinary Debug API36 route passed draft
+save/new-process reopen and single finalization/new-process Career reopen.
+Existing completed runners remained unchanged. The separate local ARM64 AAB
+was inspected, signed with the existing upload key and independently verified.
+
+Physical Play installation, awakened Karma, Dwarf/Troll and all-method/Career
+coverage remain incomplete or unverified. This is local source assembly, not
+package-only Android, hosted runtime qualification or a complete phone beta.
+Code25 is consumed; the next artifact requires26 or a higher unused code.
+
+## Historical observed Internal release: Preview 24 — September 20, 2026
+
+The immutable [Preview24 observation](../play/evidence/preview24-internal-observation.md)
+records Internal availability at `2026-09-20T20:34:10Z`, explicit starting-cash
+and carryover corrections, and the bounded saved Adept completion/restart smoke.
+Physical Play installation remains unverified. Do not rebuild or re-upload24.
+
+## Historical observed Internal release: Preview 23 — September 20, 2026
 
 Authenticated scoped Console readback at `2026-09-20T17:56:35Z` shows
 `23 (0.1.0-preview.23)` as **Available to internal testers**.
