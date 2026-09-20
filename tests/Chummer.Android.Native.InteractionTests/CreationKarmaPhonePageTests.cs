@@ -95,6 +95,38 @@ internal static partial class AfterRunAuthorityHarness
                 && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision,
                 "Quality selection must show Core net costs without persisting before review.");
             await Back();
+            await Click("karma-open-contacts");
+            await Click("karma-add-contact");
+            var oldContactName = Element<Entry>("karma-contact-name");
+            oldContactName.Text = "Mara ü & <Fixer>";
+            Element<Entry>("karma-contact-role").Text = "Fixer";
+            Element<Entry>("karma-contact-notes").Text = "Madrid — información";
+            Element<Stepper>("karma-contact-connection").Value = 2;
+            Element<Stepper>("karma-contact-loyalty").Value = 2;
+            await Click("karma-use-contact");
+            string contactId = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Mara ü & <Fixer>").AutomationId;
+            oldContactName.Text = "obsolete callback";
+            Require(Element<Label>("karma-contact-totals").Text == CreationKarmaCopy.ContactTotals(4, 3, 0, 0, 1)
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision,
+                "Contact preview must price Core overflow without saving or accepting a departed editor.");
+            await Click("karma-add-contact");
+            Element<Entry>("karma-contact-name").Text = "The Union";
+            Element<Switch>("karma-contact-group").IsToggled = true;
+            Element<Stepper>("karma-contact-loyalty").Value = 2;
+            await Click("karma-use-contact");
+            string groupId = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "The Union").AutomationId;
+            Require(!IssuedElements(Current()).OfType<Label>().Any(label => label.AutomationId == "karma-contact-totals"),
+                "An invalid group Loyalty must not retain a previous valid quote.");
+            await Click(groupId);
+            Element<Stepper>("karma-contact-loyalty").Value = 1;
+            await Click("karma-use-contact");
+            Require(Element<Label>("karma-contact-totals").Text == CreationKarmaCopy.ContactTotals(4, 3, 0, 0, 3),
+                "Group Karma must be charged separately from the free-contact pool.");
+            await Click(contactId);
+            Require(Element<Entry>("karma-contact-name").Text == "Mara ü & <Fixer>",
+                "Returning to the contact editor lost the unsaved identity.");
+            await Back();
+            await Back();
             await Click("karma-open-resources");
             var resourceInput = Element<Entry>("karma-resource-investment");
             var numberCulture = CultureInfo.CurrentCulture;
@@ -153,7 +185,9 @@ internal static partial class AfterRunAuthorityHarness
                 && decision.Command.QualityOptionIds!.Count == 2
                 && decision.Quote.Qualities!.Costs.NetKarmaSpent == -2
                 && decision.Command.GearSelections!.Single().Quantity == 2
-                && decision.Quote.Gear!.Budget.BasketCost == 50m,
+                && decision.Quote.Gear!.Budget.BasketCost == 50m
+                && decision.Command.ContactSelections!.Count == 2
+                && decision.Quote.Contacts!.KarmaUsed == 3,
                 "Native review did not persist exactly the selected source-bound pending foundation.");
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
@@ -180,6 +214,17 @@ internal static partial class AfterRunAuthorityHarness
             Require(probe.OpenCalls == opensBeforeReopen + 1 && probe.LoadCalls == loadsBeforeReopen
                 && probe.PreviewCalls == previewsBeforeReopen && probe.ConfirmCalls == 1,
                 "Reopening a saved wizard must use one Core Open, without a second Load/Preview or a write.");
+            await Click("karma-open-contacts");
+            Require(Element<Label>("karma-contact-totals").Text == CreationKarmaCopy.ContactTotals(4, 3, 0, 0, 3),
+                "Cold reopen lost the saved contact budget.");
+            await Click(contactId);
+            Require(Element<Entry>("karma-contact-name").Text == "Mara ü & <Fixer>"
+                && Element<Entry>("karma-contact-notes").Text == "Madrid — información"
+                && Element<Stepper>("karma-contact-connection").Value == 2
+                && Element<Stepper>("karma-contact-loyalty").Value == 2,
+                "Cold reopen lost contact identity or ratings.");
+            await Back();
+            await Back();
             await Click("karma-open-attributes");
             Require(Element<Stepper>("karma-attribute-AGI").Value == 1, "Reopened phone page lost its durable allocation.");
             await Back();
@@ -233,6 +278,11 @@ internal static partial class AfterRunAuthorityHarness
                 && Element<Button>("karma-completion-open-career").IsEnabled && probe.FinalConfirmCalls == 1,
                 "Atomic completion did not reopen the saved Career runner.");
             var completed = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var finalContacts = System.Xml.Linq.XDocument.Parse(completed.Document.Content).Root!.Element("contacts")!.Elements("contact").ToArray();
+            Require(finalContacts.Length == 2
+                && finalContacts.Single(item => item.Element("name")!.Value == "Mara ü & <Fixer>").Element("notes")!.Value == "Madrid — información"
+                && finalContacts.Single(item => item.Element("name")!.Value == "The Union").Element("group")!.Value == "true",
+                "Career transition lost or duplicated pending contacts.");
             Require(completed.ContentRevision == cold.ContentRevision + 1 && completed.SavedRevision == completed.ContentRevision
                 && completed.Document.AuxiliaryState.CharacterCreationFinalizationArchive?.KarmaAuthority is not null
                 && completed.Document.AuxiliaryState.CharacterCreationFinalizationArchive.State.CharacterCreationKarmaMetatypeDecisions!.Single().DecisionDigest == decision.DecisionDigest

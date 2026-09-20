@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos y equipo. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos, equipo y contactos. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
@@ -270,4 +270,20 @@
   <data name="Karma.CompletionTotals" xml:space="preserve"><value>Karma en Carrera: {0} · fondos de creación: {1:N2} ¥ · nuyen en Carrera: {2:N2} ¥</value></data>
   <data name="Karma.DeltaCost" xml:space="preserve"><value>Coste: {0} Karma · {1:N2} ¥</value></data>
   <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="Karma.Contacts" xml:space="preserve"><value>Contactos</value></data>
+  <data name="Karma.ContactHelp" xml:space="preserve"><value>Añade contactos al borrador. Core calcula puntos de contacto, Karma y límites de cualidades. Los grupos requieren Lealtad 1. Los puntos adicionales cuestan Karma. Solo se guarda al confirmar el borrador.</value></data>
+  <data name="Karma.AddContact" xml:space="preserve"><value>Añadir contacto</value></data>
+  <data name="Karma.UnnamedContact" xml:space="preserve"><value>Contacto sin nombre</value></data>
+  <data name="Karma.ContactName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Karma.ContactRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="Karma.ContactLocation" xml:space="preserve"><value>Lugar</value></data>
+  <data name="Karma.ContactNotes" xml:space="preserve"><value>Notas</value></data>
+  <data name="Karma.Connection" xml:space="preserve"><value>Conexión</value></data>
+  <data name="Karma.Loyalty" xml:space="preserve"><value>Lealtad</value></data>
+  <data name="Karma.GroupContact" xml:space="preserve"><value>Contacto de grupo (elige Lealtad 1)</value></data>
+  <data name="Karma.FamilyContact" xml:space="preserve"><value>Familia</value></data>
+  <data name="Karma.BlackmailContact" xml:space="preserve"><value>Chantaje</value></data>
+  <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Conexión {1} · Lealtad {2} · {3} puntos de contacto</value></data>
+  <data name="Karma.ContactTotals" xml:space="preserve"><value>Puntos de contacto: {0}/{1} · Altas esferas: {2}/{3} · Karma adicional: {4}</value></data>
+  <data name="Karma.GroupContactCost" xml:space="preserve"><value>Contactos de grupo: {0} Karma antes de recargos · límite de cualidades positivas utilizado, incluidos grupos: {1}</value></data>
 </root>

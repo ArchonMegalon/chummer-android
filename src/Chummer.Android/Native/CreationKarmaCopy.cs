@@ -2,6 +2,22 @@ namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
 {
+    public static string Contacts => CreationAllocationStrings.Get("Karma.Contacts", "Contacts");
+    public static string ContactHelp => CreationAllocationStrings.Get("Karma.ContactHelp", "Add contacts to the pending draft. Core prices contact points, Karma and quality limits. Groups need Loyalty 1. Free-point overspend costs Karma. Nothing is saved until you confirm the draft.");
+    public static string AddContact => CreationAllocationStrings.Get("Karma.AddContact", "Add contact");
+    public static string UnnamedContact => CreationAllocationStrings.Get("Karma.UnnamedContact", "Unnamed contact");
+    public static string ContactName => CreationAllocationStrings.Get("Karma.ContactName", "Name");
+    public static string ContactRole => CreationAllocationStrings.Get("Karma.ContactRole", "Role");
+    public static string ContactLocation => CreationAllocationStrings.Get("Karma.ContactLocation", "Location");
+    public static string ContactNotes => CreationAllocationStrings.Get("Karma.ContactNotes", "Notes");
+    public static string Connection => CreationAllocationStrings.Get("Karma.Connection", "Connection");
+    public static string Loyalty => CreationAllocationStrings.Get("Karma.Loyalty", "Loyalty");
+    public static string GroupContact => CreationAllocationStrings.Get("Karma.GroupContact", "Group contact (set Loyalty to 1)");
+    public static string FamilyContact => CreationAllocationStrings.Get("Karma.FamilyContact", "Family");
+    public static string BlackmailContact => CreationAllocationStrings.Get("Karma.BlackmailContact", "Blackmail");
+    public static string ContactLine(string name, int connection, int loyalty, int points) => CreationAllocationStrings.Format("Karma.ContactLine", "{0} · Connection {1} · Loyalty {2} · {3} contact points", name, connection, loyalty, points);
+    public static string ContactTotals(int used, int total, int highUsed, int highTotal, int karma) => CreationAllocationStrings.Format("Karma.ContactTotals", "Contact points: {0}/{1} · High Places: {2}/{3} · additional Karma: {4}", used, total, highUsed, highTotal, karma);
+    public static string GroupContactCost(int karma, int limitUsed) => CreationAllocationStrings.Format("Karma.GroupContactCost", "Group contacts: {0} Karma before excess costs · positive quality limit usage including groups: {1}", karma, limitUsed);
     public static string Finish => CreationAllocationStrings.Get("Karma.Finish", "Finish Karma creation");
     public static string CompletionHelp => CreationAllocationStrings.Get("Karma.CompletionHelp", "Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Currently, only supported Mundane drafts can be finalized.");
     public static string DiceTotal => CreationAllocationStrings.Get("Karma.DiceTotal", "Enter your dice total (no automatic roll)");
@@ -40,7 +56,7 @@ internal static class CreationKarmaCopy
         karma.ToString("G29", System.Globalization.CultureInfo.CurrentCulture),
         nuyen.ToString("N2", System.Globalization.CultureInfo.CurrentCulture));
     public static string Review => CreationAllocationStrings.Get("Karma.Review", "Review draft");
-    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources and equipment. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.");
+    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment and contacts. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.");
     public static string Stale => CreationAllocationStrings.Get("Karma.Stale", "This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.");
     public static string Saved => CreationAllocationStrings.Get("Karma.Saved", "Pending Karma draft saved. The runner has not been finalized.");
     public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose explicitly");

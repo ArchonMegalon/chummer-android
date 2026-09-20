@@ -243,14 +243,15 @@ internal static partial class AfterRunAuthorityHarness
             string? talentOptionId = null, IReadOnlyList<CharacterCreationKarmaAttributeAllocation>? attributeAllocations = null,
             CharacterCreationKarmaSkillsSelection? skillsSelection = null, decimal? resourceKarmaInvestment = null,
             IReadOnlyList<string>? qualityOptionIds = null,
-            IReadOnlyList<CharacterCreationGearSelection>? gearSelections = null)
+            IReadOnlyList<CharacterCreationGearSelection>? gearSelections = null,
+            IReadOnlyList<CharacterCreationKarmaContactSelection>? contactSelections = null)
         {
             AssertBackground(); PreviewCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection,
-                resourceKarmaInvestment, qualityOptionIds, gearSelections);
+                resourceKarmaInvestment, qualityOptionIds, gearSelections, contactSelections);
             PreviewTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterPreview?.Invoke(); return result;
         }

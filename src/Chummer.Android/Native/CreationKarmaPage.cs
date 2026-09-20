@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Contacts, Contact, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
 internal sealed class CreationKarmaPage : NativePageBase
@@ -23,6 +23,7 @@ internal sealed class CreationKarmaPage : NativePageBase
     private CharacterCreationKarmaSkillAllocation? _editingSkill;
     private bool _skillInitialized;
     private string? _resourceInput;
+    private CharacterCreationKarmaContactSelection? _editingContact;
 
     internal CreationKarmaPage(RunnerSessionCoordinator coordinator) : this(coordinator,
         new CreationKarmaPhoneSession(coordinator), CreationKarmaStep.Overview) { }
@@ -47,6 +48,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Group => CreationKarmaCopy.Groups,
         CreationKarmaStep.Resources => CreationKarmaCopy.Resources,
         CreationKarmaStep.Gear => CreationKarmaCopy.Gear,
+        CreationKarmaStep.Contacts or CreationKarmaStep.Contact => CreationKarmaCopy.Contacts,
         CreationKarmaStep.Review => CreationKarmaCopy.Review,
         _ => CreationKarmaCopy.Title
     };
@@ -92,6 +94,10 @@ internal sealed class CreationKarmaPage : NativePageBase
             if (_step == CreationKarmaStep.Gear && _session.Authority?.GearAuthority is not null
                 && _session.Selection is { ResourceKarmaInvestment: not null, GearSelections: null } gear)
                 _session.Change(gear with { GearSelections = [] });
+            if (_step == CreationKarmaStep.Contacts && _session.Authority?.ContactsPolicy is not null
+                && _session.Selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null,
+                    ContactSelections: null } contacts)
+                _session.Change(contacts with { ContactSelections = [] });
         }
     }
 
@@ -122,7 +128,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         var binding = NativeTheme.Body(CreationKarmaCopy.Binding(state.Binding.ContentRevision, state.Binding.SavedRevision), NativeTheme.Muted);
         binding.AutomationId = "creation-karma-binding";
         _body.Add(binding);
-        _status = NativeTheme.Body(_session.QuoteCurrent && _session.Quote is { } quote
+        _status = NativeTheme.Body(_session.QuoteCurrent && _session.Quote is { KarmaBudget.IsExact: true } quote
             ? CreationKarmaCopy.Budget(quote.KarmaBudget.Used, quote.KarmaBudget.Total, quote.KarmaBudget.Remaining)
             : _session.Selection is null ? CreationKarmaCopy.Choose : CreationKarmaCopy.Pending, NativeTheme.Muted);
         _status.AutomationId = "creation-karma-budget";
@@ -139,6 +145,8 @@ internal sealed class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Group: AddGroupEditor(); break;
             case CreationKarmaStep.Resources: AddResources(); break;
             case CreationKarmaStep.Gear: AddGear(); break;
+            case CreationKarmaStep.Contacts: AddContacts(); break;
+            case CreationKarmaStep.Contact: AddContactEditor(); break;
             case CreationKarmaStep.Review: AddReview(); break;
         }
         AddBlockers();
@@ -190,6 +198,9 @@ internal sealed class CreationKarmaPage : NativePageBase
             selection?.Attributes is not null && _session.Authority?.ResourcesPolicy is not null);
         AddButton(CreationKarmaCopy.Gear, "karma-open-gear", () => Open(CreationKarmaStep.Gear),
             selection?.ResourceKarmaInvestment is not null);
+        AddButton(CreationKarmaCopy.Contacts, "karma-open-contacts", () => Open(CreationKarmaStep.Contacts),
+            selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null }
+                && _session.Authority?.ContactsPolicy is not null);
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
         AddCompletionButton();
         AddSelectionSummary();
@@ -488,6 +499,105 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddGearTotals();
         foreach (var line in quote.Gear?.Lines ?? [])
             _body.Add(NativeTheme.Body(CreationKarmaCopy.GearLine(line.Name, line.Quantity, line.TotalCost)));
+        AddContactTotals();
+        foreach (var line in quote.Contacts?.Lines ?? [])
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.ContactLine(line.Selection.Identity.Name,
+                line.Selection.Connection, line.Selection.Loyalty, line.PointCost)));
+    }
+
+    private void AddContactTotals()
+    {
+        if (!_session.QuoteCurrent || _session.Quote?.Contacts is not { } contacts) return;
+        var totals = NativeTheme.Body(CreationKarmaCopy.ContactTotals(contacts.ContactPointsUsed, contacts.ContactPoints,
+            contacts.HighPlacesPointsUsed, contacts.HighPlacesPoints, contacts.KarmaUsed));
+        totals.AutomationId = "karma-contact-totals";
+        _body.Add(totals);
+        if (contacts.GroupContactKarma > 0)
+            _body.Add(NativeTheme.Body(CreationKarmaCopy.GroupContactCost(contacts.GroupContactKarma,
+                contacts.CombinedQualityCosts.PositiveLimitKarma)));
+    }
+
+    private void AddContacts()
+    {
+        if (_session.Selection?.ContactSelections is not { } contacts) return;
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.ContactHelp, NativeTheme.Muted));
+        AddContactTotals();
+        foreach (var contact in contacts)
+            AddButton(contact.Identity.Name.Length == 0 ? CreationKarmaCopy.UnnamedContact : contact.Identity.Name,
+                "karma-contact-" + contact.ContactId.ToString("D"),
+                () => Open(CreationKarmaStep.Contact, contact.ContactId.ToString("D")));
+        AddButton(CreationKarmaCopy.AddContact, "karma-add-contact", () => Open(CreationKarmaStep.Contact),
+            contacts.Count < Chummer.Application.Characters.CharacterCreationKarmaContactsRules.MaximumSelections);
+        AddButton(CreationKarmaCopy.Preview, "karma-preview-contacts", Preview);
+    }
+
+    private void AddContactEditor()
+    {
+        if (_session.Selection?.ContactSelections is not { } contacts) return;
+        var original = contacts.SingleOrDefault(item => item.ContactId.ToString("D") == _sourceId);
+        // A missing retained identity must not become an accidental new contact.
+        if (_sourceId is not null && original is null) return;
+        _editingContact ??= original ?? new(Guid.NewGuid(),
+            new CharacterCreationContactIdentity("", "", "", "", "", "", "", "", "", "", "", "", ""), 1, 1);
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        AddText(CreationKarmaCopy.ContactName, "name", _editingContact.Identity.Name,
+            value => _editingContact = _editingContact! with { Identity = _editingContact.Identity with { Name = value } });
+        AddText(CreationKarmaCopy.ContactRole, "role", _editingContact.Identity.Role,
+            value => _editingContact = _editingContact! with { Identity = _editingContact.Identity with { Role = value } });
+        AddText(CreationKarmaCopy.ContactLocation, "location", _editingContact.Identity.Location,
+            value => _editingContact = _editingContact! with { Identity = _editingContact.Identity with { Location = value } });
+        AddText(CreationKarmaCopy.ContactNotes, "notes", _editingContact.Identity.Notes,
+            value => _editingContact = _editingContact! with { Identity = _editingContact.Identity with { Notes = value } });
+        AddRating(CreationKarmaCopy.Connection, "connection", _editingContact.Connection, 12,
+            value => _editingContact = _editingContact! with { Connection = value });
+        AddRating(CreationKarmaCopy.Loyalty, "loyalty", _editingContact.Loyalty, 6,
+            value => _editingContact = _editingContact! with { Loyalty = value });
+        AddFlag(CreationKarmaCopy.GroupContact, "group", _editingContact.IsGroup,
+            value => _editingContact = _editingContact! with { IsGroup = value });
+        AddFlag(CreationKarmaCopy.FamilyContact, "family", _editingContact.Family,
+            value => _editingContact = _editingContact! with { Family = value });
+        AddFlag(CreationKarmaCopy.BlackmailContact, "blackmail", _editingContact.Blackmail,
+            value => _editingContact = _editingContact! with { Blackmail = value });
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.ContactHelp, NativeTheme.Muted));
+        AddButton(CreationKarmaCopy.UseSelection, "karma-use-contact", async () =>
+        {
+            Change(_session.Selection! with { ContactSelections = contacts.Where(item => item != original)
+                .Append(_editingContact!).ToArray() });
+            await Navigation.PopAsync();
+        });
+        AddButton(CreationKarmaCopy.Remove, "karma-remove-contact", async () =>
+        {
+            Change(_session.Selection! with { ContactSelections = contacts.Where(item => item != original).ToArray() });
+            await Navigation.PopAsync();
+        }, original is not null);
+
+        void AddText(string label, string id, string value, Action<string> changed)
+        {
+            _body.Add(NativeTheme.Body(label));
+            var entry = new Entry { Text = value, MaxLength = 32767, AutomationId = "karma-contact-" + id };
+            entry.TextChanged += (_, args) =>
+            { if (Current(render, appearance)) changed((args.NewTextValue ?? string.Empty).Trim()); };
+            _body.Add(entry);
+        }
+        void AddRating(string label, string id, int value, int maximum, Action<int> changed)
+        {
+            var text = NativeTheme.Body(CreationKarmaCopy.Levels(label, value));
+            var stepper = new Stepper { Minimum = 1, Maximum = maximum, Increment = 1, Value = value,
+                AutomationId = "karma-contact-" + id };
+            stepper.ValueChanged += (_, args) =>
+            {
+                if (!Current(render, appearance)) return;
+                changed((int)args.NewValue);
+                text.Text = CreationKarmaCopy.Levels(label, (int)args.NewValue);
+            };
+            _body.Add(text); _body.Add(stepper);
+        }
+        void AddFlag(string label, string id, bool value, Action<bool> changed)
+        {
+            var toggle = new Switch { IsToggled = value, AutomationId = "karma-contact-" + id };
+            toggle.Toggled += (_, args) => { if (Current(render, appearance)) changed(args.Value); };
+            _body.Add(NativeTheme.Body(label)); _body.Add(toggle);
+        }
     }
 
     private void AddGearTotals()

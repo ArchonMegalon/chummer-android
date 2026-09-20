@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources and equipment. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment and contacts. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
@@ -270,4 +270,20 @@
   <data name="Karma.CompletionTotals" xml:space="preserve"><value>Career Karma: {0} · creation funding: {1:N2} ¥ · Career nuyen: {2:N2} ¥</value></data>
   <data name="Karma.DeltaCost" xml:space="preserve"><value>Cost: {0} Karma · {1:N2} ¥</value></data>
   <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="Karma.Contacts" xml:space="preserve"><value>Contacts</value></data>
+  <data name="Karma.ContactHelp" xml:space="preserve"><value>Add contacts to the pending draft. Core prices contact points, Karma and quality limits. Groups need Loyalty 1. Free-point overspend costs Karma. Nothing is saved until you confirm the draft.</value></data>
+  <data name="Karma.AddContact" xml:space="preserve"><value>Add contact</value></data>
+  <data name="Karma.UnnamedContact" xml:space="preserve"><value>Unnamed contact</value></data>
+  <data name="Karma.ContactName" xml:space="preserve"><value>Name</value></data>
+  <data name="Karma.ContactRole" xml:space="preserve"><value>Role</value></data>
+  <data name="Karma.ContactLocation" xml:space="preserve"><value>Location</value></data>
+  <data name="Karma.ContactNotes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Karma.Connection" xml:space="preserve"><value>Connection</value></data>
+  <data name="Karma.Loyalty" xml:space="preserve"><value>Loyalty</value></data>
+  <data name="Karma.GroupContact" xml:space="preserve"><value>Group contact (set Loyalty to 1)</value></data>
+  <data name="Karma.FamilyContact" xml:space="preserve"><value>Family</value></data>
+  <data name="Karma.BlackmailContact" xml:space="preserve"><value>Blackmail</value></data>
+  <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Connection {1} · Loyalty {2} · {3} contact points</value></data>
+  <data name="Karma.ContactTotals" xml:space="preserve"><value>Contact points: {0}/{1} · High Places: {2}/{3} · additional Karma: {4}</value></data>
+  <data name="Karma.GroupContactCost" xml:space="preserve"><value>Group contacts: {0} Karma before excess costs · positive quality limit usage including groups: {1}</value></data>
 </root>

@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Fertigkeiten</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Entwurf prüfen</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen und Ausrüstung. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen, Ausrüstung und Kontakte. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel für den Ausrüstungsentwurf. Nuyen-Modifikatoren durch Vor-/Nachteile und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
@@ -270,4 +270,20 @@
   <data name="Karma.CompletionTotals" xml:space="preserve"><value>Karriere-Karma: {0} · Erstellungskapital: {1:N2} ¥ · Karriere-Nuyen: {2:N2} ¥</value></data>
   <data name="Karma.DeltaCost" xml:space="preserve"><value>Kosten: {0} Karma · {1:N2} ¥</value></data>
   <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="Karma.Contacts" xml:space="preserve"><value>Kontakte</value></data>
+  <data name="Karma.ContactHelp" xml:space="preserve"><value>Kontakte zum Entwurf hinzufügen. Core berechnet Kontaktpunkte, Karma und Vorteilslimits. Gruppen benötigen Loyalität 1. Zusätzliche Kontaktpunkte kosten Karma. Gespeichert wird erst nach Bestätigung des Entwurfs.</value></data>
+  <data name="Karma.AddContact" xml:space="preserve"><value>Kontakt hinzufügen</value></data>
+  <data name="Karma.UnnamedContact" xml:space="preserve"><value>Unbenannter Kontakt</value></data>
+  <data name="Karma.ContactName" xml:space="preserve"><value>Name</value></data>
+  <data name="Karma.ContactRole" xml:space="preserve"><value>Rolle</value></data>
+  <data name="Karma.ContactLocation" xml:space="preserve"><value>Ort</value></data>
+  <data name="Karma.ContactNotes" xml:space="preserve"><value>Notizen</value></data>
+  <data name="Karma.Connection" xml:space="preserve"><value>Einfluss</value></data>
+  <data name="Karma.Loyalty" xml:space="preserve"><value>Loyalität</value></data>
+  <data name="Karma.GroupContact" xml:space="preserve"><value>Gruppenkontakt (Loyalität auf 1 setzen)</value></data>
+  <data name="Karma.FamilyContact" xml:space="preserve"><value>Familie</value></data>
+  <data name="Karma.BlackmailContact" xml:space="preserve"><value>Erpressung</value></data>
+  <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Einfluss {1} · Loyalität {2} · {3} Kontaktpunkte</value></data>
+  <data name="Karma.ContactTotals" xml:space="preserve"><value>Kontaktpunkte: {0}/{1} · Hohe Positionen: {2}/{3} · zusätzliches Karma: {4}</value></data>
+  <data name="Karma.GroupContactCost" xml:space="preserve"><value>Gruppenkontakte: {0} Karma vor Zusatzkosten · genutztes Vorteilslimit einschließlich Gruppen: {1}</value></data>
 </root>
