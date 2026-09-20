@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Creación de Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, financiación de recursos y equipo compatible. Se guarda un borrador, no un personaje terminado. Las demás etapas y la finalización aún no están disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos y equipo. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
@@ -258,4 +258,16 @@
   <data name="Karma.Selected" xml:space="preserve"><value>Seleccionado</value></data>
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · nivel {1} · coste de origen {2} Karma</value></data>
   <data name="Karma.QualityTotals" xml:space="preserve"><value>Cualidades: coste {0} · crédito {1} · neto {2} Karma</value></data>
+  <data name="Karma.Finish" xml:space="preserve"><value>Finalizar creación con Karma</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Revisa todos los cambios antes de pasar a Carrera. Se pierden los importes que superen los límites de transferencia. El dinero inicial no financia compras de creación. Actualmente solo se pueden finalizar borradores mundanos compatibles.</value></data>
+  <data name="Karma.DiceTotal" xml:space="preserve"><value>Introduce la suma de tus dados (sin tirada automática)</value></data>
+  <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Revisar paso a Carrera</value></data>
+  <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Confirmar y pasar a Carrera</value></data>
+  <data name="Karma.CareerReady" xml:space="preserve"><value>Creación guardada. Se ha abierto Carrera desde el runner guardado.</value></data>
+  <data name="Karma.CareerReopen" xml:space="preserve"><value>Creación guardada. Abre de nuevo el runner antes de realizar más cambios.</value></data>
+  <data name="Karma.OpenCareer" xml:space="preserve"><value>Abrir runner en Carrera</value></data>
+  <data name="Karma.StartingCash" xml:space="preserve"><value>{0}: tira {1}d6 · multiplicador {2:N2} ¥</value></data>
+  <data name="Karma.CompletionTotals" xml:space="preserve"><value>Karma en Carrera: {0} · fondos de creación: {1:N2} ¥ · nuyen en Carrera: {2:N2} ¥</value></data>
+  <data name="Karma.DeltaCost" xml:space="preserve"><value>Coste: {0} Karma · {1:N2} ¥</value></data>
+  <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
 </root>

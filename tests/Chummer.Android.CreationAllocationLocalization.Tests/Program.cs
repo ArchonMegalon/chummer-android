@@ -98,7 +98,7 @@ string[] surfaceFiles =
     "CreationSkillsPage.cs",
     "CreationMetatypePage.cs",
     "CreationMetatypePreviewPage.cs",
-    "CreationKarmaPage.cs", "CreationKarmaCopy.cs", "CreationSkillsReReviewPage.cs"
+    "CreationKarmaPage.cs", "CreationKarmaCopy.cs", "CreationKarmaCompletionPage.cs", "CreationSkillsReReviewPage.cs"
 ];
 Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(

@@ -191,6 +191,7 @@ internal sealed class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Gear, "karma-open-gear", () => Open(CreationKarmaStep.Gear),
             selection?.ResourceKarmaInvestment is not null);
         AddButton(CreationKarmaCopy.Review, "karma-open-review", () => Open(CreationKarmaStep.Review), selection is not null);
+        AddCompletionButton();
         AddSelectionSummary();
     }
 
@@ -606,9 +607,16 @@ internal sealed class CreationKarmaPage : NativePageBase
                 long appearance = CaptureAppearanceGeneration();
                 _body.IsEnabled = false;
                 await _session.ConfirmAsync(default, () => IsCurrentAppearanceGeneration(appearance));
+                if (_session.Saved && _session.Ready && IsCurrentAppearanceGeneration(appearance))
+                    await _session.PreviewAsync(default, () => IsCurrentAppearanceGeneration(appearance));
             }, quote.CanSelect && !_session.Saved);
         }
+        AddCompletionButton();
     }
+
+    private void AddCompletionButton()
+        => AddButton(CreationKarmaCopy.Finish, "karma-open-completion",
+            () => Navigation.PushAsync(new CreationKarmaCompletionPage(Coordinator, _session.Quote!)), _session.CanFinalize);
 
     private void AddBlockers()
     {

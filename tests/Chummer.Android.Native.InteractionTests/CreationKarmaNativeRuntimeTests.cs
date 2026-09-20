@@ -12,6 +12,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
+        if (onlyScenario == "completion-admission") { await RunKarmaCompletionAdmissionAsync(contentRoot); return; }
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }
         string[] scenarios = ["commit", "cancel-after-commit", "lost-return",
             "owner-aba-during-open", "route-left-during-open", "cancel-during-open",
@@ -207,9 +208,9 @@ internal static partial class AfterRunAuthorityHarness
     {
         public int LoadCalls, PreviewCalls, OpenCalls;
         public TimeSpan LoadTime, PreviewTime, OpenTime;
-        public int ConfirmCalls;
+        public int ConfirmCalls, FinalConfirmCalls;
         public bool FailReads;
-        public Action? AfterLoad, AfterPreview, AfterConfirm, AfterOpen;
+        public Action? AfterLoad, AfterPreview, AfterConfirm, AfterOpen, AfterFinalConfirm;
         public Func<CharacterCreationKarmaMetatypeOpen, CharacterCreationKarmaMetatypeOpen>? TransformOpen;
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
@@ -259,11 +260,82 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationKarmaFinalizationBudgetQuote> PreviewFinalizationBudget(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal)
         { AssertBackground(); return actual.PreviewFinalizationBudget(owner, binding, quoteDigest, diceTotal); }
+        public CharacterCreationFoundationResult<CharacterCreationStartingNuyenSource> LoadFinalizationStartingCash(
+            OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest)
+        { AssertBackground(); return actual.LoadFinalizationStartingCash(owner, binding, quoteDigest); }
         public CharacterCreationFoundationResult<CharacterCreationFinalizationReview> ReviewFinalization(
-            OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal)
-        { AssertBackground(); return actual.ReviewFinalization(owner, binding, quoteDigest, diceTotal); }
+            OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal,
+            string? startingCashAuthorityDigest = null)
+        { AssertBackground(); return actual.ReviewFinalization(owner, binding, quoteDigest, diceTotal, startingCashAuthorityDigest); }
         public CharacterCreationFoundationResult<CharacterCreationFinalizationReceipt> ConfirmFinalization(
             OwnerContextStamp owner, CharacterCreationKarmaFinalizationConfirmRequest request)
-        { AssertBackground(); return actual.ConfirmFinalization(owner, request); }
+        {
+            AssertBackground(); FinalConfirmCalls++;
+            var result = actual.ConfirmFinalization(owner, request);
+            AfterFinalConfirm?.Invoke();
+            return result;
+        }
+    }
+
+    private static async Task RunKarmaCompletionAdmissionAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string scenario in new[] { "owner-aba", "cancel-after-commit", "route-left-after-commit", "lost-return" })
+            {
+                var owners = new ControlledLinkedOwner();
+                KarmaNativeProbe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                    productionCreationOverview: true, linkedOwners: owners,
+                    karmaDecorator: actual => probe = new(actual, ui));
+                await runtime.Coordinator.InitializeAsync();
+                await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                await runtime.Coordinator.CreateRunnerAsync();
+                await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", "Karma", default);
+                await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+                var state = (await runtime.Coordinator.LoadCreationKarmaAsync(true, includeQualities: true, includeGear: true)).Value!;
+                var english = state.SkillsCatalog!.KnowledgeSkills.Single(s => s.Name == "English");
+                var selection = new CreationKarmaPhoneSelection(state.Options.Single(o => o.Label == "Human").OptionId,
+                    "mundane", [], new([new(english.SourceSkillId, english.Kind, 0, IsNativeLanguage: true)], []), 0, [], []);
+                var preview = (await runtime.Coordinator.PreviewCreationKarmaAsync(state, selection)).Value!;
+                var saved = await runtime.Coordinator.ConfirmCreationKarmaAsync(preview, true);
+                Require(saved.Commit is not null, "SETUP: pending Karma save failed.");
+                var current = (await runtime.Coordinator.OpenCreationKarmaAsync(true, includeQualities: true, includeGear: true)).Value!.Quote!;
+                var source = (await runtime.Coordinator.LoadKarmaCompletionCashAsync(current, default, () => true)).Value!;
+                var reviewed = await runtime.Coordinator.ReviewKarmaCompletionAsync(current, source, 4, default, () => true);
+                Require(reviewed.Value is not null, "SETUP: Karma completion review failed: " + string.Join(",", reviewed.Blockers));
+                var review = reviewed.Value!;
+                var id = current.Binding.WorkspaceId;
+                var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                bool pageCurrent = true;
+                using var cancel = new CancellationTokenSource();
+                if (scenario == "owner-aba") { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                if (scenario == "cancel-after-commit") probe!.AfterFinalConfirm = cancel.Cancel;
+                if (scenario == "route-left-after-commit") probe!.AfterFinalConfirm = () => pageCurrent = false;
+                if (scenario == "lost-return") probe!.AfterFinalConfirm = () => throw new IOException("Lost completion return");
+                var result = await runtime.Coordinator.ConfirmKarmaCompletionAsync(review, true, cancel.Token, () => pageCurrent);
+                var after = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                if (scenario == "owner-aba")
+                    Require(result.Value is null && probe!.FinalConfirmCalls == 0 && after.ContentRevision == before.ContentRevision
+                        && after.Document.Content == before.Document.Content && after.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest,
+                        "Owner A→B→A admitted an obsolete completion intent.");
+                else
+                {
+                    Require(probe!.FinalConfirmCalls == 1 && after.ContentRevision == before.ContentRevision + 1
+                        && after.Document.AuxiliaryState.CharacterCreationFinalizationArchive?.KarmaAuthority is not null,
+                        "Completion was duplicated or lost after Core committed.");
+                    if (scenario == "lost-return") Require(result.Value is null && result.Blockers.Contains(RunnerSessionCoordinator.KarmaOutcomeUnknown),
+                        "An unknown completion return was represented as a known save.");
+                    else Require(result.Value is not null && result.Blockers.Contains(CharacterCreationFinalizationBlockers.PostCommitReopenRequired),
+                        "Cancellation/navigation erased a known committed receipt.");
+                    Require((await runtime.Coordinator.ConfirmKarmaCompletionAsync(review, true, default, () => true)).Value is null
+                        && probe.FinalConfirmCalls == 1, "A consumed/ambiguous completion intent was replayed.");
+                }
+                Require(owners.ActiveLeases == 0, "Completion leaked a synchronous owner lease.");
+                Console.WriteLine("PASS Karma completion admission: " + scenario);
+            }
+            ui.AssertHealthy();
+        });
     }
 }

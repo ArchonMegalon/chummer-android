@@ -13,6 +13,7 @@ internal sealed class CreationKarmaPhoneSession
     private readonly CharacterWorkspaceId? _workspace;
     private long _version;
     private long _quotedVersion = -1;
+    private long _savedVersion = -1;
     public CharacterCreationKarmaMetatypeState? Authority { get; private set; }
     public CreationKarmaPhoneSelection? Selection { get; private set; }
     public CharacterCreationKarmaMetatypeQuote? Quote { get; private set; }
@@ -27,6 +28,7 @@ internal sealed class CreationKarmaPhoneSession
         && _coordinator.IsCreationKarmaStateCurrent(state);
     public bool QuoteCurrent => Ready && Quote is { } quote && _quotedVersion == _version
         && _coordinator.IsCreationKarmaPreviewCurrent(quote);
+    public bool CanFinalize => QuoteCurrent && _savedVersion == _version && Quote is { CanSelect: true };
 
     public CreationKarmaPhoneSession(RunnerSessionCoordinator coordinator)
     {
@@ -62,6 +64,7 @@ internal sealed class CreationKarmaPhoneSession
             { Blockers = opened.Blockers; return; }
             Authority = current.State;
             Selection = CreationKarmaPhoneSelection.Restore(current.State);
+            _savedVersion = Selection is null ? -1 : _version;
             Quote = current.Quote;
             _quotedVersion = _version;
             Blockers = opened.Blockers;
@@ -145,6 +148,7 @@ internal sealed class CreationKarmaPhoneSession
         if (result.Commit is not null)
         {
             Saved = true;
+            _savedVersion = _version;
             if (result.RefreshedState is { } state && _coordinator.CanDisplayCreationKarmaCommit(result.Commit))
             {
                 Authority = state;

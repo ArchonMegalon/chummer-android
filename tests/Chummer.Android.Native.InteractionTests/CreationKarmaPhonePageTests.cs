@@ -200,6 +200,56 @@ internal static partial class AfterRunAuthorityHarness
             await Click("karma-open-skills");
             Require(IssuedElements(Current()).OfType<Button>().Count(b => b.AutomationId?.StartsWith("karma-selected-skill-", StringComparison.Ordinal) == true) == 2,
                 "Reopened phone page lost the native language or active skill.");
+            await Back();
+            await Click("karma-open-completion");
+            Require(Element<Entry>("karma-completion-roll").Text == string.Empty
+                && !Element<Button>("karma-completion-preview").IsEnabled
+                && !Element<Button>("karma-completion-confirm").IsEnabled,
+                "Completion guessed a dice result or authorized confirmation before review.");
+            Element<Entry>("karma-completion-roll").Text = "999";
+            await Click("karma-completion-preview");
+            Require(!Element<Button>("karma-completion-confirm").IsEnabled && probe.FinalConfirmCalls == 0,
+                "An out-of-range starting-cash roll authorized completion.");
+            Element<Entry>("karma-completion-roll").Text = "4";
+            await Click("karma-completion-preview");
+            var oldFinalConfirm = Element<Button>("karma-completion-confirm");
+            Require(oldFinalConfirm.IsEnabled, "Core did not admit the saved mundane foundation for completion.");
+            Element<Entry>("karma-completion-roll").Text = "5";
+            Require(!oldFinalConfirm.IsEnabled, "Editing a roll did not invalidate its exact review.");
+            ((IButtonController)oldFinalConfirm).SendClicked(); // MAUI suppresses disabled Clicked events.
+            Require(probe.FinalConfirmCalls == 0, "An obsolete review confirmed a different roll.");
+            Element<Entry>("karma-completion-roll").Text = "4";
+            await Click("karma-completion-preview");
+            var review = (CharacterCreationFinalizationReview)typeof(CreationKarmaCompletionPage)
+                .GetField("_review", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
+            Require((await runtime.Coordinator.ConfirmKarmaCompletionAsync(review, false, default, () => true)).Value is null
+                && (await runtime.Coordinator.ConfirmKarmaCompletionAsync(review with { }, true, default, () => true)).Value is null
+                && probe.FinalConfirmCalls == 0, "Completion accepted implicit consent or a forged review identity.");
+            Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == cold.ContentRevision,
+                "Starting-cash preview mutated the pending workspace.");
+            var finalButton = Element<Button>("karma-completion-confirm");
+            await Click("karma-completion-confirm");
+            Require(Element<Label>("karma-completion-receipt").Text == CreationKarmaCopy.CareerReady
+                && Element<Button>("karma-completion-open-career").IsEnabled && probe.FinalConfirmCalls == 1,
+                "Atomic completion did not reopen the saved Career runner.");
+            var completed = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            Require(completed.ContentRevision == cold.ContentRevision + 1 && completed.SavedRevision == completed.ContentRevision
+                && completed.Document.AuxiliaryState.CharacterCreationFinalizationArchive?.KarmaAuthority is not null
+                && completed.Document.AuxiliaryState.CharacterCreationFinalizationArchive.State.CharacterCreationKarmaMetatypeDecisions!.Single().DecisionDigest == decision.DecisionDigest
+                && runtime.Coordinator.State.Profile?.Created == true
+                && !runtime.Coordinator.CanOpenCreationKarma(), "Completion lost history or retained Creation mode.");
+            await ui.BeginAsyncVoid(() => ((IButtonController)finalButton).SendClicked());
+            Require(probe.FinalConfirmCalls == 1 && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == completed.ContentRevision,
+                "An obsolete finalization button replayed the mutation.");
+            await runtime.Shell.InitializeAsync(default);
+            await runtime.Presenter.InitializeAsync(default);
+            await runtime.Presenter.LoadAsync(completed.Id, default);
+            Require(runtime.Coordinator.State.Profile?.Created == true
+                && runtime.Coordinator.State.ContentRevision == completed.ContentRevision
+                && runtime.Coordinator.State.SavedRevision == completed.SavedRevision
+                && runtime.Coordinator.State.DisplayOwnerContext == owners.Capture()
+                && runtime.Coordinator.State.Session.OwnerContext == owners.Capture(),
+                "Cold Career reopen lost the finalization transition.");
             IssuedPageLifecycle(Current(), "OnDisappearing");
             var prior = CultureInfo.CurrentUICulture;
             try
@@ -208,17 +258,19 @@ internal static partial class AfterRunAuthorityHarness
                 Require(CreationKarmaCopy.Title == "Karma-Grunddaten", "German regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Vor- und Nachteile", "German quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Ausrüstung", "German equipment resources are missing.");
+                Require(CreationKarmaCopy.Finish == "Karma-Erstellung abschließen", "German completion resources are missing.");
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
                 Require(CreationKarmaCopy.Confirm == "Confirmar y guardar borrador", "Spanish regional resources are missing.");
                 Require(CreationKarmaCopy.Qualities == "Cualidades", "Spanish quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Equipo", "Spanish equipment resources are missing.");
+                Require(CreationKarmaCopy.Finish == "Finalizar creación con Karma", "Spanish completion resources are missing.");
             }
             finally { CultureInfo.CurrentUICulture = prior; }
             ui.AssertHealthy();
             Console.WriteLine($"Karma phone source work: opens={probe!.OpenCalls}, loads={probe.LoadCalls}, previews={probe.PreviewCalls}, open-ms={probe.OpenTime.TotalMilliseconds:F0}, load-ms={probe.LoadTime.TotalMilliseconds:F0}, preview-ms={probe.PreviewTime.TotalMilliseconds:F0}");
             Console.WriteLine("PASS Karma native phone deep pages: explicit choices, stale controls, draft Back, review/save, cold reopen, DE/ES resources");
 
-            CreationKarmaPage Current() => (CreationKarmaPage)navigation.Navigation.NavigationStack.Last();
+            NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
             T Element<T>(string automationId) where T : Element
                 => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == automationId);
             async Task Appear()

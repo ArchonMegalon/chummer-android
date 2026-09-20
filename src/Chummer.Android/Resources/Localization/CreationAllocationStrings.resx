@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resource funding and supported equipment. This saves a pending draft, not a finished runner. Other creation stages and finalization are not ready.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources and equipment. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
@@ -258,4 +258,16 @@
   <data name="Karma.Selected" xml:space="preserve"><value>Selected</value></data>
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · rating {1} · source cost {2} Karma</value></data>
   <data name="Karma.QualityTotals" xml:space="preserve"><value>Qualities: cost {0} · credit {1} · net {2} Karma</value></data>
+  <data name="Karma.Finish" xml:space="preserve"><value>Finish Karma creation</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Currently, only supported Mundane drafts can be finalized.</value></data>
+  <data name="Karma.DiceTotal" xml:space="preserve"><value>Enter your dice total (no automatic roll)</value></data>
+  <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Review Career transition</value></data>
+  <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Confirm and enter Career</value></data>
+  <data name="Karma.CareerReady" xml:space="preserve"><value>Creation saved. Career mode was reopened from the saved runner.</value></data>
+  <data name="Karma.CareerReopen" xml:space="preserve"><value>Creation saved. Reopen the runner before making further changes.</value></data>
+  <data name="Karma.OpenCareer" xml:space="preserve"><value>Open Career runner</value></data>
+  <data name="Karma.StartingCash" xml:space="preserve"><value>{0}: roll {1}d6 · multiplier {2:N2} ¥</value></data>
+  <data name="Karma.CompletionTotals" xml:space="preserve"><value>Career Karma: {0} · creation funding: {1:N2} ¥ · Career nuyen: {2:N2} ¥</value></data>
+  <data name="Karma.DeltaCost" xml:space="preserve"><value>Cost: {0} Karma · {1:N2} ¥</value></data>
+  <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
 </root>
