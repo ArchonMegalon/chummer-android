@@ -33,7 +33,7 @@
   <data name="Attributes.CreationLimits" xml:space="preserve"><value>Creation limits</value></data>
   <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exact ledgers</value></data>
   <data name="Attributes.Heading" xml:space="preserve"><value>Allocate Attributes</value></data>
-  <data name="Attributes.Intro" xml:space="preserve"><value>Every value, limit, and cost below is projected by Core for this exact Priority draft.</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Every value, limit, and cost below is projected by Core for this exact draft.</value></data>
   <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma multiplier per raised level</value></data>
   <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Attributes allowed at metatype maximum</value></data>
   <data name="Attributes.Normal" xml:space="preserve"><value>Normal Attributes</value></data>

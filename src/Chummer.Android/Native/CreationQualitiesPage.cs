@@ -5,7 +5,7 @@ using Chummer.Presentation.Overview;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// SR5 Standard Priority phone chooser. The page renders Core/Presentation projections and
+/// SR5 Standard priority-table phone chooser. The page renders Core/Presentation projections and
 /// delegates every proposed OptionId set back to Core before retaining it.
 /// </summary>
 public sealed class CreationQualitiesPage : NativePageBase
@@ -95,7 +95,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step1", "SR5 Priority · 1 of 4")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step1", "SR5 · 1 of 4")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Qualities.Choose", "Choose qualities")));
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
@@ -703,7 +703,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step2", "SR5 Priority · 2 of 4")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step2", "SR5 · 2 of 4")));
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
         details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.StableOption", "Stable option"), _option.OptionId));
@@ -812,7 +812,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     {
         _body.Clear();
         CharacterCreationQualitiesPreview preview = _checkpoint.Preview;
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step3", "SR5 Priority · 3 of 4")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step3", "SR5 · 3 of 4")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
             "Qualities.Review.Heading",
             "Review exact quality draft")));
@@ -1011,7 +1011,7 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step4", "SR5 Priority · 4 of 4")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step4", "SR5 · 4 of 4")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Transaction", "Transaction"), _receipt.TransactionId.ToString("D")));
@@ -1062,12 +1062,11 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
                 CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
-        await Navigation.PopAsync(animated: false);
-        while (Navigation.NavigationStack.LastOrDefault() is
-               (CreationQualitiesReviewPage or CreationQualitiesPage))
-        {
-            await Navigation.PopAsync(animated: false);
-        }
+        // Receipt acknowledgement has completed; return through the attached
+        // Shell, not this page's navigation proxy after popping its own page.
+        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
+            throw new InvalidOperationException("Creation returns through the phone Runner route.");
+        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
 
     private static void AddDigest(

@@ -10,9 +10,10 @@ internal static class Program
         ReviewRequiresExactAvailableCompleteAuthority();
         MissingAuthorityFailsClosed();
         MachineDigestNormalizationIsExactAndFailClosed();
-        PersistedReceiptRequiresExactTypedAuthority();
+        PersistedReceiptRequiresExactTypedAuthority(CharacterCreationBuildMethods.Priority);
+        PersistedReceiptRequiresExactTypedAuthority(CharacterCreationBuildMethods.SumToTen);
         PersistedReceiptRejectsDriftTamperingAndOtherBuildMethods();
-        Console.WriteLine("SR5 Priority legal-path projection tests passed: 6");
+        Console.WriteLine("SR5 Priority/Sum-to-Ten legal-path projection tests passed: 7");
     }
 
     private static void BlockedAuthorityPreservesExactEvidence()
@@ -92,17 +93,18 @@ internal static class Program
             "Loading authority enabled review.");
     }
 
-    private static void PersistedReceiptRequiresExactTypedAuthority()
+    private static void PersistedReceiptRequiresExactTypedAuthority(string method)
     {
-        CharacterCreationFinalizationReceipt receipt = Receipt();
+        CharacterCreationFinalizationReceipt receipt = Reseal(Receipt() with { BuildMethod = method });
         CharacterCreationFinalizationState state = CreatedState(receipt);
+        state = Resnapshot(state with { Binding = state.Binding with { BuildMethod = method } });
         var result = new CharacterCreationFinalizationResult<CharacterCreationFinalizationState>(
             CharacterCreationFinalizationOutcomes.Blocked,
             state,
             [CharacterCreationFinalizationBlockers.CharacterAlreadyCreated]);
 
         CharacterCreationFinalizationReceipt? resolved =
-            CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+            CreationPriorityLegalPathProjection.ResolvePersistedPriorityTableReceipt(
                 result,
                 receipt.WorkspaceId,
                 receipt.ContentRevision,
@@ -254,7 +256,7 @@ internal static class Program
             Value = WithReceipt(state, rawDrift)
         }, receipt, "receipt/state raw digest drift");
         CharacterCreationFinalizationReceipt nonPriority = Reseal(
-            receipt with { BuildMethod = CharacterCreationBuildMethods.SumToTen });
+            receipt with { BuildMethod = CharacterCreationBuildMethods.Karma });
         Rejects(result with
         {
             Value = WithReceipt(
@@ -262,11 +264,15 @@ internal static class Program
                 {
                     Binding = state.Binding with
                     {
-                        BuildMethod = CharacterCreationBuildMethods.SumToTen
+                        BuildMethod = CharacterCreationBuildMethods.Karma
                     }
                 }),
                 nonPriority)
-        }, receipt, "non-Priority build method");
+        }, receipt, "non-priority-table build method");
+        Rejects(result with
+        {
+            Value = WithReceipt(state, Reseal(receipt with { BuildMethod = CharacterCreationBuildMethods.SumToTen }))
+        }, receipt, "Sum-to-Ten receipt bound to a Priority state");
         CharacterCreationFinalizationReceipt wrongSchema = Reseal(
             receipt with { Schema = "wrong-receipt-schema" });
         Rejects(result with
@@ -302,7 +308,7 @@ internal static class Program
         long? contentRevision = null,
         long? savedRevision = null)
     {
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityTableReceipt(
                     result,
                     workspaceId ?? receipt.WorkspaceId,
                     contentRevision ?? receipt.ContentRevision,

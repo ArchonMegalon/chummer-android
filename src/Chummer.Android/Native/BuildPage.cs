@@ -247,7 +247,7 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
             priorityOrSumToTen
                 ? CreationDashboardAuthorityPhaseState.Loading
                 : CreationDashboardAuthorityPhaseState.NotApplicable,
-            string.Equals(buildMethod, CharacterCreationBuildMethods.Priority, StringComparison.Ordinal)
+            priorityOrSumToTen
                 ? CreationDashboardAuthorityPhaseState.Loading
                 : CreationDashboardAuthorityPhaseState.NotApplicable,
             CreationDashboardAuthorityPhaseState.Loading,
@@ -959,7 +959,7 @@ public sealed class BuildPage : NativePageBase
         Label marker = NativeTheme.Eyebrow(label);
         marker.AutomationId = automationId;
         CharacterCreationFinalizationReceipt? persistedReceipt =
-            Coordinator.LoadPersistedPriorityCreationReceipt();
+            Coordinator.LoadPersistedPriorityTableCreationReceipt();
         _body.Add(persistedReceipt is null
             ? marker
             : NativeAuthoritySemantics.Overlay(

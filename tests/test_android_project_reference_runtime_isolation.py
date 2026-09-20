@@ -9,6 +9,13 @@ PROJECT = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Chu
 
 
 class AndroidProjectReferenceRuntimeIsolationTests(unittest.TestCase):
+    def test_android_uses_nonconcurrent_gc_for_catalog_restore(self) -> None:
+        root = ET.parse(PROJECT).getroot()
+        settings = list(root.iter("AndroidEnableSGenConcurrent"))
+        self.assertEqual(1, len(settings))
+        self.assertEqual("false", (settings[0].text or "").strip().lower())
+        self.assertNotIn("Condition", settings[0].attrib)
+
     def test_android_runtime_identifier_is_not_forwarded_to_portable_projects(self) -> None:
         root = ET.parse(PROJECT).getroot()
         values = [

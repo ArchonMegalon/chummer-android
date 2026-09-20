@@ -33,7 +33,7 @@
   <data name="Attributes.CreationLimits" xml:space="preserve"><value>Límites de creación</value></data>
   <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Registros exactos</value></data>
   <data name="Attributes.Heading" xml:space="preserve"><value>Asignar atributos</value></data>
-  <data name="Attributes.Intro" xml:space="preserve"><value>Core proyecta cada valor, límite y coste siguiente para este borrador exacto de Prioridad.</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Core proyecta cada valor, límite y coste siguiente para este borrador exacto.</value></data>
   <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Multiplicador de Karma por nivel aumentado</value></data>
   <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Atributos permitidos en el máximo del metatipo</value></data>
   <data name="Attributes.Normal" xml:space="preserve"><value>Atributos normales</value></data>

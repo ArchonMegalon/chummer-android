@@ -1483,7 +1483,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityCreationReceipt()
+    internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityTableCreationReceipt()
     {
         CharacterOverviewState original = State;
         if (!IsCreationFinalizationDisplayCurrent(original)
@@ -1496,7 +1496,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
             LoadFinalizationForDisplay(original, workspaceId);
         return !IsCreationFinalizationDisplayCurrent(original) ? null
-            : CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+            : CreationPriorityLegalPathProjection.ResolvePersistedPriorityTableReceipt(
             result,
             workspaceId,
             original.ContentRevision,

@@ -33,7 +33,7 @@
   <data name="Attributes.CreationLimits" xml:space="preserve"><value>Erschaffungsgrenzen</value></data>
   <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exakte Konten</value></data>
   <data name="Attributes.Heading" xml:space="preserve"><value>Attribute verteilen</value></data>
-  <data name="Attributes.Intro" xml:space="preserve"><value>Jeder Wert, jede Grenze und alle Kosten unten werden vom Core für genau diesen Prioritätsentwurf projiziert.</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Jeder Wert, jede Grenze und alle Kosten unten werden vom Core für genau diesen Entwurf berechnet.</value></data>
   <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma-Multiplikator je gesteigerter Stufe</value></data>
   <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Am Metatyp-Maximum erlaubte Attribute</value></data>
   <data name="Attributes.Normal" xml:space="preserve"><value>Normale Attribute</value></data>

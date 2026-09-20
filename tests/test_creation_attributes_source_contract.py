@@ -7,6 +7,18 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationAttributesSourceContractTests(unittest.TestCase):
+    def test_completed_allocation_returns_through_attached_phone_shell(self) -> None:
+        for name in ("CreationAttributesPage.cs", "CreationSkillsPage.cs"):
+            with self.subTest(page=name):
+                page = (NATIVE / name).read_text(encoding="utf-8")
+                route = page[page.index("private async Task BackToBuildAsync()") :]
+                route = route[: route.index("private void AddDigest(")]
+                self.assertTrue("await RunAsync(BackToBuildAsync)" in page,
+                                "Back-to-Build must use the page's single-action guard")
+                self.assertIn("MainShell { UsesTabletComposition: false } shell", route)
+                self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", route)
+                self.assertNotIn("Navigation.Pop", route)
+
     def test_phone_stage_is_core_projected_typed_and_draft_only(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         draft = (NATIVE / "CreationAttributesPhoneDraft.cs").read_text(encoding="utf-8")
