@@ -70,18 +70,21 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         base.OnDisappearing();
     }
 
+    private bool NeedsSkillAccess => _step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group;
+
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.FrameCurrent;
         MarkVisitedStage();
-        await _session.ReloadAsync(_step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group,
+        await _session.ReloadAsync(NeedsSkillAccess,
             cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities,
             includeGear: _step == CreationKarmaStep.Gear,
             includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
-        if (!_session.QuoteCurrent) await _session.PreviewAsync(cancellationToken, Current);
+        if (!_session.QuoteCurrent)
+            await _session.PreviewAsync(cancellationToken, Current, includeSkillAccess: NeedsSkillAccess);
 
         void MarkVisitedStage()
         {
@@ -191,7 +194,8 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         long appearance = CaptureAppearanceGeneration();
         _body.IsEnabled = false;
-        await _session.PreviewAsync(default, () => IsCurrentAppearanceGeneration(appearance));
+        await _session.PreviewAsync(default, () => IsCurrentAppearanceGeneration(appearance),
+            includeSkillAccess: NeedsSkillAccess);
     }
 
     private void AddOverview()
