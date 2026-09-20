@@ -40,7 +40,11 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine($"SOURCE catalogs: skills={state.SkillsCatalog!.ActiveSkills.Count + state.SkillsCatalog.KnowledgeSkills.Count}, "
                     + $"qualities={state.QualitiesCatalog!.Options.Count}, selectable={state.QualitiesCatalog.Options.Count(option => option.IsSelectable)}, "
                     + $"quality-json-bytes={System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(state.QualitiesCatalog).Length}");
-                if (attempt == 0) ProfileQualityDigests(state.QualitiesCatalog.Options);
+                if (attempt == 0)
+                {
+                    ProfileQualityDigests(state.QualitiesCatalog.Options);
+                    ProfileQualityCatalogDigest(state.QualitiesCatalog);
+                }
                 start = Stopwatch.GetTimestamp();
                 var human = state.Options.Single(option => option.Label == "Human");
                 var preview = service.Preview(state.Binding, human.OptionId, "mundane", [], new([], []), qualityOptionIds: []);
@@ -114,6 +118,31 @@ internal static partial class AfterRunAuthorityHarness
             long start = Stopwatch.GetTimestamp();
             foreach (var option in options) _ = hash(option);
             Console.WriteLine($"SOURCE option hashes {kind}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms, "
+                + $"allocated={GC.GetAllocatedBytesForCurrentThread() - allocated}");
+        }
+    }
+
+    private static void ProfileQualityCatalogDigest(CharacterCreationKarmaQualitiesCatalog catalog)
+    {
+        var legacy = typeof(CharacterCreationQualitiesRules).Assembly
+            .GetType("Chummer.Contracts.Characters.CharacterCreationQualitiesDigest", throwOnError: true)!
+            .GetMethod("Compute", BindingFlags.Static | BindingFlags.Public)!
+            .MakeGenericMethod(typeof(CharacterCreationKarmaQualitiesCatalog))
+            .CreateDelegate<Func<CharacterCreationKarmaQualitiesCatalog, string>>();
+        string expected = legacy(catalog with { CatalogDigest = string.Empty });
+        Require(expected == CharacterCreationKarmaQualitiesRules.CatalogDigest(catalog),
+            "Canonical real quality catalog digest changed.");
+        for (int round = 0; round < 3; round++)
+        {
+            Measure("legacy", () => legacy(catalog with { CatalogDigest = string.Empty }));
+            Measure("direct", () => CharacterCreationKarmaQualitiesRules.CatalogDigest(catalog));
+        }
+        void Measure(string kind, Func<string> hash)
+        {
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            long start = Stopwatch.GetTimestamp();
+            Require(hash() == expected, "Quality catalog hash drifted during profiling.");
+            Console.WriteLine($"SOURCE catalog hash {kind}: {Stopwatch.GetElapsedTime(start).TotalMilliseconds:F1} ms, "
                 + $"allocated={GC.GetAllocatedBytesForCurrentThread() - allocated}");
         }
     }
