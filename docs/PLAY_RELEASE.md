@@ -13,7 +13,26 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 18 — September 19, 2026
+## Current observed Internal release: Preview 19 — September 20, 2026
+
+Authenticated Chummer Play Console readback at `2026-09-20T10:24:14Z` shows
+`19 (0.1.0-preview.19)` as **Available to internal testers** on the active
+Internal track. [Install/update link](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and scoped availability](../play/evidence/preview19-internal-observation.md).
+
+The supported mundane Karma wizard now reaches Career through explicit reviewed
+completion. Its affected Debug API36 route passed save/reopen and verified process
+restart with identical saved bytes and receipt. Android product sources are
+unchanged from that smoke. Awakening, Contacts, purchased lifestyles, complete
+build-method/Career coverage and general responsiveness remain unfinished.
+
+The actual ARM64 Release AAB was built locally, signed separately with the existing
+upload key and independently verified before one Internal upload. Physical Play
+installation/update is not verified. This is an exact source assembly, not a
+shared package-only graph, hosted qualification or general beta/public release.
+Code19 is consumed; the next artifact needs20 or a higher unused code.
+
+## Historical observed Internal release: Preview 18 — September 19, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-19T20:58:28Z` shows
 `18 (0.1.0-preview.18)` as **Available to internal testers** on the active

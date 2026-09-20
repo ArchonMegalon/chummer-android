@@ -97,12 +97,13 @@ string[] surfaceFiles =
     "CreationAttributesPage.cs",
     "CreationSkillsPage.cs",
     "CreationMetatypePage.cs",
-    "CreationMetatypePreviewPage.cs"
+    "CreationMetatypePreviewPage.cs",
+    "CreationKarmaPage.cs", "CreationKarmaCopy.cs", "CreationKarmaCompletionPage.cs", "CreationSkillsReReviewPage.cs"
 ];
 Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(
              native,
-             ["CreationAllocationStrings.cs"]))
+             ["CreationAllocationStrings.cs", "BuildPage.cs"]))
 {
     usedCopy.TryAdd(key, fallback);
 }
@@ -189,14 +190,19 @@ static string[] Placeholders(string value)
 static Dictionary<string, string> ReadSourceCopy(string native, IEnumerable<string> files)
 {
     var result = new Dictionary<string, string>(StringComparer.Ordinal);
-    var pattern = new Regex(
-        @"(?:CreationAllocationStrings\.)?(?:Get|Format)\(\s*""([^""]+)""\s*,\s*""((?:[^""\\]|\\.)*)""",
-        RegexOptions.Singleline);
     foreach (string file in files)
     {
+        string call = file switch
+        {
+            "BuildPage.cs" => @"CreationAllocationStrings\.(?:Get|Format)",
+            "CreationSkillsReReviewPage.cs" => @"(?:Text|Format)",
+            _ => @"(?:CreationAllocationStrings\.)?(?:Get|Format)"
+        };
+        var pattern = new Regex(call + @"\(\s*""([^""]+)""\s*,\s*""((?:[^""\\]|\\.)*)""",
+            RegexOptions.Singleline);
         foreach (Match match in pattern.Matches(File.ReadAllText(Path.Combine(native, file))))
         {
-            string key = match.Groups[1].Value;
+            string key = (file == "CreationSkillsReReviewPage.cs" ? "SkillsReReview." : "") + match.Groups[1].Value;
             string fallback = Regex.Unescape(match.Groups[2].Value);
             if (result.TryGetValue(key, out string? previous))
                 Assert(previous == fallback, $"conflicting English fallbacks for {key}");
@@ -252,7 +258,9 @@ static void AssertAuthorityBoundary(string native)
 
 static void AssertHelperScope(string native, IReadOnlyCollection<string> surfaceFiles)
 {
-    string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs")
+    // BuildPage owns only allocation route captions; its other existing copy
+    // belongs to other catalogs, not this allocation-only visible-copy check.
+    string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs").Append("BuildPage.cs")
         .Order(StringComparer.Ordinal)
         .ToArray();
     string[] actual = Directory.EnumerateFiles(native, "*.cs", SearchOption.TopDirectoryOnly)

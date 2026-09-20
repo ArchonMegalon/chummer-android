@@ -94,8 +94,8 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 18 remains the last committed observed Internal availability. Its
-physical Play installation is unverified. This policy change neither rebuilds
-nor uploads it, changes its producer identity, seals a new package graph, or
-retroactively claims hosted qualification. Protected source integration of this
-policy and the next candidate's actual build/test/sign/Play work remain separate.
+Preview 19 is the latest [observed Internal availability](../play/evidence/preview19-internal-observation.md).
+Its physical Play installation is unverified. Preview18 and earlier evidence
+remain immutable. Neither this policy nor availability seals a new Android
+package graph or retroactively claims hosted qualification. Protected source
+integration and each candidate's actual build/test/sign/Play work remain separate.

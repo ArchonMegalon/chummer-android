@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length is 2 or 3 && args[0] == "--creation-karma-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationKarmaAsync(args[1], args.Length == 3 ? args[2] : null);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--creation-dashboard-render")
         {
             await CreationDashboardReadinessIsRenderScopedAsync();

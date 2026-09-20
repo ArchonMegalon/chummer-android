@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "bc6067749ddd482e3ed374fb6f6162e70817fd6db15bc7ba0d78d3627e8ca8fd"
+        "sha256": "19ac82f341d47e9d8557c93d76e3eba6de0e765d290c12b326ab3c2c1f1c1857"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "7259d0ce958c51b1e9abdb2c02616cc364c9f59101aa7ac548b34dcdd453264a"
+        "sha256": "09dd54888fa4391535aad667b152f16517d5794534b1d34290701a702e0e1fbe"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -822,7 +822,7 @@
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
         "exists": true,
-        "sha256": "a055eb30749473d03578e9402fb5e81fc42355673f9517a55f127a5d2e6973ac"
+        "sha256": "6ea38a55c435564848509cb5a8faf576828bd0f3d1b1cf89929db1ba0f3ace71"
       },
       {
         "path": "eng/api36-proof-environment-authority.json",
@@ -862,7 +862,7 @@
       {
         "path": "scripts/android_design_policy_authority.py",
         "exists": true,
-        "sha256": "8b1e58afa5ec06b963c5d614af980884583f621dba290b9266a56b9a405b7c5c"
+        "sha256": "7d423aa624b49f0495db33d2597cac15cdeb29c5839bcad2580fb778e0578da3"
       },
       {
         "path": "scripts/finalize-api36-e2e-journey-receipt.py",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "d27d7cb3bc4f00aefb0143b833dccff5a16723af302e423e1052b12356d0f00f"
+        "sha256": "8673243d9bcf80745497c4b29694d8f267689e2f8bf6f39cb6233188789d623d"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -952,7 +952,7 @@
       {
         "path": "tests/test_android_design_policy_authority.py",
         "exists": true,
-        "sha256": "64cef29fd2b22c4d5184fdc749e0615ed72281c3a764a15a967b01edbfd6ff85"
+        "sha256": "df43cd8c89a4e4487307bdc722586ad3760a718375cfc7748289f31cf3355978"
       },
       {
         "path": "tests/test_current_phone_wizard_scope.py",
@@ -2497,7 +2497,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "fca134434ba6ab67e4ff1dfca9dec5c5d413f833b4d22533b90f148f689a01f2"
+        "sha256": "1b20f55f67448c91b951dff19d2189ad8c08c7a7f1b23ba06a511b805d45d1f6"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2512,12 +2512,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "1353e016e5a273e3af6e0f282837a1fd9aa6d8dda55294a684b8254f3199e8c0"
+        "sha256": "f0ce4db78bb2fccef399a034d422ebe8ac742d62e0136b80e0bbaadb6d1504df"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "cb23b6ee4f48193a3af5ee74130b0eb84522d685e7929191eda60e94b0ae24e6"
+        "sha256": "64356b0cd956ea6d9062eab9939a866aef3994ae286933d2d7fe75113d774921"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",

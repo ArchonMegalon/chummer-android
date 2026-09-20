@@ -203,4 +203,71 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>Muttersprache</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Wiederprüfung älterer Fertigkeitsentscheidungen öffnen</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>Für diesen Runner ist kein unterstützter früherer Fertigkeitsentwurf verfügbar. Es wurde nichts geändert.</value></data>
+  <data name="Karma.Title" xml:space="preserve"><value>Karma-Grunddaten</value></data>
+  <data name="Karma.Metatype" xml:space="preserve"><value>Metatyp</value></data>
+  <data name="Karma.Talent" xml:space="preserve"><value>Talent</value></data>
+  <data name="Karma.Attributes" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Karma.Skills" xml:space="preserve"><value>Fertigkeiten</value></data>
+  <data name="Karma.Groups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
+  <data name="Karma.Review" xml:space="preserve"><value>Entwurf prüfen</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen und Ausrüstung. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
+  <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
+  <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel für den Ausrüstungsentwurf. Nuyen-Modifikatoren durch Vor-/Nachteile und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
+  <data name="Karma.Gear" xml:space="preserve"><value>Ausrüstung</value></data>
+  <data name="Karma.GearHelp" xml:space="preserve"><value>Ausrüstung aus aktiven Quellen wählen. Mengen sind Stückzahlen; Hinzufügen wählt eine Quellpackung. Core prüft Kosten und Verfügbarkeit. Zum Speichern den Entwurf prüfen und bestätigen.</value></data>
+  <data name="Karma.GearUnavailable" xml:space="preserve"><value>In diesem Ausrüstungsentwurf nicht verfügbar</value></data>
+  <data name="Karma.GearLine" xml:space="preserve"><value>{0} · {1} Stück · {2:N2} ¥</value></data>
+  <data name="Karma.GearTotals" xml:space="preserve"><value>Ausrüstung: {0:N2} ¥ verfügbar · {1:N2} ¥ ausgegeben · {2:N2} ¥ übrig · {3:N2} ¥ über Budget</value></data>
+  <data name="Karma.InvalidNumber" xml:space="preserve"><value>Eine nicht negative Zahl mit dem Dezimaltrennzeichen deiner Sprache eingeben, ohne Tausendertrennzeichen.</value></data>
+  <data name="Karma.ResourceLimit" xml:space="preserve"><value>Profilgrenze: {0} Karma</value></data>
+  <data name="Karma.ResourceFunding" xml:space="preserve"><value>Ressourcen: {0} Karma → {1} ¥ (Profilfinanzierung, vor Ausrüstung)</value></data>
+  <data name="Karma.Stale" xml:space="preserve"><value>Dieser Entwurf ist nicht mehr bereit. Zum Runner zurückkehren und neu öffnen; keine Auswahl wird automatisch übernommen.</value></data>
+  <data name="Karma.Saved" xml:space="preserve"><value>Karma-Entwurf gespeichert. Der Runner wurde noch nicht abgeschlossen.</value></data>
+  <data name="Karma.Choose" xml:space="preserve"><value>Ausdrücklich auswählen</value></data>
+  <data name="Karma.Pending" xml:space="preserve"><value>Auswahl geändert – Vorschau für aktuelle Werte und Kosten aktualisieren.</value></data>
+  <data name="Karma.LevelHelp" xml:space="preserve"><value>Gekaufte Stufen anpassen. Core berechnet endgültige Werte, Grenzen und Kosten beim Aktualisieren der Vorschau.</value></data>
+  <data name="Karma.Preview" xml:space="preserve"><value>Vorschau aktualisieren</value></data>
+  <data name="Karma.Active" xml:space="preserve"><value>Aktionsfertigkeiten</value></data>
+  <data name="Karma.Knowledge" xml:space="preserve"><value>Wissenspunkte</value></data>
+  <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Wissensfertigkeiten</value></data>
+  <data name="Karma.Loading" xml:space="preserve"><value>Regeln und gespeicherte Auswahl werden geprüft… Dein Entwurf bleibt beim Laden erhalten.</value></data>
+  <data name="Karma.Search" xml:space="preserve"><value>Katalog durchsuchen</value></data>
+  <data name="Karma.Previous" xml:space="preserve"><value>Vorherige Seite</value></data>
+  <data name="Karma.Next" xml:space="preserve"><value>Nächste Seite</value></data>
+  <data name="Karma.SkillHelp" xml:space="preserve"><value>Zahlung und Quellenoption auswählen und in den Entwurf übernehmen. Erst die abschließende Prüfung speichert ihn.</value></data>
+  <data name="Karma.KarmaLevels" xml:space="preserve"><value>Mit Karma gekaufte Stufen</value></data>
+  <data name="Karma.KnowledgeLevels" xml:space="preserve"><value>Mit Wissenspunkten gekaufte Stufen</value></data>
+  <data name="Karma.NativeLanguage" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Karma.Specialization" xml:space="preserve"><value>Spezialisierung / exotische Identität</value></data>
+  <data name="Karma.None" xml:space="preserve"><value>Keine</value></data>
+  <data name="Karma.Payment" xml:space="preserve"><value>Zahlung der Spezialisierung</value></data>
+  <data name="Karma.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Karma.UseSelection" xml:space="preserve"><value>Auswahl in Entwurf übernehmen</value></data>
+  <data name="Karma.Remove" xml:space="preserve"><value>Aus Entwurf entfernen</value></data>
+  <data name="Karma.Confirm" xml:space="preserve"><value>Bestätigen und Entwurf speichern</value></data>
+  <data name="Karma.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1}</value></data>
+  <data name="Karma.Budget" xml:space="preserve"><value>Karma: {0} / {1} · verbleibend {2}</value></data>
+  <data name="Karma.Cost" xml:space="preserve"><value>{0} · {1} Karma</value></data>
+  <data name="Karma.Levels" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Wissenspunkte: {0} / {1}</value></data>
+  <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
+  <data name="Karma.Qualities" xml:space="preserve"><value>Vor- und Nachteile</value></data>
+  <data name="Karma.QualityHelp" xml:space="preserve"><value>Auswahl aus deinen aktiven Quellen. Quellenkosten gelten für die angezeigte Stufe; Core berechnet Profilfaktoren und Grenzen in der Bilanz. Nicht aufgelöste Wirkungen oder Voraussetzungen sind gesperrt. Erst die abschließende Prüfung speichert den Entwurf.</value></data>
+  <data name="Karma.QualityUnavailable" xml:space="preserve"><value>In diesem Entwurf nicht verfügbar</value></data>
+  <data name="Karma.Selected" xml:space="preserve"><value>Ausgewählt</value></data>
+  <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · Stufe {1} · Quellenkosten {2} Karma</value></data>
+  <data name="Karma.QualityTotals" xml:space="preserve"><value>Vor-/Nachteile: Kosten {0} · Gutschrift {1} · netto {2} Karma</value></data>
+  <data name="Karma.Finish" xml:space="preserve"><value>Karma-Erstellung abschließen</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Prüfe alle Änderungen vor dem Karrierestart. Beträge über den Übertragsgrenzen verfallen. Startgeld finanziert keine Käufe während der Erstellung. Derzeit lassen sich nur unterstützte mundane Entwürfe abschließen.</value></data>
+  <data name="Karma.DiceTotal" xml:space="preserve"><value>Würfelsumme eingeben (kein automatischer Wurf)</value></data>
+  <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Karrierestart prüfen</value></data>
+  <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Bestätigen und Karriere starten</value></data>
+  <data name="Karma.CareerReady" xml:space="preserve"><value>Erstellung gespeichert. Die Karriere wurde aus dem gespeicherten Runner geöffnet.</value></data>
+  <data name="Karma.CareerReopen" xml:space="preserve"><value>Erstellung gespeichert. Öffne den Runner erneut, bevor du weitere Änderungen vornimmst.</value></data>
+  <data name="Karma.OpenCareer" xml:space="preserve"><value>Karriere-Runner öffnen</value></data>
+  <data name="Karma.StartingCash" xml:space="preserve"><value>{0}: {1}W6 würfeln · Faktor {2:N2} ¥</value></data>
+  <data name="Karma.CompletionTotals" xml:space="preserve"><value>Karriere-Karma: {0} · Erstellungskapital: {1:N2} ¥ · Karriere-Nuyen: {2:N2} ¥</value></data>
+  <data name="Karma.DeltaCost" xml:space="preserve"><value>Kosten: {0} Karma · {1:N2} ¥</value></data>
+  <data name="Karma.Delta" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
 </root>
