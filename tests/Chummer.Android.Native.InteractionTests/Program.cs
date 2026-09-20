@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-starting-cash-content-root")
+        {
+            await AfterRunAuthorityHarness.RunStartingCashPhonePagesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-sum-to-ten-content-root")
         {
             await CreationProjectionSchedulingPrioritizesWizardAllocationAsync();

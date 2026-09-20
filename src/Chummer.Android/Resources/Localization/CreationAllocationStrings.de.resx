@@ -301,4 +301,6 @@
   <data name="Karma.LifestyleSource" xml:space="preserve"><value>{0} · Grundkosten {1:N2} ¥ pro {2}</value></data>
   <data name="Karma.LifestyleLine" xml:space="preserve"><value>{0} · {1} · gesamt {2:N2} ¥</value></data>
   <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Budget: {0:N2} ¥ · Ausrüstung: {1:N2} ¥ · Lebensstile: {2:N2} ¥ · übrig: {3:N2} ¥ · Überschreitung: {4:N2} ¥</value></data>
+  <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Trage das Würfelergebnis für das Startgeld des angezeigten Lebensstils ein. Core begrenzt zuerst das Restgeld und addiert danach das Startgeld. Erst deine Bestätigung der nächsten Vorschau speichert die Änderungen.</value></data>
+  <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Startgeld</value></data>
 </root>
