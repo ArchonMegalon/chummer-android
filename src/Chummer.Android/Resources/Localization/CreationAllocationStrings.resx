@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment and contacts. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment, contacts and standard lifestyles. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
@@ -286,4 +286,19 @@
   <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Connection {1} · Loyalty {2} · {3} contact points</value></data>
   <data name="Karma.ContactTotals" xml:space="preserve"><value>Contact points: {0}/{1} · High Places: {2}/{3} · additional Karma: {4}</value></data>
   <data name="Karma.GroupContactCost" xml:space="preserve"><value>Group contacts: {0} Karma before excess costs · positive quality limit usage including groups: {1}</value></data>
+  <data name="Karma.Lifestyles" xml:space="preserve"><value>Lifestyles</value></data>
+  <data name="Karma.LifestyleHelp" xml:space="preserve"><value>Configure standard lifestyles in the pending draft, then explicitly choose one purchased lifestyle for starting cash. Equipment and lifestyles share the same funding; the later cash roll cannot pay for purchases. Advanced aspects and optional lifestyle qualities are not offered here yet. Only draft confirmation saves.</value></data>
+  <data name="Karma.UseStartingLifestyle" xml:space="preserve"><value>Use for starting cash</value></data>
+  <data name="Karma.StartingLifestyleSelected" xml:space="preserve"><value>Selected for starting cash</value></data>
+  <data name="Karma.LifestyleIncrements" xml:space="preserve"><value>Number of source periods</value></data>
+  <data name="Karma.LifestylePercentage" xml:space="preserve"><value>Cost percentage</value></data>
+  <data name="Karma.LifestyleRoommates" xml:space="preserve"><value>Roommates</value></data>
+  <data name="Karma.LifestyleSplit" xml:space="preserve"><value>Split cost with roommates</value></data>
+  <data name="Karma.LifestyleTrustFund" xml:space="preserve"><value>Use Trust Fund (Core must confirm eligibility)</value></data>
+  <data name="Karma.LifestyleCity" xml:space="preserve"><value>City</value></data>
+  <data name="Karma.LifestyleDistrict" xml:space="preserve"><value>District</value></data>
+  <data name="Karma.LifestyleBorough" xml:space="preserve"><value>Borough</value></data>
+  <data name="Karma.LifestyleSource" xml:space="preserve"><value>{0} · base {1:N2} ¥ per {2}</value></data>
+  <data name="Karma.LifestyleLine" xml:space="preserve"><value>{0} · {1} · total {2:N2} ¥</value></data>
+  <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Funding: {0:N2} ¥ · equipment: {1:N2} ¥ · lifestyles: {2:N2} ¥ · remaining: {3:N2} ¥ · over budget: {4:N2} ¥</value></data>
 </root>

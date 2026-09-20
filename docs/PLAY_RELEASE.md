@@ -13,7 +13,31 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 19 — September 20, 2026
+## Current observed Internal release: Preview 21 — September 20, 2026
+
+Authenticated scoped Console readback at `2026-09-20T13:59:16Z` shows
+`21 (0.1.0-preview.21)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview21-internal-observation.md).
+
+Standard purchased lifestyles now participate in the Karma wizard's shared
+equipment budget, explicit starting-cash selection, review and save. The affected
+Debug API36 save/new-process/reopen route passed; managed tests cover final
+Career projection. The local ARM64 Release AAB was independently inspected,
+old-key signed separately and independently verified before Internal upload.
+Physical Play installation, Release responsiveness, advanced/awakened and
+all-method/Career coverage remain unverified or incomplete. This is an exact
+source assembly, not a package-only APK, hosted runtime or general beta claim.
+Code21 is consumed; the next artifact needs22 or a higher unused code.
+
+## Historical observed Internal release: Preview 20 — September 20, 2026
+
+Scoped Console readback at approximately12:01 UTC showed Preview20 available
+to Internal testers. Its Karma Contacts increment and exact source/artifact
+identities remain in the immutable [Preview20 record](../play/evidence/preview20-internal-observation.md).
+Physical Play installation is unverified. No rebuild/re-upload of code20.
+
+## Historical observed Internal release: Preview 19 — September 20, 2026
 
 Authenticated Chummer Play Console readback at `2026-09-20T10:24:14Z` shows
 `19 (0.1.0-preview.19)` as **Available to internal testers** on the active

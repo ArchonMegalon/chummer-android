@@ -271,3 +271,51 @@ Android PR88 established the current local delivery policy. Preview19 remains
 the separately observed Play Internal release; this Contacts smoke does not
 publish Preview20. Purchased lifestyles, awakened completion, advanced roaming
 continuation, all-method coverage and responsiveness improvements remain open.
+
+## Purchased standard lifestyles — exact local save and process-restart proof
+
+Core semantic `4d2982d7885566637d722325b2f2eaea3165f6fa` and Android product
+`81e43400188e9bf4519403ccb38b6a20625fcb9f` add standard purchased lifestyles
+to the Karma wizard. Core owns source eligibility, costs, combined gear/lifestyle
+funding, selected starting-lifestyle identity and finalization XML. Android only
+collects choices and displays Core's review. Advanced aspects and optional
+lifestyle qualities are not offered. Stock Trust Fund remains unsupported when
+its source requirements cannot be admitted; tests of admitted effects use an
+explicit custom-data fixture, not a claim of stock-quality coverage.
+
+Focused checks passed: 73 Core cases, the real Core-backed native page route,
+and six localization checks. Managed tests cover cold reopen, combined purchases,
+editing/removal, overspend, stale controls, final Career XML, owner transitions,
+source drift and the unchanged 128 KiB draft limit. The real catalog initially
+exceeded that limit; the corrected review retains only the admitted projection
+plus the full raw source digest. Unselected source changes still invalidate it.
+
+The local Debug x64 APK built with zero warnings/errors and no upload key or
+proof instrumentation. SHA-256:
+`a9e931447eb5d41d6140c1cbd6ce9cd997bbd272bf3fd7acc7a498dd5e53e336`.
+It was built before the product commit from the unchanged committed product
+files. The subsequent release-version/documentation/inventory delta is not a
+repeat of this emulator test on an ARM64 Release build.
+
+Actual API36 route: Human/Mundane Karma, base attributes, empty Qualities,
+English native language, 10 Karma of funding (20,000 nuyen), empty equipment.
+The player added Low / Safehouse / Seattle for two periods, 100% cost, no
+roommates or Trust Fund. Core showed 4,000 spent and 16,000 remaining. The
+owned lifestyle was explicitly selected for starting cash; it was not selected
+automatically. One confirmation saved revision 2/2. After verified force-stop
+of PID 4275, new PID 7599 reopened the same lifestyle, selected identity, costs
+and revision. Saved/reopened workspace bytes were identical:
+`04a17a30f332e1b509510153d8f6db5a2d05d77cfdc913436d0696841865a6ed`.
+
+Raw packet: `karma-lifestyles-20260920.l13c1MIo` in local active-worktrees.
+Screenshots, hierarchy observations, logs and synthetic workspace copies are
+retained. The owned emulator was stopped. Android System UI/Google startup
+failures occurred before the app route and are recorded separately. Initial
+creation and subsequent page loads remain slow; this is not responsiveness,
+clean-boot, physical Play-install, all-method or full-editor proof. Final Career
+transfer is covered by managed tests, not by this particular device slice.
+
+Preview20 remains the separately observed Play Internal version until a new
+publication receipt exists. Preview21 is only the next candidate identity.
+These checks do not assert signing, upload, merged source or package-only APK
+consumption. The current approved local delivery policy remains in force.

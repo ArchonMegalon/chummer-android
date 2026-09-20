@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos, equipo y contactos. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos, equipo, contactos y estilos de vida estándar. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
@@ -286,4 +286,19 @@
   <data name="Karma.ContactLine" xml:space="preserve"><value>{0} · Conexión {1} · Lealtad {2} · {3} puntos de contacto</value></data>
   <data name="Karma.ContactTotals" xml:space="preserve"><value>Puntos de contacto: {0}/{1} · Altas esferas: {2}/{3} · Karma adicional: {4}</value></data>
   <data name="Karma.GroupContactCost" xml:space="preserve"><value>Contactos de grupo: {0} Karma antes de recargos · límite de cualidades positivas utilizado, incluidos grupos: {1}</value></data>
+  <data name="Karma.Lifestyles" xml:space="preserve"><value>Estilos de vida</value></data>
+  <data name="Karma.LifestyleHelp" xml:space="preserve"><value>Configura estilos de vida estándar en el borrador y elige expresamente uno comprado para el dinero inicial. El equipo y los estilos de vida comparten fondos; la tirada posterior no paga compras. Los aspectos avanzados y las cualidades opcionales aún no se ofrecen aquí. Solo la confirmación del borrador guarda.</value></data>
+  <data name="Karma.UseStartingLifestyle" xml:space="preserve"><value>Usar para el dinero inicial</value></data>
+  <data name="Karma.StartingLifestyleSelected" xml:space="preserve"><value>Elegido para el dinero inicial</value></data>
+  <data name="Karma.LifestyleIncrements" xml:space="preserve"><value>Número de períodos de la fuente</value></data>
+  <data name="Karma.LifestylePercentage" xml:space="preserve"><value>Porcentaje del coste</value></data>
+  <data name="Karma.LifestyleRoommates" xml:space="preserve"><value>Compañeros de piso</value></data>
+  <data name="Karma.LifestyleSplit" xml:space="preserve"><value>Repartir el coste con compañeros</value></data>
+  <data name="Karma.LifestyleTrustFund" xml:space="preserve"><value>Usar fondo fiduciario (Core debe validar los requisitos)</value></data>
+  <data name="Karma.LifestyleCity" xml:space="preserve"><value>Ciudad</value></data>
+  <data name="Karma.LifestyleDistrict" xml:space="preserve"><value>Distrito</value></data>
+  <data name="Karma.LifestyleBorough" xml:space="preserve"><value>Barrio</value></data>
+  <data name="Karma.LifestyleSource" xml:space="preserve"><value>{0} · base {1:N2} ¥ por {2}</value></data>
+  <data name="Karma.LifestyleLine" xml:space="preserve"><value>{0} · {1} · total {2:N2} ¥</value></data>
+  <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Fondos: {0:N2} ¥ · equipo: {1:N2} ¥ · estilos de vida: {2:N2} ¥ · restante: {3:N2} ¥ · exceso: {4:N2} ¥</value></data>
 </root>

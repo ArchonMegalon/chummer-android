@@ -48,7 +48,7 @@ internal sealed class CreationKarmaPhoneSession
     }
 
     public async Task ReloadAsync(bool includeSkills, CancellationToken ct, Func<bool> isCurrentPage, bool includeQualities = false,
-        bool includeGear = false)
+        bool includeGear = false, bool includeLifestyles = false)
     {
         if (Halted || !FrameCurrent || !isCurrentPage()) return;
         var previous = Authority;
@@ -58,7 +58,7 @@ internal sealed class CreationKarmaPhoneSession
             // Core loads and re-quotes the saved selection from one fresh
             // snapshot. Never reuse the historical decision's older binding.
             var opened = await _coordinator.OpenCreationKarmaAsync(includeSkills, ct,
-                () => FrameCurrent && isCurrentPage(), includeQualities, includeGear);
+                () => FrameCurrent && isCurrentPage(), includeQualities, includeGear, includeLifestyles);
             if (!FrameCurrent || !isCurrentPage()) return;
             if (opened.Value is not { } current)
             { Blockers = opened.Blockers; return; }
@@ -72,7 +72,8 @@ internal sealed class CreationKarmaPhoneSession
             return;
         }
         if (Ready && Selection is not null && (!includeSkills || previous.SkillsCatalog is not null)
-            && (!includeQualities || previous.QualitiesCatalog is not null) && (!includeGear || previous.GearAuthority is not null))
+            && (!includeQualities || previous.QualitiesCatalog is not null) && (!includeGear || previous.GearAuthority is not null)
+            && (!includeLifestyles || previous.LifestylesAuthority is not null))
         {
             // Core Preview already reloads the live workspace and source inputs,
             // then requires the exact original binding/snapshot. Do not precede
@@ -86,20 +87,22 @@ internal sealed class CreationKarmaPhoneSession
         }
         var result = await _coordinator.LoadCreationKarmaAsync(
             includeSkills || previous.SkillsCatalog is not null, ct, () => FrameCurrent && isCurrentPage(),
-            includeQualities || previous.QualitiesCatalog is not null, includeGear || previous.GearAuthority is not null);
+            includeQualities || previous.QualitiesCatalog is not null, includeGear || previous.GearAuthority is not null,
+            includeLifestyles || previous.LifestylesAuthority is not null);
         if (!FrameCurrent || !isCurrentPage()) return;
         if (result.Value is not { } state)
         { Blockers = result.Blockers; return; }
         var expected = previous.Binding;
         // The only admissible extension is lazy loading of previously absent
-        // skill/quality/gear authority. Existing digests cannot be replaced.
+        // skill/quality/gear/lifestyle authority. Existing digests cannot be replaced.
         expected = expected with
         {
             SkillsPolicyDigest = expected.SkillsPolicyDigest ?? state.Binding.SkillsPolicyDigest,
             SkillsCatalogDigest = expected.SkillsCatalogDigest ?? state.Binding.SkillsCatalogDigest,
             QualitiesPolicyDigest = expected.QualitiesPolicyDigest ?? state.Binding.QualitiesPolicyDigest,
             QualitiesCatalogDigest = expected.QualitiesCatalogDigest ?? state.Binding.QualitiesCatalogDigest,
-            GearAuthorityDigest = expected.GearAuthorityDigest ?? state.Binding.GearAuthorityDigest
+            GearAuthorityDigest = expected.GearAuthorityDigest ?? state.Binding.GearAuthorityDigest,
+            LifestylesAuthorityDigest = expected.LifestylesAuthorityDigest ?? state.Binding.LifestylesAuthorityDigest
         };
         if (expected != state.Binding)
         { Halted = true; Blockers = [CharacterCreationKarmaMetatypeBlockers.StaleBinding]; return; }

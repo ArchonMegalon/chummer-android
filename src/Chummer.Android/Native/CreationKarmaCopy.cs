@@ -2,6 +2,21 @@ namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
 {
+    public static string Lifestyles => CreationAllocationStrings.Get("Karma.Lifestyles", "Lifestyles");
+    public static string LifestyleHelp => CreationAllocationStrings.Get("Karma.LifestyleHelp", "Configure standard lifestyles in the pending draft, then explicitly choose one purchased lifestyle for starting cash. Equipment and lifestyles share the same funding; the later cash roll cannot pay for purchases. Advanced aspects and optional lifestyle qualities are not offered here yet. Only draft confirmation saves.");
+    public static string UseStartingLifestyle => CreationAllocationStrings.Get("Karma.UseStartingLifestyle", "Use for starting cash");
+    public static string StartingLifestyleSelected => CreationAllocationStrings.Get("Karma.StartingLifestyleSelected", "Selected for starting cash");
+    public static string LifestyleIncrements => CreationAllocationStrings.Get("Karma.LifestyleIncrements", "Number of source periods");
+    public static string LifestylePercentage => CreationAllocationStrings.Get("Karma.LifestylePercentage", "Cost percentage");
+    public static string LifestyleRoommates => CreationAllocationStrings.Get("Karma.LifestyleRoommates", "Roommates");
+    public static string LifestyleSplit => CreationAllocationStrings.Get("Karma.LifestyleSplit", "Split cost with roommates");
+    public static string LifestyleTrustFund => CreationAllocationStrings.Get("Karma.LifestyleTrustFund", "Use Trust Fund (Core must confirm eligibility)");
+    public static string LifestyleCity => CreationAllocationStrings.Get("Karma.LifestyleCity", "City");
+    public static string LifestyleDistrict => CreationAllocationStrings.Get("Karma.LifestyleDistrict", "District");
+    public static string LifestyleBorough => CreationAllocationStrings.Get("Karma.LifestyleBorough", "Borough");
+    public static string LifestyleSource(string name, decimal cost, string period) => CreationAllocationStrings.Format("Karma.LifestyleSource", "{0} · base {1:N2} ¥ per {2}", name, cost, period);
+    public static string LifestyleLine(string name, string basis, decimal total) => CreationAllocationStrings.Format("Karma.LifestyleLine", "{0} · {1} · total {2:N2} ¥", name, basis, total);
+    public static string LifestyleTotals(decimal total, decimal gear, decimal lifestyles, decimal remaining, decimal overspend) => CreationAllocationStrings.Format("Karma.LifestyleTotals", "Funding: {0:N2} ¥ · equipment: {1:N2} ¥ · lifestyles: {2:N2} ¥ · remaining: {3:N2} ¥ · over budget: {4:N2} ¥", total, gear, lifestyles, remaining, overspend);
     public static string Contacts => CreationAllocationStrings.Get("Karma.Contacts", "Contacts");
     public static string ContactHelp => CreationAllocationStrings.Get("Karma.ContactHelp", "Add contacts to the pending draft. Core prices contact points, Karma and quality limits. Groups need Loyalty 1. Free-point overspend costs Karma. Nothing is saved until you confirm the draft.");
     public static string AddContact => CreationAllocationStrings.Get("Karma.AddContact", "Add contact");
@@ -56,7 +71,7 @@ internal static class CreationKarmaCopy
         karma.ToString("G29", System.Globalization.CultureInfo.CurrentCulture),
         nuyen.ToString("N2", System.Globalization.CultureInfo.CurrentCulture));
     public static string Review => CreationAllocationStrings.Get("Karma.Review", "Review draft");
-    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment and contacts. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.");
+    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment, contacts and standard lifestyles. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.");
     public static string Stale => CreationAllocationStrings.Get("Karma.Stale", "This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.");
     public static string Saved => CreationAllocationStrings.Get("Karma.Saved", "Pending Karma draft saved. The runner has not been finalized.");
     public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose explicitly");

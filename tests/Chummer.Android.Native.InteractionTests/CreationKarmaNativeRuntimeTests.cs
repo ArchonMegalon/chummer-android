@@ -215,26 +215,28 @@ internal static partial class AfterRunAuthorityHarness
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen> Open(
-            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false, bool includeGear = false)
+            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false,
+            bool includeGear = false, bool includeLifestyles = false)
         {
             AssertBackground(); OpenCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Open(owner, id, includeSkills, includeQualities, includeGear);
+            var result = actual.Open(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles);
             OpenTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             if (result.Value is { } value && TransformOpen is { } transform)
                 result = result with { Value = transform(value) };
             AfterOpen?.Invoke(); return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> Load(
-            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false, bool includeGear = false)
+            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false,
+            bool includeGear = false, bool includeLifestyles = false)
         {
             AssertBackground(); LoadCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Load(owner, id, includeSkills, includeQualities, includeGear);
+            var result = actual.Load(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles);
             LoadTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterLoad?.Invoke(); return result;
         }
@@ -244,14 +246,16 @@ internal static partial class AfterRunAuthorityHarness
             CharacterCreationKarmaSkillsSelection? skillsSelection = null, decimal? resourceKarmaInvestment = null,
             IReadOnlyList<string>? qualityOptionIds = null,
             IReadOnlyList<CharacterCreationGearSelection>? gearSelections = null,
-            IReadOnlyList<CharacterCreationKarmaContactSelection>? contactSelections = null)
+            IReadOnlyList<CharacterCreationKarmaContactSelection>? contactSelections = null,
+            IReadOnlyList<CharacterCreationLifestyleConfiguration>? lifestyleSelections = null,
+            Guid? startingLifestyleId = null)
         {
             AssertBackground(); PreviewCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection,
-                resourceKarmaInvestment, qualityOptionIds, gearSelections, contactSelections);
+                resourceKarmaInvestment, qualityOptionIds, gearSelections, contactSelections, lifestyleSelections, startingLifestyleId);
             PreviewTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterPreview?.Invoke(); return result;
         }
