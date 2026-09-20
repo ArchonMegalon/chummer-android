@@ -14,6 +14,7 @@ internal static partial class AfterRunAuthorityHarness
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }
         string[] scenarios = ["commit", "cancel-after-commit", "lost-return",
+            "owner-aba-during-open", "route-left-during-open", "cancel-during-open",
             "owner-aba", "owner-aba-during-load", "owner-aba-during-preview",
             "route-left", "stale-review", "forged-review", "invalid-budget",
             "owner-aba-after-commit", "route-left-after-commit"];
@@ -49,6 +50,30 @@ internal static partial class AfterRunAuthorityHarness
                         && current.Document.AuxiliaryStateDigest == original.Document.AuxiliaryStateDigest;
                 }
                 void Aba() { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                if (scenario is "owner-aba-during-open" or "route-left-during-open" or "cancel-during-open")
+                {
+                    bool pageCurrent = true;
+                    using var openingCancellation = new CancellationTokenSource();
+                    probe!.AfterOpen = () =>
+                    {
+                        if (scenario == "owner-aba-during-open") Aba();
+                        else if (scenario == "route-left-during-open") pageCurrent = false;
+                        else openingCancellation.Cancel();
+                    };
+                    bool rejected = false;
+                    try
+                    {
+                        rejected = (await runtime.Coordinator.OpenCreationKarmaAsync(true,
+                            openingCancellation.Token, () => pageCurrent)).Value is null;
+                    }
+                    catch (OperationCanceledException) when (scenario == "cancel-during-open") { rejected = true; }
+                    Require(rejected && probe.OpenCalls == 1 && probe.ConfirmCalls == 0
+                        && owners.ActiveLeases == 0 && Unchanged(),
+                        "A departed/canceled/owner-transitioned Open issued authority or changed the workspace.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS native Karma: " + scenario);
+                    continue;
+                }
                 if (scenario == "owner-aba-during-load") probe!.AfterLoad = Aba;
                 var loaded = await runtime.Coordinator.LoadCreationKarmaAsync(includeSkills: true);
                 if (scenario == "owner-aba-during-load")
@@ -171,13 +196,27 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class KarmaNativeProbe(IOwnerBoundCharacterCreationKarmaMetatypeService actual,
         SynchronizationContext ui) : IOwnerBoundCharacterCreationKarmaMetatypeService
     {
-        public int LoadCalls, PreviewCalls;
-        public TimeSpan LoadTime, PreviewTime;
+        public int LoadCalls, PreviewCalls, OpenCalls;
+        public TimeSpan LoadTime, PreviewTime, OpenTime;
         public int ConfirmCalls;
         public bool FailReads;
-        public Action? AfterLoad, AfterPreview, AfterConfirm;
+        public Action? AfterLoad, AfterPreview, AfterConfirm, AfterOpen;
+        public Func<CharacterCreationKarmaMetatypeOpen, CharacterCreationKarmaMetatypeOpen>? TransformOpen;
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
+        public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen> Open(
+            OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false)
+        {
+            AssertBackground(); OpenCalls++;
+            if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var result = actual.Open(owner, id, includeSkills);
+            OpenTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
+            if (result.Value is { } value && TransformOpen is { } transform)
+                result = result with { Value = transform(value) };
+            AfterOpen?.Invoke(); return result;
+        }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> Load(
             OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false)
         {

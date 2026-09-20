@@ -120,6 +120,41 @@ public sealed partial class RunnerSessionCoordinator
         }, cancellationToken);
     }
 
+    internal Task<CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen>> OpenCreationKarmaAsync(
+        bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null)
+    {
+        var original = State;
+        return WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original)
+                || _ownerBoundKarmaService is not { } service
+                || original.DisplayOwnerContext is not { IsValid: true } owner
+                || original.WorkspaceId is not { } workspace)
+                return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
+            _karmaCurrentState = null;
+            _karmaCurrentReview = null;
+            var result = await Task.Run(() => service.Open(owner, workspace, includeSkills), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original))
+                return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
+            if (result is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } opened })
+                return result;
+            var accepted = AcceptKarmaState(new(result.Outcome, opened.State, result.Blockers), original);
+            if (accepted.Value is not { } state)
+                return new(accepted.Outcome, null, accepted.Blockers);
+            var selection = CreationKarmaPhoneSelection.Restore(state);
+            if (selection is null ? opened.Quote is not null
+                : opened.Quote is null || AcceptKarmaPreview(
+                    new(result.Outcome, opened.Quote, result.Blockers), state, selection, original).Value is null)
+            {
+                _karmaCurrentState = null;
+                _karmaCurrentReview = null;
+                return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
+            }
+            return result;
+        }, cancellationToken);
+    }
+
     private CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> AcceptKarmaState(
         CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> result, CharacterOverviewState original)
     {
@@ -154,24 +189,32 @@ public sealed partial class RunnerSessionCoordinator
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsCreationKarmaStateCurrent(state))
                 return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
-            if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } quote })
-            {
-                if (quote.Binding != state.Binding || quote.SnapshotDigest != state.SnapshotDigest
-                    || quote.Schema != CharacterCreationKarmaMetatypeSchemas.QuoteV1
-                    || quote.Metatype.OptionId != frozen.MetatypeOptionId
-                    || quote.Talent?.OptionId != frozen.TalentOptionId
-                    || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(quote.QuoteDigest))
-                    return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
-                // The operation ID and exact reviewed command are issued once,
-                // not rebuilt from mutable page controls on the Confirm click.
-                var command = new CharacterCreationKarmaMetatypeConfirmRequest(state.Binding,
-                    frozen.MetatypeOptionId, quote.QuoteDigest, Guid.NewGuid(), true,
-                    frozen.TalentOptionId, frozen.Attributes, frozen.Skills);
-                _karmaReviews.Add(quote, new(state, original, command));
-                _karmaCurrentReview = quote;
-            }
-            return result;
+            return AcceptKarmaPreview(result, state, frozen, original);
         }, cancellationToken);
+    }
+
+    private CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote> AcceptKarmaPreview(
+        CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote> result,
+        CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection frozen,
+        CharacterOverviewState original)
+    {
+        if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } quote })
+        {
+            if (quote.Binding != state.Binding || quote.SnapshotDigest != state.SnapshotDigest
+                || quote.Schema != CharacterCreationKarmaMetatypeSchemas.QuoteV1
+                || quote.Metatype.OptionId != frozen.MetatypeOptionId
+                || quote.Talent?.OptionId != frozen.TalentOptionId
+                || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(quote.QuoteDigest))
+                return KarmaStale<CharacterCreationKarmaMetatypeQuote>();
+            // The operation ID and exact reviewed command are issued once,
+            // not rebuilt from mutable page controls on the Confirm click.
+            var command = new CharacterCreationKarmaMetatypeConfirmRequest(state.Binding,
+                frozen.MetatypeOptionId, quote.QuoteDigest, Guid.NewGuid(), true,
+                frozen.TalentOptionId, frozen.Attributes, frozen.Skills);
+            _karmaReviews.Add(quote, new(state, original, command));
+            _karmaCurrentReview = quote;
+        }
+        return result;
     }
 
     internal bool IsCreationKarmaPreviewCurrent(CharacterCreationKarmaMetatypeQuote quote)

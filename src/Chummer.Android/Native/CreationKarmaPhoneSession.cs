@@ -50,7 +50,24 @@ internal sealed class CreationKarmaPhoneSession
         if (Halted || !FrameCurrent || !isCurrentPage()) return;
         var previous = Authority;
         _quotedVersion = -1;
-        if (Ready && Selection is not null && (!includeSkills || previous?.SkillsCatalog is not null))
+        if (previous is null)
+        {
+            // Core loads and re-quotes the saved selection from one fresh
+            // snapshot. Never reuse the historical decision's older binding.
+            var opened = await _coordinator.OpenCreationKarmaAsync(includeSkills, ct,
+                () => FrameCurrent && isCurrentPage());
+            if (!FrameCurrent || !isCurrentPage()) return;
+            if (opened.Value is not { } current)
+            { Blockers = opened.Blockers; return; }
+            Authority = current.State;
+            Selection = CreationKarmaPhoneSelection.Restore(current.State);
+            Quote = current.Quote;
+            _quotedVersion = _version;
+            Blockers = opened.Blockers;
+            await RefreshAccessAsync(ct, isCurrentPage);
+            return;
+        }
+        if (Ready && Selection is not null && (!includeSkills || previous.SkillsCatalog is not null))
         {
             // Core Preview already reloads the live workspace and source inputs,
             // then requires the exact original binding/snapshot. Do not precede
@@ -63,25 +80,21 @@ internal sealed class CreationKarmaPhoneSession
             // choice. Load below distinguishes these without trusting old data.
         }
         var result = await _coordinator.LoadCreationKarmaAsync(
-            includeSkills || previous?.SkillsCatalog is not null, ct, () => FrameCurrent && isCurrentPage());
+            includeSkills || previous.SkillsCatalog is not null, ct, () => FrameCurrent && isCurrentPage());
         if (!FrameCurrent || !isCurrentPage()) return;
         if (result.Value is not { } state)
         { Blockers = result.Blockers; return; }
-        if (previous is not null)
+        var expected = previous.Binding;
+        // The only admissible extension is lazy loading of previously absent
+        // skill authority. Existing skill digests cannot be replaced.
+        expected = expected with
         {
-            var expected = previous.Binding;
-            // The only admissible extension is lazy loading of previously absent
-            // skill authority. Existing skill digests cannot be replaced.
-            expected = expected with
-            {
-                SkillsPolicyDigest = expected.SkillsPolicyDigest ?? state.Binding.SkillsPolicyDigest,
-                SkillsCatalogDigest = expected.SkillsCatalogDigest ?? state.Binding.SkillsCatalogDigest
-            };
-            if (expected != state.Binding)
-            { Halted = true; Blockers = [CharacterCreationKarmaMetatypeBlockers.StaleBinding]; return; }
-        }
+            SkillsPolicyDigest = expected.SkillsPolicyDigest ?? state.Binding.SkillsPolicyDigest,
+            SkillsCatalogDigest = expected.SkillsCatalogDigest ?? state.Binding.SkillsCatalogDigest
+        };
+        if (expected != state.Binding)
+        { Halted = true; Blockers = [CharacterCreationKarmaMetatypeBlockers.StaleBinding]; return; }
         Authority = state;
-        if (previous is null) Selection = CreationKarmaPhoneSelection.Restore(state);
         Quote = null;
         Access = null;
         _quotedVersion = -1;
@@ -98,6 +111,14 @@ internal sealed class CreationKarmaPhoneSession
         Quote = result.Value;
         _quotedVersion = version;
         Blockers = result.Blockers;
+        await RefreshAccessAsync(ct, isCurrentPage);
+    }
+
+    private async Task RefreshAccessAsync(CancellationToken ct, Func<bool> isCurrentPage)
+    {
+        Access = null;
+        if (!Ready || !isCurrentPage() || Authority is not { } state || Selection is not { } selection) return;
+        long version = _version;
         if (state.SkillsCatalog is not null)
         {
             var access = await _coordinator.LoadCreationKarmaSkillAccessAsync(state, selection, ct,

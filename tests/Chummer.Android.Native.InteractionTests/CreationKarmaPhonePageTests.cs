@@ -90,9 +90,27 @@ internal static partial class AfterRunAuthorityHarness
             // store. This is managed reopen evidence, not an Android process restart.
             IssuedPageLifecycle(Current(), "OnDisappearing");
             await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+            foreach (var corrupt in new Func<CharacterCreationKarmaMetatypeOpen, CharacterCreationKarmaMetatypeOpen>[]
+            {
+                opened => opened with { Quote = opened.State.Selection!.Quote },
+                opened => opened with { Quote = null },
+                opened => opened with { Quote = opened.Quote! with { SnapshotDigest = "sha256:" + new string('a', 64) } }
+            })
+            {
+                probe.TransformOpen = corrupt;
+                Require((await runtime.Coordinator.OpenCreationKarmaAsync()).Value is null,
+                    "Open admitted a historical, missing or mismatched saved review.");
+            }
+            probe.TransformOpen = null;
+            int opensBeforeReopen = probe.OpenCalls;
+            int loadsBeforeReopen = probe.LoadCalls;
+            int previewsBeforeReopen = probe.PreviewCalls;
             var reopened = new CreationKarmaPage(runtime.Coordinator);
             await navigation.PushAsync(reopened, false);
             await Appear();
+            Require(probe.OpenCalls == opensBeforeReopen + 1 && probe.LoadCalls == loadsBeforeReopen
+                && probe.PreviewCalls == previewsBeforeReopen && probe.ConfirmCalls == 1,
+                "Reopening a saved wizard must use one Core Open, without a second Load/Preview or a write.");
             await Click("karma-open-attributes");
             Require(Element<Stepper>("karma-attribute-AGI").Value == 1, "Reopened phone page lost its durable allocation.");
             await Back();
@@ -110,7 +128,7 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { CultureInfo.CurrentUICulture = prior; }
             ui.AssertHealthy();
-            Console.WriteLine($"Karma phone source work: loads={probe!.LoadCalls}, previews={probe.PreviewCalls}, load-ms={probe.LoadTime.TotalMilliseconds:F0}, preview-ms={probe.PreviewTime.TotalMilliseconds:F0}");
+            Console.WriteLine($"Karma phone source work: opens={probe!.OpenCalls}, loads={probe.LoadCalls}, previews={probe.PreviewCalls}, open-ms={probe.OpenTime.TotalMilliseconds:F0}, load-ms={probe.LoadTime.TotalMilliseconds:F0}, preview-ms={probe.PreviewTime.TotalMilliseconds:F0}");
             Console.WriteLine("PASS Karma native phone deep pages: explicit choices, stale controls, draft Back, review/save, cold reopen, DE/ES resources");
 
             CreationKarmaPage Current() => (CreationKarmaPage)navigation.Navigation.NavigationStack.Last();
