@@ -13,7 +13,27 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 22 — September 20, 2026
+## Current observed Internal release: Preview 23 — September 20, 2026
+
+Authenticated scoped Console readback at `2026-09-20T17:56:35Z` shows
+`23 (0.1.0-preview.23)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview23-internal-observation.md).
+
+Sum-to-Ten Magic/Resonance now passes canonical method admission. Catalog/preview
+work runs off the UI thread; durable receipt display and acknowledgement back
+to Runner are repaired. The affected seeded Adept editor passed one save and
+verified process-restart reopen with identical workspace bytes. This is not a
+fresh full Creation route or general responsiveness proof. Managed cases cover
+four talents and owner/draft/receipt negatives, not four Android device journeys.
+
+The local ARM64 AAB was separately old-key signed and independently verified
+before one Internal upload. Physical Play installation, all-method/Career and
+ARM64 runtime performance remain unverified/incomplete. This is exact local
+source assembly, not package-only or hosted runtime qualification.
+Code23 is consumed; the next artifact needs24 or a higher unused code.
+
+## Historical observed Internal release: Preview 22 — September 20, 2026
 
 Authenticated scoped Console readback at `2026-09-20T16:27:39Z` shows
 `22 (0.1.0-preview.22)` as **Available to internal testers**.
