@@ -26,6 +26,7 @@ from api36_wizard_gate_contract import (
 
 REPO_ROOT = SCRIPT_DIRECTORY.parent
 PIN_PATH = Path("eng/design-policy-authority.json")
+LOCAL_PIN_PATH = Path("eng/local-internal-design-policy-authority.json")
 PIN_SCHEMA = "chummer.android.design-policy-authority/v1"
 DESIGN_REPOSITORY = "ArchonMegalon/chummer6-design"
 MATRIX_PATH = "products/chummer/ANDROID_PHONE_BETA_SUPPORT_MATRIX.yaml"
@@ -34,6 +35,26 @@ MATRIX_SCHEMA = "chummer.android_phone_beta_support_matrix.v1"
 MAX_FILE_BYTES = 2 * 1024 * 1024
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+INTERNAL_DELIVERY_POLICY = {
+    "execution": "local_isolated_docker",
+    "verification": "affected_build_tests_and_route_smoke",
+    "persistenceChangesRequireProcessRestart": True,
+    "securityChangesRequireNegativeTests": True,
+    "reuseUnchangedEvidence": True,
+    "hostedRuntimeRequired": False,
+    "orderedReviewMainRequired": False,
+    "extendedApi36": "manual_only",
+    "sourceCheckIsRuntimeEvidence": False,
+    "allowedDependencyModes": ["sealed_package_graph", "exact_source_assembly"],
+    "existingUploadKeyRequired": True,
+    "keylessBuildAndVerification": True,
+    "isolatedSignerRequired": True,
+    "exactArtifactAndCertificateChecks": True,
+    "playReadbackRequired": True,
+    "physicalPlayInstallRequiredForBetaClaim": True,
+    "policyAuthorizesUpload": False,
+}
+EXTENDED_WORKFLOW = Path(".github/workflows/api36-editing-e2e.yml")
 
 
 def _read(path: Path) -> bytes:
@@ -73,8 +94,8 @@ def _hash(value: object, pattern: re.Pattern, label: str) -> None:
         raise ValueError(f"Design {label} is not a canonical digest")
 
 
-def load_policy_pin(*, android_root: Path = REPO_ROOT) -> dict:
-    pin = _json(_read(android_root / PIN_PATH))
+def load_policy_pin(*, android_root: Path = REPO_ROOT, local_internal: bool = False) -> dict:
+    pin = _json(_read(android_root / (LOCAL_PIN_PATH if local_internal else PIN_PATH)))
     if set(pin) != {"schema", "design"} or pin.get("schema") != PIN_SCHEMA:
         raise ValueError("Design policy pin schema differs")
     design = pin["design"]
@@ -138,6 +159,24 @@ def validate_matrix(matrix: dict, design: dict) -> None:
         raise ValueError("Design Full Editing must stay outside phone beta")
 
 
+def validate_internal_delivery_matrix(matrix: dict) -> None:
+    # Independently owned expectations; never import/execute the Design validator.
+    # Canonical JSON comparison also rejects bool/number type substitution.
+    if json.dumps(matrix.get("internalDeliveryPolicy"), sort_keys=True) != json.dumps(
+            INTERNAL_DELIVERY_POLICY, sort_keys=True):
+        raise ValueError("Design local Internal delivery policy differs")
+    if matrix.get("evidenceAuthority", {}).get("qualificationUse") != "optional_extended_runtime":
+        raise ValueError("Design extended runtime proof must remain optional")
+
+
+def validate_internal_workflow(text: str) -> None:
+    # This repository owns this intentionally simple trigger block. Fail closed
+    # on another YAML spelling rather than attempting permissive YAML inference.
+    block = re.search(r"(?m)^on:\n(.*?)^permissions:", text, re.DOTALL)
+    if block is None or block.group(1).strip() != "workflow_dispatch:":
+        raise ValueError("local Internal policy requires manual-only extended workflow")
+
+
 def _git(root: Path, *args: str) -> bytes:
     env = {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C", "GIT_NO_REPLACE_OBJECTS": "1",
            "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_TERMINAL_PROMPT": "0"}
@@ -148,21 +187,29 @@ def _git(root: Path, *args: str) -> bytes:
     return result.stdout
 
 
-def verify_design_checkout(design_root: Path, *, android_root: Path = REPO_ROOT) -> dict:
+def verify_design_checkout(design_root: Path, *, android_root: Path = REPO_ROOT,
+                           local_internal: bool = False) -> dict:
     if (not design_root.is_absolute() or design_root.is_symlink()
             or design_root.resolve(strict=True) != design_root or not design_root.is_dir()):
         raise ValueError("Design root must be absolute, canonical and non-symlinked")
-    expected = load_policy_pin(android_root=android_root)
+    expected = load_policy_pin(android_root=android_root, local_internal=local_internal)
     if _git(android_root, "rev-parse", "--show-toplevel").strip().decode() != str(android_root):
         raise ValueError("Android policy root is not its own checkout")
     # These are executable Android admission inputs, not arbitrary caller JSON.
     # Compare tracked bytes even when index flags hide a local modification.
-    for relative in (PIN_PATH, CONTRACT_RELATIVE_PATH):
+    pin_path = LOCAL_PIN_PATH if local_internal else PIN_PATH
+    android_members = (pin_path, CONTRACT_RELATIVE_PATH)
+    if local_internal:
+        android_members += (EXTENDED_WORKFLOW,)
+    android_captured = {}
+    for relative in android_members:
         entry = _git(android_root, "ls-tree", "HEAD", "--", relative.as_posix()).decode().strip()
         if not re.fullmatch(r"100(?:644|755) blob [0-9a-f]{40}\t" + re.escape(relative.as_posix()), entry):
             raise ValueError("Android policy input is not a tracked regular blob")
-        if _read(android_root / relative) != _git(android_root, "show", f"HEAD:{relative.as_posix()}"):
+        raw = _read(android_root / relative)
+        if raw != _git(android_root, "show", f"HEAD:{relative.as_posix()}"):
             raise ValueError("Android policy input differs from its exact HEAD blob")
+        android_captured[relative] = raw
     design = expected["design"]
     def identity() -> tuple:
         return (_git(design_root, "rev-parse", "HEAD").strip().decode(),
@@ -186,11 +233,18 @@ def verify_design_checkout(design_root: Path, *, android_root: Path = REPO_ROOT)
             raise ValueError("Design policy blob bytes differ from pinned authority")
         captured[field] = raw
     validate_matrix(_json(captured["matrix"]), design)
-    if first != identity() or expected != load_policy_pin(android_root=android_root):
+    if local_internal:
+        validate_internal_delivery_matrix(_json(captured["matrix"]))
+        validate_internal_workflow(android_captured[EXTENDED_WORKFLOW].decode("utf-8"))
+    if first != identity() or expected != load_policy_pin(
+            android_root=android_root, local_internal=local_internal):
         raise ValueError("Design policy authority changed during verification")
     for field, raw in captured.items():
         if raw != _read(design_root / design[field]["path"]):
             raise ValueError("Design policy member changed after verification")
+    for relative, raw in android_captured.items():
+        if raw != _read(android_root / relative):
+            raise ValueError("Android policy member changed after verification")
     return expected
 
 
@@ -198,8 +252,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--android-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--design-root", type=Path, required=True)
+    parser.add_argument("--local-internal", action="store_true",
+                        help="Verify current local-delivery policy; never emit hosted eligibility")
     args = parser.parse_args()
-    value = verify_design_checkout(args.design_root.absolute(), android_root=args.android_root.absolute())
+    value = verify_design_checkout(args.design_root.absolute(), android_root=args.android_root.absolute(),
+                                   local_internal=args.local_internal)
     print(json.dumps({"status": "pass", "policyAuthorities": value, "publicationAuthorized": False}, sort_keys=True))
     return 0
 

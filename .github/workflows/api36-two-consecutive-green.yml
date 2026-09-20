@@ -1,4 +1,8 @@
-name: API 36 ordered review-to-main green eligibility
+name: Historical API 36 ordered review-to-main green eligibility
+
+# Historical replay only. Routine local Internal delivery uses the independently
+# pinned local-internal Design policy, not this PR/push evidence protocol.
+# Manual runtime runs must never be relabelled as either historical event.
 
 on:
   workflow_dispatch:

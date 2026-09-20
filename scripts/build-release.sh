@@ -1,4 +1,7 @@
 #!/bin/bash -p
+# Historical hosted-protocol unsigned builder, NOT the default local Internal lane.
+# Do not remove its two-green checks or use local evidence as hosted approval.
+# Current local isolated build/signing is specified in docs/LOCAL_INTERNAL_DELIVERY.md.
 set -euo pipefail
 set +a
 umask 077

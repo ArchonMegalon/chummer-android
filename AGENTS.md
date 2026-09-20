@@ -39,6 +39,11 @@ Clearly distinguish Debug APKs, signed release bundles and actual Play delivery.
 
 ## Release truth
 
+Routine Internal delivery follows `docs/LOCAL_INTERNAL_DELIVERY.md` and the
+separate `eng/local-internal-design-policy-authority.json`. Keep historical
+hosted/two-green protocol verification intact, but do not make it a prerequisite
+for local delivery or relabel local/manual checks as hosted PR/push evidence.
+
 Never claim Play publication from a local AAB. Publication requires a
 Chummer-scoped Play Console receipt and a successful internal-test install.
 Never check in signing secrets, upload keys, service-account JSON, tokens, or

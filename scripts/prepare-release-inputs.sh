@@ -1,4 +1,7 @@
 #!/bin/bash -p
+# Historical hosted-protocol preparation, NOT the default local Internal lane.
+# Its exact two-green/approval guards remain intact for historical replay.
+# Current local isolated build/signing is specified in docs/LOCAL_INTERNAL_DELIVERY.md.
 set -euo pipefail
 set +a
 umask 077

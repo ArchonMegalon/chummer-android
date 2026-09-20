@@ -1,0 +1,23 @@
+{
+  "schema": "chummer.android.design-policy-authority/v1",
+  "design": {
+    "repository": "ArchonMegalon/chummer6-design",
+    "commit": "27bed9e67a639859123a0b2eee66b7ea02060812",
+    "tree": "7170b461f2f7a3fbd1135cc39d490f05bf2bd9c3",
+    "matrix": {
+      "path": "products/chummer/ANDROID_PHONE_BETA_SUPPORT_MATRIX.yaml",
+      "sha256": "14bc1f9a726f694ed04d37a5b4946beb8285dccb620f2506878b911795b0ddb6"
+    },
+    "validator": {
+      "path": "scripts/ai/validate_android_phone_beta_contract.py",
+      "sha256": "3957847c20db633c01138e8e12b92d68c7c8b10909eef585280c17e650f350f5"
+    },
+    "matrixSchema": "chummer.android_phone_beta_support_matrix.v1",
+    "wizardAggregateSchema": "chummer.android.api36-sr5-wizard-e2e-aggregate/v2",
+    "wizardGate": {
+      "path": "eng/api36-sr5-wizard-gate-authority.json",
+      "sha256": "c867b4fd8c2a771e3ddb4c3e20c0b843ea87510a197b476c7ce75dc013fec7b4",
+      "schema": "chummer.android.api36-sr5-wizard-gate-authority/v1"
+    }
+  }
+}
