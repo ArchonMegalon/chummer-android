@@ -3,7 +3,7 @@
 This is local Debug/API-36 evidence, not a Play publication or completed Karma
 creation. It supplements the Priority walkthrough; it does not supersede it.
 
-## Current source and narrow change
+## Earlier quality-catalog source and narrow change
 
 Core `a3bd3b878dce4d436d9920a56a047071ad922f25` freezes and validates a complete
 quality catalog once per public operation. Saved-selection and preview evaluation
@@ -63,3 +63,35 @@ Remaining creation domains and unsupported quality effects/requirements remain
 open (43 of 915 options selectable in this profile). No exhaustive-parity claim,
 upload-key signing, release AAB or new Play upload is supported by these checks.
 Core/UI branch integration and the next real delivery blocker remain separate work.
+
+## Equipment draft increment
+
+Core `df6d6ddf30fa3f6f8480fdae9b025ecad3d40b59` and Android product source
+`dcbb7bd45ad332426b71a47d24ffcf6453cf515f` add supported equipment purchases
+against the actual Karma-funded budget. Search, quantities, removal, review and
+confirmation use the same pending Karma history; no Priority draft is synthesized.
+New fields are omitted when absent, preserving earlier decisions. Source drift,
+overspend and stale bindings block confirmation rather than deleting purchases.
+
+Seven final focused Core equipment tests and two existing Priority gear tests
+pass. The Core-backed native page test includes quantity changes, stale controls,
+explicit save, managed reopen and DE/ES copy. A local JIT Debug build completed
+with zero warnings/errors. APK SHA-256:
+`ae59986a81832561c8319e5298ec655aae92424447d12422739d2a4b6c607ee9`.
+
+Actual API-36 walkthrough: the retained revision-11 fixture survived upgrade;
+adding one Low-light Flashlight did not write before Confirm. One confirmation
+saved revision 12/12, 25 ¥ spent, 20,975 ¥ remaining and unchanged 86.5 Karma
+spent. All ten previous decisions and original character XML were preserved.
+A verified force-stop/new process and actual equipment-page reopen retained the
+same item, quantity and budgets, with byte-identical saved/reopened workspace.
+Raw packet: `karma-gear-20260920.dczkCW9O` in the local active-worktrees area.
+
+First catalog readiness was about 39s and post-restart equipment readiness about
+27s in this Debug emulator. These include observer overhead and are not acceptable
+Release responsiveness evidence. A System UI boot ANR was separately retained.
+The owned emulator and temporary builders are stopped; Arr remains stopped.
+
+This is still a pending Karma draft. Awakened choices, remaining domains and
+whole-runner finalization are unfinished. No full-gear/parity, release signing,
+new package seal, main merge or Play publication claim is made.
