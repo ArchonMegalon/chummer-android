@@ -2,7 +2,7 @@
   "schema": "chummer.android.design-policy-authority/v1",
   "design": {
     "repository": "ArchonMegalon/chummer6-design",
-    "commit": "24d914b279da1bf740affc76fa54081c9b3cf203",
+    "commit": "27bed9e67a639859123a0b2eee66b7ea02060812",
     "tree": "7170b461f2f7a3fbd1135cc39d490f05bf2bd9c3",
     "matrix": {
       "path": "products/chummer/ANDROID_PHONE_BETA_SUPPORT_MATRIX.yaml",
