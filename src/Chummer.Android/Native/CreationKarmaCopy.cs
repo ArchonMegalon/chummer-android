@@ -2,6 +2,11 @@ namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
 {
+    public static string ChooseStepFirst(string step) => CreationAllocationStrings.Format("Karma.ChooseStepFirst", "Choose {0} first.", step);
+    public static string ReviewStepFirst(string step) => CreationAllocationStrings.Format("Karma.ReviewStepFirst", "Open {0} and review your choices first.", step);
+    public static string ReviewOptionalStepFirst(string step) => CreationAllocationStrings.Format("Karma.ReviewOptionalStepFirst", "Open {0} first, even if you keep the selection empty.", step);
+    public static string ApplyResourcesFirst(string step) => CreationAllocationStrings.Format("Karma.ApplyResourcesFirst", "Open {0} and apply an amount to the draft (0 is allowed).", step);
+    public static string UnavailableInCurrentRules(string step) => CreationAllocationStrings.Format("Karma.UnavailableInCurrentRules", "{0} is unavailable with the current rule settings.", step);
     public static string Lifestyles => CreationAllocationStrings.Get("Karma.Lifestyles", "Lifestyles");
     public static string LifestyleHelp => CreationAllocationStrings.Get("Karma.LifestyleHelp", "Configure standard lifestyles in the pending draft, then explicitly choose one purchased lifestyle for starting cash. Equipment and lifestyles share the same funding; the later cash roll cannot pay for purchases. Advanced aspects and optional lifestyle qualities are not offered here yet. Only draft confirmation saves.");
     public static string UseStartingLifestyle => CreationAllocationStrings.Get("Karma.UseStartingLifestyle", "Use for starting cash");

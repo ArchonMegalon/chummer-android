@@ -11,6 +11,7 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunCreationKarmaAsync(string contentRoot, string? onlyScenario = null)
     {
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
+        if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
         if (onlyScenario == "completion-admission") { await RunKarmaCompletionAdmissionAsync(contentRoot); return; }
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }

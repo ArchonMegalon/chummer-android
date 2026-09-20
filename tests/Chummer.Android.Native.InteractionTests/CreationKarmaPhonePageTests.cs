@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    private static async Task RunKarmaPhonePagesAsync(string contentRoot)
+    private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -32,11 +32,18 @@ internal static partial class AfterRunAuthorityHarness
             using var alerts = new IssuedPageAlerts(root, window);
             await alerts.PreflightAsync();
             await Appear();
+            AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype));
+            AssertPrerequisite("lifestyles", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype));
+            var disabledContacts = Element<Button>("karma-open-contacts");
+            ((IButtonController)disabledContacts).SendClicked();
+            Require(ReferenceEquals(root, Current()), "A disabled Contacts callback navigated before its prerequisites.");
             await Click("karma-open-metatype");
             Button human = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Human");
             await Click(human.AutomationId);
+            AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent));
             await Click("karma-open-talent");
             await Click("karma-talent-mundane");
+            AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes));
             await Click("karma-open-attributes");
             Stepper oldAgility = Element<Stepper>("karma-attribute-AGI");
             oldAgility.Value = 1;
@@ -45,6 +52,7 @@ internal static partial class AfterRunAuthorityHarness
             int loadsBeforeBack = probe!.LoadCalls;
             int previewsBeforeBack = probe.PreviewCalls;
             await Back();
+            AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Skills));
             Require(probe.LoadCalls == loadsBeforeBack && probe.PreviewCalls == previewsBeforeBack + 1,
                 "Returning to the overview must freshly preview, without a redundant preceding Load.");
             await Click("karma-open-attributes");
@@ -78,6 +86,8 @@ internal static partial class AfterRunAuthorityHarness
             await Back();
             Require(Session().QuoteCurrent && Session().Access is null,
                 "The overview must retain a fresh Core quote without evaluating unused skill-display access.");
+            AssertPrerequisite("contacts", CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Qualities));
+            AssertPrerequisite("lifestyles", CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Qualities));
             await Click("karma-open-skills");
             Require(Session().Access is { IsReady: true } && !ReferenceEquals(previousAccess, Session().Access),
                 "Reopening Skills must obtain fresh access, not reuse a departed chooser's projection.");
@@ -85,6 +95,38 @@ internal static partial class AfterRunAuthorityHarness
             await Click("karma-open-qualities");
             Require(Session().Access is null,
                 "Qualities must not recalculate skill-display access merely because its catalog is already loaded.");
+            if (prerequisitesOnly)
+            {
+                await Back();
+                Require(Session().Selection!.QualityOptionIds is { Count: 0 },
+                    "Explicitly reviewing empty Qualities must not select a quality.");
+                AssertPrerequisite("contacts", null);
+                AssertPrerequisite("lifestyles", CreationKarmaCopy.ApplyResourcesFirst(CreationKarmaCopy.Resources));
+                // Simulate a late native event on a departed control; its captured gate stays closed.
+                disabledContacts.IsEnabled = true;
+                await ui.BeginAsyncVoid(() => ((IButtonController)disabledContacts).SendClicked());
+                Require(ReferenceEquals(root, Current()), "An obsolete disabled Contacts callback navigated after unlock.");
+                await Click("karma-open-resources");
+                Element<Entry>("karma-resource-investment").Text = "0";
+                await Click("karma-use-resources");
+                AssertPrerequisite("lifestyles", CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Gear));
+                await Click("karma-open-gear");
+                await Back();
+                Require(Session().Selection!.GearSelections is { Count: 0 },
+                    "Reviewing empty Gear must not purchase equipment.");
+                AssertPrerequisite("contacts", null);
+                AssertPrerequisite("lifestyles", null);
+                var unchanged = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Require(unchanged.ContentRevision == before.ContentRevision
+                    && unchanged.SavedRevision == before.SavedRevision
+                    && unchanged.Document.Content == before.Document.Content
+                    && unchanged.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest
+                    && probe.ConfirmCalls == 0,
+                    "Prerequisite hints or empty-step review persisted without confirmation.");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS Karma prerequisite hints: ordered blockers, explicit empty choices, zero resources, disabled/stale callbacks, no writes");
+                return;
+            }
             await QualitySearch("Code of Honor");
             Require(IssuedElements(Current()).OfType<Button>().Any(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true)
                 && IssuedElements(Current()).OfType<Button>().Where(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true).All(b => !b.IsEnabled),
@@ -422,6 +464,16 @@ internal static partial class AfterRunAuthorityHarness
                 .GetValue(Current())!;
             T Element<T>(string automationId) where T : Element
                 => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == automationId);
+            void AssertPrerequisite(string step, string? expected)
+            {
+                string buttonId = "karma-open-" + step;
+                var hints = IssuedElements(Current()).OfType<Label>()
+                    .Where(label => label.AutomationId == buttonId + "-prerequisite").ToArray();
+                Require(Element<Button>(buttonId).IsEnabled == (expected is null),
+                    "Unexpected prerequisite navigation state: " + step);
+                Require(expected is null ? hints.Length == 0 : hints.Length == 1 && hints[0].Text == expected,
+                    "Missing, stale, or incorrect prerequisite hint: " + step);
+            }
             async Task Appear()
             {
                 var page = Current();

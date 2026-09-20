@@ -232,6 +232,11 @@
   <data name="Karma.Knowledge" xml:space="preserve"><value>Knowledge points</value></data>
   <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Knowledge skills</value></data>
   <data name="Karma.Loading" xml:space="preserve"><value>Checking rules and saved choices… Your draft is kept while this page loads.</value></data>
+  <data name="Karma.ChooseStepFirst" xml:space="preserve"><value>Choose {0} first.</value></data>
+  <data name="Karma.ReviewStepFirst" xml:space="preserve"><value>Open {0} and review your choices first.</value></data>
+  <data name="Karma.ReviewOptionalStepFirst" xml:space="preserve"><value>Open {0} first, even if you keep the selection empty.</value></data>
+  <data name="Karma.ApplyResourcesFirst" xml:space="preserve"><value>Open {0} and apply an amount to the draft (0 is allowed).</value></data>
+  <data name="Karma.UnavailableInCurrentRules" xml:space="preserve"><value>{0} is unavailable with the current rule settings.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Search catalog</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Previous page</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Next page</value></data>

@@ -232,6 +232,11 @@
   <data name="Karma.Knowledge" xml:space="preserve"><value>Puntos de conocimiento</value></data>
   <data name="Karma.KnowledgeSkills" xml:space="preserve"><value>Habilidades de conocimiento</value></data>
   <data name="Karma.Loading" xml:space="preserve"><value>Comprobando reglas y elecciones guardadas… Tu borrador se conserva mientras se carga esta página.</value></data>
+  <data name="Karma.ChooseStepFirst" xml:space="preserve"><value>Primero elige una opción en «{0}».</value></data>
+  <data name="Karma.ReviewStepFirst" xml:space="preserve"><value>Abre «{0}» y revisa tus elecciones primero.</value></data>
+  <data name="Karma.ReviewOptionalStepFirst" xml:space="preserve"><value>Abre «{0}» primero, aunque dejes la selección vacía.</value></data>
+  <data name="Karma.ApplyResourcesFirst" xml:space="preserve"><value>Abre «{0}» y aplica una cantidad al borrador (se permite 0).</value></data>
+  <data name="Karma.UnavailableInCurrentRules" xml:space="preserve"><value>«{0}» no está disponible con la configuración de reglas actual.</value></data>
   <data name="Karma.Search" xml:space="preserve"><value>Buscar en el catálogo</value></data>
   <data name="Karma.Previous" xml:space="preserve"><value>Página anterior</value></data>
   <data name="Karma.Next" xml:space="preserve"><value>Página siguiente</value></data>
