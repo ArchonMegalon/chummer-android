@@ -68,7 +68,7 @@ internal sealed class CreationKarmaPhoneSession
             Quote = current.Quote;
             _quotedVersion = _version;
             Blockers = opened.Blockers;
-            await RefreshAccessAsync(ct, isCurrentPage);
+            await RefreshAccessAsync(includeSkills, ct, isCurrentPage);
             return;
         }
         if (Ready && Selection is not null && (!includeSkills || previous.SkillsCatalog is not null)
@@ -80,7 +80,7 @@ internal sealed class CreationKarmaPhoneSession
             // that with another identical catalog load on every deep-page visit.
             // Only a freshly issued quote permits reuse, never elapsed time or
             // an unchanged owner/workspace ID alone.
-            await PreviewAsync(ct, isCurrentPage);
+            await PreviewAsync(ct, isCurrentPage, includeSkillAccess: includeSkills);
             if (QuoteCurrent || !FrameCurrent || !isCurrentPage()) return;
             // A missing quote may mean source drift or an editable invalid
             // choice. Load below distinguishes these without trusting old data.
@@ -113,7 +113,7 @@ internal sealed class CreationKarmaPhoneSession
         Blockers = [];
     }
 
-    public async Task PreviewAsync(CancellationToken ct, Func<bool> isCurrentPage)
+    public async Task PreviewAsync(CancellationToken ct, Func<bool> isCurrentPage, bool includeSkillAccess = false)
     {
         if (!Ready || Selection is not { } selection || Authority is not { } state) return;
         long version = _version;
@@ -123,13 +123,16 @@ internal sealed class CreationKarmaPhoneSession
         Quote = result.Value;
         _quotedVersion = version;
         Blockers = result.Blockers;
-        await RefreshAccessAsync(ct, isCurrentPage);
+        await RefreshAccessAsync(includeSkillAccess, ct, isCurrentPage);
     }
 
-    private async Task RefreshAccessAsync(CancellationToken ct, Func<bool> isCurrentPage)
+    private async Task RefreshAccessAsync(bool includeSkillAccess, CancellationToken ct, Func<bool> isCurrentPage)
     {
         Access = null;
-        if (!Ready || !isCurrentPage() || Authority is not { } state || Selection is not { } selection) return;
+        // This projection enables skill chooser controls only. Core's fresh
+        // quote still validates every selected skill on all other pages.
+        if (!includeSkillAccess || !Ready || !isCurrentPage()
+            || Authority is not { } state || Selection is not { } selection) return;
         long version = _version;
         if (state.SkillsCatalog is not null)
         {

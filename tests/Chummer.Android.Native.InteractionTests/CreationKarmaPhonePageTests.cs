@@ -55,6 +55,8 @@ internal static partial class AfterRunAuthorityHarness
                 "An obsolete native Stepper overwrote the returned editor.");
             await Back();
             await Click("karma-open-skills");
+            Require(Session().Access is { IsReady: true },
+                "The skill chooser must obtain current Core skill access.");
             await Click("karma-filter-knowledge");
             Require(Element<Button>("karma-filter-knowledge").Text == CreationKarmaCopy.KnowledgeSkills,
                 "The catalog filter must not use the knowledge-point payment caption.");
@@ -71,8 +73,18 @@ internal static partial class AfterRunAuthorityHarness
             await Click("karma-use-skill");
             Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
                 && probe!.ConfirmCalls == 0, "Selecting phone options mutated the workspace without review.");
+            var previousAccess = Session().Access;
+            Require(previousAccess is { IsReady: true }, "Returning from a skill must refresh chooser access.");
+            await Back();
+            Require(Session().QuoteCurrent && Session().Access is null,
+                "The overview must retain a fresh Core quote without evaluating unused skill-display access.");
+            await Click("karma-open-skills");
+            Require(Session().Access is { IsReady: true } && !ReferenceEquals(previousAccess, Session().Access),
+                "Reopening Skills must obtain fresh access, not reuse a departed chooser's projection.");
             await Back();
             await Click("karma-open-qualities");
+            Require(Session().Access is null,
+                "Qualities must not recalculate skill-display access merely because its catalog is already loaded.");
             await QualitySearch("Code of Honor");
             Require(IssuedElements(Current()).OfType<Button>().Any(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true)
                 && IssuedElements(Current()).OfType<Button>().Where(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true).All(b => !b.IsEnabled),
@@ -405,6 +417,9 @@ internal static partial class AfterRunAuthorityHarness
             Console.WriteLine("PASS Karma native phone deep pages: explicit choices, stale controls, draft Back, review/save, cold reopen, DE/ES resources");
 
             NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
+            CreationKarmaPhoneSession Session() => (CreationKarmaPhoneSession)typeof(CreationKarmaPage)
+                .GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .GetValue(Current())!;
             T Element<T>(string automationId) where T : Element
                 => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == automationId);
             async Task Appear()

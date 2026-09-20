@@ -319,3 +319,31 @@ Preview20 remains the separately observed Play Internal version until a new
 publication receipt exists. Preview21 is only the next candidate identity.
 These checks do not assert signing, upload, merged source or package-only APK
 consumption. The current approved local delivery policy remains in force.
+
+## Navigation follow-up — skill-display access only where used
+
+After the separate Preview21 upload, Karma navigation stops recalculating the
+skill-display access projection on Overview, Qualities, Equipment and other
+non-skill pages. Skills and individual skill/group editors still request fresh
+access; every page still obtains a fresh Core quote. No source, owner, revision,
+confirmation or persistence guard was removed, and no timed cache was added.
+
+The added existing-harness regression failed against the unchanged source and
+passed after the fix. The full native Karma phone case and `phone-revalidation`
+passed, including save/cold reopen, finalization, stale controls, failed source
+reads and owner A→B→A rejection. Local Debug x64 build: zero warnings/errors.
+APK SHA-256:
+`ab7418edf410bb3ba90ed4bfbb09f31b46086688e2d65027e2f3b0e406123039`.
+
+Actual API36 smoke reopened the existing revision2 runner, then navigated Skills
+-> Overview -> Equipment -> Overview -> Skills -> Groups -> Acting. Ordinary
+skill/group controls remained available; Alchemy remained disabled for Mundane.
+Equipment retained 20,000 funding / 4,000 lifestyle cost / 16,000 remaining.
+Navigation left the saved workspace byte-identical to the hash recorded above.
+No Chummer ANR/crash was observed. Android/Google startup ANRs preceded app launch
+and are retained separately. Owned emulator and build/test containers stopped.
+
+Packet: `karma-navigation-20260920.jVDiMFxH`. This is an isolated Debug sideload,
+not physical Play or measured Release-performance proof. Preview21's signed
+artifact is unchanged and does not contain this follow-up; no new upload is
+claimed. Initial-load responsiveness and wider build-method coverage remain open.
