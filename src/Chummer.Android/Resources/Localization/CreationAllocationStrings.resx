@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten draft. Review and save foundation, attributes, skills, knowledge and languages; later creation steps and Career entry are not available yet.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Review and save foundation, attributes, skills, knowledge and languages; later creation steps and Career entry are not available yet.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -442,4 +442,14 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Enter one native language and distinct, non-empty names (up to 80 characters). Choose a supported language level; remove unused blank rows.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Knowledge and language choices exceed Logic. Reduce the choices or review the attribute allocation; nothing was saved.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Knowledge topics are player-entered and unrated. Agree their scope with the GM; saving does not record GM approval.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Point Buy uses CP, not Karma or priority ranks. Spend all CP before finalization. Partial drafts can be saved. No free spells, complex forms or power points; their purchases and finalization are not implemented yet.</value></data>
+  <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Buy additional attribute points</value></data>
+  <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Buy additional skill points</value></data>
+  <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Buy additional adjustment points</value></data>
+  <data name="Sr6.PointBuyResources" xml:space="preserve"><value>Buy resource units</value></data>
+  <data name="Sr6.PointBuyInvalid" xml:space="preserve"><value>Choose valid Point Buy pools and one metatype/talent. Priority ranks cannot be combined with CP.</value></data>
+  <data name="Sr6.PointBuySource" xml:space="preserve"><value>The saved SR6 Companion profile does not authorize Point Buy.</value></data>
+  <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>These purchases exceed 100 CP. Reduce a pool or change the talent and review again; nothing was saved.</value></data>
+  <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Free: {1} attribute, {2} skill, {3} adjustment points. Costs per extra point: {4}/{5}/{6} CP. Resource unit: {7:N0} ¥ for {8} CP. Awakened/technomancer: {9} CP. Separate customization Karma: {10}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP spent: {0}/{1} · remaining: {2}&#10;Talent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7}. Separate Karma: {8}.</value></data>
 </root>

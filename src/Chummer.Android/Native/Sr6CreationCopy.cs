@@ -6,6 +6,15 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string PointBuyLimits(Sr6CreationPointBuyLimits limits) => CreationAllocationStrings.Format("Sr6.PointBuyLimits",
+        "{0} CP. Free: {1} attribute, {2} skill, {3} adjustment points. Costs per extra point: {4}/{5}/{6} CP. Resource unit: {7:N0} ¥ for {8} CP. Awakened/technomancer: {9} CP. Separate customization Karma: {10}.",
+        limits.CharacterPoints, limits.FreeAttributePoints, limits.FreeSkillPoints, limits.FreeAdjustmentPoints,
+        limits.AttributePointCost, limits.SkillPointCost, limits.AdjustmentPointCost, limits.NuyenPerResourceUnit,
+        limits.ResourceUnitCost, limits.AwakenedOrResonanceCost, limits.CustomizationKarma);
+    internal static string PointBuyBudget(Sr6CreationPointBuyPreview preview) => CreationAllocationStrings.Format("Sr6.PointBuyBudget",
+        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7}. Separate Karma: {8}.",
+        preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
+        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma);
     internal static string LanguageLevel(string level) => Text("KnowledgeLevel." + level);
     internal static string KnowledgePool(int logic) => CreationAllocationStrings.Format("Sr6.KnowledgePool",
         "Knowledge/language picks: {0} (Logic) + one free native language", logic);
@@ -37,6 +46,10 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationPointBuyBlockers.InvalidSelection => Text("PointBuyInvalid"),
+        Sr6CreationPointBuyBlockers.MethodMismatch => Text("PointBuyInvalid"),
+        Sr6CreationPointBuyBlockers.SourceRequired => Text("PointBuySource"),
+        Sr6CreationPointBuyBlockers.BudgetExceeded => Text("PointBuyOverspend"),
         Sr6CreationKnowledgeBlockers.InvalidSelection => Text("KnowledgeInvalid"),
         Sr6CreationKnowledgeBlockers.AttributesRequired => Text("KnowledgeAttributesRequired"),
         Sr6CreationKnowledgeBlockers.BudgetExceeded => Text("KnowledgeOverspend"),

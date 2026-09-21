@@ -70,7 +70,7 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS SR6 " + scenario);
             }
 
-            foreach (string method in new[] { "Priority", "SumtoTen" })
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
             foreach (string language in new[] { "en", "de", "es" })
             {
                 var previousCulture = CultureInfo.CurrentUICulture;
@@ -93,8 +93,24 @@ internal static partial class AfterRunAuthorityHarness
                     T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>().Single(item => item.AutomationId == "sr6-foundation-" + key);
                     void Pick(string key, int index) => Element<Picker>(key).SelectedIndex = index;
                     Task Click(string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
-                    Pick("rank-heritage", 3); Pick("rank-talent", 4); Pick("rank-attributes", method == "Priority" ? 0 : 1);
-                    Pick("rank-skills", 1); Pick("rank-resources", method == "Priority" ? 2 : 1);
+                    if (method == "PointBuy")
+                    {
+                        Require(!IssuedElements(page).OfType<Picker>().Any(item => item.AutomationId?.StartsWith("sr6-foundation-rank-", StringComparison.Ordinal) == true),
+                            "Point Buy was routed into priority inputs.");
+                        Pick("point-buy-attributes", 20); Pick("point-buy-skills", 20);
+                        Pick("point-buy-adjustment", 12); Pick("point-buy-resources", 30);
+                        Pick("metatype", 0); Pick("talent", 0);
+                        await Click("preview");
+                        Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                            && Element<Label>("status").Text == Sr6CreationCopy.Text("PointBuyOverspend"), "Point Buy CP overspend admitted.");
+                        Pick("point-buy-skills", 16); Pick("point-buy-adjustment", 6); Pick("point-buy-resources", 12);
+                        Pick("point-buy-attributes", 16); // Editing first field last must retain all other pools.
+                    }
+                    else
+                    {
+                        Pick("rank-heritage", 3); Pick("rank-talent", 4); Pick("rank-attributes", method == "Priority" ? 0 : 1);
+                        Pick("rank-skills", 1); Pick("rank-resources", method == "Priority" ? 2 : 1);
+                    }
                     Pick("metatype", 0); Pick("talent", 0);
                     await Click("preview");
                     var staleConfirm = Element<Button>("confirm");
@@ -110,6 +126,13 @@ internal static partial class AfterRunAuthorityHarness
                     Require(saved.ContentRevision == 2 && saved.SavedRevision == 2
                         && saved.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Single().Command.Selection.MetatypeId == "elf",
                         "Native SR6 page saved the wrong choice.");
+                    if (method == "PointBuy")
+                    {
+                        var purchased = saved.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Single().Preview;
+                        Require(purchased.PointBuy is { PointsSpent: 100, PointsRemaining: 0 }
+                            && purchased.Budget == new Sr6CreationPriorityBudget(20, 28, 180000, 7, null),
+                            "Point Buy lost independently selected pools or invented a priority rank.");
+                    }
                     IssuedPageLifecycle(page, "OnDisappearing");
                     oldPicker.SelectedIndex = 4;
                     await ui.BeginAsyncVoid(() => ((IButtonController)staleConfirm).SendClicked());

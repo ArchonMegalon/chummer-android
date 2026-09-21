@@ -104,7 +104,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         bool Current() => !_busy && render == _render && IsCurrentAppearanceGeneration(appearance) && Ready;
         _body.Add(NativeTheme.Body(state.BuildMethod + " · " + CreationKarmaCopy.Binding(
             state.Binding.ContentRevision, state.Binding.SavedRevision), NativeTheme.Muted));
-        _selection ??= new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
+        _selection ??= state.PointBuyLimits is not null
+            ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
+            : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
         if (_knowledgeMode)
         {
@@ -215,7 +217,21 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
             }
-            foreach (string category in CharacterCreationPriorityCategoryIds.Ordered)
+            if (state.PointBuyLimits is { } limits)
+            {
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyLimits(limits)));
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PointBuyHelp"), NativeTheme.Muted));
+                var purchase = _selection.PointBuy!;
+                AddPoolPicker("attributes", "PointBuyAttributes", purchase.AdditionalAttributePoints,
+                    limits.MaximumAdditionalAttributePoints, value => _selection.PointBuy! with { AdditionalAttributePoints = value });
+                AddPoolPicker("skills", "PointBuySkills", purchase.AdditionalSkillPoints,
+                    limits.MaximumAdditionalSkillPoints, value => _selection.PointBuy! with { AdditionalSkillPoints = value });
+                AddPoolPicker("adjustment", "PointBuyAdjustment", purchase.AdditionalAdjustmentPoints,
+                    limits.MaximumAdditionalAdjustmentPoints, value => _selection.PointBuy! with { AdditionalAdjustmentPoints = value });
+                AddPoolPicker("resources", "PointBuyResources", purchase.ResourceUnits,
+                    limits.MaximumResourceUnits, value => _selection.PointBuy! with { ResourceUnits = value });
+            }
+            else foreach (string category in CharacterCreationPriorityCategoryIds.Ordered)
             {
                 string captured = category;
                 AddPicker("rank-" + category, Sr6CreationCopy.Label(category), ["A", "B", "C", "D", "E"],
@@ -256,6 +272,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         if (_preview is { } quote && Coordinator.IsSr6FoundationPreviewCurrent(quote))
         {
             _review.Add(NativeTheme.Body(Sr6CreationCopy.Budget(quote)));
+            if (quote.PointBuy is { } pointBuy)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyBudget(pointBuy)));
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("PointBuyHelp"), NativeTheme.Muted));
+            }
             if (quote.Attributes is { } allocation)
             {
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.AttributeBudget(allocation)));
@@ -353,6 +374,12 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                         : adjustment ? row with { AdjustmentPoints = points } : row with { AttributePoints = points }).ToArray()) });
                 });
         }
+
+        void AddPoolPicker(string id, string title, int selected, int maximum, Func<int, Sr6CreationPointBuySelection> update)
+            => AddPicker("point-buy-" + id, Sr6CreationCopy.Text(title),
+                Enumerable.Range(0, maximum + 1).Select(value => value.ToString(CultureInfo.InvariantCulture)).ToArray(),
+                selected.ToString(CultureInfo.InvariantCulture), value => value,
+                value => Change(_selection with { PointBuy = update(int.Parse(value, CultureInfo.InvariantCulture)) }));
 
         void AddPicker(string id, string title, string[] options, string selected,
             Func<string, string> label, Action<string> change)

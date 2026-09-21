@@ -29,7 +29,7 @@ public sealed partial class RunnerSessionCoordinator
     internal bool CanOpenSr6Foundation() => _sr6FoundationService is not null && IsSr6FoundationDisplay(State);
 
     private bool IsSr6FoundationDisplay(CharacterOverviewState original)
-        => original.Profile is { Created: false, BuildMethod: Sr6CharacterCreationBuildMethods.Priority or Sr6CharacterCreationBuildMethods.SumToTen }
+        => original.Profile is { Created: false, BuildMethod: Sr6CharacterCreationBuildMethods.Priority or Sr6CharacterCreationBuildMethods.SumToTen or Sr6CharacterCreationBuildMethods.PointBuy }
            && string.Equals(original.Rules?.GameEdition, "SR6", StringComparison.OrdinalIgnoreCase)
            && IsNativeEditDisplayCurrent(original);
 

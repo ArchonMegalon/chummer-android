@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Puedes revisar y guardar la base, atributos, habilidades, conocimientos e idiomas; los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Puedes revisar y guardar la base, atributos, habilidades, conocimientos e idiomas; los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -442,4 +442,14 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Introduce un idioma nativo y nombres distintos, no vacíos (hasta 80 caracteres). Elige un nivel válido y elimina las filas vacías.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Las elecciones superan Lógica. Reduce las elecciones o revisa los atributos; no se ha guardado nada.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Los conocimientos son entradas propias sin nivel. Acuerda su alcance con el director de juego; guardar no registra su aprobación.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Compra por puntos usa CP, no Karma ni prioridades. Gasta todos los CP antes de finalizar; puedes guardar borradores parciales. Sin hechizos, formas complejas ni puntos de poder gratuitos; sus compras y la finalización aún no están disponibles.</value></data>
+  <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Comprar puntos de atributo adicionales</value></data>
+  <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Comprar puntos de habilidad adicionales</value></data>
+  <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Comprar puntos de ajuste adicionales</value></data>
+  <data name="Sr6.PointBuyResources" xml:space="preserve"><value>Comprar unidades de recursos</value></data>
+  <data name="Sr6.PointBuyInvalid" xml:space="preserve"><value>Elige reservas válidas, un metatipo y un talento. No se pueden combinar prioridades con CP.</value></data>
+  <data name="Sr6.PointBuySource" xml:space="preserve"><value>El perfil guardado del Companion de SR6 no autoriza esta compra por puntos.</value></data>
+  <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>Estas compras superan 100 CP. Reduce una reserva o cambia el talento y revisa de nuevo; no se ha guardado nada.</value></data>
+  <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Gratis: {1} puntos de atributo, {2} de habilidad, {3} de ajuste. Costes por punto extra: {4}/{5}/{6} CP. Unidad de recursos: {7:N0} ¥ por {8} CP. Despierto/tecnomante: {9} CP. Karma de personalización aparte: {10}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP usados: {0}/{1} · restantes: {2}&#10;Talento {3} + atributos {4} + habilidades {5} + ajuste {6} + recursos {7}. Karma aparte: {8}.</value></data>
 </root>

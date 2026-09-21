@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl, Attribute, Fertigkeiten, Wissen und Sprachen lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundauswahl, Attribute, Fertigkeiten, Wissen und Sprachen lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -442,4 +442,14 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Eine Muttersprache und eindeutige, nicht leere Namen eingeben (bis 80 Zeichen). Gültige Sprachstufe wählen; ungenutzte leere Zeilen entfernen.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Wissens- und Sprachauswahl überschreitet Logik. Auswahl reduzieren oder Attributsverteilung prüfen; nichts wurde gespeichert.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Wissensthemen sind eigene Eingaben ohne Stufe. Umfang mit der Spielleitung absprechen; Speichern bestätigt keine GM-Freigabe.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Punktekauf nutzt CP, nicht Karma oder Prioritäten. Vor Abschluss müssen alle CP verbraucht sein; Teilentwürfe lassen sich speichern. Keine kostenlosen Zauber, Komplexen Formen oder Kraftpunkte; deren Kauf und der Abschluss fehlen noch.</value></data>
+  <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Zusätzliche Attributspunkte kaufen</value></data>
+  <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Zusätzliche Fertigkeitspunkte kaufen</value></data>
+  <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Zusätzliche Anpassungspunkte kaufen</value></data>
+  <data name="Sr6.PointBuyResources" xml:space="preserve"><value>Ressourceneinheiten kaufen</value></data>
+  <data name="Sr6.PointBuyInvalid" xml:space="preserve"><value>Gültige Punktevorräte sowie Metatyp und Talent wählen. Prioritäten lassen sich nicht mit CP kombinieren.</value></data>
+  <data name="Sr6.PointBuySource" xml:space="preserve"><value>Das gespeicherte SR6-Kompendiumsprofil erlaubt diesen Punktekauf nicht.</value></data>
+  <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>Diese Käufe überschreiten 100 CP. Vorrat reduzieren oder Talent ändern und erneut prüfen; nichts wurde gespeichert.</value></data>
+  <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Kostenlos: {1} Attributs-, {2} Fertigkeits-, {3} Anpassungspunkt(e). Zusätzliche Punkte kosten {4}/{5}/{6} CP. Ressourceneinheit: {7:N0} ¥ für {8} CP. Erwacht/Technomancer: {9} CP. Getrenntes Individualisierungskarma: {10}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP verbraucht: {0}/{1} · übrig: {2}&#10;Talent {3} + Attribute {4} + Fertigkeiten {5} + Anpassung {6} + Ressourcen {7}. Getrenntes Karma: {8}.</value></data>
 </root>
