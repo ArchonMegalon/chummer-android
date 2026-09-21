@@ -19,6 +19,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private readonly string _boundMechanicsSnapshotDigest;
     private readonly OriginDossierNarrativeLocaleBinding _locale;
     private readonly AndroidSurfaceCopy _copy;
+    private readonly Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
     private readonly Func<string, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
     private readonly Func<string, string, Task<bool>> _confirmChoice;
 
@@ -38,6 +39,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 "The Origin Dossier decision has no exact Life Modules budget authority.");
         }
         _state = state;
+        _storyCheckpoint = opened.StoryCheckpoint;
         _budget = budget;
         _foundationSnapshotDigest = opened.FoundationSnapshotDigest!;
         _boundContentDigest = opened.BoundContentDigest!;
@@ -82,6 +84,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _locale.FormattingLocale,
                 _copy[_locale.UsesEnglishFallback ? "Common.Yes" : "Common.No"]));
         body.Add(locale);
+
+        if (_storyCheckpoint?.Projection.VisibleChapters.Count > 0)
+        {
+            Button readBook = NativeTheme.SecondaryButton(_copy["Origin.ReadBook"]);
+            readBook.AutomationId = "origin-life-read-book";
+            readBook.Clicked += async (_, _) => await Navigation.PushAsync(
+                new OriginDossierBookPage(_storyCheckpoint, _locale.FormattingLocale));
+            body.Add(readBook);
+        }
 
         var budget = new VerticalStackLayout { Spacing = 6 };
         budget.Add(NativeTheme.Eyebrow(_copy["Origin.Budget"]));

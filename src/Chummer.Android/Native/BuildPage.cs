@@ -2697,6 +2697,11 @@ public sealed class BuildPage : NativePageBase
         AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve();
         OriginDossierLifeModulePhoneResult opened =
             await Coordinator.OpenSr5LifeModuleOriginAsync();
+        if (opened.IsSuccess && opened.Completed && opened.StoryCheckpoint is { } savedStory)
+        {
+            await Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name));
+            return;
+        }
         if (!opened.IsSuccess || opened.State is null)
         {
             await DisplayAlertAsync(

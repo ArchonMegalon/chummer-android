@@ -4,12 +4,12 @@
   <alias>LifeModuleNationalityOriginPhysicalE2E</alias>
   <playername>Authorized disposable API 36 proof</playername>
   <metatype>Human</metatype>
-  <buildmethod>LifeModules</buildmethod>
+  <buildmethod>LifeModule</buildmethod>
   <createdversion>5.225.0</createdversion>
   <appversion>5.225.0</appversion>
   <created>False</created>
   <gameedition>SR5</gameedition>
-  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <settings>8a31af6d-7137-4284-872b-7d8087e156c6</settings>
   <customdatadirectorynames />
   <notes>Life Modules Nationality Origin physical proof marker</notes>
 </character>

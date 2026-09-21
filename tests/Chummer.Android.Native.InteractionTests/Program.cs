@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--origin-book-continuity")
+        {
+            await OriginDossierBookRuntimeTests.RunAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-starting-cash-content-root")
         {
             await AfterRunAuthorityHarness.RunStartingCashPhonePagesAsync(args[1]);

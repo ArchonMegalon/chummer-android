@@ -16,7 +16,8 @@ public sealed record OriginDossierLifeModulePhoneResult(
     string? FoundationSnapshotDigest = null,
     string? BoundContentDigest = null,
     string? BoundSourceDigest = null,
-    string? BoundMechanicsSnapshotDigest = null)
+    string? BoundMechanicsSnapshotDigest = null,
+    LifeModuleOriginDossierDraftCheckpoint? StoryCheckpoint = null)
 {
     public bool IsSuccess => string.Equals(
         Outcome,
@@ -61,10 +62,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             else
             {
                 result = _interaction.Restore(persisted);
-                // A crash after the atomic mechanics commit but before local
-                // cleanup leaves a valid pending preview. Keep it available for
+                // A crash after the atomic mechanics commit but before saving
+                // the next chapter leaves a valid pending preview. Keep it available for
                 // the idempotent Confirm retry instead of guessing completion.
-                if (!IsSuccess(result) && persisted.PendingPreview is not null)
+                if (result.Outcome == LifeModuleOriginDossierOutcomes.Conflict
+                    && persisted.PendingPreview is not null)
                 {
                     return Project(
                         LifeModuleOriginDossierOutcomes.Success,
@@ -140,17 +142,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                     explicitlyConfirmed: true);
             if (!IsSuccess(confirmed) || confirmed.Value is not { } advance)
                 return Failed(confirmed.Outcome, confirmed.Blockers);
-            if (advance.Checkpoint.Projection.CurrentTurn.IsTerminal)
-            {
-                await _store.DeleteAsync(OwnerId, workspaceId, cancellationToken)
-                    .ConfigureAwait(false);
-                return new(
-                    LifeModuleOriginDossierOutcomes.Success,
-                    null,
-                    [],
-                    Completed: true);
-            }
-            await _store.SaveAsync(advance.Checkpoint, cancellationToken).ConfigureAwait(false);
+            // The confirmed chapter is the user's book, not a disposable wizard
+            // checkpoint. Persist terminal turns as well. Once Core committed,
+            // cancellation must not discard its result. If storage fails, the
+            // previous pending preview still permits an idempotent recovery.
+            await _store.SaveAsync(advance.Checkpoint, CancellationToken.None).ConfigureAwait(false);
             return Project(confirmed.Outcome, advance.Checkpoint, confirmed.Blockers);
         }
         finally
@@ -168,14 +164,17 @@ public sealed class OriginDossierLifeModulePhoneRuntime
         {
             return new(
                 outcome,
-                OriginDossierLifeModuleInteractionProjector.Project(checkpoint),
+                checkpoint.Projection.CurrentTurn.IsTerminal
+                    ? null
+                    : OriginDossierLifeModuleInteractionProjector.Project(checkpoint),
                 blockers,
-                Completed: false,
+                Completed: checkpoint.Projection.CurrentTurn.IsTerminal,
                 LifeModuleBudget: null,
                 FoundationSnapshotDigest: null,
                 BoundContentDigest: checkpoint.BoundContentDigest,
                 BoundSourceDigest: checkpoint.BoundSourceDigest,
-                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest);
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                StoryCheckpoint: checkpoint);
         }
         catch (InvalidOperationException)
         {
