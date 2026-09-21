@@ -53,6 +53,14 @@ reach its dashboard. Opening Origin then returns
 an existing metatype, but a newly created runner intentionally has none. This
 is a real missing entry transition, not permission to silently choose Human.
 
+The older import fixture also failed to activate a runner. Updating its method
+and settings tuple removed obsolete test inputs but did **not** establish a
+passing import: the workspace was stored while the previously selected runner
+remained active, with `Workspace verification unavailable`. Do not count either
+attempt as a book-reader or device save/restart pass. Screenshots, hierarchy
+snapshots and the synthetic bootstrap record are retained in the local packet.
+The temporary read-only emulator was stopped; no user app/data was cleared.
+
 Core's production adapter currently stops at `nationality-accepted`. It still
 needs the remaining stages/follow-ups, cumulative budget/effect application and
 honest finalization into Career. The generic multi-chapter interaction tests do
