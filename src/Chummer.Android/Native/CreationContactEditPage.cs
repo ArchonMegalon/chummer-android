@@ -17,6 +17,8 @@ public sealed class CreationContactEditPage : NativePageBase
     };
     private Button? _previewButton;
     private IReadOnlyList<string> _prepareBlockers = [];
+    private CharacterCreationContactsInteractionLoadResult? _loaded;
+    private bool _loading = true;
 
     internal CreationContactEditPage(
         RunnerSessionCoordinator coordinator,
@@ -31,13 +33,32 @@ public sealed class CreationContactEditPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loading = true;
+        _loaded = null;
+        Refresh();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationContactsForDisplayAsync(Coordinator.State, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loaded = loaded;
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
         _previewButton = null;
         _body.Add(NativeTheme.Eyebrow("Character creation · Contact"));
-        var load = Coordinator.LoadCreationContacts();
-        if (!string.Equals(load.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-contact-edit-loading" });
+            return;
+        }
+        var load = _loaded;
+        if (load is null || !string.Equals(load.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state
             || !CreationContactsPhoneAuthority.IsReady(state, Coordinator.State)
             || (_adding ? CreationContactsPhoneAuthority.NewContact(state, _contactId)
@@ -45,7 +66,7 @@ public sealed class CreationContactEditPage : NativePageBase
         {
             AddBlockers(
                 "Contact authority unavailable",
-                load.Blockers.Count > 0
+                load?.Blockers.Count > 0
                     ? load.Blockers
                     : [CharacterCreationContactsBlockers.ContactNotFound],
                 "creation-contact-edit-blockers");
@@ -284,24 +305,26 @@ public sealed class CreationContactEditPage : NativePageBase
 
     private async Task ShowPreviewAsync(CharacterCreationContactEditInput input)
     {
-        var result = Coordinator.PrepareCreationContact(input);
-        if (!string.Equals(result.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
-            || result.State is not { } preparedState
-            || result.PreparedPreview is not { } prepared
-            || result.Blockers.Count > 0
-            || !CreationContactsPhoneAuthority.PreparedMatches(
-                prepared,
-                preparedState,
-                Coordinator.State))
+        await RunAsync(async () =>
         {
-            _prepareBlockers = result.Blockers.Count > 0
-                ? result.Blockers
-                : [CharacterCreationContactsBlockers.AuthorityUnavailable];
-            Refresh();
-            return;
-        }
+            long appearance = CaptureAppearanceGeneration();
+            var result = await Coordinator.PrepareCreationContactForDisplayAsync(input, Coordinator.State, default);
+            if (!IsCurrentAppearanceGeneration(appearance)) return;
+            if (!string.Equals(result.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
+                || result.State is not { } preparedState
+                || result.PreparedPreview is not { } prepared
+                || result.Blockers.Count > 0
+                || !CreationContactsPhoneAuthority.PreparedMatches(prepared, preparedState, Coordinator.State))
+            {
+                _prepareBlockers = result.Blockers.Count > 0
+                    ? result.Blockers
+                    : [CharacterCreationContactsBlockers.AuthorityUnavailable];
+                Refresh();
+                return;
+            }
 
-        await Navigation.PushAsync(new CreationContactPreviewPage(Coordinator, prepared));
+            await Navigation.PushAsync(new CreationContactPreviewPage(Coordinator, prepared));
+        });
     }
 
     private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)

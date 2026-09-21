@@ -1,5 +1,6 @@
 using System.Globalization;
 using Chummer.Application.Owners;
+using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -678,8 +679,15 @@ internal static class CreationContactsPhoneAuthority
     {
         CharacterCreationContactAtomicWritePlan plan = prepared.WritePlan;
         if (!Enum.IsDefined(plan.ChangeKind)
-            || !string.Equals(plan.Schema, plan.ChangeKind == CharacterCreationContactChangeKind.Edit
+            || !string.Equals(plan.Schema, plan.PendingDraft is not null ? CharacterCreationContactsSchemas.DraftWritePlanV1
+                : plan.ChangeKind == CharacterCreationContactChangeKind.Edit
                 ? CharacterCreationContactsSchemas.WritePlanV1 : CharacterCreationContactsSchemas.WritePlanV2, StringComparison.Ordinal)
+            || plan.PendingDraft is { } draft && (
+                prepared.Binding.ContentRevision == long.MaxValue
+                || !CharacterCreationContactsDraftRules.IsValidShape(prepared.Binding.WorkspaceId,
+                    prepared.Binding.ContentRevision + 1, draft)
+                || draft.BaseContentRevision != prepared.Binding.ContentRevision
+                || draft.RawCharacterXmlDigest != prepared.Binding.ContentDigest)
             || !string.Equals(plan.StepId, CharacterCreationWizardStepIds.ContactsLifestyles, StringComparison.Ordinal)
             || plan.ContactId != prepared.ContactBefore.ContactId
             || plan.Operations.Count == 0
@@ -691,7 +699,9 @@ internal static class CreationContactsPhoneAuthority
             || plan.ChangeKind == CharacterCreationContactChangeKind.Edit && !plan.PreservesNestedState
             || !IsCanonicalDigest(plan.ContentDigestBefore)
             || !IsCanonicalDigest(plan.ContentDigestAfter)
-            || string.Equals(plan.ContentDigestBefore, plan.ContentDigestAfter, StringComparison.Ordinal)
+            || (plan.PendingDraft is null
+                ? string.Equals(plan.ContentDigestBefore, plan.ContentDigestAfter, StringComparison.Ordinal)
+                : !string.Equals(plan.ContentDigestBefore, plan.ContentDigestAfter, StringComparison.Ordinal))
             || !string.Equals(plan.ContentDigestBefore, prepared.Binding.ContentDigest, StringComparison.Ordinal)
             || !IsCanonicalDigest(plan.UntouchedSiblingDigestBefore)
             || !string.Equals(
@@ -772,6 +782,8 @@ internal static class CreationContactsPhoneAuthority
         CharacterCreationContactAtomicWritePlan right)
         => string.Equals(left.Schema, right.Schema, StringComparison.Ordinal)
            && left.ChangeKind == right.ChangeKind
+           && CharacterCreationFinalizationDigest.Compute(left.PendingDraft)
+                == CharacterCreationFinalizationDigest.Compute(right.PendingDraft)
            && string.Equals(left.StepId, right.StepId, StringComparison.Ordinal)
            && left.ContactId == right.ContactId
            && string.Equals(left.ContentDigestBefore, right.ContentDigestBefore, StringComparison.Ordinal)

@@ -938,6 +938,39 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
+    internal Task<CharacterCreationContactsInteractionLoadResult> LoadCreationContactsForDisplayAsync(
+        CharacterOverviewState original, CancellationToken cancellationToken)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCreationCatalogDisplayCurrent(original)) return ContactsDisplayUnavailable();
+            var load = _creationContactsPresenter.Load(original);
+            cancellationToken.ThrowIfCancellationRequested();
+            return IsCreationCatalogDisplayCurrent(original)
+                && (load.State is null || CreationContactsPhoneAuthority.IsBound(load.State, original))
+                ? load : ContactsDisplayUnavailable();
+        }, cancellationToken), cancellationToken);
+
+    private static CharacterCreationContactsInteractionLoadResult ContactsDisplayUnavailable()
+        => new(CharacterCreationContactOutcomes.Conflict, null,
+            [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
+
+    internal Task<CharacterCreationContactsInteractionPrepareResult> PrepareCreationContactForDisplayAsync(
+        CharacterCreationContactEditInput input, CharacterOverviewState original, CancellationToken cancellationToken)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCreationCatalogDisplayCurrent(original) || input.DisplayOwnerContext != original.DisplayOwnerContext)
+                return ContactsPrepareUnavailable();
+            var result = PrepareCreationContact(input);
+            cancellationToken.ThrowIfCancellationRequested();
+            return IsCreationCatalogDisplayCurrent(original) ? result : ContactsPrepareUnavailable();
+        }, cancellationToken), cancellationToken);
+
+    private static CharacterCreationContactsInteractionPrepareResult ContactsPrepareUnavailable()
+        => new(CharacterCreationContactOutcomes.Conflict, null, null,
+            [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
+
     public CharacterCreationContactsInteractionPrepareResult PrepareCreationContact(
         CharacterCreationContactEditInput input)
     {
@@ -1020,7 +1053,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prepared);
-        CharacterCreationContactsInteractionLoadResult before = LoadCreationContacts();
+        CharacterCreationContactsInteractionLoadResult before = await Task.Run(
+            () => _creationContactsPresenter.Load(originalOverview), cancellationToken);
         if (before.State is not { } state
             || !CreationContactsOwnerIsCurrent(originalOverview)
             || originalOverview.DisplayOwnerContext != prepared.DisplayOwnerContext
@@ -1046,7 +1080,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Exception? ambiguousFailure = null;
         try
         {
-            result = _creationContactsPresenter.Confirm(originalOverview, confirmation);
+            result = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return _creationContactsPresenter.Confirm(originalOverview, confirmation);
+            });
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -1127,7 +1165,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             // A committed receipt remains true even if refresh or cancellation fails afterwards.
             return CommittedContactsRequireReload();
         }
-        CharacterCreationContactsInteractionLoadResult refreshed = LoadCreationContacts();
+        CharacterOverviewState refreshDisplay = State;
+        CharacterCreationContactsInteractionLoadResult refreshed = await Task.Run(
+            () => _creationContactsPresenter.Load(refreshDisplay));
         if (refreshed.State is not { } refreshedState
             || !CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt)
             || !CreationContactsPhoneAuthority.RefreshedStateMatches(

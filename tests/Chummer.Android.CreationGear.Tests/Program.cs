@@ -7,7 +7,17 @@ internal static class Program
     {
         IncrementRemoveAndBoundsFailClosed();
         SelectionProjectionIsStableAndSorted();
-        Console.WriteLine("Creation Gear phone interaction tests passed: 2");
+        FirstEmptyBasketCanBeReviewed();
+        Console.WriteLine("Creation Gear phone interaction tests passed: 3");
+    }
+
+    private static void FirstEmptyBasketCanBeReviewed()
+    {
+        var basket = new Dictionary<string, int>(StringComparer.Ordinal);
+        Require(CreationGearPhoneBasket.TryCreateSelections(
+            basket, maximumLines: 2, maximumQuantity: 3, out var selections));
+        Require(selections.Length == 0);
+        Require(CreationGearPhoneBasket.DiffersFromPersisted(basket, persisted: null));
     }
 
     private static void IncrementRemoveAndBoundsFailClosed()

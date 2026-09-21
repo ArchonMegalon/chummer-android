@@ -18,6 +18,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
     };
     private CreationContactPhoneConfirmResult? _confirmation;
     private bool _explicitlyConfirmed;
+    private CharacterCreationContactsInteractionLoadResult? _loaded;
 
     internal CreationContactPreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -27,6 +28,16 @@ public sealed class CreationContactPreviewPage : NativePageBase
         Title = "Review contact change";
         AutomationId = "creation-contact-preview-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loaded = null;
+        Refresh();
+        if (_confirmation?.Receipt is not null) return;
+        var loaded = await Coordinator.LoadCreationContactsForDisplayAsync(Coordinator.State, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _loaded = loaded;
     }
 
     protected override void Refresh()
@@ -273,8 +284,8 @@ public sealed class CreationContactPreviewPage : NativePageBase
 
     private bool CanConfirm()
     {
-        var live = Coordinator.LoadCreationContacts();
-        return live.State is { } state
+        var live = _loaded;
+        return live?.State is { } state
                && live.Blockers.Count == 0
                && _prepared.RequiresExplicitConfirmation
                && _prepared.CanConfirm

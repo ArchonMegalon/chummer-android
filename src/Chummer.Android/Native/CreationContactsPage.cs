@@ -13,6 +13,8 @@ public sealed class CreationContactsPage : NativePageBase
         Spacing = 14
     };
     private CharacterCreationContactsInteractionState? _authority;
+    private CharacterCreationContactsInteractionLoadResult? _loaded;
+    private bool _loading;
 
     public CreationContactsPage(
         RunnerSessionCoordinator coordinator,
@@ -22,6 +24,22 @@ public sealed class CreationContactsPage : NativePageBase
         Title = CreationFlowStrings.Get("Contacts.PageTitle", "Creation contacts");
         AutomationId = "creation-contacts-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        if (_authority is { } current && CreationContactsPhoneAuthority.IsReady(current, Coordinator.State)) return;
+        _loading = true;
+        _loaded = null;
+        Refresh();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationContactsForDisplayAsync(Coordinator.State, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loaded = loaded;
+            _authority = _loaded.State;
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
     }
 
     protected override void Refresh()
@@ -41,20 +59,16 @@ public sealed class CreationContactsPage : NativePageBase
                 "Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics."),
             () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
             automationId: "creation-contacts-open-lifestyles"));
-        CharacterCreationContactsInteractionLoadResult? load = null;
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-contacts-loading" });
+            return;
+        }
+        CharacterCreationContactsInteractionLoadResult? load = _loaded;
         CharacterCreationContactsInteractionState? state = CreationPageAuthorityCache.Resolve(
             _authority,
             candidate => CreationContactsPhoneAuthority.IsReady(candidate, Coordinator.State),
-            () =>
-            {
-                load = Coordinator.LoadCreationContacts();
-                return string.Equals(
-                        load.Outcome,
-                        CharacterCreationContactOutcomes.Available,
-                        StringComparison.Ordinal)
-                    ? load.State
-                    : null;
-            });
+            () => null);
         _authority = state;
         if (state is null)
         {
