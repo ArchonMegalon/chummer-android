@@ -38,14 +38,60 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   another native language. Stable entry IDs survive editing and cold reopen.
   Attribute changes preserve the choices and reject any resulting overspend.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
+- Talent planning after saved attributes: Core-derived free spell/form budgets,
+  aspect selection, mystic-adept priority split and whole-power-point CP purchase
+  for Point Buy. Saved budgets are distinguished from unconfirmed edits. This
+  does not select or learn individual spells, rituals, forms or adept powers.
 
-Karma/Aptitude/Bilingual, talent purchases/effects, equipment, finalization and
+Karma/Aptitude/Bilingual, individual talent abilities/effects, equipment, finalization and
 Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current Point Buy increment: exact local source assembly
+## Current talent-budget increment: exact local source assembly
+
+- Android functional commit: `4c3d6ac5`.
+- Core integration: `bb128f8268581d08806c4670dbe953a2457d78b3`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Same local keyless Docker toolchain and explicit source roots, not a new seal.
+
+`core-sr6-talents-2.log`: **155 Core tests pass**. The first Core run passed
+151 before four explicit Sum-to-Ten entitlement cases were added.
+`sr6-native-talents-2.log`: **50 native managed scenarios pass**. New coverage
+tests Priority mystic splits and Point Buy purchases in DE/EN/ES, stale and
+departed controls, no duplicate confirmation, saved budgets and cold reopen.
+The first native run passed all 44 earlier scenarios, then correctly rejected
+the new test's invalid Human/heritage-B seed; the seed was corrected to C.
+That failed run is not counted as a pass. The final run includes saved-budget
+copy that distinguishes stored results from the editable controls below it.
+
+`sr6-talent-debug-build-1.log`: Debug x64 APK, zero warnings/errors, 1m35s.
+Retained `sr6-talent-debug.apk`, SHA-256:
+`447d0a258648e57e9da305c50d0b0deacccc71226e548935226f2ff5806e42f2`.
+
+Actual API36 smoke used a fresh installation and New runner → SR6 → Point Buy,
+not an injected draft. Human/mystic adept with two extra adjustment points
+saved revision 2/2 (18 CP). The attribute page assigned two adjustment points
+to Magic, saved revision 3/3 and exposed the talent step. Talent review showed
+Magic 3, two selected power points at 8 CP each, total 34 CP spent / 66 remaining,
+spell/ritual ceiling 2 and no free spells. Explicit confirmation saved revision
+4/4 with exactly three decisions. No individual abilities or finalization were
+claimed. Force-stop removed PID 4671; launch created PID 5892. The restored
+talent page showed the exact selection and saved budget, with no historical
+Confirm button. Workspace bytes before and after restart were identical:
+`57932cb1825304f7e28e9ff8fe64ee1607eca5fdd1d15502768c7d1641988cf4`.
+
+The packet retains `sr6-talent-*` APK, logs, screenshots, hierarchies and workspace
+copies. Emulator startup had system-process ANRs before installation; closing
+the System UI dialog restored interaction. Early observer failures and one
+null app hierarchy were rejected; no mutation was replayed. The known parent
+navigation issue remains: after saving a child page, return to the runner and
+reopen the foundation. This is a usability follow-up, not a completed wizard
+claim. The owned emulator was stopped. No Play package/upload key, package seal,
+AAB, main merge or Play upload was involved.
+
+## Historical Point Buy increment: exact local source assembly
 
 - Android functional commit: `29e6d179` (pool editor `ca0b8e5a`, then incomplete
   selection feedback corrected at the coordinator boundary).
