@@ -48,18 +48,69 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   exact saved selection. Required autosoft model subjects remain GM-reviewed
   player text, not verified equipment. UI text is DE/EN/ES; catalog names follow
   the owned German 2024 source and are labelled as such.
+- Separate spell/ritual editor after a saved talent budget. Core supplies 73
+  spells and eight rituals, aspect access, a shared slot budget and Point Buy
+  costs. Enchanting aspects can select spells but not rituals; alchemy does not
+  duplicate known-spell purchases. Names retain the labelled German source;
+  controls and validation are DE/EN/ES. Saved formulas do not execute effects.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Karma/Aptitude/Bilingual, spells/rituals/adept powers and runtime talent effects, equipment, finalization and
+Karma/Aptitude/Bilingual, adept powers and runtime talent effects, equipment, finalization and
 Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current complex-form selection increment — 22 September 2026
+## Current spell/ritual selection increment — 22 September 2026
+
+- Android functional commit: `6f83c55b`.
+- Core: `a8deec4a3`, functional `4ac8a21b1`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Local keyless Docker build against explicit source roots, not sealed packages.
+
+`core-sr6-spells-1.log`: **156 Core tests pass**, filter `Sr6Creation`, including
+all 81 catalog entries, shared budgets, aspects, mystic splits, malformed input,
+overspend, cold reopen/replay and forged projections. `sr6-native-spells-1.log`:
+**76 native managed scenarios pass**. Twelve new scenarios cover all three
+methods and Enchanting in DE/EN/ES, actual parent/child navigation, add/remove,
+duplicate rejection, stale confirmation, departed callbacks, CP costs and cold
+reopen. The subsequent English ritual-help clarification changed no behavior;
+it is included in the APK below.
+
+`sr6-spells-debug-build-1.log`: Debug x64 APK, **0 warnings/errors**, 1m36.93s.
+Retained `sr6-spells-debug.apk`, SHA-256:
+`a0cdcc0c992ca20fe32a88a6f26c684e30e0d0a5ccdce31d807c4da0dc28a440`.
+
+Actual API36 smoke used the unchanged saved Point Buy mystic-adept fixture
+`sr6-talent-after-restart.json`, workspace `1924cafdb6ab458cbc105902fe931131`,
+revision 4/4. This was an isolated debug-app fixture copy before first launch,
+not a new New-runner proof. The existing Magic 3 / power-point 2 budget allowed
+two formulas. The visible spell page selected Heilen and the ritual Hüter.
+Core review showed two of two slots, no free slots, formula cost 4 CP, total
+38 CP spent / 62 remaining and separate 50 Karma. Explicit confirmation saved
+revision 5/5 with exactly four decisions.
+
+Force-stop removed PID 4574; launch created PID 5298. Reopened foundation and
+spell page retained both formulas, budget and revision without a historical
+Confirm button. Entire workspace bytes were identical across restart, SHA-256:
+`32dc884e24446005762c1a2acf6d3cf2bdafe8f5dc4929f04587154bac006312`.
+The existing local packet retains `sr6-spells-*` APK, logs, screenshots, fresh
+hierarchies and workspace copies. Emulator system-process ANRs predated app
+installation; closing its System UI dialog cleared the obstruction. Initial
+null-root launch/reopen observations were rejected and checked against separate
+screenshots and resumed Activity state. No write was replayed. Captured fault
+events contain no debug-app crash/ANR. The owned emulator was stopped.
+
+These are draft formula choices, not active spell effects, prepared alchemical
+objects, runtime ritual-prerequisite validation or final characters. Adept
+powers, qualities/Karma, equipment, finalization and the complete Life Path /
+optional Karma flows remain open. No main merge, package seal, upload key,
+release AAB or Play upload was involved.
+
+## Historical complex-form selection increment — 22 September 2026
 
 - Android functional commit: `6c26992c`; review-copy correction: `8aa8b365`.
 - Core: `b2242d1fe`, functional `18b4e317f`.
