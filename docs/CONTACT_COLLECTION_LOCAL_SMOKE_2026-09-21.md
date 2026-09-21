@@ -1,8 +1,8 @@
 # Contact collection — local work in progress, 21 September 2026
 
 Not a release or Play publication receipt. Ordinary pending Contacts pass managed
-integration tests and the real Priority Add/save/process-restart/reopen route.
-Karma-funded/group-contact contribution and the visible Remove route remain unfinished.
+integration tests and the real Priority Add/save/process-restart/reopen and
+Remove routes. Karma-funded/group-contact contribution remains unfinished.
 
 ## Latest implementation and verification
 
@@ -25,7 +25,7 @@ The tests now assert that Load, Preview and Confirm do not execute on the
 caller's UI synchronization context. Phone list/edit/review pages retain an
 appearance-bound snapshot instead of calling Core from render/toggle handlers.
 
-The latest installed Debug APK built with zero warnings/errors:
+The Debug APK used for the Contact Add/Remove smoke built with zero warnings/errors:
 `c24b1748d30c2fbf430f5cadb6b459be54dbb6dfeb189ccb41b5c91c87af4d93`.
 It uses the separate `com.myexternalbrain.chummer.contactsdebug` package.
 An additional early prerequisite guard was added **after** this APK build to
@@ -50,10 +50,13 @@ Its one persisted receipt matches the one displayed before restart:
 Screenshots and the two diagnostic workspace copies are retained in the local
 `contact-collection-tests-20260921.kBEQ7Qw9` packet, not public release assets.
 
-The visible Remove route has not yet been exercised; managed Add/Remove/re-add
-and Career finalization are green. The actual dashboard still rejects finalization
-with `creation-wizard-lifestyles-authority-unavailable`. Do not conflate the
-Core finalization integration tests with a completed visible full Creation route.
+The same Contact was then removed through the real editor, review and explicit
+confirmation: revision 9/9, zero Contacts, the three-point allowance restored,
+receipt `sha256:13dc97c611a5c0cd6b549f8f3296b2de6fa8b76a6a1eb8ddb2577fa167dae8a5`.
+Its empty draft survived the subsequent Debug APK update byte-for-byte.
+The old APK's dashboard rejected finalization with
+`creation-wizard-lifestyles-authority-unavailable`. The corrected APK's visible
+finalization and process-restart result is recorded separately below.
 Android System UI had an ANR during emulator boot, before Chummer started;
 it was dismissed once. Some transition-time UIAutomator reads returned empty;
 screenshots showed the expected pages and no character action was replayed.
@@ -65,10 +68,8 @@ Open implementation work before claiming the full contact workflow:
   paid group choices explicitly rather than treating them as free; normal pool
   overspend also remains blocked. Karma's existing separate contact path remains.
 - Exercise dependency/source-change recovery for already-confirmed Contacts.
-- Finish the visible Remove route. Add/save/process-restart/reopen is now proven
-  for the APK identified above.
-- Connect the pending Lifestyle draft/budget to the actual Priority dashboard;
-  do not remove its readiness blocker merely to enable finalization.
+- Optional non-empty pending Lifestyle purchases are not proven here. The
+  empty-Lifestyle Priority route now passes visible finalization and restart.
 - Refresh package seals only when functional changes are stable. Current local
   builds use explicit source roots and are not new sealed-package authority.
 - No new release AAB has been signed or uploaded.
@@ -80,8 +81,59 @@ basket and disabled its first review. Core accepts an explicit empty Gear draft
 (the actual Contacts integration fixture uses it). `DiffersFromPersisted` now
 permits the initial review without forcing an arbitrary purchase. Three focused
 Gear tests pass; the actual service fixture also checks that a confirmed empty
-basket does not enable another unchanged review. This later fix is not in the
-APK used for the Contact smoke and still needs its affected Android build/smoke.
+basket does not enable another unchanged review.
+
+This fix and the early Contact prerequisite guard were built in Debug APK
+`7c9542611a0d37b57a1f05d76a75fccb88f1da6bb35fc950a7176f926970e511`
+with zero warnings/errors. A second runner was created through the actual
+Priority/Human/Mundane picker and confirmed zero-Karma Resources. Gear then
+offered its first empty review, confirmed zero lines/cost, and saved revision
+4/4 with receipt
+`sha256:34f8e8618ba475bb43d9dc07acf771ccbdac61c9669d0c538b3c8b4194b56016`.
+After the next Debug APK update and process launch, its saved workspace remained
+byte-identical, SHA-256
+`fd43952da35c919cfbf6e30c3f00abe6d8ca9b20531806e426775e81eae6996a`.
+
+## Lifestyle overview wiring correction
+
+Android registered the separate Lifestyle editor but omitted Lifestyle reads
+from `WorkspaceOverviewStateFactory`. Core now supplies a read-only
+`IOwnerBoundCharacterCreationLifestylesReader`, using its existing synchronous
+owner lease and scoped workspace store. Presentation uses the exact displayed
+owner stamp and never falls back to unscoped reads for a bound overview.
+Android and its real-runtime fixture both inject this reader.
+
+Focused tests cover local and linked reads, same-ID foreign workspace denial,
+stale/ABA stamps, an untrusted local-owner name, no writes, no leaked leases,
+and the Presentation missing-reader/stale-display no-fallback behavior.
+Both real Priority and Sum-to-Ten fixtures now assert the production dashboard
+has `CanFinalize=true` before running Contact-consuming Career finalization.
+The latest focused run (`native-lifestyles-overview-4.log`) and affected managed
+build pass with zero warnings/errors.
+
+The corrected Debug APK is
+`9aab1ce4e45957ff0b3b715a44ecce9f9c5c9a2b34d8048946fb9443c7984ea2`
+(zero warnings/errors, local Docker). It is installed in the same isolated
+Debug package. Core source commit
+`edb6ab441`, UI `ea9b6839b`, Android `5f54f3d7` contain the correction.
+These are local source commits, not new package seals or Play delivery evidence.
+
+On that APK the original revision-9 runner exposed Core's ready whole-build
+review. The user route entered the explicit starting-cash test value 3, reviewed
+the complete delta (7 Karma carryover, 60 starting cash, 5,060 total nuyen), and
+confirmed once. Core saved Career at 10/10 with receipt
+`sha256:764787ca0c8de4ebbe4f8096900ab0c8d89ef9a00e1b412a5e647f368b78a3b5`.
+The consumed empty Contact draft and both original Add/Remove receipts were
+archived, and no active pending Contact draft remained.
+
+After opening Career, PID 9751 was force-stopped and verified absent. A normal
+launcher start created PID 10420 and restored the Career screen with the same
+creation receipt. Workspace bytes were identical before restart and after the
+visible UI restoration, SHA-256
+`f69d652936cceacf151c11aafefeb466a2fc05656cd828f83d9f33eeef8547b7`.
+The revision stayed 10/10 and exactly one finalization receipt remained.
+The owned temporary emulator was stopped after collecting screenshots and
+workspace comparisons; its AVD/drafts remain available for later work.
 
 ## Historical earlier verification
 
