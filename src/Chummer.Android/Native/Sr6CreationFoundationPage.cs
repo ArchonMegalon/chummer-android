@@ -368,7 +368,8 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (quote.TalentAllocation is { } talent)
             {
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(talent)));
-                _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
+                if (_talentMode)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
             }
             if (quote.ComplexForms is { } forms)
             {

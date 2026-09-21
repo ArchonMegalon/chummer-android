@@ -465,6 +465,8 @@ internal static partial class AfterRunAuthorityHarness
                         "Native page invented a non-Core form catalog.");
                     await Add("editor");
                     await Click("preview");
+                    Require(!IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.Text("TalentHelp")),
+                        "Complex-form review must not claim this is the budget-only page.");
                     var oldConfirm = Element<Button>("confirm");
                     await Add("cleaner");
                     oldConfirm.IsEnabled = true;
