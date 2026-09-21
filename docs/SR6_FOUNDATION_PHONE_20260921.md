@@ -42,6 +42,10 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   aspect selection, mystic-adept priority split and whole-power-point CP purchase
   for Point Buy. Saved budgets are distinguished from unconfirmed edits. This
   does not select or learn individual spells, rituals, forms or adept powers.
+- Returning from a saved child refreshes a clean parent from current Core state.
+  Unsaved inputs are retained only for the same binding; a conflicting revision
+  or lost dirty baseline blocks further editing. Old confirmation/navigation
+  callbacks and owner A→B→A transitions remain rejected.
 
 Karma/Aptitude/Bilingual, individual talent abilities/effects, equipment, finalization and
 Career entry are still missing. Point Buy pool purchases are a partial draft,
@@ -49,7 +53,51 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current talent-budget increment: exact local source assembly
+## Current parent-return correction — 22 September 2026
+
+- Android functional commit: `46a836a59a3c95b1d1cc346b8716326899c49624`.
+- Core unchanged: `bb128f8268581d08806c4670dbe953a2457d78b3`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Local keyless Docker build against explicit source roots; no package reseal.
+
+`sr6-native-parent-return-2.log`: **55 native managed scenarios pass**, including
+actual parent/child navigation, clean refresh after both attribute and talent
+saves, stale callbacks, preserved same-revision edits, dirty revision conflicts,
+failed-load fencing and full owner A→B→A rejection. The first run passed 54
+before the failed-load regression was added. Unchanged Core results below are
+reused, not reported as a new run.
+
+`sr6-parent-debug-build-1.log`: Debug x64 APK, zero warnings/errors, 1m29s.
+Retained `sr6-parent-debug.apk`, SHA-256:
+`7a9770354d8370a47763fa80d0b9c2c5a8df76d6813fa0a7362509629627d959`.
+
+Actual API36 smoke began with a fresh debug install and New runner → SR6 →
+Point Buy → Human/mystic adept. Foundation saved revision 2/2; the attribute
+page explicitly saved its default allocation at revision 3/3. Back returned to
+the same usable foundation, showing revision 3/3. Its talent button opened the
+current budget directly, without the former runner/reopen detour. One selected
+whole power point cost 8 CP; review showed Magic 1, total 18 CP spent / 82
+remaining, separate 50 Karma and no remaining spell slots. Explicit confirmation
+saved revision 4/4. Back again returned to a usable foundation at revision 4/4.
+
+Force-stop removed PID 4744; launch created PID 5876. Reopened foundation and
+talent controls retained revision 4/4 and power-point selection 1, with no
+historical Confirm button. Exactly three decisions and the entire workspace
+bytes were unchanged across restart, SHA-256:
+`580e033908d5b25d716d48f84d616563797450cf0bbbe4e0656fcdac981cc983`.
+The local packet retains `sr6-parent-*` APK, logs, screenshots, fresh hierarchies
+and before/after workspace copies. Startup system-process ANRs preceded app
+installation; closing the System UI dialog allowed interaction. Initial observer
+exit 137/null hierarchy were rejected. No mutation was replayed. Retained fault
+events contain no crash or ANR for the debug app. The owned emulator was stopped.
+
+This resolves the parent-return limitation recorded in older sections below.
+It does not complete any SR6 creation method: individual abilities, further
+creation domains and finalization remain open. Life Path and optional Karma
+remain bootstrap-only. No user Play package, upload key, AAB, main merge or Play
+upload was involved.
+
+## Historical talent-budget increment: exact local source assembly
 
 - Android functional commit: `4c3d6ac5`.
 - Core integration: `bb128f8268581d08806c4670dbe953a2457d78b3`.
