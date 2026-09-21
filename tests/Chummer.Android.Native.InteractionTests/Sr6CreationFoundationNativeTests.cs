@@ -411,6 +411,136 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
+
+            // Reuse the actual parent page, rather than constructing a replacement
+            // after each child save. Unsaved input must not be rebased onto new state.
+            {
+                var owners = new ControlledLinkedOwner();
+                Sr6Probe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                    productionCreationOverview: true, linkedOwners: owners, sr6Decorator: actual => probe = new(actual, ui));
+                await Bootstrap(runtime, "PointBuy");
+                var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                var parent = new Sr6CreationFoundationPage(runtime.Coordinator);
+                var navigation = new NavigationPage(new ContentPage());
+                await navigation.PushAsync(parent, false);
+                var window = new Window(navigation);
+                using var parentAlerts = new IssuedPageAlerts(parent, window);
+                await parentAlerts.PreflightAsync();
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                T Element<T>(ContentPage page, string key) where T : Element => IssuedElements(page).OfType<T>()
+                    .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                Task Click(ContentPage page, string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(page, key)).SendClicked());
+                Element<Picker>(parent, "point-buy-adjustment").SelectedIndex = 2;
+                Element<Picker>(parent, "metatype").SelectedIndex = 0;
+                Element<Picker>(parent, "talent").SelectedIndex = 4;
+                await Click(parent, "preview");
+                var oldConfirm = Element<Button>(parent, "confirm");
+                await Click(parent, "confirm");
+                var oldPicker = Element<Picker>(parent, "metatype");
+                var oldAttributeOpen = Element<Button>(parent, "attributes");
+                await Click(parent, "attributes");
+                var attributes = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                Require(!ReferenceEquals(parent, attributes), "Attribute navigation did not push a child.");
+                IssuedPageLifecycle(parent, "OnDisappearing");
+                using var attributeAlerts = new IssuedPageAlerts(attributes, window);
+                await attributeAlerts.PreflightAsync();
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributes, "OnAppearing"));
+                Element<Picker>(attributes, "adjustment-Magic").SelectedIndex = 2;
+                await Click(attributes, "preview");
+                await Click(attributes, "confirm");
+                IssuedPageLifecycle(attributes, "OnDisappearing");
+                await navigation.PopAsync(false);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                Require(Element<Button>(parent, "talent-budget").IsEnabled
+                    && Element<Button>(parent, "knowledge").IsEnabled
+                    && Element<Label>(parent, "status").Text == string.Empty,
+                    "Returning from a saved child halted the clean parent.");
+                int pageCount = navigation.Navigation.NavigationStack.Count;
+                oldPicker.SelectedIndex = 1;
+                oldAttributeOpen.IsEnabled = true;
+                await ui.BeginAsyncVoid(() => ((IButtonController)oldAttributeOpen).SendClicked());
+                oldConfirm.IsEnabled = true;
+                await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                Require(probe!.Confirms == 2 && navigation.Navigation.NavigationStack.Count == pageCount
+                    && Element<Picker>(parent, "metatype").SelectedIndex == 0,
+                    "Returning made old parent controls current again.");
+                await Click(parent, "talent-budget");
+                var talent = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                IssuedPageLifecycle(parent, "OnDisappearing");
+                using var talentAlerts = new IssuedPageAlerts(talent, window);
+                await talentAlerts.PreflightAsync();
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(talent, "OnAppearing"));
+                Element<Picker>(talent, "talent-power-points").SelectedIndex = 2;
+                await Click(talent, "preview");
+                await Click(talent, "confirm");
+                IssuedPageLifecycle(talent, "OnDisappearing");
+                await navigation.PopAsync(false);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                await Click(parent, "preview");
+                Require(IssuedElements(parent).OfType<Label>().Any(item => item.Text?.Contains("Power-point budget 2", StringComparison.Ordinal) == true),
+                    "Parent kept the old selection and lost its child's saved talent allocation.");
+                Require(probe.Confirms == 3, "Parent refresh replayed a child write.");
+                Console.WriteLine("PASS SR6 clean parent child-save return");
+
+                Element<Picker>(parent, "metatype").SelectedIndex = 1;
+                await Click(parent, "preview");
+                var dirtyConfirm = Element<Button>(parent, "confirm");
+                IssuedPageLifecycle(parent, "OnDisappearing");
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                Require(Element<Picker>(parent, "metatype").SelectedIndex == 1
+                    && !IssuedElements(parent).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                    "Same-revision return discarded edits or retained old confirmation authority.");
+                Console.WriteLine("PASS SR6 unsaved same-revision return");
+
+                IssuedPageLifecycle(parent, "OnDisappearing");
+                var loaded = await runtime.Coordinator.LoadSr6FoundationAsync();
+                var changed = await runtime.Coordinator.PreviewSr6FoundationAsync(loaded.Value!,
+                    loaded.Value!.Selection!.Selection with { Skills = new([]) });
+                Require(changed.Value is not null
+                    && (await runtime.Coordinator.ConfirmSr6FoundationAsync(changed.Value, true)).Commit is not null,
+                    "External revision fixture did not save.");
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                Require(Element<Label>(parent, "status").Text == Sr6CreationCopy.Text("Stale")
+                    && !IssuedElements(parent).OfType<Picker>().Any(), "Unsaved parent was silently rebased onto a newer revision.");
+                dirtyConfirm.IsEnabled = true;
+                await ui.BeginAsyncVoid(() => ((IButtonController)dirtyConfirm).SendClicked());
+                var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Require(probe.Confirms == 4 && saved.ContentRevision == 5 && saved.SavedRevision == 5
+                    && saved.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Command.Selection.MetatypeId == "human",
+                    "Conflicting dirty parent changed the durable runner.");
+                IssuedPageLifecycle(parent, "OnDisappearing");
+                Console.WriteLine("PASS SR6 dirty parent revision conflict");
+
+                var failedLoad = new Sr6CreationFoundationPage(runtime.Coordinator);
+                await navigation.PushAsync(failedLoad, false);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(failedLoad, "OnAppearing"));
+                Element<Picker>(failedLoad, "metatype").SelectedIndex = 1;
+                IssuedPageLifecycle(failedLoad, "OnDisappearing");
+                probe.FailNextLoad = true;
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(failedLoad, "OnAppearing"));
+                Require(!probe.FailNextLoad && !IssuedElements(failedLoad).OfType<Picker>().Any(),
+                    "A failed reload left dirty controls editable.");
+                IssuedPageLifecycle(failedLoad, "OnDisappearing");
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(failedLoad, "OnAppearing"));
+                Require(!IssuedElements(failedLoad).OfType<Picker>().Any() && probe.Confirms == 4,
+                    "Dirty inputs recovered after losing their editing baseline.");
+                IssuedPageLifecycle(failedLoad, "OnDisappearing");
+                Console.WriteLine("PASS SR6 dirty parent failed-load fencing");
+
+                var clean = new Sr6CreationFoundationPage(runtime.Coordinator);
+                await navigation.PushAsync(clean, false);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(clean, "OnAppearing"));
+                IssuedPageLifecycle(clean, "OnDisappearing");
+                owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser);
+                await runtime.Presenter.LoadAsync(id, default);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(clean, "OnAppearing"));
+                Require(!IssuedElements(clean).OfType<Picker>().Any()
+                    && probe.Confirms == 4, "A clean parent adopted an A-to-B-to-A owner transition.");
+                IssuedPageLifecycle(clean, "OnDisappearing");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS SR6 clean parent owner-ABA return");
+            }
         });
 
         static async Task Bootstrap(NativeRewardRuntime runtime, string method)
@@ -430,10 +560,19 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class Sr6Probe(ISr6CreationFoundationService actual, SynchronizationContext ui) : ISr6CreationFoundationService
     {
         internal int Confirms;
+        internal bool FailNextLoad;
         internal Action? AfterLoad, AfterPreview, AfterConfirm;
         private void Background() => Require(!ReferenceEquals(SynchronizationContext.Current, ui), "SR6 Core call blocked the UI context.");
         public CharacterCreationFoundationResult<Sr6CreationFoundationState> Load(OwnerContextStamp owner, CharacterWorkspaceId id)
-        { Background(); var result = actual.Load(owner, id); AfterLoad?.Invoke(); return result; }
+        {
+            Background();
+            if (FailNextLoad)
+            {
+                FailNextLoad = false;
+                return new(CharacterCreationFoundationOutcomes.Blocked, null, [Sr6CreationFoundationBlockers.StaleBinding]);
+            }
+            var result = actual.Load(owner, id); AfterLoad?.Invoke(); return result;
+        }
         public CharacterCreationFoundationResult<Sr6CreationFoundationPreview> Preview(OwnerContextStamp owner,
             Sr6CreationFoundationBinding binding, Sr6CreationFoundationSelection selection)
         { Background(); var result = actual.Preview(owner, binding, selection); AfterPreview?.Invoke(); return result; }

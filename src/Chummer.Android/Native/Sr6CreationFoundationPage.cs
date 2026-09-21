@@ -22,7 +22,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Sr6CreationFoundationCommit? _commit;
     private IReadOnlyList<string> _blockers = [];
     private long _render;
-    private bool _busy, _halted;
+    private bool _busy, _halted, _hasUnconfirmedChanges;
     private Label? _status;
     private Button? _confirm;
     private Button? _attributes;
@@ -74,12 +74,27 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         var result = await Coordinator.LoadSr6FoundationAsync(cancellationToken, Current);
         if (!Current()) return;
         _preview = null;
-        if (result.Value is not { } state) { _blockers = result.Blockers; _state = null; return; }
-        if (previous is not null && previous.Binding != state.Binding)
+        if (result.Value is not { } state)
+        {
+            _blockers = result.Blockers;
+            _state = null;
+            // Do not lose the editing baseline and later adopt a new revision
+            // for the still-unconfirmed inputs after a transient load failure.
+            if (_hasUnconfirmedChanges) _halted = true;
+            return;
+        }
+        if (previous is not null && previous.Binding != state.Binding && _hasUnconfirmedChanges)
         { _halted = true; _blockers = [Sr6CreationFoundationBlockers.StaleBinding]; return; }
         _state = state;
-        if (_selection is null && state.Selection is { } saved)
-            _selection = saved.Selection with { Assignments = saved.Selection.Assignments.ToArray() };
+        if (!_hasUnconfirmedChanges)
+        {
+            // A child may have saved a newer revision while this page was away.
+            // Replace clean inputs from the newly issued Core state, never rebase
+            // unsaved edits or carry a historical confirmation across appearances.
+            _selection = state.Selection is { } saved
+                ? saved.Selection with { Assignments = saved.Selection.Assignments.ToArray() } : null;
+            _commit = null;
+        }
         _blockers = [];
     }
 
@@ -369,6 +384,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                         _blockers = result.Blockers;
                         _commit = result.Commit;
                         _state = result.State;
+                        if (result.Commit is not null && result.State?.Selection is { } saved)
+                        {
+                            _selection = saved.Selection with { Assignments = saved.Selection.Assignments.ToArray() };
+                            _hasUnconfirmedChanges = false;
+                        }
                         // Unknown outcomes are resolved by reopening, never a new automatic write.
                         _halted = result.State is null;
                     }
@@ -385,6 +405,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null);
             if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null };
             _selection = selection;
+            _hasUnconfirmedChanges = true;
             _preview = null;
             _commit = null;
             _blockers = [];
