@@ -215,6 +215,31 @@ alternatives; selected reviews still come first and automation identities and
 command bindings do not change. This is display ordering, not Android permission
 to finish or a shortcut around explicit preview/confirmation.
 
+The corrected native smoke passed on Android `62bae222`, Core `9e6ab8d6a`,
+and UI `578f1658e`: debug APK SHA-256
+`30abf132b695536bf00bfc505126c01aa002937be1281d2d0bafa8f1510e506f`.
+`debug-origin-finish-order-1.log` reports zero warnings/errors; the managed
+ordering/reader regressions and 227 keys in each of DE/EN/ES passed.
+
+The actual API 36 route selected Elf / Trans-Polar Aleut, Military Brat,
+Isolated Rural, and Skipped Further Education. Finish appeared first, opened
+an explicit zero-cost review, and was confirmed once. The reader reopened at
+revision 6/6 with five chapters and an honest draft-only completion label.
+Character XML remained unchanged by selection finish; it did not enter Career.
+
+After force-stop (PID 6224), only this synthetic debug runner's phone timeline
+was moved to a retained backup. A new process (PID 6573) reopened the runner
+and reconstructed the reader from workspace-owned chapters without confirmation.
+Both files were byte-identical before and after this recovery:
+
+- workspace SHA-256 `175a1d684351a9866ea6bd37b760f82d6cdab838525545d3ff8aa300019eee3c`;
+- timeline SHA-256 `07da60aa35b448cdf2abc02d7c8215aae298a1b16a57ec76984197bc00be77ee`.
+
+The checkpoint remained `aeb42f2957ab0ab4bdd3b624de85f12fe137665b6caf59ae7bb4faf7f796d4c0`,
+with five chapters and no pending preview. `origin-finish-after-recovery.png`
+and the before/after files remain in the local packet. The owned emulator was
+stopped. No Play app, user character, signing key or publication was changed.
+
 ## Separate live First Book canary
 
 With explicit user authorization to spend test credits, the dedicated browser
