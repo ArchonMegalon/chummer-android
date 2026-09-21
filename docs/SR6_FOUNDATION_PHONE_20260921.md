@@ -41,19 +41,77 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 - Talent planning after saved attributes: Core-derived free spell/form budgets,
   aspect selection, mystic-adept priority split and whole-power-point CP purchase
   for Point Buy. Saved budgets are distinguished from unconfirmed edits. This
-  does not select or learn individual spells, rituals, forms or adept powers.
+  budget page does not select individual abilities.
+- Separate Technomancer complex-form editor after a saved talent budget. Core
+  supplies 71 core-book form/program variants, source anchors, slot limits and
+  Point Buy costs. Add/remove and explicit review/confirmation preserve the
+  exact saved selection. Required autosoft model subjects remain GM-reviewed
+  player text, not verified equipment. UI text is DE/EN/ES; catalog names follow
+  the owned German 2024 source and are labelled as such.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Karma/Aptitude/Bilingual, individual talent abilities/effects, equipment, finalization and
+Karma/Aptitude/Bilingual, spells/rituals/adept powers and runtime talent effects, equipment, finalization and
 Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current parent-return correction — 22 September 2026
+## Current complex-form selection increment — 22 September 2026
+
+- Android functional commit: `6c26992c`; review-copy correction: `8aa8b365`.
+- Core: `b2242d1fe`, functional `18b4e317f`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Local keyless Docker build against explicit source roots, not sealed packages.
+
+`core-sr6-forms-1.log`: **145 Core tests pass**, filter `Sr6Creation`, including
+all offered variants, three methods, malformed/duplicate input, subject rules,
+budget exhaustion, reduced-Resonance conflicts and forged saved projections.
+This is a different subset from the historical 155-test run, not a regression
+in its pass count. `sr6-native-forms-3.log`: **64 native managed scenarios pass**,
+including nine form flows across Priority/Sum-to-Ten/Point Buy and DE/EN/ES.
+Those exercise invalid subjects, duplicate forms, stale confirms, departed
+callbacks, correct costs and cold reopen. Run 1 stopped at a test helper that
+incorrectly awaited a synchronous Add callback; it is not counted as passing.
+
+`sr6-forms-debug-build-1.log`: Debug x64 APK, **0 warnings/errors**, 1m40.94s.
+Retained `sr6-forms-debug.apk`, SHA-256:
+`9d119fdd35b5fed1a7c5fcc447a8e8105702f5ad25c2750f91992b3c78d7c970`.
+
+Actual API36 smoke used the unchanged saved Point Buy Technomancer fixture
+`sr6-point-buy-after-restart.json`, revision 2/2, workspace
+`eb614706663e496c8f34b208bfd9f3a9`. This was a private debug-app fixture import,
+not a new New-runner proof. Default attributes saved revision 3/3; the talent
+budget saved 4/4. The now-enabled complex-form page selected Editor and Reiniger.
+Core review showed Resonance 1, two of two slots, no free slots, 4 CP for forms,
+49 total CP spent / 51 remaining and separate 50 Karma. Explicit confirmation
+saved revision 5/5 with exactly four decisions.
+
+Force-stop removed PID 4709; launch created PID 5480. Reopened forms retained
+both selections, cost, revision and no historical Confirm button. The entire
+workspace was byte-identical across restart, SHA-256:
+`b7eded78a9151439b1f69b986bfe874d7a7bb93999367ae2caf5ebe28a00a2b2`.
+The existing local packet retains `sr6-forms-*` screenshots, fresh hierarchies,
+workspace copies, APK and logs. Emulator system-process ANRs/crashes preceded
+app installation. Closing its System UI dialog enabled interaction. Transient
+null-root reads during initial launch/reopen were rejected; screenshots and
+resumed-Activity state distinguished them from product failures. No write was
+replayed, and captured fault events contain no debug-app crash/ANR. The owned
+emulator was stopped.
+
+The smoke exposed a misleading budget-page-only hint in the shared form
+review. A subsequent narrow UI condition shows that hint only on the talent
+budget page; `sr6-native-forms-4.log` passes all **64 scenarios**, including the
+new hint regression in all nine form flows. The APK evidence above remains
+bound to `6c26992c`, not that later copy-only change. The saved
+selection, calculation and persistence paths are unchanged.
+
+These are stored draft choices, not active Matrix effects or final characters.
+No main merge, package seal, upload key, release AAB or Play upload was involved.
+
+## Historical parent-return correction — 22 September 2026
 
 - Android functional commit: `46a836a59a3c95b1d1cc346b8716326899c49624`.
 - Core unchanged: `bb128f8268581d08806c4670dbe953a2457d78b3`.
