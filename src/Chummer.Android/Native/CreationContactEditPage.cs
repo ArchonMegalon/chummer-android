@@ -8,6 +8,7 @@ namespace Chummer.Android.Native;
 public sealed class CreationContactEditPage : NativePageBase
 {
     private readonly Guid _contactId;
+    private readonly bool _adding;
     private readonly CreationContactsPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -19,12 +20,13 @@ public sealed class CreationContactEditPage : NativePageBase
 
     internal CreationContactEditPage(
         RunnerSessionCoordinator coordinator,
-        Guid contactId) : base(coordinator)
+        Guid contactId, bool adding = false) : base(coordinator)
     {
         if (contactId == Guid.Empty)
             throw new ArgumentException("A stable Contact identity is required.", nameof(contactId));
         _contactId = contactId;
-        Title = "Edit creation contact";
+        _adding = adding;
+        Title = adding ? CreationFlowStrings.Get("Contacts.Add", "Add contact") : "Edit creation contact";
         AutomationId = "creation-contact-edit-page";
         Content = new ScrollView { Content = _body };
     }
@@ -38,7 +40,8 @@ public sealed class CreationContactEditPage : NativePageBase
         if (!string.Equals(load.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state
             || !CreationContactsPhoneAuthority.IsReady(state, Coordinator.State)
-            || CreationContactsPhoneAuthority.ResolveUniqueContact(state, _contactId) is not { } contact)
+            || (_adding ? CreationContactsPhoneAuthority.NewContact(state, _contactId)
+                : CreationContactsPhoneAuthority.ResolveUniqueContact(state, _contactId)) is not { } contact)
         {
             AddBlockers(
                 "Contact authority unavailable",
@@ -55,6 +58,8 @@ public sealed class CreationContactEditPage : NativePageBase
                 ? "Unnamed Contact"
                 : contact.Identity.Name));
         AddBinding(state, contact);
+        if (_adding)
+            AddPreviewAction(state, contact);
         AddFieldProjection(state, contact);
         if (_prepareBlockers.Count > 0)
         {
@@ -63,7 +68,19 @@ public sealed class CreationContactEditPage : NativePageBase
                 _prepareBlockers,
                 "creation-contact-preview-blockers");
         }
-        AddPreviewAction(state, contact);
+        if (!_adding)
+            AddPreviewAction(state, contact);
+        if (!_adding && contact.CanDelete)
+        {
+            Button remove = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Contacts.Remove", "Remove contact"));
+            remove.AutomationId = "creation-contact-remove";
+            remove.Clicked += async (_, _) => await ShowPreviewAsync(new CharacterCreationContactEditInput(_contactId)
+            {
+                ChangeKind = CharacterCreationContactChangeKind.Remove,
+                DisplayOwnerContext = state.DisplayOwnerContext
+            });
+            _body.Add(remove);
+        }
     }
 
     private void AddBinding(
@@ -91,8 +108,10 @@ public sealed class CreationContactEditPage : NativePageBase
             return;
         }
 
-        _body.Add(NativeTheme.Eyebrow("Nineteen typed fields"));
-        foreach (CharacterCreationContactFieldAuthority field in contact.Fields)
+        string[] firstFields = [CharacterCreationContactFieldIds.Name, CharacterCreationContactFieldIds.Role,
+            CharacterCreationContactFieldIds.Connection, CharacterCreationContactFieldIds.Loyalty];
+        foreach (CharacterCreationContactFieldAuthority field in contact.Fields
+            .OrderBy(field => Array.IndexOf(firstFields, field.FieldId) is int index && index >= 0 ? index : firstFields.Length))
         {
             VerticalStackLayout card = new() { Spacing = 7 };
             card.Add(NativeTheme.FieldLabel(field.Label));
@@ -227,7 +246,7 @@ public sealed class CreationContactEditPage : NativePageBase
     {
         _previewButton = NativeTheme.PrimaryButton("Preview exact change");
         _previewButton.AutomationId = "creation-contact-preview";
-        _previewButton.IsEnabled = _draft.HasChanges(state, contact);
+        _previewButton.IsEnabled = _adding || _draft.HasChanges(state, contact);
         _previewButton.Clicked += async (_, _) => await PreparePreviewAsync(state, contact);
         _body.Add(_previewButton);
 
@@ -244,7 +263,7 @@ public sealed class CreationContactEditPage : NativePageBase
         CharacterCreationContactProjection contact)
     {
         if (_previewButton is not null)
-            _previewButton.IsEnabled = _draft.HasChanges(state, contact);
+            _previewButton.IsEnabled = _adding || _draft.HasChanges(state, contact);
     }
 
     private async Task PreparePreviewAsync(
@@ -252,7 +271,7 @@ public sealed class CreationContactEditPage : NativePageBase
         CharacterCreationContactProjection contact)
     {
         _prepareBlockers = [];
-        CharacterCreationContactEditInput? input = _draft.ToInput(state, contact);
+        CharacterCreationContactEditInput? input = _draft.ToInput(state, contact, _adding);
         if (input is null)
         {
             _prepareBlockers = [CharacterCreationContactsBlockers.MutationEmpty];
@@ -260,6 +279,11 @@ public sealed class CreationContactEditPage : NativePageBase
             return;
         }
 
+        await ShowPreviewAsync(input);
+    }
+
+    private async Task ShowPreviewAsync(CharacterCreationContactEditInput input)
+    {
         var result = Coordinator.PrepareCreationContact(input);
         if (!string.Equals(result.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
             || result.State is not { } preparedState

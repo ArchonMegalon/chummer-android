@@ -138,11 +138,17 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             "CharacterCreationContactFieldIds.All",
             "field.IsEditable",
             "field.LegalOptions",
-            "_draft.ToInput(state, contact)",
+            "_draft.ToInput(state, contact, _adding)",
             'AutomationId = "creation-contact-preview"',
             "new CreationContactPreviewPage(",
         ):
             self.assertIn(marker, edit)
+
+        self.assertIn('AutomationId = "creation-contacts-add"', listing)
+        self.assertIn('AutomationId = "creation-contact-remove"', edit)
+        self.assertIn("CharacterCreationContactChangeKind.Remove", edit)
+        self.assertIn("DisplayOwnerContext = state.DisplayOwnerContext", edit)
+        self.assertIn("Contacts.RemoveWarning", preview)
 
         for marker in (
             'AutomationId = "creation-contact-preview-page"',

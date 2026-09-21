@@ -967,7 +967,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     .OrderBy(static blocker => blocker, StringComparer.Ordinal)
                     .ToArray());
         }
-        if (CreationContactsPhoneAuthority.ResolveUniqueContact(state, input.ContactId) is null)
+        if (input.ChangeKind == CharacterCreationContactChangeKind.Add
+            ? CreationContactsPhoneAuthority.NewContact(state, input.ContactId) is null
+            : CreationContactsPhoneAuthority.ResolveUniqueContact(state, input.ContactId) is null)
         {
             return new CharacterCreationContactsInteractionPrepareResult(
                 CharacterCreationContactOutcomes.Invalid,

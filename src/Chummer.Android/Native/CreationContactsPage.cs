@@ -32,8 +32,7 @@ public sealed class CreationContactsPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Contacts.Intro",
-                "Choose an existing Contact and preview one rules-authoritative change. "
-                + "Pets, Enemies, and Contact add/delete remain outside this surface."),
+                "Add, edit or remove a Contact. Review Core-calculated costs before confirming. Pets and Enemies use separate workflows."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.NavigationRow(
             CreationFlowStrings.Get("Lifestyles.Heading", "Lifestyles"),
@@ -91,6 +90,14 @@ public sealed class CreationContactsPage : NativePageBase
             return;
         }
 
+        if (state.NewContactTemplate is not null)
+        {
+            Button add = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Contacts.Add", "Add contact"));
+            add.AutomationId = "creation-contacts-add";
+            add.Clicked += async (_, _) => await Navigation.PushAsync(
+                new CreationContactEditPage(Coordinator, Guid.NewGuid(), adding: true));
+            _body.Add(add);
+        }
         AddContacts(state);
         AddSourceAuthority(state);
     }
@@ -155,7 +162,7 @@ public sealed class CreationContactsPage : NativePageBase
             Label empty = NativeTheme.Body(
                 CreationFlowStrings.Get(
                     "Contacts.Empty",
-                    "No existing Contact is projected. Adding Contacts is not yet available here."),
+                    "No contacts yet. Add someone your runner can turn to."),
                 NativeTheme.Muted);
             empty.AutomationId = "creation-contacts-empty";
             _body.Add(NativeTheme.Card(empty));

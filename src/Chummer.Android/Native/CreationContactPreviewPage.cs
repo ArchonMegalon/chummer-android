@@ -33,7 +33,15 @@ public sealed class CreationContactPreviewPage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Creation Contact change"));
+        _body.Add(NativeTheme.Title(_prepared.Edit.ChangeKind switch
+        {
+            CharacterCreationContactChangeKind.Add => CreationFlowStrings.Get("Contacts.Add", "Add contact"),
+            CharacterCreationContactChangeKind.Remove => CreationFlowStrings.Get("Contacts.Remove", "Remove contact"),
+            _ => "Creation Contact change"
+        }));
+        if (_prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Remove)
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Contacts.RemoveWarning",
+                "This removes the selected contact, including its notes and attached data. Nothing is removed until you confirm."), NativeTheme.Danger));
         AddBinding();
         AddTargetDiff();
         AddBudgets();
@@ -65,6 +73,11 @@ public sealed class CreationContactPreviewPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 7 };
         card.Add(NativeTheme.Eyebrow("Target before / after"));
+        if (_prepared.Edit.ChangeKind != CharacterCreationContactChangeKind.Edit)
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Contacts.Presence", "Contact entry"),
+                _prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Add
+                    ? CreationFlowStrings.Get("Contacts.AddDelta", "Not present → added")
+                    : CreationFlowStrings.Get("Contacts.RemoveDelta", "Present → removed")));
         card.Add(NativeTheme.Metric("Contact", _prepared.ContactBefore.ContactId.ToString("D")));
         card.Add(NativeTheme.Metric(
             "Name",
@@ -159,7 +172,12 @@ public sealed class CreationContactPreviewPage : NativePageBase
             _prepared.WritePlan.PreservesUntouchedSiblingState ? "preserved" : "not proven"));
         preservation.Add(NativeTheme.Metric(
             "Nested target state",
-            _prepared.WritePlan.PreservesNestedState ? "preserved" : "not proven"));
+            _prepared.WritePlan.PreservesNestedState ? "preserved" : _prepared.Edit.ChangeKind switch
+            {
+                CharacterCreationContactChangeKind.Add => CreationFlowStrings.Get("Contacts.AddDelta", "Not present → added"),
+                CharacterCreationContactChangeKind.Remove => CreationFlowStrings.Get("Contacts.RemoveDelta", "Present → removed"),
+                _ => "not proven"
+            }));
         preservation.Add(NativeTheme.Metric(
             "Content before",
             _prepared.WritePlan.ContentDigestBefore));

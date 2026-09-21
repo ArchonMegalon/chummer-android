@@ -165,12 +165,13 @@ internal sealed class CreationContactsPhoneDraft
 
     public CharacterCreationContactEditInput? ToInput(
         CharacterCreationContactsInteractionState state,
-        CharacterCreationContactProjection contact)
+        CharacterCreationContactProjection contact,
+        bool adding = false)
     {
-        if (!HasChanges(state, contact))
+        if (!Matches(state, contact) || !adding && !HasChanges(state, contact))
             return null;
 
-        bool IdentityChanged = s_IdentityFieldIds.Any(fieldId =>
+        bool IdentityChanged = adding || s_IdentityFieldIds.Any(fieldId =>
             !string.Equals(_values[fieldId], _original[fieldId], StringComparison.Ordinal));
         CharacterCreationContactIdentity? identity = IdentityChanged
             ? new CharacterCreationContactIdentity(
@@ -199,7 +200,8 @@ internal sealed class CreationContactsPhoneDraft
             Family: ChangedBool(CharacterCreationContactFieldIds.Family),
             Blackmail: ChangedBool(CharacterCreationContactFieldIds.Blackmail))
         {
-            DisplayOwnerContext = _ownerContext
+            DisplayOwnerContext = _ownerContext,
+            ChangeKind = adding ? CharacterCreationContactChangeKind.Add : CharacterCreationContactChangeKind.Edit
         };
     }
 
@@ -330,6 +332,17 @@ internal static class CreationContactsPhoneAuthority
         return matches is [{ } contact] && IsExactContact(contact) ? contact : null;
     }
 
+    public static CharacterCreationContactProjection? NewContact(
+        CharacterCreationContactsInteractionState state, Guid id)
+    {
+        if (id == Guid.Empty || state.NewContactTemplate is not { ContactId: var templateId } template
+            || templateId != Guid.Empty || state.Contacts.Any(contact => contact.ContactId == id))
+            return null;
+        var draft = template with { ContactId = id, ContactDigest = string.Empty };
+        draft = draft with { ContactDigest = CharacterCreationFinalizationDigest.Compute(draft) };
+        return IsExactContact(draft) ? draft : null;
+    }
+
     public static bool IsExactContact(CharacterCreationContactProjection contact)
     {
         if (contact.ContactId == Guid.Empty
@@ -388,8 +401,7 @@ internal static class CreationContactsPhoneAuthority
                StringComparison.Ordinal)
            && prepared.Edit.ContactId == prepared.ContactBefore.ContactId
            && prepared.ContactBefore.ContactId == prepared.ContactAfter.ContactId
-           && ResolveUniqueContact(state, prepared.ContactBefore.ContactId) is { } live
-           && ContactEquals(live, prepared.ContactBefore)
+           && BeforeMatches(prepared, state)
            && ContactsEqual(state.Contacts, prepared.ContactsBefore)
            && prepared.RequiresExplicitConfirmation
            && prepared.CanConfirm
@@ -475,9 +487,16 @@ internal static class CreationContactsPhoneAuthority
            && string.Equals(refreshed.Binding.RuntimeDigest, receipt.RuntimeDigest, StringComparison.Ordinal)
            && BudgetEquals(refreshed.ContactBudget, prepared.ContactBudgetAfter)
            && BudgetEquals(refreshed.HighPlacesBudget, prepared.HighPlacesBudgetAfter)
-           && refreshed.Contacts.Count == prepared.ContactsBefore.Count
-           && ResolveUniqueContact(refreshed, receipt.ContactId) is { } target
-           && ContactEquals(target, prepared.ContactAfter)
+           && refreshed.Contacts.Count == prepared.ContactsBefore.Count + (prepared.Edit.ChangeKind switch
+           {
+               CharacterCreationContactChangeKind.Add => 1,
+               CharacterCreationContactChangeKind.Remove => -1,
+               _ => 0
+           })
+           && (prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Remove
+               ? !refreshed.Contacts.Any(contact => contact.ContactId == receipt.ContactId)
+               : ResolveUniqueContact(refreshed, receipt.ContactId) is { } target
+                 && ContactEquals(target, prepared.ContactAfter))
            && prepared.ContactsBefore
                .Where(contact => contact.ContactId != receipt.ContactId)
                .All(before => ResolveUniqueContact(refreshed, before.ContactId) is { } sibling
@@ -493,6 +512,8 @@ internal static class CreationContactsPhoneAuthority
         CharacterCreationContactProjection left,
         CharacterCreationContactProjection right)
         => left.ContactId == right.ContactId
+           && left.IsAbsent == right.IsAbsent
+           && left.CanDelete == right.CanDelete
            && string.Equals(left.ContactDigest, right.ContactDigest, StringComparison.Ordinal)
            && left.ContactPointCost == right.ContactPointCost
            && left.CountsAgainstContactBudget == right.CountsAgainstContactBudget
@@ -636,6 +657,9 @@ internal static class CreationContactsPhoneAuthority
 
     private static bool EditMatchesContacts(CharacterCreationContactPreparedPreview prepared)
         => prepared.Edit.ContactId == prepared.ContactBefore.ContactId
+           && prepared.Edit.ChangeKind == prepared.WritePlan.ChangeKind
+           && prepared.ContactBefore.IsAbsent == (prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Add)
+           && prepared.ContactAfter.IsAbsent == (prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Remove)
            && (prepared.Edit.Identity is null
                ? prepared.ContactAfter.Identity == prepared.ContactBefore.Identity
                : prepared.ContactAfter.Identity == prepared.Edit.Identity)
@@ -653,7 +677,9 @@ internal static class CreationContactsPhoneAuthority
     private static bool WritePlanMatchesPrepared(CharacterCreationContactPreparedPreview prepared)
     {
         CharacterCreationContactAtomicWritePlan plan = prepared.WritePlan;
-        if (!string.Equals(plan.Schema, CharacterCreationContactsSchemas.WritePlanV1, StringComparison.Ordinal)
+        if (!Enum.IsDefined(plan.ChangeKind)
+            || !string.Equals(plan.Schema, plan.ChangeKind == CharacterCreationContactChangeKind.Edit
+                ? CharacterCreationContactsSchemas.WritePlanV1 : CharacterCreationContactsSchemas.WritePlanV2, StringComparison.Ordinal)
             || !string.Equals(plan.StepId, CharacterCreationWizardStepIds.ContactsLifestyles, StringComparison.Ordinal)
             || plan.ContactId != prepared.ContactBefore.ContactId
             || plan.Operations.Count == 0
@@ -662,7 +688,7 @@ internal static class CreationContactsPhoneAuthority
             || plan.Operations.Select(operation => operation.FieldId)
                 .Distinct(StringComparer.Ordinal).Count() != plan.Operations.Count
             || !plan.PreservesUntouchedSiblingState
-            || !plan.PreservesNestedState
+            || plan.ChangeKind == CharacterCreationContactChangeKind.Edit && !plan.PreservesNestedState
             || !IsCanonicalDigest(plan.ContentDigestBefore)
             || !IsCanonicalDigest(plan.ContentDigestAfter)
             || string.Equals(plan.ContentDigestBefore, plan.ContentDigestAfter, StringComparison.Ordinal)
@@ -673,7 +699,8 @@ internal static class CreationContactsPhoneAuthority
                 plan.UntouchedSiblingDigestAfter,
                 StringComparison.Ordinal)
             || !IsCanonicalDigest(plan.NestedStateDigestBefore)
-            || !string.Equals(
+            || !IsCanonicalDigest(plan.NestedStateDigestAfter)
+            || plan.PreservesNestedState != string.Equals(
                 plan.NestedStateDigestBefore,
                 plan.NestedStateDigestAfter,
                 StringComparison.Ordinal)
@@ -692,9 +719,21 @@ internal static class CreationContactsPhoneAuthority
                 after[fieldId].SerializedValue,
                 StringComparison.Ordinal))
             .ToArray();
-        return plan.Operations.Select(operation => operation.FieldId)
+        IEnumerable<CharacterCreationContactWriteOperation> operations = plan.Operations;
+        if (plan.ChangeKind != CharacterCreationContactChangeKind.Edit)
+        {
+            var presence = plan.Operations[0];
+            bool adding = plan.ChangeKind == CharacterCreationContactChangeKind.Add;
+            if (presence.FieldId != CharacterCreationContactFieldIds.Presence
+                || presence.BeforeValue != (adding ? "absent" : "present")
+                || presence.AfterValue != (adding ? "present" : "absent")
+                || !presence.SourceAnchorIds.SequenceEqual(CharacterCreationContactSourceAnchors.All))
+                return false;
+            operations = operations.Skip(1);
+        }
+        return operations.Select(operation => operation.FieldId)
                    .SequenceEqual(changedFieldIds, StringComparer.Ordinal)
-               && plan.Operations.All(operation =>
+               && operations.All(operation =>
                    CharacterCreationContactFieldIds.All.Contains(
                        operation.FieldId,
                        StringComparer.Ordinal)
@@ -715,10 +754,24 @@ internal static class CreationContactsPhoneAuthority
                        StringComparer.Ordinal));
     }
 
+    private static bool BeforeMatches(CharacterCreationContactPreparedPreview prepared,
+        CharacterCreationContactsInteractionState state)
+    {
+        if (prepared.Edit.ChangeKind != CharacterCreationContactChangeKind.Add)
+            return ResolveUniqueContact(state, prepared.Edit.ContactId) is { } live
+                   && ContactEquals(live, prepared.ContactBefore);
+        if (NewContact(state, prepared.Edit.ContactId) is not { } template)
+            return false;
+        var absent = template with { IsAbsent = true, ContactDigest = string.Empty };
+        absent = absent with { ContactDigest = CharacterCreationFinalizationDigest.Compute(absent) };
+        return ContactEquals(absent, prepared.ContactBefore);
+    }
+
     private static bool WritePlanEquals(
         CharacterCreationContactAtomicWritePlan left,
         CharacterCreationContactAtomicWritePlan right)
         => string.Equals(left.Schema, right.Schema, StringComparison.Ordinal)
+           && left.ChangeKind == right.ChangeKind
            && string.Equals(left.StepId, right.StepId, StringComparison.Ordinal)
            && left.ContactId == right.ContactId
            && string.Equals(left.ContentDigestBefore, right.ContentDigestBefore, StringComparison.Ordinal)

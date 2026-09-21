@@ -33,11 +33,16 @@ internal static partial class AfterRunAuthorityHarness
         foreach (string scenario in new[]
         {
             "local", "linked", "stale-display", "aba", "foreign", "missing",
-            "during-confirm", "ambiguous-receipt", "committed-owner-change", "committed-cancellation", "refresh-error", "lookup-error"
+            "during-confirm", "ambiguous-receipt", "committed-owner-change", "committed-cancellation", "refresh-error", "lookup-error",
+            "add-local", "add-linked", "add-aba", "add-ambiguous",
+            "remove-local", "remove-linked", "remove-aba", "remove-ambiguous"
         })
         {
             var owners = new ControlledLinkedOwner();
-            owners.Set(scenario == "local" ? OwnerScope.LocalSingleUser : ContactsOwnerA);
+            owners.Set(scenario.EndsWith("local", StringComparison.Ordinal) ? OwnerScope.LocalSingleUser : ContactsOwnerA);
+            bool adding = scenario.StartsWith("add-", StringComparison.Ordinal);
+            bool removing = scenario.StartsWith("remove-", StringComparison.Ordinal);
+            bool collection = adding || removing;
             ContactsBoundaryProbe? probe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                 creationContacts: true, contactsDecorator: service => probe = new(service));
@@ -66,12 +71,21 @@ internal static partial class AfterRunAuthorityHarness
             OwnerContextStamp stamp = owners.Capture();
             Require(state!.DisplayOwnerContext == stamp && original.DisplayOwnerContext == stamp,
                 "Core read and native display lost original owner provenance.");
-            var contact = CreationContactsPhoneAuthority.ResolveUniqueContact(state, CreationContactId)!;
+            var contact = adding
+                ? CreationContactsPhoneAuthority.NewContact(state, Guid.Parse("d4000705-02b4-4772-9175-f5724d1037ea"))!
+                : CreationContactsPhoneAuthority.ResolveUniqueContact(state, CreationContactId)!;
             var draft = new CreationContactsPhoneDraft();
             draft.Bind(state, contact);
-            Require(draft.TrySetInteger(state, contact, CharacterCreationContactFieldIds.Loyalty, 3),
-                "The exact native contact draft rejected a legal loyalty selection.");
-            var input = draft.ToInput(state, contact);
+            if (!removing)
+                Require(draft.TrySetInteger(state, contact, CharacterCreationContactFieldIds.Loyalty, 3),
+                    "The exact native contact draft rejected a legal loyalty selection.");
+            if (adding)
+                Require(draft.TrySetText(state, contact, CharacterCreationContactFieldIds.Name, "Street Doc"),
+                    "New contact draft rejected its name.");
+            var input = removing
+                ? new CharacterCreationContactEditInput(CreationContactId)
+                    { ChangeKind = CharacterCreationContactChangeKind.Remove, DisplayOwnerContext = stamp }
+                : draft.ToInput(state, contact, adding);
             Require(input is not null && input.DisplayOwnerContext == stamp, "Native input lost its original stamp.");
             var prepare = runtime.Coordinator.PrepareCreationContact(input!);
             var prepared = prepare.PreparedPreview;
@@ -95,7 +109,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(runtime.Coordinator.PrepareCreationContact(input!).PreparedPreview is null,
                     "A's old gesture was accepted against B's identical display.");
             }
-            else if (scenario == "aba")
+            else if (scenario.EndsWith("aba", StringComparison.Ordinal))
             {
                 owners.Set(ContactsOwnerB);
                 owners.Set(ContactsOwnerA);
@@ -110,7 +124,7 @@ internal static partial class AfterRunAuthorityHarness
                 prepared = prepared! with { DisplayOwnerContext = null };
             else if (scenario == "during-confirm")
                 probe!.BeforeConfirm = () => { owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA); };
-            else if (scenario == "ambiguous-receipt")
+            else if (scenario == "ambiguous-receipt" || scenario.EndsWith("-ambiguous", StringComparison.Ordinal))
                 probe!.AfterConfirm = () => throw new IOException("Synthetic post-commit observation failure");
             else if (scenario == "committed-owner-change")
                 probe!.AfterConfirm = () => owners.Set(ContactsOwnerB);
@@ -132,7 +146,8 @@ internal static partial class AfterRunAuthorityHarness
                 runtime.Coordinator.State.Error, runtime.Coordinator.State.IsBusy
             }));
             bool committed = scenario is "local" or "linked" or "ambiguous-receipt"
-                or "committed-owner-change" or "committed-cancellation" or "refresh-error" or "lookup-error";
+                or "committed-owner-change" or "committed-cancellation" or "refresh-error" or "lookup-error"
+                || collection && !scenario.EndsWith("aba", StringComparison.Ordinal);
             var after = SnapshotContactsPartitions(new FileWorkspaceStore(runtime.StateDirectory), runtime.Id);
             foreach (var entry in before)
             {
@@ -141,7 +156,10 @@ internal static partial class AfterRunAuthorityHarness
                     $"{scenario}: wrong account revision changed ({entry.Key.Value}).");
                 if (!changed) RequireSameRewardDocument(entry.Value, after[entry.Key]);
                 else Require(after[entry.Key].SavedRevision == after[entry.Key].ContentRevision
-                    && after[entry.Key].Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal),
+                    && (removing
+                        ? !after[entry.Key].Document.Content.Contains(CreationContactId.ToString("D"), StringComparison.Ordinal)
+                        : after[entry.Key].Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal))
+                    && (!adding || after[entry.Key].Document.Content.Contains("Street Doc", StringComparison.Ordinal)),
                     "The real contact mutation was not atomically saved.");
             }
             if (committed)
@@ -162,13 +180,13 @@ internal static partial class AfterRunAuthorityHarness
                     Require(body.Children.OfType<Border>().Any(card => card.Content is Label
                         { AutomationId: "creation-contact-committed-reload-required" }),
                         "Actual native page did not explain committed-but-reload-required state.");
-                if (scenario is "local" or "linked" or "ambiguous-receipt")
+                if (scenario is "local" or "linked" or "ambiguous-receipt" || collection)
                     Require(confirmed.RefreshedState is not null
                         && runtime.Coordinator.State.DisplayOwnerContext == stamp
                         && runtime.Coordinator.State.ContentRevision == 2,
                         scenario + ": successful owner-bound refresh did not preserve functional navigation.");
                 else Require(confirmed.RefreshedState is null, "Stale/cancelled refresh was presented as current.");
-                if (scenario == "ambiguous-receipt")
+                if (scenario == "ambiguous-receipt" || scenario.EndsWith("-ambiguous", StringComparison.Ordinal))
                     Require(confirmed.RecoveredByReceiptLookup && probe!.ConfirmCalls == 1,
                         "Ambiguous recovery must read the retained key, never replay the mutation.");
                 // Actual reconstructed FileWorkspaceStore + fresh issuer can recover a historical
