@@ -24,14 +24,56 @@ The other methods must not enter an SR5 editor or this priority service.
 - Attribute review shows the Core calculation and remaining budgets. Partial
   allocations can be saved as drafts. Changing foundation choices explicitly
   resets the next confirmed allocation; old decisions remain in saved history.
+- Native skill allocation with Core-owned availability, rating limits,
+  specialization costs and aspect selection. Unavailable skills are explained
+  without input controls. Player-entered specialization names require GM review;
+  exotic weapon specialties share one rating and the first is free.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
 
-Skill allocation, talent effects, equipment, finalization and Career
+Knowledge/languages, Karma/Aptitude, talent effects, equipment, finalization and Career
 entry are still missing. Point Buy, Life Path and optional Karma still need
 their own rule implementations and native flows. This does not enable SR6
 Origin generation or audiobook conversion.
 
-## Current attribute increment: exact local source assembly
+## Current skill increment: exact local source assembly
+
+- Android functional commit: `df1e3f77a4a22e780f73c84e28e95c12082782fe`.
+- Core integration: `e82a1f8265796ff455ebdd01d1296d8f47aaf702`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Same local keyless Docker toolchain, explicit source assembly, no package seal.
+
+`core-sr6-skills-2.log`: 115 Core tests pass. `sr6-native-skills-2.log`: 26 native
+managed scenarios pass (ownership/recovery plus both methods, three pages and
+three locales). New cases cover specialization cost, stale controls, preserving
+attributes during skill save, reopened selections and unavailable mundane skill
+controls. `sr6-origin-skills-regression-1.log`: 12 Origin book regressions pass.
+These results do not establish live book generation or audiobook conversion.
+
+`sr6-skills-debug-build-1.log`: Debug x64 APK builds with zero warnings/errors.
+SHA-256: `2824bbbece1b865194d8598327d357c2d15de435fa0fbb68e423b882adef6f98`.
+
+### Actual skill save/restart smoke
+
+The API 36 emulator restored the authentic synthetic Sum-to-Ten foundation
+draft saved by the historical smoke below (copied into the separate Debug app
+as setup, not a fresh New runner route). The native page accepted Athletics 3
+with `Climbing` and Exotic Weapons 2 with `Whip`. Core review displayed costs
+4 and 2, total 6, remaining 18, source anchors and the GM-review notice. One
+confirmation saved revision 3/3 with exactly two decisions. Force-stop removed
+PID 4451; the next launch had PID 5106. Reopened controls showed both saved
+ratings and specialization names. Before/after workspace JSON was byte-identical:
+`53b6e33144daf10e60c4f5909c6b7f943e1cbe842d945189d2d8c21ea032580f`.
+
+Artifacts are retained in the packet below as `sr6-skills-*`, including the
+input/review/reopen screenshots, fresh hierarchies and synthetic workspace
+copies. The source-bound APK is `sr6-skills-priority-sum-debug.apk`. The emulator
+again showed a System UI startup ANR before app installation; Wait cleared it.
+A pre-install null hierarchy was rejected. This is not an app ANR or successful
+observation. The affected app route then completed and the owned emulator was
+stopped. Priority skill behavior is managed-tested, not separately device-tested
+in this increment. No Play package or signing credential was touched.
+
+## Historical attribute increment: exact local source assembly
 
 - Android functional commit: `1c5e0ce593fbc6cb8f0e053c9a216348a8579aac`.
 - Core integration: `68a83b1fe13b3b02d1af506d81f1fed2e32505cd`.
@@ -142,6 +184,6 @@ to replay a mutation. The completed routes above used fresh visible state.
 
 Debug key only; no upload key, AAB, Play upload, physical installation, new
 package authority or hosted qualification. The installed user/Play package was
-not touched. Next work is SR6 skill allocation and finalization, then method-specific
+not touched. Next work is SR6 knowledge/languages, talent grants and finalization, then method-specific
 Point Buy/Life Path/Karma flows. SR5 Life Modules and its book remain an open
 priority before Windows; this increment does not declare them finished.
