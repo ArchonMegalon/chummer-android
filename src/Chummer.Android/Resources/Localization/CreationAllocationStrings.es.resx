@@ -311,6 +311,8 @@
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Efectos del metatipo: armadura +{0} · alcance +{1} · coste del estilo de vida +{2}%</value></data>
   <data name="Karma.Magic" xml:space="preserve"><value>Magia / Resonancia</value></data>
   <data name="Karma.Tradition" xml:space="preserve"><value>Tradición</value></data>
+  <data name="Karma.TraditionRequired" xml:space="preserve"><value>Elige una tradición antes de guardar este borrador de magia.</value></data>
+  <data name="Karma.StreamRequired" xml:space="preserve"><value>Elige una corriente antes de guardar este borrador de Resonancia.</value></data>
   <data name="Karma.Stream" xml:space="preserve"><value>Corriente</value></data>
   <data name="Karma.Powers" xml:space="preserve"><value>Poderes de adepto</value></data>
   <data name="Karma.Spells" xml:space="preserve"><value>Hechizos</value></data>

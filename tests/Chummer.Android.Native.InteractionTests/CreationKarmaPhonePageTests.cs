@@ -107,6 +107,11 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("karma-open-magic");
                 Require(Session().Quote!.Magic is { Access.RequiresTradition: true, CanSelect: false },
                     "The native magic page must expose Core's missing-tradition review.");
+                Require(Element<Label>("karma-blocker-" + CharacterCreationMagicResonanceBlockers.TraditionRequired).Text
+                        == CreationKarmaCopy.TraditionRequired
+                    && CreationKarmaCopy.Blocker(CharacterCreationMagicResonanceBlockers.StreamRequired) == CreationKarmaCopy.StreamRequired
+                    && CreationKarmaCopy.Blocker("unknown-core-reason") == "unknown-core-reason",
+                    "Required magic choices must explain the next action without hiding unknown Core blockers.");
                 await Click("karma-magic-open-tradition");
                 Element<SearchBar>("karma-magic-search").Text = "Hermetic";
                 await Click("karma-magic-search-go");

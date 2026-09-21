@@ -1,3 +1,5 @@
+using Chummer.Contracts.Characters;
+
 namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
@@ -5,6 +7,14 @@ internal static class CreationKarmaCopy
     public static string Magic => CreationAllocationStrings.Get("Karma.Magic", "Magic / Resonance");
     public static string Tradition => CreationAllocationStrings.Get("Karma.Tradition", "Tradition");
     public static string Stream => CreationAllocationStrings.Get("Karma.Stream", "Stream");
+    public static string TraditionRequired => CreationAllocationStrings.Get("Karma.TraditionRequired", "Choose a tradition before saving this magic draft.");
+    public static string StreamRequired => CreationAllocationStrings.Get("Karma.StreamRequired", "Choose a stream before saving this Resonance draft.");
+    public static string Blocker(string code) => code switch
+    {
+        CharacterCreationMagicResonanceBlockers.TraditionRequired => TraditionRequired,
+        CharacterCreationMagicResonanceBlockers.StreamRequired => StreamRequired,
+        _ => code
+    };
     public static string Powers => CreationAllocationStrings.Get("Karma.Powers", "Adept powers");
     public static string Spells => CreationAllocationStrings.Get("Karma.Spells", "Spells");
     public static string ComplexForms => CreationAllocationStrings.Get("Karma.ComplexForms", "Complex forms");

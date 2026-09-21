@@ -796,7 +796,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         foreach (string blocker in _session.Blockers)
         {
-            var label = NativeTheme.Body(blocker, NativeTheme.Danger);
+            var label = NativeTheme.Body(CreationKarmaCopy.Blocker(blocker), NativeTheme.Danger);
             label.AutomationId = "karma-blocker-" + blocker;
             _body.Add(label);
         }

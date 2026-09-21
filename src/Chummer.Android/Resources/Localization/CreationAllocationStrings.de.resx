@@ -311,6 +311,8 @@
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Metatyp-Effekte: Panzerung +{0} · Reichweite +{1} · Lebensstilkosten +{2}%</value></data>
   <data name="Karma.Magic" xml:space="preserve"><value>Magie / Resonanz</value></data>
   <data name="Karma.Tradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Karma.TraditionRequired" xml:space="preserve"><value>Wähle eine Tradition, bevor du diesen Magie-Entwurf speicherst.</value></data>
+  <data name="Karma.StreamRequired" xml:space="preserve"><value>Wähle einen Stream, bevor du diesen Resonanz-Entwurf speicherst.</value></data>
   <data name="Karma.Stream" xml:space="preserve"><value>Stream</value></data>
   <data name="Karma.Powers" xml:space="preserve"><value>Adeptenkräfte</value></data>
   <data name="Karma.Spells" xml:space="preserve"><value>Zauber</value></data>

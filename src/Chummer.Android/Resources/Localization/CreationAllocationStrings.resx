@@ -311,6 +311,8 @@
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Base metatype effects: armor +{0} · reach +{1} · lifestyle cost +{2}%</value></data>
   <data name="Karma.Magic" xml:space="preserve"><value>Magic / Resonance</value></data>
   <data name="Karma.Tradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Karma.TraditionRequired" xml:space="preserve"><value>Choose a tradition before saving this magic draft.</value></data>
+  <data name="Karma.StreamRequired" xml:space="preserve"><value>Choose a stream before saving this Resonance draft.</value></data>
   <data name="Karma.Stream" xml:space="preserve"><value>Stream</value></data>
   <data name="Karma.Powers" xml:space="preserve"><value>Adept powers</value></data>
   <data name="Karma.Spells" xml:space="preserve"><value>Spells</value></data>
