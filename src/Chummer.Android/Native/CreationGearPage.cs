@@ -685,6 +685,11 @@ public static class CreationGearPhoneBasket
         IReadOnlyDictionary<string, int> current,
         CharacterCreationGearDraft? persisted)
     {
+        // No purchase is a valid first choice, but it still needs an explicit
+        // Core draft/receipt before later Creation steps can proceed. An absent
+        // draft must not be confused with an already confirmed empty basket.
+        if (persisted is null)
+            return true;
         CharacterCreationGearSelection[] existing = persisted?.Lines
             .OrderBy(line => line.OptionId, StringComparer.Ordinal)
             .Select(line => new CharacterCreationGearSelection(line.OptionId, line.Quantity))

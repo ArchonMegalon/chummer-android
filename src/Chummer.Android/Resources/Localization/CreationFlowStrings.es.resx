@@ -73,12 +73,12 @@
   <data name="Contacts.Connection" xml:space="preserve"><value>Conexión {0}</value></data>
   <data name="Contacts.ContactPoints" xml:space="preserve"><value>Puntos de contacto</value></data>
   <data name="Contacts.Cost" xml:space="preserve"><value>Costo {0}</value></data>
-  <data name="Contacts.Empty" xml:space="preserve"><value>No se proyectó ningún contacto existente. Aquí todavía no se pueden añadir contactos.</value></data>
+  <data name="Contacts.Empty" xml:space="preserve"><value>Aún no hay contactos. Añade a alguien a quien pueda recurrir tu runner.</value></data>
   <data name="Contacts.Existing" xml:space="preserve"><value>Contactos existentes</value></data>
   <data name="Contacts.Free" xml:space="preserve"><value>Gratis</value></data>
   <data name="Contacts.FriendsInHighPlaces" xml:space="preserve"><value>Amigos en las altas esferas</value></data>
   <data name="Contacts.Heading" xml:space="preserve"><value>Contactos</value></data>
-  <data name="Contacts.Intro" xml:space="preserve"><value>Elige un contacto existente y previsualiza un cambio autoritativo de reglas. Las mascotas, los enemigos y añadir o eliminar contactos quedan fuera de esta pantalla.</value></data>
+  <data name="Contacts.Intro" xml:space="preserve"><value>Añade, edita o elimina un contacto. Revisa los costes calculados por Core antes de confirmar. Las mascotas y los enemigos tienen flujos separados.</value></data>
   <data name="Contacts.Loyalty" xml:space="preserve"><value>Lealtad {0}</value></data>
   <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Abre el catálogo de Core, configura un estilo de vida tipado y revisa la economía exacta de nuyen/PL.</value></data>
   <data name="Contacts.PageTitle" xml:space="preserve"><value>Contactos de creación</value></data>
@@ -246,4 +246,11 @@
   <data name="TalentChoices.Continue" xml:space="preserve"><value>Continuar con estas opciones</value></data>
   <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Elige {0} más</value></data>
   <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Elección {0} · {1} · sin niveles de habilidad gratuitos</value></data>
+  <data name="Contacts.Add" xml:space="preserve"><value>Añadir contacto</value></data>
+  <data name="Contacts.StageSummary" xml:space="preserve"><value>{0} contactos · {1} puntos restantes</value></data>
+  <data name="Contacts.Remove" xml:space="preserve"><value>Eliminar contacto</value></data>
+  <data name="Contacts.RemoveWarning" xml:space="preserve"><value>Se eliminará el contacto seleccionado, incluidas sus notas y datos adjuntos. No se elimina nada hasta que confirmes.</value></data>
+  <data name="Contacts.Presence" xml:space="preserve"><value>Entrada de contacto</value></data>
+  <data name="Contacts.AddDelta" xml:space="preserve"><value>No existe → añadido</value></data>
+  <data name="Contacts.RemoveDelta" xml:space="preserve"><value>Existe → eliminado</value></data>
 </root>

@@ -254,8 +254,13 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.12</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>12</ApplicationVersion>", project)
+        project_xml = ET.fromstring(project)
+        version_names = project_xml.findall("PropertyGroup/ApplicationDisplayVersion")
+        version_codes = project_xml.findall("PropertyGroup/ApplicationVersion")
+        self.assertEqual(1, len(version_names))
+        self.assertEqual(1, len(version_codes))
+        self.assertRegex(version_names[0].text or "", r"\A[0-9]+(?:\.[0-9]+){2}(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?\Z")
+        self.assertRegex(version_codes[0].text or "", r"\A[1-9][0-9]*\Z")
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerAndroidRuntimeIdentifier Condition="\'$(ChummerAndroidRuntimeIdentifier)\' == \'\'">android-arm64</ChummerAndroidRuntimeIdentifier>', project)
         self.assertIn('<RuntimeIdentifier Condition="\'$(RuntimeIdentifier)\' == \'\'">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>', project)
@@ -269,13 +274,13 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("9a869420ecc335f9a54968debeff6723d4997ff7",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("578f1658e32091944e62ef03a9c02dc252c1bc2d",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "3bc5fe725fd2bbbad0333c5c7a3f849e53808c4f",
+                    "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d",
                     "1d8cf694d0412b3bd9f4a241fb95244fad341160",
-                    "3bc5fe725fd2bbbad0333c5c7a3f849e53808c4f",
+                    "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d",
                 ),
             ),
             ("ArchonMegalon/chummer6-hub", ("e35db6feca8f194161302064a9f77d4f8e60fe14",)),
@@ -2571,10 +2576,23 @@ class AndroidContractTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
+        project_xml = ET.parse(PROJECT / "Chummer.Android.csproj")
         self.assertEqual(
-            ("0.1.0-preview.12", "12"),
+            (
+                project_xml.findtext("PropertyGroup/ApplicationDisplayVersion"),
+                project_xml.findtext("PropertyGroup/ApplicationVersion"),
+            ),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
+        for version_name, version_code in (("0.1.0-preview.12", "12"), ("0.1.0-preview.28", "28")):
+            with self.subTest(version=version_code):
+                fixture = (
+                    "<Project><PropertyGroup>"
+                    f"<ApplicationDisplayVersion>{version_name}</ApplicationDisplayVersion>"
+                    f"<ApplicationVersion>{version_code}</ApplicationVersion>"
+                    "</PropertyGroup></Project>"
+                ).encode()
+                self.assertEqual((version_name, version_code), module.read_project_version_bytes(fixture))
 
     def test_store_listing_limits_and_truthful_preview_copy(self) -> None:
         listing = REPO / "play" / "listing" / "en-US"

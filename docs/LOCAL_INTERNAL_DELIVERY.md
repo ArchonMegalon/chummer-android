@@ -38,6 +38,16 @@ document or by selecting the local policy.
 
 ## Delivery checklist
 
+The current package intake may reuse the exact UI owner-artifact cache under
+the local-first policy. Its receipt remains pinned by SHA-256 and byte size,
+alongside the exact consumer commit/tree, package locks and producer authority.
+The validator rechecks all 18 packages and 13 authority files and compares their
+actual bytes with the receipt's copied-file inventory. The consumer NuGet cache
+must still have started fresh; source fallbacks and stub packages remain forbidden.
+This is authenticated local reuse, **not** a cold owner rebuild or hosted CI pass.
+Historical cold receipts retain their separate strict non-use predicate. Nothing
+here changes protected merge checks, signing or Play authorization.
+
 1. Freeze the exact change and advertised scope. Keep an unused higher version
    code, source commits/trees and input hashes. Record dependency mode honestly:
    sealed package graph, or exact source assembly with explicit absolute roots,
@@ -94,8 +104,8 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 27 is the latest [observed Internal availability](../play/evidence/preview27-internal-observation.md).
-Its physical Play installation is unverified. Preview26 and earlier evidence
+Preview 28 is the latest [observed Internal availability](../play/evidence/preview28-internal-observation.md).
+Its physical Play installation is unverified. Preview27 and earlier evidence
 remain immutable. Neither this policy nor availability seals a new Android
 package graph or retroactively claims hosted qualification. Protected source
 integration and each candidate's actual build/test/sign/Play work remain separate.

@@ -38,23 +38,23 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "9a869420ecc335f9a54968debeff6723d4997ff7"
-EXPECTED_PRESENTATION_TREE = "bb4eef82c5f0f76f9ef72a1e485aec47a061c329"
+EXPECTED_PRESENTATION_COMMIT = "578f1658e32091944e62ef03a9c02dc252c1bc2d"
+EXPECTED_PRESENTATION_TREE = "24e26aa77ecf6d5cedb6c19f77d99dbca3f8ac67"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "4d3346e7a00734c61d75f9d960ad82840b0748196eccd07beffb113c6168517a"
-EXPECTED_LOCK_SIZE = 66890
-EXPECTED_LOCK_BLOB = "519aa1c4e052df0809549200649d244bc3b3ee01"
-EXPECTED_RECEIPT_SHA256 = "9538843a31f476b0a2caaa54605abb626e6297cc13e476ee549c1ae4cbfd2934"
-EXPECTED_RECEIPT_SIZE = 71957
-EXPECTED_CACHE_KEY = "748fa870900485d6e828ab0237195fa637efe0b50188b40cb91d23ea1b4a8060"
-EXPECTED_CACHE_MANIFEST_SHA256 = "6711599860a9a4afde1bef305666e1821f2d30e081b494087ee22ac3a198fe9a"
+EXPECTED_LOCK_SHA256 = "549e105f801f815edc5407edde620b3c7e99c7f875d59c8ac837f7e51e983fdb"
+EXPECTED_LOCK_SIZE = 67038
+EXPECTED_LOCK_BLOB = "5c9ac6b1b0e5f32b59521cfb7fc73e636731077b"
+EXPECTED_RECEIPT_SHA256 = "65540da37d5af6cb4659d853e31cd00be17b84716eb8dd6279a3003eef378d26"
+EXPECTED_RECEIPT_SIZE = 79539
+EXPECTED_CACHE_KEY = "bac1a2b680440d121df18ce99b63efc6c80242f474019f1f9fc826264d59913e"
+EXPECTED_CACHE_MANIFEST_SHA256 = "d3aae6b442679b956a73774345ddae12d62515032fdd810223617eee0bd20d50"
 EXPECTED_CACHE_MANIFEST_SIZE = 13596
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "b8cb7dcba5a704948a6eb994c99bb3525b935845",
-    "coreRuntimeSourceCommit": "3bc5fe725fd2bbbad0333c5c7a3f849e53808c4f",
+    "corePackageRecipeCommit": "67ea1136f739256ceedb4b89eb3a5df2a1d4b3ea",
+    "coreRuntimeSourceCommit": "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d",
     "hubProducerCommit": "e35db6feca8f194161302064a9f77d4f8e60fe14",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
@@ -65,17 +65,17 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
-        70263,
+        "711f633f02746bde48e5c8cfa3611d368386c25cb338e7cc87d6380b73ffca8b",
+        70264,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "856bfb41032614946dd6118a9de19160c1752cff38799b6ce9fde06f9a74d7ed",
-        16066,
+        "c85a1ce076291989b34bf672a17bf4c880e065ec7cb082edf30a685dffa71f62",
+        16067,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.sh3bc5fe725fd2b"
+CORE_VERSION = "0.0.0-packageplane.candidate.shd1c6e3d22360c"
 HUB_VERSION = "0.1.1-packageplane.20260910.1"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
@@ -262,6 +262,64 @@ def validate_cold_cache_receipt(value: Any) -> dict[str, Any]:
         or cache["used"] is not False
     ):
         raise ValueError("UI cold/non-use cache receipt posture is not exact")
+    return cache
+
+
+def validate_owner_cache_receipt(value: Any) -> dict[str, Any]:
+    """Keep cold proof distinct; allow exact, authenticated local artifact reuse."""
+    if not isinstance(value, dict) or value.get("used") is not True:
+        return validate_cold_cache_receipt(value)
+    cache = require_exact_object(value, "UI copied-cache receipt", {
+        "authorityArtifacts", "cacheKey", "coldProducerFallbackOnCacheMiss",
+        "contract", "importedByCopy", "manifest", "packageCount", "packages",
+        "sourcePath", "status", "used",
+    })
+    if (
+        cache["coldProducerFallbackOnCacheMiss"] is not True
+        or cache["contract"] != CACHE_CONTRACT
+        or cache["status"] != "passed"
+        or cache["importedByCopy"] is not True
+        or cache["cacheKey"] != EXPECTED_CACHE_KEY
+        or type(cache["packageCount"]) is not int
+        or cache["packageCount"] != EXPECTED_PACKAGE_COUNT
+    ):
+        raise ValueError("UI copied-cache receipt posture is not exact")
+    manifest = require_exact_object(cache["manifest"], "UI copied-cache manifest", {
+        "path", "sha256", "sizeBytes",
+    })
+    if (
+        type(manifest["sizeBytes"]) is not int
+        or manifest != {
+            "path": "owner-package-cache.json",
+            "sha256": EXPECTED_CACHE_MANIFEST_SHA256,
+            "sizeBytes": EXPECTED_CACHE_MANIFEST_SIZE,
+        }
+    ):
+        raise ValueError("UI copied-cache manifest binding differs")
+    # Recorded producer path is provenance, never a local file to open.
+    source = require_string(cache["sourcePath"], "UI copied-cache source path")
+    if not source.startswith("/") or "\x00" in source or "\\" in source or any(
+        part in {"", ".", ".."} for part in source.split("/")[1:]
+    ):
+        raise ValueError("UI copied-cache source path is not canonical")
+    for field, prefix, count in (
+        ("packages", "packages/", EXPECTED_PACKAGE_COUNT),
+        ("authorityArtifacts", "authority/", EXPECTED_CACHE_AUTHORITY_COUNT),
+    ):
+        rows = cache[field]
+        if not isinstance(rows, list) or len(rows) != count:
+            raise ValueError(f"UI copied-cache {field} membership differs")
+        paths: set[str] = set()
+        for value_index, row in enumerate(rows):
+            row = require_exact_object(row, f"UI copied-cache {field} row {value_index}", {
+                "path", "sha256", "sizeBytes",
+            })
+            path = require_string(row["path"], "UI copied-cache row path")
+            if not path.startswith(prefix) or path in paths:
+                raise ValueError("UI copied-cache row path is duplicate or outside its inventory")
+            cache_file_name(path[len(prefix):], "UI copied-cache row filename")
+            cache_byte_identity(row["sha256"], row["sizeBytes"], "UI copied-cache row")
+            paths.add(path)
     return cache
 
 
@@ -823,10 +881,10 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
     lock = receipt.get("consumerPackagePlaneLock")
     if lock != {"path": EXPECTED_LOCK_PATH, "sha256": EXPECTED_LOCK_SHA256, "sizeBytes": EXPECTED_LOCK_SIZE}:
         raise ValueError("UI current-graph receipt package lock drifted")
-    # The hosted current-main consumer supplies no owner-package cache. Its
-    # cold production receipt must not be replaced with a local copied-cache run.
-    # A caller's retained feed is authenticated independently below.
-    validate_cold_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    # Exact receipt bytes select the admitted execution, not a caller flag.
+    # A copied-cache local run does not claim cold/hosted reproduction. Recheck
+    # its retained bytes independently below, including the copied inventory.
+    validate_owner_cache_receipt(receipt.get("ownerPackageArtifactCache"))
     validate_owner_test_executions(receipt)
     return receipt
 
@@ -881,6 +939,11 @@ def validate_bound_authority_claims(
     ):
         raise ValueError("UI receipt Core authority status drifted")
 
+    copied_owner_cache = (
+        isinstance(receipt.get("ownerPackageArtifactCache"), dict)
+        and receipt["ownerPackageArtifactCache"].get("used") is True
+    )
+    hub_receipt_keys = {"receiptContract", "receiptSha256"} if copied_owner_cache else set()
     receipt_hub = require_exact_object(
         receipt.get("canonicalOwnerFeed"),
         "UI receipt canonical Hub feed",
@@ -889,7 +952,7 @@ def validate_bound_authority_claims(
             "packageCount", "packages", "producerCommit", "producerPath",
             "producerRepository", "producerSha256", "projectLockFilesEnforced",
             "status",
-        },
+        } | hub_receipt_keys,
     )
     receipt_hub_rows = sorted(
         receipt_package_rows(receipt_hub.get("packages"), "UI receipt canonical Hub feed"),
@@ -913,9 +976,12 @@ def validate_bound_authority_claims(
         if key not in {"receiptContract", "receiptSha256"}
     }:
         raise ValueError("UI receipt Hub authority disagrees with the bound UI package lock")
-    # Cold hosted production reports package reproduction, not a copied Hub
-    # receipt. The latter remains bound by the exact UI lock and the independently
-    # authenticated retained cache's hub-receipt.json bytes.
+    # Reuse binds the original Hub receipt too; a cold run instead reports its
+    # package reproduction. Neither posture authorizes a hosted/runtime claim.
+    if copied_owner_cache and any(
+        receipt_hub[key] != expected_hub[key] for key in hub_receipt_keys
+    ):
+        raise ValueError("UI copied Hub receipt disagrees with the bound UI package lock")
     if (
         receipt_hub.get("packageCount") != len(receipt_hub_rows)
         or receipt_hub.get("projectLockFilesEnforced") is not True
@@ -1092,8 +1158,8 @@ def validate_receipt_cache_equivalence(
     *,
     package_feed: Path,
 ) -> None:
-    # This proves byte equivalence, not that the hosted producer used this cache.
-    validate_cold_cache_receipt(receipt.get("ownerPackageArtifactCache"))
+    # This proves byte equivalence, not hosted execution or publication.
+    cache_receipt = validate_owner_cache_receipt(receipt.get("ownerPackageArtifactCache"))
     # Reauthenticate the independently pinned manifest and all 18/13 files.
     if validate_package_feed(package_feed) != cache:
         raise ValueError("retained package cache differs from authenticated files")
@@ -1141,15 +1207,28 @@ def validate_receipt_cache_equivalence(
     if any(inventory_by_name.get(row["fileName"]) != row for row in cache_bytes):
         raise ValueError("UI receipt package inventory diverges from the retained package cache")
 
-    # The cold/non-use receipt has no copied-file inventory. Authority bytes
-    # remain bound by the exact separately pinned cache manifest, not by a
-    # synthesized claim that the hosted producer copied these files.
+    if cache_receipt["used"] is True:
+        copied_packages = sorted(cache_receipt["packages"], key=lambda row: row["path"])
+        if copied_packages != [
+            {"path": f"packages/{row['fileName']}", "sha256": row["sha256"], "sizeBytes": row["sizeBytes"]}
+            for row in cache_bytes
+        ]:
+            raise ValueError("UI copied package inventory diverges from authenticated files")
+
+    # Both postures bind actual authority bytes. Only the copied posture also
+    # claims a copied-file inventory; do not synthesize one for a cold run.
+    authority_bytes: list[dict[str, Any]] = []
     for row in cache["authorityArtifacts"]:
         inventory, _ = cache_file_inventory(
             package_feed.parent / "authority" / row["fileName"], "retained authority file",
         )
         if inventory["sha256"] != row["sha256"]:
             raise ValueError("retained authority file changed after cache validation")
+        authority_bytes.append({"path": f"authority/{row['fileName']}", **inventory})
+    if cache_receipt["used"] is True and sorted(
+        cache_receipt["authorityArtifacts"], key=lambda row: row["path"]
+    ) != sorted(authority_bytes, key=lambda row: row["path"]):
+        raise ValueError("UI copied authority inventory diverges from authenticated files")
 
 
 def build_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:

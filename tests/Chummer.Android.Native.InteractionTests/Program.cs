@@ -32,6 +32,7 @@ internal static class Program
         if (args.Length == 1 && args[0] == "--creation-dashboard-render")
         {
             await CreationDashboardReadinessIsRenderScopedAsync();
+            await ExactContactsEntryDoesNotRequireLifestyleReadinessAsync();
             await ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync();
             await ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync();
             await ExactTypedCreationAuthorityCannotSelectAnotherDomainAsync();
@@ -203,6 +204,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationContactsOwnerCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-contacts-bootstrap-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsBootstrapCasesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--collection-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunCollectionOwnerCasesAsync(args[1]);
@@ -312,6 +318,7 @@ internal static class Program
             (nameof(TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync), TerminalCreationFailureDoesNotBlockUnrelatedReadyRouteAsync),
             (nameof(CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync), CreationDashboardReadyMarkerRequiresCurrentTerminalAuthorityAsync),
             (nameof(ExactTypedCreationAuthorityRehydratesConservativeStageAsync), ExactTypedCreationAuthorityRehydratesConservativeStageAsync),
+            (nameof(ExactContactsEntryDoesNotRequireLifestyleReadinessAsync), ExactContactsEntryDoesNotRequireLifestyleReadinessAsync),
             (nameof(ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync), ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync),
             (nameof(ExactTypedResourcesAuthorityCanReopenItsCompletedStageAsync), ExactTypedResourcesAuthorityCanReopenItsCompletedStageAsync),
             (nameof(ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync), ExactTypedCompletedStageEntryRequiresConsistentCompletionAsync),
@@ -1336,6 +1343,48 @@ internal static class Program
             && snapshotBefore == System.Text.Json.JsonSerializer.Serialize(overview.CreationWizard)
             && overview.CreationWizard!.CanFinalize == false,
             "Reopening Resources changed the retained completion snapshot or bypassed whole-build finalization.");
+        return Task.CompletedTask;
+    }
+
+    private static Task ExactContactsEntryDoesNotRequireLifestyleReadinessAsync()
+    {
+        CharacterCreationWizardStageState stage = ConservativeStage(
+            CharacterCreationWizardStepIds.ContactsLifestyles) with
+        {
+            Status = CharacterCreationWizardStepStatuses.InProgress,
+            IsAvailable = true,
+            Blockers = [CharacterCreationWizardProjector.LifestylesAuthorityUnavailable]
+        };
+        string before = System.Text.Json.JsonSerializer.Serialize(stage);
+        Require(BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, stage.StepId, exactTypedAuthorityReady: true),
+            "A missing Lifestyle projection blocked the independently ready Contacts editor.");
+        Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, stage.StepId, exactTypedAuthorityReady: false),
+            "Contacts opened without its exact typed authority.");
+        Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.Resources, exactTypedAuthorityReady: true),
+            "Lifestyle readiness granted entry to a different domain.");
+        CharacterCreationWizardStageState[] rejected =
+        [
+            stage with { IsAvailable = false },
+            stage with { IsComplete = true },
+            stage with { Status = CharacterCreationWizardStepStatuses.Complete },
+            stage with { Blockers = [CharacterCreationWizardProjector.ContactsAuthorityUnavailable] },
+            stage with
+            {
+                Blockers = [CharacterCreationWizardProjector.LifestylesAuthorityUnavailable,
+                    CharacterCreationWizardProjector.ContactsAuthorityUnavailable]
+            },
+            stage with { Blockers = [CharacterCreationFinalizationBlockers.ResourcesDraftRequired] }
+        ];
+        foreach (CharacterCreationWizardStageState invalid in rejected)
+            Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                    invalid, invalid.StepId, exactTypedAuthorityReady: true),
+                "Contacts entry ignored a conflicting stage or domain blocker.");
+        Require(before == System.Text.Json.JsonSerializer.Serialize(stage)
+                && !stage.IsComplete && stage.Blockers.Count == 1,
+            "Opening Contacts changed the shared stage's finalization evidence.");
         return Task.CompletedTask;
     }
 

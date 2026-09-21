@@ -11,6 +11,8 @@ using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
+using Microsoft.Extensions.DependencyInjection;
+using System.Xml.Linq;
 
 internal static partial class AfterRunAuthorityHarness
 {
@@ -28,16 +30,210 @@ internal static partial class AfterRunAuthorityHarness
         <type>Contact</type></contact></contacts><notes>Preserve this</notes></character>
         """;
 
+    public static async Task RunCreationContactsBootstrapCasesAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            var owners = new ControlledLinkedOwner();
+            owners.Set(OwnerScope.LocalSingleUser);
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationContacts: true, creationBootstrap: true, creationFinalization: true,
+                productionCreationOverview: true);
+            // All required drafts are issued by the real services. No imported
+            // contactpoints value or edited raw XML supplies the new runner's budget.
+            var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+            Require(saved.Document.AuxiliaryState.CharacterCreationGearDraft is { Lines.Count: 0 } emptyGear
+                && !CreationGearPhoneBasket.DiffersFromPersisted(new Dictionary<string, int>(), emptyGear),
+                "An already confirmed empty Gear basket must not request another confirmation.");
+            VerifyCreationLifestyleOwnerRead(runtime, owners, saved);
+            await VerifyCreationLifestyleOverviewRoutingAsync(runtime, owners);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            Require(runtime.Coordinator.State.CreationLifestyles is { Lifestyles.Count: 0 }
+                && !runtime.Coordinator.State.CreationWizard!.CompletionBlockers.Contains(
+                    CharacterCreationWizardProjector.LifestylesAuthorityUnavailable),
+                "The production Creation overview omitted its exact empty Lifestyle projection: "
+                + JsonSerializer.Serialize(runtime.Coordinator.State.CreationLifestyles));
+            var load = runtime.Coordinator.LoadCreationContacts();
+            Require(load.State is { } loadedState && CreationContactsPhoneAuthority.IsReady(loadedState, runtime.Coordinator.State),
+                $"New {method} runner cannot enter Contacts after confirming its creation drafts: "
+                + JsonSerializer.Serialize(new { load.Outcome, load.Blockers, load.State?.CanEdit,
+                    load.State?.ContactBudget, load.State?.HighPlacesBudget }));
+            Require(load.State!.NewContactTemplate is not null,
+                $"New {method} runner has no typed Add Contact choice.");
+            RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            var state = load.State!;
+            var contact = CreationContactsPhoneAuthority.NewContact(state, CreationContactId)!;
+            var draft = new CreationContactsPhoneDraft();
+            draft.Bind(state, contact);
+            Require(draft.TrySetText(state, contact, CharacterCreationContactFieldIds.Name, "Draft Fixer"),
+                "New-runner Contact name could not be entered.");
+            var input = draft.ToInput(state, contact, true)!;
+            var prepared = runtime.Coordinator.PrepareCreationContact(input);
+            Require(prepared.PreparedPreview is { } pending
+                && pending.WritePlan.Schema == CharacterCreationContactsSchemas.DraftWritePlanV1,
+                "New-runner Add was not a typed auxiliary preview: " + JsonSerializer.Serialize(prepared));
+            var confirmed = await runtime.Coordinator.ConfirmCreationContactAsync(prepared.PreparedPreview!, default);
+            Require(confirmed.Receipt is not null && confirmed.RefreshedState is not null,
+                "New-runner Contact confirmation/reload failed: " + JsonSerializer.Serialize(confirmed));
+            var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            Require(cold.ContentRevision == saved.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
+                && cold.Document.Content == saved.Document.Content
+                && cold.Document.AuxiliaryState.CharacterCreationContactsDraft?.Contacts.Single().ContactId == CreationContactId
+                && JsonSerializer.Serialize(cold.Document.AuxiliaryState with
+                    { CharacterCreationContactsDraft = null, CharacterCreationContactReceipts = null })
+                    == JsonSerializer.Serialize(saved.Document.AuxiliaryState),
+                "Contact commit changed bootstrap XML, another Creation draft, or failed its atomic checkpoint.");
+            var restartedService = new CharacterCreationContactsService(new FileWorkspaceStore(runtime.StateDirectory),
+                runtime.Services.GetRequiredService<ICharacterSourceDataResolver>());
+            var restarted = restartedService.Load(new(runtime.Id));
+            Require(restarted.Value?.Contacts.Single().Identity.Name == "Draft Fixer"
+                && restartedService.LookupReceipt(new(runtime.Id, prepared.PreparedPreview!.IdempotencyKey)).Value?.ReceiptDigest
+                    == confirmed.Receipt!.ReceiptDigest,
+                "Fresh store/service did not restore the Contact and its exact receipt.");
+            Require(restartedService.Confirm(new(prepared.PreparedPreview!.Binding, prepared.PreparedPreview.Edit,
+                prepared.PreparedPreview.PreviewDigest, prepared.PreparedPreview.IdempotencyKey, true)).Value?.ReceiptDigest
+                    == confirmed.Receipt!.ReceiptDigest,
+                "Retry of the same committed Contact did not recover its exact receipt.");
+            Require(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!.ContentRevision == cold.ContentRevision,
+                "Receipt recovery replayed Contact creation.");
+
+            var modifiedDraft = cold.Document.AuxiliaryState.CharacterCreationContactsDraft! with { Contacts = [] };
+            modifiedDraft = modifiedDraft with { DraftDigest = CharacterCreationContactsDraftRules.Digest(modifiedDraft) };
+            var forged = cold.Document with
+            {
+                State = cold.Document.State with
+                {
+                    AuxiliaryState = cold.Document.AuxiliaryState with { CharacterCreationContactsDraft = modifiedDraft }
+                }
+            };
+            Require(!((IWorkspaceAuxiliaryStateAtomicCommitCapability)new FileWorkspaceStore(runtime.StateDirectory))
+                .ReplaceWorkspaceDocumentAndAuxiliaryStateAndCheckpoint(runtime.Id, cold.ContentRevision,
+                    cold.Document.AuxiliaryStateDigest, forged).Success,
+                "A rehashed Contact draft was saved without an admitted receipt.");
+            Require(!WorkspaceAuxiliaryStateIntegrity.IsValidShape(runtime.Id, cold.ContentRevision,
+                cold.Document.AuxiliaryState with { CharacterCreationContactReceipts = [null!] }),
+                "Corrupt Contact receipt entries did not fail closed.");
+            RequireSameRewardDocument(cold, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+
+            await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+            var removal = runtime.Coordinator.PrepareCreationContact(new CharacterCreationContactEditInput(CreationContactId)
+            { ChangeKind = CharacterCreationContactChangeKind.Remove, DisplayOwnerContext = owners.Capture() });
+            Require(removal.PreparedPreview is not null, "Pending Contact Remove preview failed: " + JsonSerializer.Serialize(removal));
+            var removed = await runtime.Coordinator.ConfirmCreationContactAsync(removal.PreparedPreview!, default);
+            Require(removed.Receipt is not null && removed.RefreshedState?.Contacts.Count == 0,
+                "Pending Contact Remove did not save/reload: " + JsonSerializer.Serialize(removed));
+            var empty = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            Require(empty.Document.Content == saved.Document.Content
+                && empty.Document.AuxiliaryState.CharacterCreationContactsDraft?.Contacts.Count == 0,
+                "Removing the last pending Contact touched raw XML or lost the explicit empty draft.");
+            await HydrateFinalizationOwnerAsync(runtime, owners, empty);
+            state = runtime.Coordinator.LoadCreationContacts().State!;
+            contact = CreationContactsPhoneAuthority.NewContact(state, CreationContactId)!;
+            draft = new CreationContactsPhoneDraft();
+            draft.Bind(state, contact);
+            Require(draft.TrySetText(state, contact, CharacterCreationContactFieldIds.Name, "Draft Fixer"),
+                "Re-added contact name could not be entered.");
+            var readd = runtime.Coordinator.PrepareCreationContact(draft.ToInput(state, contact, true)!);
+            Require(readd.PreparedPreview is not null, "Re-add preview missing: " + JsonSerializer.Serialize(readd));
+            var readded = await runtime.Coordinator.ConfirmCreationContactAsync(readd.PreparedPreview!, default);
+            Require(readded.Receipt is not null && readded.RefreshedState?.Contacts.Count == 1,
+                "Re-add was confused with the earlier receipt: " + JsonSerializer.Serialize(readded));
+            cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+
+            await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+            Require(runtime.Coordinator.State.CreationWizard is { CanFinalize: true },
+                "The production dashboard still blocks the real ready runner: "
+                + JsonSerializer.Serialize(runtime.Coordinator.State.CreationWizard?.CompletionBlockers));
+            var finalization = runtime.Coordinator.LoadCreationFinalization();
+            Require(finalization.Value is { CanReview: true },
+                "Confirmed Contact blocked finalization: " + JsonSerializer.Serialize(finalization));
+            var review = await runtime.Coordinator.ReviewCreationFinalizationAsync(finalization.Value!.Binding,
+                FinalizationFixtureCash(finalization.Value));
+            Require(review.Value is { CanConfirm: true }, "Contact finalization review failed: " + JsonSerializer.Serialize(review));
+            var finalized = await runtime.Coordinator.ConfirmCreationFinalizationAsync(review.Value!, "contacts-finalize-" + method);
+            Require(finalized.Value is not null, "Contact finalization commit failed: " + JsonSerializer.Serialize(finalized));
+            var career = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            var root = XDocument.Parse(career.Document.Content).Root!;
+            Require(root.Element("created")?.Value == "True"
+                && root.Element("contacts")?.Elements("contact").Single().Element("name")?.Value == "Draft Fixer"
+                && career.Document.AuxiliaryState.CharacterCreationContactsDraft is null
+                && career.Document.AuxiliaryState.CharacterCreationFinalizationArchive?.State
+                    .CharacterCreationContactsDraft?.Contacts.Single().ContactId == CreationContactId,
+                "Finalization lost the Contact or its original consumed draft.");
+            await HydrateFinalizationOwnerAsync(runtime, owners, career, expectedCreated: true);
+            Console.WriteLine($"PASS actual {method} Contacts add/remove/re-add, checkpoint, cold reopen, forged-draft rejection, replay recovery and Career finalization");
+        }
+    }
+
+    private static void VerifyCreationLifestyleOwnerRead(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, WorkspaceStoredDocument saved)
+    {
+        var reader = runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>();
+        var request = new CharacterCreationLifestylesLoadRequest(runtime.Id);
+        var local = owners.Capture();
+        var loaded = reader.Load(local, request);
+        Require(loaded.Value is { Lifestyles.Count: 0 } state
+            && state.Binding.ContentRevision == saved.ContentRevision,
+            "The owner-bound Lifestyle reader did not load the canonical local state: " + JsonSerializer.Serialize(loaded));
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerA, saved);
+        owners.Set(ContactsOwnerA);
+        var ownerA = owners.Capture();
+        Require(reader.Load(local, request).Value is null, "Lifestyle accepted a stale local owner.");
+        Require(reader.Load(ownerA, request).Value?.Binding.ContentRevision == saved.ContentRevision,
+            "Lifestyle failed to read the explicitly scoped linked runner.");
+        owners.Set(ContactsOwnerB);
+        Require(reader.Load(owners.Capture(), request).Value is null,
+            "Lifestyle fell back to another owner's same-ID workspace.");
+        owners.Set(ContactsOwnerA);
+        Require(reader.Load(ownerA, request).Value is null, "Lifestyle accepted an A-B-A owner stamp.");
+        owners.Set(new OwnerScope("local-single-user"));
+        Require(reader.Load(owners.Capture(), request).Value is null,
+            "Lifestyle accepted an untrusted scope using the local-owner name.");
+        owners.Set(OwnerScope.LocalSingleUser);
+        Require(owners.ActiveLeases == 0, "Lifestyle read leaked its synchronous owner lease.");
+        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!);
+        Console.WriteLine("PASS Lifestyle local/linked read, foreign workspace denial, stale/ABA owner, forged local scope and no writes");
+    }
+
+    private static async Task VerifyCreationLifestyleOverviewRoutingAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners)
+    {
+        var loader = (IOwnerBoundWorkspaceOverviewLoader)runtime.Services.GetRequiredService<IWorkspaceOverviewLoader>();
+        var original = await loader.LoadAsync(runtime.Client, owners.Capture(), runtime.Id, default);
+        var legacy = StrictPageProxy.Create<ICharacterCreationLifestylesService>();
+        var missingReader = new WorkspaceOverviewStateFactory(creationLifestylesService: legacy);
+        Require(Project(missingReader).CreationLifestyles is null,
+            "A bound overview fell back to the unscoped Lifestyle service.");
+        var bound = new WorkspaceOverviewStateFactory(creationLifestylesService: legacy,
+            ownerBoundCreationLifestylesReader: runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>());
+        Require(Project(bound).CreationLifestyles is not null, "Overview discarded the exact owner-bound Lifestyle read.");
+        owners.Set(ContactsOwnerB);
+        Require(Project(bound).CreationLifestyles is null,
+            "Overview admitted a stale Lifestyle read or used its unscoped fallback.");
+        owners.Set(OwnerScope.LocalSingleUser);
+        Require(Project(bound).CreationLifestyles is null, "Overview admitted Lifestyle authority after owner ABA.");
+        Console.WriteLine("PASS Lifestyle overview uses the bound reader only; missing reader and stale/ABA display deny without legacy fallback");
+
+        CharacterOverviewState Project(WorkspaceOverviewStateFactory factory) => factory.CreateLoadedState(
+            CharacterOverviewState.Empty, runtime.Id, WorkspaceSessionState.Empty, original, null, true);
+    }
+
     public static async Task RunCreationContactsOwnerCasesAsync(string contentRoot)
     {
         foreach (string scenario in new[]
         {
             "local", "linked", "stale-display", "aba", "foreign", "missing",
-            "during-confirm", "ambiguous-receipt", "committed-owner-change", "committed-cancellation", "refresh-error", "lookup-error"
+            "during-confirm", "ambiguous-receipt", "committed-owner-change", "committed-cancellation", "refresh-error", "lookup-error",
+            "add-local", "add-linked", "add-aba", "add-ambiguous",
+            "remove-local", "remove-linked", "remove-aba", "remove-ambiguous"
         })
         {
             var owners = new ControlledLinkedOwner();
-            owners.Set(scenario == "local" ? OwnerScope.LocalSingleUser : ContactsOwnerA);
+            owners.Set(scenario.EndsWith("local", StringComparison.Ordinal) ? OwnerScope.LocalSingleUser : ContactsOwnerA);
+            bool adding = scenario.StartsWith("add-", StringComparison.Ordinal);
+            bool removing = scenario.StartsWith("remove-", StringComparison.Ordinal);
+            bool collection = adding || removing;
             ContactsBoundaryProbe? probe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                 creationContacts: true, contactsDecorator: service => probe = new(service));
@@ -45,6 +241,8 @@ internal static partial class AfterRunAuthorityHarness
             var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument(ContactsCreationXml, "sr5"), default);
             runtime.Id = imported.Id;
             var originalOwner = owners.Current;
+            var uiContext = new SynchronizationContext();
+            probe!.ForbiddenContext = uiContext;
             var document = (originalOwner.IsLocalSingleUser
                 ? store.Get(runtime.Id) : store.Get(originalOwner, runtime.Id)).Value!.Document;
             var validation = await runtime.Client.ValidateAsync(runtime.Id, default);
@@ -59,21 +257,32 @@ internal static partial class AfterRunAuthorityHarness
             }
             await runtime.Presenter.LoadAsync(runtime.Id, default);
             CharacterOverviewState original = runtime.Coordinator.State;
-            var state = runtime.Coordinator.LoadCreationContacts().State;
+            var state = (await StartFromUiContext(uiContext, () =>
+                runtime.Coordinator.LoadCreationContactsForDisplayAsync(original, default))).State;
             Require(state is not null && CreationContactsPhoneAuthority.IsReady(state, original),
                 $"Actual native Contacts is not ready for {scenario}: {original.Error}; "
                 + string.Join(",", runtime.Coordinator.LoadCreationContacts().Blockers));
             OwnerContextStamp stamp = owners.Capture();
             Require(state!.DisplayOwnerContext == stamp && original.DisplayOwnerContext == stamp,
                 "Core read and native display lost original owner provenance.");
-            var contact = CreationContactsPhoneAuthority.ResolveUniqueContact(state, CreationContactId)!;
+            var contact = adding
+                ? CreationContactsPhoneAuthority.NewContact(state, Guid.Parse("d4000705-02b4-4772-9175-f5724d1037ea"))!
+                : CreationContactsPhoneAuthority.ResolveUniqueContact(state, CreationContactId)!;
             var draft = new CreationContactsPhoneDraft();
             draft.Bind(state, contact);
-            Require(draft.TrySetInteger(state, contact, CharacterCreationContactFieldIds.Loyalty, 3),
-                "The exact native contact draft rejected a legal loyalty selection.");
-            var input = draft.ToInput(state, contact);
+            if (!removing)
+                Require(draft.TrySetInteger(state, contact, CharacterCreationContactFieldIds.Loyalty, 3),
+                    "The exact native contact draft rejected a legal loyalty selection.");
+            if (adding)
+                Require(draft.TrySetText(state, contact, CharacterCreationContactFieldIds.Name, "Street Doc"),
+                    "New contact draft rejected its name.");
+            var input = removing
+                ? new CharacterCreationContactEditInput(CreationContactId)
+                    { ChangeKind = CharacterCreationContactChangeKind.Remove, DisplayOwnerContext = stamp }
+                : draft.ToInput(state, contact, adding);
             Require(input is not null && input.DisplayOwnerContext == stamp, "Native input lost its original stamp.");
-            var prepare = runtime.Coordinator.PrepareCreationContact(input!);
+            var prepare = await StartFromUiContext(uiContext, () =>
+                runtime.Coordinator.PrepareCreationContactForDisplayAsync(input!, original, default));
             var prepared = prepare.PreparedPreview;
             Require(prepared is not null && prepared.DisplayOwnerContext == stamp,
                 "Real native/Core preview failed: " + string.Join(",", prepare.Blockers));
@@ -95,7 +304,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(runtime.Coordinator.PrepareCreationContact(input!).PreparedPreview is null,
                     "A's old gesture was accepted against B's identical display.");
             }
-            else if (scenario == "aba")
+            else if (scenario.EndsWith("aba", StringComparison.Ordinal))
             {
                 owners.Set(ContactsOwnerB);
                 owners.Set(ContactsOwnerA);
@@ -110,7 +319,7 @@ internal static partial class AfterRunAuthorityHarness
                 prepared = prepared! with { DisplayOwnerContext = null };
             else if (scenario == "during-confirm")
                 probe!.BeforeConfirm = () => { owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA); };
-            else if (scenario == "ambiguous-receipt")
+            else if (scenario == "ambiguous-receipt" || scenario.EndsWith("-ambiguous", StringComparison.Ordinal))
                 probe!.AfterConfirm = () => throw new IOException("Synthetic post-commit observation failure");
             else if (scenario == "committed-owner-change")
                 probe!.AfterConfirm = () => owners.Set(ContactsOwnerB);
@@ -121,7 +330,8 @@ internal static partial class AfterRunAuthorityHarness
             else if (scenario == "lookup-error")
                 probe!.AfterConfirm = () => { probe.ThrowLoads = true; probe.ThrowLookup = true; };
 
-            var confirmed = await runtime.Coordinator.ConfirmCreationContactAsync(prepared!, cancel.Token);
+            var confirmed = await StartFromUiContext(uiContext, () =>
+                runtime.Coordinator.ConfirmCreationContactAsync(prepared!, cancel.Token));
             Console.WriteLine("CONTACTS_DIAGNOSTIC " + JsonSerializer.Serialize(new
             {
                 scenario, confirmed.Outcome, confirmed.Blockers,
@@ -132,7 +342,8 @@ internal static partial class AfterRunAuthorityHarness
                 runtime.Coordinator.State.Error, runtime.Coordinator.State.IsBusy
             }));
             bool committed = scenario is "local" or "linked" or "ambiguous-receipt"
-                or "committed-owner-change" or "committed-cancellation" or "refresh-error" or "lookup-error";
+                or "committed-owner-change" or "committed-cancellation" or "refresh-error" or "lookup-error"
+                || collection && !scenario.EndsWith("aba", StringComparison.Ordinal);
             var after = SnapshotContactsPartitions(new FileWorkspaceStore(runtime.StateDirectory), runtime.Id);
             foreach (var entry in before)
             {
@@ -141,7 +352,10 @@ internal static partial class AfterRunAuthorityHarness
                     $"{scenario}: wrong account revision changed ({entry.Key.Value}).");
                 if (!changed) RequireSameRewardDocument(entry.Value, after[entry.Key]);
                 else Require(after[entry.Key].SavedRevision == after[entry.Key].ContentRevision
-                    && after[entry.Key].Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal),
+                    && (removing
+                        ? !after[entry.Key].Document.Content.Contains(CreationContactId.ToString("D"), StringComparison.Ordinal)
+                        : after[entry.Key].Document.Content.Contains("<loyalty>3</loyalty>", StringComparison.Ordinal))
+                    && (!adding || after[entry.Key].Document.Content.Contains("Street Doc", StringComparison.Ordinal)),
                     "The real contact mutation was not atomically saved.");
             }
             if (committed)
@@ -162,13 +376,13 @@ internal static partial class AfterRunAuthorityHarness
                     Require(body.Children.OfType<Border>().Any(card => card.Content is Label
                         { AutomationId: "creation-contact-committed-reload-required" }),
                         "Actual native page did not explain committed-but-reload-required state.");
-                if (scenario is "local" or "linked" or "ambiguous-receipt")
+                if (scenario is "local" or "linked" or "ambiguous-receipt" || collection)
                     Require(confirmed.RefreshedState is not null
                         && runtime.Coordinator.State.DisplayOwnerContext == stamp
                         && runtime.Coordinator.State.ContentRevision == 2,
                         scenario + ": successful owner-bound refresh did not preserve functional navigation.");
                 else Require(confirmed.RefreshedState is null, "Stale/cancelled refresh was presented as current.");
-                if (scenario == "ambiguous-receipt")
+                if (scenario == "ambiguous-receipt" || scenario.EndsWith("-ambiguous", StringComparison.Ordinal))
                     Require(confirmed.RecoveredByReceiptLookup && probe!.ConfirmCalls == 1,
                         "Ambiguous recovery must read the retained key, never replay the mutation.");
                 // Actual reconstructed FileWorkspaceStore + fresh issuer can recover a historical
@@ -205,19 +419,25 @@ internal static partial class AfterRunAuthorityHarness
         public int ConfirmCalls;
         public bool ThrowLoads;
         public bool ThrowLookup;
+        public SynchronizationContext? ForbiddenContext;
+        private void RequireOffUiContext() => Require(ForbiddenContext is null
+            || SynchronizationContext.Current != ForbiddenContext,
+            "Contacts Core work ran synchronously on the caller's UI context.");
         public CharacterCreationContactResult<CharacterCreationContactsState> Load(
             OwnerContextStamp owner, CharacterCreationContactsLoadRequest request)
         {
+            RequireOffUiContext();
             Stamps.Add(owner);
             if (ThrowLoads) throw new IOException("Synthetic post-commit refresh outage");
             return inner.Load(owner, request);
         }
         public CharacterCreationContactResult<CharacterCreationContactPreview> Preview(
             OwnerContextStamp owner, CharacterCreationContactPreviewRequest request)
-        { Stamps.Add(owner); return inner.Preview(owner, request); }
+        { RequireOffUiContext(); Stamps.Add(owner); return inner.Preview(owner, request); }
         public CharacterCreationContactResult<CharacterCreationContactReceipt> Confirm(
             OwnerContextStamp owner, CharacterCreationContactConfirmRequest request)
         {
+            RequireOffUiContext();
             Stamps.Add(owner); MutationStamps.Add(owner); ConfirmCalls++; BeforeConfirm?.Invoke();
             var result = inner.Confirm(owner, request);
             if (result.Value is not null) AfterConfirm?.Invoke();

@@ -942,7 +942,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 **cache,
             }
             with self.subTest(cache=cache):
-                with self.assertRaisesRegex(ValueError, "cold/non-use"):
+                with self.assertRaisesRegex(ValueError, "cache receipt"):
                     self.validate_receipt_copy(payload)
 
     def test_cold_cache_flags_types_and_exact_shape_fail_closed(self) -> None:
@@ -990,12 +990,107 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 receipt["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(receipt)
                 if posture == "relabeled-cold":
                     receipt["ownerPackageArtifactCache"].update(status="not_supplied", used=False)
+                # The separate cold predicate is unchanged. Local reuse must
+                # never be advertised as a hosted cold result.
                 with self.subTest(posture=posture), self.assertRaisesRegex(ValueError, "cold/non-use"):
+                    self.module.validate_cold_cache_receipt(receipt["ownerPackageArtifactCache"])
+                if posture == "relabeled-cold":
+                    with self.assertRaises(ValueError):
+                        self.validate_receipt_copy(receipt)
+                    with self.assertRaises(ValueError):
+                        self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+
+    def test_local_copied_cache_is_admitted_only_with_exact_retained_bytes(self) -> None:
+        with self.materialized_cache_fixture() as (receipt, cache, feed):
+            receipt["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(receipt)
+            original = copy.deepcopy(receipt)
+            validated = self.validate_receipt_copy(receipt)
+            self.module.validate_receipt_cache_equivalence(validated, cache, package_feed=feed)
+            self.assertEqual(original, validated)
+            self.assertIs(validated["ownerPackageArtifactCache"]["used"], True)
+            self.assertFalse(Path(validated["ownerPackageArtifactCache"]["sourcePath"]).exists())
+
+    def test_local_copied_cache_inventory_must_match_all_retained_bytes(self) -> None:
+        for field in ("packages", "authorityArtifacts"):
+            for mutation in ("digest", "size", "duplicate", "missing", "extra", "path", "unbound-file"):
+                with self.materialized_cache_fixture() as (receipt, cache, feed):
+                    receipt["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(receipt)
+                    rows = receipt["ownerPackageArtifactCache"][field]
+                    if mutation == "digest":
+                        rows[0]["sha256"] = "e" * 64
+                    elif mutation == "size":
+                        rows[0]["sizeBytes"] += 1
+                    elif mutation == "duplicate":
+                        rows[-1] = copy.deepcopy(rows[0])
+                    elif mutation == "missing":
+                        rows.pop()
+                    elif mutation == "extra":
+                        rows.append(copy.deepcopy(rows[0]))
+                    elif mutation == "path":
+                        rows[0]["path"] = "../outside"
+                    else:
+                        rows[0]["path"] = ("packages/" if field == "packages" else "authority/") + "unbound-file"
+                    with self.subTest(field=field, mutation=mutation), self.assertRaises(ValueError):
+                        self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+
+    def test_local_copied_cache_exact_posture_and_typed_rows_fail_closed(self) -> None:
+        with self.materialized_cache_fixture() as (base, cache, feed):
+            base["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(base)
+            mutations = [
+                (field, value)
+                for field in ("used", "importedByCopy", "coldProducerFallbackOnCacheMiss")
+                for value in (False, 1, "true", None)
+            ] + [
+                ("packageCount", value) for value in (True, 18.0, "18", 17)
+            ] + [
+                ("cacheKey", "0" * 64), ("status", "not_supplied"), ("contract", "unknown"),
+                ("sourcePath", "relative"), ("sourcePath", "/path/../escape"),
+                ("sourcePath", "/path\x00bad"), ("sourcePath", "//double"),
+            ]
+            for field, value in mutations:
+                receipt = copy.deepcopy(base)
+                receipt["ownerPackageArtifactCache"][field] = value
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                     self.validate_receipt_copy(receipt)
-                # Even a separately valid supplied feed cannot promote this
-                # different producer posture into the hosted cold authority.
-                with self.subTest(equivalence=posture), self.assertRaisesRegex(ValueError, "cold/non-use"):
+            for field in base["ownerPackageArtifactCache"]:
+                receipt = copy.deepcopy(base)
+                receipt["ownerPackageArtifactCache"].pop(field)
+                with self.subTest(missing=field), self.assertRaises(ValueError):
+                    self.validate_receipt_copy(receipt)
+            for field in ("packages", "authorityArtifacts"):
+                for key, value in (("sizeBytes", True), ("sizeBytes", 1.0), ("sha256", "X" * 64)):
+                    receipt = copy.deepcopy(base)
+                    receipt["ownerPackageArtifactCache"][field][0][key] = value
+                    with self.subTest(field=field, key=key, value=value), self.assertRaises(ValueError):
+                        self.validate_receipt_copy(receipt)
+            for key, value in (("path", "elsewhere.json"), ("sha256", "0" * 64),
+                               ("sizeBytes", True), ("sizeBytes", 1)):
+                receipt = copy.deepcopy(base)
+                receipt["ownerPackageArtifactCache"]["manifest"][key] = value
+                with self.subTest(manifest=key, value=value), self.assertRaises(ValueError):
+                    self.validate_receipt_copy(receipt)
+
+    def test_local_copied_cache_still_rejects_retained_file_tampering(self) -> None:
+        for relative in ("packages", "authority"):
+            with self.materialized_cache_fixture() as (receipt, cache, feed):
+                receipt["ownerPackageArtifactCache"] = self.copied_cache_receipt_fixture(receipt)
+                self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+                target = next((feed.parent / relative).iterdir())
+                target.write_bytes(b"tampered")
+                with self.subTest(directory=relative), self.assertRaises(ValueError):
                     self.module.validate_receipt_cache_equivalence(receipt, cache, package_feed=feed)
+
+    def test_copied_hub_receipt_must_match_the_exact_package_lock(self) -> None:
+        package_authority, receipt = self.bound_authority_fixture()
+        receipt["ownerPackageArtifactCache"] = {"used": True}
+        for key in ("receiptContract", "receiptSha256"):
+            receipt["canonicalOwnerFeed"][key] = package_authority["canonicalOwnerFeed"][key]
+        self.module.validate_bound_authority_claims(self.payload, package_authority, receipt)
+        for key in ("receiptContract", "receiptSha256"):
+            tampered = copy.deepcopy(receipt)
+            tampered["canonicalOwnerFeed"][key] = "substituted"
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "copied Hub receipt"):
+                self.module.validate_bound_authority_claims(self.payload, package_authority, tampered)
 
     def test_cold_receipt_and_independent_retained_cache_are_byte_equivalent(self) -> None:
         with self.materialized_cache_fixture() as (receipt, cache, feed):

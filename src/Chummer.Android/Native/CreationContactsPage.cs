@@ -13,6 +13,8 @@ public sealed class CreationContactsPage : NativePageBase
         Spacing = 14
     };
     private CharacterCreationContactsInteractionState? _authority;
+    private CharacterCreationContactsInteractionLoadResult? _loaded;
+    private bool _loading;
 
     public CreationContactsPage(
         RunnerSessionCoordinator coordinator,
@@ -24,6 +26,22 @@ public sealed class CreationContactsPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        if (_authority is { } current && CreationContactsPhoneAuthority.IsReady(current, Coordinator.State)) return;
+        _loading = true;
+        _loaded = null;
+        Refresh();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationContactsForDisplayAsync(Coordinator.State, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loaded = loaded;
+            _authority = _loaded.State;
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
@@ -32,8 +50,7 @@ public sealed class CreationContactsPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Contacts.Intro",
-                "Choose an existing Contact and preview one rules-authoritative change. "
-                + "Pets, Enemies, and Contact add/delete remain outside this surface."),
+                "Add, edit or remove a Contact. Review Core-calculated costs before confirming. Pets and Enemies use separate workflows."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.NavigationRow(
             CreationFlowStrings.Get("Lifestyles.Heading", "Lifestyles"),
@@ -42,20 +59,16 @@ public sealed class CreationContactsPage : NativePageBase
                 "Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics."),
             () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
             automationId: "creation-contacts-open-lifestyles"));
-        CharacterCreationContactsInteractionLoadResult? load = null;
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-contacts-loading" });
+            return;
+        }
+        CharacterCreationContactsInteractionLoadResult? load = _loaded;
         CharacterCreationContactsInteractionState? state = CreationPageAuthorityCache.Resolve(
             _authority,
             candidate => CreationContactsPhoneAuthority.IsReady(candidate, Coordinator.State),
-            () =>
-            {
-                load = Coordinator.LoadCreationContacts();
-                return string.Equals(
-                        load.Outcome,
-                        CharacterCreationContactOutcomes.Available,
-                        StringComparison.Ordinal)
-                    ? load.State
-                    : null;
-            });
+            () => null);
         _authority = state;
         if (state is null)
         {
@@ -91,6 +104,14 @@ public sealed class CreationContactsPage : NativePageBase
             return;
         }
 
+        if (state.NewContactTemplate is not null)
+        {
+            Button add = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Contacts.Add", "Add contact"));
+            add.AutomationId = "creation-contacts-add";
+            add.Clicked += async (_, _) => await Navigation.PushAsync(
+                new CreationContactEditPage(Coordinator, Guid.NewGuid(), adding: true));
+            _body.Add(add);
+        }
         AddContacts(state);
         AddSourceAuthority(state);
     }
@@ -155,7 +176,7 @@ public sealed class CreationContactsPage : NativePageBase
             Label empty = NativeTheme.Body(
                 CreationFlowStrings.Get(
                     "Contacts.Empty",
-                    "No existing Contact is projected. Adding Contacts is not yet available here."),
+                    "No contacts yet. Add someone your runner can turn to."),
                 NativeTheme.Muted);
             empty.AutomationId = "creation-contacts-empty";
             _body.Add(NativeTheme.Card(empty));

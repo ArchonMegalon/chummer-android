@@ -73,12 +73,12 @@
   <data name="Contacts.Connection" xml:space="preserve"><value>Connection {0}</value></data>
   <data name="Contacts.ContactPoints" xml:space="preserve"><value>Contact points</value></data>
   <data name="Contacts.Cost" xml:space="preserve"><value>Cost {0}</value></data>
-  <data name="Contacts.Empty" xml:space="preserve"><value>No existing Contact is projected. Adding Contacts is not yet available here.</value></data>
+  <data name="Contacts.Empty" xml:space="preserve"><value>No contacts yet. Add someone your runner can turn to.</value></data>
   <data name="Contacts.Existing" xml:space="preserve"><value>Existing Contacts</value></data>
   <data name="Contacts.Free" xml:space="preserve"><value>Free</value></data>
   <data name="Contacts.FriendsInHighPlaces" xml:space="preserve"><value>Friends in High Places</value></data>
   <data name="Contacts.Heading" xml:space="preserve"><value>Contacts</value></data>
-  <data name="Contacts.Intro" xml:space="preserve"><value>Choose an existing Contact and preview one rules-authoritative change. Pets, Enemies, and Contact add/delete remain outside this surface.</value></data>
+  <data name="Contacts.Intro" xml:space="preserve"><value>Add, edit or remove a Contact. Review Core-calculated costs before confirming. Pets and Enemies use separate workflows.</value></data>
   <data name="Contacts.Loyalty" xml:space="preserve"><value>Loyalty {0}</value></data>
   <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics.</value></data>
   <data name="Contacts.PageTitle" xml:space="preserve"><value>Creation contacts</value></data>
@@ -246,4 +246,11 @@
   <data name="TalentChoices.Continue" xml:space="preserve"><value>Continue with these choices</value></data>
   <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Choose {0} more</value></data>
   <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Choice {0} · {1} · no free skill levels</value></data>
+  <data name="Contacts.Add" xml:space="preserve"><value>Add contact</value></data>
+  <data name="Contacts.StageSummary" xml:space="preserve"><value>{0} contacts · {1} points remaining</value></data>
+  <data name="Contacts.Remove" xml:space="preserve"><value>Remove contact</value></data>
+  <data name="Contacts.RemoveWarning" xml:space="preserve"><value>This removes the selected contact, including its notes and attached data. Nothing is removed until you confirm.</value></data>
+  <data name="Contacts.Presence" xml:space="preserve"><value>Contact entry</value></data>
+  <data name="Contacts.AddDelta" xml:space="preserve"><value>Not present → added</value></data>
+  <data name="Contacts.RemoveDelta" xml:space="preserve"><value>Present → removed</value></data>
 </root>
