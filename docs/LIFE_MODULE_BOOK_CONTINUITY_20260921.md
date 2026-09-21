@@ -106,11 +106,45 @@ the existing cancellation, failed-storage, stale and corrupt-checkpoint cases.
 localization remains 222 keys in three catalogs with five locale cases.
 
 Required follow-up controls, an explicit finish choice, cumulative effect
-application and honest finalization into Career remain open. These managed
-tests do not establish the current native route. The reader still exposes raw Markdown
-and a legacy `$real` story placeholder; these still need presentation/template
+application and honest finalization into Career remain open. The reader still exposes raw Markdown
+and legacy `$real` / `$OUTDOOR` story placeholders; these need presentation/template
 handling. The overview budget remains unavailable despite the exact decision
 budget. This APK has no live First Book AI connection.
+
+## Native continuation and restart smoke
+
+Android source `a5ee82a1c5ea2929b97e720388f1b81edc462d01`, Core feature
+`6513b144f`, and the unchanged UI `578f1658e` were built in the same isolated
+local Docker toolchain. `debug-continuation-2.log`: zero warnings/errors.
+Debug x64 APK SHA-256:
+`8291959d62845e3747f6305be8561f587ade9bf7370dba5b4061d05329837005`.
+This is an explicit source assembly, not sealed owner-package consumption.
+
+The actual API 36 route confirmed, once each:
+
+1. Elf / Trans-Polar Aleut Nation: first chapter, revision 2, 55 karma used.
+2. Military Brat: second chapter, revision 3, 95 karma used.
+3. Isolated Rural Upbringing: third chapter, revision 4, 145 karma used.
+
+Each confirmation displayed the next decision on the same page. The reader
+retained all three chapters. After force-stop and restart, PID 4914 became 5509;
+the same runner reopened at revision 4, stage 4 / turn 4, with no pending preview.
+Checkpoint digest remained
+`314a5804f8d0f2e389c49626dd9bbb1a6556fc4411c9062b8307e25c42754417`.
+All three chapter digests were identical before and after restart. The reopened
+decision page showed 145 used / 605 remaining; its book action reopened the
+same three chapters. No confirmation was replayed.
+
+`origin-continuation-before-restart.png`,
+`origin-continuation-after-restart.png` and `.xml` are retained in the local
+packet. The owned read-only emulator was stopped. A transient Android System UI
+ANR occurred during initial emulator startup, before this route; it cleared
+after Wait and is not counted as an app success/failure.
+
+This proves the tested three-chapter path and its restart, not every module,
+Further Education/Real Life completion, Career finalization or First Book
+generation inside the app. Further Education currently renders many expanded
+choices before the confirm button; compact selection/review is still needed.
 
 ## Separate live First Book canary
 
