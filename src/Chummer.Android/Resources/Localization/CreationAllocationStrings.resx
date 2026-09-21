@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, attributes, skills, knowledge, languages, talent budgets, spells/rituals and complex forms. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, attributes, skills, knowledge, languages, talent budgets, spells/rituals, complex forms and adept powers. Later creation steps and Career entry remain unavailable.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears attribute, skill, knowledge, language, talent, spell/ritual and complex-form selections in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears attribute, skill, knowledge, language, talent, spell/ritual, complex-form and adept-power selections in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -399,7 +399,7 @@
   <data name="Sr6.SkillInvalid" xml:space="preserve"><value>Check skill IDs, ratings (0–6) and specialization names.</value></data>
   <data name="Sr6.SkillUnavailable" xml:space="preserve"><value>This talent does not provide access to this skill.</value></data>
   <data name="Sr6.SkillAspectRequired" xml:space="preserve"><value>Select the magical aspect matching the skill.</value></data>
-  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Astral requires an adept power that this draft does not support yet.</value></data>
+  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Save Astral Perception in the adept-power step before assigning Astral skill.</value></data>
   <data name="Sr6.SkillMaximumCount" xml:space="preserve"><value>Only one skill may reach the creation maximum.</value></data>
   <data name="Sr6.SkillOverspend" xml:space="preserve"><value>The allocation exceeds the skill-point budget.</value></data>
   <data name="Sr6.SkillSpecializationInvalid" xml:space="preserve"><value>A specialization requires a learned skill. Ordinary skills allow one; exotic weapons require at least one weapon type.</value></data>
@@ -442,7 +442,7 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Enter one native language and distinct, non-empty names (up to 80 characters). Choose a supported language level; remove unused blank rows.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Knowledge and language choices exceed Logic. Reduce the choices or review the attribute allocation; nothing was saved.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Knowledge topics are player-entered and unrated. Agree their scope with the GM; saving does not record GM approval.</value></data>
-  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Point Buy uses CP, not Karma or priority ranks. Partial drafts can be saved; all CP must be spent before finalization. After attributes, plan talent budgets and select spells/rituals or complex forms. Adept-power selection and finalization remain unavailable.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Point Buy uses CP, not Karma or priority ranks. Partial drafts can be saved; all CP must be spent before finalization. After attributes, plan talent budgets and select spells/rituals, complex forms or adept powers. Finalization remains unavailable.</value></data>
   <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Buy additional attribute points</value></data>
   <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Buy additional skill points</value></data>
   <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Buy additional adjustment points</value></data>
@@ -455,7 +455,7 @@
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>SR6 talent budget</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Plan magic and resonance</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Whole power points to allocate / purchase</value></data>
-  <data name="Sr6.TalentHelp" xml:space="preserve"><value>This page plans budgets only. Choose spells/rituals or complex forms in the separate selection step. Adept powers, Karma purchases and finalization remain unavailable.</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>This page plans budgets only. Choose spells/rituals, complex forms or adept powers in their separate steps. Karma purchases and finalization remain unavailable.</value></data>
   <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Review and save attributes first; talent budgets depend on the validated Magic/Resonance.</value></data>
   <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Choose a supported whole-power-point allocation within the Core limit.</value></data>
   <data name="Sr6.TalentOptions" xml:space="preserve"><value>Automatic power points: {0}. Maximum selectable whole power points: {1}; CP per point: {2}.</value></data>
@@ -487,4 +487,25 @@
   <data name="Sr6.SpellsInvalid" xml:space="preserve"><value>Choose available SR6 spells/rituals without duplicates. The catalog must match your saved talent and aspect.</value></data>
   <data name="Sr6.SpellsLimit" xml:space="preserve"><value>Too many spells/rituals for the current talent budget. Remove choices or adjust the talent first.</value></data>
   <data name="Sr6.SpellsBudget" xml:space="preserve"><value>Spells/rituals: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}</value></data>
+  <data name="Sr6.PowersTitle" xml:space="preserve"><value>Choose adept powers</value></data>
+  <data name="Sr6.PowersHelp" xml:space="preserve"><value>SR6 draft choices, not active effects. Names follow the German 2024 core. Costs and limits come from Core. Improved skills use saved natural ratings; the cheaper noncombat option excludes combat tests (official FAQ). Save Astral Perception before assigning Astral skill. Qi foci, quality discounts and finalization are not included.</value></data>
+  <data name="Sr6.PowersTalentRequired" xml:space="preserve"><value>Save attributes and the adept/mystic-adept power-point budget first.</value></data>
+  <data name="Sr6.PowersChoose" xml:space="preserve"><value>Adept power</value></data>
+  <data name="Sr6.PowersRating" xml:space="preserve"><value>Level</value></data>
+  <data name="Sr6.PowersAdd" xml:space="preserve"><value>Add selected power</value></data>
+  <data name="Sr6.PowersRemove" xml:space="preserve"><value>Remove power</value></data>
+  <data name="Sr6.PowersOption" xml:space="preserve"><value>{0} PP per level · maximum {1} · {2}</value></data>
+  <data name="Sr6.PowersValue" xml:space="preserve"><value>{0} · level {1} · {2} PP · {3}</value></data>
+  <data name="Sr6.PowersBudget" xml:space="preserve"><value>Power points: {0}/{1} · remaining: {2}</value></data>
+  <data name="Sr6.PowersRatingUnavailable" xml:space="preserve"><value>Level exceeds Magic or the natural attribute/skill limit. A skill must have a saved natural rating first.</value></data>
+  <data name="Sr6.PowersInvalid" xml:space="preserve"><value>Choose valid powers and levels without duplicates. Select only one combat scope per improved skill.</value></data>
+  <data name="Sr6.PowersOverspend" xml:space="preserve"><value>The powers exceed the saved power-point budget. Remove or lower a choice, or adjust the budget first.</value></data>
+  <data name="Sr6.PowersUse.all" xml:space="preserve"><value>all tests</value></data>
+  <data name="Sr6.PowersUse.noncombat" xml:space="preserve"><value>noncombat tests only</value></data>
+  <data name="Sr6.PowersSense.sight" xml:space="preserve"><value>sight</value></data>
+  <data name="Sr6.PowersSense.hearing" xml:space="preserve"><value>hearing</value></data>
+  <data name="Sr6.PowersSense.touch" xml:space="preserve"><value>touch</value></data>
+  <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>smell</value></data>
+  <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>taste</value></data>
+  <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Improved Reflexes cannot combine with other Reaction or initiative enhancements; runtime stacking is not applied in this draft.</value></data>
 </root>

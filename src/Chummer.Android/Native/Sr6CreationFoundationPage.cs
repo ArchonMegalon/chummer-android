@@ -18,6 +18,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _talentMode;
     private readonly bool _formsMode;
     private readonly bool _spellsMode;
+    private readonly bool _powersMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -33,12 +34,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _talent;
     private Button? _forms;
     private Button? _spells;
+    private Button? _powers;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
-        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false) : base(coordinator)
+        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false,
+        bool powersMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
@@ -46,10 +49,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _talentMode = talentMode;
         _formsMode = formsMode;
         _spellsMode = spellsMode;
+        _powersMode = powersMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -115,6 +119,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _talent = null;
         _forms = null;
         _spells = null;
+        _powers = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -135,7 +140,15 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_spellsMode)
+        if (_powersMode)
+        {
+            if (state.Selection?.TalentAllocation is not { } budget || state.AdeptPowerOptions is not { Count: > 0 } catalog)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersTalentRequired"))); return; }
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(budget)));
+            BuildPowerEditor(catalog, Current, Change);
+        }
+        else if (_spellsMode)
         {
             if (state.Selection?.TalentAllocation is not { } budget || state.SpellOptions is not { Count: > 0 } catalog)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsTalentRequired"))); return; }
@@ -333,6 +346,24 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     if (state.SpellOptions is null)
                         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsTalentRequired"), NativeTheme.Muted));
                 }
+                if (saved.Selection.TalentId is "adept" or "mystic-adept")
+                {
+                    var powers = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("PowersTitle"));
+                    _powers = powers;
+                    powers.AutomationId = "sr6-foundation-powers";
+                    powers.IsEnabled = SavedCurrent() && state.AdeptPowerOptions is { Count: > 0 };
+                    powers.Clicked += async (_, _) =>
+                    {
+                        if (!SavedCurrent() || state.AdeptPowerOptions is not { Count: > 0 }) return;
+                        await RunAsync(async () =>
+                        {
+                            if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, powersMode: true));
+                        });
+                    };
+                    _body.Add(powers);
+                    if (state.AdeptPowerOptions is null)
+                        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersTalentRequired"), NativeTheme.Muted));
+                }
                 if (saved.Attributes is null)
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
@@ -402,6 +433,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(talent)));
                 if (_talentMode)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
+            }
+            if (quote.AdeptPowers is { } powers)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.PowersBudget(powers)));
+                foreach (var power in powers.Powers)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.PowerValue(power)));
+                foreach (string warning in powers.WarningIds)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersWarning." + warning), NativeTheme.Muted));
             }
             if (quote.Spells is { } spells)
             {
@@ -481,9 +520,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null };
             _selection = selection;
             _hasUnconfirmedChanges = true;
             _preview = null;
@@ -496,6 +535,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_talent is not null) _talent.IsEnabled = false;
             if (_forms is not null) _forms.IsEnabled = false;
             if (_spells is not null) _spells.IsEnabled = false;
+            if (_powers is not null) _powers.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
@@ -546,6 +586,69 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             };
             _body.Add(picker);
         }
+    }
+
+    private void BuildPowerEditor(IReadOnlyList<Sr6CreationAdeptPowerOption> catalog,
+        Func<bool> current, Action<Sr6CreationFoundationSelection> change)
+    {
+        _selection = _selection! with { AdeptPowers = _selection.AdeptPowers ?? new([]) };
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersHelp"), NativeTheme.Muted));
+        if (_state?.Selection?.AdeptPowers is { } saved)
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.PowersBudget(saved)));
+        for (int index = 0; index < _selection.AdeptPowers.Choices.Count; index++)
+        {
+            int captured = index;
+            var choice = _selection.AdeptPowers.Choices[index];
+            var option = catalog.Single(row => row.Id == choice.CatalogId);
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.PowerName(option) + " · " +
+                Sr6CreationCopy.Text("PowersRating") + " " + choice.Rating + " · " + option.SourceAnchorId));
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("PowersRemove"));
+            remove.AutomationId = "sr6-foundation-power-remove-" + index;
+            remove.Clicked += (_, _) =>
+            {
+                if (!current()) return;
+                change(_selection with { AdeptPowers = new(_selection.AdeptPowers.Choices.Where((_, i) => i != captured).ToArray()) });
+                Refresh();
+            };
+            _body.Add(remove);
+        }
+        if (_selection.AdeptPowers.Choices.Count >= 24) return;
+        var picker = new Picker { Title = Sr6CreationCopy.Text("PowersChoose"), AutomationId = "sr6-foundation-power-catalog" };
+        foreach (var option in catalog) picker.Items.Add(Sr6CreationCopy.PowerName(option));
+        var rating = new Picker { Title = Sr6CreationCopy.Text("PowersRating"), AutomationId = "sr6-foundation-power-rating" };
+        var details = NativeTheme.Body("", NativeTheme.Muted);
+        details.AutomationId = "sr6-foundation-power-details";
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("PowersAdd"));
+        add.AutomationId = "sr6-foundation-power-add";
+        add.IsEnabled = false;
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (!current()) return;
+            add.IsEnabled = false;
+            rating.Items.Clear();
+            if (picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Count) return;
+            var option = catalog[picker.SelectedIndex];
+            details.Text = Sr6CreationCopy.PowerOption(option);
+            foreach (int value in Enumerable.Range(1, option.MaximumRating)) rating.Items.Add(value.ToString(CultureInfo.InvariantCulture));
+            rating.SelectedIndex = option.MaximumRating > 0 ? 0 : -1;
+        };
+        rating.SelectedIndexChanged += (_, _) =>
+        {
+            if (current()) add.IsEnabled = picker.SelectedIndex >= 0 && picker.SelectedIndex < catalog.Count
+                && rating.SelectedIndex >= 0 && rating.SelectedIndex < catalog[picker.SelectedIndex].MaximumRating;
+        };
+        add.Clicked += (_, _) =>
+        {
+            if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Count
+                || rating.SelectedIndex < 0 || rating.SelectedIndex >= catalog[picker.SelectedIndex].MaximumRating) return;
+            change(_selection with { AdeptPowers = new([.. _selection.AdeptPowers.Choices,
+                new(catalog[picker.SelectedIndex].Id, rating.SelectedIndex + 1)]) });
+            Refresh();
+        };
+        _body.Add(picker);
+        _body.Add(details);
+        _body.Add(rating);
+        _body.Add(add);
     }
 
     private void BuildSpellEditor(IReadOnlyList<Sr6CreationSpellOption> catalog,

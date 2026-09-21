@@ -623,6 +623,113 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string talent in new[] { "adept", "mystic-adept" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var seedSelection = new Sr6CreationFoundationSelection("human", talent,
+                        method == "PointBuy" ? [] : [new("heritage", "C"), new("talent", "A"),
+                            new("attributes", "B"), new("skills", "D"), new("resources", "E")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 2, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute =>
+                            new Sr6CreationAttributeSpend(attribute, 0, attribute == "Magic" ? 2 : 0)).ToArray()),
+                        Skills = new([new("Athletics", 3, [])]),
+                        TalentAllocation = new(method == "PointBuy" || talent == "mystic-adept" ? 3 : 0)
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, seedSelection)).Value!;
+                    var committed = await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    Require(committed.Commit is not null, "Power seed not saved.");
+                    var catalog = committed.State!.AdeptPowerOptions!.ToArray();
+                    Require(catalog.Length == 51, "Wrong Core adept-power catalog.");
+                    var parent = new Sr6CreationFoundationPage(runtime.Coordinator);
+                    var navigation = new NavigationPage(parent);
+                    var window = new Window(navigation);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                    var open = IssuedElements(parent).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-powers");
+                    Require(open.IsEnabled, "Saved adept budget did not enable power page.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)open).SendClicked());
+                    IssuedPageLifecycle(parent, "OnDisappearing");
+                    var page = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("power-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked();
+                        return Task.CompletedTask;
+                    }
+                    async Task Add(string catalogId, int level = 1)
+                    {
+                        Element<Picker>("power-catalog").SelectedIndex = Array.FindIndex(catalog, item => item.Id == catalogId);
+                        Element<Picker>("power-rating").SelectedIndex = level - 1;
+                        Require(Element<Button>("power-add").IsEnabled, "Valid power level could not be added.");
+                        await Click("power-add");
+                    }
+                    Require(page.Title == Sr6CreationCopy.Text("PowersTitle") && page.Title != "PowersTitle", "Power title not localized.");
+                    Require(Element<Picker>("power-catalog").Items.SequenceEqual(catalog.Select(Sr6CreationCopy.PowerName)), "Native catalog differs from Core.");
+                    Element<Picker>("power-catalog").SelectedIndex = Array.FindIndex(catalog, item => item.Id == "improved-ability-firearms-all");
+                    Require(!Element<Button>("power-add").IsEnabled && Element<Picker>("power-rating").Items.Count == 0,
+                        "Untrained improved skill was selectable.");
+                    await Add("astral-perception");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    await Add("mystic-armor");
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Power change reused old confirmation.");
+                    await Add("mystic-armor");
+                    await Click("preview");
+                    Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && Element<Label>("status").Text == Sr6CreationCopy.Text("PowersInvalid"), "Duplicate power not rejected/localized.");
+                    await Click("power-remove-2");
+                    await Add("improved-ability-athletics-noncombat", 2);
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text?.Contains(Sr6CreationCopy.Text("PowersUse.noncombat"), StringComparison.Ordinal) == true),
+                        "Noncombat scope missing from review.");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2, "Power save duplicated or lost.");
+                    Require(quote.AdeptPowers is { Powers.Count: 3, QuarterPointsSpent: 9 }, "Power fractional cost wrong.");
+                    Require(quote.PointBuy?.PointsSpent == seed.PointBuy?.PointsSpent, "Power allocation charged CP a second time.");
+                    var oldAdd = Element<Button>("power-add");
+                    var oldPicker = Element<Picker>("power-catalog");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldPicker.SelectedIndex = 0;
+                    oldAdd.IsEnabled = true;
+                    ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, powersMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Count(item => item.AutomationId?.StartsWith("sr6-foundation-power-remove-", StringComparison.Ordinal) == true) == 3,
+                        "Saved powers did not restore.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && probe.Confirms == 2, "Restored/departed power controls replayed writes.");
+                    IssuedPageLifecycle(reopened, "OnDisappearing");
+                    var restored = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    Require(restored.SkillOptions!.Single(row => row.SkillId == "Astral").Available, "Saved Astral Perception did not unlock skill.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 adept powers phone " + method + " " + talent + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales y formas complejas. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas y poderes de adepto. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra atributos, habilidades, conocimientos, idiomas, talento, hechizos/rituales y formas complejas al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra atributos, habilidades, conocimientos, idiomas, talento, hechizos/rituales, formas complejas y poderes de adepto al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -399,7 +399,7 @@
   <data name="Sr6.SkillInvalid" xml:space="preserve"><value>Comprueba las habilidades, niveles (0–6) y nombres de especialización.</value></data>
   <data name="Sr6.SkillUnavailable" xml:space="preserve"><value>Este talento no permite acceder a esta habilidad.</value></data>
   <data name="Sr6.SkillAspectRequired" xml:space="preserve"><value>Selecciona el aspecto mágico correspondiente a la habilidad.</value></data>
-  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Astral requiere un poder de adepto que este borrador aún no admite.</value></data>
+  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Guarda Percepción Astral en el paso de poderes de adepto antes de asignar la habilidad Astral.</value></data>
   <data name="Sr6.SkillMaximumCount" xml:space="preserve"><value>Solo una habilidad puede alcanzar el máximo de creación.</value></data>
   <data name="Sr6.SkillOverspend" xml:space="preserve"><value>La asignación supera el presupuesto de puntos de habilidad.</value></data>
   <data name="Sr6.SkillSpecializationInvalid" xml:space="preserve"><value>Una especialización requiere una habilidad aprendida. Las habilidades normales permiten una; las armas exóticas requieren al menos un tipo de arma.</value></data>
@@ -442,7 +442,7 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Introduce un idioma nativo y nombres distintos, no vacíos (hasta 80 caracteres). Elige un nivel válido y elimina las filas vacías.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Las elecciones superan Lógica. Reduce las elecciones o revisa los atributos; no se ha guardado nada.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Los conocimientos son entradas propias sin nivel. Acuerda su alcance con el director de juego; guardar no registra su aprobación.</value></data>
-  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Compra por puntos usa CP, no Karma ni prioridades. Puedes guardar borradores parciales; gasta todos los CP antes de finalizar. Tras los atributos puedes planificar talentos y elegir hechizos/rituales o formas complejas. Poderes de adepto y finalización aún no disponibles.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Compra por puntos usa CP, no Karma ni prioridades. Puedes guardar borradores parciales; gasta todos los CP antes de finalizar. Tras los atributos puedes planificar talentos y elegir hechizos/rituales, formas complejas o poderes de adepto. La finalización aún no está disponible.</value></data>
   <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Comprar puntos de atributo adicionales</value></data>
   <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Comprar puntos de habilidad adicionales</value></data>
   <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Comprar puntos de ajuste adicionales</value></data>
@@ -455,7 +455,7 @@
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>Presupuesto de talento SR6</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Planificar magia y resonancia</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Puntos de poder enteros a asignar / comprar</value></data>
-  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Esta página solo planifica presupuestos. Elige hechizos/rituales o formas complejas en su paso separado. Poderes de adepto, compras con Karma y finalización aún no disponibles.</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Esta página solo planifica presupuestos. Elige hechizos/rituales, formas complejas o poderes de adepto en sus pasos separados. Compras con Karma y finalización aún no disponibles.</value></data>
   <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Revisa y guarda primero los atributos; el presupuesto depende de Magia/Resonancia validadas.</value></data>
   <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Elige una asignación de puntos de poder enteros dentro del límite de Core.</value></data>
   <data name="Sr6.TalentOptions" xml:space="preserve"><value>Puntos de poder automáticos: {0}. Máximo seleccionable: {1} puntos enteros; CP por punto: {2}.</value></data>
@@ -487,4 +487,25 @@
   <data name="Sr6.SpellsInvalid" xml:space="preserve"><value>Elige hechizos/rituales SR6 disponibles sin duplicados. El catálogo debe coincidir con el talento y aspecto guardados.</value></data>
   <data name="Sr6.SpellsLimit" xml:space="preserve"><value>Demasiados hechizos/rituales para el presupuesto actual. Quita opciones o ajusta primero el talento.</value></data>
   <data name="Sr6.SpellsBudget" xml:space="preserve"><value>Hechizos/rituales: {0}/{1} · espacios restantes: {2} · espacios gratuitos usados: {3} · coste CP: {4}</value></data>
+  <data name="Sr6.PowersTitle" xml:space="preserve"><value>Elegir poderes de adepto</value></data>
+  <data name="Sr6.PowersHelp" xml:space="preserve"><value>Selecciones de borrador SR6, no efectos activos. Los nombres siguen el manual alemán de 2024. Core calcula costes y límites. Las habilidades mejoradas usan niveles naturales guardados; la opción económica sin combate excluye pruebas de combate (FAQ oficial). Guarda Percepción Astral antes de asignar Astral. No incluye focos qi, descuentos por cualidades ni finalización.</value></data>
+  <data name="Sr6.PowersTalentRequired" xml:space="preserve"><value>Guarda primero atributos y presupuesto de puntos de poder del adepto/adepto místico.</value></data>
+  <data name="Sr6.PowersChoose" xml:space="preserve"><value>Poder de adepto</value></data>
+  <data name="Sr6.PowersRating" xml:space="preserve"><value>Nivel</value></data>
+  <data name="Sr6.PowersAdd" xml:space="preserve"><value>Añadir poder elegido</value></data>
+  <data name="Sr6.PowersRemove" xml:space="preserve"><value>Quitar poder</value></data>
+  <data name="Sr6.PowersOption" xml:space="preserve"><value>{0} PP por nivel · máximo {1} · {2}</value></data>
+  <data name="Sr6.PowersValue" xml:space="preserve"><value>{0} · nivel {1} · {2} PP · {3}</value></data>
+  <data name="Sr6.PowersBudget" xml:space="preserve"><value>Puntos de poder: {0}/{1} · restantes: {2}</value></data>
+  <data name="Sr6.PowersRatingUnavailable" xml:space="preserve"><value>El nivel supera Magia o el límite natural del atributo/habilidad. La habilidad necesita primero un nivel natural guardado.</value></data>
+  <data name="Sr6.PowersInvalid" xml:space="preserve"><value>Elige poderes y niveles válidos sin duplicados. Solo una variante de combate por habilidad mejorada.</value></data>
+  <data name="Sr6.PowersOverspend" xml:space="preserve"><value>Los poderes superan el presupuesto guardado. Quita o reduce una selección, o ajusta primero el presupuesto.</value></data>
+  <data name="Sr6.PowersUse.all" xml:space="preserve"><value>todas las pruebas</value></data>
+  <data name="Sr6.PowersUse.noncombat" xml:space="preserve"><value>solo pruebas sin combate</value></data>
+  <data name="Sr6.PowersSense.sight" xml:space="preserve"><value>vista</value></data>
+  <data name="Sr6.PowersSense.hearing" xml:space="preserve"><value>oído</value></data>
+  <data name="Sr6.PowersSense.touch" xml:space="preserve"><value>tacto</value></data>
+  <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>olfato</value></data>
+  <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>gusto</value></data>
+  <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Reflejos Mejorados no se combina con otras mejoras de Reacción o iniciativa; este borrador no aplica efectos.</value></data>
 </root>

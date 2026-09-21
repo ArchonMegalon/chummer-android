@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, Attribute, Fertigkeiten, Wissen, Sprachen, Talentbudgets, Zauber/Rituale und Komplexe Formen lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, Attribute, Fertigkeiten, Wissen, Sprachen, Talentbudgets, Zauber/Rituale, Komplexe Formen und Adeptenkräfte lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute, Fertigkeiten, Wissen, Sprachen, Talent, Zauber/Rituale und Komplexe Formen erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute, Fertigkeiten, Wissen, Sprachen, Talent, Zauber/Rituale, Komplexe Formen und Adeptenkräfte erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -399,7 +399,7 @@
   <data name="Sr6.SkillInvalid" xml:space="preserve"><value>Fertigkeiten, Werte (0–6) und Spezialisierungsnamen prüfen.</value></data>
   <data name="Sr6.SkillUnavailable" xml:space="preserve"><value>Dieser Talenttyp gewährt keinen Zugriff auf diese Fertigkeit.</value></data>
   <data name="Sr6.SkillAspectRequired" xml:space="preserve"><value>Den zur Fertigkeit passenden magischen Aspekt wählen.</value></data>
-  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Astral benötigt eine Adeptenkraft, die dieser Entwurf noch nicht unterstützt.</value></data>
+  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Zuerst Astrale Wahrnehmung im Adeptenkräfte-Schritt speichern, danach die Astral-Fertigkeit wählen.</value></data>
   <data name="Sr6.SkillMaximumCount" xml:space="preserve"><value>Nur eine Fertigkeit darf das Erschaffungsmaximum erreichen.</value></data>
   <data name="Sr6.SkillOverspend" xml:space="preserve"><value>Die Verteilung überschreitet das Fertigkeitspunktebudget.</value></data>
   <data name="Sr6.SkillSpecializationInvalid" xml:space="preserve"><value>Eine Spezialisierung benötigt eine erlernte Fertigkeit. Normale Fertigkeiten erlauben eine; exotische Waffen benötigen mindestens eine Waffenart.</value></data>
@@ -442,7 +442,7 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Eine Muttersprache und eindeutige, nicht leere Namen eingeben (bis 80 Zeichen). Gültige Sprachstufe wählen; ungenutzte leere Zeilen entfernen.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Wissens- und Sprachauswahl überschreitet Logik. Auswahl reduzieren oder Attributsverteilung prüfen; nichts wurde gespeichert.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Wissensthemen sind eigene Eingaben ohne Stufe. Umfang mit der Spielleitung absprechen; Speichern bestätigt keine GM-Freigabe.</value></data>
-  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Punktekauf nutzt CP, nicht Karma oder Prioritäten. Teilentwürfe lassen sich speichern; vor Abschluss müssen alle CP verbraucht sein. Nach den Attributen lassen sich Talentbudgets planen sowie Zauber/Rituale oder Komplexe Formen auswählen. Adeptenkräfteauswahl und Abschluss fehlen noch.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Punktekauf nutzt CP, nicht Karma oder Prioritäten. Teilentwürfe lassen sich speichern; vor Abschluss müssen alle CP verbraucht sein. Nach den Attributen lassen sich Talentbudgets planen sowie Zauber/Rituale, Komplexe Formen oder Adeptenkräfte auswählen. Der Abschluss fehlt noch.</value></data>
   <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Zusätzliche Attributspunkte kaufen</value></data>
   <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Zusätzliche Fertigkeitspunkte kaufen</value></data>
   <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Zusätzliche Anpassungspunkte kaufen</value></data>
@@ -455,7 +455,7 @@
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>SR6 Talentbudget</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Magie und Resonanz planen</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Ganze Kraftpunkte aufteilen / kaufen</value></data>
-  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Diese Seite plant nur Budgets. Zauber/Rituale oder Komplexe Formen wählst du im eigenen Auswahlschritt. Adeptenkräfte, Karmakäufe und Charakterabschluss fehlen noch.</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Diese Seite plant nur Budgets. Zauber/Rituale, Komplexe Formen oder Adeptenkräfte wählst du im eigenen Auswahlschritt. Karmakäufe und Charakterabschluss fehlen noch.</value></data>
   <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Zuerst Attribute prüfen und speichern; Talentbudgets hängen von geprüfter Magie/Resonanz ab.</value></data>
   <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Eine unterstützte Aufteilung ganzer Kraftpunkte innerhalb der Core-Grenze wählen.</value></data>
   <data name="Sr6.TalentOptions" xml:space="preserve"><value>Automatische Kraftpunkte: {0}. Höchstens {1} ganze Kraftpunkte auswählbar; CP pro Punkt: {2}.</value></data>
@@ -487,4 +487,25 @@
   <data name="Sr6.SpellsInvalid" xml:space="preserve"><value>Verfügbare SR6-Zauber/Rituale ohne Duplikate wählen. Der Katalog muss zum gespeicherten Talent und Aspekt passen.</value></data>
   <data name="Sr6.SpellsLimit" xml:space="preserve"><value>Zu viele Zauber/Rituale für das aktuelle Talentbudget. Auswahl verkleinern oder zuerst das Talent anpassen.</value></data>
   <data name="Sr6.SpellsBudget" xml:space="preserve"><value>Zauber/Rituale: {0}/{1} · Plätze übrig: {2} · kostenlose Plätze genutzt: {3} · CP-Kosten: {4}</value></data>
+  <data name="Sr6.PowersTitle" xml:space="preserve"><value>Adeptenkräfte wählen</value></data>
+  <data name="Sr6.PowersHelp" xml:space="preserve"><value>SR6-Entwurfswahl, keine aktiven Effekte. Namen folgen dem deutschen Grundregelwerk 2024. Kosten und Grenzen kommen aus Core. Verbesserte Fertigkeiten nutzen gespeicherte natürliche Stufen; die günstigere Nichtkampf-Variante gilt nicht für Kampfproben (offizielle FAQ). Astrale Wahrnehmung vor der Astral-Fertigkeit speichern. Qi-Foki, Vorteilsrabatte und Abschluss sind nicht enthalten.</value></data>
+  <data name="Sr6.PowersTalentRequired" xml:space="preserve"><value>Zuerst Attribute und Kraftpunktebudget des Adepten/Magieradepten speichern.</value></data>
+  <data name="Sr6.PowersChoose" xml:space="preserve"><value>Adeptenkraft</value></data>
+  <data name="Sr6.PowersRating" xml:space="preserve"><value>Stufe</value></data>
+  <data name="Sr6.PowersAdd" xml:space="preserve"><value>Gewählte Kraft hinzufügen</value></data>
+  <data name="Sr6.PowersRemove" xml:space="preserve"><value>Kraft entfernen</value></data>
+  <data name="Sr6.PowersOption" xml:space="preserve"><value>{0} KP pro Stufe · Maximum {1} · {2}</value></data>
+  <data name="Sr6.PowersValue" xml:space="preserve"><value>{0} · Stufe {1} · {2} KP · {3}</value></data>
+  <data name="Sr6.PowersBudget" xml:space="preserve"><value>Kraftpunkte: {0}/{1} · verbleibend: {2}</value></data>
+  <data name="Sr6.PowersRatingUnavailable" xml:space="preserve"><value>Stufe überschreitet Magie oder die natürliche Attribut-/Fertigkeitsgrenze. Eine Fertigkeit benötigt zuerst eine gespeicherte natürliche Stufe.</value></data>
+  <data name="Sr6.PowersInvalid" xml:space="preserve"><value>Gültige Kräfte und Stufen ohne Duplikate wählen. Pro verbesserter Fertigkeit nur eine Kampf-Variante wählen.</value></data>
+  <data name="Sr6.PowersOverspend" xml:space="preserve"><value>Die Kräfte überschreiten das gespeicherte Kraftpunktebudget. Eine Wahl entfernen/reduzieren oder zuerst das Budget anpassen.</value></data>
+  <data name="Sr6.PowersUse.all" xml:space="preserve"><value>alle Proben</value></data>
+  <data name="Sr6.PowersUse.noncombat" xml:space="preserve"><value>nur Nichtkampf-Proben</value></data>
+  <data name="Sr6.PowersSense.sight" xml:space="preserve"><value>Gesichtssinn</value></data>
+  <data name="Sr6.PowersSense.hearing" xml:space="preserve"><value>Gehör</value></data>
+  <data name="Sr6.PowersSense.touch" xml:space="preserve"><value>Tastsinn</value></data>
+  <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>Geruchssinn</value></data>
+  <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>Geschmackssinn</value></data>
+  <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Verbesserte Reflexe sind nicht mit anderen Reaktions- oder Initiativsteigerungen kombinierbar; dieser Entwurf wendet keine Effekte an.</value></data>
 </root>

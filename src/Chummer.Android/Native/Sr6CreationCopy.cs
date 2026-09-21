@@ -15,6 +15,16 @@ internal static class Sr6CreationCopy
         "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate Karma: {8}.",
         preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
         preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0, preview.ComplexFormCost ?? 0, preview.SpellCost ?? 0);
+    internal static string PowerName(Sr6CreationAdeptPowerOption option) => option.SourceName
+        + (option.SubjectId is null ? "" : " (" + (option.SubjectKind == "sense" ? Text("PowersSense." + option.SubjectId) : Label(option.SubjectId)) + ")")
+        + (option.SubjectKind == "skill" ? " · " + Text("PowersUse." + option.UseId) : "");
+    internal static string PowerOption(Sr6CreationAdeptPowerOption option) => CreationAllocationStrings.Format("Sr6.PowersOption",
+        "{0} PP per level · maximum {1} · {2}", option.QuarterPointsPerRating / 4m, option.MaximumRating, option.SourceAnchorId)
+        + (option.MaximumRating == 0 ? " · " + Text("PowersRatingUnavailable") : "");
+    internal static string PowerValue(Sr6CreationAdeptPowerValue value) => CreationAllocationStrings.Format("Sr6.PowersValue",
+        "{0} · level {1} · {2} PP · {3}", PowerName(value.Option), value.Rating, value.QuarterPointsSpent / 4m, value.Option.SourceAnchorId);
+    internal static string PowersBudget(Sr6CreationAdeptPowerPreview preview) => CreationAllocationStrings.Format("Sr6.PowersBudget",
+        "Power points: {0}/{1} · remaining: {2}", preview.QuarterPointsSpent / 4m, preview.QuarterPointBudget / 4m, preview.QuarterPointsRemaining / 4m);
     internal static string SpellName(Sr6CreationSpellOption option) => Text("SpellsKind." + option.Kind) + ": " + option.SourceName;
     internal static string SpellsBudget(Sr6CreationSpellPreview preview) => CreationAllocationStrings.Format("Sr6.SpellsBudget",
         "Spells/rituals: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}",
@@ -73,6 +83,11 @@ internal static class Sr6CreationCopy
         Sr6CreationSpellBlockers.TalentRequired => Text("SpellsTalentRequired"),
         Sr6CreationSpellBlockers.CatalogUnavailable => Text("SpellsInvalid"),
         Sr6CreationSpellBlockers.LimitExceeded => Text("SpellsLimit"),
+        Sr6CreationAdeptPowerBlockers.InvalidSelection => Text("PowersInvalid"),
+        Sr6CreationAdeptPowerBlockers.CatalogUnavailable => Text("PowersInvalid"),
+        Sr6CreationAdeptPowerBlockers.TalentRequired => Text("PowersTalentRequired"),
+        Sr6CreationAdeptPowerBlockers.RatingExceeded => Text("PowersRatingUnavailable"),
+        Sr6CreationAdeptPowerBlockers.BudgetExceeded => Text("PowersOverspend"),
         Sr6CreationPointBuyBlockers.InvalidSelection => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.MethodMismatch => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.SourceRequired => Text("PointBuySource"),
