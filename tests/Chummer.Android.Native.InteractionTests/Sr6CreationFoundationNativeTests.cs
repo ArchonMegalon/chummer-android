@@ -125,6 +125,46 @@ internal static partial class AfterRunAuthorityHarness
                     IssuedPageLifecycle(reopened, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 phone " + method + " " + language);
+
+                    var attributesPage = new Sr6CreationFoundationPage(runtime.Coordinator, attributesMode: true);
+                    await navigation.PushAsync(attributesPage, false);
+                    using var attributeAlerts = new IssuedPageAlerts(attributesPage, window);
+                    await attributeAlerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributesPage, "OnAppearing"));
+                    T AttributeElement<T>(string key) where T : Element => IssuedElements(attributesPage).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task AttributeClick(string key) => ui.BeginAsyncVoid(() => ((IButtonController)AttributeElement<Button>(key)).SendClicked());
+                    Require(attributesPage.Title == Sr6CreationCopy.Text("AttributeTitle"), "Attribute title localization missing.");
+                    Require(!IssuedElements(attributesPage).OfType<Picker>().Any(item => item.AutomationId == "sr6-foundation-normal-Edge"
+                        || item.AutomationId == "sr6-foundation-adjustment-Body"), "Unavailable point kind appeared.");
+                    AttributeElement<Picker>("normal-Body").SelectedIndex = 2;
+                    AttributeElement<Picker>("adjustment-Charisma").SelectedIndex = 1;
+                    AttributeElement<Picker>("adjustment-Edge").SelectedIndex = 3;
+                    await AttributeClick("preview");
+                    var staleAttributeConfirm = AttributeElement<Button>("confirm");
+                    AttributeElement<Picker>("normal-Body").SelectedIndex = 3;
+                    staleAttributeConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleAttributeConfirm).SendClicked());
+                    Require(probe.Confirms == 1, "Changed attribute input admitted its stale review.");
+                    await AttributeClick("preview");
+                    await AttributeClick("confirm");
+                    Require(probe.Confirms == 2, "Attribute allocation did not save exactly once.");
+                    var allocated = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    Require(allocated.ContentRevision == 3 && allocated.SavedRevision == 3
+                        && allocated.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview.Attributes!.Values
+                            .Single(item => item.AttributeId == "Body").Value == 4, "Wrong persisted attribute allocation.");
+                    IssuedPageLifecycle(attributesPage, "OnDisappearing");
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var attributeReopen = new Sr6CreationFoundationPage(runtime.Coordinator, attributesMode: true);
+                    await navigation.PushAsync(attributeReopen, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributeReopen, "OnAppearing"));
+                    Require(IssuedElements(attributeReopen).OfType<Picker>().Single(item => item.AutomationId == "sr6-foundation-normal-Body").SelectedIndex == 3,
+                        "Saved attribute selection was not restored.");
+                    Require(!IssuedElements(attributeReopen).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Saved attribute preview became current confirmation authority.");
+                    IssuedPageLifecycle(attributeReopen, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 attribute phone " + method + " " + language);
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }

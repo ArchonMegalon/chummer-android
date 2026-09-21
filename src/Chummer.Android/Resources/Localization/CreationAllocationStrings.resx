@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten draft. Review and save the foundation here; attribute allocation, later steps and Career entry are not available yet.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten draft. Review and save foundation and attribute choices; later creation steps and Career entry are not available yet.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -334,7 +334,7 @@
   <data name="Sr6.Preview" xml:space="preserve"><value>Review selection</value></data>
   <data name="Sr6.Confirm" xml:space="preserve"><value>Confirm and save draft</value></data>
   <data name="Sr6.Changed" xml:space="preserve"><value>Selection changed. Review again before saving.</value></data>
-  <data name="Sr6.Saved" xml:space="preserve"><value>SR6 foundation saved. The runner is still a draft.</value></data>
+  <data name="Sr6.Saved" xml:space="preserve"><value>SR6 choices saved. The runner is still a draft.</value></data>
   <data name="Sr6.SavedReopen" xml:space="preserve"><value>Saved. Reopen the runner before continuing.</value></data>
   <data name="Sr6.Stale" xml:space="preserve"><value>This page is no longer current. Return to the runner and reopen it; nothing is applied automatically.</value></data>
   <data name="Sr6.Unknown" xml:space="preserve"><value>The save result could not be confirmed. Reopen the runner to check the saved draft. Do not repeat the save blindly.</value></data>
@@ -360,4 +360,31 @@
   <data name="Sr6.Option.adept" xml:space="preserve"><value>Adept</value></data>
   <data name="Sr6.Option.mystic-adept" xml:space="preserve"><value>Mystic adept</value></data>
   <data name="Sr6.Option.technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Sr6.AttributeTitle" xml:space="preserve"><value>SR6 attributes</value></data>
+  <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
+  <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
+  <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears its attribute allocation in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
+  <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
+  <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
+  <data name="Sr6.AttributeBudget" xml:space="preserve"><value>Unspent attribute points: {0} · Unspent adjustment points: {1}</value></data>
+  <data name="Sr6.AttributeValue" xml:space="preserve"><value>{0}: {1} + {2} attribute + {3} adjustment = {4} (maximum {5})</value></data>
+  <data name="Sr6.AttributeInvalid" xml:space="preserve"><value>The attribute allocation is invalid. Reopen this step.</value></data>
+  <data name="Sr6.AttributePointKind" xml:space="preserve"><value>This attribute cannot use that kind of point.</value></data>
+  <data name="Sr6.AttributeMaximum" xml:space="preserve"><value>An attribute exceeds its metatype or talent maximum.</value></data>
+  <data name="Sr6.AttributeMaximumCount" xml:space="preserve"><value>Only one physical or mental attribute may reach its metatype maximum.</value></data>
+  <data name="Sr6.AttributeOverspend" xml:space="preserve"><value>You have assigned more attribute points than available.</value></data>
+  <data name="Sr6.AdjustmentOverspend" xml:space="preserve"><value>You have assigned more adjustment points than available.</value></data>
+  <data name="Sr6.Option.Body" xml:space="preserve"><value>Body</value></data>
+  <data name="Sr6.Option.Agility" xml:space="preserve"><value>Agility</value></data>
+  <data name="Sr6.Option.Reaction" xml:space="preserve"><value>Reaction</value></data>
+  <data name="Sr6.Option.Strength" xml:space="preserve"><value>Strength</value></data>
+  <data name="Sr6.Option.Willpower" xml:space="preserve"><value>Willpower</value></data>
+  <data name="Sr6.Option.Logic" xml:space="preserve"><value>Logic</value></data>
+  <data name="Sr6.Option.Intuition" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Sr6.Option.Charisma" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Sr6.Option.Edge" xml:space="preserve"><value>Edge</value></data>
+  <data name="Sr6.Option.Magic" xml:space="preserve"><value>Magic</value></data>
+  <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonance</value></data>
 </root>

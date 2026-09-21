@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Revisa y guarda la base; la asignación de atributos, los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Puedes revisar y guardar la base y los atributos; los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -334,7 +334,7 @@
   <data name="Sr6.Preview" xml:space="preserve"><value>Revisar selección</value></data>
   <data name="Sr6.Confirm" xml:space="preserve"><value>Confirmar y guardar borrador</value></data>
   <data name="Sr6.Changed" xml:space="preserve"><value>Selección modificada. Revísala antes de guardar.</value></data>
-  <data name="Sr6.Saved" xml:space="preserve"><value>Base de SR6 guardada. El runner sigue siendo un borrador.</value></data>
+  <data name="Sr6.Saved" xml:space="preserve"><value>Selecciones de SR6 guardadas. El runner sigue siendo un borrador.</value></data>
   <data name="Sr6.SavedReopen" xml:space="preserve"><value>Guardado. Vuelve a abrir el runner antes de continuar.</value></data>
   <data name="Sr6.Stale" xml:space="preserve"><value>Esta página ya no está actualizada. Vuelve al runner y ábrela de nuevo; no se aplica nada automáticamente.</value></data>
   <data name="Sr6.Unknown" xml:space="preserve"><value>No se pudo confirmar el resultado del guardado. Vuelve a abrir el runner para comprobar el borrador; no repitas el guardado a ciegas.</value></data>
@@ -360,4 +360,31 @@
   <data name="Sr6.Option.adept" xml:space="preserve"><value>Adepto</value></data>
   <data name="Sr6.Option.mystic-adept" xml:space="preserve"><value>Adepto místico</value></data>
   <data name="Sr6.Option.technomancer" xml:space="preserve"><value>Tecnomante</value></data>
+  <data name="Sr6.AttributeTitle" xml:space="preserve"><value>Atributos de SR6</value></data>
+  <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
+  <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
+  <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra la asignación de atributos al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
+  <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
+  <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
+  <data name="Sr6.AttributeBudget" xml:space="preserve"><value>Puntos de atributo restantes: {0} · Puntos de ajuste restantes: {1}</value></data>
+  <data name="Sr6.AttributeValue" xml:space="preserve"><value>{0}: {1} + {2} atributo + {3} ajuste = {4} (máximo {5})</value></data>
+  <data name="Sr6.AttributeInvalid" xml:space="preserve"><value>La asignación de atributos no es válida. Vuelve a abrir este paso.</value></data>
+  <data name="Sr6.AttributePointKind" xml:space="preserve"><value>Este atributo no admite ese tipo de puntos.</value></data>
+  <data name="Sr6.AttributeMaximum" xml:space="preserve"><value>Un atributo supera el máximo de su metatipo o talento.</value></data>
+  <data name="Sr6.AttributeMaximumCount" xml:space="preserve"><value>Solo un atributo físico o mental puede alcanzar el máximo de su metatipo.</value></data>
+  <data name="Sr6.AttributeOverspend" xml:space="preserve"><value>Has asignado más puntos de atributo de los disponibles.</value></data>
+  <data name="Sr6.AdjustmentOverspend" xml:space="preserve"><value>Has asignado más puntos de ajuste de los disponibles.</value></data>
+  <data name="Sr6.Option.Body" xml:space="preserve"><value>Constitución</value></data>
+  <data name="Sr6.Option.Agility" xml:space="preserve"><value>Agilidad</value></data>
+  <data name="Sr6.Option.Reaction" xml:space="preserve"><value>Reacción</value></data>
+  <data name="Sr6.Option.Strength" xml:space="preserve"><value>Fuerza</value></data>
+  <data name="Sr6.Option.Willpower" xml:space="preserve"><value>Voluntad</value></data>
+  <data name="Sr6.Option.Logic" xml:space="preserve"><value>Lógica</value></data>
+  <data name="Sr6.Option.Intuition" xml:space="preserve"><value>Intuición</value></data>
+  <data name="Sr6.Option.Charisma" xml:space="preserve"><value>Carisma</value></data>
+  <data name="Sr6.Option.Edge" xml:space="preserve"><value>Ventaja</value></data>
+  <data name="Sr6.Option.Magic" xml:space="preserve"><value>Magia</value></data>
+  <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonancia</value></data>
 </root>

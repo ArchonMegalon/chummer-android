@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Hier prüfst und speicherst du die Grundauswahl; Attributverteilung, weitere Schritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl und Attributverteilung lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -334,7 +334,7 @@
   <data name="Sr6.Preview" xml:space="preserve"><value>Auswahl prüfen</value></data>
   <data name="Sr6.Confirm" xml:space="preserve"><value>Entwurf bestätigen und speichern</value></data>
   <data name="Sr6.Changed" xml:space="preserve"><value>Auswahl geändert. Vor dem Speichern erneut prüfen.</value></data>
-  <data name="Sr6.Saved" xml:space="preserve"><value>SR6-Grundauswahl gespeichert. Der Runner bleibt ein Entwurf.</value></data>
+  <data name="Sr6.Saved" xml:space="preserve"><value>SR6-Auswahl gespeichert. Der Runner bleibt ein Entwurf.</value></data>
   <data name="Sr6.SavedReopen" xml:space="preserve"><value>Gespeichert. Öffne den Runner erneut, bevor du fortfährst.</value></data>
   <data name="Sr6.Stale" xml:space="preserve"><value>Diese Seite ist nicht mehr aktuell. Kehre zum Runner zurück und öffne sie erneut; nichts wird automatisch übernommen.</value></data>
   <data name="Sr6.Unknown" xml:space="preserve"><value>Das Speicherergebnis konnte nicht bestätigt werden. Öffne den Runner erneut und prüfe den Entwurf. Speichern nicht ungeprüft wiederholen.</value></data>
@@ -360,4 +360,31 @@
   <data name="Sr6.Option.adept" xml:space="preserve"><value>Adept</value></data>
   <data name="Sr6.Option.mystic-adept" xml:space="preserve"><value>Magieradept</value></data>
   <data name="Sr6.Option.technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Sr6.AttributeTitle" xml:space="preserve"><value>SR6-Attribute</value></data>
+  <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
+  <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
+  <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt die Attributverteilung erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
+  <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
+  <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
+  <data name="Sr6.AttributeBudget" xml:space="preserve"><value>Übrige Attributpunkte: {0} · Übrige Anpassungspunkte: {1}</value></data>
+  <data name="Sr6.AttributeValue" xml:space="preserve"><value>{0}: {1} + {2} Attribut + {3} Anpassung = {4} (Maximum {5})</value></data>
+  <data name="Sr6.AttributeInvalid" xml:space="preserve"><value>Die Attributverteilung ist ungültig. Öffne diesen Schritt erneut.</value></data>
+  <data name="Sr6.AttributePointKind" xml:space="preserve"><value>Diese Punkteart darf dieses Attribut nicht erhöhen.</value></data>
+  <data name="Sr6.AttributeMaximum" xml:space="preserve"><value>Ein Attribut überschreitet sein Metatyp- oder Talentmaximum.</value></data>
+  <data name="Sr6.AttributeMaximumCount" xml:space="preserve"><value>Nur ein körperliches oder geistiges Attribut darf das Metatypmaximum erreichen.</value></data>
+  <data name="Sr6.AttributeOverspend" xml:space="preserve"><value>Du hast mehr Attributpunkte verteilt als verfügbar.</value></data>
+  <data name="Sr6.AdjustmentOverspend" xml:space="preserve"><value>Du hast mehr Anpassungspunkte verteilt als verfügbar.</value></data>
+  <data name="Sr6.Option.Body" xml:space="preserve"><value>Konstitution</value></data>
+  <data name="Sr6.Option.Agility" xml:space="preserve"><value>Geschicklichkeit</value></data>
+  <data name="Sr6.Option.Reaction" xml:space="preserve"><value>Reaktion</value></data>
+  <data name="Sr6.Option.Strength" xml:space="preserve"><value>Stärke</value></data>
+  <data name="Sr6.Option.Willpower" xml:space="preserve"><value>Willenskraft</value></data>
+  <data name="Sr6.Option.Logic" xml:space="preserve"><value>Logik</value></data>
+  <data name="Sr6.Option.Intuition" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Sr6.Option.Charisma" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Sr6.Option.Edge" xml:space="preserve"><value>Edge</value></data>
+  <data name="Sr6.Option.Magic" xml:space="preserve"><value>Magie</value></data>
+  <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonanz</value></data>
 </root>
