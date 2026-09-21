@@ -16,6 +16,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _skillsMode;
     private readonly bool _knowledgeMode;
     private readonly bool _talentMode;
+    private readonly bool _formsMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -29,21 +30,23 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _skills;
     private Button? _knowledge;
     private Button? _talent;
+    private Button? _forms;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
-        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false) : base(coordinator)
+        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
         _knowledgeMode = knowledgeMode;
         _talentMode = talentMode;
+        _formsMode = formsMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -107,6 +110,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _skills = null;
         _knowledge = null;
         _talent = null;
+        _forms = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -127,7 +131,16 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_talentMode)
+        if (_formsMode)
+        {
+            if (state.Selection?.TalentAllocation is not { } budget || state.ComplexFormOptions is not { Count: > 0 } catalog)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsTalentRequired"))); return; }
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(budget)));
+            if (state.Selection.PointBuy is { } savedPoints)
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyBudget(savedPoints)));
+            BuildComplexFormEditor(catalog, Current, Change);
+        }
+        else if (_talentMode)
         {
             if (state.Selection is not { } savedFoundation || state.TalentOptions is not { } options)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentAttributesRequired"))); return; }
@@ -270,6 +283,24 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     });
                 };
                 _body.Add(talent);
+                if (saved.Selection.TalentId == "technomancer")
+                {
+                    var forms = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FormsTitle"));
+                    _forms = forms;
+                    forms.AutomationId = "sr6-foundation-complex-forms";
+                    forms.IsEnabled = SavedCurrent() && state.ComplexFormOptions is { Count: > 0 };
+                    forms.Clicked += async (_, _) =>
+                    {
+                        if (!SavedCurrent() || state.ComplexFormOptions is not { Count: > 0 }) return;
+                        await RunAsync(async () =>
+                        {
+                            if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, formsMode: true));
+                        });
+                    };
+                    _body.Add(forms);
+                    if (state.ComplexFormOptions is null)
+                        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsTalentRequired"), NativeTheme.Muted));
+                }
                 if (saved.Attributes is null)
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
@@ -339,6 +370,15 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(talent)));
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
             }
+            if (quote.ComplexForms is { } forms)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.FormsBudget(forms)));
+                foreach (var form in forms.Forms)
+                    _review.Add(NativeTheme.Body(form.SourceName + (form.Choice.Subject is null ? "" : " — " + form.Choice.Subject)
+                        + " · " + form.SourceAnchorId));
+                if (forms.Forms.Any(form => form.SubjectNeedsGmReview))
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsSubjectReview"), NativeTheme.Muted));
+            }
             if (quote.Attributes is { } allocation)
             {
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.AttributeBudget(allocation)));
@@ -401,9 +441,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null };
             _selection = selection;
             _hasUnconfirmedChanges = true;
             _preview = null;
@@ -414,6 +454,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_skills is not null) _skills.IsEnabled = false;
             if (_knowledge is not null) _knowledge.IsEnabled = false;
             if (_talent is not null) _talent.IsEnabled = false;
+            if (_forms is not null) _forms.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
@@ -463,6 +504,75 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     change(options[picker.SelectedIndex]);
             };
             _body.Add(picker);
+        }
+    }
+
+    private void BuildComplexFormEditor(IReadOnlyList<Sr6CreationComplexFormOption> catalog,
+        Func<bool> current, Action<Sr6CreationFoundationSelection> change)
+    {
+        _selection = _selection! with { ComplexForms = _selection.ComplexForms ?? new([]) };
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsHelp"), NativeTheme.Muted));
+        if (_state?.Selection?.ComplexForms is { } saved)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.FormsBudget(saved)));
+        }
+        for (int index = 0; index < _selection.ComplexForms.Choices.Count; index++)
+        {
+            int captured = index;
+            var choice = _selection.ComplexForms.Choices[index];
+            var option = catalog.Single(row => row.Id == choice.CatalogId);
+            _body.Add(NativeTheme.Body(option.SourceName + " · " + option.SourceAnchorId));
+            if (option.SubjectKind is { } kind)
+            {
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsSubject." + kind)));
+                var entry = new Entry { AutomationId = "sr6-foundation-form-subject-" + index,
+                    Text = choice.Subject ?? "", MaxLength = 80 };
+                entry.TextChanged += (_, _) =>
+                {
+                    if (!current()) return;
+                    string name = (entry.Text ?? "").Trim();
+                    try { name = name.Normalize(System.Text.NormalizationForm.FormC); }
+                    catch (ArgumentException) { /* Core rejects malformed input at review. */ }
+                    Edit(rows => rows.Select((row, i) => i == captured ? row with { Subject = name } : row).ToArray());
+                };
+                _body.Add(entry);
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsSubjectReview"), NativeTheme.Muted));
+            }
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FormsRemove"));
+            remove.AutomationId = "sr6-foundation-form-remove-" + index;
+            remove.Clicked += (_, _) =>
+            {
+                if (!current()) return;
+                Edit(rows => rows.Where((_, i) => i != captured).ToArray());
+                Refresh();
+            };
+            _body.Add(remove);
+        }
+        if (_selection.ComplexForms.Choices.Count >= 12) return;
+        var picker = new Picker { Title = Sr6CreationCopy.Text("FormsChoose"), AutomationId = "sr6-foundation-form-catalog" };
+        foreach (var option in catalog) picker.Items.Add(option.SourceName);
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FormsAdd"));
+        add.AutomationId = "sr6-foundation-form-add";
+        add.IsEnabled = false;
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (current()) add.IsEnabled = picker.SelectedIndex >= 0 && picker.SelectedIndex < catalog.Count;
+        };
+        add.Clicked += (_, _) =>
+        {
+            if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Count) return;
+            string id = catalog[picker.SelectedIndex].Id;
+            Edit(rows => [.. rows, new(id)]);
+            Refresh(); // Never replace the picker tree inside SelectedIndexChanged.
+        };
+        _body.Add(picker);
+        _body.Add(add);
+
+        void Edit(Func<IReadOnlyList<Sr6CreationComplexFormChoice>, IReadOnlyList<Sr6CreationComplexFormChoice>> update)
+        {
+            if (current() && _selection.ComplexForms is { } forms)
+                change(_selection with { ComplexForms = new(update(forms.Choices)) });
         }
     }
 }

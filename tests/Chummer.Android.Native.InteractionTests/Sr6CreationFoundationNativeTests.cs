@@ -412,6 +412,111 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    Require((await runtime.Coordinator.PreviewSr6FoundationAsync(initial, null!)).Value is null,
+                        "Null selection must remain a rejected preview, not a crash.");
+                    var seedSelection = new Sr6CreationFoundationSelection("human", "technomancer", method == "PointBuy" ? [] : [
+                        new("heritage", "C"), new("talent", "A"), new("attributes", "B"), new("skills", "D"), new("resources", "E")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 2, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute =>
+                            new Sr6CreationAttributeSpend(attribute, 0, attribute == "Resonance" ? 2 : 0)).ToArray()),
+                        TalentAllocation = new(0)
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, seedSelection)).Value!;
+                    var committed = await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    Require(committed.Commit is not null, "Complex form seed not saved.");
+                    var catalog = committed.State!.ComplexFormOptions!.ToArray();
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, formsMode: true);
+                    var navigation = new NavigationPage(new ContentPage());
+                    await navigation.PushAsync(page, false);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("form-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked();
+                        return Task.CompletedTask;
+                    }
+                    async Task Add(string catalogId)
+                    {
+                        Element<Picker>("form-catalog").SelectedIndex = Array.FindIndex(catalog, item => item.Id == catalogId);
+                        await Click("form-add");
+                    }
+                    Require(page.Title == Sr6CreationCopy.Text("FormsTitle") && page.Title != "FormsTitle", "Forms title missing.");
+                    Require(Element<Picker>("form-catalog").Items.SequenceEqual(catalog.Select(row => row.SourceName)),
+                        "Native page invented a non-Core form catalog.");
+                    await Add("editor");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    await Add("cleaner");
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Old form review admitted a changed selection.");
+                    await Add("editor");
+                    await Click("preview");
+                    Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Duplicate form gained confirmation.");
+                    Require(Element<Label>("status").Text == Sr6CreationCopy.Text("FormsInvalid"), "Invalid form feedback not localized.");
+                    await Click("form-remove-2");
+                    await Add("diffusion-firewall");
+                    await Add("emulate-autosoft-targeting");
+                    await Click("preview");
+                    Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Missing weapon identity gained confirmation.");
+                    Element<Entry>("form-subject-3").Text = " Ares Alpha ";
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.Text("FormsSubjectReview")),
+                        "Free-text weapon model lost its GM review boundary.");
+                    await Click("confirm");
+                    var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = saved.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(saved.ContentRevision == 3 && saved.SavedRevision == 3 && probe.Confirms == 2,
+                        "Complex form save was duplicated or lost.");
+                    Require(quote.ComplexForms is { Forms.Count: 4 } forms
+                        && forms.CharacterPointCost == (method == "PointBuy" ? 8 : 0)
+                        && forms.FreeSlotsUsed == (method == "PointBuy" ? 0 : 4), "Complex form budget mismatch.");
+                    if (method == "PointBuy") Require(quote.PointBuy is { PointsSpent: 26, PointsRemaining: 74, ComplexFormCost: 8 },
+                        "Form CP costs did not join the purchased pool budget.");
+                    var oldAdd = Element<Button>("form-add");
+                    var oldPicker = Element<Picker>("form-catalog");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldPicker.SelectedIndex = 0;
+                    oldAdd.IsEnabled = true;
+                    ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, formsMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Entry>().Single().Text == "Ares Alpha", "Form subject did not restore.");
+                    Require(IssuedElements(reopened).OfType<Button>().Count(item => item.AutomationId?.StartsWith("sr6-foundation-form-remove-", StringComparison.Ordinal) == true) == 4,
+                        "Exact form selections did not restore.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && probe.Confirms == 2, "Restored/departed form controls replayed confirmation.");
+                    IssuedPageLifecycle(reopened, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 complex forms phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

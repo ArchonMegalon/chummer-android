@@ -12,9 +12,12 @@ internal static class Sr6CreationCopy
         limits.AttributePointCost, limits.SkillPointCost, limits.AdjustmentPointCost, limits.NuyenPerResourceUnit,
         limits.ResourceUnitCost, limits.AwakenedOrResonanceCost, limits.CustomizationKarma);
     internal static string PointBuyBudget(Sr6CreationPointBuyPreview preview) => CreationAllocationStrings.Format("Sr6.PointBuyBudget",
-        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9}. Separate Karma: {8}.",
+        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10}. Separate Karma: {8}.",
         preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
-        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0);
+        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0, preview.ComplexFormCost ?? 0);
+    internal static string FormsBudget(Sr6CreationComplexFormPreview preview) => CreationAllocationStrings.Format("Sr6.FormsBudget",
+        "Complex forms: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}",
+        preview.Forms.Count, preview.Limit, preview.SlotsRemaining, preview.FreeSlotsUsed, preview.CharacterPointCost);
     internal static string TalentOptions(Sr6CreationTalentOptions options) => CreationAllocationStrings.Format("Sr6.TalentOptions",
         "Automatic power points: {0}. Maximum selectable whole power points: {1}; CP per point: {2}.",
         options.AutomaticPowerPoints, options.MaximumSelectedPowerPoints, options.CharacterPointsPerPowerPoint);
@@ -58,6 +61,10 @@ internal static class Sr6CreationCopy
         Sr6CreationTalentBlockers.AttributesRequired => Text("TalentAttributesRequired"),
         Sr6CreationTalentBlockers.AspectRequired => Text("SkillAspectRequired"),
         Sr6CreationTalentBlockers.PowerPointLimit => Text("TalentInvalid"),
+        Sr6CreationComplexFormBlockers.InvalidSelection => Text("FormsInvalid"),
+        Sr6CreationComplexFormBlockers.TalentRequired => Text("FormsTalentRequired"),
+        Sr6CreationComplexFormBlockers.CatalogUnavailable => Text("FormsInvalid"),
+        Sr6CreationComplexFormBlockers.LimitExceeded => Text("FormsLimit"),
         Sr6CreationPointBuyBlockers.InvalidSelection => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.MethodMismatch => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.SourceRequired => Text("PointBuySource"),
