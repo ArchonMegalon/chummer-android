@@ -78,6 +78,9 @@ public sealed partial class RunnerSessionCoordinator
         Sr6CreationFoundationState state, Sr6CreationFoundationSelection selection, CancellationToken ct = default,
         Func<bool>? isCurrentPage = null)
     {
+        if (selection?.Spells is { } spells && !Sr6CreationFoundationIntegrity.TryFreezeSpells(spells, out _))
+            return Task.FromResult(new CharacterCreationFoundationResult<Sr6CreationFoundationPreview>(
+                CharacterCreationFoundationOutcomes.Invalid, null, [Sr6CreationSpellBlockers.InvalidSelection]));
         if (selection?.ComplexForms is { } forms && !Sr6CreationFoundationIntegrity.TryFreezeComplexForms(forms, out _))
             return Task.FromResult(new CharacterCreationFoundationResult<Sr6CreationFoundationPreview>(
                 CharacterCreationFoundationOutcomes.Invalid, null, [Sr6CreationComplexFormBlockers.InvalidSelection]));

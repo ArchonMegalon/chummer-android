@@ -519,6 +519,110 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (var (method, aspect) in new (string, string?)[]
+                { ("Priority", null), ("SumtoTen", null), ("PointBuy", null), ("PointBuy", "Enchanting") })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var seedSelection = new Sr6CreationFoundationSelection("human", aspect is null ? "magician" : "aspected-magician",
+                        method == "PointBuy" ? [] : [new("heritage", "C"), new("talent", "A"),
+                            new("attributes", "B"), new("skills", "D"), new("resources", "E")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 2, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute =>
+                            new Sr6CreationAttributeSpend(attribute, 0, attribute == "Magic" ? 2 : 0)).ToArray()),
+                        Skills = aspect is null ? null : new([], aspect), TalentAllocation = new(0)
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, seedSelection)).Value!;
+                    var committed = await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    Require(committed.Commit is not null, "Spell seed not saved.");
+                    var catalog = committed.State!.SpellOptions!.ToArray();
+                    Require(catalog.Length == (aspect is null ? 81 : 73)
+                        && (aspect is null || catalog.All(row => row.Kind == "spell")), "Wrong aspect catalog.");
+                    var parent = new Sr6CreationFoundationPage(runtime.Coordinator);
+                    var navigation = new NavigationPage(parent);
+                    var window = new Window(navigation);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                    var open = IssuedElements(parent).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-spells");
+                    Require(open.IsEnabled, "Saved caster did not gain its spell route.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)open).SendClicked());
+                    IssuedPageLifecycle(parent, "OnDisappearing");
+                    var page = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("spell-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked();
+                        return Task.CompletedTask;
+                    }
+                    async Task Add(string catalogId)
+                    {
+                        Element<Picker>("spell-catalog").SelectedIndex = Array.FindIndex(catalog, item => item.Id == catalogId);
+                        await Click("spell-add");
+                    }
+                    Require(page.Title == Sr6CreationCopy.Text("SpellsTitle") && page.Title != "SpellsTitle", "Unlocalized spell title.");
+                    Require(Element<Picker>("spell-catalog").Items.SequenceEqual(catalog.Select(Sr6CreationCopy.SpellName)),
+                        "Native spell catalog differs from Core.");
+                    await Add("spell-heal");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    await Add(aspect is null ? "ritual-ward" : "spell-increase-attribute");
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Changed spell selection reused old confirmation.");
+                    await Add("spell-heal");
+                    await Click("preview");
+                    Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && Element<Label>("status").Text == Sr6CreationCopy.Text("SpellsInvalid"), "Duplicate spell not blocked/localized.");
+                    await Click("spell-remove-2");
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.Text(
+                        "SpellsUse." + (aspect is null ? "sorcery-and-enchanting" : "enchanting"))), "Spell use boundary missing.");
+                    Require(!IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.Text("TalentHelp")),
+                        "Spell selection claimed to be the budget-only page.");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2,
+                        "Spell save duplicated or lost.");
+                    Require(quote.Spells is { Spells.Count: 2 } selected && selected.CharacterPointCost == (method == "PointBuy" ? 4 : 0)
+                        && selected.FreeSlotsUsed == (method == "PointBuy" ? 0 : 2), "Spell cost/grant mismatch.");
+                    if (method == "PointBuy") Require(quote.PointBuy is { PointsSpent: 22, PointsRemaining: 78, SpellCost: 4 }, "Spell CP absent from total.");
+                    var oldAdd = Element<Button>("spell-add");
+                    var oldPicker = Element<Picker>("spell-catalog");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldPicker.SelectedIndex = 0;
+                    oldAdd.IsEnabled = true;
+                    ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, spellsMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Count(item => item.AutomationId?.StartsWith("sr6-foundation-spell-remove-", StringComparison.Ordinal) == true) == 2,
+                        "Saved spell choices did not restore.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && probe.Confirms == 2, "Restored/departed spell controls replayed writes.");
+                    IssuedPageLifecycle(reopened, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 spells phone " + method + " " + (aspect ?? "full") + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

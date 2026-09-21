@@ -12,9 +12,13 @@ internal static class Sr6CreationCopy
         limits.AttributePointCost, limits.SkillPointCost, limits.AdjustmentPointCost, limits.NuyenPerResourceUnit,
         limits.ResourceUnitCost, limits.AwakenedOrResonanceCost, limits.CustomizationKarma);
     internal static string PointBuyBudget(Sr6CreationPointBuyPreview preview) => CreationAllocationStrings.Format("Sr6.PointBuyBudget",
-        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10}. Separate Karma: {8}.",
+        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate Karma: {8}.",
         preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
-        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0, preview.ComplexFormCost ?? 0);
+        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0, preview.ComplexFormCost ?? 0, preview.SpellCost ?? 0);
+    internal static string SpellName(Sr6CreationSpellOption option) => Text("SpellsKind." + option.Kind) + ": " + option.SourceName;
+    internal static string SpellsBudget(Sr6CreationSpellPreview preview) => CreationAllocationStrings.Format("Sr6.SpellsBudget",
+        "Spells/rituals: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}",
+        preview.Spells.Count, preview.Limit, preview.SlotsRemaining, preview.FreeSlotsUsed, preview.CharacterPointCost);
     internal static string FormsBudget(Sr6CreationComplexFormPreview preview) => CreationAllocationStrings.Format("Sr6.FormsBudget",
         "Complex forms: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}",
         preview.Forms.Count, preview.Limit, preview.SlotsRemaining, preview.FreeSlotsUsed, preview.CharacterPointCost);
@@ -65,6 +69,10 @@ internal static class Sr6CreationCopy
         Sr6CreationComplexFormBlockers.TalentRequired => Text("FormsTalentRequired"),
         Sr6CreationComplexFormBlockers.CatalogUnavailable => Text("FormsInvalid"),
         Sr6CreationComplexFormBlockers.LimitExceeded => Text("FormsLimit"),
+        Sr6CreationSpellBlockers.InvalidSelection => Text("SpellsInvalid"),
+        Sr6CreationSpellBlockers.TalentRequired => Text("SpellsTalentRequired"),
+        Sr6CreationSpellBlockers.CatalogUnavailable => Text("SpellsInvalid"),
+        Sr6CreationSpellBlockers.LimitExceeded => Text("SpellsLimit"),
         Sr6CreationPointBuyBlockers.InvalidSelection => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.MethodMismatch => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.SourceRequired => Text("PointBuySource"),

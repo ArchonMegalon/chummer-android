@@ -17,6 +17,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _knowledgeMode;
     private readonly bool _talentMode;
     private readonly bool _formsMode;
+    private readonly bool _spellsMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -31,22 +32,24 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _knowledge;
     private Button? _talent;
     private Button? _forms;
+    private Button? _spells;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
-        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false) : base(coordinator)
+        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
         _knowledgeMode = knowledgeMode;
         _talentMode = talentMode;
         _formsMode = formsMode;
+        _spellsMode = spellsMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -111,6 +114,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _knowledge = null;
         _talent = null;
         _forms = null;
+        _spells = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -131,7 +135,17 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_formsMode)
+        if (_spellsMode)
+        {
+            if (state.Selection?.TalentAllocation is not { } budget || state.SpellOptions is not { Count: > 0 } catalog)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsTalentRequired"))); return; }
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(budget)));
+            if (state.Selection.PointBuy is { } savedPoints)
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyBudget(savedPoints)));
+            BuildSpellEditor(catalog, Current, Change);
+        }
+        else if (_formsMode)
         {
             if (state.Selection?.TalentAllocation is not { } budget || state.ComplexFormOptions is not { Count: > 0 } catalog)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsTalentRequired"))); return; }
@@ -301,6 +315,24 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     if (state.ComplexFormOptions is null)
                         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FormsTalentRequired"), NativeTheme.Muted));
                 }
+                if (saved.Selection.TalentId is "magician" or "mystic-adept" or "aspected-magician")
+                {
+                    var spells = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("SpellsTitle"));
+                    _spells = spells;
+                    spells.AutomationId = "sr6-foundation-spells";
+                    spells.IsEnabled = SavedCurrent() && state.SpellOptions is { Count: > 0 };
+                    spells.Clicked += async (_, _) =>
+                    {
+                        if (!SavedCurrent() || state.SpellOptions is not { Count: > 0 }) return;
+                        await RunAsync(async () =>
+                        {
+                            if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, spellsMode: true));
+                        });
+                    };
+                    _body.Add(spells);
+                    if (state.SpellOptions is null)
+                        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsTalentRequired"), NativeTheme.Muted));
+                }
                 if (saved.Attributes is null)
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
@@ -370,6 +402,13 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(talent)));
                 if (_talentMode)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
+            }
+            if (quote.Spells is { } spells)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.SpellsBudget(spells)));
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsUse." + spells.UseId), NativeTheme.Muted));
+                foreach (var spell in spells.Spells)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.SpellName(spell) + " · " + spell.SourceAnchorId));
             }
             if (quote.ComplexForms is { } forms)
             {
@@ -442,9 +481,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null };
             _selection = selection;
             _hasUnconfirmedChanges = true;
             _preview = null;
@@ -456,6 +495,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_knowledge is not null) _knowledge.IsEnabled = false;
             if (_talent is not null) _talent.IsEnabled = false;
             if (_forms is not null) _forms.IsEnabled = false;
+            if (_spells is not null) _spells.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
@@ -506,6 +546,51 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             };
             _body.Add(picker);
         }
+    }
+
+    private void BuildSpellEditor(IReadOnlyList<Sr6CreationSpellOption> catalog,
+        Func<bool> current, Action<Sr6CreationFoundationSelection> change)
+    {
+        _selection = _selection! with { Spells = _selection.Spells ?? new([]) };
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsHelp"), NativeTheme.Muted));
+        if (_state?.Selection?.Spells is { } saved)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.SpellsBudget(saved)));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SpellsUse." + saved.UseId), NativeTheme.Muted));
+        }
+        for (int index = 0; index < _selection.Spells.CatalogIds.Count; index++)
+        {
+            int captured = index;
+            var option = catalog.Single(row => row.Id == _selection.Spells.CatalogIds[index]);
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.SpellName(option) + " · " + option.SourceAnchorId));
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("SpellsRemove"));
+            remove.AutomationId = "sr6-foundation-spell-remove-" + index;
+            remove.Clicked += (_, _) =>
+            {
+                if (!current()) return;
+                change(_selection with { Spells = new(_selection.Spells.CatalogIds.Where((_, i) => i != captured).ToArray()) });
+                Refresh();
+            };
+            _body.Add(remove);
+        }
+        if (_selection.Spells.CatalogIds.Count >= 12) return;
+        var picker = new Picker { Title = Sr6CreationCopy.Text("SpellsChoose"), AutomationId = "sr6-foundation-spell-catalog" };
+        foreach (var option in catalog) picker.Items.Add(Sr6CreationCopy.SpellName(option));
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("SpellsAdd"));
+        add.AutomationId = "sr6-foundation-spell-add";
+        add.IsEnabled = false;
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (current()) add.IsEnabled = picker.SelectedIndex >= 0 && picker.SelectedIndex < catalog.Count;
+        };
+        add.Clicked += (_, _) =>
+        {
+            if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Count) return;
+            change(_selection with { Spells = new([.. _selection.Spells.CatalogIds, catalog[picker.SelectedIndex].Id]) });
+            Refresh();
+        };
+        _body.Add(picker);
+        _body.Add(add);
     }
 
     private void BuildComplexFormEditor(IReadOnlyList<Sr6CreationComplexFormOption> catalog,
