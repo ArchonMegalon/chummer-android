@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Skills</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Review draft</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment, contacts and standard lifestyles. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental Karma creation with source-validated magic purchases. Save the draft first, then separately review and confirm Career entry. Unsupported source options remain disabled; this is not all-method parity.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma to invest</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.</value></data>
@@ -264,7 +264,7 @@
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · rating {1} · source cost {2} Karma</value></data>
   <data name="Karma.QualityTotals" xml:space="preserve"><value>Qualities: cost {0} · credit {1} · net {2} Karma</value></data>
   <data name="Karma.Finish" xml:space="preserve"><value>Finish Karma creation</value></data>
-  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Currently, only supported Mundane drafts can be finalized.</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Awakened builds need a saved, valid Magic / Resonance selection.</value></data>
   <data name="Karma.DiceTotal" xml:space="preserve"><value>Enter your dice total (no automatic roll)</value></data>
   <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Review Career transition</value></data>
   <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Confirm and enter Career</value></data>
@@ -309,4 +309,20 @@
   <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Enter the starting-cash dice total for the displayed lifestyle. Core applies the carryover limits before adding this cash. Nothing is saved until you confirm the next review.</value></data>
   <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Starting cash</value></data>
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Base metatype effects: armor +{0} · reach +{1} · lifestyle cost +{2}%</value></data>
+  <data name="Karma.Magic" xml:space="preserve"><value>Magic / Resonance</value></data>
+  <data name="Karma.Tradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Karma.TraditionRequired" xml:space="preserve"><value>Choose a tradition before saving this magic draft.</value></data>
+  <data name="Karma.StreamRequired" xml:space="preserve"><value>Choose a stream before saving this Resonance draft.</value></data>
+  <data name="Karma.Stream" xml:space="preserve"><value>Stream</value></data>
+  <data name="Karma.Powers" xml:space="preserve"><value>Adept powers</value></data>
+  <data name="Karma.Spells" xml:space="preserve"><value>Spells</value></data>
+  <data name="Karma.ComplexForms" xml:space="preserve"><value>Complex forms</value></data>
+  <data name="Karma.MagicHelp" xml:space="preserve"><value>Choose from your active sources. Core checks access, costs and limits. Karma pays for spells, complex forms and Mystic Adept power points; there are no free Priority spell slots. Only confirming the draft saves these choices.</value></data>
+  <data name="Karma.MagicTotals" xml:space="preserve"><value>Spells: {0} Karma · forms: {1} · power points: {2} · total: {3}</value></data>
+  <data name="Karma.PowerBudget" xml:space="preserve"><value>Power points: {0} / {1}</value></data>
+  <data name="Karma.PowerPointPurchase" xml:space="preserve"><value>Purchased power points: {0} · {1} Karma</value></data>
+  <data name="Karma.AddPowerPoint" xml:space="preserve"><value>Buy one power point</value></data>
+  <data name="Karma.RemovePowerPoint" xml:space="preserve"><value>Remove one power point</value></data>
+  <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
+  <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
 </root>

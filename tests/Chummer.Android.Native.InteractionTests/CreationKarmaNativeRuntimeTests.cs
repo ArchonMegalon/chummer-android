@@ -12,6 +12,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
+        if (onlyScenario == "phone-magic") { await RunKarmaPhonePagesAsync(contentRoot, magic: true); return; }
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
         if (onlyScenario == "completion-admission") { await RunKarmaCompletionAdmissionAsync(contentRoot); return; }
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }
@@ -217,13 +218,13 @@ internal static partial class AfterRunAuthorityHarness
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen> Open(
             OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false,
-            bool includeGear = false, bool includeLifestyles = false)
+            bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
         {
             AssertBackground(); OpenCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Open(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles);
+            var result = actual.Open(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic);
             OpenTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             if (result.Value is { } value && TransformOpen is { } transform)
                 result = result with { Value = transform(value) };
@@ -231,13 +232,13 @@ internal static partial class AfterRunAuthorityHarness
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState> Load(
             OwnerContextStamp owner, CharacterWorkspaceId id, bool includeSkills = false, bool includeQualities = false,
-            bool includeGear = false, bool includeLifestyles = false)
+            bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
         {
             AssertBackground(); LoadCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            var result = actual.Load(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles);
+            var result = actual.Load(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic);
             LoadTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterLoad?.Invoke(); return result;
         }
@@ -249,14 +250,14 @@ internal static partial class AfterRunAuthorityHarness
             IReadOnlyList<CharacterCreationGearSelection>? gearSelections = null,
             IReadOnlyList<CharacterCreationKarmaContactSelection>? contactSelections = null,
             IReadOnlyList<CharacterCreationLifestyleConfiguration>? lifestyleSelections = null,
-            Guid? startingLifestyleId = null)
+            Guid? startingLifestyleId = null, CharacterCreationMagicResonanceSelections? magicSelections = null)
         {
             AssertBackground(); PreviewCalls++;
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = actual.Preview(owner, binding, optionId, talentOptionId, attributeAllocations, skillsSelection,
-                resourceKarmaInvestment, qualityOptionIds, gearSelections, contactSelections, lifestyleSelections, startingLifestyleId);
+                resourceKarmaInvestment, qualityOptionIds, gearSelections, contactSelections, lifestyleSelections, startingLifestyleId, magicSelections);
             PreviewTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
             AfterPreview?.Invoke(); return result;
         }

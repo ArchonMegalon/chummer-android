@@ -1,7 +1,31 @@
+using Chummer.Contracts.Characters;
+
 namespace Chummer.Android.Native;
 
 internal static class CreationKarmaCopy
 {
+    public static string Magic => CreationAllocationStrings.Get("Karma.Magic", "Magic / Resonance");
+    public static string Tradition => CreationAllocationStrings.Get("Karma.Tradition", "Tradition");
+    public static string Stream => CreationAllocationStrings.Get("Karma.Stream", "Stream");
+    public static string TraditionRequired => CreationAllocationStrings.Get("Karma.TraditionRequired", "Choose a tradition before saving this magic draft.");
+    public static string StreamRequired => CreationAllocationStrings.Get("Karma.StreamRequired", "Choose a stream before saving this Resonance draft.");
+    public static string Blocker(string code) => code switch
+    {
+        CharacterCreationMagicResonanceBlockers.TraditionRequired => TraditionRequired,
+        CharacterCreationMagicResonanceBlockers.StreamRequired => StreamRequired,
+        _ => code
+    };
+    public static string Powers => CreationAllocationStrings.Get("Karma.Powers", "Adept powers");
+    public static string Spells => CreationAllocationStrings.Get("Karma.Spells", "Spells");
+    public static string ComplexForms => CreationAllocationStrings.Get("Karma.ComplexForms", "Complex forms");
+    public static string MagicHelp => CreationAllocationStrings.Get("Karma.MagicHelp", "Choose from your active sources. Core checks access, costs and limits. Karma pays for spells, complex forms and Mystic Adept power points; there are no free Priority spell slots. Only confirming the draft saves these choices.");
+    public static string MagicTotals(int spells, int forms, int points, int total) => CreationAllocationStrings.Format("Karma.MagicTotals", "Spells: {0} Karma · forms: {1} · power points: {2} · total: {3}", spells, forms, points, total);
+    public static string PowerBudget(decimal used, decimal total) => CreationAllocationStrings.Format("Karma.PowerBudget", "Power points: {0} / {1}", used, total);
+    public static string PowerPointPurchase(int points, int karma) => CreationAllocationStrings.Format("Karma.PowerPointPurchase", "Purchased power points: {0} · {1} Karma", points, karma);
+    public static string PowerLevel(decimal points, int levels) => CreationAllocationStrings.Format("Karma.PowerLevel", "{0} power points per level · selected levels: {1}", points, levels);
+    public static string AddPowerPoint => CreationAllocationStrings.Get("Karma.AddPowerPoint", "Buy one power point");
+    public static string RemovePowerPoint => CreationAllocationStrings.Get("Karma.RemovePowerPoint", "Remove one power point");
+    public static string AddPowerLevel => CreationAllocationStrings.Get("Karma.AddPowerLevel", "Add one level");
     public static string MetatypeBonuses(int armor, int reach, int lifestylePercent) => CreationAllocationStrings.Format(
         "Karma.MetatypeBonuses", "Base metatype effects: armor +{0} · reach +{1} · lifestyle cost +{2}%", armor, reach, lifestylePercent);
     public static string ChooseStepFirst(string step) => CreationAllocationStrings.Format("Karma.ChooseStepFirst", "Choose {0} first.", step);
@@ -41,7 +65,7 @@ internal static class CreationKarmaCopy
     public static string ContactTotals(int used, int total, int highUsed, int highTotal, int karma) => CreationAllocationStrings.Format("Karma.ContactTotals", "Contact points: {0}/{1} · High Places: {2}/{3} · additional Karma: {4}", used, total, highUsed, highTotal, karma);
     public static string GroupContactCost(int karma, int limitUsed) => CreationAllocationStrings.Format("Karma.GroupContactCost", "Group contacts: {0} Karma before excess costs · positive quality limit usage including groups: {1}", karma, limitUsed);
     public static string Finish => CreationAllocationStrings.Get("Karma.Finish", "Finish Karma creation");
-    public static string CompletionHelp => CreationAllocationStrings.Get("Karma.CompletionHelp", "Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Currently, only supported Mundane drafts can be finalized.");
+    public static string CompletionHelp => CreationAllocationStrings.Get("Karma.CompletionHelp", "Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Awakened builds need a saved, valid Magic / Resonance selection.");
     public static string DiceTotal => CreationAllocationStrings.Get("Karma.DiceTotal", "Enter your dice total (no automatic roll)");
     public static string PreviewCompletion => CreationAllocationStrings.Get("Karma.PreviewCompletion", "Review Career transition");
     public static string ConfirmCompletion => CreationAllocationStrings.Get("Karma.ConfirmCompletion", "Confirm and enter Career");
@@ -78,7 +102,7 @@ internal static class CreationKarmaCopy
         karma.ToString("G29", System.Globalization.CultureInfo.CurrentCulture),
         nuyen.ToString("N2", System.Globalization.CultureInfo.CurrentCulture));
     public static string Review => CreationAllocationStrings.Get("Karma.Review", "Review draft");
-    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation: metatype, talent, attributes, supported qualities, skills, resources, equipment, contacts and standard lifestyles. Save the draft first, then separately review and confirm Career entry for supported Mundane builds. Awakened completion and additional creation domains remain unavailable.");
+    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation with source-validated magic purchases. Save the draft first, then separately review and confirm Career entry. Unsupported source options remain disabled; this is not all-method parity.");
     public static string Stale => CreationAllocationStrings.Get("Karma.Stale", "This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.");
     public static string Saved => CreationAllocationStrings.Get("Karma.Saved", "Pending Karma draft saved. The runner has not been finalized.");
     public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose explicitly");
