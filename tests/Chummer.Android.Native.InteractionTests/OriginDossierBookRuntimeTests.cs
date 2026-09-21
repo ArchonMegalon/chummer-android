@@ -3,12 +3,26 @@ using System.Text;
 using Chummer.Android.Native;
 using Chummer.Application.LifeModules;
 using Chummer.Contracts.LifeModules;
+using Chummer.Contracts.Characters;
 using Chummer.Presentation.OriginBooks;
+using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
 {
     public static async Task RunAsync()
     {
+        string digest = Digest("foundation");
+        Require(OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest("sha256:" + digest, digest),
+            "A real Foundation digest cannot bind the Origin budget.");
+        foreach (string? invalid in new[] { null, string.Empty, digest, "SHA256:" + digest,
+                     "sha256:" + digest.ToUpperInvariant(), "sha256:" + Digest("other"), "sha256:bad" })
+            Require(!OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest(invalid, digest),
+                "An invalid or different Foundation digest bound the Origin budget.");
+        foreach (string? invalid in new[] { null, string.Empty, "sha256:" + digest, digest.ToUpperInvariant(), "bad" })
+            Require(!OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest("sha256:" + digest, invalid),
+                "An invalid Origin digest bound the Foundation budget.");
+        Console.WriteLine("PASS Origin book: Foundation digest boundary");
+        await RunMetatypePageAsync();
         foreach (string scenario in new[] { "terminal", "two-chapters", "cancel-after-commit", "storage-failure", "tampered-pending", "stale-book" })
         {
             string directory = Path.Combine(Path.GetTempPath(), "chummer-origin-book-" + Guid.NewGuid().ToString("N"));
@@ -86,6 +100,95 @@ internal static class OriginDossierBookRuntimeTests
             }
             finally { Directory.Delete(directory, recursive: true); }
         }
+    }
+
+    private static async Task RunMetatypePageAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var authority = new DecisionAuthority(1);
+            var original = authority.Current.LegalChoices.Single();
+            LifeModuleDecisionAuthorityChoice Choice(string id, string metatype, decimal cost) => original with
+            {
+                ChoiceId = id, Label = metatype + " · Nationality", DecisionCommandDigest = Digest(id),
+                MechanicsPreview = original.MechanicsPreview with
+                {
+                    KarmaCost = cost, KarmaRaw = cost.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Items = [new("foundation:requested-metatype", "metatype-choice", metatype,
+                        string.Empty, metatype, 0, ["metatypes.xml#" + metatype], string.Empty),
+                        .. original.MechanicsPreview.Items]
+                }
+            };
+            authority.Current = authority.Current with { LegalChoices = [Choice("human", "Human", 15), Choice("elf", "Elf", 55)] };
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var started = interaction.Start("workspace-1").Value!;
+            OriginDossierLifeModulePhoneResult Display(LifeModuleOriginDossierDraftCheckpoint checkpoint) => new(
+                LifeModuleOriginDossierOutcomes.Success, OriginDossierLifeModuleInteractionProjector.Project(checkpoint), [],
+                LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest: "sha256:" + Digest("foundation"),
+                BoundContentDigest: checkpoint.BoundContentDigest, BoundSourceDigest: checkpoint.BoundSourceDigest,
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest, StoryCheckpoint: checkpoint);
+            int prepared = 0, confirmed = 0;
+            var initialDisplay = Display(started);
+            string ChoiceControl(string choiceId) => "origin-life-choice-" + Array.FindIndex(
+                initialDisplay.State!.Choices.ToArray(), choice => choice.ChoiceId == choiceId);
+            string humanControl = ChoiceControl("human"), elfControl = ChoiceControl("elf");
+            var page = new OriginDossierLifeModuleDecisionPage(initialDisplay, "en-US", choiceId =>
+            {
+                prepared++;
+                return Task.FromResult<OriginDossierLifeModulePhoneResult?>(Display(interaction.Prepare(started, choiceId).Value!));
+            }, (_, _) => { confirmed++; return Task.FromResult(false); });
+            Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
+            bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
+            async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+
+            Require(!Visible(humanControl) && !Visible(elfControl) && prepared == 0,
+                "The phone silently chose a default metatype.");
+            ((IButtonController)Button("origin-life-metatype-Elf")).SendClicked();
+            Require(Visible(elfControl) && !Visible(humanControl) && prepared == 0,
+                "Metatype filtering exposed the wrong nationality or dispatched a mechanics action.");
+            var oldElf = Button(elfControl);
+            await Click(oldElf);
+            Require(prepared == 1 && Visible("origin-life-confirm") && confirmed == 0, "Explicit preview was skipped.");
+            var oldConfirm = Button("origin-life-confirm");
+            ((IButtonController)Button("origin-life-metatype-Human")).SendClicked();
+            Require(!Visible("origin-life-confirm") && Visible(humanControl),
+                "A hidden Elf preview remained confirmable after choosing Human.");
+            await Click(oldConfirm);
+            await Click(oldElf);
+            Require(confirmed == 0 && prepared == 1, "A stale detached control dispatched an action.");
+            await Click(Button(humanControl));
+            await Click(Button("origin-life-confirm"));
+            Require(prepared == 2 && confirmed == 1 && authority.MutationCount == 0,
+                "Rendering applied rules itself or failed to use the supplied confirmation boundary.");
+            var departedConfirm = Button("origin-life-confirm");
+            typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnDisappearing",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null);
+            await Click(departedConfirm);
+            Require(confirmed == 1, "A control from a departed page dispatched confirmation.");
+            typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null);
+            Require(Visible("origin-life-confirm"), "Reopening did not issue fresh controls for the reviewed choice.");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS Origin book: explicit metatype filter, preview, stale-control rejection");
+        });
+    }
+
+    private static IEnumerable<Element> Elements(Element root)
+    {
+        yield return root;
+        IEnumerable<Element> children = root switch
+        {
+            ContentPage page when page.Content is not null => [page.Content],
+            ScrollView scroll when scroll.Content is not null => [scroll.Content],
+            Border border when border.Content is not null => [border.Content],
+            Layout layout => layout.Children.OfType<Element>(), _ => []
+        };
+        foreach (Element child in children)
+        foreach (Element descendant in Elements(child)) yield return descendant;
     }
 
     private static void Require(bool value, string message)

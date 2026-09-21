@@ -17,7 +17,10 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("AddSingleton<LifeModuleOriginDossierInteractionService>", program)
         self.assertIn("AddSingleton<OriginDossierLifeModulePhoneRuntime>", program)
         self.assertIn("IOriginDossierDraftTimelineStore", runtime)
-        self.assertIn("_interaction.Restore(checkpoint)", runtime)
+        self.assertIn("_interaction.Restore(persisted)", runtime)
+        # Core Prepare includes its own fresh Restore; the phone does not
+        # repeat the expensive catalog projection before delegating to it.
+        self.assertIn("_interaction.Prepare(checkpoint, choiceId)", runtime)
         self.assertIn("explicitlyConfirmed: true", runtime)
         self.assertIn("checkpoint.BoundSeedDigest", runtime)
         self.assertNotIn("_store.DeleteAsync", runtime)

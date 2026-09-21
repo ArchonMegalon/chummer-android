@@ -2615,14 +2615,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             || loaded.State is not { } foundation
             || foundation.Binding.WorkspaceId.Value != decision.WorkspaceId
             || foundation.Binding.ContentRevision != decision.WorkspaceRevision
-            || !string.Equals(
+            || !OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest(
                 foundation.Binding.RawCharacterXmlDigest,
-                result.BoundContentDigest,
-                StringComparison.Ordinal)
-            || !string.Equals(
+                result.BoundContentDigest)
+            || !OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest(
                 foundation.Binding.SourceDigest,
-                result.BoundSourceDigest,
-                StringComparison.Ordinal)
+                result.BoundSourceDigest)
             || string.IsNullOrWhiteSpace(result.BoundMechanicsSnapshotDigest)
             || string.IsNullOrWhiteSpace(foundation.FoundationSnapshotDigest)
             || !string.Equals(

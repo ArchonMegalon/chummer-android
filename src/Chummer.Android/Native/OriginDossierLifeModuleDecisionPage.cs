@@ -22,6 +22,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private readonly Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
     private readonly Func<string, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
     private readonly Func<string, string, Task<bool>> _confirmChoice;
+    private string? _selectedMetatypeOptionId;
+    private int _renderGeneration;
+    private bool _actionInFlight;
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModulePhoneResult opened,
@@ -57,13 +60,28 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _locale = locale;
         _prepareChoice = prepareChoice ?? throw new ArgumentNullException(nameof(prepareChoice));
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
+        _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
+            .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
         AutomationId = "origin-life-decision";
         Content = new ScrollView { Content = BuildBody() };
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        Content = new ScrollView { Content = BuildBody() };
+    }
+
+    protected override void OnDisappearing()
+    {
+        ++_renderGeneration;
+        base.OnDisappearing();
+    }
+
     private VerticalStackLayout BuildBody()
     {
+        int generation = ++_renderGeneration;
         var body = new VerticalStackLayout
         {
             Padding = new Thickness(20, 18, 20, 40),
@@ -134,9 +152,42 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         prompt.AutomationId = "origin-life-prompt";
         body.Add(prompt);
 
+        // This is a view filter over Core's exact composite Foundation choices,
+        // not a metatype mutation. Only the subsequent explicit confirmation
+        // persists metatype + nationality together, through the Core authority.
+        OriginDossierLifeModuleEffectState[] metatypes = _state.Choices
+            .Select(MetatypeEffect).OfType<OriginDossierLifeModuleEffectState>()
+            .GroupBy(effect => effect.TargetId, StringComparer.Ordinal)
+            .Select(group => group.First()).OrderBy(effect => effect.AfterValue, StringComparer.Ordinal)
+            .ToArray();
+        if (metatypes.Length > 0)
+        {
+            body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseMetatype"]));
+            body.Add(NativeTheme.Body(_copy["Origin.MetatypeReviewDetail"], NativeTheme.Muted));
+            foreach (OriginDossierLifeModuleEffectState metatype in metatypes)
+            {
+                Button selectMetatype = _selectedMetatypeOptionId == metatype.TargetId
+                    ? NativeTheme.PrimaryButton(metatype.AfterValue)
+                    : NativeTheme.SecondaryButton(metatype.AfterValue);
+                selectMetatype.AutomationId = "origin-life-metatype-" + metatype.TargetId;
+                selectMetatype.Clicked += (_, _) =>
+                {
+                    if (_actionInFlight || generation != _renderGeneration)
+                        return;
+                    _selectedMetatypeOptionId = metatype.TargetId;
+                    Content = new ScrollView { Content = BuildBody() };
+                };
+                body.Add(selectMetatype);
+            }
+            if (_selectedMetatypeOptionId is not null)
+                body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseNationality"]));
+        }
+
         for (int choiceIndex = 0; choiceIndex < _state.Choices.Count; choiceIndex++)
         {
             OriginDossierLifeModuleChoiceState choice = _state.Choices[choiceIndex];
+            if (metatypes.Length > 0 && MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId)
+                continue;
             var card = new VerticalStackLayout { Spacing = 8 };
             Button select = choice.IsSelected
                 ? NativeTheme.PrimaryButton(choice.Label)
@@ -145,12 +196,17 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             string choiceId = choice.ChoiceId;
             select.Clicked += async (_, _) =>
             {
-                OriginDossierLifeModulePhoneResult? prepared =
-                    await _prepareChoice(choiceId);
-                if (prepared is not null && TryAdoptPrepared(prepared))
+                if (_actionInFlight || generation != _renderGeneration)
+                    return;
+                _actionInFlight = true;
+                select.IsEnabled = false;
+                try
                 {
-                    Content = new ScrollView { Content = BuildBody() };
+                    OriginDossierLifeModulePhoneResult? prepared = await _prepareChoice(choiceId);
+                    if (prepared is not null && generation == _renderGeneration && TryAdoptPrepared(prepared))
+                        Content = new ScrollView { Content = BuildBody() };
                 }
+                finally { _actionInFlight = false; select.IsEnabled = true; }
             };
             card.Add(select);
 
@@ -192,7 +248,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         body.Add(provenance);
 
         if (_state.SelectedChoiceId is { } selectedChoiceId
-            && _state.PendingPreviewDigest is { } previewDigest)
+            && _state.PendingPreviewDigest is { } previewDigest
+            && (metatypes.Length == 0 || _state.Choices.Any(choice => choice.IsSelected
+                && MetatypeEffect(choice)?.TargetId == _selectedMetatypeOptionId)))
         {
             Label preview = NativeTheme.Body(
                 _copy["Origin.Review"],
@@ -204,15 +262,26 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             confirm.IsEnabled = _state.CanConfirm;
             confirm.Clicked += async (_, _) =>
             {
-                bool completed = await _confirmChoice(selectedChoiceId, previewDigest);
-                if (completed)
-                    await Navigation.PopAsync();
+                if (_actionInFlight || generation != _renderGeneration)
+                    return;
+                _actionInFlight = true;
+                confirm.IsEnabled = false;
+                try
+                {
+                    bool completed = await _confirmChoice(selectedChoiceId, previewDigest);
+                    if (completed && generation == _renderGeneration)
+                        await Navigation.PopAsync();
+                }
+                finally { _actionInFlight = false; confirm.IsEnabled = _state.CanConfirm; }
             };
             body.Add(confirm);
         }
 
         return body;
     }
+
+    private static OriginDossierLifeModuleEffectState? MetatypeEffect(OriginDossierLifeModuleChoiceState choice)
+        => choice.Effects.SingleOrDefault(effect => effect.Domain == "metatype-choice");
 
     private Grid BudgetMetric(
         string automationId,

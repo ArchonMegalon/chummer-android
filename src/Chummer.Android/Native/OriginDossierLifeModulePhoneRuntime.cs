@@ -36,6 +36,14 @@ public sealed class OriginDossierLifeModulePhoneRuntime
     private readonly IOriginDossierDraftTimelineStore _store;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    // Foundation's digest format is prefixed; Origin's is raw lowercase hex.
+    // Keep the comparison strict so an invalid/stale binding never gains admission.
+    internal static bool MatchesFoundationDigest(string? foundationDigest, string? originDigest)
+        => foundationDigest is { Length: 71 }
+           && foundationDigest.StartsWith("sha256:", StringComparison.Ordinal)
+           && LifeModuleDecisionAcceptanceIntegrity.IsDigest(originDigest)
+           && string.Equals(foundationDigest[7..], originDigest, StringComparison.Ordinal);
+
     public OriginDossierLifeModulePhoneRuntime(
         LifeModuleOriginDossierInteractionService interaction,
         IOriginDossierDraftTimelineStore store)
@@ -57,11 +65,13 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> result;
             if (persisted is null)
             {
-                result = _interaction.Start(workspaceId);
+                result = await Task.Run(() => _interaction.Start(workspaceId), cancellationToken)
+                    .ConfigureAwait(false);
             }
             else
             {
-                result = _interaction.Restore(persisted);
+                result = await Task.Run(() => _interaction.Restore(persisted), cancellationToken)
+                    .ConfigureAwait(false);
                 // A crash after the atomic mechanics commit but before saving
                 // the next chapter leaves a valid pending preview. Keep it available for
                 // the idempotent Confirm retry instead of guessing completion.
@@ -98,12 +108,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                     .ConfigureAwait(false);
             if (checkpoint is null)
                 return Failed(LifeModuleOriginDossierOutcomes.Missing, [LifeModuleOriginDossierBlockers.ProjectionInvalid]);
-            LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> restored =
-                _interaction.Restore(checkpoint);
-            if (!IsSuccess(restored) || restored.Value is not { } current)
-                return Failed(restored.Outcome, restored.Blockers);
+            // Prepare already performs a fresh Core restore. Avoid doing the
+            // full catalog projection twice and never do it on the UI thread.
             LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> prepared =
-                _interaction.Prepare(current, choiceId);
+                await Task.Run(() => _interaction.Prepare(checkpoint, choiceId), cancellationToken)
+                    .ConfigureAwait(false);
             if (!IsSuccess(prepared) || prepared.Value is not { } next)
                 return Failed(prepared.Outcome, prepared.Blockers);
             await _store.SaveAsync(next, cancellationToken).ConfigureAwait(false);
