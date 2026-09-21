@@ -624,7 +624,8 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetService<ICharacterCreationQualitiesService>(),
                         _provider.GetService<ICharacterCreationMagicResonanceService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
-                        ownerBoundCreationFinalizationService: productionFinalization)
+                        ownerBoundCreationFinalizationService: productionFinalization,
+                        ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,

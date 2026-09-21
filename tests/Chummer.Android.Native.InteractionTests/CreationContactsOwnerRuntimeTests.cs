@@ -45,7 +45,14 @@ internal static partial class AfterRunAuthorityHarness
             Require(saved.Document.AuxiliaryState.CharacterCreationGearDraft is { Lines.Count: 0 } emptyGear
                 && !CreationGearPhoneBasket.DiffersFromPersisted(new Dictionary<string, int>(), emptyGear),
                 "An already confirmed empty Gear basket must not request another confirmation.");
+            VerifyCreationLifestyleOwnerRead(runtime, owners, saved);
+            await VerifyCreationLifestyleOverviewRoutingAsync(runtime, owners);
             await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            Require(runtime.Coordinator.State.CreationLifestyles is { Lifestyles.Count: 0 }
+                && !runtime.Coordinator.State.CreationWizard!.CompletionBlockers.Contains(
+                    CharacterCreationWizardProjector.LifestylesAuthorityUnavailable),
+                "The production Creation overview omitted its exact empty Lifestyle projection: "
+                + JsonSerializer.Serialize(runtime.Coordinator.State.CreationLifestyles));
             var load = runtime.Coordinator.LoadCreationContacts();
             Require(load.State is { } loadedState && CreationContactsPhoneAuthority.IsReady(loadedState, runtime.Coordinator.State),
                 $"New {method} runner cannot enter Contacts after confirming its creation drafts: "
@@ -134,6 +141,9 @@ internal static partial class AfterRunAuthorityHarness
             cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
 
             await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+            Require(runtime.Coordinator.State.CreationWizard is { CanFinalize: true },
+                "The production dashboard still blocks the real ready runner: "
+                + JsonSerializer.Serialize(runtime.Coordinator.State.CreationWizard?.CompletionBlockers));
             var finalization = runtime.Coordinator.LoadCreationFinalization();
             Require(finalization.Value is { CanReview: true },
                 "Confirmed Contact blocked finalization: " + JsonSerializer.Serialize(finalization));
@@ -153,6 +163,60 @@ internal static partial class AfterRunAuthorityHarness
             await HydrateFinalizationOwnerAsync(runtime, owners, career, expectedCreated: true);
             Console.WriteLine($"PASS actual {method} Contacts add/remove/re-add, checkpoint, cold reopen, forged-draft rejection, replay recovery and Career finalization");
         }
+    }
+
+    private static void VerifyCreationLifestyleOwnerRead(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, WorkspaceStoredDocument saved)
+    {
+        var reader = runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>();
+        var request = new CharacterCreationLifestylesLoadRequest(runtime.Id);
+        var local = owners.Capture();
+        var loaded = reader.Load(local, request);
+        Require(loaded.Value is { Lifestyles.Count: 0 } state
+            && state.Binding.ContentRevision == saved.ContentRevision,
+            "The owner-bound Lifestyle reader did not load the canonical local state: " + JsonSerializer.Serialize(loaded));
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerA, saved);
+        owners.Set(ContactsOwnerA);
+        var ownerA = owners.Capture();
+        Require(reader.Load(local, request).Value is null, "Lifestyle accepted a stale local owner.");
+        Require(reader.Load(ownerA, request).Value?.Binding.ContentRevision == saved.ContentRevision,
+            "Lifestyle failed to read the explicitly scoped linked runner.");
+        owners.Set(ContactsOwnerB);
+        Require(reader.Load(owners.Capture(), request).Value is null,
+            "Lifestyle fell back to another owner's same-ID workspace.");
+        owners.Set(ContactsOwnerA);
+        Require(reader.Load(ownerA, request).Value is null, "Lifestyle accepted an A-B-A owner stamp.");
+        owners.Set(new OwnerScope("local-single-user"));
+        Require(reader.Load(owners.Capture(), request).Value is null,
+            "Lifestyle accepted an untrusted scope using the local-owner name.");
+        owners.Set(OwnerScope.LocalSingleUser);
+        Require(owners.ActiveLeases == 0, "Lifestyle read leaked its synchronous owner lease.");
+        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!);
+        Console.WriteLine("PASS Lifestyle local/linked read, foreign workspace denial, stale/ABA owner, forged local scope and no writes");
+    }
+
+    private static async Task VerifyCreationLifestyleOverviewRoutingAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners)
+    {
+        var loader = (IOwnerBoundWorkspaceOverviewLoader)runtime.Services.GetRequiredService<IWorkspaceOverviewLoader>();
+        var original = await loader.LoadAsync(runtime.Client, owners.Capture(), runtime.Id, default);
+        var legacy = StrictPageProxy.Create<ICharacterCreationLifestylesService>();
+        var missingReader = new WorkspaceOverviewStateFactory(creationLifestylesService: legacy);
+        Require(Project(missingReader).CreationLifestyles is null,
+            "A bound overview fell back to the unscoped Lifestyle service.");
+        var bound = new WorkspaceOverviewStateFactory(creationLifestylesService: legacy,
+            ownerBoundCreationLifestylesReader: runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>());
+        Require(Project(bound).CreationLifestyles is not null, "Overview discarded the exact owner-bound Lifestyle read.");
+        owners.Set(ContactsOwnerB);
+        Require(Project(bound).CreationLifestyles is null,
+            "Overview admitted a stale Lifestyle read or used its unscoped fallback.");
+        owners.Set(OwnerScope.LocalSingleUser);
+        Require(Project(bound).CreationLifestyles is null, "Overview admitted Lifestyle authority after owner ABA.");
+        Console.WriteLine("PASS Lifestyle overview uses the bound reader only; missing reader and stale/ABA display deny without legacy fallback");
+
+        CharacterOverviewState Project(WorkspaceOverviewStateFactory factory) => factory.CreateLoadedState(
+            CharacterOverviewState.Empty, runtime.Id, WorkspaceSessionState.Empty, original, null, true);
     }
 
     public static async Task RunCreationContactsOwnerCasesAsync(string contentRoot)
