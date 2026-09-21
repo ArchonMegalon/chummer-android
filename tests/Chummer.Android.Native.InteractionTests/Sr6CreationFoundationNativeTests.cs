@@ -97,6 +97,10 @@ internal static partial class AfterRunAuthorityHarness
                     {
                         Require(!IssuedElements(page).OfType<Picker>().Any(item => item.AutomationId?.StartsWith("sr6-foundation-rank-", StringComparison.Ordinal) == true),
                             "Point Buy was routed into priority inputs.");
+                        await Click("preview");
+                        Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                            && Element<Label>("status").Text == Sr6CreationCopy.Text("PointBuyInvalid"),
+                            "Incomplete Point Buy choices requested nonexistent priority ranks.");
                         Pick("point-buy-attributes", 20); Pick("point-buy-skills", 20);
                         Pick("point-buy-adjustment", 12); Pick("point-buy-resources", 30);
                         Pick("metatype", 0); Pick("talent", 0);

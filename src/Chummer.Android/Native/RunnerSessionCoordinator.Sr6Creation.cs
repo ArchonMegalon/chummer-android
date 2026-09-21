@@ -80,7 +80,9 @@ public sealed partial class RunnerSessionCoordinator
     {
         if (!Sr6CreationFoundationIntegrity.TryFreezeSelection(selection, out var frozen))
             return Task.FromResult(new CharacterCreationFoundationResult<Sr6CreationFoundationPreview>(
-                CharacterCreationFoundationOutcomes.Invalid, null, [Sr6CreationPriorityBlockers.CategoriesInvalid]));
+                CharacterCreationFoundationOutcomes.Invalid, null,
+                [state.BuildMethod == Sr6CharacterCreationBuildMethods.PointBuy
+                    ? Sr6CreationPointBuyBlockers.InvalidSelection : Sr6CreationPriorityBlockers.CategoriesInvalid]));
         return WithWorkspaceActivationGateAsync(async () =>
         {
             if (isCurrentPage?.Invoke() == false || !IsSr6FoundationStateCurrent(state)
