@@ -53,18 +53,75 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   costs. Enchanting aspects can select spells but not rituals; alchemy does not
   duplicate known-spell purchases. Names retain the labelled German source;
   controls and validation are DE/EN/ES. Saved formulas do not execute effects.
+- Separate adept-power editor with Core-owned level ceilings, exact fractional
+  costs and saved power-point budget. The 22 core families expand to 51 options
+  for senses, physical attributes and improved skills. Mixed-use skills expose
+  explicit full-use/noncombat scope. Saved Astral Perception unlocks Astral.
+  Removing prerequisites or lowering budgets cannot silently drop saved choices.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Karma/Aptitude/Bilingual, adept powers and runtime talent effects, equipment, finalization and
+Karma/Aptitude/Bilingual, runtime talent effects, equipment, finalization and
 Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current spell/ritual selection increment — 22 September 2026
+## Current adept-power selection increment — 22 September 2026
+
+- Android functional commit: `92f18881c5608416f2c5bd6e941c5d27de5d57e6`.
+- Core: `f1d46fa86`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Local keyless Docker and explicit source roots, not a sealed package release.
+
+`core-sr6-powers-1.log`: **167 Core tests pass**, including all 51 options,
+both adept types, three build methods, exact quarters, natural-rating and Magic
+limits, combat scope, Astral prerequisites, forged projections and cold reopen.
+`sr6-native-powers-1.log`: **94 native managed scenarios pass**, including
+18 new power-page scenarios across both adept types, all three methods and
+DE/EN/ES. Actual parent/child navigation, unavailable skill levels, duplicate
+rejection, stale confirms, fractional costs, no duplicate CP charge, departed
+controls, saved choices and Astral availability are checked.
+
+Rules follow the owned German 2024 core pp95/158–160. The
+[official FAQ](https://shadowrunsixthworld.com/shadowrun-sixth-world-faq/)
+clarifies mixed-use Improved Ability pricing; the scope is visible and bound
+by Core, not chosen implicitly by Android. German-profile Magic-linked skill
+restrictions remain intact. A power selection is not an active bonus or qi
+focus, and Improved Reflexes carries the non-stacking warning. Qualities/Karma,
+equipment, finalization and full Life Path/optional Karma flows remain open.
+
+`sr6-powers-debug-build-1.log`: Debug x64 APK, **0 warnings/errors**, 1m43.41s.
+Retained `sr6-powers-debug.apk`, SHA-256:
+`63c9a8a7673a40a77e3384b602d416847c705d89b1d26be40abafb86f5272570`.
+
+Actual API36 smoke seeded the unchanged saved Point Buy mystic-adept fixture
+`sr6-spells-after-restart.json` into the isolated debug app before first launch.
+Workspace `1924cafdb6ab458cbc105902fe931131` began at revision 5/5 with four
+decisions, Magic 3, two purchased power points and Heilen/Hüter. This is not a
+fresh New-runner proof. Through the actual power editor, Astral Perception 1
+and Mystic Armor 2 reviewed as 1.5/2 PP, 0.5 remaining and unchanged 38/62 CP.
+One confirmation saved revision 6/6. Returning to Skills exposed Astral;
+assigning rank 1 cost one skill point, left 11 and saved revision 7/7 with
+exactly six decisions. Both powers, both formulas and CP costs remained intact.
+
+Force-stop removed PID 4572; relaunch created PID 5826. The immediate PID query
+preceded process startup and was not accepted as readiness. Reopened foundation
+and power pages retained revision 7/7, both levels and the fractional budget,
+without a historical Confirm button. Entire workspace bytes were identical
+before/after restart, SHA-256:
+`d104c26ac9069cd7cf6b747648efa27a0870538e78e0aef235a002fd27aaa752`.
+The existing local packet retains `sr6-powers-*` APK, logs, screenshots, fresh
+hierarchies and workspace copies. Emulator system-process ANRs predated app
+installation; its System UI dialog was closed. A null-root skill-page read was
+rejected and checked against the screenshot and resumed Activity before a fresh
+read. No write was replayed; captured events contain no debug-app crash/ANR.
+The owned emulator and temporary keyless build/test containers were stopped.
+No main merge, package seal, upload key, release AAB or Play upload was involved.
+
+## Historical spell/ritual selection increment — 22 September 2026
 
 - Android functional commit: `6f83c55b`.
 - Core: `a8deec4a3`, functional `4ac8a21b1`.
