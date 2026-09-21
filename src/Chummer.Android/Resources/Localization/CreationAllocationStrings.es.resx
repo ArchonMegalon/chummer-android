@@ -308,4 +308,5 @@
   <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Fondos: {0:N2} ¥ · equipo: {1:N2} ¥ · estilos de vida: {2:N2} ¥ · restante: {3:N2} ¥ · exceso: {4:N2} ¥</value></data>
   <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Introduce el total de los dados del dinero inicial para el estilo de vida mostrado. Core aplica primero los límites del saldo transferible y después añade este dinero. Nada se guarda hasta que confirmes la siguiente vista previa.</value></data>
   <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Dinero inicial</value></data>
+  <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Efectos del metatipo: armadura +{0} · alcance +{1} · coste del estilo de vida +{2}%</value></data>
 </root>

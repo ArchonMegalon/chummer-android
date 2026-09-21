@@ -38,6 +38,11 @@ internal static partial class AfterRunAuthorityHarness
             ((IButtonController)disabledContacts).SendClicked();
             Require(ReferenceEquals(root, Current()), "A disabled Contacts callback navigated before its prerequisites.");
             await Click("karma-open-metatype");
+            Require(Element<Label>("karma-metatype-bonuses-08f2c9cc-f9f8-4f1a-9efb-63555af71788").Text
+                    == CreationKarmaCopy.MetatypeBonuses(0, 0, 20)
+                && Element<Label>("karma-metatype-bonuses-77fa1ed8-f4e6-4763-9f0b-f125318b9782").Text
+                    == CreationKarmaCopy.MetatypeBonuses(1, 1, 100),
+                "Metatype choice must disclose Core-owned Dwarf/Troll bonuses and lifestyle surcharges before selection.");
             Button human = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Human");
             await Click(human.AutomationId);
             AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent));

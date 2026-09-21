@@ -308,4 +308,5 @@
   <data name="Karma.LifestyleTotals" xml:space="preserve"><value>Funding: {0:N2} ¥ · equipment: {1:N2} ¥ · lifestyles: {2:N2} ¥ · remaining: {3:N2} ¥ · over budget: {4:N2} ¥</value></data>
   <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Enter the starting-cash dice total for the displayed lifestyle. Core applies the carryover limits before adding this cash. Nothing is saved until you confirm the next review.</value></data>
   <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Starting cash</value></data>
+  <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Base metatype effects: armor +{0} · reach +{1} · lifestyle cost +{2}%</value></data>
 </root>

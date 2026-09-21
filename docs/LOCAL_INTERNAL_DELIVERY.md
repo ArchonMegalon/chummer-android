@@ -94,8 +94,8 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 25 is the latest [observed Internal availability](../play/evidence/preview25-internal-observation.md).
-Its physical Play installation is unverified. Preview24 and earlier evidence
+Preview 26 is the latest [observed Internal availability](../play/evidence/preview26-internal-observation.md).
+Its physical Play installation is unverified. Preview25 and earlier evidence
 remain immutable. Neither this policy nor availability seals a new Android
 package graph or retroactively claims hosted qualification. Protected source
 integration and each candidate's actual build/test/sign/Play work remain separate.
