@@ -96,8 +96,24 @@ honest finalization into Career. The generic multi-chapter interaction tests do
 not prove those production mechanics. The reader currently exposes raw Markdown
 and a legacy `$real` story placeholder; these still need presentation/template
 handling. The overview budget remains unavailable despite the exact decision
-budget. This APK has no live First Book AI connection. A separate private
-provider canary is in progress and must not be described as app integration.
+budget. This APK has no live First Book AI connection.
+
+## Separate live First Book canary
+
+With explicit user authorization to spend test credits, the dedicated browser
+completed a private synthetic German outline, first chapter and one rewrite.
+Tier 5 account balance moved from 25 to 24; no purchase or public publication.
+The chapter leaves the next player decision open. The first draft invented
+unconfirmed metatype abilities; the rewrite removed those examples but still
+ignored the short-length request and retained unconfirmed biographical detail.
+Neither draft was adopted into Core or the Android book.
+
+This proves live private chapter generation, not unattended provider integration,
+all-stage completion, manuscript export or canonical fact fidelity. Provider
+generation took minutes, so the implementation needs a background job and
+reviewed narrative result, never a blocking Android call. Existing deterministic
+chapters remain readable if enrichment is unavailable. Local readbacks and the
+bounded canary notes are in the same packet; no credentials are in those files.
 
 No upload key was mounted, no release AAB was signed, and no Play upload occurred.
 Existing Preview 28 publication evidence remains unchanged.
