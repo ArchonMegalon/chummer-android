@@ -2096,7 +2096,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
+            "711f633f02746bde48e5c8cfa3611d368386c25cb338e7cc87d6380b73ffca8b",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -2142,10 +2142,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "6776c3043d8e2f27b257269903d7b7af53503c86b8215ca8ff12790b18dd87a4",
+            "711f633f02746bde48e5c8cfa3611d368386c25cb338e7cc87d6380b73ffca8b",
             provenance.file_sha256(lock_path),
         )
-        self.assertEqual(70263, lock_path.stat().st_size)
+        self.assertEqual(70264, lock_path.stat().st_size)
         self.assertEqual(142, len(lock["dependencies"][provenance.TARGET_FRAMEWORK]))
 
         hub_package_ids = (
