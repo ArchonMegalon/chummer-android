@@ -191,7 +191,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         // scrolling through every other module's effects.
         foreach (int choiceIndex in Enumerable.Range(0, _state.Choices.Count)
                      .OrderByDescending(index => _state.Choices[index].ChoiceId == _editingChoiceId)
-                     .ThenByDescending(index => _state.Choices[index].IsSelected))
+                     .ThenByDescending(index => _state.Choices[index].IsSelected)
+                     .ThenByDescending(index => IsSelectionFinish(_state.Choices[index])))
         {
             OriginDossierLifeModuleChoiceState choice = _state.Choices[choiceIndex];
             if (metatypes.Length > 0 && MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId)
@@ -412,6 +413,13 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
     private static OriginDossierLifeModuleEffectState? MetatypeEffect(OriginDossierLifeModuleChoiceState choice)
         => choice.Effects.SingleOrDefault(effect => effect.Domain == "metatype-choice");
+
+    // Core determines whether finishing is available. Only promote an already
+    // admitted typed action; never infer permission from stage, cost or label.
+    private static bool IsSelectionFinish(OriginDossierLifeModuleChoiceState choice)
+        => choice.Effects.Any(effect => effect.Domain == "creation-stage"
+            && effect.TargetId == CharacterCreationLifeModuleStageIds.SelectionFinished
+            && effect.AfterValue == "true");
 
     private Grid BudgetMetric(
         string automationId,

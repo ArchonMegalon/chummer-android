@@ -26,6 +26,7 @@ internal static class OriginDossierBookRuntimeTests
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
+        await RunFinishChoiceOrderingAsync();
         await RunFollowUpPageAsync();
         foreach (string scenario in new[] { "terminal", "two-chapters", "cancel-after-commit", "storage-failure", "tampered-pending", "stale-book" })
         {
@@ -97,6 +98,18 @@ internal static class OriginDossierBookRuntimeTests
                     {
                         var reader = new OriginDossierBookPage(reopened.StoryCheckpoint!, locale);
                         Require(reader.AutomationId == "origin-life-book", "Reader route missing after locale change.");
+                        Require(!Elements(reader).Any(element => element.AutomationId == "origin-life-module-selection-saved"),
+                            "A halted turn was mislabeled as explicitly finished module selection.");
+                        var finishedCopy = reopened.StoryCheckpoint! with { Projection = reopened.StoryCheckpoint.Projection with
+                        {
+                            CurrentTurn = reopened.StoryCheckpoint.Projection.CurrentTurn with
+                            { StageId = CharacterCreationLifeModuleStageIds.SelectionFinished }
+                        }};
+                        var finishedReader = new OriginDossierBookPage(finishedCopy, locale);
+                        Require(Elements(finishedReader).OfType<Label>().Any(label =>
+                                label.AutomationId == "origin-life-module-selection-saved"
+                                && label.Text == AndroidSurfaceStrings.Resolve(locale)["Origin.ModuleSelectionSaved"]),
+                            "The reader failed to distinguish saved selection from Career readiness.");
                     }
                 }
                 Require(await files.LoadAsync("another-owner", "workspace-1") is null, "Story leaked into another owner's storage namespace.");
@@ -249,6 +262,53 @@ internal static class OriginDossierBookRuntimeTests
             ui.AssertHealthy();
         });
         Console.WriteLine("PASS Origin book: live next-turn rendering and stale-confirm rejection");
+    }
+
+    private static async Task RunFinishChoiceOrderingAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var authority = new DecisionAuthority(1);
+            var ordinary = authority.Current.LegalChoices.Single();
+            var finish = ordinary with
+            {
+                ChoiceId = "zz-source-issued-finish", Label = "Modulauswahl beenden",
+                DecisionCommandDigest = Digest("finish-command"),
+                MechanicsPreview = ordinary.MechanicsPreview with
+                {
+                    KarmaCost = 0, KarmaRaw = "0",
+                    Items = [new("finish-effect", "creation-stage", CharacterCreationLifeModuleStageIds.SelectionFinished,
+                        "false", "true", 0, ordinary.SourceAnchorIds, string.Empty)]
+                }
+            };
+            authority.Current = authority.Current with { LegalChoices = [ordinary, finish] };
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            var opened = await runtime.OpenAsync("workspace-1");
+            opened = opened with
+            {
+                LifeModuleBudget = new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 145, 605, true, [], "karma"),
+                FoundationSnapshotDigest = "sha256:" + Digest("foundation-finish")
+            };
+            string? preparedChoice = null;
+            var page = new OriginDossierLifeModuleDecisionPage(opened, "en-US", (choice, _) =>
+            {
+                preparedChoice = choice;
+                return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null);
+            }, (_, _) => throw new InvalidOperationException("Selection must not confirm a mutation."));
+            var choices = Elements(page).OfType<Button>().Where(button =>
+                button.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true).ToArray();
+            Require(choices.Length == 2 && choices[0].AutomationId == "origin-life-choice-1",
+                "The typed finish action was buried after unrelated module choices or lost its stable identity.");
+            Require(authority.MutationCount == 0 && !Elements(page).Any(element => element.AutomationId == "origin-life-confirm"),
+                "Promoting the finish action invented a reviewed or confirmed decision.");
+            await ui.BeginAsyncVoid(() => ((IButtonController)choices[0]).SendClicked());
+            Require(preparedChoice == finish.ChoiceId && authority.MutationCount == 0,
+                "The promoted control prepared a different command or skipped explicit confirmation.");
+        });
+        Console.WriteLine("PASS Origin book: typed finish action first, stable identity, preview only");
     }
 
     private sealed class SynchronousStore(LifeModuleOriginDossierDraftCheckpoint checkpoint) : IOriginDossierDraftTimelineStore

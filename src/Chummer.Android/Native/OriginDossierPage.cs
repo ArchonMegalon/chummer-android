@@ -26,6 +26,12 @@ internal sealed class OriginDossierBookPage : ContentPage
         body.Add(NativeTheme.Title(checkpoint.Projection.CurrentTurn.RunnerDisplayName));
         body.Add(NativeTheme.Body(copy.Format("Origin.BookLanguage", locale.FormattingLocale), NativeTheme.Muted));
         body.Add(NativeTheme.Body(copy["Origin.BookSavedChapters"], NativeTheme.Muted));
+        if (checkpoint.Projection.CurrentTurn.StageId == CharacterCreationLifeModuleStageIds.SelectionFinished)
+        {
+            Label saved = NativeTheme.Body(copy["Origin.ModuleSelectionSaved"], NativeTheme.Ink);
+            saved.AutomationId = "origin-life-module-selection-saved";
+            body.Add(saved);
+        }
         foreach (OriginNarrativeChapterProjection chapter in checkpoint.Projection.VisibleChapters)
         {
             var content = new VerticalStackLayout { Spacing = 8 };

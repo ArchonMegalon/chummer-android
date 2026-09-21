@@ -105,9 +105,9 @@ the existing cancellation, failed-storage, stale and corrupt-checkpoint cases.
 `managed-continuation-3.log` and five focused Python source checks passed;
 localization remains 222 keys in three catalogs with five locale cases.
 
-Required follow-up controls are now connected as described below. An explicit
-finish choice, cumulative effect application and honest finalization into Career
-remain open. The reader still exposes raw Markdown
+Required follow-up controls and an explicit selection-finish choice are now
+connected as described below. Cumulative effect application and honest
+finalization into Career remain open. The reader still exposes raw Markdown
 and legacy `$real` / `$OUTDOOR` story placeholders; these need presentation/template
 handling. The overview budget remains unavailable despite the exact decision
 budget. This APK has no live First Book AI connection.
@@ -175,12 +175,45 @@ answers and two distinct input-bound acceptance receipts. No mutation was
 replayed. `origin-inputs-pending-restart.png` and `.xml` retain that reopened
 pending preview. Initial emulator System UI ANR was cleared before the route.
 
+A second force-stop after confirmation changed PID 5489 to 5730. The runner
+reopened at revision 3, stage 3, 95 karma used. Both chapters were visible in
+the reader. The checkpoint stayed
+`16c5d60786c10706edec524b3ee6d5f47cbd3a3e629c046fed28543e728c0117`,
+with no pending preview and unchanged chapter digests
+`2de660669842aad1b7956b7a8a4932dd57c226b5123f7b374f2a2cf869548ce4`
+and `84a2ec4e05064315ae0eb44df24318c09d985f445ed37a42735c59e8732485e9`.
+The owned read-only emulator was stopped. The installed Play app was untouched.
+
 The observed initial catalog/review wait is still noticeable. A subsequent
 Core-only exact-state candidate cache (`a13f9d649`, 71 focused tests passing)
 reduces repeated projections; it is not in the APK above, so no native speedup
 is claimed from this run. Character effects remain draft-only; required wizard
 completion, read-only historical recovery, book export and provider integration
 remain work in progress. No main merge or new Play publication is claimed.
+
+## Explicit selection finish and workspace-owned chapters
+
+Core `0c3d6fa64` stores each canonical chapter in the same atomic workspace
+acceptance as its decision. A missing phone timeline can be reconstructed from
+the validated history without replaying mechanics. Altered, missing or mismatched
+chapter/decision bindings fail closed. Legacy receipts without stored chapters
+remain valid historical receipts, but cannot manufacture a missing book.
+
+Core `9e6ab8d6a` adds an explicit zero-cost finish action once the required
+Nationality, Formative Years, Teen Years and Further Education decisions exist.
+Real Life is optional and repeatable. Finishing retains the selected modules and
+adds a final chapter; it does **not** apply rule effects or enter Career.
+The focused Core suite passed 73 tests (`core-origin-finish-1.log`), including
+finish before/after an optional Real Life module, explicit confirmation, exact
+save/reopen, chapter reconstruction and replay with no additional write.
+
+The Android reader identifies that exact finished-selection state in DE/EN/ES,
+without mislabelling a blocked or otherwise terminal draft as complete. The first
+native check found the action buried after 71 ordinary module choices. The phone
+now promotes only Core's already-admitted typed finish action above ordinary
+alternatives; selected reviews still come first and automation identities and
+command bindings do not change. This is display ordering, not Android permission
+to finish or a shortcut around explicit preview/confirmation.
 
 ## Separate live First Book canary
 
