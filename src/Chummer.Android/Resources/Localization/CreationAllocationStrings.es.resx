@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental: metatipo, talento, atributos, cualidades compatibles, habilidades, recursos, equipo, contactos y estilos de vida estándar. Guarda primero el borrador y después revisa y confirma por separado el paso a Carrera para personajes mundanos compatibles. La finalización de personajes despertados y otras áreas siguen sin estar disponibles.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental con compras de magia validadas por las fuentes. Guarda el borrador y después revisa y confirma por separado el paso a Carrera. Las opciones no compatibles siguen desactivadas; no todos los métodos están completos.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
@@ -264,7 +264,7 @@
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · nivel {1} · coste de origen {2} Karma</value></data>
   <data name="Karma.QualityTotals" xml:space="preserve"><value>Cualidades: coste {0} · crédito {1} · neto {2} Karma</value></data>
   <data name="Karma.Finish" xml:space="preserve"><value>Finalizar creación con Karma</value></data>
-  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Revisa todos los cambios antes de pasar a Carrera. Se pierden los importes que superen los límites de transferencia. El dinero inicial no financia compras de creación. Actualmente solo se pueden finalizar borradores mundanos compatibles.</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Revisa todos los cambios antes de pasar a Carrera. Se pierden los importes que superen los límites de transferencia. El dinero inicial no financia compras de creación. Los personajes despertados requieren una selección de Magia / Resonancia guardada y válida.</value></data>
   <data name="Karma.DiceTotal" xml:space="preserve"><value>Introduce la suma de tus dados (sin tirada automática)</value></data>
   <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Revisar paso a Carrera</value></data>
   <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Confirmar y pasar a Carrera</value></data>
@@ -309,4 +309,18 @@
   <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Introduce el total de los dados del dinero inicial para el estilo de vida mostrado. Core aplica primero los límites del saldo transferible y después añade este dinero. Nada se guarda hasta que confirmes la siguiente vista previa.</value></data>
   <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Dinero inicial</value></data>
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Efectos del metatipo: armadura +{0} · alcance +{1} · coste del estilo de vida +{2}%</value></data>
+  <data name="Karma.Magic" xml:space="preserve"><value>Magia / Resonancia</value></data>
+  <data name="Karma.Tradition" xml:space="preserve"><value>Tradición</value></data>
+  <data name="Karma.Stream" xml:space="preserve"><value>Corriente</value></data>
+  <data name="Karma.Powers" xml:space="preserve"><value>Poderes de adepto</value></data>
+  <data name="Karma.Spells" xml:space="preserve"><value>Hechizos</value></data>
+  <data name="Karma.ComplexForms" xml:space="preserve"><value>Formas complejas</value></data>
+  <data name="Karma.MagicHelp" xml:space="preserve"><value>Elige entre tus fuentes activas. Core comprueba acceso, costes y límites. Los hechizos, formas complejas y puntos de poder del adepto místico cuestan Karma; no hay hechizos gratuitos de Prioridad. Solo se guarda al confirmar el borrador.</value></data>
+  <data name="Karma.MagicTotals" xml:space="preserve"><value>Hechizos: {0} Karma · formas: {1} · puntos de poder: {2} · total: {3}</value></data>
+  <data name="Karma.PowerBudget" xml:space="preserve"><value>Puntos de poder: {0} / {1}</value></data>
+  <data name="Karma.PowerPointPurchase" xml:space="preserve"><value>Puntos de poder comprados: {0} · {1} Karma</value></data>
+  <data name="Karma.AddPowerPoint" xml:space="preserve"><value>Comprar un punto de poder</value></data>
+  <data name="Karma.RemovePowerPoint" xml:space="preserve"><value>Quitar un punto de poder</value></data>
+  <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
+  <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
 </root>

@@ -210,7 +210,7 @@
   <data name="Karma.Skills" xml:space="preserve"><value>Fertigkeiten</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Entwurf prüfen</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung: Metatyp, Talent, Attribute, unterstützte Vor-/Nachteile, Fertigkeiten, Ressourcen, Ausrüstung, Kontakte und Standard-Lebensstile. Entwurf zuerst speichern, dann den Karrierestart für unterstützte mundane Charaktere separat prüfen und bestätigen. Der Abschluss erwachter Charaktere und weitere Erstellungsbereiche fehlen noch.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimentelle Karma-Erstellung mit quellgeprüfter Magie-Auswahl. Entwurf zuerst speichern, dann den Karrierestart separat prüfen und bestätigen. Nicht unterstützte Quellenoptionen bleiben deaktiviert; nicht alle Bauarten sind vollständig.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel für den Ausrüstungsentwurf. Nuyen-Modifikatoren durch Vor-/Nachteile und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
@@ -264,7 +264,7 @@
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · Stufe {1} · Quellenkosten {2} Karma</value></data>
   <data name="Karma.QualityTotals" xml:space="preserve"><value>Vor-/Nachteile: Kosten {0} · Gutschrift {1} · netto {2} Karma</value></data>
   <data name="Karma.Finish" xml:space="preserve"><value>Karma-Erstellung abschließen</value></data>
-  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Prüfe alle Änderungen vor dem Karrierestart. Beträge über den Übertragsgrenzen verfallen. Startgeld finanziert keine Käufe während der Erstellung. Derzeit lassen sich nur unterstützte mundane Entwürfe abschließen.</value></data>
+  <data name="Karma.CompletionHelp" xml:space="preserve"><value>Prüfe alle Änderungen vor dem Karrierestart. Beträge über den Übertragsgrenzen verfallen. Startgeld finanziert keine Käufe während der Erstellung. Erwachte Charaktere benötigen eine gespeicherte, gültige Magie-/Resonanz-Auswahl.</value></data>
   <data name="Karma.DiceTotal" xml:space="preserve"><value>Würfelsumme eingeben (kein automatischer Wurf)</value></data>
   <data name="Karma.PreviewCompletion" xml:space="preserve"><value>Karrierestart prüfen</value></data>
   <data name="Karma.ConfirmCompletion" xml:space="preserve"><value>Bestätigen und Karriere starten</value></data>
@@ -309,4 +309,18 @@
   <data name="Finalization.StartingCashHelp" xml:space="preserve"><value>Trage das Würfelergebnis für das Startgeld des angezeigten Lebensstils ein. Core begrenzt zuerst das Restgeld und addiert danach das Startgeld. Erst deine Bestätigung der nächsten Vorschau speichert die Änderungen.</value></data>
   <data name="Finalization.StartingCashTitle" xml:space="preserve"><value>Startgeld</value></data>
   <data name="Karma.MetatypeBonuses" xml:space="preserve"><value>Metatyp-Effekte: Panzerung +{0} · Reichweite +{1} · Lebensstilkosten +{2}%</value></data>
+  <data name="Karma.Magic" xml:space="preserve"><value>Magie / Resonanz</value></data>
+  <data name="Karma.Tradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Karma.Stream" xml:space="preserve"><value>Stream</value></data>
+  <data name="Karma.Powers" xml:space="preserve"><value>Adeptenkräfte</value></data>
+  <data name="Karma.Spells" xml:space="preserve"><value>Zauber</value></data>
+  <data name="Karma.ComplexForms" xml:space="preserve"><value>Komplexe Formen</value></data>
+  <data name="Karma.MagicHelp" xml:space="preserve"><value>Wähle aus deinen aktiven Quellen. Core prüft Zugang, Kosten und Grenzen. Zauber, komplexe Formen und Kraftpunkte mystischer Adepten kosten Karma; es gibt keine kostenlosen Prioritäts-Zauberplätze. Erst die Entwurfsbestätigung speichert die Auswahl.</value></data>
+  <data name="Karma.MagicTotals" xml:space="preserve"><value>Zauber: {0} Karma · Formen: {1} · Kraftpunkte: {2} · gesamt: {3}</value></data>
+  <data name="Karma.PowerBudget" xml:space="preserve"><value>Kraftpunkte: {0} / {1}</value></data>
+  <data name="Karma.PowerPointPurchase" xml:space="preserve"><value>Gekaufte Kraftpunkte: {0} · {1} Karma</value></data>
+  <data name="Karma.AddPowerPoint" xml:space="preserve"><value>Einen Kraftpunkt kaufen</value></data>
+  <data name="Karma.RemovePowerPoint" xml:space="preserve"><value>Einen Kraftpunkt entfernen</value></data>
+  <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
+  <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
 </root>

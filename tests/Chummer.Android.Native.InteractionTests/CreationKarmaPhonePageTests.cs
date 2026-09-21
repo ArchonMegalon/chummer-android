@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false)
+    private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false, bool magic = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -47,11 +47,12 @@ internal static partial class AfterRunAuthorityHarness
             await Click(human.AutomationId);
             AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent));
             await Click("karma-open-talent");
-            await Click("karma-talent-mundane");
+            await Click(magic ? "karma-talent-0e741331-d776-4be8-abc5-4101228abdef" : "karma-talent-mundane");
             AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes));
             await Click("karma-open-attributes");
             Stepper oldAgility = Element<Stepper>("karma-attribute-AGI");
             oldAgility.Value = 1;
+            if (magic) Element<Stepper>("karma-attribute-MAG").Value = 2;
             Require(Element<Label>("creation-karma-budget").Text == CreationKarmaCopy.Pending,
                 "Attribute editing displayed stale budget totals as current.");
             int loadsBeforeBack = probe!.LoadCalls;
@@ -100,6 +101,70 @@ internal static partial class AfterRunAuthorityHarness
             await Click("karma-open-qualities");
             Require(Session().Access is null,
                 "Qualities must not recalculate skill-display access merely because its catalog is already loaded.");
+            if (magic)
+            {
+                await Back();
+                await Click("karma-open-magic");
+                Require(Session().Quote!.Magic is { Access.RequiresTradition: true, CanSelect: false },
+                    "The native magic page must expose Core's missing-tradition review.");
+                await Click("karma-magic-open-tradition");
+                Element<SearchBar>("karma-magic-search").Text = "Hermetic";
+                await Click("karma-magic-search-go");
+                var tradition = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "tradition")
+                    .Options.Single(option => option.Name == "Hermetic");
+                var oldChoose = Element<Button>("karma-magic-add-" + tradition.Identity.SourceId);
+                await Click(oldChoose.AutomationId);
+                await Back();
+                await Click("karma-magic-open-spell");
+                var spell = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "spell")
+                    .Options.First(option => option.IsEnabled);
+                Element<SearchBar>("karma-magic-search").Text = spell.Name;
+                await Click("karma-magic-search-go");
+                await Click("karma-magic-add-" + spell.Identity.SourceId);
+                Require(Session().Quote!.Magic!.Cost.TotalKarma == 5,
+                    "Karma magic must charge the profile price, without a Priority free slot.");
+                await ui.BeginAsyncVoid(() => ((IButtonController)oldChoose).SendClicked());
+                Require(Session().Selection!.MagicSelections!.Spells.Single() == spell.Identity,
+                    "A departed tradition control rewrote a newer spell selection.");
+                await Back();
+                await Back();
+                await Click("karma-open-resources");
+                Element<Entry>("karma-resource-investment").Text = "0";
+                await Click("karma-use-resources");
+                await Click("karma-open-gear");
+                await Back();
+                await Click("karma-open-review");
+                Require(Session().Quote!.Magic!.Cost.TotalKarma == 5 && probe!.ConfirmCalls == 0,
+                    "Moving through later steps lost magic spending or saved without confirmation.");
+                await Click("karma-confirm");
+                var savedMagic = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Require(probe.ConfirmCalls == 1 && savedMagic.Document.Content == before.Document.Content
+                    && savedMagic.Document.AuxiliaryState.CharacterCreationKarmaMetatypeDecisions!.Single()
+                        .Command.MagicSelections!.Spells.Single() == spell.Identity,
+                    "Magic selections must persist once without applying the character before completion.");
+                await Back();
+                await Click("karma-open-completion");
+                Element<Entry>("karma-completion-roll").Text = "4";
+                await Click("karma-completion-preview");
+                Require(Element<Button>("karma-completion-confirm").IsEnabled,
+                    "The saved magic draft did not reach the explicit Career review.");
+                await Click("karma-completion-confirm");
+                var completedMagic = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                var xml = System.Xml.Linq.XElement.Parse(completedMagic.Document.Content);
+                Require(probe.FinalConfirmCalls == 1 && xml.Element("created")!.Value == "True"
+                    && xml.Element("spells")!.Elements("spell").Single().Element("sourceid")!.Value == spell.Identity.SourceId
+                    && xml.Element("tradition")!.Element("sourceid")!.Value == tradition.Identity.SourceId,
+                    "Native Career completion lost the selected magic or finalized more than once.");
+                await runtime.Presenter.InitializeAsync(default);
+                await runtime.Presenter.LoadAsync(id, default);
+                Require(runtime.Coordinator.State.Profile?.Created == true
+                    && runtime.Coordinator.State.ContentRevision == completedMagic.ContentRevision,
+                    "Cold native Career reopen lost the magical character.");
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS native Karma: phone-magic");
+                return;
+            }
             if (prerequisitesOnly)
             {
                 await Back();

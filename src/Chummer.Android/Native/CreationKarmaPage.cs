@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Contacts, Contact, Lifestyles, Lifestyle, Review }
+internal enum CreationKarmaStep { Overview, Metatype, Talent, Attributes, Qualities, Skills, Skill, Group, Resources, Gear, Contacts, Contact, Lifestyles, Lifestyle, Magic, MagicCatalog, Review }
 
 /// <summary>Phone deep pages for the Core-owned pending Karma foundation.</summary>
 internal sealed partial class CreationKarmaPage : NativePageBase
@@ -50,6 +50,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         CreationKarmaStep.Gear => CreationKarmaCopy.Gear,
         CreationKarmaStep.Contacts or CreationKarmaStep.Contact => CreationKarmaCopy.Contacts,
         CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle => CreationKarmaCopy.Lifestyles,
+        CreationKarmaStep.Magic or CreationKarmaStep.MagicCatalog => CreationKarmaCopy.Magic,
         CreationKarmaStep.Review => CreationKarmaCopy.Review,
         _ => CreationKarmaCopy.Title
     };
@@ -71,16 +72,17 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     }
 
     private bool NeedsSkillAccess => _step is CreationKarmaStep.Skills or CreationKarmaStep.Skill or CreationKarmaStep.Group;
+    private bool IsMagicStep => _step is CreationKarmaStep.Magic or CreationKarmaStep.MagicCatalog;
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.FrameCurrent;
         MarkVisitedStage();
-        await _session.ReloadAsync(NeedsSkillAccess,
-            cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities,
+        await _session.ReloadAsync(NeedsSkillAccess || IsMagicStep,
+            cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities || IsMagicStep,
             includeGear: _step == CreationKarmaStep.Gear,
-            includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle);
+            includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle, includeMagic: IsMagicStep);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
         if (!_session.QuoteCurrent)
@@ -107,6 +109,10 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                 && _session.Selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null,
                     GearSelections: not null, LifestyleSelections: null } lifestyles)
                 _session.Change(lifestyles with { LifestyleSelections = [] });
+            if (IsMagicStep && _session.Authority?.MagicCatalog is not null
+                && _session.Selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null,
+                    MagicSelections: null } magic)
+                _session.Change(magic with { MagicSelections = new(null, null, [], [], []) });
         }
     }
 
@@ -158,6 +164,8 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             case CreationKarmaStep.Contact: AddContactEditor(); break;
             case CreationKarmaStep.Lifestyles: AddKarmaLifestyles(); break;
             case CreationKarmaStep.Lifestyle: AddKarmaLifestyleEditor(); break;
+            case CreationKarmaStep.Magic: AddKarmaMagic(); break;
+            case CreationKarmaStep.MagicCatalog: AddKarmaMagicCatalog(); break;
             case CreationKarmaStep.Review: AddReview(); break;
         }
         AddBlockers();
@@ -225,6 +233,8 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Attributes, "karma-open-attributes", () => Open(CreationKarmaStep.Attributes), selection?.TalentOptionId is not null);
         AddButton(CreationKarmaCopy.Qualities, "karma-open-qualities", () => Open(CreationKarmaStep.Qualities), selection?.Attributes is not null);
         AddButton(CreationKarmaCopy.Skills, "karma-open-skills", () => Open(CreationKarmaStep.Skills), selection?.Attributes is not null);
+        AddButton(CreationKarmaCopy.Magic, "karma-open-magic", () => Open(CreationKarmaStep.Magic),
+            selection is { Attributes: not null, Skills: not null, QualityOptionIds: not null }, reviewedChoicesHint);
         AddButton(CreationKarmaCopy.Resources, "karma-open-resources", () => Open(CreationKarmaStep.Resources),
             selection?.Attributes is not null && _session.Authority?.ResourcesPolicy is not null);
         AddButton(CreationKarmaCopy.Gear, "karma-open-gear", () => Open(CreationKarmaStep.Gear),
@@ -554,6 +564,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             _body.Add(NativeTheme.Body(CreationKarmaCopy.ContactLine(line.Selection.Identity.Name,
                 line.Selection.Connection, line.Selection.Loyalty, line.PointCost)));
         AddLifestyleLines();
+        AddKarmaMagicSummary();
     }
 
     private void AddContactTotals()
