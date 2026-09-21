@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten draft. Review and save foundation, attributes and skills; later creation steps and Career entry are not available yet.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten draft. Review and save foundation, attributes, skills, knowledge and languages; later creation steps and Career entry are not available yet.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears its attribute and skill allocations in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears attributes, skills, knowledge and languages in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -389,7 +389,7 @@
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonance</value></data>
   <data name="Sr6.SkillTitle" xml:space="preserve"><value>SR6 skills</value></data>
   <data name="Sr6.SkillOpen" xml:space="preserve"><value>Allocate skill points</value></data>
-  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Spend priority points on skills and specialties. Only one skill may reach 6. Knowledge, languages, Karma and Aptitude are not included yet. Availability is checked on review.</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Spend priority points on skills and specialties. Only one skill may reach 6. Knowledge and languages have a separate step. Karma and Aptitude are not included yet. Availability is checked on review.</value></data>
   <data name="Sr6.SkillAspect" xml:space="preserve"><value>Magical aspect</value></data>
   <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Specialization (optional; one per skill)</value></data>
   <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Weapon types (separate with ; — first free)</value></data>
@@ -422,4 +422,24 @@
   <data name="Sr6.Option.Sorcery" xml:space="preserve"><value>Sorcery</value></data>
   <data name="Sr6.Option.Stealth" xml:space="preserve"><value>Stealth</value></data>
   <data name="Sr6.Option.Tasking" xml:space="preserve"><value>Tasking</value></data>
+  <data name="Sr6.KnowledgeTitle" xml:space="preserve"><value>SR6 knowledge and languages</value></data>
+  <data name="Sr6.KnowledgeOpen" xml:space="preserve"><value>Choose knowledge and languages</value></data>
+  <data name="Sr6.KnowledgePool" xml:space="preserve"><value>Knowledge/language picks: {0} (Logic) + one free native language</value></data>
+  <data name="Sr6.KnowledgeHelp" xml:space="preserve"><value>Knowledge topics have no rating and cost one pick each. Language levels cost 1/2/3 picks in total. Native is free once, not a purchasable level. Only free creation picks here; Karma, Bilingual and other quality adjustments are not included.</value></data>
+  <data name="Sr6.KnowledgeNative" xml:space="preserve"><value>Native language — free</value></data>
+  <data name="Sr6.KnowledgeTopic" xml:space="preserve"><value>Knowledge topic — one pick</value></data>
+  <data name="Sr6.KnowledgeLanguage" xml:space="preserve"><value>Additional language</value></data>
+  <data name="Sr6.KnowledgeLevel" xml:space="preserve"><value>Language level</value></data>
+  <data name="Sr6.KnowledgeLevel.basic" xml:space="preserve"><value>Basic (1 pick)</value></data>
+  <data name="Sr6.KnowledgeLevel.specialist" xml:space="preserve"><value>Specialist (2 picks)</value></data>
+  <data name="Sr6.KnowledgeLevel.expert" xml:space="preserve"><value>Expert (3 picks)</value></data>
+  <data name="Sr6.KnowledgeRemove" xml:space="preserve"><value>Remove draft entry</value></data>
+  <data name="Sr6.KnowledgeAddTopic" xml:space="preserve"><value>Add knowledge topic</value></data>
+  <data name="Sr6.KnowledgeAddLanguage" xml:space="preserve"><value>Add language</value></data>
+  <data name="Sr6.KnowledgeBudget" xml:space="preserve"><value>Knowledge/language picks spent: {0} · remaining: {1} · Logic: {2}</value></data>
+  <data name="Sr6.KnowledgeLanguageValue" xml:space="preserve"><value>{0}: {1} · {2} picks · comprehension +{3}</value></data>
+  <data name="Sr6.KnowledgeAttributesRequired" xml:space="preserve"><value>Review and save attributes first; Core derives the knowledge/language pool from Logic.</value></data>
+  <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Enter one native language and distinct, non-empty names (up to 80 characters). Choose a supported language level; remove unused blank rows.</value></data>
+  <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Knowledge and language choices exceed Logic. Reduce the choices or review the attribute allocation; nothing was saved.</value></data>
+  <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Knowledge topics are player-entered and unrated. Agree their scope with the GM; saving does not record GM approval.</value></data>
 </root>

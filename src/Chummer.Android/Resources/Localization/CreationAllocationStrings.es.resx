@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Puedes revisar y guardar la base, los atributos y las habilidades; los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Puedes revisar y guardar la base, atributos, habilidades, conocimientos e idiomas; los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra las asignaciones de atributos y habilidades al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra atributos, habilidades, conocimientos e idiomas al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -389,7 +389,7 @@
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonancia</value></data>
   <data name="Sr6.SkillTitle" xml:space="preserve"><value>Habilidades de SR6</value></data>
   <data name="Sr6.SkillOpen" xml:space="preserve"><value>Asignar puntos de habilidad</value></data>
-  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Asigna puntos de prioridad a habilidades y especializaciones. Solo una habilidad puede llegar a 6. Aún no incluye conocimientos, idiomas, Karma ni Aptitud. La disponibilidad se comprueba al revisar.</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Asigna puntos de prioridad a habilidades y especializaciones. Solo una habilidad puede llegar a 6. Conocimientos e idiomas tienen un paso aparte. Aún sin Karma ni Aptitud. La disponibilidad se comprueba al revisar.</value></data>
   <data name="Sr6.SkillAspect" xml:space="preserve"><value>Aspecto mágico</value></data>
   <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Especialización (opcional; una por habilidad)</value></data>
   <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Tipos de arma (separa con ; — el primero es gratis)</value></data>
@@ -422,4 +422,24 @@
   <data name="Sr6.Option.Sorcery" xml:space="preserve"><value>Hechicería</value></data>
   <data name="Sr6.Option.Stealth" xml:space="preserve"><value>Sigilo</value></data>
   <data name="Sr6.Option.Tasking" xml:space="preserve"><value>Tareas de resonancia</value></data>
+  <data name="Sr6.KnowledgeTitle" xml:space="preserve"><value>Conocimientos e idiomas de SR6</value></data>
+  <data name="Sr6.KnowledgeOpen" xml:space="preserve"><value>Elegir conocimientos e idiomas</value></data>
+  <data name="Sr6.KnowledgePool" xml:space="preserve"><value>Puntos de conocimientos/idiomas: {0} (Lógica) + un idioma nativo gratis</value></data>
+  <data name="Sr6.KnowledgeHelp" xml:space="preserve"><value>Cada conocimiento cuesta un punto y no tiene nivel. Los idiomas cuestan 1/2/3 puntos en total según el nivel. Un idioma nativo es gratis, no un nivel comprable. Solo puntos gratuitos de creación; aún sin Karma, Bilingüe ni ajustes por cualidades.</value></data>
+  <data name="Sr6.KnowledgeNative" xml:space="preserve"><value>Idioma nativo — gratis</value></data>
+  <data name="Sr6.KnowledgeTopic" xml:space="preserve"><value>Conocimiento — un punto</value></data>
+  <data name="Sr6.KnowledgeLanguage" xml:space="preserve"><value>Idioma adicional</value></data>
+  <data name="Sr6.KnowledgeLevel" xml:space="preserve"><value>Nivel del idioma</value></data>
+  <data name="Sr6.KnowledgeLevel.basic" xml:space="preserve"><value>Básico (1 punto)</value></data>
+  <data name="Sr6.KnowledgeLevel.specialist" xml:space="preserve"><value>Especialista (2 puntos)</value></data>
+  <data name="Sr6.KnowledgeLevel.expert" xml:space="preserve"><value>Experto (3 puntos)</value></data>
+  <data name="Sr6.KnowledgeRemove" xml:space="preserve"><value>Quitar entrada del borrador</value></data>
+  <data name="Sr6.KnowledgeAddTopic" xml:space="preserve"><value>Añadir conocimiento</value></data>
+  <data name="Sr6.KnowledgeAddLanguage" xml:space="preserve"><value>Añadir idioma</value></data>
+  <data name="Sr6.KnowledgeBudget" xml:space="preserve"><value>Puntos de conocimientos/idiomas usados: {0} · restantes: {1} · Lógica: {2}</value></data>
+  <data name="Sr6.KnowledgeLanguageValue" xml:space="preserve"><value>{0}: {1} · {2} puntos · comprensión +{3}</value></data>
+  <data name="Sr6.KnowledgeAttributesRequired" xml:space="preserve"><value>Revisa y guarda los atributos primero; Core calcula los puntos de conocimientos/idiomas a partir de Lógica.</value></data>
+  <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Introduce un idioma nativo y nombres distintos, no vacíos (hasta 80 caracteres). Elige un nivel válido y elimina las filas vacías.</value></data>
+  <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Las elecciones superan Lógica. Reduce las elecciones o revisa los atributos; no se ha guardado nada.</value></data>
+  <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Los conocimientos son entradas propias sin nivel. Acuerda su alcance con el director de juego; guardar no registra su aprobación.</value></data>
 </root>

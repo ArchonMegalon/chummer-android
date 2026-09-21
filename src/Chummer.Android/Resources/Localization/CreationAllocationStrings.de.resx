@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl, Attribute und Fertigkeiten lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl, Attribute, Fertigkeiten, Wissen und Sprachen lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute und Fertigkeiten erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute, Fertigkeiten, Wissen und Sprachen erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -389,7 +389,7 @@
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonanz</value></data>
   <data name="Sr6.SkillTitle" xml:space="preserve"><value>SR6-Fertigkeiten</value></data>
   <data name="Sr6.SkillOpen" xml:space="preserve"><value>Fertigkeitspunkte verteilen</value></data>
-  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Prioritätspunkte für Fertigkeiten und Spezialisierungen verteilen. Nur eine Fertigkeit darf 6 erreichen. Wissen, Sprachen, Karma und Talentiert fehlen noch. Verfügbarkeit wird bei der Vorschau geprüft.</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Prioritätspunkte für Fertigkeiten und Spezialisierungen verteilen. Nur eine Fertigkeit darf 6 erreichen. Wissen und Sprachen haben einen eigenen Schritt. Karma und Talentiert fehlen noch. Verfügbarkeit wird bei der Vorschau geprüft.</value></data>
   <data name="Sr6.SkillAspect" xml:space="preserve"><value>Magischer Aspekt</value></data>
   <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Spezialisierung (optional; eine pro Fertigkeit)</value></data>
   <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Waffenarten (mit ; trennen — erste kostenlos)</value></data>
@@ -422,4 +422,24 @@
   <data name="Sr6.Option.Sorcery" xml:space="preserve"><value>Hexerei</value></data>
   <data name="Sr6.Option.Stealth" xml:space="preserve"><value>Heimlichkeit</value></data>
   <data name="Sr6.Option.Tasking" xml:space="preserve"><value>Tasken</value></data>
+  <data name="Sr6.KnowledgeTitle" xml:space="preserve"><value>SR6-Wissen und Sprachen</value></data>
+  <data name="Sr6.KnowledgeOpen" xml:space="preserve"><value>Wissen und Sprachen wählen</value></data>
+  <data name="Sr6.KnowledgePool" xml:space="preserve"><value>Wissens-/Sprachpunkte: {0} (Logik) + eine kostenlose Muttersprache</value></data>
+  <data name="Sr6.KnowledgeHelp" xml:space="preserve"><value>Wissensthemen haben keine Stufe und kosten je einen Punkt. Sprachstufen kosten insgesamt 1/2/3 Punkte. Eine Muttersprache ist kostenlos, aber nicht als Stufe kaufbar. Hier nur freie Erstellungspunkte; Karma, Zweisprachigkeit und weitere Vorteilsanpassungen fehlen noch.</value></data>
+  <data name="Sr6.KnowledgeNative" xml:space="preserve"><value>Muttersprache — kostenlos</value></data>
+  <data name="Sr6.KnowledgeTopic" xml:space="preserve"><value>Wissensthema — ein Punkt</value></data>
+  <data name="Sr6.KnowledgeLanguage" xml:space="preserve"><value>Weitere Sprache</value></data>
+  <data name="Sr6.KnowledgeLevel" xml:space="preserve"><value>Sprachstufe</value></data>
+  <data name="Sr6.KnowledgeLevel.basic" xml:space="preserve"><value>Grundkenntnisse (1 Punkt)</value></data>
+  <data name="Sr6.KnowledgeLevel.specialist" xml:space="preserve"><value>Spezialist (2 Punkte)</value></data>
+  <data name="Sr6.KnowledgeLevel.expert" xml:space="preserve"><value>Experte (3 Punkte)</value></data>
+  <data name="Sr6.KnowledgeRemove" xml:space="preserve"><value>Entwurfseintrag entfernen</value></data>
+  <data name="Sr6.KnowledgeAddTopic" xml:space="preserve"><value>Wissensthema hinzufügen</value></data>
+  <data name="Sr6.KnowledgeAddLanguage" xml:space="preserve"><value>Sprache hinzufügen</value></data>
+  <data name="Sr6.KnowledgeBudget" xml:space="preserve"><value>Wissens-/Sprachpunkte verbraucht: {0} · übrig: {1} · Logik: {2}</value></data>
+  <data name="Sr6.KnowledgeLanguageValue" xml:space="preserve"><value>{0}: {1} · {2} Punkte · Verständnis +{3}</value></data>
+  <data name="Sr6.KnowledgeAttributesRequired" xml:space="preserve"><value>Zuerst Attribute prüfen und speichern; Core berechnet den Wissens-/Sprachvorrat aus Logik.</value></data>
+  <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Eine Muttersprache und eindeutige, nicht leere Namen eingeben (bis 80 Zeichen). Gültige Sprachstufe wählen; ungenutzte leere Zeilen entfernen.</value></data>
+  <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Wissens- und Sprachauswahl überschreitet Logik. Auswahl reduzieren oder Attributsverteilung prüfen; nichts wurde gespeichert.</value></data>
+  <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Wissensthemen sind eigene Eingaben ohne Stufe. Umfang mit der Spielleitung absprechen; Speichern bestätigt keine GM-Freigabe.</value></data>
 </root>

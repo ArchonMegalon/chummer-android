@@ -122,6 +122,8 @@ internal static partial class AfterRunAuthorityHarness
                         "Reopened native SR6 page lost its saved metatype.");
                     Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
                         "Historical saved preview became current confirmation authority.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-knowledge").IsEnabled,
+                        "Knowledge allocation opened before attributes established its pool.");
                     IssuedPageLifecycle(reopened, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 phone " + method + " " + language);
@@ -138,6 +140,7 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!IssuedElements(attributesPage).OfType<Picker>().Any(item => item.AutomationId == "sr6-foundation-normal-Edge"
                         || item.AutomationId == "sr6-foundation-adjustment-Body"), "Unavailable point kind appeared.");
                     AttributeElement<Picker>("normal-Body").SelectedIndex = 2;
+                    AttributeElement<Picker>("normal-Logic").SelectedIndex = 2;
                     AttributeElement<Picker>("adjustment-Charisma").SelectedIndex = 1;
                     AttributeElement<Picker>("adjustment-Edge").SelectedIndex = 3;
                     await AttributeClick("preview");
@@ -211,6 +214,90 @@ internal static partial class AfterRunAuthorityHarness
                     IssuedPageLifecycle(skillReopen, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 skill phone " + method + " " + language);
+
+                    var knowledgePage = new Sr6CreationFoundationPage(runtime.Coordinator, knowledgeMode: true);
+                    await navigation.PushAsync(knowledgePage, false);
+                    using var knowledgeAlerts = new IssuedPageAlerts(knowledgePage, window);
+                    await knowledgeAlerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(knowledgePage, "OnAppearing"));
+                    T KnowledgeElement<T>(string key) where T : Element => IssuedElements(knowledgePage).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    T KnowledgeRow<T>(string prefix) where T : Element => IssuedElements(knowledgePage).OfType<T>()
+                        .Single(item => item.AutomationId?.StartsWith("sr6-foundation-knowledge-" + prefix, StringComparison.Ordinal) == true);
+                    Task KnowledgeClick(string key)
+                    {
+                        if (key is "preview" or "confirm")
+                            return ui.BeginAsyncVoid(() => ((IButtonController)KnowledgeElement<Button>(key)).SendClicked());
+                        ((IButtonController)KnowledgeElement<Button>(key)).SendClicked(); // Local row edit is synchronous, no Core call.
+                        return Task.CompletedTask;
+                    }
+                    Require(knowledgePage.Title == Sr6CreationCopy.Text("KnowledgeTitle") && knowledgePage.Title != "KnowledgeTitle",
+                        "Knowledge title localization missing.");
+                    KnowledgeElement<Entry>("knowledge-native").Text = "German";
+                    await KnowledgeClick("knowledge-add-topic");
+                    var discardedEntry = KnowledgeRow<Entry>("topic-");
+                    string discardedId = discardedEntry.AutomationId!["sr6-foundation-knowledge-topic-".Length..];
+                    await KnowledgeClick("preview");
+                    Require(!IssuedElements(knowledgePage).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Blank topic was admitted for confirmation.");
+                    await KnowledgeClick("knowledge-remove-topic-" + discardedId);
+                    discardedEntry.Text = "Old row";
+                    await KnowledgeClick("knowledge-add-topic");
+                    var topicEntry = KnowledgeRow<Entry>("topic-");
+                    string topicId = topicEntry.AutomationId!["sr6-foundation-knowledge-topic-".Length..];
+                    topicEntry.Text = "Seattle gangs";
+                    await KnowledgeClick("knowledge-add-language");
+                    var languageEntry = KnowledgeRow<Entry>("language-");
+                    string languageId = languageEntry.AutomationId!["sr6-foundation-knowledge-language-".Length..];
+                    languageEntry.Text = "Sperethiel";
+                    Require(KnowledgeRow<Picker>("level-").Items.Count == 3, "Additional native language level was exposed.");
+                    await KnowledgeClick("preview");
+                    var staleKnowledgeConfirm = KnowledgeElement<Button>("confirm");
+                    KnowledgeElement<Entry>("knowledge-native").Text = "Deutsch";
+                    staleKnowledgeConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleKnowledgeConfirm).SendClicked());
+                    Require(probe.Confirms == 3, "Changed knowledge selection admitted stale confirmation.");
+                    KnowledgeRow<Picker>("level-").SelectedIndex = 2; // Expert plus topic costs four, Logic is three.
+                    await KnowledgeClick("preview");
+                    Require(!IssuedElements(knowledgePage).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && KnowledgeElement<Label>("status").Text == Sr6CreationCopy.Text("KnowledgeOverspend"),
+                        "Knowledge overspend was not blocked with localized explanation.");
+                    Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == 4,
+                        "An invalid knowledge draft wrote the workspace.");
+                    KnowledgeRow<Picker>("level-").SelectedIndex = 1;
+                    await KnowledgeClick("preview");
+                    await KnowledgeClick("confirm");
+                    Require(probe.Confirms == 4, "Knowledge allocation did not save exactly once.");
+                    var knowledgeable = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var knowledgePreview = knowledgeable.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(knowledgeable.ContentRevision == 5 && knowledgeable.SavedRevision == 5
+                        && knowledgePreview.Knowledge is { Logic: 3, PointsSpent: 3, PointsRemaining: 0, NativeLanguage: "Deutsch" },
+                        "Knowledge allocation or its free native language was not persisted.");
+                    Require(knowledgePreview.Skills!.PointsSpent == 9
+                        && knowledgePreview.Attributes!.Values.Single(row => row.AttributeId == "Body").Value == 4,
+                        "Knowledge allocation changed independent skill or attribute allocations.");
+                    Require(knowledgePreview.Knowledge!.KnowledgeSkills.Single().Id.ToString("N") == topicId
+                        && knowledgePreview.Knowledge.Languages.Single().Id.ToString("N") == languageId,
+                        "Knowledge entry identities changed on save.");
+                    var departedNative = KnowledgeElement<Entry>("knowledge-native");
+                    IssuedPageLifecycle(knowledgePage, "OnDisappearing");
+                    departedNative.Text = "Stale";
+                    staleKnowledgeConfirm.IsEnabled = true; // Simulate queued callback after later edits disabled the detached control again.
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleKnowledgeConfirm).SendClicked());
+                    Require(probe.Confirms == 4, "Departed knowledge controls dispatched a write.");
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var knowledgeReopen = new Sr6CreationFoundationPage(runtime.Coordinator, knowledgeMode: true);
+                    await navigation.PushAsync(knowledgeReopen, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(knowledgeReopen, "OnAppearing"));
+                    Require(IssuedElements(knowledgeReopen).OfType<Entry>().Single(item => item.AutomationId == "sr6-foundation-knowledge-native").Text == "Deutsch"
+                        && IssuedElements(knowledgeReopen).OfType<Entry>().Single(item => item.AutomationId == "sr6-foundation-knowledge-topic-" + topicId).Text == "Seattle gangs"
+                        && IssuedElements(knowledgeReopen).OfType<Picker>().Single(item => item.AutomationId == "sr6-foundation-knowledge-level-" + languageId).SelectedIndex == 1,
+                        "Reopened knowledge page lost names, levels or stable IDs.");
+                    Require(!IssuedElements(knowledgeReopen).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Reopened knowledge page reused an old confirmation.");
+                    IssuedPageLifecycle(knowledgeReopen, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 knowledge phone " + method + " " + language);
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }

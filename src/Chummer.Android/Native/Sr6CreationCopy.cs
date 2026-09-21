@@ -6,6 +6,13 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string LanguageLevel(string level) => Text("KnowledgeLevel." + level);
+    internal static string KnowledgePool(int logic) => CreationAllocationStrings.Format("Sr6.KnowledgePool",
+        "Knowledge/language picks: {0} (Logic) + one free native language", logic);
+    internal static string KnowledgeBudget(Sr6CreationKnowledgePreview preview) => CreationAllocationStrings.Format("Sr6.KnowledgeBudget",
+        "Knowledge/language picks spent: {0} · remaining: {1} · Logic: {2}", preview.PointsSpent, preview.PointsRemaining, preview.Logic);
+    internal static string LanguageValue(Sr6CreationLanguageValue value) => CreationAllocationStrings.Format("Sr6.KnowledgeLanguageValue",
+        "{0}: {1} · {2} picks · comprehension +{3}", value.Name, LanguageLevel(value.Level), value.PointCost, value.ComprehensionBonus);
     internal static string SkillBudget(Sr6CreationSkillPreview preview) => CreationAllocationStrings.Format("Sr6.SkillBudget",
         "Skill points spent: {0} · remaining: {1}", preview.PointsSpent, preview.PointsRemaining);
     internal static string SkillValue(Sr6CreationSkillValue value) => CreationAllocationStrings.Format("Sr6.SkillValue",
@@ -30,6 +37,9 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationKnowledgeBlockers.InvalidSelection => Text("KnowledgeInvalid"),
+        Sr6CreationKnowledgeBlockers.AttributesRequired => Text("KnowledgeAttributesRequired"),
+        Sr6CreationKnowledgeBlockers.BudgetExceeded => Text("KnowledgeOverspend"),
         Sr6CreationSkillBlockers.InvalidAllocation => Text("SkillInvalid"),
         Sr6CreationSkillBlockers.SkillUnavailable => Text("SkillUnavailable"),
         Sr6CreationSkillBlockers.AspectRequired => Text("SkillAspectRequired"),
