@@ -3,13 +3,17 @@
 This is an experimental pending-draft wizard, not complete SR6 creation or a
 Play delivery. The native New runner dialog shows Priority, Sum-to-Ten, Point
 Buy, Life Path and optional Karma (SR6). All five have Core-owned bootstrap
-identities; only Priority and Sum-to-Ten have the foundation editor below.
-The other methods must not enter an SR5 editor or this priority service.
+identities; Priority, Sum-to-Ten and Point Buy have the foundation editor below.
+Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
-- Native foundation route for pending SR6 Priority/Sum-to-Ten runners only.
-- Explicit five-category priorities, metatype and talent; no default choice.
+- Native foundation route for pending SR6 Priority/Sum-to-Ten/Point Buy runners.
+- Explicit five-category priorities for the two priority methods; metatype and
+  talent are explicit choices for all three methods.
+- Point Buy has its own four pool-purchase selectors, with Core-provided limits,
+  costs and remaining CP. No priority ranks are invented. The separate 50 Karma
+  is displayed but not spent here. No free spells/forms/power points are granted.
 - Core load/preview/confirm off the UI synchronization context. Android does
   not calculate rules or directly modify character XML.
 - Core-generated budget/source anchors followed by explicit confirmation.
@@ -35,12 +39,67 @@ The other methods must not enter an SR5 editor or this priority service.
   Attribute changes preserve the choices and reject any resulting overspend.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
 
-Karma/Aptitude/Bilingual, talent effects, equipment, finalization and Career
-entry are still missing. Point Buy, Life Path and optional Karma still need
-their own rule implementations and native flows. This does not enable SR6
-Origin generation or audiobook conversion.
+Karma/Aptitude/Bilingual, talent purchases/effects, equipment, finalization and
+Career entry are still missing. Point Buy pool purchases are a partial draft,
+not a completed creation method, even when all CP are spent. Life Path and
+optional Karma still need their own rule implementations and native flows.
+This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current knowledge/language increment: exact local source assembly
+## Current Point Buy increment: exact local source assembly
+
+- Android functional commit: `29e6d179` (pool editor `ca0b8e5a`, then incomplete
+  selection feedback corrected at the coordinator boundary).
+- Core integration: `6ead4535c8c672be5b5c6ce7902e7182a86d1a6f`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Same local keyless Docker toolchain and explicit source roots, not a new seal.
+
+`core-sr6-point-buy-2.log`: 138 Core tests pass. `sr6-native-point-buy-3.log`:
+44 native managed scenarios pass, including all three supported draft methods
+and all four pages in DE/EN/ES. Point Buy coverage rejects CP overspend without
+confirmation, verifies that changing one pool retains all other selections,
+checks no fabricated priority ranks, and saves/reopens purchased budgets plus
+independent attribute/skill/knowledge allocations. Stale/departed controls and
+existing ownership/recovery cases remain covered.
+`sr6-origin-after-point-buy-1.log`: 12 existing Origin book regressions pass.
+The first native Point Buy run also passed, before the final Core source-anchor
+aggregation and method-specific malformed-selection message; run 2 uses both.
+Run 3 additionally covers the coordinator rejecting missing metatype/talent
+without asking a Point Buy user to select five nonexistent priority ranks.
+
+`sr6-point-buy-debug-build-2.log`: Debug x64 APK builds with zero warnings/errors
+in 1m39s. Build 1 also passed, before the coordinator message correction.
+Retained APK `sr6-point-buy-debug.apk`, SHA-256:
+`d5fd6e8e61b3a903c75bba9e7d68e688c270e574d59238bb5b3e1d11416c5de6`.
+
+### Actual Point Buy New runner/save/restart smoke
+
+The API36 emulator used a fresh installation of the separate debug package and
+the actual New runner dialog: SR6 → Point Buy → Create runner. No stored draft
+was injected. The foundation page accepted extra pools 6 attributes, 6 skills,
+2 adjustment and 3 resource units, with Human and Technomancer. Core review
+showed 10 attribute points, 18 skill points, 3 adjustment points, 45,000 nuyen,
+base Resonance 1, and 45 CP spent / 55 remaining (10+12+12+8+3). The separate
+50 Karma and missing spell/form/power/finalization scope remained explicit.
+
+One explicit confirmation saved revision 2/2 with exactly one decision, empty
+priority assignments and a null priority rank. Force-stop removed PID 4975;
+launch created PID 5737. The runner restored automatically. Reopening the
+foundation restored all six input selections, without a historical Confirm
+button. Workspace bytes before/after restart were identical, SHA-256:
+`122b07a0b003f439bbfe231c413c76f2c36fe34bfdcd6e7c155ded32823dfff9`.
+The reopened attribute page also displayed the purchased pools and correct
+base Resonance. Attribute/skill/knowledge writes for Point Buy have managed
+coverage here, not additional device mutations in this smoke.
+
+The packet below retains `sr6-point-buy-*` screenshots, fresh hierarchies,
+before/after workspace copies, the APK, build log and Android fault events.
+System UI had an ANR before app installation; closing System UI cleared it.
+Null accessibility roots during the ruleset transition and process restart
+were rejected, followed by fresh reads without repeating any mutation. The
+app route passed, and the owned read-only emulator was stopped. No Play package,
+upload key, AAB, package seal or main merge was involved.
+
+## Historical knowledge/language increment: exact local source assembly
 
 - Android functional commit: `256dd7246a2e76e40289d4f136b79badf6e560eb`.
 - Core integration: `bd22577336f423a35dc469acb03a11e3260aa7c3`.
