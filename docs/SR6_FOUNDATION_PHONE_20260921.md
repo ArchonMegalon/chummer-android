@@ -18,14 +18,68 @@ The other methods must not enter an SR5 editor or this priority service.
   controls cannot dispatch writes; uncertain outcomes are reopened, not retried.
 - Saved draft choices return after cold reopen. Historical previews are not
   reused as current confirmation permission.
+- Core-owned attribute allocation with separate normal/adjustment pools,
+  metatype ranges (including reduced maxima), active Magic/Resonance and Edge,
+  and the one-physical/mental-attribute-at-maximum restriction.
+- Attribute review shows the Core calculation and remaining budgets. Partial
+  allocations can be saved as drafts. Changing foundation choices explicitly
+  resets the next confirmed allocation; old decisions remain in saved history.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
 
-Attribute/skill allocation, talent effects, equipment, finalization and Career
+Skill allocation, talent effects, equipment, finalization and Career
 entry are still missing. Point Buy, Life Path and optional Karma still need
 their own rule implementations and native flows. This does not enable SR6
 Origin generation or audiobook conversion.
 
-## Exact local source assembly
+## Current attribute increment: exact local source assembly
+
+- Android functional commit: `1c5e0ce593fbc6cb8f0e053c9a216348a8579aac`.
+- Core integration: `68a83b1fe13b3b02d1af506d81f1fed2e32505cd`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Same keyless local Docker toolchain as the historical increment below.
+- No package reseal or main merge. Existing foundation-only decisions retain
+  their exact serialized digests; the optional allocation is omitted when null.
+
+Focused verification of these inputs:
+
+- `core-sr6-attributes-1.log`: 98 Core tests pass, including legacy digest
+  compatibility, deep-copy protection, invalid allocation, point-kind/rating
+  and budget checks, stale/forged previews and cold-store replay.
+- `sr6-native-attributes-1.log`: 20 native managed scenarios pass, including
+  both methods and both pages in DE/EN/ES, stale confirmation rejection,
+  exactly-once save and restored point selections.
+- `sr6-origin-attributes-regression-1.log`: 12 existing Origin book scenarios
+  pass against this build. No live provider/audiobook claim.
+- `sr6-attributes-debug-build-1.log`: Debug x64 APK builds with zero warnings
+  and errors. Separate debug package and debug key only.
+- APK SHA-256:
+  `9b589db4a747823eb26f1be0ca6b2f6fd6ec90294159f7831aa93985fe38246c`.
+
+### Actual attribute save/restart smoke
+
+The API 36 read-only emulator used the authentic synthetic Priority draft
+saved during the earlier foundation smoke below, copied into the separate
+debug app as test setup. This was NOT a fresh New runner route on the new APK.
+The app restored revision 2/2; its native attribute page accepted Body +3,
+Agility +2 and Edge +4 adjustment points. Core preview showed Body 4, Agility
+3, Edge 5 and remaining pools 19/0. One explicit confirmation saved revision
+3/3 with exactly two decisions (foundation plus allocation).
+
+After force-stop, the old PID 4108 disappeared and launch created PID 4978.
+Reopening foundation and attributes displayed revision 3/3 and the saved
+3/2/4 selections. Before/after workspace JSON was byte-identical:
+`f04540b10308df5ab253fc42176c7c797299c9cdf8f6403c38826b419f7997f3`.
+Partial allocation is intentionally still a draft, not final character XML.
+
+The retained packet contains `sr6-attributes-*.log`, review/reopen screenshots
+and hierarchy files, and the before/after synthetic workspace copies. Startup
+again encountered an emulator System UI ANR, cleared with Wait. An immediate
+route transition returned a null hierarchy; it was rejected, followed by a
+fresh successful observation without replaying a mutation. The owned emulator
+was stopped after the successful route. Sum-to-Ten attributes were covered by
+the managed native tests, not a second device route in this increment.
+
+## Historical foundation-only source assembly
 
 - Android functional commit: `d12ab8a735d1be4a406081a2a1080e6a9698462f`.
 - Core integration: `a86ed70bfc659cd69f8432a7bd06422b2726ac5c`, merging the
@@ -37,7 +91,7 @@ Origin generation or audiobook conversion.
 These are explicit source roots, NOT a new package seal or a package-only
 consumer claim. No main merge or protected-check result is implied.
 
-## Focused verification
+## Historical foundation-only verification
 
 - `sr6-native-foundation-3.log`: 14 passing managed native scenarios using the
   real Core service/file store: eight ownership/recovery cases and both methods
@@ -58,7 +112,7 @@ not dispatch a simulated event. The corrected test explicitly enables that
 detached button and verifies that the production callback still refuses it.
 Neither earlier run is counted as passing.
 
-## Actual API 36 emulator routes
+## Historical foundation-only API 36 emulator routes
 
 Both used New runner → SR6 → method → foundation → explicit selections →
 review → confirm once → force-stop → new process → reopen same foundation.
@@ -88,6 +142,6 @@ to replay a mutation. The completed routes above used fresh visible state.
 
 Debug key only; no upload key, AAB, Play upload, physical installation, new
 package authority or hosted qualification. The installed user/Play package was
-not touched. Next work is SR6 allocation and finalization, then method-specific
+not touched. Next work is SR6 skill allocation and finalization, then method-specific
 Point Buy/Life Path/Karma flows. SR5 Life Modules and its book remain an open
 priority before Windows; this increment does not declare them finished.
