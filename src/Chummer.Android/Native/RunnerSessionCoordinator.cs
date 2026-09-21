@@ -2585,7 +2585,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     internal async Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
         string choiceId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, string>? followUpValues = null)
     {
         if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
         {
@@ -2596,7 +2597,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
-            .PrepareAsync(workspaceId.Value, choiceId, cancellationToken);
+            .PrepareAsync(workspaceId.Value, choiceId, cancellationToken, followUpValues);
         return BindCurrentLifeModuleBudget(result);
     }
 

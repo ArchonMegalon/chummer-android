@@ -2715,10 +2715,10 @@ public sealed class BuildPage : NativePageBase
         var page = new OriginDossierLifeModuleDecisionPage(
             opened,
             CultureInfo.CurrentUICulture.Name,
-            async choiceId =>
+            async (choiceId, answers) =>
             {
                 OriginDossierLifeModulePhoneResult prepared =
-                    await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
+                    await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId, followUpValues: answers);
                 if (prepared.IsSuccess)
                     return prepared;
                 await DisplayAlertAsync(

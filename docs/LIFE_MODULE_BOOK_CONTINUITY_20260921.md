@@ -105,8 +105,9 @@ the existing cancellation, failed-storage, stale and corrupt-checkpoint cases.
 `managed-continuation-3.log` and five focused Python source checks passed;
 localization remains 222 keys in three catalogs with five locale cases.
 
-Required follow-up controls, an explicit finish choice, cumulative effect
-application and honest finalization into Career remain open. The reader still exposes raw Markdown
+Required follow-up controls are now connected as described below. An explicit
+finish choice, cumulative effect application and honest finalization into Career
+remain open. The reader still exposes raw Markdown
 and legacy `$real` / `$OUTDOOR` story placeholders; these need presentation/template
 handling. The overview budget remains unavailable despite the exact decision
 budget. This APK has no live First Book AI connection.
@@ -144,7 +145,42 @@ after Wait and is not counted as an app success/failure.
 This proves the tested three-chapter path and its restart, not every module,
 Further Education/Real Life completion, Career finalization or First Book
 generation inside the app. Further Education currently renders many expanded
-choices before the confirm button; compact selection/review is still needed.
+choices before the confirm button; the new compact selection/review below
+addresses that layout.
+
+## Explicit module answers and compact review
+
+Core `bd065e051` admits source-owned text/single-select questions for nationality
+and later modules. Android renders only the selected form, chooses no default
+answer, and requests an exact Core preview before confirmation. The selected
+preview and confirm action precede compact alternatives. Editing answers
+invalidates the old UI confirmation controls. The selected review displays the
+accepted answer values and resolved Core preview rather than silently using
+the unanswered catalog option. DE/EN/ES now contain 226 keys each.
+
+`managed-origin-inputs-3.log` passes the existing continuity/lifecycle/storage
+cases plus required-field gating, review without mutation, pending-preview
+reopen, editing and stale-confirm rejection. Core passes 70 focused tests in
+`core-origin-inputs-4.log`, covering real nationality and Arcology inputs.
+Local `debug-origin-inputs-1.log` reports zero warnings/errors. APK SHA-256:
+`fc021f367d72c2142b5296fcdf2c7a7a0ba1f6a0a61ec1b08a26f67551a1ee82`.
+
+The actual API36 route selected Elf / Salt Lake City with explicit English and
+Japanese answers, reviewed and confirmed once, then selected Arcology Living
+and entered Renraku. After reviewing that second choice, force-stop changed PID
+3866 to 5489. Reopening the runner and Life Modules restored `Corporation:
+Renraku` and its still-unconfirmed preview. One confirmation then produced
+revision 3/3, two chapters, and stage 3. The workspace contains all three exact
+answers and two distinct input-bound acceptance receipts. No mutation was
+replayed. `origin-inputs-pending-restart.png` and `.xml` retain that reopened
+pending preview. Initial emulator System UI ANR was cleared before the route.
+
+The observed initial catalog/review wait is still noticeable. A subsequent
+Core-only exact-state candidate cache (`a13f9d649`, 71 focused tests passing)
+reduces repeated projections; it is not in the APK above, so no native speedup
+is claimed from this run. Character effects remain draft-only; required wizard
+completion, read-only historical recovery, book export and provider integration
+remain work in progress. No main merge or new Play publication is claimed.
 
 ## Separate live First Book canary
 

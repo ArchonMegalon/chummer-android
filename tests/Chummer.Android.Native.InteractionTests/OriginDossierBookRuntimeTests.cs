@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.LifeModules;
 using Chummer.Contracts.LifeModules;
@@ -25,6 +26,7 @@ internal static class OriginDossierBookRuntimeTests
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
+        await RunFollowUpPageAsync();
         foreach (string scenario in new[] { "terminal", "two-chapters", "cancel-after-commit", "storage-failure", "tampered-pending", "stale-book" })
         {
             string directory = Path.Combine(Path.GetTempPath(), "chummer-origin-book-" + Guid.NewGuid().ToString("N"));
@@ -125,12 +127,75 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: confirmation off UI context");
     }
 
+    private static async Task RunFollowUpPageAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var authority = new DecisionAuthority(3);
+            var choice = authority.Current.LegalChoices.Single();
+            authority.Current = authority.Current with { LegalChoices = [choice with
+            {
+                FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text"),
+                    new("language", "Language", "single-select", true,
+                        [new("english", "English", true, null, new Dictionary<string, string>(), "English")],
+                        choice.SourceAnchorIds, "effect", "select")],
+                MechanicsPreview = choice.MechanicsPreview with { PendingFollowUpIds = ["name", "language"] }
+            }] };
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            OriginDossierLifeModulePhoneResult Display(OriginDossierLifeModulePhoneResult result) => result with
+            {
+                LifeModuleBudget = new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest = "sha256:" + Digest("foundation-" + result.State!.WorkspaceRevision)
+            };
+            int requests = 0;
+            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
+                async (id, values) => { requests++; return Display(await runtime.PrepareAsync("workspace-1", id, followUpValues: values)); },
+                async (id, digest) => Display(await runtime.ConfirmAsync("workspace-1", id, digest)));
+            Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
+            async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            await Click(Button("origin-life-choice-0"));
+            var review = Button("origin-life-review-answers");
+            Require(!review.IsEnabled && requests == 0 && authority.MutationCount == 0,
+                "Opening the form invented required answers or a mutation.");
+            Elements(page).OfType<Entry>().Single().Text = "Renraku";
+            Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
+            Elements(page).OfType<Picker>().Single().SelectedIndex = 0;
+            Require(review.IsEnabled, "Explicit complete answers did not enable review.");
+            await Click(review);
+            Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
+                "Review must only persist the bound preview.");
+            var oldConfirm = Button("origin-life-confirm");
+            var reopened = await runtime.OpenAsync("workspace-1");
+            Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
+                "Reviewed answers did not survive reopen.");
+            await Click(Button("origin-life-choice-0"));
+            Require(Elements(page).OfType<Entry>().Single().Text == "Renraku", "Editing lost the reviewed answers.");
+            Elements(page).OfType<Entry>().Single().Text = "NeoNET";
+            await Click(oldConfirm);
+            Require(authority.MutationCount == 0, "Editing left the previous confirmation callable.");
+            await Click(Button("origin-life-review-answers"));
+            Require(store.Checkpoint.PendingPreview!.InputResolution!.Values["name"] == "NeoNET", "Updated answer was not rebound.");
+            await Click(Button("origin-life-confirm"));
+            Require(authority.MutationCount == 1 && store.Checkpoint.Projection.VisibleChapters.Count == 1,
+                "Confirmed answers did not advance exactly one turn/chapter.");
+        });
+        Console.WriteLine("PASS Origin book: required input form, exact review, reopen and stale-confirm rejection");
+    }
+
     private static async Task RunLiveContinuationPageAsync()
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
             var authority = new DecisionAuthority(3);
+            var extra = authority.Current.LegalChoices[0] with
+            {
+                ChoiceId = "choice-1-extra", Label = "Another path", DecisionCommandDigest = Digest("extra")
+            };
+            authority.Current = authority.Current with { LegalChoices = [.. authority.Current.LegalChoices, extra] };
             var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
             var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
             var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
@@ -144,15 +209,28 @@ internal static class OriginDossierBookRuntimeTests
                 };
             }
             var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
-                async choice => Display(await runtime.PrepareAsync("workspace-1", choice)),
+                async (choice, answers) => Display(await runtime.PrepareAsync("workspace-1", choice, followUpValues: answers)),
                 async (choice, preview) => Display(await runtime.ConfirmAsync("workspace-1", choice, preview)));
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            Require(!Visible("origin-life-effect-0-0") && !Visible("origin-life-effect-1-0"),
+                "Unselected choices must remain compact, not expand every effect.");
             for (int chapter = 1; chapter <= 2; chapter++)
             {
-                await Click(Button("origin-life-choice-0"));
+                string selectedIndex = chapter == 1 ? "1" : "0";
+                await Click(Button("origin-life-choice-" + selectedIndex));
                 var oldConfirm = Button("origin-life-confirm");
+                Require(Visible("origin-life-effect-" + selectedIndex + "-0")
+                    && Visible("origin-life-choice-anchors-" + selectedIndex),
+                    "Selection did not expand the exact effects and source anchors for review.");
+                if (chapter == 1)
+                {
+                    var controls = Elements(page).ToArray();
+                    Require(Array.IndexOf(controls, oldConfirm) < Array.IndexOf(controls, Button("origin-life-choice-0"))
+                        && !Visible("origin-life-effect-0-0"),
+                        "Confirmation is hidden behind unrelated expanded alternatives.");
+                }
                 await Click(oldConfirm);
                 Require(authority.MutationCount == chapter && store.Checkpoint.Projection.VisibleChapters.Count == chapter,
                     "The live page did not retain exactly one chapter per confirmation.");
@@ -219,7 +297,7 @@ internal static class OriginDossierBookRuntimeTests
             string ChoiceControl(string choiceId) => "origin-life-choice-" + Array.FindIndex(
                 initialDisplay.State!.Choices.ToArray(), choice => choice.ChoiceId == choiceId);
             string humanControl = ChoiceControl("human"), elfControl = ChoiceControl("elf");
-            var page = new OriginDossierLifeModuleDecisionPage(initialDisplay, "en-US", choiceId =>
+            var page = new OriginDossierLifeModuleDecisionPage(initialDisplay, "en-US", (choiceId, answers) =>
             {
                 prepared++;
                 return Task.FromResult<OriginDossierLifeModulePhoneResult?>(Display(interaction.Prepare(started, choiceId).Value!));
@@ -299,7 +377,7 @@ internal static class OriginDossierBookRuntimeTests
 
     // A deterministic authority double exercises the real interaction, Core
     // projection and Android storage. It does not claim full Life Modules rules.
-    private sealed class DecisionAuthority(int terminalAfter) : ILifeModuleDecisionAuthority
+    private sealed class DecisionAuthority(int terminalAfter) : ILifeModuleDecisionAuthority, ILifeModuleDecisionInputAuthority
     {
         private readonly Dictionary<string, LifeModuleDecisionAcceptance> _accepted = new(StringComparer.Ordinal);
         public int MutationCount { get; private set; }
@@ -318,6 +396,23 @@ internal static class OriginDossierBookRuntimeTests
                 ? new(LifeModuleOriginDossierOutcomes.Success, found, [])
                 : new(LifeModuleOriginDossierOutcomes.Missing, null, []);
 
+        public LifeModuleDecisionAuthorityResult<LifeModuleDecisionInputResolution> ResolveInputs(LifeModuleDecisionInputRequest request)
+        {
+            var choice = Current.LegalChoices.Single(item => item.ChoiceId == request.ChoiceId);
+            Require(request.WorkspaceRevision == Current.WorkspaceRevision, "Input request was stale.");
+            var projection = new LifeModuleOriginDossierService(new DecisionAuthority(3) { Current = Current with
+            {
+                LegalChoices = [choice with { MechanicsPreview = choice.MechanicsPreview with { PendingFollowUpIds = [] } }]
+            }}).Project(request.WorkspaceId).Value!;
+            var sorted = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var item in request.Values) sorted.Add(item.Key, item.Value);
+            var result = new LifeModuleDecisionInputResolution(request.WorkspaceId, request.WorkspaceRevision,
+                request.ChoiceId, request.DecisionDigest, request.DecisionCommandDigest, sorted,
+                "sha256:" + Digest("fixture-resolved"), projection.CurrentTurn.LegalChoices.Single().MechanicsPreview, string.Empty);
+            result = result with { ResolutionDigest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(result))).ToLowerInvariant() };
+            return new(LifeModuleOriginDossierOutcomes.Success, result, []);
+        }
+
         public LifeModuleDecisionAuthorityResult<LifeModuleDecisionAcceptance> Accept(LifeModuleDecisionAcceptanceCommand command)
         {
             Require(command.WorkspaceRevision == Current.WorkspaceRevision
@@ -333,7 +428,8 @@ internal static class OriginDossierBookRuntimeTests
                 Current.ContentDigest, Digest("content-" + (number + 1)), Current.SourceDigest, Current.RulesDigest,
                 Current.RuntimeDigest, Current.DecisionDigest, Current.MechanicsSnapshotDigest,
                 Digest("graph-" + (number + 1)), Digest("mechanics-" + number),
-                "Accepted consequence " + number + ".", [fact], Digest("receipt-" + number));
+                "Accepted consequence " + number + ".", [fact], Digest("receipt-" + number))
+            { InputResolutionDigest = command.InputResolution?.ResolutionDigest };
             Current = Current with
             {
                 WorkspaceRevision = receipt.WorkspaceRevision,

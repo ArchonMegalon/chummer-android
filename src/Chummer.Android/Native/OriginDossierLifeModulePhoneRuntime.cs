@@ -98,7 +98,8 @@ public sealed class OriginDossierLifeModulePhoneRuntime
     public async Task<OriginDossierLifeModulePhoneResult> PrepareAsync(
         string workspaceId,
         string choiceId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyDictionary<string, string>? followUpValues = null)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -111,7 +112,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             // Prepare already performs a fresh Core restore. Avoid doing the
             // full catalog projection twice and never do it on the UI thread.
             LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> prepared =
-                await Task.Run(() => _interaction.Prepare(checkpoint, choiceId), cancellationToken)
+                await Task.Run(() => _interaction.Prepare(checkpoint, choiceId, followUpValues), cancellationToken)
                     .ConfigureAwait(false);
             if (!IsSuccess(prepared) || prepared.Value is not { } next)
                 return Failed(prepared.Outcome, prepared.Blockers);
