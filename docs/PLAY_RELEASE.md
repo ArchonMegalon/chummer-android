@@ -13,7 +13,27 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 25 — September 21, 2026
+## Current observed Internal release: Preview 26 — September 21, 2026
+
+Scoped authenticated Console readback at `2026-09-21T00:24:03Z` shows
+`26 (0.1.0-preview.26)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact artifact and availability](../play/evidence/preview26-internal-observation.md).
+
+Karma Dwarf/Troll choices now disclose Core-owned effects and apply racial
+lifestyle costs. A fresh Troll/Mundane route with a paid Low lifestyle reached
+Career, saved and reopened in new processes with unchanged bytes. Dwarf has
+focused Core coverage and device chooser coverage, not a complete native smoke.
+The local ARM64 Release was built keylessly, signed separately with the existing
+upload key and independently verified before the one Internal upload.
+
+Physical Play installation, awakened Karma, all-method/Career coverage and
+general responsiveness remain incomplete or unverified. This is local source
+assembly, not package-only Android, hosted runtime qualification or complete
+phone beta. Source integration is separate; Android PR102/Core PR67 were open
+at availability observation. Code26 is consumed; use27 or a higher unused code.
+
+## Historical observed Internal release: Preview 25 — September 21, 2026
 
 Scoped authenticated Console readback at `2026-09-20T23:04:11Z` shows
 `25 (0.1.0-preview.25)` as **Available to internal testers**.
