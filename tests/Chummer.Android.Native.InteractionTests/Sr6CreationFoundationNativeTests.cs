@@ -151,6 +151,8 @@ internal static partial class AfterRunAuthorityHarness
                         "Historical saved preview became current confirmation authority.");
                     Require(!IssuedElements(reopened).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-knowledge").IsEnabled,
                         "Knowledge allocation opened before attributes established its pool.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-talent-budget").IsEnabled,
+                        "Talent allocation opened before attributes established its limits.");
                     IssuedPageLifecycle(reopened, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 phone " + method + " " + language);
@@ -325,6 +327,87 @@ internal static partial class AfterRunAuthorityHarness
                     IssuedPageLifecycle(knowledgeReopen, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 knowledge phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
+            foreach (string method in new[] { "Priority", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var loaded = await runtime.Coordinator.LoadSr6FoundationAsync();
+                    var selection = new Sr6CreationFoundationSelection("human", "mystic-adept", method == "PointBuy" ? [] : [
+                        new("heritage", "C"), new("talent", "A"), new("attributes", "B"), new("skills", "D"), new("resources", "E")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 2, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute =>
+                            new Sr6CreationAttributeSpend(attribute, 0, attribute == "Magic" ? 2 : 0)).ToArray())
+                    };
+                    var seed = await runtime.Coordinator.PreviewSr6FoundationAsync(loaded.Value!, selection);
+                    Require(seed.Value is not null, "Talent seed preview missing: " + string.Join(",", seed.Blockers));
+                    Require((await runtime.Coordinator.ConfirmSr6FoundationAsync(seed.Value!, true)).Commit is not null,
+                        "Talent seed did not persist.");
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, talentMode: true);
+                    var navigation = new NavigationPage(new ContentPage());
+                    await navigation.PushAsync(page, false);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                    Require(page.Title == Sr6CreationCopy.Text("TalentTitle") && page.Title != "TalentTitle", "Talent localization missing.");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.Text("TalentHelp")),
+                        "Talent budget page omitted the unimplemented catalog boundary.");
+                    Element<Picker>("talent-power-points").SelectedIndex = 1;
+                    await Click("preview");
+                    var staleConfirm = Element<Button>("confirm");
+                    Element<Picker>("talent-power-points").SelectedIndex = 2;
+                    staleConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "A changed talent selection admitted its old confirmation.");
+                    await Click("preview");
+                    await Click("confirm");
+                    var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = saved.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(probe.Confirms == 2 && saved.ContentRevision == 3 && saved.SavedRevision == 3,
+                        "Talent save was lost or repeated.");
+                    Require(quote.TalentAllocation is { PowerPointBudget: 2 }
+                        && quote.Attributes!.Values.Single(row => row.AttributeId == "Magic").AdjustmentPoints == 2,
+                        "Talent save lost its split or independent attribute allocation.");
+                    if (method == "PointBuy")
+                        Require(quote.PointBuy is { PointsSpent: 34, PointsRemaining: 66, PowerPointCost: 16 }
+                            && quote.TalentAllocation is { SpellOrRitualLimit: 2, FreeSpellOrRitualSlots: 0 },
+                            "Point Buy talent costs or limits were incorrect.");
+                    else Require(quote.TalentAllocation is { Magic: 6, FreeSpellOrRitualSlots: 4, PowerPointCharacterPointCost: 0 },
+                        "Priority split spent adjusted Magic twice.");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.TalentBudget(quote.TalentAllocation!)),
+                        "Saved talent budget was not rendered from the Core preview.");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    Element<Picker>("talent-power-points").SelectedIndex = 0;
+                    staleConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleConfirm).SendClicked());
+                    Require(probe.Confirms == 2, "Departed talent controls dispatched a write.");
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, talentMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Picker>().Single(item => item.AutomationId == "sr6-foundation-talent-power-points").SelectedIndex == 2,
+                        "Talent allocation was not restored.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Saved talent history became current confirmation authority.");
+                    IssuedPageLifecycle(reopened, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 talent phone " + method + " " + language);
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }

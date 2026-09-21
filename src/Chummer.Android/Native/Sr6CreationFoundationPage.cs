@@ -15,6 +15,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _attributesMode;
     private readonly bool _skillsMode;
     private readonly bool _knowledgeMode;
+    private readonly bool _talentMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -27,20 +28,22 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _attributes;
     private Button? _skills;
     private Button? _knowledge;
+    private Button? _talent;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
-        bool skillsMode = false, bool knowledgeMode = false) : base(coordinator)
+        bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
         _knowledgeMode = knowledgeMode;
+        _talentMode = talentMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -88,6 +91,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _attributes = null;
         _skills = null;
         _knowledge = null;
+        _talent = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -108,7 +112,32 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_knowledgeMode)
+        if (_talentMode)
+        {
+            if (state.Selection is not { } savedFoundation || state.TalentOptions is not { } options)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentAttributesRequired"))); return; }
+            _selection = _selection with { TalentAllocation = _selection.TalentAllocation ?? new(0) };
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Budget(savedFoundation)));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.TalentOptions(options)));
+            if (savedFoundation.TalentAllocation is { } savedTalent)
+            {
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(savedTalent)));
+                if (savedFoundation.PointBuy is { } savedPoints)
+                    _body.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyBudget(savedPoints)));
+            }
+            if (options.RequiresAspect)
+                AddPicker("talent-aspect", Sr6CreationCopy.Text("SkillAspect"), ["Sorcery", "Conjuring", "Enchanting"],
+                    _selection.Skills?.AspectedSkillId ?? "", Sr6CreationCopy.Label,
+                    value => Change(_selection with { Skills = (_selection.Skills ?? new([])) with { AspectedSkillId = value } }));
+            if (options.MaximumSelectedPowerPoints > 0)
+                AddPicker("talent-power-points", Sr6CreationCopy.Text("TalentPowerPoints"),
+                    Enumerable.Range(0, options.MaximumSelectedPowerPoints + 1).Select(value => value.ToString(CultureInfo.InvariantCulture)).ToArray(),
+                    _selection.TalentAllocation.SelectedPowerPoints.ToString(CultureInfo.InvariantCulture), value => value,
+                    value => Change(_selection with { TalentAllocation = new(int.Parse(value, CultureInfo.InvariantCulture)) }));
+        }
+        else if (_knowledgeMode)
         {
             if (state.Selection?.Attributes is null || state.KnowledgePointBudget is not { } knowledgeBudget)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"))); return; }
@@ -213,6 +242,19 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     });
                 };
                 _body.Add(knowledge);
+                var talent = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("TalentOpen"));
+                _talent = talent;
+                talent.AutomationId = "sr6-foundation-talent-budget";
+                talent.IsEnabled = SavedCurrent() && saved.Attributes is not null;
+                talent.Clicked += async (_, _) =>
+                {
+                    if (!SavedCurrent() || saved.Attributes is null) return;
+                    await RunAsync(async () =>
+                    {
+                        if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, talentMode: true));
+                    });
+                };
+                _body.Add(talent);
                 if (saved.Attributes is null)
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
@@ -277,6 +319,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.PointBuyBudget(pointBuy)));
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("PointBuyHelp"), NativeTheme.Muted));
             }
+            if (quote.TalentAllocation is { } talent)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.TalentBudget(talent)));
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentHelp"), NativeTheme.Muted));
+            }
             if (quote.Attributes is { } allocation)
             {
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.AttributeBudget(allocation)));
@@ -334,9 +381,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null };
             _selection = selection;
             _preview = null;
             _commit = null;
@@ -345,6 +392,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_attributes is not null) _attributes.IsEnabled = false;
             if (_skills is not null) _skills.IsEnabled = false;
             if (_knowledge is not null) _knowledge.IsEnabled = false;
+            if (_talent is not null) _talent.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.

@@ -12,9 +12,17 @@ internal static class Sr6CreationCopy
         limits.AttributePointCost, limits.SkillPointCost, limits.AdjustmentPointCost, limits.NuyenPerResourceUnit,
         limits.ResourceUnitCost, limits.AwakenedOrResonanceCost, limits.CustomizationKarma);
     internal static string PointBuyBudget(Sr6CreationPointBuyPreview preview) => CreationAllocationStrings.Format("Sr6.PointBuyBudget",
-        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7}. Separate Karma: {8}.",
+        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9}. Separate Karma: {8}.",
         preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
-        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma);
+        preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0);
+    internal static string TalentOptions(Sr6CreationTalentOptions options) => CreationAllocationStrings.Format("Sr6.TalentOptions",
+        "Automatic power points: {0}. Maximum selectable whole power points: {1}; CP per point: {2}.",
+        options.AutomaticPowerPoints, options.MaximumSelectedPowerPoints, options.CharacterPointsPerPowerPoint);
+    internal static string TalentBudget(Sr6CreationTalentPreview preview) => CreationAllocationStrings.Format("Sr6.TalentBudget",
+        "Magic {0} · Resonance {1}\nPower-point budget {2} · CP cost {3}\nSpells/rituals: limit {4}, free {5}\nAlchemical spells: limit {6}, free {7}\nComplex forms: limit {8}, free {9}\nCP per purchased spell/form: {10}",
+        preview.Magic, preview.Resonance, preview.PowerPointBudget, preview.PowerPointCharacterPointCost,
+        preview.SpellOrRitualLimit, preview.FreeSpellOrRitualSlots, preview.AlchemicalSpellLimit, preview.FreeAlchemicalSpellSlots,
+        preview.ComplexFormLimit, preview.FreeComplexFormSlots, preview.CharacterPointsPerSpellOrForm);
     internal static string LanguageLevel(string level) => Text("KnowledgeLevel." + level);
     internal static string KnowledgePool(int logic) => CreationAllocationStrings.Format("Sr6.KnowledgePool",
         "Knowledge/language picks: {0} (Logic) + one free native language", logic);
@@ -46,6 +54,10 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationTalentBlockers.InvalidSelection => Text("TalentInvalid"),
+        Sr6CreationTalentBlockers.AttributesRequired => Text("TalentAttributesRequired"),
+        Sr6CreationTalentBlockers.AspectRequired => Text("SkillAspectRequired"),
+        Sr6CreationTalentBlockers.PowerPointLimit => Text("TalentInvalid"),
         Sr6CreationPointBuyBlockers.InvalidSelection => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.MethodMismatch => Text("PointBuyInvalid"),
         Sr6CreationPointBuyBlockers.SourceRequired => Text("PointBuySource"),

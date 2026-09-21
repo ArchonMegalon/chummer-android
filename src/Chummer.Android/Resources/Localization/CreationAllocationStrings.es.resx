@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra atributos, habilidades, conocimientos e idiomas al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra las asignaciones de atributos, habilidades, conocimientos, idiomas y talento al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -442,7 +442,7 @@
   <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Introduce un idioma nativo y nombres distintos, no vacíos (hasta 80 caracteres). Elige un nivel válido y elimina las filas vacías.</value></data>
   <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Las elecciones superan Lógica. Reduce las elecciones o revisa los atributos; no se ha guardado nada.</value></data>
   <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Los conocimientos son entradas propias sin nivel. Acuerda su alcance con el director de juego; guardar no registra su aprobación.</value></data>
-  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Compra por puntos usa CP, no Karma ni prioridades. Gasta todos los CP antes de finalizar; puedes guardar borradores parciales. Sin hechizos, formas complejas ni puntos de poder gratuitos; sus compras y la finalización aún no están disponibles.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Compra por puntos usa CP, no Karma ni prioridades. Puedes guardar borradores parciales; gasta todos los CP antes de finalizar. Tras los atributos puedes comprar puntos de poder enteros en talentos. Hechizos/formas/poderes individuales y finalización aún no disponibles.</value></data>
   <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Comprar puntos de atributo adicionales</value></data>
   <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Comprar puntos de habilidad adicionales</value></data>
   <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Comprar puntos de ajuste adicionales</value></data>
@@ -451,5 +451,14 @@
   <data name="Sr6.PointBuySource" xml:space="preserve"><value>El perfil guardado del Companion de SR6 no autoriza esta compra por puntos.</value></data>
   <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>Estas compras superan 100 CP. Reduce una reserva o cambia el talento y revisa de nuevo; no se ha guardado nada.</value></data>
   <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Gratis: {1} puntos de atributo, {2} de habilidad, {3} de ajuste. Costes por punto extra: {4}/{5}/{6} CP. Unidad de recursos: {7:N0} ¥ por {8} CP. Despierto/tecnomante: {9} CP. Karma de personalización aparte: {10}.</value></data>
-  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP usados: {0}/{1} · restantes: {2}&#10;Talento {3} + atributos {4} + habilidades {5} + ajuste {6} + recursos {7}. Karma aparte: {8}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP usados: {0}/{1} · restantes: {2}&#10;Talento {3} + atributos {4} + habilidades {5} + ajuste {6} + recursos {7} + puntos de poder {9}. Karma aparte: {8}.</value></data>
+  <data name="Sr6.TalentTitle" xml:space="preserve"><value>Presupuesto de talento SR6</value></data>
+  <data name="Sr6.TalentOpen" xml:space="preserve"><value>Planificar magia y resonancia</value></data>
+  <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Puntos de poder enteros a asignar / comprar</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Solo planificación de presupuesto. Aquí no se han elegido ni aprendido hechizos, rituales, formas complejas ni poderes de adepto individuales. Sus catálogos SR6, compras con Karma y la finalización aún faltan.</value></data>
+  <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Revisa y guarda primero los atributos; el presupuesto depende de Magia/Resonancia validadas.</value></data>
+  <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Elige una asignación de puntos de poder enteros dentro del límite de Core.</value></data>
+  <data name="Sr6.TalentOptions" xml:space="preserve"><value>Puntos de poder automáticos: {0}. Máximo seleccionable: {1} puntos enteros; CP por punto: {2}.</value></data>
+  <data name="Sr6.TalentBudget" xml:space="preserve"><value>Magia {0} · Resonancia {1}&#10;Presupuesto de poder {2} · Coste CP {3}&#10;Hechizos/rituales: límite {4}, gratis {5}&#10;Hechizos alquímicos: límite {6}, gratis {7}&#10;Formas complejas: límite {8}, gratis {9}&#10;CP por hechizo/forma comprado: {10}</value></data>
+  <data name="Sr6.TalentSavedBudget" xml:space="preserve"><value>Presupuesto guardado: los cambios siguientes solo se aplican tras revisar y confirmar.</value></data>
 </root>
