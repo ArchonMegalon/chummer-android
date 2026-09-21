@@ -23,6 +23,8 @@ internal static class OriginDossierBookRuntimeTests
                 "An invalid Origin digest bound the Foundation budget.");
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         await RunMetatypePageAsync();
+        await RunConfirmOffUiContextAsync();
+        await RunLiveContinuationPageAsync();
         foreach (string scenario in new[] { "terminal", "two-chapters", "cancel-after-commit", "storage-failure", "tampered-pending", "stale-book" })
         {
             string directory = Path.Combine(Path.GetTempPath(), "chummer-origin-book-" + Guid.NewGuid().ToString("N"));
@@ -102,6 +104,89 @@ internal static class OriginDossierBookRuntimeTests
         }
     }
 
+    private static async Task RunConfirmOffUiContextAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            SynchronizationContext? callerContext = SynchronizationContext.Current;
+            Require(callerContext is not null, "The regression must start on a UI synchronization context.");
+            var authority = new DecisionAuthority(1);
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var pending = interaction.Prepare(interaction.Start("workspace-1").Value!, "choice-1").Value!;
+            var store = new SynchronousStore(pending);
+            authority.AfterCommit = () => Require(!ReferenceEquals(callerContext, SynchronizationContext.Current),
+                "Core confirmation ran on the phone UI synchronization context.");
+            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            var result = await runtime.ConfirmAsync("workspace-1", "choice-1", pending.PendingPreview!.PreviewDigest);
+            Require(result.IsSuccess && authority.MutationCount == 1 && store.Checkpoint.PendingPreview is null,
+                "Background confirmation did not retain the exact accepted chapter.");
+        });
+        Console.WriteLine("PASS Origin book: confirmation off UI context");
+    }
+
+    private static async Task RunLiveContinuationPageAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var authority = new DecisionAuthority(3);
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            OriginDossierLifeModulePhoneResult Display(OriginDossierLifeModulePhoneResult result)
+            {
+                decimal spent = result.StoryCheckpoint!.Projection.VisibleChapters.Count * 15m;
+                return result with
+                {
+                    LifeModuleBudget = new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, spent, 750 - spent, true, [], "karma"),
+                    FoundationSnapshotDigest = "sha256:" + Digest("foundation-" + result.State!.WorkspaceRevision)
+                };
+            }
+            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
+                async choice => Display(await runtime.PrepareAsync("workspace-1", choice)),
+                async (choice, preview) => Display(await runtime.ConfirmAsync("workspace-1", choice, preview)));
+            Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
+            bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
+            async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            for (int chapter = 1; chapter <= 2; chapter++)
+            {
+                await Click(Button("origin-life-choice-0"));
+                var oldConfirm = Button("origin-life-confirm");
+                await Click(oldConfirm);
+                Require(authority.MutationCount == chapter && store.Checkpoint.Projection.VisibleChapters.Count == chapter,
+                    "The live page did not retain exactly one chapter per confirmation.");
+                Require(Visible("origin-life-read-book") && Visible("origin-life-choice-0") && !Visible("origin-life-confirm"),
+                    "A successful intermediate decision failed to render the next scene and book action.");
+                // The old confirm is now disabled as well as detached; MAUI
+                // correctly does not enter its async event handler at all.
+                ((IButtonController)oldConfirm).SendClicked();
+                Require(authority.MutationCount == chapter, "A detached previous-turn control replayed confirmation.");
+            }
+            var wrongWorkspace = Display(await runtime.OpenAsync("workspace-1"));
+            wrongWorkspace = wrongWorkspace with { State = wrongWorkspace.State! with { WorkspaceId = "another-runner" } };
+            bool adopted = (bool)typeof(OriginDossierLifeModuleDecisionPage).GetMethod("TryAdoptConfirmed",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(page, [wrongWorkspace])!;
+            Require(!adopted, "A continuation for a different runner was adopted.");
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS Origin book: live next-turn rendering and stale-confirm rejection");
+    }
+
+    private sealed class SynchronousStore(LifeModuleOriginDossierDraftCheckpoint checkpoint) : IOriginDossierDraftTimelineStore
+    {
+        public LifeModuleOriginDossierDraftCheckpoint Checkpoint { get; private set; } = checkpoint;
+        public Task<LifeModuleOriginDossierDraftCheckpoint?> LoadAsync(string owner, string workspace, CancellationToken ct = default)
+            => Task.FromResult<LifeModuleOriginDossierDraftCheckpoint?>(Checkpoint);
+        public Task SaveAsync(LifeModuleOriginDossierDraftCheckpoint value, CancellationToken ct = default)
+        {
+            Checkpoint = value;
+            return Task.CompletedTask;
+        }
+        public Task DeleteAsync(string owner, string workspace, CancellationToken ct = default)
+            => throw new InvalidOperationException("The book must be retained.");
+    }
+
     private static async Task RunMetatypePageAsync()
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
@@ -138,7 +223,7 @@ internal static class OriginDossierBookRuntimeTests
             {
                 prepared++;
                 return Task.FromResult<OriginDossierLifeModulePhoneResult?>(Display(interaction.Prepare(started, choiceId).Value!));
-            }, (_, _) => { confirmed++; return Task.FromResult(false); });
+            }, (_, _) => { confirmed++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); });
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());

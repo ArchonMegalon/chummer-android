@@ -2661,12 +2661,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
             .ConfirmAsync(workspaceId.Value, choiceId, previewDigest, cancellationToken);
-        if (result.IsSuccess && result.Completed)
+        if (result.IsSuccess)
         {
-            await _presenter.LoadAsync(workspaceId, cancellationToken);
-            await SyncShellAsync(cancellationToken);
+            // Core and the book checkpoint have committed. Refresh every
+            // accepted turn, not just the last one, and don't hide that commit
+            // behind cancellation while returning its next exact budget.
+            await _presenter.LoadAsync(workspaceId, CancellationToken.None);
+            await SyncShellAsync(CancellationToken.None);
             _notice = "Life Module decision saved. Continue character creation.";
             NotifyChanged();
+            return BindCurrentLifeModuleBudget(result);
         }
         return result;
     }

@@ -90,10 +90,24 @@ remained active, with `Workspace verification unavailable`. Do not count either
 historical import attempt as a passing import. The successful route above uses
 the native New runner bootstrap instead. No user app/data was cleared.
 
-Core's production adapter currently stops at `nationality-accepted`. It still
-needs the remaining stages/follow-ups, cumulative budget/effect application and
-honest finalization into Career. The generic multi-chapter interaction tests do
-not prove those production mechanics. The reader currently exposes raw Markdown
+The historical APK above stopped at `nationality-accepted`. Core feature commit
+`6513b144f` now connects subsequent source-projected modules to the same atomic
+Origin acceptance ledger. Its 68 passing focused tests include real-catalog
+multi-chapter decisions, disk reopen and replay without additional writes.
+That Core branch is not yet package-sealed or on main.
+
+The Android continuation increment refreshes the workspace and exact budget
+after every accepted turn, renders the next scene in the same page, retains the
+book action, and invalidates old confirmation controls. Confirmation itself
+runs off the UI synchronization context. The managed regression covers two
+successive page decisions and rejects another runner's continuation, alongside
+the existing cancellation, failed-storage, stale and corrupt-checkpoint cases.
+`managed-continuation-3.log` and five focused Python source checks passed;
+localization remains 222 keys in three catalogs with five locale cases.
+
+Required follow-up controls, an explicit finish choice, cumulative effect
+application and honest finalization into Career remain open. These managed
+tests do not establish the current native route. The reader still exposes raw Markdown
 and a legacy `$real` story placeholder; these still need presentation/template
 handling. The overview budget remains unavailable despite the exact decision
 budget. This APK has no live First Book AI connection.

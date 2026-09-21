@@ -144,11 +144,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                 checkpoint.WorkspaceId + "\0" + checkpoint.BoundSeedDigest + "\0"
                 + choiceId + "\0" + previewDigest);
             LifeModuleOriginDossierResult<LifeModuleOriginDossierInteractionAdvance> confirmed =
-                _interaction.Confirm(
+                await Task.Run(() => _interaction.Confirm(
                     checkpoint,
                     previewDigest,
                     idempotencyKey,
-                    explicitlyConfirmed: true);
+                    explicitlyConfirmed: true), cancellationToken).ConfigureAwait(false);
             if (!IsSuccess(confirmed) || confirmed.Value is not { } advance)
                 return Failed(confirmed.Outcome, confirmed.Blockers);
             // The confirmed chapter is the user's book, not a disposable wizard

@@ -2731,13 +2731,13 @@ public sealed class BuildPage : NativePageBase
             {
                 OriginDossierLifeModulePhoneResult confirmed =
                     await Coordinator.ConfirmSr5LifeModuleOriginAsync(choiceId, previewDigest);
-                if (confirmed.IsSuccess && confirmed.Completed)
-                    return true;
+                if (confirmed.IsSuccess)
+                    return confirmed;
                 await DisplayAlertAsync(
                     copy["Origin.DecisionNotSavedTitle"],
                     confirmed.Blockers.FirstOrDefault() ?? copy["Origin.DecisionNotSavedDetail"],
                     copy["Common.Ok"]);
-                return false;
+                return null;
             });
         await Navigation.PushAsync(page);
     }

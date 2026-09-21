@@ -75,6 +75,15 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertNotIn("IWorkspaceStore", runtime)
         self.assertNotIn("ReplaceWorkspace", runtime)
 
+    def test_confirmation_refreshes_every_accepted_turn_not_only_terminal(self):
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        confirmation = coordinator[coordinator.index("internal async Task<OriginDossierLifeModulePhoneResult> ConfirmSr5LifeModuleOriginAsync"):]
+        confirmation = confirmation[:confirmation.index("public CharacterCreationFoundationInteractionPrepareResult")]
+        self.assertIn("if (result.IsSuccess)", confirmation)
+        self.assertNotIn("result.IsSuccess && result.Completed", confirmation)
+        self.assertIn("return BindCurrentLifeModuleBudget(result)", confirmation)
+        self.assertIn("_presenter.LoadAsync(workspaceId, CancellationToken.None)", confirmation)
+
     def test_phone_renders_exact_core_budget_and_source_anchors(self):
         page = (NATIVE / "OriginDossierLifeModuleDecisionPage.cs").read_text(encoding="utf-8")
         copy = (NATIVE / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")

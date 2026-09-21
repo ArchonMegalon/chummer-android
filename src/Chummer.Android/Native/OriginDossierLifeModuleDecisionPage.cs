@@ -13,15 +13,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 {
     private OriginDossierLifeModuleDecisionState _state;
     private CharacterCreationBudgetState _budget;
-    private readonly string _foundationSnapshotDigest;
-    private readonly string _boundContentDigest;
-    private readonly string _boundSourceDigest;
-    private readonly string _boundMechanicsSnapshotDigest;
+    private string _foundationSnapshotDigest;
+    private string _boundContentDigest;
+    private string _boundSourceDigest;
+    private string _boundMechanicsSnapshotDigest;
     private readonly OriginDossierNarrativeLocaleBinding _locale;
     private readonly AndroidSurfaceCopy _copy;
-    private readonly Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
+    private Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
     private readonly Func<string, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
-    private readonly Func<string, string, Task<bool>> _confirmChoice;
+    private readonly Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> _confirmChoice;
     private string? _selectedMetatypeOptionId;
     private int _renderGeneration;
     private bool _actionInFlight;
@@ -30,7 +30,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         OriginDossierLifeModulePhoneResult opened,
         string activeAppLocale,
         Func<string, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
-        Func<string, string, Task<bool>> confirmChoice)
+        Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -268,9 +268,13 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 confirm.IsEnabled = false;
                 try
                 {
-                    bool completed = await _confirmChoice(selectedChoiceId, previewDigest);
-                    if (completed && generation == _renderGeneration)
+                    var confirmed = await _confirmChoice(selectedChoiceId, previewDigest);
+                    if (generation != _renderGeneration || confirmed?.IsSuccess != true)
+                        return;
+                    if (confirmed.Completed)
                         await Navigation.PopAsync();
+                    else if (TryAdoptConfirmed(confirmed))
+                        Content = new ScrollView { Content = BuildBody() };
                 }
                 finally { _actionInFlight = false; confirm.IsEnabled = _state.CanConfirm; }
             };
@@ -324,6 +328,30 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
         _state = state;
         _budget = budget;
+        return true;
+    }
+
+    private bool TryAdoptConfirmed(OriginDossierLifeModulePhoneResult confirmed)
+    {
+        if (!TryReadDisplayAuthority(confirmed, out var state, out var budget)
+            || confirmed.StoryCheckpoint is not { } checkpoint
+            || state.WorkspaceId != _state.WorkspaceId || state.OwnerId != _state.OwnerId
+            || state.Locale != _state.Locale || state.WorkspaceRevision != _state.WorkspaceRevision + 1
+            || state.TurnSequence != _state.TurnSequence + 1 || state.StageOrder < _state.StageOrder
+            || state.CanConfirm || checkpoint.PendingPreview is not null
+            || checkpoint.Projection.CurrentTurn.PreviousTurnDigest != _state.BoundTurnSeedDigest
+            || confirmed.BoundSourceDigest != _boundSourceDigest
+            || budget.Total != _budget.Total || budget.Unit != _budget.Unit)
+            return false;
+
+        _state = state;
+        _budget = budget;
+        _storyCheckpoint = checkpoint;
+        _foundationSnapshotDigest = confirmed.FoundationSnapshotDigest!;
+        _boundContentDigest = confirmed.BoundContentDigest!;
+        _boundSourceDigest = confirmed.BoundSourceDigest!;
+        _boundMechanicsSnapshotDigest = confirmed.BoundMechanicsSnapshotDigest!;
+        _selectedMetatypeOptionId = null;
         return true;
     }
 
