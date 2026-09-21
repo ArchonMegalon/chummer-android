@@ -247,6 +247,7 @@
   <data name="TalentChoices.ChooseMore" xml:space="preserve"><value>Noch {0} auswählen</value></data>
   <data name="TalentChoices.SelectionSlot" xml:space="preserve"><value>Wahl {0} · {1} · keine kostenlosen Fertigkeitsstufen</value></data>
   <data name="Contacts.Add" xml:space="preserve"><value>Kontakt hinzufügen</value></data>
+  <data name="Contacts.StageSummary" xml:space="preserve"><value>{0} Kontakte · {1} Punkte übrig</value></data>
   <data name="Contacts.Remove" xml:space="preserve"><value>Kontakt entfernen</value></data>
   <data name="Contacts.RemoveWarning" xml:space="preserve"><value>Der gewählte Kontakt wird samt Notizen und zugehörigen Daten entfernt. Erst deine Bestätigung übernimmt die Änderung.</value></data>
   <data name="Contacts.Presence" xml:space="preserve"><value>Kontakteintrag</value></data>

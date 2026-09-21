@@ -371,6 +371,15 @@ public static class BuildPageUiProjection
             && stage.Blockers[0] == CharacterCreationFinalizationBlockers.QualitiesDraftRequired)
             return true;
 
+        // The shared stage also reports Lifestyle readiness. It must not prevent
+        // entering the separately validated Contacts editor. This opens Contacts
+        // only; it does not clear the stage's blocker or complete finalization.
+        if (stage.StepId == CharacterCreationWizardStepIds.ContactsLifestyles
+            && stage.IsAvailable
+            && stage.Blockers.Count == 1
+            && stage.Blockers[0] == CharacterCreationWizardProjector.LifestylesAuthorityUnavailable)
+            return true;
+
         if (stage.IsAvailable)
             return stage.Blockers.Count == 0;
         if (stage.Blockers.Count != 1)
@@ -2785,8 +2794,9 @@ public sealed class BuildPage : NativePageBase
 
     private static string CreationContactsStageDetail(
         CharacterCreationContactsInteractionState state)
-        => $"Edit {state.Contacts.Count.ToString(CultureInfo.InvariantCulture)} existing Contacts · "
-           + $"{state.ContactBudget.Remaining.ToString(CultureInfo.InvariantCulture)} exact points remain";
+        => CreationFlowStrings.Format(
+            "Contacts.StageSummary", "{0} contacts · {1} points remaining",
+            state.Contacts.Count, state.ContactBudget.Remaining);
 
     private static string CreationResourcesStageDetail(
         CharacterCreationResourcesInteractionState state)

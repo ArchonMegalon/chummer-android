@@ -28,6 +28,31 @@ internal static partial class AfterRunAuthorityHarness
         <type>Contact</type></contact></contacts><notes>Preserve this</notes></character>
         """;
 
+    public static async Task RunCreationContactsBootstrapCasesAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            var owners = new ControlledLinkedOwner();
+            owners.Set(OwnerScope.LocalSingleUser);
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationContacts: true, creationBootstrap: true, creationFinalization: true,
+                productionCreationOverview: true);
+            // All required drafts are issued by the real services. No imported
+            // contactpoints value or edited raw XML supplies the new runner's budget.
+            var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            var load = runtime.Coordinator.LoadCreationContacts();
+            Require(load.State is { } state && CreationContactsPhoneAuthority.IsReady(state, runtime.Coordinator.State),
+                $"New {method} runner cannot enter Contacts after confirming its creation drafts: "
+                + JsonSerializer.Serialize(new { load.Outcome, load.Blockers, load.State?.CanEdit,
+                    load.State?.ContactBudget, load.State?.HighPlacesBudget }));
+            Require(load.State!.NewContactTemplate is not null,
+                $"New {method} runner has no typed Add Contact choice.");
+            RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            Console.WriteLine($"PASS Contacts readiness from actual {method} bootstrap and confirmed drafts");
+        }
+    }
+
     public static async Task RunCreationContactsOwnerCasesAsync(string contentRoot)
     {
         foreach (string scenario in new[]
