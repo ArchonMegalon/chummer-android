@@ -930,6 +930,31 @@ public sealed class BuildPage : NativePageBase
         {
             Title = "Create";
             AddWorkspacePicker();
+            if (string.Equals(Coordinator.State.Rules?.GameEdition, "SR6", StringComparison.OrdinalIgnoreCase))
+            {
+                _body.Add(NativeTheme.Title(Sr6CreationCopy.Text("Title")));
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
+                if (Coordinator.CanOpenSr6Foundation())
+                {
+                    var displayed = Coordinator.State;
+                    long appearance = CaptureAppearanceGeneration();
+                    long render = _dossierRenderGeneration;
+                    var open = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("Open"));
+                    open.AutomationId = "sr6-foundation-open";
+                    open.Clicked += async (_, _) => await RunAsync(async () =>
+                    {
+                        if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                            || !ReferenceEquals(displayed.Profile, Coordinator.State.Profile)
+                            || displayed.DisplayOwnerContext != Coordinator.State.DisplayOwnerContext
+                            || !Coordinator.CanOpenSr6Foundation()) return;
+                        await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator));
+                    });
+                    _body.Add(open);
+                }
+                else _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("OtherMethods"), NativeTheme.Muted));
+                AddFeedback();
+                return;
+            }
             AddCreationWizardDashboard();
             AddFeedback();
             return;

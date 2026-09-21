@@ -325,4 +325,39 @@
   <data name="Karma.RemovePowerPoint" xml:space="preserve"><value>Quitar un punto de poder</value></data>
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
+  <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez. Revisa y guarda la base; la asignación de atributos, los pasos posteriores y el modo Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
+  <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
+  <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
+  <data name="Sr6.Talent" xml:space="preserve"><value>Talento</value></data>
+  <data name="Sr6.Preview" xml:space="preserve"><value>Revisar selección</value></data>
+  <data name="Sr6.Confirm" xml:space="preserve"><value>Confirmar y guardar borrador</value></data>
+  <data name="Sr6.Changed" xml:space="preserve"><value>Selección modificada. Revísala antes de guardar.</value></data>
+  <data name="Sr6.Saved" xml:space="preserve"><value>Base de SR6 guardada. El runner sigue siendo un borrador.</value></data>
+  <data name="Sr6.SavedReopen" xml:space="preserve"><value>Guardado. Vuelve a abrir el runner antes de continuar.</value></data>
+  <data name="Sr6.Stale" xml:space="preserve"><value>Esta página ya no está actualizada. Vuelve al runner y ábrela de nuevo; no se aplica nada automáticamente.</value></data>
+  <data name="Sr6.Unknown" xml:space="preserve"><value>No se pudo confirmar el resultado del guardado. Vuelve a abrir el runner para comprobar el borrador; no repitas el guardado a ciegas.</value></data>
+  <data name="Sr6.ChooseAll" xml:space="preserve"><value>Elige las cinco prioridades, un metatipo y un talento.</value></data>
+  <data name="Sr6.UniqueRanks" xml:space="preserve"><value>Prioridad requiere cada rango A–E exactamente una vez.</value></data>
+  <data name="Sr6.SumTen" xml:space="preserve"><value>Suma de diez requiere un total de diez puntos de prioridad.</value></data>
+  <data name="Sr6.MetatypeRank" xml:space="preserve"><value>Este metatipo no está disponible con la prioridad de metatipo elegida.</value></data>
+  <data name="Sr6.TalentRank" xml:space="preserve"><value>Este talento no está disponible con la prioridad de Magia/Resonancia elegida.</value></data>
+  <data name="Sr6.Budget" xml:space="preserve"><value>Atributos: {0} · Habilidades: {1} · Recursos: {2:N0} ¥ · Ajuste: {3} · Magia base: {4} · Resonancia base: {5}</value></data>
+  <data name="Sr6.Option.heritage" xml:space="preserve"><value>Prioridad de metatipo</value></data>
+  <data name="Sr6.Option.talent" xml:space="preserve"><value>Prioridad de Magia/Resonancia</value></data>
+  <data name="Sr6.Option.attributes" xml:space="preserve"><value>Prioridad de atributos</value></data>
+  <data name="Sr6.Option.skills" xml:space="preserve"><value>Prioridad de habilidades</value></data>
+  <data name="Sr6.Option.resources" xml:space="preserve"><value>Prioridad de recursos</value></data>
+  <data name="Sr6.Option.human" xml:space="preserve"><value>Humano</value></data>
+  <data name="Sr6.Option.elf" xml:space="preserve"><value>Elfo</value></data>
+  <data name="Sr6.Option.dwarf" xml:space="preserve"><value>Enano</value></data>
+  <data name="Sr6.Option.ork" xml:space="preserve"><value>Orko</value></data>
+  <data name="Sr6.Option.troll" xml:space="preserve"><value>Trol</value></data>
+  <data name="Sr6.Option.mundane" xml:space="preserve"><value>Mundano</value></data>
+  <data name="Sr6.Option.magician" xml:space="preserve"><value>Mago</value></data>
+  <data name="Sr6.Option.aspected-magician" xml:space="preserve"><value>Mago aspectado</value></data>
+  <data name="Sr6.Option.adept" xml:space="preserve"><value>Adepto</value></data>
+  <data name="Sr6.Option.mystic-adept" xml:space="preserve"><value>Adepto místico</value></data>
+  <data name="Sr6.Option.technomancer" xml:space="preserve"><value>Tecnomante</value></data>
 </root>
