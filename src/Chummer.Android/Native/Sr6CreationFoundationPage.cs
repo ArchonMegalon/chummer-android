@@ -13,6 +13,7 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
     private readonly OwnerContextStamp? _owner;
     private readonly CharacterWorkspaceId? _workspace;
     private readonly bool _attributesMode;
+    private readonly bool _skillsMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -23,15 +24,18 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
     private Label? _status;
     private Button? _confirm;
     private Button? _attributes;
+    private Button? _skills;
     private VerticalStackLayout? _review;
 
-    internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false) : base(coordinator)
+    internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false, bool skillsMode = false) : base(coordinator)
     {
+        if (attributesMode && skillsMode) throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
+        _skillsMode = skillsMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -77,6 +81,7 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         _body.Clear();
         _attributes = null;
+        _skills = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -95,7 +100,46 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
             state.Binding.ContentRevision, state.Binding.SavedRevision), NativeTheme.Muted));
         _selection ??= new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_attributesMode)
+        if (_skillsMode)
+        {
+            if (state.Selection is not { } savedFoundation || state.SkillOptions is not { Count: 19 } options)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FoundationRequired"))); return; }
+            _selection = _selection with { Skills = _selection.Skills ?? new([]) };
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Budget(savedFoundation)));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillHelp"), NativeTheme.Muted));
+            if (_selection.TalentId == "aspected-magician")
+                AddPicker("skill-aspect", Sr6CreationCopy.Text("SkillAspect"), ["Sorcery", "Conjuring", "Enchanting"],
+                    _selection.Skills.AspectedSkillId ?? "", Sr6CreationCopy.Label,
+                    value => Change(_selection with { Skills = _selection.Skills with { AspectedSkillId = value } }));
+            foreach (var option in options)
+            {
+                string id = option.SkillId;
+                bool selectableAspect = _selection.TalentId == "aspected-magician"
+                    && id is "Sorcery" or "Conjuring" or "Enchanting";
+                if (!option.Available && !selectableAspect)
+                {
+                    _body.Add(NativeTheme.Body(Sr6CreationCopy.Label(id) + " · "
+                        + Sr6CreationCopy.Blocker(option.UnavailableReason!), NativeTheme.Muted));
+                    continue;
+                }
+                var row = _selection.Skills.Allocations.SingleOrDefault(item => item.SkillId == id) ?? new(id, 0, []);
+                AddPicker("skill-" + id, Sr6CreationCopy.Label(id),
+                    Enumerable.Range(0, option.Maximum + 1).Select(value => value.ToString(CultureInfo.InvariantCulture)).ToArray(),
+                    row.Rating.ToString(CultureInfo.InvariantCulture), value => value,
+                    value => ChangeSkill(id, old => old with { Rating = int.Parse(value, CultureInfo.InvariantCulture) }));
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text(id == "ExoticWeapons" ? "SkillExoticSpecializations" : "SkillSpecialization")));
+                var entry = new Entry { AutomationId = "sr6-foundation-specialization-" + id,
+                    Text = string.Join("; ", row.Specializations), MaxLength = 972 };
+                entry.TextChanged += (_, _) =>
+                {
+                    if (!Current()) return;
+                    string[] names = (entry.Text ?? "").Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                    ChangeSkill(id, old => old with { Specializations = names });
+                };
+                _body.Add(entry);
+            }
+        }
+        else if (_attributesMode)
         {
             if (state.Selection is not { } savedFoundation || state.AttributeOptions is not { Count: 11 } options)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FoundationRequired"))); return; }
@@ -129,6 +173,19 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
                     });
                 };
                 _body.Add(attributes);
+                var skills = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("SkillOpen"));
+                _skills = skills;
+                skills.AutomationId = "sr6-foundation-skills";
+                skills.IsEnabled = SavedCurrent();
+                skills.Clicked += async (_, _) =>
+                {
+                    if (!SavedCurrent()) return;
+                    await RunAsync(async () =>
+                    {
+                        if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, skillsMode: true));
+                    });
+                };
+                _body.Add(skills);
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
             }
             foreach (string category in CharacterCreationPriorityCategoryIds.Ordered)
@@ -178,6 +235,14 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
                 foreach (var value in allocation.Values.Where(value => value.Maximum > 0))
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.AttributeValue(value)));
             }
+            if (quote.Skills is { } skills)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.SkillBudget(skills)));
+                foreach (var value in skills.Values.Where(value => value.Rating > 0))
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.SkillValue(value)));
+                if (skills.SpecializationsNeedGmReview)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillGmReview"), NativeTheme.Muted));
+            }
             _review.Add(NativeTheme.Body(string.Join(" · ", quote.SourceAnchorIds), NativeTheme.Muted));
             _confirm = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("Confirm"));
             _confirm.AutomationId = "sr6-foundation-confirm";
@@ -210,17 +275,27 @@ internal sealed class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool cleared = !_attributesMode && _selection.Attributes is not null;
-            if (!_attributesMode) selection = selection with { Attributes = null };
+            bool foundationMode = !_attributesMode && !_skillsMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null };
             _selection = selection;
             _preview = null;
             _commit = null;
             _blockers = [];
             if (_confirm is not null) _confirm.IsEnabled = false;
             if (_attributes is not null) _attributes.IsEnabled = false;
+            if (_skills is not null) _skills.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
+        }
+
+        void ChangeSkill(string id, Func<Sr6CreationSkillSpend, Sr6CreationSkillSpend> update)
+        {
+            if (!Current() || _selection.Skills is not { } skills) return;
+            var old = skills.Allocations.SingleOrDefault(row => row.SkillId == id) ?? new(id, 0, []);
+            Change(_selection with { Skills = skills with { Allocations =
+                [.. skills.Allocations.Where(row => row.SkillId != id), update(old)] } });
         }
 
         void AddSpendPicker(Sr6CreationAttributeOption option, bool adjustment, int budget)

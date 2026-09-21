@@ -165,6 +165,52 @@ internal static partial class AfterRunAuthorityHarness
                     IssuedPageLifecycle(attributeReopen, "OnDisappearing");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 attribute phone " + method + " " + language);
+
+                    var skillsPage = new Sr6CreationFoundationPage(runtime.Coordinator, skillsMode: true);
+                    await navigation.PushAsync(skillsPage, false);
+                    using var skillAlerts = new IssuedPageAlerts(skillsPage, window);
+                    await skillAlerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(skillsPage, "OnAppearing"));
+                    T SkillElement<T>(string key) where T : Element => IssuedElements(skillsPage).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task SkillClick(string key) => ui.BeginAsyncVoid(() => ((IButtonController)SkillElement<Button>(key)).SendClicked());
+                    Require(skillsPage.Title == Sr6CreationCopy.Text("SkillTitle") && skillsPage.Title != "SkillTitle", "Skill title localization missing.");
+                    Require(!IssuedElements(skillsPage).OfType<Picker>().Any(item => item.AutomationId is
+                        "sr6-foundation-skill-Sorcery" or "sr6-foundation-skill-Tasking" or "sr6-foundation-skill-Astral"),
+                        "Mundane draft exposed unavailable skill controls.");
+                    SkillElement<Picker>("skill-Firearms").SelectedIndex = 4;
+                    SkillElement<Entry>("specialization-Firearms").Text = "Pistols";
+                    SkillElement<Picker>("skill-ExoticWeapons").SelectedIndex = 2;
+                    SkillElement<Entry>("specialization-ExoticWeapons").Text = "Whip; Net";
+                    await SkillClick("preview");
+                    var staleSkillConfirm = SkillElement<Button>("confirm");
+                    SkillElement<Picker>("skill-Firearms").SelectedIndex = 5;
+                    staleSkillConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)staleSkillConfirm).SendClicked());
+                    Require(probe.Confirms == 2, "Changed skill selection admitted stale confirmation.");
+                    await SkillClick("preview");
+                    await SkillClick("confirm");
+                    Require(probe.Confirms == 3, "Skills did not save exactly once.");
+                    var skilled = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var last = skilled.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(skilled.ContentRevision == 4 && skilled.SavedRevision == 4 && last.Skills!.PointsSpent == 9,
+                        "Wrong persisted skill allocation or specialization costs.");
+                    Require(last.Attributes!.Values.Single(row => row.AttributeId == "Body").Value == 4, "Skill save lost attributes.");
+                    IssuedPageLifecycle(skillsPage, "OnDisappearing");
+                    SkillElement<Entry>("specialization-Firearms").Text = "Stale";
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var skillReopen = new Sr6CreationFoundationPage(runtime.Coordinator, skillsMode: true);
+                    await navigation.PushAsync(skillReopen, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(skillReopen, "OnAppearing"));
+                    Require(IssuedElements(skillReopen).OfType<Picker>().Single(item => item.AutomationId == "sr6-foundation-skill-Firearms").SelectedIndex == 5,
+                        "Reopened skill page lost rating.");
+                    Require(IssuedElements(skillReopen).OfType<Entry>().Single(item => item.AutomationId == "sr6-foundation-specialization-Firearms").Text == "Pistols",
+                        "Departed skill callback changed saved specialization.");
+                    Require(!IssuedElements(skillReopen).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm"),
+                        "Reopened skill page reused an old confirmation.");
+                    IssuedPageLifecycle(skillReopen, "OnDisappearing");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 skill phone " + method + " " + language);
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }

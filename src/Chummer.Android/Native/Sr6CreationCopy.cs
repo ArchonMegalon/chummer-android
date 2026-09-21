@@ -6,6 +6,11 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string SkillBudget(Sr6CreationSkillPreview preview) => CreationAllocationStrings.Format("Sr6.SkillBudget",
+        "Skill points spent: {0} · remaining: {1}", preview.PointsSpent, preview.PointsRemaining);
+    internal static string SkillValue(Sr6CreationSkillValue value) => CreationAllocationStrings.Format("Sr6.SkillValue",
+        "{0}: rating {1} + specializations {2} = {3} points · {4}", Label(value.SkillId), value.Rating,
+        value.SpecializationCost, value.TotalCost, string.Join("; ", value.Specializations));
     internal static string AttributeRange(Sr6CreationAttributeOption option) => CreationAllocationStrings.Format("Sr6.AttributeRange",
         "{0} · Base {1}, maximum {2}", Label(option.AttributeId), option.BaseValue, option.Maximum);
     internal static string AttributeBudget(Sr6CreationAttributePreview preview) => CreationAllocationStrings.Format("Sr6.AttributeBudget",
@@ -25,6 +30,13 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationSkillBlockers.InvalidAllocation => Text("SkillInvalid"),
+        Sr6CreationSkillBlockers.SkillUnavailable => Text("SkillUnavailable"),
+        Sr6CreationSkillBlockers.AspectRequired => Text("SkillAspectRequired"),
+        Sr6CreationSkillBlockers.AstralPowerRequired => Text("SkillAstralPower"),
+        Sr6CreationSkillBlockers.MaximumCountExceeded => Text("SkillMaximumCount"),
+        Sr6CreationSkillBlockers.BudgetExceeded => Text("SkillOverspend"),
+        Sr6CreationSkillBlockers.SpecializationInvalid => Text("SkillSpecializationInvalid"),
         Sr6CreationAttributeBlockers.InvalidAllocation => Text("AttributeInvalid"),
         Sr6CreationAttributeBlockers.PointKindUnavailable => Text("AttributePointKind"),
         Sr6CreationAttributeBlockers.RatingExceeded => Text("AttributeMaximum"),

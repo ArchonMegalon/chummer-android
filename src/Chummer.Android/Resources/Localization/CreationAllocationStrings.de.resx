@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl und Attributverteilung lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten. Grundauswahl, Attribute und Fertigkeiten lassen sich prüfen und speichern; weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt die Attributverteilung erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute und Fertigkeiten erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -387,4 +387,39 @@
   <data name="Sr6.Option.Edge" xml:space="preserve"><value>Edge</value></data>
   <data name="Sr6.Option.Magic" xml:space="preserve"><value>Magie</value></data>
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonanz</value></data>
+  <data name="Sr6.SkillTitle" xml:space="preserve"><value>SR6-Fertigkeiten</value></data>
+  <data name="Sr6.SkillOpen" xml:space="preserve"><value>Fertigkeitspunkte verteilen</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Prioritätspunkte für Fertigkeiten und Spezialisierungen verteilen. Nur eine Fertigkeit darf 6 erreichen. Wissen, Sprachen, Karma und Talentiert fehlen noch. Verfügbarkeit wird bei der Vorschau geprüft.</value></data>
+  <data name="Sr6.SkillAspect" xml:space="preserve"><value>Magischer Aspekt</value></data>
+  <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Spezialisierung (optional; eine pro Fertigkeit)</value></data>
+  <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Waffenarten (mit ; trennen — erste kostenlos)</value></data>
+  <data name="Sr6.SkillGmReview" xml:space="preserve"><value>Spezialisierungen sind eigene Eingaben: den Umfang mit der Spielleitung prüfen. Speichern bestätigt keine GM-Freigabe.</value></data>
+  <data name="Sr6.SkillBudget" xml:space="preserve"><value>Fertigkeitspunkte ausgegeben: {0} · übrig: {1}</value></data>
+  <data name="Sr6.SkillValue" xml:space="preserve"><value>{0}: Wert {1} + Spezialisierungen {2} = {3} Punkte · {4}</value></data>
+  <data name="Sr6.SkillInvalid" xml:space="preserve"><value>Fertigkeiten, Werte (0–6) und Spezialisierungsnamen prüfen.</value></data>
+  <data name="Sr6.SkillUnavailable" xml:space="preserve"><value>Dieser Talenttyp gewährt keinen Zugriff auf diese Fertigkeit.</value></data>
+  <data name="Sr6.SkillAspectRequired" xml:space="preserve"><value>Den zur Fertigkeit passenden magischen Aspekt wählen.</value></data>
+  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Astral benötigt eine Adeptenkraft, die dieser Entwurf noch nicht unterstützt.</value></data>
+  <data name="Sr6.SkillMaximumCount" xml:space="preserve"><value>Nur eine Fertigkeit darf das Erschaffungsmaximum erreichen.</value></data>
+  <data name="Sr6.SkillOverspend" xml:space="preserve"><value>Die Verteilung überschreitet das Fertigkeitspunktebudget.</value></data>
+  <data name="Sr6.SkillSpecializationInvalid" xml:space="preserve"><value>Eine Spezialisierung benötigt eine erlernte Fertigkeit. Normale Fertigkeiten erlauben eine; exotische Waffen benötigen mindestens eine Waffenart.</value></data>
+  <data name="Sr6.Option.Astral" xml:space="preserve"><value>Astral</value></data>
+  <data name="Sr6.Option.Athletics" xml:space="preserve"><value>Athletik</value></data>
+  <data name="Sr6.Option.Biotech" xml:space="preserve"><value>Biotech</value></data>
+  <data name="Sr6.Option.CloseCombat" xml:space="preserve"><value>Nahkampf</value></data>
+  <data name="Sr6.Option.Con" xml:space="preserve"><value>Überreden</value></data>
+  <data name="Sr6.Option.Conjuring" xml:space="preserve"><value>Beschwören</value></data>
+  <data name="Sr6.Option.Cracking" xml:space="preserve"><value>Cracken</value></data>
+  <data name="Sr6.Option.Electronics" xml:space="preserve"><value>Elektronik</value></data>
+  <data name="Sr6.Option.Enchanting" xml:space="preserve"><value>Verzaubern</value></data>
+  <data name="Sr6.Option.Engineering" xml:space="preserve"><value>Mechanik</value></data>
+  <data name="Sr6.Option.ExoticWeapons" xml:space="preserve"><value>Exotische Waffen</value></data>
+  <data name="Sr6.Option.Firearms" xml:space="preserve"><value>Feuerwaffen</value></data>
+  <data name="Sr6.Option.Influence" xml:space="preserve"><value>Einfluss</value></data>
+  <data name="Sr6.Option.Outdoors" xml:space="preserve"><value>Natur</value></data>
+  <data name="Sr6.Option.Perception" xml:space="preserve"><value>Wahrnehmung</value></data>
+  <data name="Sr6.Option.Piloting" xml:space="preserve"><value>Steuern</value></data>
+  <data name="Sr6.Option.Sorcery" xml:space="preserve"><value>Hexerei</value></data>
+  <data name="Sr6.Option.Stealth" xml:space="preserve"><value>Heimlichkeit</value></data>
+  <data name="Sr6.Option.Tasking" xml:space="preserve"><value>Tasken</value></data>
 </root>
