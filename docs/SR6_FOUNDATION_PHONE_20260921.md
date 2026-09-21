@@ -28,14 +28,72 @@ The other methods must not enter an SR5 editor or this priority service.
   specialization costs and aspect selection. Unavailable skills are explained
   without input controls. Player-entered specialization names require GM review;
   exotic weapon specialties share one rating and the first is free.
+- Knowledge/language page after saved attributes: one free native language,
+  unrated topics, and additional Basic/Specialist/Expert languages. Core derives
+  the separate pool from Logic, validates cumulative costs, and prevents buying
+  another native language. Stable entry IDs survive editing and cold reopen.
+  Attribute changes preserve the choices and reject any resulting overspend.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
 
-Knowledge/languages, Karma/Aptitude, talent effects, equipment, finalization and Career
+Karma/Aptitude/Bilingual, talent effects, equipment, finalization and Career
 entry are still missing. Point Buy, Life Path and optional Karma still need
 their own rule implementations and native flows. This does not enable SR6
 Origin generation or audiobook conversion.
 
-## Current skill increment: exact local source assembly
+## Current knowledge/language increment: exact local source assembly
+
+- Android functional commit: `256dd7246a2e76e40289d4f136b79badf6e560eb`.
+- Core integration: `bd22577336f423a35dc469acb03a11e3260aa7c3`.
+- Presentation unchanged: `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+- Same local keyless Docker toolchain and explicit source roots, not a new seal.
+
+`core-sr6-knowledge-1.log`: 124 Core tests pass. `sr6-native-knowledge-3.log`:
+32 native managed scenarios pass, including both methods and all four pages in
+DE/EN/ES. The new cases cover the attribute prerequisite, empty/deleted rows,
+stable IDs, invalidated/departed confirmation, overspend without writes, and
+preserved independent attribute/skill allocations through cold reopen.
+`sr6-origin-knowledge-regression-1.log`: 12 existing Origin book regressions pass.
+The first two native runs stopped at test-harness errors (a synchronous row
+callback passed to an async-only observer; a disabled detached test button).
+Those setup errors were corrected, not counted as successful runs.
+
+`sr6-knowledge-debug-build-1.log`: Debug x64 APK builds with zero warnings/errors
+in 1m46s. Retained APK `sr6-knowledge-priority-sum-debug.apk`, SHA-256:
+`080266a2cf029f77099310a06669ac4a8be680ee3aebd47d36537eeb365e329f`.
+
+### Actual knowledge/language save/restart smoke
+
+The API36 emulator used the authentic earlier synthetic Priority attribute
+draft as setup, copied into the separate debug package; this was not another
+fresh New runner/bootstrap test. Through the actual attribute UI, Logic was
+raised to 3 and explicitly saved (revision 4/4). The old foundation page rejected
+its stale revision on Back, so the route was reopened through the runner as
+instructed. This conservative navigation remains a usability limitation.
+
+The knowledge page then accepted native `German`, topic `Seattle gangs`, and
+`Sperethiel` at Specialist level. Core review showed 3 picks spent, 0 remaining,
+Logic 3, free native language, comprehension +2, GM scope review and pp70/100
+source binding. One confirmation saved revision 5/5, four total decisions
+(two historical setup decisions, one attribute edit and one knowledge save).
+
+Force-stop removed PID 4373; launch created PID 5801. Reopened native controls
+restored the native language, topic, additional language, level and exact entry
+IDs. No historical Confirm button was restored. Workspace bytes before/after
+restart were identical, SHA-256:
+`8a13c358e370c2721084f71569c235744594521e6dbe5319acc3182198a11b7f`.
+The retained packet below contains `sr6-knowledge-*` input/review/reopen images,
+fresh hierarchies, workspace copies, startup log and Android ANR events.
+
+The emulator's System UI ANR began before app installation and recurred after
+Wait; closing that System UI process cleared the obstruction. One startup
+observer exited 137, and transient null hierarchies during system/page/process
+transitions were rejected rather than accepted as fresh state. No character
+mutation was replayed. The subsequent app route completed, and the owned
+read-only emulator was stopped. Sum-to-Ten knowledge and all locales have
+managed coverage, not separate device coverage in this increment. No user Play
+package or upload key was touched; no AAB or publication was produced.
+
+## Historical skill increment: exact local source assembly
 
 - Android functional commit: `df1e3f77a4a22e780f73c84e28e95c12082782fe`.
 - Core integration: `e82a1f8265796ff455ebdd01d1296d8f47aaf702`.
@@ -184,6 +242,6 @@ to replay a mutation. The completed routes above used fresh visible state.
 
 Debug key only; no upload key, AAB, Play upload, physical installation, new
 package authority or hosted qualification. The installed user/Play package was
-not touched. Next work is SR6 knowledge/languages, talent grants and finalization, then method-specific
+not touched. Next work is SR6 talent grants and remaining creation/finalization, then method-specific
 Point Buy/Life Path/Karma flows. SR5 Life Modules and its book remain an open
 priority before Windows; this increment does not declare them finished.
