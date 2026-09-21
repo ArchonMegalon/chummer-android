@@ -4,6 +4,37 @@ Not a release or Play publication receipt. Ordinary pending Contacts pass manage
 integration tests and the real Priority Add/save/process-restart/reopen and
 Remove routes. Karma-funded/group-contact contribution remains unfinished.
 
+## Package integration after Preview 28 availability
+
+UI #192 passed its protected package and release-control checks and merged to
+`578f1658e32091944e62ef03a9c02dc252c1bc2d`, tree
+`24e26aa77ecf6d5cedb6c19f77d99dbca3f8ac67`. Android now pins that published
+commit, not the superseded review branch. The Core consumer runtime and Hub's
+original producer input remain independently bound; no dirty-source exception
+was added for the temporary Hub input.
+
+The reviewed tree passed a local cold consumer run without an owner cache.
+The published commit passed the existing local consumer verifier with the exact
+unchanged owner artifacts and a fresh consumer cache: five builds with zero
+warnings/errors,836 product tests and the existing focused owner/persistence
+groups. Test compilation retained61 existing analyzer warnings.
+`UI_PUBLISHED_CONTACTS_PACKAGE_CONSUMER.json` is79539 bytes with SHA-256
+`65540da37d5af6cb4659d853e31cd00be17b84716eb8dd6279a3003eef378d26`.
+This second receipt records authenticated local reuse, not another cold or
+hosted result. Android's actual intake accepted all18 packages against it.
+
+The Android app/native NuGet lock files are unchanged from the previous repin;
+the owner artifact package bytes are identical. The two Career runtime identity
+constants now bind the published UI commit; both affected managed harnesses
+passed (SkillGroup8, Quality8), as did47 workflow/Career source tests and the
+exact dependency-pin source check. These are not fresh device or Play results.
+
+Preview28's original AAB, signing identity and availability observation remain
+immutable. This later package integration does not retroactively change its
+source graph and did not build, sign or upload a replacement AAB. Complete Life
+Modules and live FirstBook AI book creation are still unfinished; the current
+Origin adapter only completes its first nationality decision.
+
 ## Latest implementation and verification
 
 Core now derives the Contact allowance from the confirmed Priority/Sum-to-Ten
@@ -70,9 +101,10 @@ Open implementation work before claiming the full contact workflow:
 - Exercise dependency/source-change recovery for already-confirmed Contacts.
 - Optional non-empty pending Lifestyle purchases are not proven here. The
   empty-Lifestyle Priority route now passes visible finalization and restart.
-- Refresh package seals only when functional changes are stable. Current local
-  builds use explicit source roots and are not new sealed-package authority.
-- No new release AAB has been signed or uploaded.
+- The original local APK builds use explicit source roots. The later package
+  integration is recorded separately above and does not reclassify those APKs.
+- No release AAB was signed or uploaded during this initial smoke. The subsequent
+  Preview28 availability is recorded in `play/evidence/preview28-internal-observation.md`.
 
 ## Adjacent concrete UI fix from the smoke
 
