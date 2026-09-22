@@ -6,15 +6,61 @@ Buy, Life Path and optional Karma (SR6). All five have Core-owned bootstrap
 identities; Priority, Sum-to-Ten and Point Buy have the foundation editor below.
 Life Path and optional Karma must not enter an SR5 editor or priority service.
 
+## Latest verification: weapon statistics and completion — 22 September 2026
+
+Core `ad2a952ba` adds the 82 existing weapon profiles without changing saved
+purchase decisions. Local managed-native run `sr6-native-weapon-profiles-2.log`
+passed **184 scenarios**, including the three supported methods completing with
+armor/device/knife/Raiden baskets in DE/EN/ES and the existing owner/replay guards.
+The first native run failed from concurrent Core/native restore paths sharing
+intermediate assets; the corrected sequential build completed. It is not a
+product failure or a passing test run. DE/EN/ES resources have **798 matching
+keys**; all 42 new weapon traits and 19 accessory IDs have localized copy.
+
+The real-device-tree smoke exposed a duplicated source line. After removing
+that display-only duplication, `sr6-weapon-debug-build-2.log` completed with
+**0 warnings/errors**, and the following real API36 x64 route used that final
+APK. The 184 managed scenarios precede only that one-line display cleanup.
+
+Final local Debug APK: `sr6-weapon-debug-final.apk`, SHA-256
+`cfdcb55bc00a24e245965ff44cbed600bd5f8bc3aa90bfb00960c291819f7264`.
+Core-confirmed synthetic Priority workspace `30862b7358c840f1bd87b6b6f42f783c`
+contains lined coat, Meta Link, combat knife and Yamaha Raiden. The actual UI
+displayed separate melee/thrown and primary/grenade/shotgun attacks, unavailable
+range bands, capacity without ammunition, accessories and source anchors.
+Explicit loss acknowledgement followed by one confirm advanced revision2/2
+to3/3 and retained receipt
+`sha256:0b4daed2dc454b1857384f3ca48c67dd12cb58bbd7b43d179966431f5ddf1109`.
+
+Force-stop PID4607 → PID4963 reopened the created SR6 sheet. Saved workspace
+bytes before/after restart were identical, SHA-256
+`595cdc014fae2eb9857ab831d1b165ea58a284291524b729d2df2a426419d99d`.
+The two weapons retain all five attack profiles, no ammunition, unequipped
+state, original draft archive and unchanged completion receipt. This is a
+bounded seeded route, not a fresh all-allocation tap-through, combat execution,
+physical Play installation or whole-SR6 qualification. Startup System UI ANR
+and transient null hierarchy observations were retained; null observations
+were rejected without replaying mutations. The owned emulator was stopped.
+
+Artifacts/logs remain in the existing local `life-module-book-tests-20260921.L0D7pON5`
+packet under `sr6-weapon-*`. No upload key, AAB, package reseal, main merge or
+Play change. Medical/utility profiles, formula/tradition gaps, separate Life
+Path/optional Karma flows and SR6 Career remain incomplete.
+
 ## Implemented
 
 - Expandable DE/EN/ES equipment-statistics review in the saved overview. Core
   supplies armor Defense Rating/capacity, separate matrix-device attributes,
   program/slave limits and source-backed conditional/included traits. Values
   are per item, not multiplied by quantity, and do not equip/activate anything.
-  Unsupported items are identified individually. Supported armor/device-only
-  baskets no longer trigger the blanket equipment completion blocker. Weapons,
-  medical gear and other unimplemented item statistics still block completion.
+  All 82 existing weapon rows now show Core-owned damage, range bands, skill,
+  attribute modifiers, firing modes, magazine alternatives and source anchors.
+  Thrown knives and included underbarrel weapons appear as separate attacks.
+  Accessories/conditional traits are listed without activation; ammunition is
+  explicitly not included. No Android-side weapon formulas are added.
+  Unsupported items are identified individually. Supported armor/device/weapon
+  baskets no longer trigger the blanket equipment completion blocker. Medical
+  gear and other unimplemented item statistics still block completion.
 - Separate DE/EN/ES completion review for Priority/Sum-to-Ten/Point Buy. Core
   supplies the exact saved projection, carry-over/loss amounts and blockers.
   Completion requires explicit confirmation and, when needed, a separate

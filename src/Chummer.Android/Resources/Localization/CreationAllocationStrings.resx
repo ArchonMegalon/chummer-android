@@ -709,4 +709,104 @@ Nothing has been discarded or applied to a finished runner.</value></data>
   <data name="Sr6.EquipmentTrait.included-music-player" xml:space="preserve"><value>Included music player.</value></data>
   <data name="Sr6.EquipmentTrait.included-biomonitor" xml:space="preserve"><value>Included biomonitor.</value></data>
   <data name="Sr6.EquipmentTrait.included-hot-sim-module" xml:space="preserve"><value>Included hot-sim module; not activated.</value></data>
+  <data name="Sr6.WeaponHelp" xml:space="preserve"><value>Printed weapon statistics, not a combat result. No ammunition is included or loaded. Accessories and conditional effects are listed, not activated.</value></data>
+  <data name="Sr6.WeaponAttack" xml:space="preserve"><value>{0} · {1}
+Damage: {2}
+Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
+  <data name="Sr6.WeaponAttack.primary" xml:space="preserve"><value>Primary attack</value></data>
+  <data name="Sr6.WeaponAttack.thrown" xml:space="preserve"><value>Thrown attack</value></data>
+  <data name="Sr6.WeaponAttack.underbarrel-grenade" xml:space="preserve"><value>Underbarrel grenade launcher</value></data>
+  <data name="Sr6.WeaponAttack.underbarrel-shotgun" xml:space="preserve"><value>Underbarrel shotgun</value></data>
+  <data name="Sr6.WeaponDamage.physical" xml:space="preserve"><value>physical</value></data>
+  <data name="Sr6.WeaponDamage.stun" xml:space="preserve"><value>stun</value></data>
+  <data name="Sr6.WeaponDamage.none" xml:space="preserve"><value>direct damage</value></data>
+  <data name="Sr6.WeaponDamage.payload" xml:space="preserve"><value>Depends on ammunition</value></data>
+  <data name="Sr6.WeaponElectrical" xml:space="preserve"><value>electrical</value></data>
+  <data name="Sr6.WeaponPayload.grenade" xml:space="preserve"><value>grenade effect; grenade required</value></data>
+  <data name="Sr6.WeaponPayload.rocket" xml:space="preserve"><value>rocket effect; rocket required</value></data>
+  <data name="Sr6.WeaponPayload.contact-toxin" xml:space="preserve"><value>plus contact toxin effect; toxin required</value></data>
+  <data name="Sr6.WeaponPayload.injection-toxin" xml:space="preserve"><value>plus injection toxin effect; toxin required</value></data>
+  <data name="Sr6.WeaponSpecialty" xml:space="preserve"><value>Required weapon specialization: {0}</value></data>
+  <data name="Sr6.WeaponSpecialty.whips" xml:space="preserve"><value>whips</value></data>
+  <data name="Sr6.WeaponSpecialty.launchers" xml:space="preserve"><value>launchers</value></data>
+  <data name="Sr6.WeaponSpecialty.airguns" xml:space="preserve"><value>airguns</value></data>
+  <data name="Sr6.WeaponModes" xml:space="preserve"><value>Modes: {0}</value></data>
+  <data name="Sr6.WeaponMode.SS" xml:space="preserve"><value>SS</value></data>
+  <data name="Sr6.WeaponMode.SA" xml:space="preserve"><value>SA</value></data>
+  <data name="Sr6.WeaponMode.BF" xml:space="preserve"><value>BF</value></data>
+  <data name="Sr6.WeaponMode.FA" xml:space="preserve"><value>FA</value></data>
+  <data name="Sr6.WeaponMode.short-burst" xml:space="preserve"><value>short burst</value></data>
+  <data name="Sr6.WeaponMagazines" xml:space="preserve"><value>Capacity options (no ammunition included): {0}</value></data>
+  <data name="Sr6.WeaponOr" xml:space="preserve"><value>or</value></data>
+  <data name="Sr6.WeaponFeed.internal" xml:space="preserve"><value>internal magazine</value></data>
+  <data name="Sr6.WeaponFeed.clip" xml:space="preserve"><value>clip</value></data>
+  <data name="Sr6.WeaponFeed.break-action" xml:space="preserve"><value>break-action</value></data>
+  <data name="Sr6.WeaponFeed.cylinder" xml:space="preserve"><value>cylinder</value></data>
+  <data name="Sr6.WeaponFeed.drum" xml:space="preserve"><value>drum magazine</value></data>
+  <data name="Sr6.WeaponFeed.belt" xml:space="preserve"><value>belt</value></data>
+  <data name="Sr6.WeaponFeed.muzzle-loading" xml:space="preserve"><value>muzzle-loading</value></data>
+  <data name="Sr6.WeaponMaximumRange" xml:space="preserve"><value>Maximum range: {0} m</value></data>
+  <data name="Sr6.WeaponCarryStrength" xml:space="preserve"><value>Minimum Strength to carry: {0}</value></data>
+  <data name="Sr6.WeaponAccessories" xml:space="preserve"><value>Included: {0}</value></data>
+  <data name="Sr6.WeaponAccessory.gps" xml:space="preserve"><value>GPS</value></data>
+  <data name="Sr6.WeaponAccessory.mini-multitool" xml:space="preserve"><value>mini multitool</value></data>
+  <data name="Sr6.WeaponAccessory.micro-lighter" xml:space="preserve"><value>micro lighter</value></data>
+  <data name="Sr6.WeaponAccessory.illuminated-blade" xml:space="preserve"><value>illuminated blade</value></data>
+  <data name="Sr6.WeaponAccessory.laser-sight" xml:space="preserve"><value>laser sight</value></data>
+  <data name="Sr6.WeaponAccessory.smartgun" xml:space="preserve"><value>smartgun system</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-stock" xml:space="preserve"><value>detachable stock</value></data>
+  <data name="Sr6.WeaponAccessory.gas-vent" xml:space="preserve"><value>gas vent</value></data>
+  <data name="Sr6.WeaponAccessory.silencer" xml:space="preserve"><value>silencer</value></data>
+  <data name="Sr6.WeaponAccessory.folding-stock" xml:space="preserve"><value>folding stock</value></data>
+  <data name="Sr6.WeaponAccessory.selectable-ammunition-magazine" xml:space="preserve"><value>selectable-ammunition magazine</value></data>
+  <data name="Sr6.WeaponAccessory.fixed-stock" xml:space="preserve"><value>fixed stock</value></data>
+  <data name="Sr6.WeaponAccessory.three-mode-flashlight" xml:space="preserve"><value>three-mode flashlight</value></data>
+  <data name="Sr6.WeaponAccessory.retractable-stock" xml:space="preserve"><value>retractable stock</value></data>
+  <data name="Sr6.WeaponAccessory.shock-pad" xml:space="preserve"><value>shock pad</value></data>
+  <data name="Sr6.WeaponAccessory.scope" xml:space="preserve"><value>scope</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-scope" xml:space="preserve"><value>detachable scope</value></data>
+  <data name="Sr6.WeaponAccessory.folding-bipod" xml:space="preserve"><value>folding bipod</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-tripod" xml:space="preserve"><value>detachable tripod</value></data>
+  <data name="Sr6.EquipmentTrait.exotic-specialization-required" xml:space="preserve"><value>Exotic weapon use requires the matching specialization.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-held-location-vitals" xml:space="preserve"><value>Wireless while held: location and vital-status readout.</value></data>
+  <data name="Sr6.EquipmentTrait.minor-deploy-retract" xml:space="preserve"><value>Minor Action to deploy/retract.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-deploy-extra-minor" xml:space="preserve"><value>Wireless deployment/retraction grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.charge-capacity" xml:space="preserve"><value>Charge capacity (not current charge)</value></data>
+  <data name="Sr6.EquipmentTrait.wired-charge-seconds" xml:space="preserve"><value>Seconds per charge when wired</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-charge-minutes" xml:space="preserve"><value>Minutes per wireless recharge</value></data>
+  <data name="Sr6.EquipmentTrait.activation-minor" xml:space="preserve"><value>Minor Action to activate.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-activation-extra-minor" xml:space="preserve"><value>Wireless activation grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.retracted-concealability" xml:space="preserve"><value>Concealability when retracted</value></data>
+  <data name="Sr6.EquipmentTrait.extended-concealability" xml:space="preserve"><value>Concealability when extended</value></data>
+  <data name="Sr6.EquipmentTrait.concealability" xml:space="preserve"><value>Concealability</value></data>
+  <data name="Sr6.EquipmentTrait.trip-extra-minor" xml:space="preserve"><value>Trip grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.critical-glitch-self-damage" xml:space="preserve"><value>Base self-damage to resist on a critical glitch</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-attack-rating-bonus" xml:space="preserve"><value>Additional Attack Rating when wireless is enabled</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-glitch-safe-retract" xml:space="preserve"><value>Wireless: retracts on a critical glitch instead of striking the wielder.</value></data>
+  <data name="Sr6.EquipmentTrait.hands-required" xml:space="preserve"><value>Hands required</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-embedded-smartlink-dice" xml:space="preserve"><value>Non-stacking dice bonus with embedded wireless weapon and smartlink</value></data>
+  <data name="Sr6.EquipmentTrait.contact-taser-use" xml:space="preserve"><value>Also usable in direct contact at the same damage.</value></data>
+  <data name="Sr6.EquipmentTrait.wired-hit-sustain-major" xml:space="preserve"><value>Major Action repeats base damage while the hit target remains wired.</value></data>
+  <data name="Sr6.EquipmentTrait.top-mount-only" xml:space="preserve"><value>Accessories: top mount only.</value></data>
+  <data name="Sr6.EquipmentTrait.contact-attack-as-club" xml:space="preserve"><value>Contact electrodes: melee attack as a club.</value></data>
+  <data name="Sr6.EquipmentTrait.caseless-flechette-only" xml:space="preserve"><value>Caseless flechettes only; already reflected in printed damage.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-visual-concealment-bonus" xml:space="preserve"><value>Wireless visual concealment threshold bonus</value></data>
+  <data name="Sr6.EquipmentTrait.no-accessory-mounts" xml:space="preserve"><value>No weapon accessories or modifications.</value></data>
+  <data name="Sr6.EquipmentTrait.mad-threshold-bonus" xml:space="preserve"><value>MAD scanner detection threshold bonus</value></data>
+  <data name="Sr6.EquipmentTrait.active-smartgun-additional-rating" xml:space="preserve"><value>Additional Attack Rating when using the smartgun (not applied above)</value></data>
+  <data name="Sr6.EquipmentTrait.unique-flechette-only" xml:space="preserve"><value>Unique flechettes only; printed damage already includes them.</value></data>
+  <data name="Sr6.EquipmentTrait.pump-clear-jam-minor" xml:space="preserve"><value>Pump mechanism clears a jam with a Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.short-burst-two-barrels" xml:space="preserve"><value>Short burst uses both barrels; use the insufficient-ammunition rule.</value></data>
+  <data name="Sr6.EquipmentTrait.heavy-pistol-flechette-compatible" xml:space="preserve"><value>Also accepts heavy-pistol flechette ammunition.</value></data>
+  <data name="Sr6.EquipmentTrait.no-underbarrel-mount" xml:space="preserve"><value>No underbarrel mount.</value></data>
+  <data name="Sr6.EquipmentTrait.underbarrel-mounts" xml:space="preserve"><value>Underbarrel mounts</value></data>
+  <data name="Sr6.EquipmentTrait.assembly-firearms-logic-extended" xml:space="preserve"><value>Assembly: extended Firearms + Logic test, Major Action interval; threshold</value></data>
+  <data name="Sr6.EquipmentTrait.contact-toxin-dmso" xml:space="preserve"><value>Contact toxin delivered with DMSO; payload must be supplied separately.</value></data>
+  <data name="Sr6.EquipmentTrait.barrel-underbarrel-mounts-only" xml:space="preserve"><value>Accessories: barrel and underbarrel only.</value></data>
+  <data name="Sr6.EquipmentTrait.injection-dart-only" xml:space="preserve"><value>Injection darts only; toxin is a separate payload.</value></data>
+  <data name="Sr6.EquipmentTrait.top-underbarrel-mounts-only" xml:space="preserve"><value>Accessories: top and underbarrel only.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-minimum-detonation-distance" xml:space="preserve"><value>Wireless ammunition safety distance in meters</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-local-matrix-dice-nonstacking" xml:space="preserve"><value>Local-matrix wireless attack dice bonus; does not stack with other systems</value></data>
+  <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate launch tubes; normally fired individually</value></data>
+  <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline dual-launch override splits the pool; wielder must resist this fire damage</value></data>
 </root>

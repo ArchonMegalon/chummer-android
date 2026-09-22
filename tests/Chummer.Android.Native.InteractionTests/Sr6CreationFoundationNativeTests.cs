@@ -26,6 +26,17 @@ internal static partial class AfterRunAuthorityHarness
                     await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                         productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
                     var state = await FinalizableDraft(runtime, method);
+                    foreach (var item in state.DraftSummary!.Equipment)
+                    {
+                        string copy = Sr6CreationCopy.Equipment(item);
+                        Require(!copy.Contains("WeaponAccessory.") && !copy.Contains("EquipmentTrait.") && !copy.Contains("WeaponAttack."),
+                            "Untranslated weapon statistics in " + language);
+                        if (item.Weapon is { } weapon)
+                        {
+                            Require(copy.Contains(Sr6CreationCopy.Text("WeaponHelp")) && copy.Contains("—"), "Weapon scope or unavailable ranges missing.");
+                            foreach (var attack in weapon.Attacks) Require(copy.Contains(Sr6CreationCopy.Text("WeaponAttack." + attack.Id)), "Missing separate weapon attack.");
+                        }
+                    }
                     var id = state.Binding.WorkspaceId;
                     var review = (await runtime.Coordinator.ReviewSr6FinalizationAsync(state, () => true)).Value!;
                     Require(review is { CanFinalize: true } && review.Losses.Count > 0, "Complete draft cannot be finalized.");
@@ -52,7 +63,7 @@ internal static partial class AfterRunAuthorityHarness
                         + string.Join(" | ", IssuedElements(page).OfType<Label>().Select(item => item.Text)));
                     var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
                     var receipt = stored.Document.AuxiliaryState.Sr6CreationFinalizationArchive!.Receipt;
-                    Require(System.Xml.Linq.XDocument.Parse(stored.Document.Content).Descendants("sr6equipmentprofile").Count() == 2,
+                    Require(System.Xml.Linq.XDocument.Parse(stored.Document.Content).Descendants("sr6equipmentprofile").Count() == 4,
                         "Supported gear statistics were not saved with finalization.");
                     Require(probe.FinalConfirms == 1 && stored.ContentRevision == state.Binding.ContentRevision + 1
                         && stored.ContentRevision == stored.SavedRevision && runtime.Coordinator.State.Profile!.Created,
@@ -1853,10 +1864,11 @@ internal static partial class AfterRunAuthorityHarness
             {
                 PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
                 Attributes = new(Sr6CreationAttributeIds.Ordered.Select(id => new Sr6CreationAttributeSpend(id, 0, 0)).ToArray()),
-                Skills = new([new("Athletics", 1, [])]), Karma = new([], [], 2),
+                Skills = new([new("Athletics", 1, [])]), Karma = new([], [], 3),
                 Knowledge = new("German", [new(Guid.NewGuid(), "Seattle")], []), Contacts = new([]),
-                Gear = new(gear ? [new(Guid.NewGuid(), "combat-knife", 1)]
-                    : [new(Guid.NewGuid(), "lined-coat", 1), new(Guid.NewGuid(), "meta-link", 1)]), Lifestyle = new("street", 1)
+                Gear = new(gear ? [new(Guid.NewGuid(), "first-aid-kit", 1)]
+                    : [new(Guid.NewGuid(), "lined-coat", 1), new(Guid.NewGuid(), "meta-link", 1),
+                        new(Guid.NewGuid(), "combat-knife", 1), new(Guid.NewGuid(), "yamaha-raiden", 1)]), Lifestyle = new("street", 1)
             };
             var preview = await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection);
             Require(preview.Value is not null, "Finalization seed invalid: " + string.Join(",", preview.Blockers));

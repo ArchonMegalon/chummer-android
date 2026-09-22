@@ -22,6 +22,38 @@ internal static class Sr6CreationCopy
                 if (value is { } known)
                     lines.Add(CreationAllocationStrings.Format("Sr6.EquipmentStat", "{0}: {1}", Text("EquipmentStat." + id), known));
         }
+        if (row.Weapon is { } weapon)
+        {
+            lines.Add(Text("WeaponHelp"));
+            foreach (var attack in weapon.Attacks)
+            {
+                string damage = attack.DamageValue is { } value
+                    ? value.ToString(System.Globalization.CultureInfo.CurrentCulture) + " " + Text("WeaponDamage." + attack.DamageKind)
+                    : Text("WeaponDamage.payload");
+                if (attack.Electrical) damage += " · " + Text("WeaponElectrical");
+                if (attack.PayloadKind is { } payload) damage += " · " + Text("WeaponPayload." + payload);
+                var ratings = attack.AttackRatings;
+                string ranges = string.Join(" / ", new[] { ratings.Close, ratings.Near, ratings.Medium, ratings.Far, ratings.Extreme }
+                    .Select(value => value?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "—"));
+                if (attack.AttackRatingAttribute is { } attribute) ranges += " + " + Label(attribute);
+                lines.Add(CreationAllocationStrings.Format("Sr6.WeaponAttack", "{0} · {1}\nDamage: {2}\nAttack Rating (Close / Near / Medium / Far / Extreme): {3}",
+                    Text("WeaponAttack." + attack.Id), Label(attack.SkillId), damage, ranges));
+                if (attack.RequiredWeaponSpecialization is { } specialty)
+                    lines.Add(CreationAllocationStrings.Format("Sr6.WeaponSpecialty", "Required weapon specialization: {0}", Text("WeaponSpecialty." + specialty)));
+                if (attack.FireModes.Count > 0)
+                    lines.Add(CreationAllocationStrings.Format("Sr6.WeaponModes", "Modes: {0}", string.Join(" / ", attack.FireModes.Select(mode => Text("WeaponMode." + mode)))));
+                if (attack.Magazines.Count > 0)
+                    lines.Add(CreationAllocationStrings.Format("Sr6.WeaponMagazines", "Capacity options (no ammunition included): {0}",
+                        string.Join(" · " + Text("WeaponOr") + " · ", attack.Magazines.Select(m => m.Capacity.ToString(System.Globalization.CultureInfo.CurrentCulture) + " " + Text("WeaponFeed." + m.FeedType)))));
+                if (attack.MaximumRangeMeters is { } maximum)
+                    lines.Add(CreationAllocationStrings.Format("Sr6.WeaponMaximumRange", "Maximum range: {0} m", maximum));
+            }
+            if (weapon.MinimumCarryStrength is { } strength)
+                lines.Add(CreationAllocationStrings.Format("Sr6.WeaponCarryStrength", "Minimum Strength to carry: {0}", strength));
+            if (weapon.IncludedAccessoryIds.Count > 0)
+                lines.Add(CreationAllocationStrings.Format("Sr6.WeaponAccessories", "Included: {0}",
+                    string.Join(", ", weapon.IncludedAccessoryIds.Select(id => Text("WeaponAccessory." + id)))));
+        }
         foreach (var trait in row.Traits)
             lines.Add(trait.Value is { } value
                 ? CreationAllocationStrings.Format("Sr6.EquipmentStat", "{0}: {1}", Text("EquipmentTrait." + trait.Id), value)
