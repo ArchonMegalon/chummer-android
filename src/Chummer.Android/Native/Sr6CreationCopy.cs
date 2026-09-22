@@ -6,6 +6,20 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string NaturalMissing(string domain) => CreationAllocationStrings.Format("Sr6.NaturalMissing",
+        "{0}: no saved allocation yet", Text(domain));
+    internal static string NaturalAttribute(Sr6CreationNaturalAttributeValue row) => CreationAllocationStrings.Format("Sr6.NaturalAttribute",
+        "{0}: {1} base + {2} attribute + {3} adjustment + {4} Karma increase = {5} (maximum {6})",
+        Label(row.AttributeId), row.BaseValue, row.AttributePoints, row.AdjustmentPoints, row.KarmaIncrease, row.Rating, row.Maximum);
+    internal static string NaturalSkill(Sr6CreationNaturalSkill row) => CreationAllocationStrings.Format("Sr6.NaturalSkill",
+        "{0}: {1} pool + {2} Karma increase = rating {3}", Label(row.SkillId), row.PoolRating, row.KarmaIncrease, row.Rating)
+        + string.Concat(row.Specializations.Select(specialty => "\n" + (row.SkillId == "ExoticWeapons"
+            ? CreationAllocationStrings.Format("Sr6.NaturalExotic", "Weapon permission: {0} (no specialty dice bonus)", specialty.Subject)
+            : CreationAllocationStrings.Format("Sr6.NaturalSpecialty", "{0}: +{1} dice only when applicable; GM review", specialty.Subject, specialty.DicePoolBonus))));
+    internal static string NaturalNative(string name) => CreationAllocationStrings.Format("Sr6.NaturalNative", "Native language: {0}", name);
+    internal static string NaturalKnowledge(string name) => CreationAllocationStrings.Format("Sr6.NaturalKnowledge", "Knowledge: {0}", name);
+    internal static string NaturalLanguage(Sr6CreationNaturalLanguage row) => CreationAllocationStrings.Format("Sr6.NaturalLanguage",
+        "{0}: {1} · comprehension bonus +{2}", row.Name, Text("NaturalLevel." + row.Level), row.ComprehensionBonus);
     internal static string DraftStepTitle(string id) => Text(id switch
     {
         "foundation" => "Title", "qualities" => "QualitiesTitle", "attributes" => "AttributeTitle",

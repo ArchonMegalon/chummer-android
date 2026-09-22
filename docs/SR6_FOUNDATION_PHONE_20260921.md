@@ -8,6 +8,12 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
+- Expandable combined natural values within the saved overview: Core combines
+  pool and Karma attribute/skill ratings, conditional specialties, exotic weapon
+  permissions, knowledge and language upgrades. Missing allocations are labelled
+  rather than invented. DE/EN/ES copy distinguishes these from equipment/power
+  effects and final dice pools. Expanding/collapsing performs no write and stale
+  page callbacks cannot reopen the retained details.
 - Saved draft overview for Priority/Sum-to-Ten/Point Buy, with Core-projected
   step status, dependencies, remaining pools and combined cash/Karma balances.
   It reads only confirmed saved state and links back to the typed editors.
@@ -119,7 +125,56 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current draft-overview increment — 22 September 2026
+## Current natural-values increment — 22 September 2026
+
+The saved overview has a collapsed combined-values panel. Core composes natural
+attribute/skill ratings from pool and Karma decisions without adding specialties
+to a rating or giving exotic weapons a specialty dice bonus. Existing languages
+upgraded with Karma retain their identity and appear once at their new level.
+New languages and unrated knowledge topics remain separate saved entries.
+These values explicitly exclude power/equipment/situational effects and do not
+authorize finalization. The panel respects the same current-page/state guard
+as the wizard links and never writes character state.
+
+Local checks: **274 Core Creation/codec tests**, **166 managed native scenarios**
+and **646 localization keys** passed. The nine method × locale overview cases
+now also verify exact combined values, specialty/weapon copy, language upgrades,
+expand/collapse and rejection of departed callbacks. The first native run used
+an async-only harness entry for the synchronous toggle; the test was corrected,
+not the production callback. Final native run has no warnings/errors.
+Logs: `core-sr6-natural-values-2.log`, `sr6-native-natural-values-2.log`.
+Localization passed in tool output; no separate log file was generated.
+
+The managed native result precedes a display-only language caption correction:
+the saved panel now says Expert rather than reusing the picker caption
+"Expert (3 picks)". Three regional localization assertions cover that distinction;
+the final APK checks the rendered text. No rule or event-handler change followed
+the native run.
+
+Final local keyless x64 Debug build: zero warnings/errors, 56.47s,
+`sr6-natural-values-debug-build-2.log`. `sr6-natural-values-debug-final.apk` SHA-256:
+`56a6374e99be0c059ca7ff6a8cefe5d1e3dbdd885af3b87d132ad874d4e69ce4`.
+This is an explicit source assembly and debug-key APK, not an upload-key AAB,
+package seal or Play update.
+
+API 36 smoke reopened the existing synthetic Point Buy draft at revision15/15,
+14 decisions. The natural panel showed Magic3 (base1 + adjustment2), Astral1,
+native English, Seattle gangs, and exactly one Spanish/one German entry at
+Expert with comprehension bonus3. The first APK exposed the misleading picker
+cost caption; the final APK displayed the corrected text before and after
+force-stop. PID5087 ended; new PID5340 reopened the same draft and values.
+This was a read-only reopen test, not a new allocation or finalization.
+
+Workspace bytes before restart, immediately after restart and after reopening
+the panel are identical, SHA-256:
+`40b1a4a5264ac55b7756c0e0f6b8adc6d6c7dc2a05c7e6320e620cec81c22cbb`.
+Fresh PNG/XML observations and JSON/events/crash captures are retained as
+`sr6-natural-values-*` in the existing private local packet. No Chummer crash or
+ANR appears in the captured logs; coldboot system-process ANRs preceded the app
+test. Empty transition hierarchy reads were not accepted as proof. The owned
+emulator was stopped after testing; user services were untouched.
+
+## Historical draft-overview increment — 22 September 2026
 
 Core projects saved coverage and balances; Android does not calculate rules or
 mark the runner created. The summary is bound to the current saved revision,

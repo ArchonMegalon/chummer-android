@@ -28,13 +28,21 @@ internal static partial class AfterRunAuthorityHarness
                     await Bootstrap(runtime, method);
                     var id = runtime.Coordinator.State.WorkspaceId!.Value;
                     var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var languageId = Guid.NewGuid();
                     var selection = new Sr6CreationFoundationSelection("human", "mundane",
                         method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
                             new("attributes", "A"), new("skills", "B"), new("resources", "C")])
                     {
                         PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
-                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
-                        Skills = new([]), Karma = new([], [], 5), Gear = new([new(Guid.NewGuid(), "lined-coat", 2)])
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, attribute == "Body" ? 1 : 0, 0)).ToArray()),
+                        Skills = new([new("Athletics", 1, ["Climbing"])]),
+                        Knowledge = new("English", [], [new(languageId, "German", "basic")]),
+                        Karma = new([new("Body", 1)], [new("Athletics", 1), new("ExoticWeapons", 1, "Whip")], 5)
+                        {
+                            Specializations = [new("ExoticWeapons", "Laser")],
+                            Knowledge = new([], [new(languageId, "German", "expert")])
+                        },
+                        Gear = new([new(Guid.NewGuid(), "lined-coat", 2)])
                     };
                     var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
                     await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
@@ -136,6 +144,27 @@ internal static partial class AfterRunAuthorityHarness
                     Require(Summary<Label>("sr6-draft-finalization-unavailable").Text == Sr6CreationCopy.Text("DraftNotFinalized")
                         && !IssuedElements(summaryPage).OfType<Button>().Any(item => item.AutomationId is "sr6-foundation-confirm" or "sr6-foundation-preview"),
                         "Summary offered a write or claimed finalization.");
+                    var naturalToggle = Summary<Button>("sr6-draft-natural-toggle");
+                    var naturalDetails = Summary<VerticalStackLayout>("sr6-draft-natural-values");
+                    Require(!naturalDetails.IsVisible, "Natural values overwhelmed the collapsed overview.");
+                    ((IButtonController)naturalToggle).SendClicked();
+                    var natural = storedSummary.NaturalValues!;
+                    Require(naturalDetails.IsVisible && naturalToggle.Text == Sr6CreationCopy.Text("NaturalHide"),
+                        "Combined character values did not expand in the selected locale.");
+                    Require(natural.Attributes!.Single(row => row.AttributeId == "Body").Rating == 3
+                        && Summary<Label>("sr6-draft-natural-attribute-Body").Text == Sr6CreationCopy.NaturalAttribute(natural.Attributes!.Single(row => row.AttributeId == "Body")),
+                        "Combined Body lost pool or Karma increase.");
+                    Require(natural.Skills!.Single(row => row.SkillId == "Athletics").Rating == 2
+                        && Summary<Label>("sr6-draft-natural-skill-Athletics").Text == Sr6CreationCopy.NaturalSkill(natural.Skills!.Single(row => row.SkillId == "Athletics"))
+                        && Summary<Label>("sr6-draft-natural-skill-ExoticWeapons").Text == Sr6CreationCopy.NaturalSkill(natural.Skills!.Single(row => row.SkillId == "ExoticWeapons")),
+                        "Combined skill ratings or weapon permissions were lost.");
+                    Require(natural.Knowledge!.Languages.Count == 1 && natural.Knowledge.Languages[0].Level == "expert"
+                        && Summary<Label>("sr6-draft-natural-language-" + languageId.ToString("N")).Text == Sr6CreationCopy.NaturalLanguage(natural.Knowledge.Languages[0]),
+                        "Language upgrade was duplicated or lost.");
+                    Require(!IssuedElements(summaryPage).OfType<Label>().Any(item => item.AutomationId == "sr6-draft-natural-skill-Sorcery"),
+                        "Mundane runner displayed unavailable magic as a usable skill.");
+                    ((IButtonController)naturalToggle).SendClicked();
+                    Require(!naturalDetails.IsVisible && naturalToggle.Text == Sr6CreationCopy.Text("NaturalTitle"), "Natural values did not collapse.");
                     var openLifestyle = Summary<Button>("sr6-draft-open-lifestyle");
                     await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
                     Require(navigation.Navigation.NavigationStack.Last().AutomationId == "sr6-lifestyle-page", "Summary did not reopen the exact typed wizard.");
@@ -143,6 +172,8 @@ internal static partial class AfterRunAuthorityHarness
                     int depth = navigation.Navigation.NavigationStack.Count;
                     openLifestyle.IsEnabled = true;
                     await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
+                    ((IButtonController)naturalToggle).SendClicked();
+                    Require(!naturalDetails.IsVisible, "Departed summary expanded stale character values.");
                     Require(navigation.Navigation.NavigationStack.Count == depth && probe.Confirms == 2,
                         "Departed summary navigation was replayed or saved.");
                     Require(Sr6CreationFoundationIntegrity.Digest(stored) == Sr6CreationFoundationIntegrity.Digest(

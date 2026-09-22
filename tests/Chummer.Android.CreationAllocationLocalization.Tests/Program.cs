@@ -111,6 +111,19 @@ finally
     CultureInfo.CurrentUICulture = previousCulture;
 }
 
+foreach ((string locale, string expert) in new[]
+{
+    ("en-GB", "Expert"), ("de-AT", "Experte"), ("es-MX", "Experto")
+})
+{
+    var culture = CultureInfo.GetCultureInfo(locale);
+    string level = CreationAllocationStrings.Get("Sr6.NaturalLevel.expert", "missing", culture);
+    Assert(level == expert, "Saved language level must not reuse the picker point-cost caption: " + locale);
+    Assert(CreationAllocationStrings.Format(culture, "Sr6.NaturalLanguage", "missing", "Spanish", level, 3)
+        .Contains("Spanish: " + expert + " · ", StringComparison.Ordinal),
+        "Natural language projection must display the reached level, not charge pool picks again: " + locale);
+}
+
 string[] surfaceFiles =
 [
     "CreationAttributesPage.cs",

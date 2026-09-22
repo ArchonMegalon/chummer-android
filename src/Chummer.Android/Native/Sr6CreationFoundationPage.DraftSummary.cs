@@ -18,6 +18,7 @@ internal sealed partial class Sr6CreationFoundationPage
             cash.AutomationId = "sr6-draft-balances";
             _body.Add(cash);
         }
+        if (summary.NaturalValues is { } natural) BuildNaturalValues(natural, current);
         foreach (var step in summary.Steps)
         {
             var status = NativeTheme.Body(Sr6CreationCopy.Text("DraftStatus." + step.Status));
@@ -57,5 +58,57 @@ internal sealed partial class Sr6CreationFoundationPage
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.DraftRemainder(remainder), NativeTheme.Muted));
         }
         _body.Add(NativeTheme.Body(string.Join(" · ", summary.SourceAnchorIds), NativeTheme.Muted));
+    }
+
+    private void BuildNaturalValues(Sr6CreationNaturalValues values, Func<bool> current)
+    {
+        var toggle = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("NaturalTitle"));
+        toggle.AutomationId = "sr6-draft-natural-toggle";
+        var details = new VerticalStackLayout { Spacing = 10, IsVisible = false, AutomationId = "sr6-draft-natural-values" };
+        details.Add(NativeTheme.Body(Sr6CreationCopy.Text("NaturalHelp"), NativeTheme.Muted));
+        if (values.Attributes is null)
+            details.Add(NativeTheme.Body(Sr6CreationCopy.NaturalMissing("AttributeTitle"), NativeTheme.Muted));
+        else foreach (var attribute in values.Attributes)
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.NaturalAttribute(attribute));
+            label.AutomationId = "sr6-draft-natural-attribute-" + attribute.AttributeId;
+            details.Add(label);
+        }
+        if (values.Skills is null)
+            details.Add(NativeTheme.Body(Sr6CreationCopy.NaturalMissing("SkillTitle"), NativeTheme.Muted));
+        else foreach (var skill in values.Skills.Where(row => row.Available || row.Rating > 0))
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.NaturalSkill(skill));
+            label.AutomationId = "sr6-draft-natural-skill-" + skill.SkillId;
+            details.Add(label);
+        }
+        if (values.Knowledge is not { } knowledge)
+            details.Add(NativeTheme.Body(Sr6CreationCopy.NaturalMissing("KnowledgeTitle"), NativeTheme.Muted));
+        else
+        {
+            var native = NativeTheme.Body(Sr6CreationCopy.NaturalNative(knowledge.NativeLanguage));
+            native.AutomationId = "sr6-draft-natural-native-language";
+            details.Add(native);
+            foreach (var topic in knowledge.KnowledgeSkills)
+            {
+                var label = NativeTheme.Body(Sr6CreationCopy.NaturalKnowledge(topic.Name));
+                label.AutomationId = "sr6-draft-natural-knowledge-" + topic.Id.ToString("N");
+                details.Add(label);
+            }
+            foreach (var language in knowledge.Languages)
+            {
+                var label = NativeTheme.Body(Sr6CreationCopy.NaturalLanguage(language));
+                label.AutomationId = "sr6-draft-natural-language-" + language.Id.ToString("N");
+                details.Add(label);
+            }
+        }
+        toggle.Clicked += (_, _) =>
+        {
+            if (!current()) return;
+            details.IsVisible = !details.IsVisible;
+            toggle.Text = Sr6CreationCopy.Text(details.IsVisible ? "NaturalHide" : "NaturalTitle");
+        };
+        _body.Add(toggle);
+        _body.Add(details);
     }
 }

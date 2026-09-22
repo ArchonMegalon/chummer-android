@@ -641,4 +641,18 @@ Nothing has been discarded or applied to a finished runner.</value></data>
   <data name="Sr6.DraftBudget.free-form-slots" xml:space="preserve"><value>Unused free complex-form slots</value></data>
   <data name="Sr6.DraftBudget.free-spell-slots" xml:space="preserve"><value>Unused free spell/ritual slots</value></data>
   <data name="Sr6.DraftBudget.power-points" xml:space="preserve"><value>Unspent power points</value></data>
+  <data name="Sr6.NaturalTitle" xml:space="preserve"><value>Show combined character values</value></data>
+  <data name="Sr6.NaturalHide" xml:space="preserve"><value>Hide combined character values</value></data>
+  <data name="Sr6.NaturalHelp" xml:space="preserve"><value>Saved pool allocations and Karma purchases combined. These natural ratings exclude powers, equipment and situational effects; they are not final dice pools or a completed runner. No purchases are applied again.</value></data>
+  <data name="Sr6.NaturalMissing" xml:space="preserve"><value>{0}: no saved allocation yet</value></data>
+  <data name="Sr6.NaturalAttribute" xml:space="preserve"><value>{0}: {1} base + {2} attribute + {3} adjustment + {4} Karma increase = {5} (maximum {6})</value></data>
+  <data name="Sr6.NaturalSkill" xml:space="preserve"><value>{0}: {1} pool + {2} Karma increase = rating {3}</value></data>
+  <data name="Sr6.NaturalExotic" xml:space="preserve"><value>Weapon permission: {0} (no specialty dice bonus)</value></data>
+  <data name="Sr6.NaturalSpecialty" xml:space="preserve"><value>{0}: +{1} dice only when applicable; GM review</value></data>
+  <data name="Sr6.NaturalNative" xml:space="preserve"><value>Native language: {0}</value></data>
+  <data name="Sr6.NaturalKnowledge" xml:space="preserve"><value>Knowledge: {0}</value></data>
+  <data name="Sr6.NaturalLanguage" xml:space="preserve"><value>{0}: {1} · comprehension bonus +{2}</value></data>
+  <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Specialist</value></data>
+  <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Expert</value></data>
 </root>

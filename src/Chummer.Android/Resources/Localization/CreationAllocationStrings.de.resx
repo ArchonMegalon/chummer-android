@@ -641,4 +641,18 @@ Nichts wurde verworfen oder auf einen fertigen Runner angewendet.</value></data>
   <data name="Sr6.DraftBudget.free-form-slots" xml:space="preserve"><value>Ungenutzte kostenlose komplexe Formen</value></data>
   <data name="Sr6.DraftBudget.free-spell-slots" xml:space="preserve"><value>Ungenutzte kostenlose Zauber-/Ritualplätze</value></data>
   <data name="Sr6.DraftBudget.power-points" xml:space="preserve"><value>Übrige Kraftpunkte</value></data>
+  <data name="Sr6.NaturalTitle" xml:space="preserve"><value>Zusammengeführte Charakterwerte anzeigen</value></data>
+  <data name="Sr6.NaturalHide" xml:space="preserve"><value>Zusammengeführte Charakterwerte ausblenden</value></data>
+  <data name="Sr6.NaturalHelp" xml:space="preserve"><value>Gespeicherte Punkteverteilung und Karma-Käufe zusammengeführt. Diese natürlichen Werte enthalten keine Kraft-, Ausrüstungs- oder Situationseffekte; sie sind weder fertige Würfelpools noch ein abgeschlossener Runner. Käufe werden nicht erneut angewendet.</value></data>
+  <data name="Sr6.NaturalMissing" xml:space="preserve"><value>{0}: noch keine Verteilung gespeichert</value></data>
+  <data name="Sr6.NaturalAttribute" xml:space="preserve"><value>{0}: {1} Basis + {2} Attribut + {3} Anpassung + {4} Karma-Steigerung = {5} (Maximum {6})</value></data>
+  <data name="Sr6.NaturalSkill" xml:space="preserve"><value>{0}: {1} aus Punkten + {2} Karma-Steigerung = Wert {3}</value></data>
+  <data name="Sr6.NaturalExotic" xml:space="preserve"><value>Waffenberechtigung: {0} (kein Spezialisierungs-Würfelbonus)</value></data>
+  <data name="Sr6.NaturalSpecialty" xml:space="preserve"><value>{0}: +{1} Würfel nur bei Anwendung; SL-Prüfung</value></data>
+  <data name="Sr6.NaturalNative" xml:space="preserve"><value>Muttersprache: {0}</value></data>
+  <data name="Sr6.NaturalKnowledge" xml:space="preserve"><value>Wissen: {0}</value></data>
+  <data name="Sr6.NaturalLanguage" xml:space="preserve"><value>{0}: {1} · Verständnisbonus +{2}</value></data>
+  <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Grundkenntnisse</value></data>
+  <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Spezialist</value></data>
+  <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Experte</value></data>
 </root>
