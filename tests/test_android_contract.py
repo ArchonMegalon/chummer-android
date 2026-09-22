@@ -2613,6 +2613,27 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("verified app links", combined)
         self.assertNotIn("queued, synced", combined)
 
+    def test_troll_launcher_uses_transparent_foreground_and_separate_unmasked_background(self) -> None:
+        project = ET.parse(PROJECT / "Chummer.Android.csproj")
+        icons = project.getroot().findall(".//MauiIcon")
+        self.assertEqual(1, len(icons))
+        icon = icons[0]
+        foreground = PROJECT / icon.attrib["ForegroundFile"]
+        self.assertEqual("appiconfg.png", foreground.name)
+        width, height, color_type = self._png_header(foreground)
+        self.assertEqual(width, height)
+        self.assertGreaterEqual(width, 512)
+        self.assertEqual(6, color_type, "adaptive foreground retains generated RGBA transparency")
+        self.assertGreater(float(icon.attrib["ForegroundScale"]), 0)
+        self.assertLessEqual(float(icon.attrib["ForegroundScale"]), 0.60)
+        background = ET.parse(PROJECT / icon.attrib["Include"]).getroot()
+        shapes = list(background)
+        self.assertEqual(1, len(shapes), "the old S/hexagon must not remain behind the troll")
+        self.assertEqual("{http://www.w3.org/2000/svg}rect", shapes[0].tag)
+        self.assertEqual(icon.attrib["Color"], shapes[0].attrib["fill"])
+        self.assertNotIn("rx", shapes[0].attrib, "Android owns the adaptive corner mask")
+        self.assertFalse((PROJECT / "Resources/AppIcon/appiconfg.svg").exists())
+
     def test_store_graphics_have_upload_dimensions(self) -> None:
         assets = REPO / "play" / "assets"
         feature = self._png_header(assets / "feature-graphic-1024x500.png")
@@ -2620,6 +2641,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual((1024, 500), feature[:2])
         self.assertNotIn(feature[2], {4, 6}, "feature graphic must not have alpha")
         self.assertEqual((512, 512), icon[:2])
+        self.assertNotIn(icon[2], {4, 6}, "store icon must be opaque; Play supplies its own mask")
 
         phones = sorted((assets / "screenshots").glob("phone-*.png"))
         tablets = sorted((assets / "screenshots").glob("tablet-*.png"))

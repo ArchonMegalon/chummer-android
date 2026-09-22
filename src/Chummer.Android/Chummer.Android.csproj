@@ -93,7 +93,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#102426" />
+    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.png" ForegroundScale="0.60" Color="#102426" />
     <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#102426" BaseSize="512,512" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/data/**"
