@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, attributes, skills, knowledge, languages, talent budgets, spells/rituals, complex forms, adept powers and Karma increases/cash. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, talent budgets, spells/rituals, complex forms, adept powers and Karma purchases. Later creation steps and Career entry remain unavailable.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, ability choices and Karma purchases in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, qualities, ability choices and Karma purchases in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -451,7 +451,7 @@
   <data name="Sr6.PointBuySource" xml:space="preserve"><value>The saved SR6 Companion profile does not authorize Point Buy.</value></data>
   <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>These purchases exceed 100 CP. Reduce a pool or change the talent and review again; nothing was saved.</value></data>
   <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Free: {1} attribute, {2} skill, {3} adjustment points. Costs per extra point: {4}/{5}/{6} CP. Resource unit: {7:N0} ¥ for {8} CP. Awakened/technomancer: {9} CP. Separate customization Karma: {10}.</value></data>
-  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP spent: {0}/{1} · remaining: {2}&#10;Talent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate Karma: {8}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP spent: {0}/{1} · remaining: {2}&#10;Talent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate base Karma before qualities: {8}.</value></data>
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>SR6 talent budget</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Plan magic and resonance</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Whole power points to allocate / purchase</value></data>
@@ -509,7 +509,7 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>taste</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Improved Reflexes cannot combine with other Reaction or initiative enhancements; runtime stacking is not applied in this draft.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Spend customization Karma</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy ratings, specialties, knowledge, languages and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets. Qualities remain unavailable. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy ratings, specialties, knowledge, languages and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets including saved qualities. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
   <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>New knowledge: {0} Karma each. Languages: {1} Karma per additional level, up to Expert. Free pool choices and native language ({2}) stay separate. Core checks duplicates and recalculates the shared Karma budget.</value></data>
   <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Additional knowledge topic (Karma)</value></data>
   <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Remove Karma knowledge/language purchase</value></data>
@@ -551,4 +551,16 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Remove Karma specialty</value></data>
   <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>This skill already has its creation specialty, or this weapon type was selected twice.</value></data>
   <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Buy at least one level in the skill before adding a specialty. Both can be reviewed together.</value></data>
+  <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>SR6 qualities</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Partial catalogue from the German 2024 core book; source names remain German. At most six chosen qualities and 20 net bonus Karma. Innate metatype traits are separate and free. Core checks costs, eligibility and attribute/skill caps. Rated qualities and further parameterized choices remain unavailable; situational effects are not automated. Review before confirming.</value></data>
+  <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Choose a quality</value></data>
+  <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Add quality</value></data>
+  <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Remove quality</value></data>
+  <data name="Sr6.QualityValue" xml:space="preserve"><value>{0} · Karma cost {1} (negative = bonus) · {2}</value></data>
+  <data name="Sr6.QualityBudget" xml:space="preserve"><value>Qualities: {0}/{1} · advantages {2} Karma · disadvantages +{3} Karma · net bonus {4}/{5}&#10;Remaining customization budget: {6} Karma before other purchases</value></data>
+  <data name="Sr6.QualitiesInvalid" xml:space="preserve"><value>Choose at most six distinct qualities from the available catalogue.</value></data>
+  <data name="Sr6.QualitiesLimit" xml:space="preserve"><value>The net bonus from disadvantages may not exceed 20 Karma.</value></data>
+  <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>Unavailable for this metatype/talent, or already granted by the metatype.</value></data>
+  <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>These qualities conflict, or the same quality family was chosen twice.</value></data>
+  <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Advantages cost more than the available customization Karma including disadvantages.</value></data>
 </root>

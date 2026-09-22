@@ -61,7 +61,7 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   Removing prerequisites or lowering budgets cannot silently drop saved choices.
 - Separate customization-Karma editor after saved attribute/skill allocation.
   Core supplies available targets and ceilings, cumulative per-rank costs,
-  the independent 50-Karma pool, Nuyen conversion and carry-over warning.
+  the independent 50-Karma base pool (adjusted by admitted qualities), Nuyen conversion and carry-over warning.
   Base pool previews remain intact; Karma's final ratings drive dependent
   knowledge, magic/resonance and power budgets. The first exotic-weapon subject
   remains explicit GM-reviewed text. No extra CP are charged by this step.
@@ -73,18 +73,69 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   and new languages are separate purchases; existing languages use their exact
   IDs and charge only additional levels. Core checks duplicates/native-language
   conflicts and the shared budget. All controls/reviews are DE/EN/ES.
+- A separate quality editor offers a partial German-core catalogue: fixed-price
+  advantages/disadvantages, physical/mental Exceptional Attribute variants and
+  Aptitude skill targets. Core owns costs, six-choice/net-bonus limits, metatype
+  restrictions and changed attribute/skill caps. Removing a prerequisite or
+  Karma bonus cannot silently erase existing allocations or purchases. Innate
+  metatype qualities are not charged; dwarf Toxin Resistance cannot be rebought.
+  Names follow the labelled German source; controls and review are DE/EN/ES.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Qualities (including Aptitude/Bilingual),
-runtime talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
+Further qualities (including rated/parameterized families and Bilingual),
+runtime quality/talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current Karma knowledge/language increment — 22 September 2026
+## Current quality increment — 22 September 2026
+
+Core `b54d4b779072bfa4a55c7aaed4493b5e88625b23`; Presentation remains `1eae38aa1`.
+The separate quality page is reachable before pool allocation from a saved
+foundation. It renders Core catalogue costs, source anchors, eligibility and
+review totals. Changing inputs invalidates confirmation; saving preserves
+other allocations and Karma purchases or blocks the incompatible new selection.
+The partial catalogue has 66 variants: 39 fixed choices, eight Exceptional
+Attribute targets and 19 Aptitude targets. One Aptitude family is admitted.
+This is not full quality coverage or activation of situational effects.
+
+`core-sr6-qualities-2.log`: **216 focused Core tests PASS**; the three mixed-domain
+cases in `core-sr6-qualities-combined.log` also pass, including eleven anchors.
+`sr6-native-qualities-1.log`: **130 native managed scenarios PASS**, including
+three methods × DE/EN/ES for this page, stale-confirm rejection, eligibility,
+preserved purchases, overspend after removing a bonus and cold reopen.
+The subsequent Point Buy label-only clarification distinguishes base Karma
+from the quality-adjusted budget; resource XML/diff checks and the actual APK
+below cover that wording. No broad suite or hosted run was started.
+
+`sr6-qualities-debug-build-1.log`: local keyless Docker Debug x64 build,
+zero warnings/errors, 1m39.41s. Retained `sr6-qualities-debug.apk` SHA-256:
+`f7e658ba1f87098f3c7b9149518c1da252207c1269299f530ef0e18b8352c4ba`.
+This is an explicit local source assembly and debug signing, not a package seal
+or use of the Play upload key.
+
+Actual API36 smoke reused historical `sr6-karma-knowledge-after-restart.json`,
+revision 9/9 with eight decisions, not a fresh creation claim. Real UI added
+Analytischer Geist (3 Karma) and AR-Desorientierung (+10 Karma). Review showed
+two of six qualities, net bonus 7/20 and **57 Karma** before other purchases;
+existing purchases stayed **18/57**, with 38 CP/Magic3/2PP/two formulas unchanged.
+One confirmation saved **revision10/10**, nine decisions. Force-stop/relaunch
+changed PID **4605→5183**. Reopening the quality page restored both selections,
+budget and revision without a historical Confirm button. Entire JSON bytes
+before/after restart share SHA-256:
+`47417b8d147e152da096de664acf518d99e91b2a922723068853956152db1b19`.
+The local packet retains `sr6-qualities-*` APK/logs/screenshots/hierarchies/JSON.
+No debug-app ANR/crash was recorded; cold-boot system ANRs predated installation.
+The owned emulator and build/test containers were stopped afterward.
+
+Still missing: other quality families, equipment, finalization and Career;
+full Life Path/optional Karma flows. No main merge, release AAB, Play upload,
+physical-device proof, SR6 Origin generation or audiobook conversion is claimed.
+
+## Historical Karma knowledge/language increment — 22 September 2026
 
 Core `346f7fdcfae46a8b1a8ae80c7a0881f85686a955`; Android functional
 `7f61e580ca11b11056fbd943b1f57c08375727ad`, tree

@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas, poderes de adepto y mejoras/dinero con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas, poderes de adepto y compras con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, cualidades, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -451,7 +451,7 @@
   <data name="Sr6.PointBuySource" xml:space="preserve"><value>El perfil guardado del Companion de SR6 no autoriza esta compra por puntos.</value></data>
   <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>Estas compras superan 100 CP. Reduce una reserva o cambia el talento y revisa de nuevo; no se ha guardado nada.</value></data>
   <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Gratis: {1} puntos de atributo, {2} de habilidad, {3} de ajuste. Costes por punto extra: {4}/{5}/{6} CP. Unidad de recursos: {7:N0} ¥ por {8} CP. Despierto/tecnomante: {9} CP. Karma de personalización aparte: {10}.</value></data>
-  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP usados: {0}/{1} · restantes: {2}&#10;Talento {3} + atributos {4} + habilidades {5} + ajuste {6} + recursos {7} + puntos de poder {9} + formas complejas {10} + hechizos/rituales {11}. Karma aparte: {8}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP usados: {0}/{1} · restantes: {2}&#10;Talento {3} + atributos {4} + habilidades {5} + ajuste {6} + recursos {7} + puntos de poder {9} + formas complejas {10} + hechizos/rituales {11}. Karma base aparte antes de cualidades: {8}.</value></data>
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>Presupuesto de talento SR6</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Planificar magia y resonancia</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Puntos de poder enteros a asignar / comprar</value></data>
@@ -509,7 +509,7 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>gusto</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Reflejos Mejorados no se combina con otras mejoras de Reacción o iniciativa; este borrador no aplica efectos.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Gastar Karma de personalización</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Compra niveles, especializaciones, conocimientos, idiomas y nuyen con el fondo de Karma separado. Core conserva los puntos asignados y recalcula costes, límites de creación y presupuestos dependientes. Aún faltan cualidades. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación. El borrador puede superar el límite transferible; la finalización no está disponible.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Compra niveles, especializaciones, conocimientos, idiomas y nuyen con el fondo de Karma separado. Core conserva los puntos asignados y recalcula costes, límites de creación y presupuestos dependientes, incluidas las cualidades guardadas. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación. El borrador puede superar el límite transferible; la finalización no está disponible.</value></data>
   <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>Conocimientos nuevos: {0} Karma cada uno. Idiomas: {1} Karma por nivel adicional, hasta Experto. Las elecciones gratuitas y el idioma nativo ({2}) permanecen separados. Core comprueba duplicados y recalcula el presupuesto de Karma compartido.</value></data>
   <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Tema de conocimiento adicional (Karma)</value></data>
   <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Quitar compra de conocimiento/idioma con Karma</value></data>
@@ -551,4 +551,16 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Quitar especialización con Karma</value></data>
   <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>La habilidad ya tiene su especialización de creación o se ha elegido dos veces el mismo tipo de arma.</value></data>
   <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Compra al menos un nivel de la habilidad antes de añadir la especialización. Puedes revisar ambas compras juntas.</value></data>
+  <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>Cualidades de SR6</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Catálogo parcial del reglamento alemán de 2024; los nombres de origen siguen en alemán. Máximo seis cualidades elegidas y 20 Karma de bonificación neta. Los rasgos innatos del metatipo son gratuitos y separados. Core comprueba costes, requisitos y límites de atributos/habilidades. Faltan cualidades por niveles y otras opciones parametrizadas; los efectos situacionales no se automatizan. Revisa antes de confirmar.</value></data>
+  <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Elegir cualidad</value></data>
+  <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Añadir cualidad</value></data>
+  <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Quitar cualidad</value></data>
+  <data name="Sr6.QualityValue" xml:space="preserve"><value>{0} · coste en Karma {1} (negativo = bonificación) · {2}</value></data>
+  <data name="Sr6.QualityBudget" xml:space="preserve"><value>Cualidades: {0}/{1} · ventajas {2} Karma · desventajas +{3} Karma · bonificación neta {4}/{5}&#10;Karma de personalización antes de otras compras: {6}</value></data>
+  <data name="Sr6.QualitiesInvalid" xml:space="preserve"><value>Elige como máximo seis cualidades distintas del catálogo disponible.</value></data>
+  <data name="Sr6.QualitiesLimit" xml:space="preserve"><value>La bonificación neta por desventajas no puede superar 20 Karma.</value></data>
+  <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>No disponible para este metatipo/talento, o ya otorgada por el metatipo.</value></data>
+  <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>Estas cualidades son incompatibles o se ha elegido la misma familia dos veces.</value></data>
+  <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Las ventajas cuestan más que el Karma disponible, incluidas las desventajas.</value></data>
 </root>

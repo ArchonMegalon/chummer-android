@@ -6,6 +6,16 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string QualityName(Sr6CreationQualityOption option) => option.Name
+        + (option.AttributeId is { } attribute ? " (" + Label(attribute) + ")" : "")
+        + (option.SkillId is { } skill ? " (" + Label(skill) + ")" : "");
+    internal static string QualityValue(Sr6CreationQualityOption option) => CreationAllocationStrings.Format("Sr6.QualityValue",
+        "{0} · Karma cost {1} (negative = bonus) · {2}", QualityName(option), option.KarmaCost, option.SourceAnchorId)
+        + (option.Available ? "" : " · " + Blocker(option.UnavailableReason!));
+    internal static string QualityBudget(Sr6CreationQualityPreview preview) => CreationAllocationStrings.Format("Sr6.QualityBudget",
+        "Qualities: {0}/{1} · advantages {2} Karma · disadvantages +{3} Karma · net bonus {4}/{5}\nRemaining customization budget: {6} Karma before other purchases",
+        preview.Values.Count, preview.MaximumChoices, preview.PositiveKarmaCost, preview.NegativeKarmaBonus,
+        preview.NetKarmaBonus, preview.MaximumNetBonus, preview.CustomizationKarma);
     internal static string KarmaLanguageLevel(string? level) => Text(level is null ? "KarmaLanguageNew" : "KarmaLanguageLevel." + level);
     internal static string KarmaKnowledgeHelp(Sr6CreationKarmaKnowledgeOptions options) => CreationAllocationStrings.Format("Sr6.KarmaKnowledgeHelp",
         "New knowledge: {0} Karma each. Languages: {1} Karma per additional level, up to Expert. Free pool choices and native language ({2}) stay separate. Core checks duplicates and recalculates the shared Karma budget.",
@@ -42,7 +52,7 @@ internal static class Sr6CreationCopy
         limits.AttributePointCost, limits.SkillPointCost, limits.AdjustmentPointCost, limits.NuyenPerResourceUnit,
         limits.ResourceUnitCost, limits.AwakenedOrResonanceCost, limits.CustomizationKarma);
     internal static string PointBuyBudget(Sr6CreationPointBuyPreview preview) => CreationAllocationStrings.Format("Sr6.PointBuyBudget",
-        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate Karma: {8}.",
+        "CP spent: {0}/{1} · remaining: {2}\nTalent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate base Karma before qualities: {8}.",
         preview.PointsSpent, preview.CharacterPoints, preview.PointsRemaining, preview.TalentCost,
         preview.AttributeCost, preview.SkillCost, preview.AdjustmentCost, preview.ResourceCost, preview.CustomizationKarma, preview.PowerPointCost ?? 0, preview.ComplexFormCost ?? 0, preview.SpellCost ?? 0);
     internal static string PowerName(Sr6CreationAdeptPowerOption option) => option.SourceName
@@ -101,6 +111,11 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationQualityBlockers.InvalidSelection => Text("QualitiesInvalid"),
+        Sr6CreationQualityBlockers.LimitExceeded => Text("QualitiesLimit"),
+        Sr6CreationQualityBlockers.Unavailable => Text("QualitiesUnavailable"),
+        Sr6CreationQualityBlockers.Conflict => Text("QualitiesConflict"),
+        Sr6CreationQualityBlockers.BudgetExceeded => Text("QualitiesOverspend"),
         Sr6CreationKarmaBlockers.InvalidSelection => Text("KarmaInvalid"),
         Sr6CreationKarmaBlockers.AllocationsRequired => Text("KarmaAllocationsRequired"),
         Sr6CreationKarmaBlockers.RatingUnavailable => Text("KarmaRatingUnavailable"),
