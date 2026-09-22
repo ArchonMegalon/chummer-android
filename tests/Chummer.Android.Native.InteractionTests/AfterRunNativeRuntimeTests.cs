@@ -695,7 +695,8 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationKarmaMetatypeService>()),
                     sr6CreationFoundationService: sr6Decorator?.Invoke(_provider.GetRequiredService<ISr6CreationFoundationService>()),
                     lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
-                        _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()));
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
+                    lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>());
             }
             catch
             {

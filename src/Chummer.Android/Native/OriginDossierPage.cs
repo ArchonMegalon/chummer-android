@@ -75,6 +75,13 @@ public sealed class OriginDossierPage : NativePageBase
         }
 
         string identity = FirstNonBlank(profile.Alias, profile.Name, "Not set");
+        if (Coordinator.CanReadRetainedOriginBook())
+        {
+            AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve(System.Globalization.CultureInfo.CurrentUICulture.Name);
+            _body.Add(NativeTheme.NavigationRow(copy["Origin.ReadBook"], copy["Origin.BookSavedChapters"],
+                () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)),
+                automationId: "origin-dossier-retained-book"));
+        }
         _body.Add(NativeTheme.NavigationRow(
             "Identity",
             identity,

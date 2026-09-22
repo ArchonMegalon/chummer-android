@@ -1,6 +1,9 @@
 using Chummer.Android.Native;
+using Chummer.Android.Platform;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
+using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
@@ -17,9 +20,11 @@ internal static partial class AfterRunAuthorityHarness
         await ui.RunAsync(async () =>
         {
             var owners = new ControlledLinkedOwner();
+            var bookOutput = new LifeBookOutputProbe();
             LifeCompletionNativeProbe? probe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
-                productionCreationOverview: true, linkedOwners: owners, lifeCompletionDecorator: actual => probe = new(actual));
+                productionCreationOverview: true, linkedOwners: owners, outputDocuments: bookOutput,
+                lifeCompletionDecorator: actual => probe = new(actual));
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             await runtime.Coordinator.CreateRunnerAsync();
@@ -27,7 +32,7 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
             await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
             var id = runtime.Coordinator.State.WorkspaceId!.Value;
-            await Task.Run(() => SeedNativeLifeSequence(runtime.Services.GetRequiredService<CharacterCreationFoundationService>(), id));
+            await Task.Run(() => SeedNativeLifeStory(runtime, id));
             await runtime.Presenter.LoadAsync(id, default);
             var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
             var drafts = new LifeModuleCompletionDraftStore(runtime.StateDirectory);
@@ -126,8 +131,67 @@ internal static partial class AfterRunAuthorityHarness
                 && cold.Document.AuxiliaryState.CharacterCreationFinalizationArchive is not null,
                 "Phone completion was not one durable Career transition.");
             IssuedPageLifecycle(Current(), "OnDisappearing");
+            await VerifyRetainedBookAsync();
             ui.AssertHealthy();
-            Console.WriteLine("PASS Life Modules phone pages: explicit choices, stale controls/dice, input save/cold reopen, explicit stale-input recovery, owner separation, review and Career");
+            Console.WriteLine("PASS Life Modules phone pages: choices, input recovery, Career, retained book/cold read, HTML export and stale-owner rejection");
+
+            async Task VerifyRetainedBookAsync()
+            {
+                Require(!runtime.Coordinator.CanOpenLifeModuleCompletion(), "Career reopened mutable Creation.");
+                var owner = owners.Capture();
+                var service = new OwnerBoundLifeModuleBookService(new FileWorkspaceStore(runtime.StateDirectory), owners);
+                var projected = service.Load(owner, id, cold.ContentRevision, cold.SavedRevision);
+                Require(projected.Value is { VisibleChapters.Count: > 0 },
+                    "Career book did not recover from the cold Core store: " + string.Join(", ", projected.Blockers));
+                Require(service.Load(owner, id, cold.ContentRevision + 1, cold.SavedRevision).Value is null,
+                    "Book accepted the wrong current revision.");
+                var page = new RetainedOriginBookPage(runtime.Coordinator);
+                await navigation.PushAsync(page, false); await Appear();
+                Require(IssuedElements(page).OfType<Label>().Any(label => label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true),
+                    "Career book page has no saved prose.");
+                await Click("origin-book-export");
+                Require(bookOutput.Deliveries == 1, "The context-bound HTML export was not delivered.");
+                Require(bookOutput.Html.Contains("<meta name=\"author\" content=\"chummer.run\">", StringComparison.Ordinal),
+                    "Private HTML export lost the technical author.");
+                Require(bookOutput.Html.Contains("<h1>" + System.Net.WebUtility.HtmlEncode(projected.Value!.CurrentTurn.RunnerDisplayName) + "</h1>", StringComparison.Ordinal),
+                    "Private HTML export lost the Core-issued runner display name.");
+                var malicious = projected.Value! with
+                {
+                    CurrentTurn = projected.Value!.CurrentTurn with { RunnerDisplayName = "<script>runner</script>" },
+                    VisibleChapters = projected.Value!.VisibleChapters.Select(chapter => chapter with
+                        { VisibleMarkdown = "<script>alert(1)</script><img src='https://invalid.example/pixel'>" }).ToArray()
+                };
+                string escaped = new RetainedOriginBook(malicious).ToHtml(AndroidSurfaceStrings.Resolve("de"));
+                Require(!escaped.Contains("<script>", StringComparison.Ordinal) && !escaped.Contains("<img ", StringComparison.Ordinal)
+                    && escaped.Contains("&lt;script&gt;", StringComparison.Ordinal), "Book export executed untrusted prose markup.");
+                var book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+                Require(book is not null, "Retained book load failed.");
+                bookOutput.BeforeRead = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
+                bool canceled = false;
+                try { await runtime.Coordinator.ExportRetainedOriginBookAsync(book!, AndroidSurfaceStrings.Resolve("en"), () => true, default); }
+                catch (OperationCanceledException) { canceled = true; }
+                Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
+                    "Owner A→B→A during the document picker exported the old book.");
+                Require(service.Load(owner, id, cold.ContentRevision, cold.SavedRevision).Value is null,
+                    "Core book reader accepted a retired owner stamp.");
+                owners.Set(ContactsOwnerB);
+                Require(service.Load(owners.Capture(), id, cold.ContentRevision, cold.SavedRevision).Value is null,
+                    "Linked owner fell back to a local runner's book.");
+                owners.Set(OwnerScope.LocalSingleUser);
+                Require(service.Load(owners.Capture(), id, cold.ContentRevision, cold.SavedRevision).Value?.SeedDigest == projected.Value!.SeedDigest,
+                    "New legitimate owner context could not reopen the original saved book.");
+                // A refresh cannot retain another account's prose or export button.
+                typeof(RetainedOriginBookPage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(page, null);
+                Require(!IssuedElements(page).Any(element => element.AutomationId == "origin-book-export"
+                    || element.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true),
+                    "Stale book page retained content after owner change.");
+                IssuedPageLifecycle(page, "OnDisappearing");
+                var after = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Require(JsonSerializer.Serialize(after.Document) == JsonSerializer.Serialize(cold.Document)
+                    && after.ContentRevision == cold.ContentRevision && after.SavedRevision == cold.SavedRevision
+                    && probe!.ConfirmCalls == 1 && owners.ActiveLeases == 0,
+                    "Book reading/export changed the runner, replayed completion or retained a lease.");
+            }
 
             NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
             LifeModuleCompletionSession Session() => (LifeModuleCompletionSession)typeof(LifeModuleCompletionPage)
@@ -235,6 +299,38 @@ internal static partial class AfterRunAuthorityHarness
         });
     }
 
+    private static void SeedNativeLifeStory(NativeRewardRuntime runtime, CharacterWorkspaceId id)
+    {
+        var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(
+            new CharacterCreationFoundationLifeModuleDecisionAuthority(
+                runtime.Services.GetRequiredService<IWorkspaceStore>(),
+                runtime.Services.GetRequiredService<ICharacterCreationFoundationService>(),
+                runtime.Services.GetRequiredService<ICharacterFileQueries>(), () => "de-DE")));
+        var start = interaction.Start(id.Value);
+        Require(start.Value is not null, "Story setup failed: " + string.Join(", ", start.Blockers));
+        var checkpoint = start.Value!;
+        string[] modules = ["83c132b5-fcf5-4a43-b9de-6c8ab206a586", "924ccfd0-136c-4385-94fe-a8d7be2eb7ed",
+            "f0393b9e-2698-4955-bd31-112b619ac7b8", "5a2eee69-cedb-403e-9649-fdc9a1377374", "47bf63cf-9a2a-4008-b455-c8ab68add581"];
+        for (int index = 0; index <= modules.Length; index++)
+        {
+            var choices = checkpoint.Projection.CurrentTurn.LegalChoices;
+            var choice = index == modules.Length ? choices.Single(row => row.ChoiceId == "finish-life-module-selection")
+                : index == 0 ? choices.Single(row => row.Label.StartsWith("Elf ·", StringComparison.Ordinal)
+                    && row.SourceAnchorIds.Any(anchor => anchor.Contains("604831d9-0fdc-4579-aa7e-bc5d99bcee5d", StringComparison.Ordinal)))
+                : choices.Single(row => row.ChoiceId != "finish-life-module-selection"
+                    && row.SourceAnchorIds.Any(anchor => anchor.Contains(modules[index], StringComparison.Ordinal)));
+            var answers = choice.FollowUps?.ToDictionary(prompt => prompt.PromptId,
+                prompt => prompt.Options.FirstOrDefault(option => option.IsEnabled)?.SourceValue ?? "Renraku");
+            var prepared = interaction.Prepare(checkpoint, choice.ChoiceId, answers);
+            Require(prepared.Value?.PendingPreview is not null, "Story review failed: " + string.Join(", ", prepared.Blockers));
+            var accepted = interaction.Confirm(prepared.Value!, prepared.Value!.PendingPreview!.PreviewDigest, "book-native-" + index, true);
+            Require(accepted.Value is not null, "Story confirmation failed: " + string.Join(", ", accepted.Blockers));
+            checkpoint = accepted.Value!.Checkpoint;
+        }
+        Require(checkpoint.Projection.CurrentTurn.IsTerminal && checkpoint.Projection.VisibleChapters.Count == modules.Length + 1,
+            "Story setup did not retain every confirmed chapter.");
+    }
+
     private static void SeedNativeLifeSequence(CharacterCreationFoundationService service, CharacterWorkspaceId id)
     {
         var start = service.Load(new(id)).Value!;
@@ -272,5 +368,25 @@ internal static partial class AfterRunAuthorityHarness
         { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationReceipt> Confirm(OwnerContextStamp owner, CharacterCreationFoundationFinalizationConfirmRequest request)
         { Require(SynchronizationContext.Current is null, "Life Modules confirmation blocks the UI context."); ConfirmCalls++; var r = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return r; }
+    }
+
+    private sealed class LifeBookOutputProbe : IAndroidDocumentService
+    {
+        public Action? BeforeRead { get; set; }
+        public int Deliveries { get; private set; }
+        public string Html { get; private set; } = string.Empty;
+        public Task<AndroidDocument?> OpenAsync(CancellationToken ct) => throw new InvalidOperationException("No import expected.");
+        public Task<bool> SaveAsAsync(string name, string mediaType, Stream content, CancellationToken ct)
+            => throw new InvalidOperationException("Book export must be context-bound.");
+        public async Task<bool> SaveAsAsync(string name, string mediaType, Stream content, Func<bool> isCurrent, CancellationToken ct)
+        {
+            Require(name == "origin-dossier.html" && mediaType == "text/html", "Unexpected book output format.");
+            BeforeRead?.Invoke();
+            if (!isCurrent()) throw new OperationCanceledException();
+            using var reader = new StreamReader(content, leaveOpen: true);
+            Html = await reader.ReadToEndAsync(ct);
+            Deliveries++;
+            return true;
+        }
     }
 }
