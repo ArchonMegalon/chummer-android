@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers and Karma purchases. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers, Karma purchases and an equipment basket. Later creation steps and Career entry remain unavailable.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices and Karma purchases in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices, Karma purchases and the equipment basket in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -583,4 +583,24 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Check contact names, roles and ratings. Names and roles must be valid text of at most 80 characters.</value></data>
   <data name="Sr6.ContactsRating" xml:space="preserve"><value>Connection and Loyalty may not exceed the final natural Charisma at creation.</value></data>
   <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Contact costs exceed the free contact-point budget. Reduce ratings or remove a contact.</value></data>
+  <data name="Sr6.GearTitle" xml:space="preserve"><value>Buy equipment</value></data>
+  <data name="Sr6.GearHelp" xml:space="preserve"><value>Experimental purchase basket; German source catalogue. Basic weapons, armor, electronics, empty credsticks and medical gear only. Ammunition, accessories, bodytech, SIN/license assignments and lifestyles are not included. Saving does not equip items or grant their in-play effects.</value></data>
+  <data name="Sr6.GearSearch" xml:space="preserve"><value>Search catalogue by name or ID</value></data>
+  <data name="Sr6.GearChoose" xml:space="preserve"><value>Choose equipment</value></data>
+  <data name="Sr6.GearQuantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Sr6.GearAdd" xml:space="preserve"><value>Add to basket</value></data>
+  <data name="Sr6.GearRemove" xml:space="preserve"><value>Remove item</value></data>
+  <data name="Sr6.GearRating" xml:space="preserve"><value>rating {0}</value></data>
+  <data name="Sr6.GearOption" xml:space="preserve"><value>{0} · availability {1}, {2}&#10;Base {3:N2} ¥ + {4}% size surcharge = {5:N2} ¥ each · {6}</value></data>
+  <data name="Sr6.GearValue" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥</value></data>
+  <data name="Sr6.GearResources" xml:space="preserve"><value>Purchase budget: {0:N2} ¥</value></data>
+  <data name="Sr6.GearBudget" xml:space="preserve"><value>Spent {0:N2} / {1:N2} ¥ · remaining {2:N2} ¥&#10;Carry-over limit {3:N2} ¥ · unspent above limit {4:N2} ¥</value></data>
+  <data name="Sr6.GearRestricted" xml:space="preserve"><value>Licensed or illegal items need GM review. This purchase does not grant a license or permission to possess or carry them.</value></data>
+  <data name="Sr6.GearInvalid" xml:space="preserve"><value>Check basket entries and whole-number quantities (1–999).</value></data>
+  <data name="Sr6.GearCatalogUnavailable" xml:space="preserve"><value>This item is not in the supported SR6 catalogue.</value></data>
+  <data name="Sr6.GearAvailabilityExceeded" xml:space="preserve"><value>Unavailable at creation: availability exceeds 7.</value></data>
+  <data name="Sr6.GearBudgetExceeded" xml:space="preserve"><value>Purchases exceed available Nuyen. Reduce the basket or save more resources/Karma conversion first.</value></data>
+  <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
+  <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>license required</value></data>
+  <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>illegal</value></data>
 </root>

@@ -6,6 +6,19 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string GearName(Sr6CreationGearOption option) => option.SourceName
+        + (option.Rating is { } rating ? " · " + CreationAllocationStrings.Format("Sr6.GearRating", "rating {0}", rating) : "");
+    internal static string GearOption(Sr6CreationGearOption option) => CreationAllocationStrings.Format("Sr6.GearOption",
+        "{0} · availability {1}, {2}\nBase {3:N2} ¥ + {4}% size surcharge = {5:N2} ¥ each · {6}",
+        GearName(option), option.Availability, Text("GearLegality." + option.Legality), option.BasePrice,
+        option.SizeSurchargePercent, option.UnitPrice, option.SourceAnchorId)
+        + (option.Available ? "" : "\n" + Blocker(option.UnavailableReason!));
+    internal static string GearValue(Sr6CreationGearValue item) => CreationAllocationStrings.Format("Sr6.GearValue",
+        "{0}: {1} × {2:N2} ¥ = {3:N2} ¥", GearName(item.Option), item.Choice.Quantity, item.Option.UnitPrice, item.TotalPrice);
+    internal static string GearResources(decimal nuyen) => CreationAllocationStrings.Format("Sr6.GearResources", "Purchase budget: {0:N2} ¥", nuyen);
+    internal static string GearBudget(Sr6CreationGearPreview preview) => CreationAllocationStrings.Format("Sr6.GearBudget",
+        "Spent {0:N2} / {1:N2} ¥ · remaining {2:N2} ¥\nCarry-over limit {3:N2} ¥ · unspent above limit {4:N2} ¥",
+        preview.SpentNuyen, preview.ResourcesNuyen, preview.RemainingNuyen, preview.MaximumCarryOverNuyen, preview.UnspentAboveCarryOver);
     internal static string ContactOptions(Sr6CreationContactOptions options) => CreationAllocationStrings.Format("Sr6.ContactsOptions",
         "Charisma {0} × {1} = {2} contact points. Connection and Loyalty each range from {3} to {4}. Cost: Connection + Loyalty. Separate from Karma and character points.",
         options.Charisma, options.PointsPerCharisma, options.PointBudget, options.MinimumRating, options.MaximumRating);
@@ -125,6 +138,10 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
         Sr6CreationContactBlockers.InvalidSelection => Text("ContactsInvalid"),
+        Sr6CreationGearBlockers.InvalidSelection => Text("GearInvalid"),
+        Sr6CreationGearBlockers.CatalogUnavailable => Text("GearCatalogUnavailable"),
+        Sr6CreationGearBlockers.AvailabilityExceeded => Text("GearAvailabilityExceeded"),
+        Sr6CreationGearBlockers.BudgetExceeded => Text("GearBudgetExceeded"),
         Sr6CreationContactBlockers.AttributesRequired => Text("ContactsAttributesRequired"),
         Sr6CreationContactBlockers.RatingExceeded => Text("ContactsRating"),
         Sr6CreationContactBlockers.BudgetExceeded => Text("ContactsOverspend"),

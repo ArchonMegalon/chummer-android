@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, ausgewählte Vor-/Nachteile, Attribute, Fertigkeiten, Wissen, Sprachen, Connections, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte und Karmakäufe lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, ausgewählte Vor-/Nachteile, Attribute, Fertigkeiten, Wissen, Sprachen, Connections, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte, Karmakäufe und ein Ausrüstungskorb lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Punkteverteilungen, Connections, Vor-/Nachteile, Fähigkeiten und Karmakäufe beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Punkteverteilungen, Connections, Vor-/Nachteile, Fähigkeiten, Karmakäufe und den Ausrüstungskorb beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -583,4 +583,24 @@ Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
   <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Prüfe Namen, Rollen und Stufen der Connections. Namen und Rollen müssen gültiger Text mit höchstens 80 Zeichen sein.</value></data>
   <data name="Sr6.ContactsRating" xml:space="preserve"><value>Einfluss und Loyalität dürfen bei der Erschaffung das endgültige natürliche Charisma nicht übersteigen.</value></data>
   <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Die Connections kosten mehr als das freie Punktebudget. Senke Stufen oder entferne eine Connection.</value></data>
+  <data name="Sr6.GearTitle" xml:space="preserve"><value>Ausrüstung kaufen</value></data>
+  <data name="Sr6.GearHelp" xml:space="preserve"><value>Experimenteller Einkaufskorb; deutscher Quellenkatalog. Nur Grundwaffen, Panzerung, Elektronik, leere Credsticks und medizinische Ausrüstung. Munition, Zubehör, Bodytech, SIN-/Lizenzzuordnung und Lebensstile fehlen. Speichern rüstet Gegenstände nicht aus und gewährt keine Spielwirkungen.</value></data>
+  <data name="Sr6.GearSearch" xml:space="preserve"><value>Katalog nach Name oder ID durchsuchen</value></data>
+  <data name="Sr6.GearChoose" xml:space="preserve"><value>Ausrüstung auswählen</value></data>
+  <data name="Sr6.GearQuantity" xml:space="preserve"><value>Anzahl</value></data>
+  <data name="Sr6.GearAdd" xml:space="preserve"><value>In den Einkaufskorb</value></data>
+  <data name="Sr6.GearRemove" xml:space="preserve"><value>Position entfernen</value></data>
+  <data name="Sr6.GearRating" xml:space="preserve"><value>Stufe {0}</value></data>
+  <data name="Sr6.GearOption" xml:space="preserve"><value>{0} · Verfügbarkeit {1}, {2}&#10;Grundpreis {3:N2} ¥ + {4}% Größenaufschlag = {5:N2} ¥ pro Stück · {6}</value></data>
+  <data name="Sr6.GearValue" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥</value></data>
+  <data name="Sr6.GearResources" xml:space="preserve"><value>Einkaufsbudget: {0:N2} ¥</value></data>
+  <data name="Sr6.GearBudget" xml:space="preserve"><value>Ausgegeben {0:N2} / {1:N2} ¥ · verbleibend {2:N2} ¥&#10;Übertragbar höchstens {3:N2} ¥ · ungenutzt über der Grenze {4:N2} ¥</value></data>
+  <data name="Sr6.GearRestricted" xml:space="preserve"><value>Lizenzpflichtige oder illegale Gegenstände brauchen SL-Prüfung. Der Kauf erteilt weder Lizenz noch Besitz- oder Trageerlaubnis.</value></data>
+  <data name="Sr6.GearInvalid" xml:space="preserve"><value>Prüfe Positionen und ganzzahlige Mengen (1–999).</value></data>
+  <data name="Sr6.GearCatalogUnavailable" xml:space="preserve"><value>Dieser Gegenstand fehlt im unterstützten SR6-Katalog.</value></data>
+  <data name="Sr6.GearAvailabilityExceeded" xml:space="preserve"><value>Bei Erstellung nicht verfügbar: Verfügbarkeit über 7.</value></data>
+  <data name="Sr6.GearBudgetExceeded" xml:space="preserve"><value>Die Einkäufe überschreiten das Nuyen-Budget. Reduziere den Einkaufskorb oder speichere zuerst mehr Ressourcen/Karmaumwandlung.</value></data>
+  <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
+  <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>lizenzpflichtig</value></data>
+  <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>illegal</value></data>
 </root>

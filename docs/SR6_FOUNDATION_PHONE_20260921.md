@@ -90,18 +90,68 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   floor for Glass Jaw. Built Tough upgrades charge only above innate ork/troll
   levels. Choosing another level explicitly replaces the same family, even
   when all six choices are filled, and invalidates the old confirmation.
+- Separate equipment basket with Core-owned catalogue, exact Nuyen prices,
+  metatype surcharge, availability and remaining/carry-over budget. Search by
+  source name or ID, add quantities, edit/remove stable-ID rows and explicitly
+  preview/confirm. Controls/validation are DE/EN/ES; item names are explicitly
+  the German source catalogue. Licensed/illegal gear is flagged for GM review;
+  purchase does not grant a license or activate in-play equipment effects.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
 Further qualities (including other parameterized families and Bilingual),
-runtime quality/talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
+runtime quality/talent effects, the rest of the equipment catalogue (including
+ammunition, accessories, bodytech, SIN/license assignments, vehicles and
+lifestyles), finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current contact increment — 22 September 2026
+## Current equipment increment — 22 September 2026
+
+Core `ec568da7b`; Presentation `1eae38aa1` unchanged. The new basket supplies
+148 source-backed item/rating choices for Priority, Sum-to-Ten and Point Buy.
+Core prices quantity and size surcharges using decimal Nuyen, includes saved
+Karma conversion, enforces availability ≤7 and refuses overspending. Licensed/
+illegal flags require review, not automatic licensing. The catalogue remains
+partial and has no equipment runtime/finalization authority.
+
+Native add/edit/remove/search uses stable IDs and Core quotes. Malformed
+quantities return equipment-specific feedback, not the old generic build-method
+error. Obsolete confirmations and departed controls cannot write. A changed
+foundation explicitly resets the basket with other dependent allocations.
+
+`core-sr6-gear-1.log`: **254 focused Core tests PASS**.
+`sr6-native-gear-2.log`: **157 native managed scenarios PASS**, including nine
+new equipment scenarios (three methods × DE/EN/ES), exact troll decimals,
+availability, malformed quantities, stale confirmation and saved reopen.
+The first native run exposed only the wrong error message for rejected
+quantities; the coordinator now forwards the Core gear shape blocker.
+After that managed run's compilation, six punctuation-only localization edits
+were compiled in the final keyless Debug APK; the logic/tests were unchanged.
+Both local Debug builds had **zero warnings/errors** (1m43.08s, then 55.86s).
+Final artifact `sr6-gear-debug-final.apk`, SHA256:
+`ab17f3399fa02f2ba31cc7e4bc4eff0eb98047657e9911e1e0a1c83330c02b92`.
+
+Actual API36 smoke used the existing mixed-domain Point Buy draft at12/12.
+Through the Karma UI, converted5 Karma→10,000¥ and saved13/13. Through the
+new basket, searched `lined-coat`, selected quantity2, reviewed1,800¥ spent /
+8,200¥ remaining /3,200¥ above carry-over and confirmed once: **14/14, thirteen
+decisions**. Prior history, other selections, Karma and CP compare unchanged
+across the equipment save. Force-stop removedPID4817; newPID5784 restored the
+same rowID, quantity, budget and editor, without a historical Confirm button.
+The saved workspace and post-restart page-reacquisition copy are byte-identical, SHA256:
+`dc58329e9d84f873837b57b7b98754a849a4e6a653ba375e93d24af8db0a17ab`.
+
+Local packet `sr6-gear-*` retains APKs, screenshots, hierarchies, workspace
+copies and logs. System cold-boot ANRs plus UIAutomator/Bluetooth failures
+preceded app testing; no Chummer ANR/crash was observed. The owned emulator
+and temporary containers were stopped. No release AAB, upload-key use, main
+merge, package seal or Play operation is part of this increment.
+
+## Historical contact increment — 22 September 2026
 
 Core `80f803ca4`; Presentation `1eae38aa1` unchanged. The native Contacts page
 provides stable-ID add/edit/remove, optional roles, Core-provided rating ranges,

@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto y compras con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto, compras con Karma y una cesta de equipo. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, contactos, cualidades, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, contactos, cualidades, capacidades, compras con Karma y la cesta de equipo al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -583,4 +583,24 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Comprueba nombres, funciones y niveles. Los nombres y funciones deben ser texto válido de 80 caracteres como máximo.</value></data>
   <data name="Sr6.ContactsRating" xml:space="preserve"><value>Durante la creación, Influencia y Lealtad no pueden superar el Carisma natural final.</value></data>
   <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Los contactos superan el presupuesto gratuito. Reduce niveles o elimina un contacto.</value></data>
+  <data name="Sr6.GearTitle" xml:space="preserve"><value>Comprar equipo</value></data>
+  <data name="Sr6.GearHelp" xml:space="preserve"><value>Cesta experimental con catálogo alemán. Solo armas básicas, armadura, electrónica, credsticks vacíos y material médico. No incluye munición, accesorios, implantes, SIN/licencias ni estilos de vida. Guardar no equipa objetos ni aplica sus efectos en juego.</value></data>
+  <data name="Sr6.GearSearch" xml:space="preserve"><value>Buscar por nombre o ID</value></data>
+  <data name="Sr6.GearChoose" xml:space="preserve"><value>Elegir equipo</value></data>
+  <data name="Sr6.GearQuantity" xml:space="preserve"><value>Cantidad</value></data>
+  <data name="Sr6.GearAdd" xml:space="preserve"><value>Añadir a la cesta</value></data>
+  <data name="Sr6.GearRemove" xml:space="preserve"><value>Eliminar objeto</value></data>
+  <data name="Sr6.GearRating" xml:space="preserve"><value>nivel {0}</value></data>
+  <data name="Sr6.GearOption" xml:space="preserve"><value>{0} · disponibilidad {1}, {2}&#10;Base {3:N2} ¥ + {4}% por tamaño = {5:N2} ¥ por unidad · {6}</value></data>
+  <data name="Sr6.GearValue" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥</value></data>
+  <data name="Sr6.GearResources" xml:space="preserve"><value>Presupuesto: {0:N2} ¥</value></data>
+  <data name="Sr6.GearBudget" xml:space="preserve"><value>Gastado {0:N2} / {1:N2} ¥ · restante {2:N2} ¥&#10;Límite transferible {3:N2} ¥ · sobrante sobre el límite {4:N2} ¥</value></data>
+  <data name="Sr6.GearRestricted" xml:space="preserve"><value>Los objetos con licencia o ilegales requieren revisión del DJ. La compra no concede licencia ni permiso para poseerlos o llevarlos.</value></data>
+  <data name="Sr6.GearInvalid" xml:space="preserve"><value>Comprueba los objetos y las cantidades enteras (1–999).</value></data>
+  <data name="Sr6.GearCatalogUnavailable" xml:space="preserve"><value>Este objeto no está en el catálogo de SR6 compatible.</value></data>
+  <data name="Sr6.GearAvailabilityExceeded" xml:space="preserve"><value>No disponible en creación: disponibilidad superior a 7.</value></data>
+  <data name="Sr6.GearBudgetExceeded" xml:space="preserve"><value>Las compras superan los nuyen disponibles. Reduce la cesta o guarda primero más recursos/conversión de Karma.</value></data>
+  <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
+  <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>requiere licencia</value></data>
+  <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>ilegal</value></data>
 </root>
