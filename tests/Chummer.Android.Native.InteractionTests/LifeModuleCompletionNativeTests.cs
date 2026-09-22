@@ -145,8 +145,20 @@ internal static partial class AfterRunAuthorityHarness
                     "Career book did not recover from the cold Core store: " + string.Join(", ", projected.Blockers));
                 Require(service.Load(owner, id, cold.ContentRevision + 1, cold.SavedRevision).Value is null,
                     "Book accepted the wrong current revision.");
-                var page = new RetainedOriginBookPage(runtime.Coordinator);
-                await navigation.PushAsync(page, false); await Appear();
+                var runner = new BuildPage(runtime.Coordinator);
+                // Headless MAUI has no native ScrollView handler to acknowledge
+                // the landing page's scroll-to-top. This supplies geometry-only
+                // completion, not lifecycle, navigation or book authority.
+                var scroll = (ScrollView)runner.Content!;
+                scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+                Console.WriteLine("Life book: opening the real phone Runner entry.");
+                await navigation.PushAsync(runner, false); await Appear();
+                Require(!IssuedElements(runner).Any(element => element.AutomationId == "build-origin-dossier"),
+                    "Reading the Career book restored the deferred generic editing surface.");
+                var openBook = Element<Button>("build-retained-origin-book");
+                await Click("build-retained-origin-book");
+                Require(Current() is RetainedOriginBookPage, "Phone Runner entry did not open the retained book.");
+                var page = (RetainedOriginBookPage)Current();
                 Require(IssuedElements(page).OfType<Label>().Any(label => label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true),
                     "Career book page has no saved prose.");
                 await Click("origin-book-export");
@@ -172,6 +184,11 @@ internal static partial class AfterRunAuthorityHarness
                 catch (OperationCanceledException) { canceled = true; }
                 Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
                     "Owner A→B→A during the document picker exported the old book.");
+                int navigationCount = navigation.Navigation.NavigationStack.Count;
+                await ui.BeginAsyncVoid(() => ((IButtonController)openBook).SendClicked())
+                    .WaitAsync(TimeSpan.FromSeconds(10));
+                Require(navigation.Navigation.NavigationStack.Count == navigationCount,
+                    "A departed Runner button opened a book after an owner transition.");
                 Require(service.Load(owner, id, cold.ContentRevision, cold.SavedRevision).Value is null,
                     "Core book reader accepted a retired owner stamp.");
                 owners.Set(ContactsOwnerB);
@@ -198,7 +215,7 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
             T Element<T>(string key) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == key);
             async Task Appear()
-            { var page = Current(); if (IssuedPageField<int>(page, "_subscribed") == 0) await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")); }
+            { var page = Current(); if (IssuedPageField<int>(page, "_subscribed") == 0) await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")).WaitAsync(TimeSpan.FromSeconds(30)); }
             async Task Click(string key)
             {
                 var previous = Current(); var button = Element<Button>(key);

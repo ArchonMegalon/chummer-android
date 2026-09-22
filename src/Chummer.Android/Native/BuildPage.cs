@@ -955,6 +955,7 @@ public sealed class BuildPage : NativePageBase
                 AddFeedback();
                 return;
             }
+            AddRetainedOriginBookRoute();
             AddCreationWizardDashboard();
             AddFeedback();
             return;
@@ -972,6 +973,7 @@ public sealed class BuildPage : NativePageBase
             // of native controls while Android is returning focus from the document picker.
             // Their implementations remain available for later, separately composed parity
             // work; the current phone beta does not instantiate them on this critical route.
+            AddRetainedOriginBookRoute();
             AddSr5CareerWizardRoute();
             AddSummary();
             AddFeedback();
@@ -1014,6 +1016,25 @@ public sealed class BuildPage : NativePageBase
             await Task.Yield();
             await _bodyScroll.ScrollToAsync(0, 0, animated: false);
         });
+    }
+
+    private void AddRetainedOriginBookRoute()
+    {
+        var original = Coordinator.State;
+        if (!Coordinator.CanReadRetainedOriginBook(original)) return;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
+        var copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
+        var open = NativeTheme.SecondaryButton(copy["Origin.ReadBook"]);
+        open.AutomationId = "build-retained-origin-book";
+        open.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                || !Coordinator.CanReadRetainedOriginBook(original)) return;
+            // Direct read-only route: do not revive the deferred generic editors.
+            await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+        });
+        _body.Add(open);
     }
 
     private void AddSr5CareerWizardRoute()

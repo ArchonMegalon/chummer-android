@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Application.LifeModules;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Overview;
@@ -41,8 +42,14 @@ public sealed partial class RunnerSessionCoordinator
     private readonly IOwnerBoundLifeModuleBookService? _lifeModuleBookService;
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
 
-    internal bool CanReadRetainedOriginBook()
-        => _lifeModuleBookService is not null && State.Profile is not null && IsNativeEditDisplayCurrent(State);
+    internal bool CanReadRetainedOriginBook(CharacterOverviewState? original = null)
+    {
+        original ??= State;
+        return _lifeModuleBookService is not null
+            && original.Profile?.BuildMethod == CharacterCreationBuildMethods.LifeModules
+            && string.Equals(original.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            && IsNativeEditDisplayCurrent(original);
+    }
 
     internal bool IsRetainedOriginBookCurrent(RetainedOriginBook book)
         => _retainedBooks.TryGetValue(book, out var original) && IsNativeEditDisplayCurrent(original);
