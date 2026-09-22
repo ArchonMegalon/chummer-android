@@ -6,6 +6,20 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string KarmaOptions(Sr6CreationKarmaOptions options) => CreationAllocationStrings.Format("Sr6.KarmaOptions",
+        "Customization Karma: {0} · {1:N0} ¥ per Karma · carry over at most {2}", options.KarmaBudget, options.NuyenPerKarma, options.MaximumCarryOver);
+    internal static string KarmaOption(Sr6CreationKarmaOption option) => CreationAllocationStrings.Format("Sr6.KarmaOption",
+        "Before Karma: {0} · up to {1} additional levels", option.BaseRating, option.MaximumIncrease)
+        + (option.Available ? "" : " · " + Blocker(option.UnavailableReason!));
+    internal static string KarmaChoice(Sr6CreationKarmaIncrease row) => CreationAllocationStrings.Format("Sr6.KarmaChoice",
+        "{0}: +{1} levels · {2}", Label(row.Id), row.Increase, row.FirstExoticSpecialization ?? "");
+    internal static string KarmaValue(Sr6CreationKarmaValue row) => CreationAllocationStrings.Format("Sr6.KarmaValue",
+        "{0}: {1} → {2} · Karma {3} = {4} · {5}", Label(row.Id), row.BaseRating, row.Rating,
+        string.Join(" + ", row.Steps.Select(step => step.KarmaCost)), row.KarmaCost, row.FirstExoticSpecialization ?? "");
+    internal static string KarmaBudget(Sr6CreationKarmaPreview preview) => CreationAllocationStrings.Format("Sr6.KarmaBudget",
+        "Karma: {0}/{1} spent · {2} left ({3} above carry-over cap)\nCash: {4} Karma → {5:N0} ¥ · total resources {6:N0} ¥\nAdditional power points from Karma: {7}",
+        preview.KarmaSpent, preview.KarmaBudget, preview.KarmaRemaining, preview.UnspentAboveCarryOver,
+        preview.KarmaForNuyen, preview.AdditionalNuyen, preview.ResourcesNuyen, preview.AdditionalPowerPoints);
     internal static string PointBuyLimits(Sr6CreationPointBuyLimits limits) => CreationAllocationStrings.Format("Sr6.PointBuyLimits",
         "{0} CP. Free: {1} attribute, {2} skill, {3} adjustment points. Costs per extra point: {4}/{5}/{6} CP. Resource unit: {7:N0} ¥ for {8} CP. Awakened/technomancer: {9} CP. Separate customization Karma: {10}.",
         limits.CharacterPoints, limits.FreeAttributePoints, limits.FreeSkillPoints, limits.FreeAdjustmentPoints,
@@ -71,6 +85,10 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationKarmaBlockers.InvalidSelection => Text("KarmaInvalid"),
+        Sr6CreationKarmaBlockers.AllocationsRequired => Text("KarmaAllocationsRequired"),
+        Sr6CreationKarmaBlockers.RatingUnavailable => Text("KarmaRatingUnavailable"),
+        Sr6CreationKarmaBlockers.BudgetExceeded => Text("KarmaOverspend"),
         Sr6CreationTalentBlockers.InvalidSelection => Text("TalentInvalid"),
         Sr6CreationTalentBlockers.AttributesRequired => Text("TalentAttributesRequired"),
         Sr6CreationTalentBlockers.AspectRequired => Text("SkillAspectRequired"),

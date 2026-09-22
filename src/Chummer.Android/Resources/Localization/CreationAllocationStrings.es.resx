@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas y poderes de adepto. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas, poderes de adepto y mejoras/dinero con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra atributos, habilidades, conocimientos, idiomas, talento, hechizos/rituales, formas complejas y poderes de adepto al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -389,7 +389,7 @@
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonancia</value></data>
   <data name="Sr6.SkillTitle" xml:space="preserve"><value>Habilidades de SR6</value></data>
   <data name="Sr6.SkillOpen" xml:space="preserve"><value>Asignar puntos de habilidad</value></data>
-  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Asigna puntos de prioridad a habilidades y especializaciones. Solo una habilidad puede llegar a 6. Conocimientos e idiomas tienen un paso aparte. Aún sin Karma ni Aptitud. La disponibilidad se comprueba al revisar.</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Asigna puntos a habilidades y especializaciones. Solo una habilidad puede llegar a 6. Conocimientos/idiomas y mejoras con Karma tienen pasos separados. Aún sin Aptitud. La disponibilidad se comprueba al revisar.</value></data>
   <data name="Sr6.SkillAspect" xml:space="preserve"><value>Aspecto mágico</value></data>
   <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Especialización (opcional; una por habilidad)</value></data>
   <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Tipos de arma (separa con ; — el primero es gratis)</value></data>
@@ -455,7 +455,7 @@
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>Presupuesto de talento SR6</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Planificar magia y resonancia</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Puntos de poder enteros a asignar / comprar</value></data>
-  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Esta página solo planifica presupuestos. Elige hechizos/rituales, formas complejas o poderes de adepto en sus pasos separados. Compras con Karma y finalización aún no disponibles.</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Esta página solo planifica presupuestos. Elige hechizos/rituales, formas complejas o poderes de adepto en sus pasos separados. Las mejoras con Karma tienen su propio paso; no amplían los presupuestos previos de fórmulas gratuitas o con CP. La finalización aún no está disponible.</value></data>
   <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Revisa y guarda primero los atributos; el presupuesto depende de Magia/Resonancia validadas.</value></data>
   <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Elige una asignación de puntos de poder enteros dentro del límite de Core.</value></data>
   <data name="Sr6.TalentOptions" xml:space="preserve"><value>Puntos de poder automáticos: {0}. Máximo seleccionable: {1} puntos enteros; CP por punto: {2}.</value></data>
@@ -508,4 +508,24 @@
   <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>olfato</value></data>
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>gusto</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Reflejos Mejorados no se combina con otras mejoras de Reacción o iniciativa; este borrador no aplica efectos.</value></data>
+  <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Gastar Karma de personalización</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Este paso compra niveles adicionales y nuyen con el fondo de Karma separado. La asignación de puntos se conserva; Core recalcula costes, límites de creación y presupuestos dependientes. Aún sin cualidades, hechizos/formas con Karma, conocimientos/idiomas, especializaciones adicionales ni pericias. Un borrador puede conservar más Karma que el límite transferible; la finalización no está disponible.</value></data>
+  <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Guarda primero la asignación de atributos y habilidades (se admite una asignación de habilidades vacía).</value></data>
+  <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Atributo o habilidad a mejorar</value></data>
+  <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Atributo</value></data>
+  <data name="Sr6.KarmaSkill" xml:space="preserve"><value>Habilidad</value></data>
+  <data name="Sr6.KarmaIncrease" xml:space="preserve"><value>Niveles adicionales</value></data>
+  <data name="Sr6.KarmaAdd" xml:space="preserve"><value>Añadir mejora</value></data>
+  <data name="Sr6.KarmaRemove" xml:space="preserve"><value>Quitar mejora</value></data>
+  <data name="Sr6.KarmaNuyen" xml:space="preserve"><value>Karma para cambiar por nuyen</value></data>
+  <data name="Sr6.KarmaInvalid" xml:space="preserve"><value>Elige mejoras válidas sin duplicados. Cada objetivo puede aparecer una sola vez.</value></data>
+  <data name="Sr6.KarmaRatingUnavailable" xml:space="preserve"><value>Esta mejora supera el máximo de creación o no está disponible para este personaje.</value></data>
+  <data name="Sr6.KarmaOverspend" xml:space="preserve"><value>Las mejoras y el cambio por dinero superan el Karma disponible.</value></data>
+  <data name="Sr6.KarmaOptions" xml:space="preserve"><value>Karma de personalización: {0} · {1:N0} ¥ por Karma · máximo transferible {2}</value></data>
+  <data name="Sr6.KarmaOption" xml:space="preserve"><value>Antes de Karma: {0} · hasta {1} niveles adicionales</value></data>
+  <data name="Sr6.KarmaChoice" xml:space="preserve"><value>{0}: +{1} niveles · {2}</value></data>
+  <data name="Sr6.KarmaValue" xml:space="preserve"><value>{0}: {1} → {2} · Karma {3} = {4} · {5}</value></data>
+  <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} gastado · quedan {2} ({3} sobre el límite transferible)
+Dinero: {4} Karma → {5:N0} ¥ · recursos totales {6:N0} ¥
+Puntos de poder adicionales por Karma: {7}</value></data>
 </root>

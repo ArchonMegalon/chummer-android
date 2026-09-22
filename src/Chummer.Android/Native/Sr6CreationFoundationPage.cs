@@ -19,6 +19,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _formsMode;
     private readonly bool _spellsMode;
     private readonly bool _powersMode;
+    private readonly bool _karmaMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -35,13 +36,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _forms;
     private Button? _spells;
     private Button? _powers;
+    private Button? _karma;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
         bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false,
-        bool powersMode = false) : base(coordinator)
+        bool powersMode = false, bool karmaMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode, karmaMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
@@ -50,10 +52,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _formsMode = formsMode;
         _spellsMode = spellsMode;
         _powersMode = powersMode;
+        _karmaMode = karmaMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(karmaMode ? "KarmaTitle" : powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = karmaMode ? "sr6-karma-page" : powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -120,6 +123,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _forms = null;
         _spells = null;
         _powers = null;
+        _karma = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -140,7 +144,13 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_powersMode)
+        if (_karmaMode)
+        {
+            if (state.KarmaOptions is not { } options)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KarmaAllocationsRequired"))); return; }
+            BuildKarmaEditor(options, Current, Change);
+        }
+        else if (_powersMode)
         {
             if (state.Selection?.TalentAllocation is not { } budget || state.AdeptPowerOptions is not { Count: > 0 } catalog)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersTalentRequired"))); return; }
@@ -364,6 +374,21 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     if (state.AdeptPowerOptions is null)
                         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("PowersTalentRequired"), NativeTheme.Muted));
                 }
+                var karma = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaTitle"));
+                _karma = karma;
+                karma.AutomationId = "sr6-foundation-karma";
+                karma.IsEnabled = SavedCurrent() && state.KarmaOptions is not null;
+                karma.Clicked += async (_, _) =>
+                {
+                    if (!SavedCurrent() || state.KarmaOptions is null) return;
+                    await RunAsync(async () =>
+                    {
+                        if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, karmaMode: true));
+                    });
+                };
+                _body.Add(karma);
+                if (state.KarmaOptions is null)
+                    _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KarmaAllocationsRequired"), NativeTheme.Muted));
                 if (saved.Attributes is null)
                     _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeAttributesRequired"), NativeTheme.Muted));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("AttributeResetWarning"), NativeTheme.Muted));
@@ -472,6 +497,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 if (skills.SpecializationsNeedGmReview)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillGmReview"), NativeTheme.Muted));
             }
+            if (quote.Karma is { } karma)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaBudget(karma)));
+                foreach (var value in karma.Attributes.Concat(karma.Skills))
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaValue(value)));
+                if (karma.Skills.Any(row => row.FirstExoticSpecialization is not null))
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillGmReview"), NativeTheme.Muted));
+            }
             if (quote.Knowledge is { } knowledge)
             {
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.KnowledgeBudget(knowledge)));
@@ -520,9 +553,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode && !_karmaMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null || _selection.Karma is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null, Karma = null };
             _selection = selection;
             _hasUnconfirmedChanges = true;
             _preview = null;
@@ -536,6 +569,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_forms is not null) _forms.IsEnabled = false;
             if (_spells is not null) _spells.IsEnabled = false;
             if (_powers is not null) _powers.IsEnabled = false;
+            if (_karma is not null) _karma.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
@@ -585,6 +619,93 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     change(options[picker.SelectedIndex]);
             };
             _body.Add(picker);
+        }
+    }
+
+    private void BuildKarmaEditor(Sr6CreationKarmaOptions options, Func<bool> current,
+        Action<Sr6CreationFoundationSelection> change)
+    {
+        _selection = _selection! with { Karma = _selection.Karma ?? new([], [], 0) };
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KarmaHelp"), NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.KarmaOptions(options)));
+        if (_state?.Selection?.Karma is { } saved)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.KarmaBudget(saved)));
+        }
+        AddRows(_selection.Karma.Attributes, false);
+        AddRows(_selection.Karma.Skills, true);
+        var catalog = options.Attributes.Select(row => (Option: row, Skill: false))
+            .Concat(options.Skills.Select(row => (Option: row, Skill: true))).ToArray();
+        var picker = new Picker { Title = Sr6CreationCopy.Text("KarmaChoose"), AutomationId = "sr6-foundation-karma-catalog" };
+        foreach (var row in catalog)
+            picker.Items.Add(Sr6CreationCopy.Text(row.Skill ? "KarmaSkill" : "KarmaAttribute") + " · " + Sr6CreationCopy.Label(row.Option.Id));
+        var details = NativeTheme.Body(""); details.AutomationId = "sr6-foundation-karma-details";
+        var increase = new Picker { Title = Sr6CreationCopy.Text("KarmaIncrease"), AutomationId = "sr6-foundation-karma-increase" };
+        var subject = new Entry { Placeholder = Sr6CreationCopy.Text("SkillExoticSpecializations"), MaxLength = 80,
+            AutomationId = "sr6-foundation-karma-exotic", IsVisible = false };
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaAdd"));
+        add.AutomationId = "sr6-foundation-karma-add"; add.IsEnabled = false;
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Length) return;
+            var selected = catalog[picker.SelectedIndex];
+            increase.Items.Clear(); increase.SelectedIndex = -1;
+            if (selected.Option.Available)
+                for (int value = 1; value <= selected.Option.MaximumIncrease; value++)
+                    increase.Items.Add(value.ToString(CultureInfo.InvariantCulture));
+            details.Text = Sr6CreationCopy.KarmaOption(selected.Option);
+            subject.IsVisible = selected.Skill && selected.Option.Id == "ExoticWeapons" && selected.Option.BaseRating == 0;
+            subject.Text = "";
+            add.IsEnabled = false;
+        };
+        increase.SelectedIndexChanged += (_, _) =>
+        { if (current()) add.IsEnabled = increase.SelectedIndex >= 0 && increase.SelectedIndex < increase.Items.Count; };
+        add.Clicked += (_, _) =>
+        {
+            if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= catalog.Length
+                || increase.SelectedIndex < 0 || increase.SelectedIndex >= increase.Items.Count) return;
+            var selected = catalog[picker.SelectedIndex];
+            var row = new Sr6CreationKarmaIncrease(selected.Option.Id, int.Parse(increase.Items[increase.SelectedIndex], CultureInfo.InvariantCulture),
+                subject.IsVisible ? subject.Text?.Trim() : null);
+            var selection = _selection.Karma!;
+            change(_selection with { Karma = selected.Skill
+                ? selection with { Skills = [.. selection.Skills, row] }
+                : selection with { Attributes = [.. selection.Attributes, row] } });
+            Refresh();
+        };
+        _body.Add(picker); _body.Add(details); _body.Add(increase); _body.Add(subject); _body.Add(add);
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KarmaNuyen")));
+        var cash = new Picker { Title = Sr6CreationCopy.Text("KarmaNuyen"), AutomationId = "sr6-foundation-karma-nuyen" };
+        for (int value = 0; value <= options.MaximumKarmaForNuyen; value++) cash.Items.Add(value.ToString(CultureInfo.InvariantCulture));
+        cash.SelectedIndex = _selection.Karma.KarmaForNuyen;
+        cash.SelectedIndexChanged += (_, _) =>
+        {
+            if (current() && cash.SelectedIndex >= 0 && cash.SelectedIndex < cash.Items.Count)
+                change(_selection with { Karma = _selection.Karma! with { KarmaForNuyen = cash.SelectedIndex } });
+        };
+        _body.Add(cash);
+
+        void AddRows(IReadOnlyList<Sr6CreationKarmaIncrease> rows, bool skills)
+        {
+            for (int index = 0; index < rows.Count; index++)
+            {
+                int captured = index;
+                var row = rows[index];
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.KarmaChoice(row)));
+                var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaRemove"));
+                remove.AutomationId = "sr6-foundation-karma-remove-" + (skills ? "skill-" : "attribute-") + index.ToString(CultureInfo.InvariantCulture);
+                remove.Clicked += (_, _) =>
+                {
+                    if (!current()) return;
+                    var selection = _selection.Karma!;
+                    change(_selection with { Karma = skills
+                        ? selection with { Skills = selection.Skills.Where((_, i) => i != captured).ToArray() }
+                        : selection with { Attributes = selection.Attributes.Where((_, i) => i != captured).ToArray() } });
+                    Refresh();
+                };
+                _body.Add(remove);
+            }
         }
     }
 

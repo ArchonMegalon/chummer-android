@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, Attribute, Fertigkeiten, Wissen, Sprachen, Talentbudgets, Zauber/Rituale, Komplexe Formen und Adeptenkräfte lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, Attribute, Fertigkeiten, Wissen, Sprachen, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte und Karmasteigerungen/Geld lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Attribute, Fertigkeiten, Wissen, Sprachen, Talent, Zauber/Rituale, Komplexe Formen und Adeptenkräfte erst beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Punkteverteilungen, Fähigkeiten und Karmakäufe beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -389,7 +389,7 @@
   <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonanz</value></data>
   <data name="Sr6.SkillTitle" xml:space="preserve"><value>SR6-Fertigkeiten</value></data>
   <data name="Sr6.SkillOpen" xml:space="preserve"><value>Fertigkeitspunkte verteilen</value></data>
-  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Prioritätspunkte für Fertigkeiten und Spezialisierungen verteilen. Nur eine Fertigkeit darf 6 erreichen. Wissen und Sprachen haben einen eigenen Schritt. Karma und Talentiert fehlen noch. Verfügbarkeit wird bei der Vorschau geprüft.</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Poolpunkte für Fertigkeiten und Spezialisierungen verteilen. Nur eine Fertigkeit darf 6 erreichen. Wissen/Sprachen und Karmasteigerungen haben eigene Schritte. Talentiert fehlt noch. Verfügbarkeit wird bei der Vorschau geprüft.</value></data>
   <data name="Sr6.SkillAspect" xml:space="preserve"><value>Magischer Aspekt</value></data>
   <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Spezialisierung (optional; eine pro Fertigkeit)</value></data>
   <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Waffenarten (mit ; trennen — erste kostenlos)</value></data>
@@ -455,7 +455,7 @@
   <data name="Sr6.TalentTitle" xml:space="preserve"><value>SR6 Talentbudget</value></data>
   <data name="Sr6.TalentOpen" xml:space="preserve"><value>Magie und Resonanz planen</value></data>
   <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Ganze Kraftpunkte aufteilen / kaufen</value></data>
-  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Diese Seite plant nur Budgets. Zauber/Rituale, Komplexe Formen oder Adeptenkräfte wählst du im eigenen Auswahlschritt. Karmakäufe und Charakterabschluss fehlen noch.</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>Diese Seite plant nur Budgets. Zauber/Rituale, Komplexe Formen oder Adeptenkräfte wählst du in eigenen Schritten. Karmasteigerungen haben einen eigenen Schritt; sie erweitern keine vorherigen Gratis- oder CP-Formelbudgets. Der Abschluss fehlt noch.</value></data>
   <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Zuerst Attribute prüfen und speichern; Talentbudgets hängen von geprüfter Magie/Resonanz ab.</value></data>
   <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Eine unterstützte Aufteilung ganzer Kraftpunkte innerhalb der Core-Grenze wählen.</value></data>
   <data name="Sr6.TalentOptions" xml:space="preserve"><value>Automatische Kraftpunkte: {0}. Höchstens {1} ganze Kraftpunkte auswählbar; CP pro Punkt: {2}.</value></data>
@@ -508,4 +508,24 @@
   <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>Geruchssinn</value></data>
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>Geschmackssinn</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Verbesserte Reflexe sind nicht mit anderen Reaktions- oder Initiativsteigerungen kombinierbar; dieser Entwurf wendet keine Effekte an.</value></data>
+  <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Individualisierungskarma ausgeben</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Zuerst Attribute und Fertigkeiten speichern. Hier kaufst du zusätzliche Stufen und Nuyen mit dem separaten Karmapool. Die Punkteverteilung bleibt erhalten; Core berechnet Kosten, Erschaffungsgrenzen und abhängige Budgets neu. Vor-/Nachteile, Karmakäufe für Zauber/Formen, Wissen/Sprachen, weitere Spezialisierungen und Expertisen fehlen noch. Teilentwürfe dürfen mehr Karma als die Mitnahmegrenze behalten; der Abschluss fehlt noch.</value></data>
+  <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Zuerst Attribut- und Fertigkeitsverteilung speichern (auch eine leere Fertigkeitsverteilung ist möglich).</value></data>
+  <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribut oder Fertigkeit steigern</value></data>
+  <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribut</value></data>
+  <data name="Sr6.KarmaSkill" xml:space="preserve"><value>Fertigkeit</value></data>
+  <data name="Sr6.KarmaIncrease" xml:space="preserve"><value>Zusätzliche Stufen</value></data>
+  <data name="Sr6.KarmaAdd" xml:space="preserve"><value>Steigerung hinzufügen</value></data>
+  <data name="Sr6.KarmaRemove" xml:space="preserve"><value>Steigerung entfernen</value></data>
+  <data name="Sr6.KarmaNuyen" xml:space="preserve"><value>Karma in Nuyen tauschen</value></data>
+  <data name="Sr6.KarmaInvalid" xml:space="preserve"><value>Gültige Steigerungen ohne Duplikate wählen. Jedes Ziel darf nur einmal vorkommen.</value></data>
+  <data name="Sr6.KarmaRatingUnavailable" xml:space="preserve"><value>Diese Steigerung überschreitet die Erschaffungsgrenze oder ist für diesen Charakter nicht verfügbar.</value></data>
+  <data name="Sr6.KarmaOverspend" xml:space="preserve"><value>Steigerungen und Geldumwandlung überschreiten das verfügbare Karma.</value></data>
+  <data name="Sr6.KarmaOptions" xml:space="preserve"><value>Individualisierungskarma: {0} · {1:N0} ¥ pro Karma · höchstens {2} mitnehmen</value></data>
+  <data name="Sr6.KarmaOption" xml:space="preserve"><value>Vor Karma: {0} · bis zu {1} zusätzliche Stufen</value></data>
+  <data name="Sr6.KarmaChoice" xml:space="preserve"><value>{0}: +{1} Stufen · {2}</value></data>
+  <data name="Sr6.KarmaValue" xml:space="preserve"><value>{0}: {1} → {2} · Karma {3} = {4} · {5}</value></data>
+  <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} ausgegeben · {2} übrig ({3} über der Mitnahmegrenze)
+Geld: {4} Karma → {5:N0} ¥ · Ressourcen gesamt {6:N0} ¥
+Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
 </root>

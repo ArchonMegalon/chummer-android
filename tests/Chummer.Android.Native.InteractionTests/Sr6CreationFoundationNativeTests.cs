@@ -730,6 +730,114 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("human", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([new("Athletics", 1, [])])
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    var committed = await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    Require(committed.Commit is not null && committed.State!.KarmaOptions is not null, "Karma seed not saved.");
+                    var options = committed.State!.KarmaOptions!;
+                    var catalog = options.Attributes.Concat(options.Skills).ToArray();
+                    var parent = new Sr6CreationFoundationPage(runtime.Coordinator);
+                    var navigation = new NavigationPage(parent);
+                    var window = new Window(navigation);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(parent, "OnAppearing"));
+                    var open = IssuedElements(parent).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-karma");
+                    Require(open.IsEnabled, "Saved allocations did not enable Karma.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)open).SendClicked());
+                    IssuedPageLifecycle(parent, "OnDisappearing");
+                    var page = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("karma-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked(); return Task.CompletedTask;
+                    }
+                    async Task Add(string target, int levels, string? subject = null)
+                    {
+                        Element<Picker>("karma-catalog").SelectedIndex = Array.FindIndex(catalog, row => row.Id == target);
+                        Element<Picker>("karma-increase").SelectedIndex = levels - 1;
+                        if (subject is not null) Element<Entry>("karma-exotic").Text = subject;
+                        Require(Element<Button>("karma-add").IsEnabled, "Valid Karma increase not selectable.");
+                        await Click("karma-add");
+                    }
+                    Require(page.Title == Sr6CreationCopy.Text("KarmaTitle") && page.Title != "KarmaTitle", "Karma title not localized.");
+                    Element<Picker>("karma-catalog").SelectedIndex = Array.FindIndex(catalog, row => row.Id == "Magic");
+                    Require(!Element<Button>("karma-add").IsEnabled && Element<Picker>("karma-increase").Items.Count == 0,
+                        "Karma could awaken a mundane character.");
+                    await Add("Body", 2);
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    Element<Picker>("karma-nuyen").SelectedIndex = 1;
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Cash change reused stale Karma confirmation.");
+                    await Add("Body", 1);
+                    await Click("preview");
+                    Require(Element<Label>("status").Text == Sr6CreationCopy.Text("KarmaInvalid"), "Duplicate Karma target was admitted.");
+                    await Click("karma-remove-attribute-1");
+                    await Add("Athletics", 1);
+                    await Add("ExoticWeapons", 1, "Whip");
+                    Element<Picker>("karma-nuyen").SelectedIndex = 11;
+                    await Click("preview");
+                    Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && Element<Label>("status").Text == Sr6CreationCopy.Text("KarmaOverspend"), "Karma overspend was admitted/unlocalized.");
+                    Element<Picker>("karma-nuyen").SelectedIndex = 10;
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text?.Contains("10 + 15", StringComparison.Ordinal) == true),
+                        "Cumulative Karma cost trace absent.");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2, "Karma save lost or duplicated.");
+                    Require(quote.Karma is { KarmaSpent: 50, KarmaRemaining: 0, AdditionalNuyen: 20000 }
+                        && quote.Karma.Attributes.Single().Rating == 3 && quote.Karma.Skills.Single(row => row.Id == "Athletics").Rating == 2,
+                        "Saved Karma cost or final rating wrong.");
+                    Require(quote.Skills!.PointsSpent == 1 && quote.PointBuy?.PointsSpent == seed.PointBuy?.PointsSpent,
+                        "Karma altered pool or CP costs.");
+                    var oldAdd = Element<Button>("karma-add");
+                    var oldCash = Element<Picker>("karma-nuyen");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldCash.SelectedIndex = 0; oldAdd.IsEnabled = true;
+                    ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, karmaMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Count(item => item.AutomationId?.StartsWith("sr6-foundation-karma-remove-", StringComparison.Ordinal) == true) == 3,
+                        "Karma purchases did not restore.");
+                    Require(IssuedElements(reopened).OfType<Picker>().Single(item => item.AutomationId == "sr6-foundation-karma-nuyen").SelectedIndex == 10
+                        && !IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm") && probe.Confirms == 2,
+                        "Departed or restored Karma controls changed saved state.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 Karma phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {
