@@ -502,7 +502,10 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaBudget(karma)));
                 foreach (var value in karma.Attributes.Concat(karma.Skills))
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaValue(value)));
-                if (karma.Skills.Any(row => row.FirstExoticSpecialization is not null))
+                foreach (var value in karma.Specializations ?? [])
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaSpecializationValue(value)));
+                if (karma.Skills.Any(row => row.FirstExoticSpecialization is not null)
+                    || karma.Specializations?.Any(row => row.NeedsGmReview) == true)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillGmReview"), NativeTheme.Muted));
             }
             if (quote.Knowledge is { } knowledge)
@@ -685,6 +688,8 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 change(_selection with { Karma = _selection.Karma! with { KarmaForNuyen = cash.SelectedIndex } });
         };
         _body.Add(cash);
+        if (_state?.KarmaSpecializationOptions is { } specialtyOptions)
+            BuildKarmaSpecializations(specialtyOptions, current, change);
 
         void AddRows(IReadOnlyList<Sr6CreationKarmaIncrease> rows, bool skills)
         {
@@ -707,6 +712,54 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 _body.Add(remove);
             }
         }
+    }
+
+    private void BuildKarmaSpecializations(Sr6CreationKarmaSpecializationOptions options, Func<bool> current,
+        Action<Sr6CreationFoundationSelection> change)
+    {
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.KarmaSpecializationHelp(options), NativeTheme.Muted));
+        var selected = _selection!.Karma!.Specializations ?? [];
+        for (int index = 0; index < selected.Count; index++)
+        {
+            int captured = index;
+            var row = selected[index];
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Label(row.SkillId) + " · " + row.Subject));
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaSpecializationRemove"));
+            remove.AutomationId = "sr6-foundation-karma-specialization-remove-" + index.ToString(CultureInfo.InvariantCulture);
+            remove.Clicked += (_, _) =>
+            {
+                if (!current()) return;
+                change(_selection with { Karma = _selection.Karma! with
+                    { Specializations = selected.Where((_, i) => i != captured).ToArray() } });
+                Refresh();
+            };
+            _body.Add(remove);
+        }
+        var picker = new Picker { Title = Sr6CreationCopy.Text("KarmaSpecializationSkill"), AutomationId = "sr6-foundation-karma-specialization-skill" };
+        foreach (var row in options.Skills) picker.Items.Add(Sr6CreationCopy.Label(row.SkillId));
+        var details = NativeTheme.Body(""); details.AutomationId = "sr6-foundation-karma-specialization-details";
+        var subject = new Entry { Placeholder = Sr6CreationCopy.Text("KarmaSpecializationSubject"), MaxLength = 80,
+            AutomationId = "sr6-foundation-karma-specialization-subject" };
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaSpecializationAdd"));
+        add.AutomationId = "sr6-foundation-karma-specialization-add"; add.IsEnabled = false;
+        bool CanAdd() => current() && picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Skills.Count
+            && options.Skills[picker.SelectedIndex].Available && !string.IsNullOrWhiteSpace(subject.Text);
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (!current()) return;
+            details.Text = picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Skills.Count
+                ? Sr6CreationCopy.KarmaSpecializationOption(options.Skills[picker.SelectedIndex]) : "";
+            add.IsEnabled = CanAdd();
+        };
+        subject.TextChanged += (_, _) => { if (current()) add.IsEnabled = CanAdd(); };
+        add.Clicked += (_, _) =>
+        {
+            if (!CanAdd()) return;
+            var row = new Sr6CreationKarmaSpecialization(options.Skills[picker.SelectedIndex].SkillId, subject.Text!.Trim());
+            change(_selection with { Karma = _selection.Karma! with { Specializations = [.. selected, row] } });
+            Refresh();
+        };
+        _body.Add(picker); _body.Add(details); _body.Add(subject); _body.Add(add);
     }
 
     private void BuildPowerEditor(IReadOnlyList<Sr6CreationAdeptPowerOption> catalog,

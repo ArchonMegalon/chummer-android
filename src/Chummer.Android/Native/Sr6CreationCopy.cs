@@ -6,6 +6,13 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string KarmaSpecializationHelp(Sr6CreationKarmaSpecializationOptions options) => CreationAllocationStrings.Format("Sr6.KarmaSpecializationHelp",
+        "A specialty costs {0} Karma; final skill rating must be at least {1}. One specialty per skill across pool and Karma purchases. Exotic Weapons may have several, without a bonus; the first comes free with the skill. Names require GM review. Expertise and Karma spells/forms are prohibited during creation.", options.KarmaCost, options.MinimumRating);
+    internal static string KarmaSpecializationOption(Sr6CreationKarmaSpecializationOption option) => CreationAllocationStrings.Format("Sr6.KarmaSpecializationOption",
+        "Before Karma: rating {0} · existing pool specialties: {1} · dice bonus +{2}", option.BaseRating, string.Join(", ", option.PoolSpecializations), option.DicePoolBonus)
+        + (option.Available ? "" : " · " + Blocker(option.UnavailableReason!));
+    internal static string KarmaSpecializationValue(Sr6CreationKarmaSpecializationValue value) => CreationAllocationStrings.Format("Sr6.KarmaSpecializationValue",
+        "{0}: {1} · {2} Karma · dice bonus +{3}", Label(value.SkillId), value.Subject, value.KarmaCost, value.DicePoolBonus);
     internal static string KarmaOptions(Sr6CreationKarmaOptions options) => CreationAllocationStrings.Format("Sr6.KarmaOptions",
         "Customization Karma: {0} · {1:N0} ¥ per Karma · carry over at most {2}", options.KarmaBudget, options.NuyenPerKarma, options.MaximumCarryOver);
     internal static string KarmaOption(Sr6CreationKarmaOption option) => CreationAllocationStrings.Format("Sr6.KarmaOption",
@@ -89,6 +96,8 @@ internal static class Sr6CreationCopy
         Sr6CreationKarmaBlockers.AllocationsRequired => Text("KarmaAllocationsRequired"),
         Sr6CreationKarmaBlockers.RatingUnavailable => Text("KarmaRatingUnavailable"),
         Sr6CreationKarmaBlockers.BudgetExceeded => Text("KarmaOverspend"),
+        Sr6CreationKarmaBlockers.SpecializationLimit => Text("KarmaSpecializationLimit"),
+        Sr6CreationKarmaBlockers.SpecializationRatingRequired => Text("KarmaSpecializationRatingRequired"),
         Sr6CreationTalentBlockers.InvalidSelection => Text("TalentInvalid"),
         Sr6CreationTalentBlockers.AttributesRequired => Text("TalentAttributesRequired"),
         Sr6CreationTalentBlockers.AspectRequired => Text("SkillAspectRequired"),

@@ -509,7 +509,7 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>gusto</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Reflejos Mejorados no se combina con otras mejoras de Reacción o iniciativa; este borrador no aplica efectos.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Gastar Karma de personalización</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Este paso compra niveles adicionales y nuyen con el fondo de Karma separado. La asignación de puntos se conserva; Core recalcula costes, límites de creación y presupuestos dependientes. Aún sin cualidades, hechizos/formas con Karma, conocimientos/idiomas, especializaciones adicionales ni pericias. Un borrador puede conservar más Karma que el límite transferible; la finalización no está disponible.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Compra niveles, especializaciones y nuyen con el fondo de Karma separado. Core conserva los puntos asignados y recalcula costes, límites de creación y presupuestos dependientes. Aún faltan cualidades y compras de conocimientos/idiomas con Karma. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación. El borrador puede superar el límite transferible; la finalización no está disponible.</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Guarda primero la asignación de atributos y habilidades (se admite una asignación de habilidades vacía).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Atributo o habilidad a mejorar</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Atributo</value></data>
@@ -528,4 +528,13 @@
   <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} gastado · quedan {2} ({3} sobre el límite transferible)
 Dinero: {4} Karma → {5:N0} ¥ · recursos totales {6:N0} ¥
 Puntos de poder adicionales por Karma: {7}</value></data>
+  <data name="Sr6.KarmaSpecializationHelp" xml:space="preserve"><value>Una especialización cuesta {0} Karma; la habilidad final debe ser de nivel {1} como mínimo. Una especialización por habilidad entre puntos y Karma. Armas exóticas admite varias sin bonificación; la primera es gratuita al adquirir la habilidad. Los nombres requieren revisión del DJ. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación.</value></data>
+  <data name="Sr6.KarmaSpecializationOption" xml:space="preserve"><value>Antes de Karma: nivel {0} · especializaciones con puntos: {1} · bonificación de dados +{2}</value></data>
+  <data name="Sr6.KarmaSpecializationValue" xml:space="preserve"><value>{0}: {1} · {2} Karma · bonificación de dados +{3}</value></data>
+  <data name="Sr6.KarmaSpecializationSkill" xml:space="preserve"><value>Habilidad para la especialización</value></data>
+  <data name="Sr6.KarmaSpecializationSubject" xml:space="preserve"><value>Especialización / arma exótica (revisión del DJ)</value></data>
+  <data name="Sr6.KarmaSpecializationAdd" xml:space="preserve"><value>Añadir especialización con Karma</value></data>
+  <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Quitar especialización con Karma</value></data>
+  <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>La habilidad ya tiene su especialización de creación o se ha elegido dos veces el mismo tipo de arma.</value></data>
+  <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Compra al menos un nivel de la habilidad antes de añadir la especialización. Puedes revisar ambas compras juntas.</value></data>
 </root>

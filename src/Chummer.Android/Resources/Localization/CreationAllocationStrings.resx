@@ -509,7 +509,7 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>taste</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Improved Reflexes cannot combine with other Reaction or initiative enhancements; runtime stacking is not applied in this draft.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Spend customization Karma</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. This step buys additional ratings and Nuyen with the separate Karma pool. Pool allocations remain unchanged; Core recalculates costs, creation caps and dependent budgets. Qualities, Karma spells/forms, knowledge/language purchases, extra specialties and expertise are not included. Partial drafts may retain more Karma than the carry-over limit; finalization is not available.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy additional ratings, specialties and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets. Qualities and Karma knowledge/language purchases remain unavailable. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Save both attribute and skill allocations first (an empty skill allocation is allowed).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribute or skill to improve</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribute</value></data>
@@ -528,4 +528,13 @@
   <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} spent · {2} left ({3} above carry-over cap)
 Cash: {4} Karma → {5:N0} ¥ · total resources {6:N0} ¥
 Additional power points from Karma: {7}</value></data>
+  <data name="Sr6.KarmaSpecializationHelp" xml:space="preserve"><value>A specialty costs {0} Karma; final skill rating must be at least {1}. One specialty per skill across pool and Karma purchases. Exotic Weapons may have several, without a bonus; the first comes free with the skill. Names require GM review. Expertise and Karma spells/forms are prohibited during creation.</value></data>
+  <data name="Sr6.KarmaSpecializationOption" xml:space="preserve"><value>Before Karma: rating {0} · existing pool specialties: {1} · dice bonus +{2}</value></data>
+  <data name="Sr6.KarmaSpecializationValue" xml:space="preserve"><value>{0}: {1} · {2} Karma · dice bonus +{3}</value></data>
+  <data name="Sr6.KarmaSpecializationSkill" xml:space="preserve"><value>Skill for the specialty</value></data>
+  <data name="Sr6.KarmaSpecializationSubject" xml:space="preserve"><value>Specialty / exotic weapon type (GM review)</value></data>
+  <data name="Sr6.KarmaSpecializationAdd" xml:space="preserve"><value>Add Karma specialty</value></data>
+  <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Remove Karma specialty</value></data>
+  <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>This skill already has its creation specialty, or this weapon type was selected twice.</value></data>
+  <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Buy at least one level in the skill before adding a specialty. Both can be reviewed together.</value></data>
 </root>

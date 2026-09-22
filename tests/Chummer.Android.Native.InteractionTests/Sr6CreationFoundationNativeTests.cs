@@ -838,6 +838,105 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("human", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([new("Athletics", 1, []), new("Firearms", 1, ["Pistols"]), new("ExoticWeapons", 1, ["Whip"])])
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    var committed = await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    var options = committed.State!.KarmaSpecializationOptions!;
+                    Require(!options.ExpertiseAvailable && options.KarmaCost == 5, "Creation specialty options wrong.");
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, karmaMode: true);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("karma-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked(); return Task.CompletedTask;
+                    }
+                    async Task Add(string skill, string subject)
+                    {
+                        Element<Picker>("karma-specialization-skill").SelectedIndex = options.Skills.ToList().FindIndex(row => row.SkillId == skill);
+                        Element<Entry>("karma-specialization-subject").Text = subject;
+                        Require(Element<Button>("karma-specialization-add").IsEnabled, "Specialty add not enabled.");
+                        await Click("karma-specialization-add");
+                    }
+                    Element<Picker>("karma-specialization-skill").SelectedIndex = options.Skills.ToList().FindIndex(row => row.SkillId == "Firearms");
+                    Element<Entry>("karma-specialization-subject").Text = "Rifles";
+                    Require(!Element<Button>("karma-specialization-add").IsEnabled
+                        && Element<Label>("karma-specialization-details").Text!.Contains(Sr6CreationCopy.Text("KarmaSpecializationLimit"), StringComparison.Ordinal),
+                        "Pool specialty was not counted against creation cap.");
+                    await Add("Athletics", "Climbing");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    await Add("ExoticWeapons", "Laser");
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Adding a specialty reused stale confirmation.");
+                    foreach (var invalid in new[] { ("Athletics", "Swimming", "KarmaSpecializationLimit"),
+                        ("ExoticWeapons", "WHIP", "KarmaSpecializationLimit"), ("Perception", "Searching", "KarmaSpecializationRatingRequired") })
+                    {
+                        await Add(invalid.Item1, invalid.Item2);
+                        await Click("preview");
+                        Require(Element<Label>("status").Text == Sr6CreationCopy.Text(invalid.Item3), "Specialty restriction not enforced/localized.");
+                        await Click("karma-specialization-remove-2");
+                    }
+                    Element<Picker>("karma-nuyen").SelectedIndex = 41;
+                    await Click("preview");
+                    Require(Element<Label>("status").Text == Sr6CreationCopy.Text("KarmaOverspend"), "Specialty costs missed shared budget.");
+                    Element<Picker>("karma-nuyen").SelectedIndex = 40;
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(row => row.Text == Sr6CreationCopy.KarmaSpecializationValue(new("ExoticWeapons", "Laser", 5, 0, true))),
+                        "Exotic specialty review invented a bonus or lost cost.");
+                    Require(IssuedElements(page).OfType<Label>().Any(row => row.Text == Sr6CreationCopy.Text("SkillGmReview")), "Free text missing GM-review warning.");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2
+                        && quote.Karma!.KarmaSpent == 50 && quote.Karma.Specializations!.Count == 2, "Specialty save lost or duplicated.");
+                    Require(quote.Skills!.PointsSpent == seed.Skills!.PointsSpent && quote.PointBuy?.PointsSpent == seed.PointBuy?.PointsSpent,
+                        "Specialties changed base pool costs.");
+                    var oldAdd = Element<Button>("karma-specialization-add");
+                    var oldSubject = Element<Entry>("karma-specialization-subject");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldSubject.Text = "stale"; oldAdd.IsEnabled = true; ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, karmaMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Count(row => row.AutomationId?.StartsWith("sr6-foundation-karma-specialization-remove-", StringComparison.Ordinal) == true) == 2,
+                        "Specialties did not reopen.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(row => row.AutomationId == "sr6-foundation-confirm") && probe.Confirms == 2,
+                        "Reopened specialties exposed historical confirmation.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 Karma specialties phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

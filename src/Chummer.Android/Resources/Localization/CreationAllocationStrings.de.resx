@@ -509,7 +509,7 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>Geschmackssinn</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Verbesserte Reflexe sind nicht mit anderen Reaktions- oder Initiativsteigerungen kombinierbar; dieser Entwurf wendet keine Effekte an.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Individualisierungskarma ausgeben</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Zuerst Attribute und Fertigkeiten speichern. Hier kaufst du zusätzliche Stufen und Nuyen mit dem separaten Karmapool. Die Punkteverteilung bleibt erhalten; Core berechnet Kosten, Erschaffungsgrenzen und abhängige Budgets neu. Vor-/Nachteile, Karmakäufe für Zauber/Formen, Wissen/Sprachen, weitere Spezialisierungen und Expertisen fehlen noch. Teilentwürfe dürfen mehr Karma als die Mitnahmegrenze behalten; der Abschluss fehlt noch.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Zuerst Attribute und Fertigkeiten speichern. Kaufe zusätzliche Stufen, Spezialisierungen und Nuyen mit dem separaten Karmapool. Core erhält die Punkteverteilung und berechnet Kosten, Erschaffungsgrenzen und abhängige Budgets neu. Vor-/Nachteile und Karmakäufe für Wissen/Sprachen fehlen noch. Expertisen und Karmakäufe für Zauber/Formen sind bei der Erschaffung nicht erlaubt. Teilentwürfe dürfen die Mitnahmegrenze überschreiten; der Abschluss fehlt noch.</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Zuerst Attribut- und Fertigkeitsverteilung speichern (auch eine leere Fertigkeitsverteilung ist möglich).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribut oder Fertigkeit steigern</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribut</value></data>
@@ -528,4 +528,13 @@
   <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} ausgegeben · {2} übrig ({3} über der Mitnahmegrenze)
 Geld: {4} Karma → {5:N0} ¥ · Ressourcen gesamt {6:N0} ¥
 Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
+  <data name="Sr6.KarmaSpecializationHelp" xml:space="preserve"><value>Eine Spezialisierung kostet {0} Karma; die Fertigkeit muss danach mindestens Stufe {1} haben. Insgesamt eine Spezialisierung je Fertigkeit, ob mit Poolpunkten oder Karma gekauft. Exotische Waffen dürfen mehrere ohne Würfelbonus haben; die erste gibt es beim Fertigkeitserwerb kostenlos. Bezeichnungen brauchen SL-Prüfung. Expertisen und Karmakäufe für Zauber/Formen sind bei der Erschaffung nicht erlaubt.</value></data>
+  <data name="Sr6.KarmaSpecializationOption" xml:space="preserve"><value>Vor Karma: Stufe {0} · bisherige Poolspezialisierungen: {1} · Würfelbonus +{2}</value></data>
+  <data name="Sr6.KarmaSpecializationValue" xml:space="preserve"><value>{0}: {1} · {2} Karma · Würfelbonus +{3}</value></data>
+  <data name="Sr6.KarmaSpecializationSkill" xml:space="preserve"><value>Fertigkeit für die Spezialisierung</value></data>
+  <data name="Sr6.KarmaSpecializationSubject" xml:space="preserve"><value>Spezialisierung / exotische Waffenart (SL-Prüfung)</value></data>
+  <data name="Sr6.KarmaSpecializationAdd" xml:space="preserve"><value>Karmaspezialisierung hinzufügen</value></data>
+  <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Karmaspezialisierung entfernen</value></data>
+  <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>Diese Fertigkeit hat bereits ihre Erschaffungsspezialisierung oder diese Waffenart wurde doppelt gewählt.</value></data>
+  <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Erwirb mindestens eine Stufe der Fertigkeit vor der Spezialisierung. Beides kann gemeinsam geprüft werden.</value></data>
 </root>
