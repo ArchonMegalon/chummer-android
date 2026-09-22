@@ -55,6 +55,17 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             var text = NativeTheme.Body(book.ChapterText(chapter));
             text.AutomationId = $"origin-retained-chapter-{chapter.Sequence}";
             _body.Add(text);
+            if (book.Pending(chapter) is { } draft)
+            {
+                var review = new Button { Text = _copy["Origin.ReviewProse"], AutomationId = $"origin-review-prose-{chapter.Sequence}" };
+                review.Clicked += async (_, _) => await RunAsync(async () =>
+                {
+                    if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                        && Coordinator.IsRetainedOriginBookCurrent(book))
+                        await Navigation.PushAsync(new OriginBookProseReviewPage(Coordinator, book, chapter, draft));
+                });
+                _body.Add(review);
+            }
         }
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookMetadata", "chummer.run"), NativeTheme.Muted));
     }

@@ -89,6 +89,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOriginDossierDraftTimelineStore>(
             new FileOriginDossierDraftTimelineStore(statePath));
         builder.Services.AddSingleton(new LifeModuleCompletionDraftStore(statePath));
+        builder.Services.AddSingleton(new OriginBookReadingStore(statePath));
         builder.Services.AddSingleton<ISr5AfterRunManualProposalBackend>(
             new FileSr5AfterRunManualProposalBackend(statePath));
         builder.Services.AddSingleton<IAndroidAfterRunWorkspaceSnapshotSource>(provider =>

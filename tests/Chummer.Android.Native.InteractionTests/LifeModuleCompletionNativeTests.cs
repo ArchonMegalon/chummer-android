@@ -10,6 +10,7 @@ using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
+using Chummer.Presentation.OriginBooks;
 using System.Text.Json;
 
 internal static partial class AfterRunAuthorityHarness
@@ -196,12 +197,81 @@ internal static partial class AfterRunAuthorityHarness
                     && escaped.Contains("&lt;script&gt;", StringComparison.Ordinal), "Book export executed untrusted prose markup.");
                 var book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(book is not null, "Retained book load failed.");
+                var chapter = book!.Chapters[0];
+                string canonicalText = book.ChapterText(chapter);
+                var proposal = OriginBookProseDraft.Create(chapter, book.Locale, "synthetic-review-job",
+                    new string('a', 64), "Synthetic proposed chapter. <script>not executable</script>");
+                Require(await runtime.Coordinator.StageOriginBookProseDraftAsync(book,
+                        proposal with { Text = "changed after sealing" }, () => true, default) is null,
+                    "An edited proposal was admitted with its old digest.");
+                var wrongChapter = OriginBookProseDraft.Create(chapter with { ChapterDigest = new string('c', 64) },
+                    book.Locale, "synthetic-wrong-chapter", new string('a', 64), "Unrelated chapter.");
+                Require(await runtime.Coordinator.StageOriginBookProseDraftAsync(book, wrongChapter, () => true, default) is null,
+                    "A valid proposal for different chapter bytes was admitted.");
+                var staged = await runtime.Coordinator.StageOriginBookProseDraftAsync(book, proposal, () => true, default);
+                Require(staged?.Pending(chapter) == proposal && staged.ChapterText(chapter) == canonicalText
+                    && !staged.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains("Synthetic proposed", StringComparison.Ordinal),
+                    "Staging changed the readable/exported book without confirmation.");
+                bool staleExportRejected = false;
+                try { await runtime.Coordinator.ExportRetainedOriginBookAsync(book, AndroidSurfaceStrings.Resolve("en"), () => true, default); }
+                catch (OperationCanceledException) { staleExportRejected = true; }
+                Require(staleExportRejected && bookOutput.Deliveries == 1,
+                    "An old reading edition remained exportable after a new draft was saved.");
+                Require(await runtime.Coordinator.ReviewOriginBookProseDraftAsync(staged!, proposal, true, false, () => true, default) is null,
+                    "A draft was selected without explicit reader confirmation.");
+                // Exercise the actual MAUI review controls, not a direct acceptance.
+                var review = new OriginBookProseReviewPage(runtime.Coordinator, staged!, chapter, proposal);
+                await navigation.PushAsync(review, false); await Appear();
+                Require(!Element<Button>("origin-prose-use").IsEnabled, "Reading acceptance starts enabled.");
+                Element<Switch>("origin-prose-confirmed").IsToggled = true;
+                await Click("origin-prose-use");
+                Require(!IssuedElements(review).Any(e => e.AutomationId == "origin-prose-use"),
+                    "A completed review retained its acceptance action.");
+                Require(!runtime.Coordinator.IsRetainedOriginBookCurrent(staged!),
+                    "The pre-acceptance reading edition remained current after review.");
+                var selected = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+                Require(selected?.Pending(chapter) is null && selected!.ChapterText(chapter) == proposal.Text
+                    && selected.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains("&lt;script&gt;not executable&lt;/script&gt;", StringComparison.Ordinal),
+                    "Selected prose failed to reopen/export safely.");
+                var coldReading = new OriginBookReadingStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value);
+                Require(coldReading.Chapters.Single().Selected?.DraftDigest == proposal.DraftDigest,
+                    "The selected reading version was not durable.");
+                var nextProposal = OriginBookProseDraft.Create(chapter, selected.Locale, "synthetic-second-job", new string('b', 64), "Rejected rewrite.");
+                var nextDraft = await runtime.Coordinator.StageOriginBookProseDraftAsync(selected, nextProposal, () => true, default);
+                var coldStore = new OriginBookReadingStore(runtime.StateDirectory);
+                bool staleSaveRejected = false;
+                try { coldStore.Save(coldReading, coldReading, () => true, default); }
+                catch (InvalidOperationException) { staleSaveRejected = true; }
+                Require(staleSaveRejected && coldStore.Load(owner.Owner.Value, id.Value).Chapters.Single().Pending?.DraftDigest == nextProposal.DraftDigest,
+                    "A stale store overwrote the newer pending proposal.");
+                var discarded = await runtime.Coordinator.ReviewOriginBookProseDraftAsync(nextDraft!, nextProposal, false, false, () => true, default);
+                Require(discarded?.ChapterText(chapter) == proposal.Text && discarded.Pending(chapter) is null,
+                    "Discarding a later draft destroyed the previously selected chapter.");
+                using (var cancellation = new CancellationTokenSource())
+                {
+                    var beforeCancel = coldStore.Load(owner.Owner.Value, id.Value);
+                    var canceledState = beforeCancel with { Chapters = [new(chapter.ChapterId, proposal, nextProposal)] };
+                    cancellation.Cancel();
+                    bool saveCanceled = false;
+                    try { coldStore.Save(beforeCancel, canceledState, () => true, cancellation.Token); }
+                    catch (OperationCanceledException) { saveCanceled = true; }
+                    Require(saveCanceled && coldStore.Load(owner.Owner.Value, id.Value).Digest == beforeCancel.Digest,
+                        "Canceling before the save boundary changed the durable reading edition.");
+                }
+                Require(new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerB.Value, id.Value).Chapters.Count == 0,
+                    "Reading versions leaked into another account.");
+                await Back();
+                book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 bookOutput.BeforeRead = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
                 bool canceled = false;
                 try { await runtime.Coordinator.ExportRetainedOriginBookAsync(book!, AndroidSurfaceStrings.Resolve("en"), () => true, default); }
                 catch (OperationCanceledException) { canceled = true; }
                 Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
                     "Owner A→B→A during the document picker exported the old book.");
+                bool rejectedOwner = false;
+                try { rejectedOwner = await runtime.Coordinator.StageOriginBookProseDraftAsync(book!, proposal, () => true, default) is null; }
+                catch (OperationCanceledException) { rejectedOwner = true; }
+                Require(rejectedOwner, "A retired owner stamp admitted narrative text.");
                 int navigationCount = navigation.Navigation.NavigationStack.Count;
                 await ui.BeginAsyncVoid(() => ((IButtonController)openBook).SendClicked())
                     .WaitAsync(TimeSpan.FromSeconds(10));

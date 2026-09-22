@@ -437,7 +437,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ISr6CreationFoundationService? sr6CreationFoundationService = null,
         IOwnerBoundCharacterCreationLifeModuleFinalizationService? lifeModuleFinalizationService = null,
         LifeModuleCompletionDraftStore? lifeModuleInputDrafts = null,
-        Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService? lifeModuleBookService = null)
+        Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService? lifeModuleBookService = null,
+        OriginBookReadingStore? originBookReadings = null)
     {
         _presenter = presenter;
         _client = client;
@@ -456,6 +457,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _lifeModuleFinalizationService = lifeModuleFinalizationService;
         LifeModuleInputDrafts = lifeModuleInputDrafts;
         _lifeModuleBookService = lifeModuleBookService;
+        _originBookReadings = originBookReadings;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;

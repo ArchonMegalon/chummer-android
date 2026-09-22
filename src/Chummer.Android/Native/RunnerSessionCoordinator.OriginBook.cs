@@ -10,8 +10,10 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
-internal sealed class RetainedOriginBook(OriginStoryArcSeed projection)
+internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null)
 {
+    internal OriginStoryArcSeed Projection { get; } = projection;
+    internal OriginBookReadingState? Readings { get; } = readings;
     public string RunnerName { get; } = projection.CurrentTurn.RunnerDisplayName;
     public string Locale { get; } = projection.CurrentTurn.Locale;
     public string Digest { get; } = projection.SeedDigest;
@@ -20,7 +22,14 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection)
     private readonly IReadOnlyDictionary<string, string> _chapterText = projection.VisibleChapters.ToDictionary(
         chapter => chapter.ChapterId, chapter => OriginBookChapterText.Render(projection, chapter), StringComparer.Ordinal);
 
-    public string ChapterText(OriginNarrativeChapterProjection chapter) => _chapterText[chapter.ChapterId];
+    public string ChapterText(OriginNarrativeChapterProjection chapter)
+        => Reading(chapter)?.Selected is { } selected && selected.Matches(chapter, Locale)
+            ? selected.Text : _chapterText[chapter.ChapterId];
+
+    internal OriginBookReadingChapter? Reading(OriginNarrativeChapterProjection chapter)
+        => Chapters.Contains(chapter) ? Readings?.Chapters.SingleOrDefault(c => c.ChapterId == chapter.ChapterId) : null;
+    internal OriginBookProseDraft? Pending(OriginNarrativeChapterProjection chapter)
+        => Reading(chapter)?.Pending;
 
     // No executable HTML, remote resources or private workspace metadata. The
     // Display text is escaped, not sent to a provider. Original chapter bytes
@@ -45,6 +54,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection)
 public sealed partial class RunnerSessionCoordinator
 {
     private readonly IOwnerBoundLifeModuleBookService? _lifeModuleBookService;
+    private readonly OriginBookReadingStore? _originBookReadings;
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
 
     internal bool CanReadRetainedOriginBook(CharacterOverviewState? original = null)
@@ -72,10 +82,81 @@ public sealed partial class RunnerSessionCoordinator
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
                 || result.Outcome != LifeModuleOriginDossierOutcomes.Success || result.Value is not { } projection
                 || projection.CurrentTurn.WorkspaceId != id.Value || projection.VisibleChapters.Count == 0) return null;
-            var book = new RetainedOriginBook(projection);
+            OriginBookReadingState? readings = null;
+            if (_originBookReadings is { } readingStore)
+                readings = await Task.Run(() =>
+                {
+                    if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
+                        || !TryAcquireDamageJournalOwner(owner, id, out var lease))
+                        throw new OperationCanceledException("The book context changed.");
+                    using (lease) return readingStore.Load(owner.Owner.Value, id.Value);
+                }, ct);
+            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+            RetireDifferentBookEditions(original, readings?.Digest);
+            var book = new RetainedOriginBook(projection, readings);
             _retainedBooks.Add(book, original);
             return book;
         }, ct);
+    }
+
+    // The authenticated Hub job adapter will call this only after validating its
+    // response provenance. It stages prose, never invokes a provider or adopts it.
+    internal Task<RetainedOriginBook?> StageOriginBookProseDraftAsync(RetainedOriginBook book,
+        OriginBookProseDraft draft, Func<bool> isCurrentPage, CancellationToken ct)
+        => ChangeBookReadingAsync(book, draft, stage: true, useForReading: false, isCurrentPage, ct);
+
+    internal Task<RetainedOriginBook?> ReviewOriginBookProseDraftAsync(RetainedOriginBook book,
+        OriginBookProseDraft draft, bool useForReading, bool explicitlyConfirmed,
+        Func<bool> isCurrentPage, CancellationToken ct)
+        => useForReading && !explicitlyConfirmed ? Task.FromResult<RetainedOriginBook?>(null)
+            : ChangeBookReadingAsync(book, draft, stage: false, useForReading, isCurrentPage, ct);
+
+    private Task<RetainedOriginBook?> ChangeBookReadingAsync(RetainedOriginBook book,
+        OriginBookProseDraft draft, bool stage, bool useForReading, Func<bool> isCurrentPage, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (_originBookReadings is not { } store || book.Readings is not { } expected
+                || !_retainedBooks.TryGetValue(book, out var original)
+                || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id
+                || !isCurrentPage() || !IsRetainedOriginBookCurrent(book)) return null;
+            var chapter = book.Chapters.SingleOrDefault(c => c.ChapterId == draft.ChapterId);
+            // Stale prose can be discarded, never selected for a changed chapter.
+            if (chapter is null || !draft.IsValid() || (stage || useForReading) && !draft.Matches(chapter, book.Locale)) return null;
+            var existing = book.Reading(chapter) ?? new(chapter.ChapterId, null, null);
+            if (stage && existing.Selected?.DraftDigest == draft.DraftDigest) return book;
+            if (stage && existing.Pending is not null && existing.Pending.DraftDigest != draft.DraftDigest
+                || !stage && existing.Pending?.DraftDigest != draft.DraftDigest) return null;
+            var nextChapter = stage ? existing with { Pending = draft }
+                : existing with { Pending = null, Selected = useForReading ? draft : existing.Selected };
+            var next = expected with { Chapters = expected.Chapters.Where(c => c.ChapterId != chapter.ChapterId)
+                .Append(nextChapter).OrderBy(c => c.ChapterId, StringComparer.Ordinal).ToArray() };
+            var saved = await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!isCurrentPage() || !IsRetainedOriginBookCurrent(book)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease))
+                    throw new OperationCanceledException("The book context changed.");
+                using (lease) return store.Save(expected, next,
+                    () => isCurrentPage() && IsRetainedOriginBookCurrent(book), ct);
+            }, ct);
+            // The durable reading edition changed, even if navigation changed
+            // immediately after commit. Old open readers/export callbacks must
+            // not keep treating their previous edition as current.
+            bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
+            RetireDifferentBookEditions(original, saved.Digest);
+            if (!current) return null;
+            var updated = new RetainedOriginBook(book.Projection, saved);
+            _retainedBooks.Add(updated, original);
+            return updated;
+        }, ct);
+
+    private void RetireDifferentBookEditions(CharacterOverviewState original, string? readingDigest)
+    {
+        foreach (var entry in _retainedBooks)
+            if (entry.Value.WorkspaceId == original.WorkspaceId
+                && entry.Value.DisplayOwnerContext == original.DisplayOwnerContext
+                && entry.Key.Readings?.Digest != readingDigest)
+                _retainedBooks.Remove(entry.Key);
     }
 
     internal async Task<bool> ExportRetainedOriginBookAsync(RetainedOriginBook book, AndroidSurfaceCopy copy,
