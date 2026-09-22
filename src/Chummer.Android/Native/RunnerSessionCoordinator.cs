@@ -434,7 +434,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IOwnerBoundCharacterCreationPrerequisiteService? ownerBoundCreationPrerequisiteService = null,
         CareerCommerceOwnerAdmission? commerceOwnerAdmission = null,
         IOwnerBoundCharacterCreationKarmaMetatypeService? ownerBoundCreationKarmaService = null,
-        ISr6CreationFoundationService? sr6CreationFoundationService = null)
+        ISr6CreationFoundationService? sr6CreationFoundationService = null,
+        IOwnerBoundCharacterCreationLifeModuleFinalizationService? lifeModuleFinalizationService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -450,6 +451,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _ownerBoundPrerequisiteService = ownerBoundCreationPrerequisiteService;
         _ownerBoundKarmaService = ownerBoundCreationKarmaService;
         _sr6FoundationService = sr6CreationFoundationService;
+        _lifeModuleFinalizationService = lifeModuleFinalizationService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;

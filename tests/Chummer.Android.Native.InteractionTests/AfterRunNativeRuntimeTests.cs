@@ -561,7 +561,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null,
             Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
             Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
-            Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null)
+            Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
+            Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -692,7 +693,9 @@ internal static partial class AfterRunAuthorityHarness
                             : prerequisiteDecorator(_provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()),
                     ownerBoundCreationKarmaService: karmaDecorator?.Invoke(
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationKarmaMetatypeService>()),
-                    sr6CreationFoundationService: sr6Decorator?.Invoke(_provider.GetRequiredService<ISr6CreationFoundationService>()));
+                    sr6CreationFoundationService: sr6Decorator?.Invoke(_provider.GetRequiredService<ISr6CreationFoundationService>()),
+                    lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()));
             }
             catch
             {

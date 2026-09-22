@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--life-module-completion-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleCompletionAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--sr6-foundation-content-root")
         {
             await AfterRunAuthorityHarness.RunSr6FoundationAsync(args[1]);
