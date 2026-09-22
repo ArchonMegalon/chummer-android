@@ -46,10 +46,19 @@ internal static partial class AfterRunAuthorityHarness
             Require(Session().Input is { TalentSelection: null, AttributePurchases: null, SkillSelection: null,
                 GearSelection: null, LifestyleSelection: null, ContactSelection: null, MagicSelection: null },
                 "Opening the completion wizard silently chose a talent or empty purchases.");
+            var initialSession = Session();
+            var initialPreview = initialSession.Preview;
+            int openingPreviewCalls = probe!.PreviewCalls;
             await Click("life-open-qualities");
+            Require(ReferenceEquals(Session().Preview, initialPreview) && probe.PreviewCalls == openingPreviewCalls,
+                "Opening an unchanged child page repeated the expensive Core preview.");
             foreach (var entry in IssuedElements(Current()).OfType<Entry>().Where(e => e.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true)) entry.Text = "Renraku";
             await Click("life-review-qualities");
+            Require(probe.PreviewCalls == openingPreviewCalls + 1 && !ReferenceEquals(Session().Preview, initialPreview),
+                "Changed quality inputs reused the earlier review.");
             await Back();
+            Require(probe.PreviewCalls == openingPreviewCalls + 1,
+                "Returning to the overview repeated an unchanged saved review.");
             await Click("life-open-talent");
             await Click("life-talent-mundane");
             await Back();
@@ -59,7 +68,10 @@ internal static partial class AfterRunAuthorityHarness
             oldAgility.Value = 1;
             await Click("life-review-attributes");
             await Back();
+            int reviewedAttributeCalls = probe.PreviewCalls;
             await Click("life-open-attributes");
+            Require(probe.PreviewCalls == reviewedAttributeCalls,
+                "Reopening reviewed attributes repeated the Core preview.");
             oldAgility.Value = 2;
             Require(Element<Stepper>("life-attribute-AGI").Value == 1, "Departed attribute control changed the current draft.");
             await Back();
@@ -94,6 +106,10 @@ internal static partial class AfterRunAuthorityHarness
             await drafts.SaveAsync(ownerKey, staleInput, default);
             var staleSession = new LifeModuleCompletionSession(runtime.Coordinator, drafts);
             await staleSession.OpenAsync(default, () => true);
+            int supersededPreviewCalls = probe.PreviewCalls;
+            await initialSession.OpenAsync(default, () => true);
+            Require(!initialSession.Reviewed && !initialSession.CanConfirm && probe.PreviewCalls == supersededPreviewCalls,
+                "A superseded session reused or reissued the retired review.");
             Require(staleSession.Halted && staleSession.CanDiscardInputDraft && !staleSession.CanConfirm
                 && JsonSerializer.Serialize(await drafts.LoadAsync(ownerKey, id, default)) == JsonSerializer.Serialize(staleInput),
                 "Stale persisted choices were silently rebound or overwritten.");
@@ -105,9 +121,11 @@ internal static partial class AfterRunAuthorityHarness
             await drafts.SaveAsync(ownerKey, retainedInput, default);
             // A fresh page/session/store reads only inputs and obtains a new Core review.
             // This is managed cold reopen, not Android force-stop evidence.
+            int beforeColdReopenCalls = probe.PreviewCalls;
             var reopened = new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory));
             await navigation.PushAsync(reopened, false); await Appear();
-            Require(JsonSerializer.Serialize(Session().Input) == expected && Session().Reviewed,
+            Require(JsonSerializer.Serialize(Session().Input) == expected && Session().Reviewed
+                && probe.PreviewCalls == beforeColdReopenCalls + 1,
                 "Cold phone reopen lost exact choices or reused old review authority.");
             Require(await drafts.LoadAsync("different-owner", id, default) is null, "Input storage crossed owner namespaces.");
             await Click("life-open-review");
@@ -378,11 +396,11 @@ internal static partial class AfterRunAuthorityHarness
         : IOwnerBoundCharacterCreationLifeModuleFinalizationService
     {
         public Action? AfterLoad, AfterConfirm;
-        public int ConfirmCalls;
+        public int ConfirmCalls, PreviewCalls;
         public CharacterCreationFoundationResult<CharacterCreationFoundationState> Load(OwnerContextStamp owner, CharacterWorkspaceId id)
         { Require(SynchronizationContext.Current is null, "Life Modules load blocks the UI context."); var r = inner.Load(owner, id); AfterLoad?.Invoke(); return r; }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationPreview> Preview(OwnerContextStamp owner, CharacterCreationFoundationFinalizationPreviewRequest request)
-        { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); return inner.Preview(owner, request); }
+        { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); PreviewCalls++; return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationReceipt> Confirm(OwnerContextStamp owner, CharacterCreationFoundationFinalizationConfirmRequest request)
         { Require(SynchronizationContext.Current is null, "Life Modules confirmation blocks the UI context."); ConfirmCalls++; var r = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return r; }
     }

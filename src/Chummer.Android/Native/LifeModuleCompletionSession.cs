@@ -45,6 +45,12 @@ internal sealed class LifeModuleCompletionSession
     public async Task OpenAsync(CancellationToken ct, Func<bool> current)
     {
         if (Halted || !FrameCurrent || !current() || Receipt is not null) return;
+        ct.ThrowIfCancellationRequested();
+        // Child pages share this session. Navigation alone does not change the
+        // saved inputs or the exact owner/workspace-bound Core review. A changed
+        // input, superseded snapshot or cold session still needs a fresh review;
+        // explicit ReviewAsync and Core's final confirmation remain unchanged.
+        if (Reviewed && Saved) return;
         if (State is null)
         {
             var opened = await _coordinator.LoadLifeModuleCompletionAsync(ct, () => FrameCurrent && current());
