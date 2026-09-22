@@ -22,9 +22,12 @@ internal static partial class AfterRunAuthorityHarness
         {
             var owners = new ControlledLinkedOwner();
             var bookOutput = new LifeBookOutputProbe();
+            var authoringAccount = System.Reflection.DispatchProxy.Create<IAndroidAccountLinkService, OriginAuthoringPageAccount>();
+            var authoringProbe = (OriginAuthoringPageAccount)authoringAccount;
             LifeCompletionNativeProbe? probe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                 productionCreationOverview: true, linkedOwners: owners, outputDocuments: bookOutput,
+                accountService: authoringAccount,
                 lifeCompletionDecorator: actual => probe = new(actual));
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
@@ -221,6 +224,9 @@ internal static partial class AfterRunAuthorityHarness
                     "A draft was selected without explicit reader confirmation.");
                 // Exercise the actual MAUI review controls, not a direct acceptance.
                 var review = new OriginBookProseReviewPage(runtime.Coordinator, staged!, chapter, proposal);
+                // The managed harness has no Android navigation handler to send
+                // the preceding page's lifecycle event for a direct test push.
+                IssuedPageLifecycle(page, "OnDisappearing");
                 await navigation.PushAsync(review, false); await Appear();
                 Require(!Element<Button>("origin-prose-use").IsEnabled, "Reading acceptance starts enabled.");
                 Element<Switch>("origin-prose-confirmed").IsToggled = true;
@@ -261,6 +267,33 @@ internal static partial class AfterRunAuthorityHarness
                 Require(new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerB.Value, id.Value).Chapters.Count == 0,
                     "Reading versions leaked into another account.");
                 await Back();
+                // Actual consent -> request -> refresh -> stage -> review UI.
+                await Click($"origin-author-chapter-{chapter.Sequence}");
+                Require(Current() is OriginBookAuthoringPage && authoringProbe.Requests == 0 && authoringProbe.Reads == 0
+                    && !Element<Button>("origin-authoring-request").IsEnabled,
+                    "Opening authoring sent private facts or enabled generation without consent.");
+                await Click("origin-authoring-refresh");
+                Require(authoringProbe.Reads == 1 && authoringProbe.Requests == 0, "Read-only status created a job.");
+                Element<Switch>("origin-authoring-consent").IsToggled = true;
+                await Click("origin-authoring-request");
+                Require(authoringProbe.Requests == 1 && authoringProbe.Reads == 2,
+                    "Consented chapter request did not read before creating.");
+                authoringProbe.Ready = true;
+                await Click("origin-authoring-refresh");
+                var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+                Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
+                    && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1,
+                    "Readback auto-adopted prose or submitted another generation.");
+                await Click("origin-authoring-review");
+                Element<Switch>("origin-prose-confirmed").IsToggled = true;
+                await Click("origin-prose-use");
+                await Back();
+                Require(Current() is OriginBookAuthoringPage && !Element<Switch>("origin-authoring-consent").IsToggled,
+                    "Returning from review retained consent or failed to reopen the current reading edition.");
+                await Back();
+                Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text == "Synthetic transport chapter for explicit review."),
+                    "The accepted transport draft did not return to the reader.");
+                Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, recoverable status, explicit adoption and book return");
                 book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 bookOutput.BeforeRead = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
                 bool canceled = false;

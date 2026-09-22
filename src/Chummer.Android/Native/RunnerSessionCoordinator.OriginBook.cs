@@ -3,10 +3,12 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Application.LifeModules;
+using Chummer.Android.Platform;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Overview;
+using Chummer.Run.Contracts.Community;
 
 namespace Chummer.Android.Native;
 
@@ -68,6 +70,43 @@ public sealed partial class RunnerSessionCoordinator
 
     internal bool IsRetainedOriginBookCurrent(RetainedOriginBook book)
         => _retainedBooks.TryGetValue(book, out var original) && IsNativeEditDisplayCurrent(original);
+
+    internal bool CanRequestOriginChapter(RetainedOriginBook book)
+        => _account is IAndroidOriginChapterTransport && _account.Snapshot.IsLinked
+            && IsRetainedOriginBookCurrent(book);
+
+    internal OriginChapterSource? PrepareOriginChapterSource(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
+    {
+        if (!CanRequestOriginChapter(book)) return null;
+        try { return OriginBookAuthoringSource.Create(book.Projection, chapter); }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return null; }
+    }
+
+    internal async Task<(AndroidOriginChapterResult Result, RetainedOriginBook? Book)> SyncOriginChapterAsync(
+        RetainedOriginBook book, OriginNarrativeChapterProjection chapter, OriginChapterSource approvedSource,
+        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct)
+    {
+        bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
+        if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
+            || original.DisplayOwnerContext is not { } owner || _account is not IAndroidOriginChapterTransport transport)
+            return (new(AndroidOriginChapterOutcome.Unauthorized), null);
+        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        if (OriginChapterSourceIdentity.Digest(source) != OriginChapterSourceIdentity.Digest(approvedSource))
+            return (new(AndroidOriginChapterOutcome.Conflict), null);
+        // Read first; neither opening this page nor refreshing a job can create
+        // a new paid task. Explicit consent is only used for a confirmed absence.
+        var result = await transport.ReadChapterAsync(owner, source, ct);
+        if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
+        if (result.Outcome == AndroidOriginChapterOutcome.NotFound && consentToCreate)
+            result = await transport.RequestChapterAsync(owner, source, true, ct);
+        if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);
+        if (result.Job is not { State: OriginChapterAuthoringStates.ReviewRequired } job)
+            return (result, book);
+        var draft = OriginBookProseDraft.Create(chapter, book.Locale, job.RequestId,
+            job.ProviderReceiptDigest!, job.DraftText!);
+        var updated = await StageOriginBookProseDraftAsync(book, draft, isCurrentPage, ct);
+        return (result, updated);
+    }
 
     internal Task<RetainedOriginBook?> LoadRetainedOriginBookAsync(CancellationToken ct, Func<bool> isCurrentPage)
     {

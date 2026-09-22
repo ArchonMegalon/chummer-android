@@ -33,6 +33,7 @@
     <Compile Include="LifeModuleCompletionNativeTests.cs" />
     <Compile Include="Sr6CreationFoundationNativeTests.cs" />
     <Compile Include="OriginDossierBookRuntimeTests.cs" />
+    <Compile Include="OriginChapterAuthoringHttpTests.cs" />
     <Compile Include="CreationKarmaPhonePageTests.cs" />
     <Compile Include="CreationKarmaSourceProfileTests.cs" />
     <Compile Include="CreationResourcesPrerequisiteRebindRuntimeTests.cs" />

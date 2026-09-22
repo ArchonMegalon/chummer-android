@@ -113,11 +113,14 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
     internal async Task<T> ReadJsonAsync<T>(
         HttpResponseMessage response,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long maximumBytes = MaxResponseBodyBytes)
     {
         ArgumentNullException.ThrowIfNull(response);
+        if (maximumBytes <= 0 || maximumBytes > MaxResponseBodyBytes)
+            throw new ArgumentOutOfRangeException(nameof(maximumBytes));
         long? contentLength = response.Content.Headers.ContentLength;
-        if (contentLength is > MaxResponseBodyBytes)
+        if (contentLength > maximumBytes)
         {
             throw OversizedResponse();
         }
@@ -129,7 +132,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             await using Stream responseStream = await response.Content.ReadAsStreamAsync(readToken);
             await using var cappedStream = new CappedReadStream(
                 responseStream,
-                MaxResponseBodyBytes,
+                maximumBytes,
                 leaveOpen: true);
             T? payload = await JsonSerializer.DeserializeAsync<T>(
                 cappedStream,

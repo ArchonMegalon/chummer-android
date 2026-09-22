@@ -171,6 +171,43 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: legacy templates → decision-scoped DE/EN/ES display, immutable history and matching safe export");
     }
 
+    public static void RunAuthoringSource()
+    {
+        var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+        var opened = service.Start("workspace-1").Value!;
+        var prepared = service.Prepare(opened, "choice-1").Value!;
+        var book = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "authoring-source-fixture", true).Value!.Checkpoint.Projection;
+        var chapter = book.VisibleChapters.Single();
+        var fixture = book with
+        {
+            AllowedCanonicalFactIds = ["metatype", "answer", "future", "private"],
+            CanonicalLayer = book.CanonicalLayer with
+            {
+                AcceptedDecisionIds = [chapter.ThroughAcceptedDecisionId, "later"],
+                Facts = [
+                    new("metatype", "accepted-metatype", "Elf", chapter.ThroughAcceptedDecisionId, ["private-anchor"], ""),
+                    new("answer", "accepted-life-module-answer", "Childhood: Renraku", chapter.ThroughAcceptedDecisionId, [], ""),
+                    new("future", "accepted-life-module-answer", "Future not chosen in this chapter", "later", [], ""),
+                    new("private", "private-notes", "Do not send", chapter.ThroughAcceptedDecisionId, [], ""),
+                    new("not-allowed", "accepted-life-module-answer", "Not approved", chapter.ThroughAcceptedDecisionId, [], "")
+                ]
+            }
+        };
+        string before = JsonSerializer.Serialize(fixture);
+        var source = OriginBookAuthoringSource.Create(fixture, chapter);
+        Require(source.Facts.Count == 2 && source.Facts.All(f => f.DecisionId == chapter.ThroughAcceptedDecisionId),
+            "Provider input leaked a later, private or non-allowlisted fact.");
+        string serialized = JsonSerializer.Serialize(source);
+        Require(!serialized.Contains("private-anchor", StringComparison.Ordinal)
+            && !serialized.Contains(chapter.VisibleMarkdown, StringComparison.Ordinal)
+            && before == JsonSerializer.Serialize(fixture), "Authoring projection copied source prose or mutated the Core book.");
+        bool rejected = false;
+        try { OriginBookAuthoringSource.Create(fixture with { AllowedCanonicalFactIds = [] }, chapter); }
+        catch (InvalidOperationException) { rejected = true; }
+        Require(rejected, "A chapter with no approved facts could be sent to a provider.");
+        Console.WriteLine("PASS Origin authoring projection: confirmed facts only, no future choices, source prose, anchors or mutation");
+    }
+
     private static async Task RunConfirmOffUiContextAsync()
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
