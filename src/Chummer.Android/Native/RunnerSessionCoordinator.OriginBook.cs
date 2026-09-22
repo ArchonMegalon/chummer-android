@@ -104,8 +104,35 @@ public sealed partial class RunnerSessionCoordinator
             return (result, book);
         var draft = OriginBookProseDraft.Create(chapter, book.Locale, job.RequestId,
             job.ProviderReceiptDigest!, job.DraftText!);
+        if (book.Reading(chapter)?.Selected?.DraftDigest == draft.DraftDigest)
+        {
+            // The durable selected edition is the local acceptance outbox.
+            // Recover a lost acknowledgement without regenerating or adopting
+            // an unselected draft. A read alone never grants new acceptance.
+            if (job.ReaderAcceptedTextDigest is null)
+                await RecordOriginBookReaderAcceptanceAsync(book, draft, isCurrentPage, ct);
+            return (result, Current() ? book : null);
+        }
         var updated = await StageOriginBookProseDraftAsync(book, draft, isCurrentPage, ct);
         return (result, updated);
+    }
+
+    internal async Task<bool> RecordOriginBookReaderAcceptanceAsync(RetainedOriginBook book,
+        OriginBookProseDraft draft, Func<bool> isCurrentPage, CancellationToken ct)
+    {
+        bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
+        if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
+            || original.DisplayOwnerContext is not { } owner || _account is not IAndroidOriginChapterTransport transport)
+            return false;
+        var chapter = book.Chapters.SingleOrDefault(c => c.ChapterId == draft.ChapterId);
+        if (chapter is null || !draft.Matches(chapter, book.Locale)
+            || book.Reading(chapter)?.Selected?.DraftDigest != draft.DraftDigest) return false;
+        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        if (draft.JobId != OriginChapterSourceIdentity.RequestId(source)) return false;
+        var result = await transport.AcceptChapterAsync(owner, source, draft.ProviderReceiptDigest,
+            draft.Text, explicitlyConfirmed: true, ct);
+        return Current() && result.Outcome == AndroidOriginChapterOutcome.Available
+            && result.Job?.ReaderAcceptedTextDigest == Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(draft.Text))).ToLowerInvariant();
     }
 
     internal Task<RetainedOriginBook?> LoadRetainedOriginBookAsync(CancellationToken ct, Func<bool> isCurrentPage)

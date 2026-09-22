@@ -13,4 +13,6 @@ public interface IAndroidOriginChapterTransport
         bool externalProcessingConsent, CancellationToken ct = default);
     Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner, OriginChapterSource originalSource,
         CancellationToken ct = default);
+    Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource originalSource,
+        string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default);
 }

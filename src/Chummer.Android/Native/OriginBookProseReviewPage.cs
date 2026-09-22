@@ -50,7 +50,14 @@ internal sealed class OriginBookProseReviewPage : NativePageBase
             var updated = await Coordinator.ReviewOriginBookProseDraftAsync(_book, _draft, choose,
                 acknowledgement.IsToggled, Current, CancellationToken.None);
             if (updated is not null && IsCurrentAppearanceGeneration(appearance)
-                && Coordinator.IsRetainedOriginBookCurrent(updated)) _finished = true;
+                && Coordinator.IsRetainedOriginBookCurrent(updated))
+            {
+                _finished = true;
+                // Local adoption commits first. A lost/offline acknowledgement
+                // cannot undo that book or turn a retry into new generation.
+                if (choose) await Coordinator.RecordOriginBookReaderAcceptanceAsync(updated, _draft,
+                    () => IsCurrentAppearanceGeneration(appearance), CancellationToken.None);
+            }
         }
         use.Clicked += async (_, _) => await RunAsync(() => Decide(true));
         discard.Clicked += async (_, _) => await RunAsync(() => Decide(false));

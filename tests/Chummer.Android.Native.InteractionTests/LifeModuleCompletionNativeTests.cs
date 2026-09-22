@@ -282,18 +282,28 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("origin-authoring-refresh");
                 var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
-                    && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1,
+                    && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
                     "Readback auto-adopted prose or submitted another generation.");
                 await Click("origin-authoring-review");
+                authoringProbe.FailAcceptance = true;
                 Element<Switch>("origin-prose-confirmed").IsToggled = true;
                 await Click("origin-prose-use");
+                Require(authoringProbe.Acceptances == 1 && new OriginBookReadingStore(runtime.StateDirectory)
+                    .Load(owner.Owner.Value, id.Value).Chapters.Single().Selected?.Text == "Synthetic transport chapter for explicit review.",
+                    "An offline reader acknowledgement lost the locally accepted book.");
                 await Back();
                 Require(Current() is OriginBookAuthoringPage && !Element<Switch>("origin-authoring-consent").IsToggled,
                     "Returning from review retained consent or failed to reopen the current reading edition.");
+                authoringProbe.FailAcceptance = false;
+                await Click("origin-authoring-refresh");
+                Require(authoringProbe.Acceptances == 2 && authoringProbe.Requests == 1,
+                    "Refreshing the saved reading edition failed to reconcile acceptance or recreated a paid job.");
+                await Click("origin-authoring-refresh");
+                Require(authoringProbe.Acceptances == 2, "A confirmed reader acknowledgement was resent unnecessarily.");
                 await Back();
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text == "Synthetic transport chapter for explicit review."),
                     "The accepted transport draft did not return to the reader.");
-                Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, recoverable status, explicit adoption and book return");
+                Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, explicit adoption, offline acceptance recovery and book return");
                 book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 bookOutput.BeforeRead = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
                 bool canceled = false;

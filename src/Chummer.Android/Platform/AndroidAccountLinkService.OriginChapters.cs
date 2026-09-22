@@ -26,10 +26,25 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
         OriginChapterSource originalSource, CancellationToken ct = default)
         => ChapterRequestAsync(owner, originalSource, create: false, ct);
 
+    private sealed record ReaderAcceptance(string ProviderReceiptDigest, string TextDigest);
+    private static string ChapterTextDigest(string text)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+    private static bool ChapterHex(string? value) => value is { Length: 64 }
+        && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource originalSource,
+        string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)
+        => explicitlyConfirmed && ChapterHex(providerReceiptDigest) && !string.IsNullOrWhiteSpace(draftText)
+            && Encoding.UTF8.GetByteCount(draftText) <= 64 * 1024
+            ? ChapterRequestAsync(owner, originalSource, create: false, ct,
+                new(providerReceiptDigest, ChapterTextDigest(draftText)))
+            : Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
+
     private async Task<AndroidOriginChapterResult> ChapterRequestAsync(OwnerContextStamp owner,
-        OriginChapterSource source, bool create, CancellationToken ct)
+        OriginChapterSource source, bool create, CancellationToken ct, ReaderAcceptance? acceptance = null)
     {
         bool proofReleased = false, knownRejected = false;
+        bool changesRemote = create || acceptance is not null;
         AndroidAccountOwnerState? expected = null;
         try
         {
@@ -43,10 +58,14 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             object payload = create
                 ? new { installationId = grant.InstallationId,
                     authoring = new OriginChapterAuthoringRequest(requestId, captured, true) }
-                : new { installationId = grant.InstallationId, requestId };
+                : acceptance is not null
+                    ? new { installationId = grant.InstallationId, requestId, sourceDigest = digest,
+                        providerReceiptDigest = acceptance.ProviderReceiptDigest, textDigest = acceptance.TextDigest,
+                        explicitlyConfirmed = true }
+                    : new { installationId = grant.InstallationId, requestId };
             var authority = CreateContinuationAuthority(expected, grant, () => proofReleased = true);
             using var response = await _httpTransport.PostJsonAsync(
-                "/api/v2/android/linked/origin/chapters/" + (create ? "request" : "read"), payload, authority, ct);
+                "/api/v2/android/linked/origin/chapters/" + (create ? "request" : acceptance is not null ? "accept" : "read"), payload, authority, ct);
             knownRejected = (int)response.StatusCode is >= 400 and < 500;
             RequireContinuationOwnerCurrent(expected);
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
@@ -54,7 +73,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             if (response.StatusCode == HttpStatusCode.Conflict) return new(AndroidOriginChapterOutcome.Conflict);
             if (!create && response.StatusCode == HttpStatusCode.NotFound) return new(AndroidOriginChapterOutcome.NotFound);
             if (!response.IsSuccessStatusCode)
-                return new(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: create && !knownRejected);
+                return new(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: changesRemote && !knownRejected);
             JsonElement body = await _httpTransport.ReadJsonAsync<JsonElement>(response, ct, 512 * 1024);
             RequireContinuationOwnerCurrent(expected);
             RejectContinuationWireDuplicates(body);
@@ -77,11 +96,15 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
                     throw new JsonException();
             }
             else if (job.DraftText is not null || job.ProviderReceiptDigest is not null) throw new JsonException();
+            if (job.ReaderAcceptedTextDigest is not null && (job.DraftText is null
+                || job.ReaderAcceptedTextDigest != ChapterTextDigest(job.DraftText))) throw new JsonException();
+            if (acceptance is not null && (job.ReaderAcceptedTextDigest != acceptance.TextDigest
+                || job.ProviderReceiptDigest != acceptance.ProviderReceiptDigest)) throw new JsonException();
             RequireContinuationOwnerCurrent(expected);
             return new(AndroidOriginChapterOutcome.Available, job with { Source = captured });
         }
         catch (UnauthorizedAccessException)
-        { return new(AndroidOriginChapterOutcome.Unauthorized, UnknownRemoteOutcome: create && proofReleased && !knownRejected); }
+        { return new(AndroidOriginChapterOutcome.Unauthorized, UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or KeyNotFoundException
             or JsonException or InvalidDataException or IOException or HttpRequestException or OperationCanceledException or CryptographicException)
         {
@@ -89,7 +112,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             // action. Read the same stable job after an uncertain write outcome.
             return new(expected is not null && !ReferenceEquals(OwnerAuthority.Capture(), expected)
                     ? AndroidOriginChapterOutcome.Unauthorized : AndroidOriginChapterOutcome.Unavailable,
-                UnknownRemoteOutcome: create && proofReleased && !knownRejected);
+                UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected);
         }
     }
 }

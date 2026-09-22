@@ -21,6 +21,9 @@ internal static partial class AfterRunAuthorityHarness
             OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null);
         var ready = queued with { State = OriginChapterAuthoringStates.ReviewRequired,
             DraftText = "Ein ausdrücklich synthetischer Entwurf.", ProviderReceiptDigest = new string('b', 64) };
+        string textDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            Encoding.UTF8.GetBytes(ready.DraftText))).ToLowerInvariant();
+        var accepted = ready with { ReaderAcceptedTextDigest = textDigest };
         // Parse with case-sensitive object keys, as an actual wire payload does.
         // SerializeToNode(Web options) would replace an existing property when
         // adding a differently cased alias, erasing the hostile test condition.
@@ -63,6 +66,30 @@ internal static partial class AfterRunAuthorityHarness
                 "The readback did not preserve the review-only result.");
             Require(OriginChapterSourceIdentity.RequestId(JsonSerializer.Deserialize<OriginChapterSource>(
                 JsonSerializer.Serialize(source, json), json)!) == id, "Cold reconstruction invented a second paid request.");
+            before = fixture.ChapterRequests;
+            Require((await transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, false)).Job is null
+                && fixture.ChapterRequests == before, "Missing reader confirmation reached Hub.");
+            fixture.ChapterResponse = (path, body) =>
+            {
+                Require(path.EndsWith("/accept", StringComparison.Ordinal) && body["sourceDigest"]!.GetValue<string>() == digest
+                    && body["providerReceiptDigest"]!.GetValue<string>() == ready.ProviderReceiptDigest
+                    && body["textDigest"]!.GetValue<string>() == textDigest && body["explicitlyConfirmed"]!.GetValue<bool>()
+                    && !body.ContainsKey("authoring") && !body.ContainsKey("draftText"), "Acceptance did not bind exactly the reviewed bytes.");
+                return ContinuationJsonResponse(Wire(accepted));
+            };
+            Require((await transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true))
+                .Job?.ReaderAcceptedTextDigest == textDigest, "The signed reader acceptance was not returned.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(ready));
+            Require((await transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true))
+                .Job is null, "An unchanged/unaccepted job was reported as accepted.");
+            fixture.ChapterResponse = (_, _) => throw new HttpRequestException("Lost acceptance response.");
+            before = fixture.ChapterRequests;
+            var uncertainAcceptance = await transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true);
+            Require(uncertainAcceptance.UnknownRemoteOutcome && fixture.ChapterRequests == before + 1,
+                "Unknown acceptance was blindly retried or reported as definitely absent.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(accepted));
+            Require((await transport.ReadChapterAsync(owner, source)).Job?.ReaderAcceptedTextDigest == textDigest,
+                "Cold acceptance readback was not recoverable.");
 
             var attacks = new Action<JsonObject>[]
             {
@@ -77,6 +104,7 @@ internal static partial class AfterRunAuthorityHarness
                 row => row["publicationAuthorized"] = true,
                 row => row["providerReceiptDigest"] = "unbound",
                 row => row["draftText"] = new string('z', 65537),
+                row => row["readerAcceptedTextDigest"] = new string('f', 64),
                 row => row["DraftText"] = "case alias",
                 row => row.Remove("source"),
                 row => row["unexpectedSecret"] = "must-not-pass"
@@ -99,6 +127,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Chapter conflict cleared or rotated account credentials.");
         }
         foreach (bool signing in new[] { true, false })
+        foreach (bool accept in new[] { true, false })
         {
             using var fixture = new ContinuationAccountFixture();
             await fixture.LinkAsync("subject", "chapter-A");
@@ -109,8 +138,9 @@ internal static partial class AfterRunAuthorityHarness
             async Task Wait() { started.SetResult(); await release.Task; }
             if (signing) fixture.Keys.BeforeRelease = async () => { fixture.Keys.BeforeRelease = null; await Wait(); };
             else fixture.BeforeHttpResponse = Wait;
-            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(ready));
-            var pending = transport.RequestChapterAsync(owner, source, true);
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(accept ? accepted : ready));
+            var pending = accept ? transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true)
+                : transport.RequestChapterAsync(owner, source, true);
             await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await fixture.LinkAsync("other-subject", "chapter-B").WaitAsync(TimeSpan.FromSeconds(5));
             await fixture.LinkAsync("subject", "chapter-A2").WaitAsync(TimeSpan.FromSeconds(5));
@@ -119,7 +149,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(result.Outcome == AndroidOriginChapterOutcome.Unauthorized && result.Job is null
                 && fixture.ChapterRequests == (signing ? 0 : 1), "Retired A-to-B-to-A owner accepted a chapter.");
         }
-        Console.WriteLine("PASS signed Origin chapter consent, stable recovery, 14 hostile readbacks, bounds, conflict and owner ABA");
+        Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, conflict and owner ABA");
     }
 }
 
@@ -129,6 +159,8 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
 {
     public int Requests { get; private set; }
     public int Reads { get; private set; }
+    public int Acceptances { get; private set; }
+    public bool FailAcceptance { get; set; }
     public bool Ready { get; set; }
     private OriginChapterAuthoringJob? _job;
 
@@ -156,6 +188,20 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
         if (_job is null) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound));
         if (Ready) _job = _job with { State = OriginChapterAuthoringStates.ReviewRequired,
             DraftText = "Synthetic transport chapter for explicit review.", ProviderReceiptDigest = new string('d', 64) };
+        return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _job));
+    }
+
+    public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)
+    {
+        if (!explicitlyConfirmed || _job?.SourceDigest != OriginChapterSourceIdentity.Digest(source)
+            || _job.DraftText != draftText || _job.ProviderReceiptDigest != providerReceiptDigest)
+            throw new InvalidOperationException("Wrong reader acceptance.");
+        Acceptances++;
+        if (FailAcceptance) return Task.FromResult(new AndroidOriginChapterResult(
+            AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
+        _job = _job with { ReaderAcceptedTextDigest = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(draftText))).ToLowerInvariant() };
         return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _job));
     }
 }
