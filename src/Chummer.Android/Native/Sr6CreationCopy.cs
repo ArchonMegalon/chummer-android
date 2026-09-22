@@ -6,6 +6,21 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string DraftStepTitle(string id) => Text(id switch
+    {
+        "foundation" => "Title", "qualities" => "QualitiesTitle", "attributes" => "AttributeTitle",
+        "skills" => "SkillTitle", "karma" => "KarmaTitle", "knowledge" => "KnowledgeTitle",
+        "contacts" => "ContactsTitle", "talent" => "TalentTitle", "forms" => "FormsTitle",
+        "spells" => "SpellsTitle", "powers" => "PowersTitle", "gear" => "GearTitle", "lifestyle" => "LifestyleTitle",
+        _ => "DraftTitle"
+    });
+    internal static string DraftRemainder(Sr6CreationDraftRemainder remainder) => CreationAllocationStrings.Format("Sr6.DraftRemainder",
+        "{0}: {1:0.##}", Text("DraftBudget." + remainder.Id), remainder.Amount);
+    internal static string DraftBalances(Sr6CreationDraftBalances balances) => CreationAllocationStrings.Format("Sr6.DraftBalances",
+        "Saved resources {0:N2} ¥ − equipment {1:N2} ¥ − lifestyle {2:N2} ¥ = {3:N2} ¥\nProjected starting cash {4:N2} ¥ · above carry-over limit {5:N2} ¥\nKarma remaining {6} · projected carry-over {7} · above limit {8}\nNothing has been discarded or applied to a finished runner.",
+        balances.ResourcesNuyen, balances.GearSpentNuyen, balances.LifestyleSpentNuyen, balances.RemainingNuyen,
+        balances.ProjectedStartingNuyen, balances.NuyenAboveCarryOver, balances.RemainingKarma,
+        balances.ProjectedStartingKarma, balances.KarmaAboveCarryOver);
     internal static string LifestyleOption(Sr6CreationLifestyleOption option) => CreationAllocationStrings.Format("Sr6.LifestyleOption",
         "{0} · {1:N2} ¥/month", Text("Lifestyle." + option.Id), option.MonthlyNuyen);
     internal static string LifestyleBudget(Sr6CreationLifestylePreview preview) => CreationAllocationStrings.Format("Sr6.LifestyleBudget",

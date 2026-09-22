@@ -618,4 +618,27 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.Lifestyle.middle" xml:space="preserve"><value>Middle</value></data>
   <data name="Sr6.Lifestyle.high" xml:space="preserve"><value>High</value></data>
   <data name="Sr6.Lifestyle.luxury" xml:space="preserve"><value>Luxury</value></data>
+  <data name="Sr6.DraftTitle" xml:space="preserve"><value>Saved draft overview</value></data>
+  <data name="Sr6.DraftHelp" xml:space="preserve"><value>This overview uses your saved draft, not unconfirmed edits. “Saved” does not mean every point is spent or that this is a finished runner. “None selected” does not claim a review. Open a step to continue.</value></data>
+  <data name="Sr6.DraftStatus.none-selected" xml:space="preserve"><value>None selected (optional)</value></data>
+  <data name="Sr6.DraftNotFinalized" xml:space="preserve"><value>SR6 finalization and transfer to Career are not available yet. These are saved creation choices, not applied character effects.</value></data>
+  <data name="Sr6.DraftBalances" xml:space="preserve"><value>Saved resources {0:N2} ¥ − equipment {1:N2} ¥ − lifestyle {2:N2} ¥ = {3:N2} ¥
+Projected starting cash {4:N2} ¥ · above carry-over limit {5:N2} ¥
+Karma remaining {6} · projected carry-over {7} · above limit {8}
+Nothing has been discarded or applied to a finished runner.</value></data>
+  <data name="Sr6.DraftRemainder" xml:space="preserve"><value>{0}: {1:0.##}</value></data>
+  <data name="Sr6.DraftStatus.missing" xml:space="preserve"><value>Not reviewed yet</value></data>
+  <data name="Sr6.DraftStatus.waiting" xml:space="preserve"><value>Complete the preceding choices first</value></data>
+  <data name="Sr6.DraftStatus.saved" xml:space="preserve"><value>Saved</value></data>
+  <data name="Sr6.DraftStatus.unspent" xml:space="preserve"><value>Saved — points remain</value></data>
+  <data name="Sr6.DraftBudget.character-points" xml:space="preserve"><value>Unspent character points</value></data>
+  <data name="Sr6.DraftBudget.attribute-points" xml:space="preserve"><value>Unspent attribute points</value></data>
+  <data name="Sr6.DraftBudget.adjustment-points" xml:space="preserve"><value>Unspent adjustment points</value></data>
+  <data name="Sr6.DraftBudget.skill-points" xml:space="preserve"><value>Unspent skill points</value></data>
+  <data name="Sr6.DraftBudget.karma-above-cap" xml:space="preserve"><value>Karma above the carry-over limit</value></data>
+  <data name="Sr6.DraftBudget.knowledge-points" xml:space="preserve"><value>Unspent knowledge/language points</value></data>
+  <data name="Sr6.DraftBudget.contact-points" xml:space="preserve"><value>Unspent contact points</value></data>
+  <data name="Sr6.DraftBudget.free-form-slots" xml:space="preserve"><value>Unused free complex-form slots</value></data>
+  <data name="Sr6.DraftBudget.free-spell-slots" xml:space="preserve"><value>Unused free spell/ritual slots</value></data>
+  <data name="Sr6.DraftBudget.power-points" xml:space="preserve"><value>Unspent power points</value></data>
 </root>

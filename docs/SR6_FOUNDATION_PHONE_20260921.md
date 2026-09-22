@@ -8,6 +8,11 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
+- Saved draft overview for Priority/Sum-to-Ten/Point Buy, with Core-projected
+  step status, dependencies, remaining pools and combined cash/Karma balances.
+  It reads only confirmed saved state and links back to the typed editors.
+  It explicitly does not claim finalization, applied effects or Career entry.
+  Optional absent qualities are not mislabelled as reviewed or mandatory.
 - Native foundation route for pending SR6 Priority/Sum-to-Ten/Point Buy runners.
 - Explicit five-category priorities for the two priority methods; metatype and
   talent are explicit choices for all three methods.
@@ -114,7 +119,44 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current lifestyle increment — 22 September 2026
+## Current draft-overview increment — 22 September 2026
+
+Core projects saved coverage and balances; Android does not calculate rules or
+mark the runner created. The summary is bound to the current saved revision,
+distinguishes missing/dependent/saved/unspent choices, and links to each typed
+editor under the existing owner, appearance and rendered-state guards. Empty
+optional qualities are "none selected", preserving their historical null
+encoding without inventing a completed review. Free spell/form slots are not
+confused with optional Point Buy purchase caps. Fractional power points remain
+visible. Finalization/Career entry is explicitly unavailable.
+
+Local checks: **269 Core Creation/codec tests**, **166 managed native scenarios**
+and **632 localization keys** passed. Nine existing method × language scenarios
+now also exercise summary navigation, exact saved balances/statuses, absence of
+mutation controls, unchanged workspace bytes and rejection of departed links.
+The new navigation test caught and fixed a duplicate MAUI AutomationId assignment.
+Logs: `core-sr6-draft-summary-4.log`, `sr6-native-draft-summary-4.log` in the
+existing private local packet; localization passed in tool output.
+
+Final keyless x64 Debug build: zero warnings/errors, 53.98 seconds,
+`sr6-draft-summary-debug-build-2.log`. Only duplicate explanatory text/empty
+status spacing was removed after the managed run; the final layout is checked
+on API 36. `sr6-draft-summary-debug-final.apk` SHA-256:
+`acdacc43e180641245f5cab94cfa7bfa2167116ed39af165c20a5e930a23ea48`.
+This remains an explicit local source assembly, not a package seal or Play update.
+
+API 36 used the previously saved mixed-domain Point Buy draft at revision15/15,
+not a new finalization. The summary rendered 10,000¥ resources less 1,800¥ gear
+and 4,000¥ lifestyle = 4,200¥, and 18 remaining Karma with projected carry-over5
+and excess13. The lifestyle link opened the actual saved Low/2-month editor,
+without offering a historical confirmation. Force-stop removed PID4941; the
+new PID5243 restored the same draft with byte-identical workspace JSON:
+`40b1a4a5264ac55b7756c0e0f6b8adc6d6c7dc2a05c7e6320e620cec81c22cbb`.
+Cold-boot System UI/Google/phone ANRs preceded app use; no Chummer ANR/crash
+was observed. Empty immediate-transition accessibility reads were rejected;
+the resumed Activity and fresh visual/hierarchy state were inspected instead.
+
+## Historical lifestyle increment — 22 September 2026
 
 Core `eee964d79`; Presentation `1eae38aa1` unchanged. Six basic monthly
 lifestyles come from the owned German 2024 core p59; starting cash comes from
@@ -945,6 +987,8 @@ to replay a mutation. The completed routes above used fresh visible state.
 
 Debug key only; no upload key, AAB, Play upload, physical installation, new
 package authority or hosted qualification. The installed user/Play package was
-not touched. Next work is SR6 talent grants and remaining creation/finalization, then method-specific
-Point Buy/Life Path/Karma flows. SR5 Life Modules and its book remain an open
+not touched. Next work is SR6 character/effect materialization and explicit
+finalization, plus the distinct Life Path and optional Karma editors. Point Buy
+already has saved allocation editors but is not yet a complete runner route.
+SR5 Life Modules and its book remain an open
 priority before Windows; this increment does not declare them finished.

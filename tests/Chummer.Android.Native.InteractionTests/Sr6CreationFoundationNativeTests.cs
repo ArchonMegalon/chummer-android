@@ -110,6 +110,45 @@ internal static partial class AfterRunAuthorityHarness
                     Require(IssuedElements(gearPage).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.LifestyleBudget(quote.Lifestyle!))
                         && !IssuedElements(gearPage).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.GearBudget(quote.Gear!)),
                         "Equipment page showed cash that was already prepaid for lifestyle.");
+                    IssuedPageLifecycle(gearPage, "OnDisappearing");
+                    var foundationPage = new Sr6CreationFoundationPage(runtime.Coordinator);
+                    await navigation.PushAsync(foundationPage, false);
+                    using var foundationAlerts = new IssuedPageAlerts(foundationPage, window);
+                    await foundationAlerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(foundationPage, "OnAppearing"));
+                    var summaryButton = IssuedElements(foundationPage).OfType<Button>().Single(item => item.AutomationId == "sr6-foundation-draft-summary");
+                    Require(summaryButton.IsEnabled, "Saved draft did not offer its summary.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)summaryButton).SendClicked());
+                    IssuedPageLifecycle(foundationPage, "OnDisappearing");
+                    var summaryPage = (Sr6CreationFoundationPage)navigation.Navigation.NavigationStack.Last();
+                    Require(summaryPage.AutomationId == "sr6-draft-summary-page" && summaryPage.Title == Sr6CreationCopy.Text("DraftTitle"),
+                        "Summary navigation or localization missing.");
+                    using var summaryAlerts = new IssuedPageAlerts(summaryPage, window);
+                    await summaryAlerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(summaryPage, "OnAppearing"));
+                    T Summary<T>(string key) where T : Element => IssuedElements(summaryPage).OfType<T>().Single(item => item.AutomationId == key);
+                    var storedSummary = Chummer.Rulesets.Sr6.Sr6CreationFoundationRules.Load(stored).Value!.DraftSummary!;
+                    Require(Summary<Label>("sr6-draft-balances").Text == Sr6CreationCopy.DraftBalances(storedSummary.Balances!)
+                        && Summary<Label>("sr6-draft-status-qualities").Text == Sr6CreationCopy.Text("DraftStatus.none-selected")
+                        && Summary<Label>("sr6-draft-status-attributes").Text == Sr6CreationCopy.Text("DraftStatus.unspent")
+                        && Summary<Label>("sr6-draft-status-lifestyle").Text == Sr6CreationCopy.Text("DraftStatus.saved"),
+                        "Summary confused missing, saved or unspent state.");
+                    Require(Summary<Label>("sr6-draft-finalization-unavailable").Text == Sr6CreationCopy.Text("DraftNotFinalized")
+                        && !IssuedElements(summaryPage).OfType<Button>().Any(item => item.AutomationId is "sr6-foundation-confirm" or "sr6-foundation-preview"),
+                        "Summary offered a write or claimed finalization.");
+                    var openLifestyle = Summary<Button>("sr6-draft-open-lifestyle");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
+                    Require(navigation.Navigation.NavigationStack.Last().AutomationId == "sr6-lifestyle-page", "Summary did not reopen the exact typed wizard.");
+                    IssuedPageLifecycle(summaryPage, "OnDisappearing");
+                    int depth = navigation.Navigation.NavigationStack.Count;
+                    openLifestyle.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
+                    Require(navigation.Navigation.NavigationStack.Count == depth && probe.Confirms == 2,
+                        "Departed summary navigation was replayed or saved.");
+                    Require(Sr6CreationFoundationIntegrity.Digest(stored) == Sr6CreationFoundationIntegrity.Digest(
+                        new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!), "Viewing the summary altered saved state.");
+                    Require(foundationAlerts.Titles.Count == 0 && summaryAlerts.Titles.Count == 0,
+                        "Draft summary navigation raised a product error dialog.");
                     ui.AssertHealthy();
                     Console.WriteLine("PASS SR6 lifestyle phone " + method + " " + language);
                 }

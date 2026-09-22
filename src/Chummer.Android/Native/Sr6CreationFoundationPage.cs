@@ -24,6 +24,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _contactsMode;
     private readonly bool _gearMode;
     private readonly bool _lifestyleMode;
+    private readonly bool _summaryMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -45,14 +46,15 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _contacts;
     private Button? _gear;
     private Button? _lifestyle;
+    private Button? _summary;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
         bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false,
         bool powersMode = false, bool karmaMode = false, bool qualitiesMode = false, bool contactsMode = false, bool gearMode = false,
-        bool lifestyleMode = false) : base(coordinator)
+        bool lifestyleMode = false, bool summaryMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode, karmaMode, qualitiesMode, contactsMode, gearMode, lifestyleMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode, karmaMode, qualitiesMode, contactsMode, gearMode, lifestyleMode, summaryMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
@@ -66,10 +68,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _contactsMode = contactsMode;
         _gearMode = gearMode;
         _lifestyleMode = lifestyleMode;
+        _summaryMode = summaryMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(lifestyleMode ? "LifestyleTitle" : gearMode ? "GearTitle" : contactsMode ? "ContactsTitle" : qualitiesMode ? "QualitiesTitle" : karmaMode ? "KarmaTitle" : powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = lifestyleMode ? "sr6-lifestyle-page" : gearMode ? "sr6-gear-page" : contactsMode ? "sr6-contacts-page" : qualitiesMode ? "sr6-qualities-page" : karmaMode ? "sr6-karma-page" : powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(summaryMode ? "DraftTitle" : lifestyleMode ? "LifestyleTitle" : gearMode ? "GearTitle" : contactsMode ? "ContactsTitle" : qualitiesMode ? "QualitiesTitle" : karmaMode ? "KarmaTitle" : powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = summaryMode ? "sr6-draft-summary-page" : lifestyleMode ? "sr6-lifestyle-page" : gearMode ? "sr6-gear-page" : contactsMode ? "sr6-contacts-page" : qualitiesMode ? "sr6-qualities-page" : karmaMode ? "sr6-karma-page" : powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -141,12 +144,15 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _contacts = null;
         _gear = null;
         _lifestyle = null;
+        _summary = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
-        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
+        // The overview has its own concise draft/finalization explanation.
+        // Do not push the actual balances and next actions below a duplicate scope wall.
+        if (!_summaryMode) _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
         _status = NativeTheme.Body(string.Join("\n", _blockers.Select(Sr6CreationCopy.Blocker)), NativeTheme.Danger);
         _status.AutomationId = "sr6-foundation-status";
-        _body.Add(_status);
+        if (!_summaryMode || _blockers.Count > 0) _body.Add(_status);
         if (_commit is { } committed && FrameCurrent && Coordinator.CanDisplaySr6FoundationCommit(committed))
             _body.Add(NativeTheme.Body(Sr6CreationCopy.Text(_state is null ? "SavedReopen" : "Saved")));
         if (!Ready || _state is not { } state)
@@ -157,6 +163,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         bool Current() => !_busy && render == _render && IsCurrentAppearanceGeneration(appearance) && Ready;
         _body.Add(NativeTheme.Body(state.BuildMethod + " · " + CreationKarmaCopy.Binding(
             state.Binding.ContentRevision, state.Binding.SavedRevision), NativeTheme.Muted));
+        if (_summaryMode) { BuildDraftSummary(state, Current); return; }
         _selection ??= state.PointBuyLimits is not null
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
@@ -309,6 +316,19 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             {
                 bool SavedCurrent() => Current() && Sr6CreationFoundationIntegrity.Digest(_selection)
                     == Sr6CreationFoundationIntegrity.Digest(saved.Selection);
+                var summary = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("DraftTitle"));
+                _summary = summary;
+                summary.AutomationId = "sr6-foundation-draft-summary";
+                summary.IsEnabled = SavedCurrent() && state.DraftSummary is not null;
+                summary.Clicked += async (_, _) =>
+                {
+                    if (!SavedCurrent() || state.DraftSummary is null) return;
+                    await RunAsync(async () =>
+                    {
+                        if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, summaryMode: true));
+                    });
+                };
+                _body.Add(summary);
                 var qualities = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("QualitiesTitle"));
                 _qualities = qualities;
                 qualities.AutomationId = "sr6-foundation-qualities";
@@ -682,7 +702,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode && !_karmaMode && !_qualitiesMode && !_contactsMode && !_gearMode && !_lifestyleMode;
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode && !_karmaMode && !_qualitiesMode && !_contactsMode && !_gearMode && !_lifestyleMode && !_summaryMode;
             bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null || _selection.Karma is not null || _selection.Qualities is not null || _selection.Contacts is not null || _selection.Gear is not null || _selection.Lifestyle is not null);
             if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null, Karma = null, Qualities = null, Contacts = null, Gear = null, Lifestyle = null };
             _selection = selection;
@@ -703,6 +723,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_contacts is not null) _contacts.IsEnabled = false;
             if (_gear is not null) _gear.IsEnabled = false;
             if (_lifestyle is not null) _lifestyle.IsEnabled = false;
+            if (_summary is not null) _summary.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
