@@ -69,18 +69,67 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   the combined pool/Karma creation limit, positive final skill rating and the
   multiple-weapon-type exception without a dice bonus. Free-text subjects carry
   a GM-review warning. Removing earlier ranks cannot leave an orphan specialty.
+- Karma knowledge/languages use a saved free-pool baseline. New unrated topics
+  and new languages are separate purchases; existing languages use their exact
+  IDs and charge only additional levels. Core checks duplicates/native-language
+  conflicts and the shared budget. All controls/reviews are DE/EN/ES.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Qualities (including Aptitude/Bilingual), Karma knowledge/language purchases,
+Qualities (including Aptitude/Bilingual),
 runtime talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current Karma-specialty increment — 22 September 2026
+## Current Karma knowledge/language increment — 22 September 2026
+
+Core `346f7fdcfae46a8b1a8ae80c7a0881f85686a955`; Android functional
+`7f61e580ca11b11056fbd943b1f57c08375727ad`, tree
+`01e03f34a2be53eca9b1e99bf96598f97ce15a68`; Presentation remains `1eae38aa1`.
+The owned German core pp70/72/100 supplies three-Karma knowledge topics and
+three Karma per added language level, up to Expert. Base pool/native choices
+are not charged again. Core validates the exact existing language ID/name,
+target level, cumulative cost, duplicate names and dependent free-pool budget.
+Changing inputs invalidates review; departed controls cannot mutate the draft.
+
+`core-sr6-karma-knowledge-1.log`: **194 Core tests PASS**, plus both mixed-domain
+anchor-cap regression cases in `core-sr6-karma-knowledge-combined.log`.
+`sr6-native-karma-knowledge-1.log`: **121 native managed scenarios PASS**,
+including Priority/Sum-to-Ten/Point Buy in DE/EN/ES, combined budget rejection,
+duplicate/native-language conflicts, stable IDs, stale review and departed
+callback rejection. The two extra Core cases exercise the mixed-domain anchor
+limit with and without Karma knowledge; they are not additional full-suite runs.
+
+`sr6-karma-knowledge-debug-build-1.log`: local keyless Docker Debug x64 build,
+**0 warnings/errors**, 1m37.81s. Explicit source assembly, not a package seal.
+Retained `sr6-karma-knowledge-debug.apk`, SHA-256:
+`e3c5e0bfa62b285489180ee16e2a3064a0118796064e2c4cd81f471a5bb49b60`.
+
+Actual API36 smoke reused `sr6-powers-after-restart.json`, revision 7/7 with six
+decisions, workspace `1924cafdb6ab458cbc105902fe931131`; it is not a fresh
+bootstrap or all-method completion test. The real Knowledge page saved English
+native and Spanish Basic with its one free pick (revision 8/8). The Karma page
+then added Seattle gangs (3), Spanish Basic to Expert (6), and new German Expert
+(9). Review showed **18/50 Karma**, the separate one-pick baseline, and unchanged
+38 CP, Magic 3, 2 PP and two formulas. One explicit confirmation saved revision
+**9/9**, exactly eight decisions. The topics remain GM-reviewed player text.
+
+Force-stop removed PID 4357; relaunch created PID 5598. Restored Foundation and
+Karma showed revision 9/9, the 18-Karma saved budget and the same topic/language
+IDs without a historical Confirm button. Entire workspace bytes were identical:
+`d8e168ccf139c699d92920244cc438f8c6661dd058b28b2eb34ba3c58cdcb9bf`.
+Retained `sr6-karma-knowledge-*` screenshots, fresh hierarchies, JSON and logs in
+the existing local packet. The first post-launch null hierarchy was rejected;
+subsequent observations established restored state. No debug-app crash/ANR
+appeared in captured events; cold-boot system-process ANRs were separate.
+The owned emulator and local build/test containers stopped. No main merge,
+package reseal, upload-key use, release AAB or Play update occurred.
+This remains a partial creation draft, not a finalized runner or Play delivery.
+
+## Historical Karma-specialty increment — 22 September 2026
 
 Core `a1e10ae05` adds five-Karma specialization purchases from the owned German
 2024 core pp66/72/94/97. Normal skills allow one specialty across pool and Karma;
