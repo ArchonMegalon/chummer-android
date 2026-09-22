@@ -122,10 +122,31 @@ string[] surfaceFiles =
 Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(
              native,
-             ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs"]))
+             ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs", "Sr6CreationCopy.cs"]))
 {
     usedCopy.TryAdd(key, fallback);
 }
+// SR6 shares this resource catalogue through a prefixed helper, including
+// conditional captions and typed-ID label families. Do not classify every
+// helper-backed key as unused simply because it has no inline English fallback.
+string[] sr6Files = Directory.EnumerateFiles(native, "Sr6Creation*.cs")
+    .Concat(Directory.EnumerateFiles(native, "*.cs").Where(path => File.ReadAllText(path)
+        .Contains("Sr6CreationCopy.", StringComparison.Ordinal))).Distinct(StringComparer.Ordinal).ToArray();
+var sr6Literals = sr6Files.SelectMany(path => CSharpSyntaxTree.ParseText(File.ReadAllText(path))
+    .GetRoot().DescendantTokens().Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+    .Select(token => token.ValueText)).ToHashSet(StringComparer.Ordinal);
+foreach ((string key, string value) in neutral.Where(pair => pair.Key.StartsWith("Sr6.", StringComparison.Ordinal)))
+{
+    string suffix = key[4..];
+    if (sr6Literals.Contains(suffix) || sr6Literals.Any(literal => literal.EndsWith('.') && literal.Length > 1
+            && literal != "Sr6." && (suffix.StartsWith(literal, StringComparison.Ordinal)
+                || key.StartsWith(literal, StringComparison.Ordinal))))
+        usedCopy.TryAdd(key, value);
+}
+foreach (string path in sr6Files)
+foreach (Match match in Regex.Matches(File.ReadAllText(path),
+    (Path.GetFileName(path) == "Sr6CreationCopy.cs" ? @"(?<![\w.])Text" : @"Sr6CreationCopy\.Text") + @"\(""([^""]+)""\)"))
+    Assert(neutral.ContainsKey("Sr6." + match.Groups[1].Value), "SR6 helper key missing: " + match.Groups[1].Value);
 string[] missingUsedKeys = usedCopy.Keys
     .Except(neutral.Keys, StringComparer.Ordinal)
     .Order(StringComparer.Ordinal)
@@ -153,6 +174,7 @@ AssertNoDirectVisibleCopy(native, surfaceFiles);
 AssertAuthorityBoundary(native);
 AssertHelperScope(native, surfaceFiles);
 AssertSourcesParse(native, surfaceFiles.Append("CreationAllocationStrings.cs"));
+AssertSourcesParse(native, sr6Files.Select(Path.GetFileName).OfType<string>());
 
 Console.WriteLine(
     $"Creation allocation localization tests passed ({neutral.Count} parity-checked keys; "
@@ -280,7 +302,7 @@ static void AssertHelperScope(string native, IReadOnlyCollection<string> surface
     // BuildPage owns allocation route captions; CreationFinalizationPage owns
     // shared starting-cash copy. Their other copy belongs to other catalogs.
     string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs").Append("BuildPage.cs")
-        .Append("CreationFinalizationPage.cs")
+        .Append("CreationFinalizationPage.cs").Append("Sr6CreationCopy.cs")
         .Order(StringComparer.Ordinal)
         .ToArray();
     string[] actual = Directory.EnumerateFiles(native, "*.cs", SearchOption.TopDirectoryOnly)

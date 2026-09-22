@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto, compras con Karma y una cesta de equipo. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto, compras con Karma, equipo y un estilo de vida básico. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, contactos, cualidades, capacidades, compras con Karma y la cesta de equipo al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, contactos, cualidades, capacidades, compras con Karma, equipo y estilo de vida al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -603,4 +603,19 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
   <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>requiere licencia</value></data>
   <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>ilegal</value></data>
+  <data name="Sr6.LifestyleTitle" xml:space="preserve"><value>Estilo de vida y dinero inicial</value></data>
+  <data name="Sr6.LifestyleHelp" xml:space="preserve"><value>Elige un estilo de vida básico y meses completos de prepago. Core comprueba el coste junto con tu equipo. El dinero inicial es una previsión limitada a 5.000 ¥; aquí no se descarta dinero ni se finaliza el personaje. No incluye estilos personalizados, impuestos vinculados al SIN ni pagos recurrentes de Carrera.</value></data>
+  <data name="Sr6.LifestyleChoose" xml:space="preserve"><value>Elegir estilo de vida</value></data>
+  <data name="Sr6.LifestyleMonths" xml:space="preserve"><value>Meses de prepago (número entero, mínimo 1)</value></data>
+  <data name="Sr6.LifestyleOption" xml:space="preserve"><value>{0} · {1:N2} ¥/mes</value></data>
+  <data name="Sr6.LifestyleBudget" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥&#10;Equipo {4:N2} ¥ · recursos totales {5:N2} ¥ · restante {6:N2} ¥&#10;Dinero inicial previsto {7:N2} ¥ (límite {8:N2} ¥) · sin gastar sobre el límite {9:N2} ¥</value></data>
+  <data name="Sr6.LifestyleInvalid" xml:space="preserve"><value>Elige un estilo de vida e introduce un número entero positivo de meses.</value></data>
+  <data name="Sr6.LifestyleUnavailable" xml:space="preserve"><value>Elige uno de los estilos de vida básicos de SR6 compatibles.</value></data>
+  <data name="Sr6.LifestyleBudgetExceeded" xml:space="preserve"><value>El equipo y el estilo de vida superan juntos los Nuyen disponibles. Reduce las compras o los meses de prepago, o aumenta tus recursos.</value></data>
+  <data name="Sr6.Lifestyle.street" xml:space="preserve"><value>Callejero</value></data>
+  <data name="Sr6.Lifestyle.squatter" xml:space="preserve"><value>Ocupante</value></data>
+  <data name="Sr6.Lifestyle.low" xml:space="preserve"><value>Bajo</value></data>
+  <data name="Sr6.Lifestyle.middle" xml:space="preserve"><value>Medio</value></data>
+  <data name="Sr6.Lifestyle.high" xml:space="preserve"><value>Alto</value></data>
+  <data name="Sr6.Lifestyle.luxury" xml:space="preserve"><value>Lujo</value></data>
 </root>

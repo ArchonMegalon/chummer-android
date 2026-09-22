@@ -28,6 +28,107 @@ internal static partial class AfterRunAuthorityHarness
                     await Bootstrap(runtime, method);
                     var id = runtime.Coordinator.State.WorkspaceId!.Value;
                     var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("human", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([]), Karma = new([], [], 5), Gear = new([new(Guid.NewGuid(), "lined-coat", 2)])
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    string prior = Sr6CreationFoundationIntegrity.Digest(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!
+                        .Document.AuxiliaryState.Sr6CreationFoundationDecisions![0]);
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, lifestyleMode: true);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>().Single(item => item.AutomationId == key);
+                    Task Click(string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                    Require(page.Title == Sr6CreationCopy.Text("LifestyleTitle") && page.AutomationId == "sr6-lifestyle-page",
+                        "Lifestyle page localization missing.");
+                    Require(Element<Picker>("sr6-lifestyle-choice").SelectedIndex == -1, "Lifestyle silently defaulted to a choice.");
+                    await Click("sr6-foundation-preview");
+                    Require(Element<Label>("sr6-foundation-status").Text == Sr6CreationCopy.Text("LifestyleInvalid"), "Missing lifestyle was accepted.");
+                    Element<Picker>("sr6-lifestyle-choice").SelectedIndex = 2;
+                    await Click("sr6-foundation-preview");
+                    var oldConfirm = Element<Button>("sr6-foundation-confirm");
+                    Element<Entry>("sr6-lifestyle-months").Text = "2";
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Lifestyle months reused an old confirmation.");
+                    foreach (string invalid in new[] { "0", "-1", "1.5", "9999999999999999", "" })
+                    {
+                        Element<Entry>("sr6-lifestyle-months").Text = invalid;
+                        await Click("sr6-foundation-preview");
+                        Require(!IssuedElements(page).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                            && Element<Label>("sr6-foundation-status").Text == Sr6CreationCopy.Text("LifestyleInvalid"),
+                            "Invalid months lost domain error: " + invalid);
+                    }
+                    Element<Entry>("sr6-lifestyle-months").Text = "10000";
+                    await Click("sr6-foundation-preview");
+                    Require(Element<Label>("sr6-foundation-status").Text == Sr6CreationCopy.Text("LifestyleBudgetExceeded")
+                        && probe.Confirms == 1, "Lifestyle overbudget was accepted.");
+                    Element<Entry>("sr6-lifestyle-months").Text = "2";
+                    await Click("sr6-foundation-preview");
+                    await Click("sr6-foundation-confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.SavedRevision == 3 && quote.Lifestyle!.LifestyleSpentNuyen == 4000m
+                        && quote.Lifestyle.GearSpentNuyen == 1800m
+                        && quote.Lifestyle.RemainingNuyen == seed.Karma!.ResourcesNuyen - 5800m
+                        && probe.Confirms == 2, "Lifestyle lost shared cash or saved twice.");
+                    Require(Sr6CreationFoundationIntegrity.Digest(stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions![0]) == prior,
+                        "Lifestyle rewrote earlier decision bytes.");
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.LifestyleBudget(quote.Lifestyle!)),
+                        "Saved lifestyle and starting cash projection missing.");
+                    await Click("sr6-foundation-preview");
+                    oldConfirm = Element<Button>("sr6-foundation-confirm");
+                    Element<Picker>("sr6-lifestyle-choice").SelectedIndex = 1;
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe.Confirms == 2, "Changed lifestyle reused old review.");
+                    var departedMonths = Element<Entry>("sr6-lifestyle-months");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    departedMonths.Text = "20";
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, lifestyleMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Entry>().Single(item => item.AutomationId == "sr6-lifestyle-months").Text == "2"
+                        && IssuedElements(reopened).OfType<Picker>().Single(item => item.AutomationId == "sr6-lifestyle-choice").SelectedIndex == 2,
+                        "Lifestyle reopening accepted unconfirmed/departed edits.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(item => item.AutomationId == "sr6-foundation-confirm")
+                        && probe.Confirms == 2, "Lifestyle reopened with a historical confirmation.");
+                    IssuedPageLifecycle(reopened, "OnDisappearing");
+                    var gearPage = new Sr6CreationFoundationPage(runtime.Coordinator, gearMode: true);
+                    await navigation.PushAsync(gearPage, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(gearPage, "OnAppearing"));
+                    Require(IssuedElements(gearPage).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.LifestyleBudget(quote.Lifestyle!))
+                        && !IssuedElements(gearPage).OfType<Label>().Any(item => item.Text == Sr6CreationCopy.GearBudget(quote.Gear!)),
+                        "Equipment page showed cash that was already prepaid for lifestyle.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 lifestyle phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
                     var selection = new Sr6CreationFoundationSelection("troll", "mundane",
                         method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
                             new("attributes", "A"), new("skills", "B"), new("resources", "C")])

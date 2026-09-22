@@ -6,6 +6,13 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string LifestyleOption(Sr6CreationLifestyleOption option) => CreationAllocationStrings.Format("Sr6.LifestyleOption",
+        "{0} · {1:N2} ¥/month", Text("Lifestyle." + option.Id), option.MonthlyNuyen);
+    internal static string LifestyleBudget(Sr6CreationLifestylePreview preview) => CreationAllocationStrings.Format("Sr6.LifestyleBudget",
+        "{0}: {1} × {2:N2} ¥ = {3:N2} ¥\nEquipment {4:N2} ¥ · total resources {5:N2} ¥ · remaining {6:N2} ¥\nProjected starting cash {7:N2} ¥ (limit {8:N2} ¥) · unspent above limit {9:N2} ¥",
+        Text("Lifestyle." + preview.Option.Id), preview.Selection.Months, preview.Option.MonthlyNuyen,
+        preview.LifestyleSpentNuyen, preview.GearSpentNuyen, preview.ResourcesNuyen, preview.RemainingNuyen,
+        preview.ProjectedStartingNuyen, preview.MaximumCarryOverNuyen, preview.UnspentAboveCarryOver);
     internal static string GearName(Sr6CreationGearOption option) => option.SourceName
         + (option.Rating is { } rating ? " · " + CreationAllocationStrings.Format("Sr6.GearRating", "rating {0}", rating) : "");
     internal static string GearOption(Sr6CreationGearOption option) => CreationAllocationStrings.Format("Sr6.GearOption",
@@ -138,6 +145,9 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
         Sr6CreationContactBlockers.InvalidSelection => Text("ContactsInvalid"),
+        Sr6CreationLifestyleBlockers.InvalidSelection => Text("LifestyleInvalid"),
+        Sr6CreationLifestyleBlockers.Unavailable => Text("LifestyleUnavailable"),
+        Sr6CreationLifestyleBlockers.BudgetExceeded => Text("LifestyleBudgetExceeded"),
         Sr6CreationGearBlockers.InvalidSelection => Text("GearInvalid"),
         Sr6CreationGearBlockers.CatalogUnavailable => Text("GearCatalogUnavailable"),
         Sr6CreationGearBlockers.AvailabilityExceeded => Text("GearAvailabilityExceeded"),

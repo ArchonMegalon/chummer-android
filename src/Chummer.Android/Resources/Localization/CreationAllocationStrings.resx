@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers, Karma purchases and an equipment basket. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers, Karma purchases, equipment and a basic lifestyle. Later creation steps and Career entry remain unavailable.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices, Karma purchases and the equipment basket in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices, Karma purchases, equipment and lifestyle in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -603,4 +603,19 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
   <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>license required</value></data>
   <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>illegal</value></data>
+  <data name="Sr6.LifestyleTitle" xml:space="preserve"><value>Lifestyle and starting cash</value></data>
+  <data name="Sr6.LifestyleHelp" xml:space="preserve"><value>Choose one basic lifestyle and prepaid whole months. Core checks its cost together with your equipment basket. Starting cash is a projection capped at 5,000 ¥; nothing is discarded or finalized here. Custom lifestyles, SIN-linked taxes and recurring Career payments are not included.</value></data>
+  <data name="Sr6.LifestyleChoose" xml:space="preserve"><value>Choose lifestyle</value></data>
+  <data name="Sr6.LifestyleMonths" xml:space="preserve"><value>Prepaid months (whole number, at least 1)</value></data>
+  <data name="Sr6.LifestyleOption" xml:space="preserve"><value>{0} · {1:N2} ¥/month</value></data>
+  <data name="Sr6.LifestyleBudget" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥&#10;Equipment {4:N2} ¥ · total resources {5:N2} ¥ · remaining {6:N2} ¥&#10;Projected starting cash {7:N2} ¥ (limit {8:N2} ¥) · unspent above limit {9:N2} ¥</value></data>
+  <data name="Sr6.LifestyleInvalid" xml:space="preserve"><value>Choose a lifestyle and enter a positive whole number of months.</value></data>
+  <data name="Sr6.LifestyleUnavailable" xml:space="preserve"><value>Choose one of the supported SR6 basic lifestyles.</value></data>
+  <data name="Sr6.LifestyleBudgetExceeded" xml:space="preserve"><value>Equipment and lifestyle together exceed available Nuyen. Reduce purchases or prepaid months, or increase your resources.</value></data>
+  <data name="Sr6.Lifestyle.street" xml:space="preserve"><value>Street</value></data>
+  <data name="Sr6.Lifestyle.squatter" xml:space="preserve"><value>Squatter</value></data>
+  <data name="Sr6.Lifestyle.low" xml:space="preserve"><value>Low</value></data>
+  <data name="Sr6.Lifestyle.middle" xml:space="preserve"><value>Middle</value></data>
+  <data name="Sr6.Lifestyle.high" xml:space="preserve"><value>High</value></data>
+  <data name="Sr6.Lifestyle.luxury" xml:space="preserve"><value>Luxury</value></data>
 </root>

@@ -100,16 +100,63 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
+- Basic lifestyle and starting-cash page: six localized choices and whole-month
+  prepayment, with Core-calculated joint equipment/lifestyle cash. The projected
+  starting balance is capped at 5,000 Nuyen, never rolled or silently discarded.
+  Changing choice/months invalidates review. Gear pages show the combined balance
+  when a lifestyle is saved, not money already spent on prepaid months.
 
 Further qualities (including other parameterized families and Bilingual),
 runtime quality/talent effects, the rest of the equipment catalogue (including
-ammunition, accessories, bodytech, SIN/license assignments, vehicles and
-lifestyles), finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
+ammunition, accessories, bodytech, SIN/license assignments and vehicles), custom
+lifestyles, SIN-linked lifestyle taxes, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current equipment increment — 22 September 2026
+## Current lifestyle increment — 22 September 2026
+
+Core `eee964d79`; Presentation `1eae38aa1` unchanged. Six basic monthly
+lifestyles come from the owned German 2024 core p59; starting cash comes from
+p70. There is no SR5 cash roll, permanent/custom lifestyle, SIN-linked tax or
+recurring Career payment in this editor. Gear and lifestyle share Core's exact
+resource/Karma-cash budget; changes cannot keep an overdrawn saved lifestyle.
+The 5,000-Nuyen starting-cash ceiling is a projection, not silent disposal.
+Nullable new fields preserve previous decision and gear-quote bytes. When a
+lifestyle exists, both native pages display its combined remaining balance.
+
+`core-sr6-lifestyle-1.log`: **261 focused Core tests PASS**.
+`sr6-native-lifestyle-1.log`: **166 managed native scenarios PASS**, including
+nine new three-method × DE/EN/ES cases for selection/months, malformed input,
+shared budget, stale confirmation, departed edits and unchanged saved reopen.
+That run emitted one test-only nullable warning; a subsequent null-forgiving
+annotation corrects it without changing executable behavior. The existing
+allocation localization test now recognizes the SR6 prefixed helper (including
+Build-page captions) rather than reporting its entire catalogue as unused;
+**612 keys pass** parity, formatting, fallback and source checks.
+
+Keyless local Debug x64 build: **zero warnings/errors**, 1m44.85s, in
+`sr6-lifestyle-debug-build-1.log`. `sr6-lifestyle-debug.apk` SHA256:
+`1d33f363aeccfed5694b40994640c6929103daec694b7776b9bbc1708e7ad449`.
+
+Actual API36 UI smoke reused the old equipment draft at14/14. Selected Low,
+entered2 prepaid months, reviewed4,000¥ lifestyle +1,800¥ equipment against
+10,000¥ resources, and confirmed once: **15/15, fourteen decisions**.
+Remaining/projected starting cash is4,200¥ with no excess above carry-over.
+The prior thirteen decisions, all other choices, gear quote and document
+envelope compare unchanged. Force-stop removedPID4854; newPID5433 reopened
+the actual lifestyle editor with saved Low/2 and no historical Confirm.
+Save and post-restart page copies are byte-identical, SHA256:
+`40b1a4a5264ac55b7756c0e0f6b8adc6d6c7dc2a05c7e6320e620cec81c22cbb`.
+
+Packet `sr6-lifestyle-*` retains APK, PNG/XML, JSON and logs. Emulator cold-boot
+system ANRs/Bluetooth crash occurred before app testing; no Chummer ANR/crash
+was observed. The initial immediate post-launch hierarchy read was empty;
+the resumed Activity and a fresh rendered hierarchy were then verified.
+Owned emulator and temporary containers are stopped. No release AAB, upload
+key, main merge, package seal or Play operation is part of this increment.
+
+## Historical equipment increment — 22 September 2026
 
 Core `ec568da7b`; Presentation `1eae38aa1` unchanged. The new basket supplies
 148 source-backed item/rating choices for Priority, Sum-to-Ten and Point Buy.
