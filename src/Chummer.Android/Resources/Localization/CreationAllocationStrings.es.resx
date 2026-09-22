@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto, compras con Karma, equipo y un estilo de vida básico. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Asistentes experimentales de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda tus decisiones y revisa la finalización por separado desde el resumen guardado. Las selecciones pendientes o estadísticas no compatibles impiden finalizar. Las acciones de Carrera de SR6, Trayectoria vital y creación opcional con Karma aún no están terminadas.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -621,7 +621,21 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.DraftTitle" xml:space="preserve"><value>Resumen del borrador guardado</value></data>
   <data name="Sr6.DraftHelp" xml:space="preserve"><value>Este resumen usa el borrador guardado, no los cambios sin confirmar. «Guardado» no significa que se hayan gastado todos los puntos ni que el runner esté terminado. «Ninguno seleccionado» no implica una revisión. Abre un paso para continuar.</value></data>
   <data name="Sr6.DraftStatus.none-selected" xml:space="preserve"><value>Ninguno seleccionado (opcional)</value></data>
-  <data name="Sr6.DraftNotFinalized" xml:space="preserve"><value>La finalización de SR6 y el paso a Carrera aún no están disponibles. Son decisiones de creación guardadas, no efectos aplicados al personaje.</value></data>
+  <data name="Sr6.FinishReview" xml:space="preserve"><value>Revisar creación de SR6</value></data>
+  <data name="Sr6.FinishHelp" xml:space="preserve"><value>Revisa las decisiones guardadas antes de terminar. Las selecciones pendientes o no compatibles impiden finalizar. Nada cambia hasta tu confirmación explícita. Finalizar no desbloquea los asistentes de Carrera de SR6 no compatibles.</value></data>
+  <data name="Sr6.FinishSaved" xml:space="preserve"><value>Creación de SR6 guardada. Se conservan el borrador original y el recibo de finalización.</value></data>
+  <data name="Sr6.FinishDone" xml:space="preserve"><value>Volver al runner</value></data>
+  <data name="Sr6.FinishReopen" xml:space="preserve"><value>Esta confirmación no se puede reutilizar. Vuelve a abrir el runner y comprueba el resultado guardado antes de continuar.</value></data>
+  <data name="Sr6.FinishMissing" xml:space="preserve"><value>Finalización bloqueada:</value></data>
+  <data name="Sr6.FinishConfirm" xml:space="preserve"><value>Finalizar creación y guardar</value></data>
+  <data name="Sr6.FinishAcceptLoss" xml:space="preserve"><value>Acepto que se descarten los puntos sin gastar y los importes que superen los límites de transferencia indicados. Vuelve atrás para gastarlos.</value></data>
+  <data name="Sr6.FinishResources" xml:space="preserve"><value>Recursos</value></data>
+  <data name="Sr6.DraftBudget.nuyen-above-cap" xml:space="preserve"><value>Nuyen por encima del límite de transferencia</value></data>
+  <data name="Sr6.FinishDomain.equipment-runtime-stats" xml:space="preserve"><value>Las estadísticas del equipo seleccionado aún no son compatibles.</value></data>
+  <data name="Sr6.FinishDomain.spell-runtime-stats" xml:space="preserve"><value>Las estadísticas de los hechizos seleccionados aún no son compatibles.</value></data>
+  <data name="Sr6.FinishDomain.complex-form-runtime-stats" xml:space="preserve"><value>Las estadísticas de las formas complejas seleccionadas aún no son compatibles.</value></data>
+  <data name="Sr6.FinishDomain.magical-tradition" xml:space="preserve"><value>El paso de tradición mágica aún no es compatible.</value></data>
+  <data name="Sr6.FinishDomain.passive-effect-conflict" xml:space="preserve"><value>Hay que resolver los efectos permanentes incompatibles.</value></data>
   <data name="Sr6.DraftBalances" xml:space="preserve"><value>Recursos guardados {0:N2} ¥ − equipo {1:N2} ¥ − estilo de vida {2:N2} ¥ = {3:N2} ¥
 Dinero inicial previsto {4:N2} ¥ · por encima del límite {5:N2} ¥
 Karma restante {6} · conservación prevista {7} · por encima del límite {8}

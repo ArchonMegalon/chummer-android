@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers, Karma purchases, equipment and a basic lifestyle. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy wizards. Save your choices, then open the saved overview to review completion separately. Missing selections or unsupported game statistics block completion. SR6 Career actions, Life Path and optional Karma creation remain unfinished.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -621,7 +621,21 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.DraftTitle" xml:space="preserve"><value>Saved draft overview</value></data>
   <data name="Sr6.DraftHelp" xml:space="preserve"><value>This overview uses your saved draft, not unconfirmed edits. “Saved” does not mean every point is spent or that this is a finished runner. “None selected” does not claim a review. Open a step to continue.</value></data>
   <data name="Sr6.DraftStatus.none-selected" xml:space="preserve"><value>None selected (optional)</value></data>
-  <data name="Sr6.DraftNotFinalized" xml:space="preserve"><value>SR6 finalization and transfer to Career are not available yet. These are saved creation choices, not applied character effects.</value></data>
+  <data name="Sr6.FinishReview" xml:space="preserve"><value>Review SR6 creation</value></data>
+  <data name="Sr6.FinishHelp" xml:space="preserve"><value>Review the saved choices before finishing. Missing or unsupported selections block completion. Nothing changes until you explicitly confirm. Finishing creation does not unlock unsupported SR6 Career wizards.</value></data>
+  <data name="Sr6.FinishSaved" xml:space="preserve"><value>SR6 creation saved. Your original draft and completion receipt have been retained.</value></data>
+  <data name="Sr6.FinishDone" xml:space="preserve"><value>Return to runner</value></data>
+  <data name="Sr6.FinishReopen" xml:space="preserve"><value>This confirmation cannot be reused. Reopen the runner to check the saved result before continuing.</value></data>
+  <data name="Sr6.FinishMissing" xml:space="preserve"><value>Completion blocked:</value></data>
+  <data name="Sr6.FinishConfirm" xml:space="preserve"><value>Finish creation and save</value></data>
+  <data name="Sr6.FinishAcceptLoss" xml:space="preserve"><value>I accept that the listed unused points and amounts above carry-over limits will be discarded. Go back to spend them instead.</value></data>
+  <data name="Sr6.FinishResources" xml:space="preserve"><value>Resources</value></data>
+  <data name="Sr6.DraftBudget.nuyen-above-cap" xml:space="preserve"><value>Nuyen above the carry-over limit</value></data>
+  <data name="Sr6.FinishDomain.equipment-runtime-stats" xml:space="preserve"><value>Game statistics for the selected equipment are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.spell-runtime-stats" xml:space="preserve"><value>Game statistics for the selected spells are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.complex-form-runtime-stats" xml:space="preserve"><value>Game statistics for the selected complex forms are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.magical-tradition" xml:space="preserve"><value>The magical-tradition step is not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.passive-effect-conflict" xml:space="preserve"><value>Conflicting permanent effects need to be resolved.</value></data>
   <data name="Sr6.DraftBalances" xml:space="preserve"><value>Saved resources {0:N2} ¥ − equipment {1:N2} ¥ − lifestyle {2:N2} ¥ = {3:N2} ¥
 Projected starting cash {4:N2} ¥ · above carry-over limit {5:N2} ¥
 Karma remaining {6} · projected carry-over {7} · above limit {8}

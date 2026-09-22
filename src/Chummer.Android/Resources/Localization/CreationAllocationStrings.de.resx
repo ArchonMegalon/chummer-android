@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, ausgewählte Vor-/Nachteile, Attribute, Fertigkeiten, Wissen, Sprachen, Connections, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte, Karmakäufe, Ausrüstung und ein Basis-Lebensstil lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimentelle SR6-Wizards für Priorität / Sum-to-Ten / Punktekauf. Speichere deine Entscheidungen und prüfe den Abschluss anschließend separat in der Entwurfsübersicht. Fehlende Auswahlen oder nicht unterstützte Spielwerte verhindern den Abschluss. SR6-Karriereaktionen, Lebensweg und optionale Karma-Erschaffung sind noch nicht fertig.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -621,7 +621,21 @@ Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
   <data name="Sr6.DraftTitle" xml:space="preserve"><value>Gespeicherter Entwurf</value></data>
   <data name="Sr6.DraftHelp" xml:space="preserve"><value>Diese Übersicht verwendet deinen gespeicherten Entwurf, keine unbestätigten Änderungen. „Gespeichert“ bedeutet weder, dass alle Punkte ausgegeben sind, noch dass der Runner fertig ist. „Keine gewählt“ bedeutet nicht „geprüft“. Öffne einen Schritt zum Weiterarbeiten.</value></data>
   <data name="Sr6.DraftStatus.none-selected" xml:space="preserve"><value>Keine gewählt (optional)</value></data>
-  <data name="Sr6.DraftNotFinalized" xml:space="preserve"><value>SR6-Abschluss und Übernahme in die Karriere sind noch nicht verfügbar. Dies sind gespeicherte Erschaffungsentscheidungen, keine angewendeten Charaktereffekte.</value></data>
+  <data name="Sr6.FinishReview" xml:space="preserve"><value>SR6-Erschaffung prüfen</value></data>
+  <data name="Sr6.FinishHelp" xml:space="preserve"><value>Prüfe die gespeicherten Entscheidungen vor dem Abschluss. Fehlende oder noch nicht unterstützte Auswahlen verhindern den Abschluss. Erst deine ausdrückliche Bestätigung speichert die Änderung. Nicht unterstützte SR6-Karriere-Wizards werden dadurch nicht freigeschaltet.</value></data>
+  <data name="Sr6.FinishSaved" xml:space="preserve"><value>SR6-Erschaffung gespeichert. Der ursprüngliche Entwurf und der Abschlussbeleg bleiben erhalten.</value></data>
+  <data name="Sr6.FinishDone" xml:space="preserve"><value>Zurück zum Runner</value></data>
+  <data name="Sr6.FinishReopen" xml:space="preserve"><value>Diese Bestätigung kann nicht erneut verwendet werden. Öffne den Runner erneut und prüfe das gespeicherte Ergebnis.</value></data>
+  <data name="Sr6.FinishMissing" xml:space="preserve"><value>Abschluss blockiert:</value></data>
+  <data name="Sr6.FinishConfirm" xml:space="preserve"><value>Erschaffung abschließen und speichern</value></data>
+  <data name="Sr6.FinishAcceptLoss" xml:space="preserve"><value>Ich bestätige, dass die aufgeführten ungenutzten Punkte und Beträge über den Übernahmegrenzen verfallen. Gehe zurück, um sie stattdessen auszugeben.</value></data>
+  <data name="Sr6.FinishResources" xml:space="preserve"><value>Ressourcen</value></data>
+  <data name="Sr6.DraftBudget.nuyen-above-cap" xml:space="preserve"><value>Nuyen über der Übernahmegrenze</value></data>
+  <data name="Sr6.FinishDomain.equipment-runtime-stats" xml:space="preserve"><value>Spielwerte der gewählten Ausrüstung werden noch nicht unterstützt.</value></data>
+  <data name="Sr6.FinishDomain.spell-runtime-stats" xml:space="preserve"><value>Spielwerte der gewählten Zauber werden noch nicht unterstützt.</value></data>
+  <data name="Sr6.FinishDomain.complex-form-runtime-stats" xml:space="preserve"><value>Spielwerte der gewählten komplexen Formen werden noch nicht unterstützt.</value></data>
+  <data name="Sr6.FinishDomain.magical-tradition" xml:space="preserve"><value>Der Schritt für die magische Tradition wird noch nicht unterstützt.</value></data>
+  <data name="Sr6.FinishDomain.passive-effect-conflict" xml:space="preserve"><value>Widersprüchliche dauerhafte Effekte müssen aufgelöst werden.</value></data>
   <data name="Sr6.DraftBalances" xml:space="preserve"><value>Gespeicherte Ressourcen {0:N2} ¥ − Ausrüstung {1:N2} ¥ − Lebensstil {2:N2} ¥ = {3:N2} ¥
 Voraussichtliches Startkapital {4:N2} ¥ · über dem Übernahmelimit {5:N2} ¥
 Karma übrig {6} · voraussichtliche Übernahme {7} · über dem Limit {8}

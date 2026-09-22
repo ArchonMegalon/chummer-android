@@ -8,6 +8,7 @@ namespace Chummer.Android.Native;
 
 internal sealed record Sr6FoundationPhoneCommit(string Outcome, Sr6CreationFoundationCommit? Commit,
     Sr6CreationFoundationState? State, IReadOnlyList<string> Blockers);
+internal sealed record Sr6FinalizationPhoneCommit(Sr6CreationFinalizationReceipt? Receipt, IReadOnlyList<string> Blockers);
 
 public sealed partial class RunnerSessionCoordinator
 {
@@ -19,6 +20,79 @@ public sealed partial class RunnerSessionCoordinator
     private readonly ConditionalWeakTable<Sr6CreationFoundationCommit, CharacterOverviewState> _sr6Commits = new();
     private Sr6CreationFoundationState? _sr6CurrentState;
     private Sr6CreationFoundationPreview? _sr6CurrentPreview;
+    private readonly ConditionalWeakTable<Sr6CreationFinalizationReview, Sr6FinalReview> _sr6FinalReviews = new();
+    private readonly ConditionalWeakTable<Sr6CreationFinalizationReceipt, CharacterOverviewState> _sr6FinalReceipts = new();
+    private Sr6CreationFinalizationReview? _sr6CurrentFinalReview;
+    private sealed record Sr6FinalReview(Sr6CreationFoundationState State, CharacterOverviewState Original, Guid OperationId)
+    { internal bool Started; }
+
+    internal bool IsSr6FinalizationReviewCurrent(Sr6CreationFinalizationReview review)
+        => ReferenceEquals(_sr6CurrentFinalReview, review) && _sr6FinalReviews.TryGetValue(review, out var issued)
+           && !issued.Started && IsSr6FoundationStateCurrent(issued.State)
+           && review.ReviewDigest == Sr6CreationFinalizationIntegrity.ReviewDigest(review);
+
+    internal bool CanDisplaySr6FinalizationReceipt(Sr6CreationFinalizationReceipt receipt)
+        => _sr6FinalReceipts.TryGetValue(receipt, out var original) && IsPrerequisiteOriginalOwnerVisible(original);
+
+    internal Task<CharacterCreationFoundationResult<Sr6CreationFinalizationReview>> ReviewSr6FinalizationAsync(
+        Sr6CreationFoundationState state, Func<bool> currentPage, CancellationToken ct = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!currentPage() || !IsSr6FoundationStateCurrent(state) || !_sr6States.TryGetValue(state, out var original)
+                || original.DisplayOwnerContext is not { IsValid: true } owner || _sr6FoundationService is not { } service)
+                return Sr6Stale<Sr6CreationFinalizationReview>();
+            _sr6CurrentFinalReview = null;
+            var result = await Task.Run(() => service.ReviewFinalization(owner, state.Binding), ct);
+            ct.ThrowIfCancellationRequested();
+            if (!currentPage() || !IsSr6FoundationStateCurrent(state)) return Sr6Stale<Sr6CreationFinalizationReview>();
+            if (result.Value is { } review)
+            {
+                if (review.Binding != state.Binding || review.ReviewDigest != Sr6CreationFinalizationIntegrity.ReviewDigest(review)
+                    || review.DocumentDigest != Sr6CreationFinalizationIntegrity.DocumentDigest(review.Document.Content))
+                    return Sr6Stale<Sr6CreationFinalizationReview>();
+                _sr6FinalReviews.Add(review, new(state, original, Guid.NewGuid()));
+                _sr6CurrentFinalReview = review;
+            }
+            return result;
+        }, ct);
+
+    internal Task<Sr6FinalizationPhoneCommit> ConfirmSr6FinalizationAsync(Sr6CreationFinalizationReview review,
+        bool explicitlyConfirmed, bool acceptLoss, Func<bool> currentPage, CancellationToken ct = default)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            Sr6FinalizationPhoneCommit Rejected(string blocker) => new(null, [blocker]);
+            if (!explicitlyConfirmed || !review.CanFinalize || review.Losses.Count > 0 && !acceptLoss)
+                return Rejected(Sr6CreationFinalizationBlockers.ConfirmationRequired);
+            if (!currentPage() || !IsSr6FinalizationReviewCurrent(review) || !_sr6FinalReviews.TryGetValue(review, out var issued)
+                || issued.Original.DisplayOwnerContext is not { IsValid: true } owner || _sr6FoundationService is not { } service)
+                return Rejected(Sr6CreationFoundationBlockers.StaleBinding);
+            ct.ThrowIfCancellationRequested();
+            issued.Started = true;
+            var request = new Sr6CreationFinalizationRequest(review.Binding, review.ReviewDigest, issued.OperationId, true, acceptLoss);
+            int entered = 0;
+            CharacterCreationFoundationResult<Sr6CreationFinalizationCommit> result;
+            try
+            { result = await Task.Run(() => { Interlocked.Exchange(ref entered, 1); return service.ConfirmFinalization(owner, request); }, ct); }
+            catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0) { issued.Started = false; throw; }
+            catch (Exception error) when (error is not OutOfMemoryException) { return Rejected(Sr6OutcomeUnknown); }
+            if (result.Value is not { Receipt: { } receipt }) return new(null, result.Blockers);
+            if (receipt.Command != request || receipt.DocumentDigest != review.DocumentDigest
+                || receipt.ContentRevision != review.Binding.ContentRevision + 1 || receipt.SavedRevision != receipt.ContentRevision
+                || receipt.ReceiptDigest != Sr6CreationFinalizationIntegrity.ReceiptDigest(receipt)) return Rejected(Sr6OutcomeUnknown);
+            _sr6FinalReceipts.Add(receipt, issued.Original);
+            _sr6CurrentState = null; _sr6CurrentPreview = null; _sr6CurrentFinalReview = null;
+            try
+            {
+                if (ct.IsCancellationRequested || !currentPage() || !CanDisplaySr6FinalizationReceipt(receipt)
+                    || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh) return new(receipt, [Sr6SaveNeedsRefresh]);
+                await refresh.LoadAsync(owner, request.Binding.WorkspaceId, ct);
+                if (ct.IsCancellationRequested || !currentPage() || !CanDisplaySr6FinalizationReceipt(receipt)) return new(receipt, [Sr6SaveNeedsRefresh]);
+                await SyncShellAsync(ct);
+                return State.Profile?.Created == true && State.ContentRevision == receipt.ContentRevision
+                    ? new(receipt, []) : new(receipt, [Sr6SaveNeedsRefresh]);
+            }
+            catch (Exception error) when (error is not OutOfMemoryException) { return new(receipt, [Sr6SaveNeedsRefresh]); }
+        }, ct);
 
     private sealed record Sr6Review(Sr6CreationFoundationState State, CharacterOverviewState Original,
         Sr6CreationFoundationConfirmRequest Command)

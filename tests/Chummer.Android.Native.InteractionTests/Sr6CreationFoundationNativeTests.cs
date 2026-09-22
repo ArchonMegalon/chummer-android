@@ -25,6 +25,103 @@ internal static partial class AfterRunAuthorityHarness
                     Sr6Probe? probe = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                         productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    var state = await FinalizableDraft(runtime, method);
+                    var id = state.Binding.WorkspaceId;
+                    var review = (await runtime.Coordinator.ReviewSr6FinalizationAsync(state, () => true)).Value!;
+                    Require(review is { CanFinalize: true } && review.Losses.Count > 0, "Complete draft cannot be finalized.");
+                    var page = new Sr6CreationFinalizationPage(runtime.Coordinator, review!);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>().Single(item => item.AutomationId == key);
+                    var confirm = Element<Button>("sr6-finalization-confirm");
+                    Require(page.Title == Sr6CreationCopy.Text("FinishReview") && !confirm.IsEnabled
+                        && !Element<CheckBox>("sr6-finalization-accept-loss").IsChecked, "Loss acceptance was implicit.");
+                    confirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
+                    Require(probe!.FinalConfirms == 0, "Synthetic click bypassed loss consent.");
+                    Element<CheckBox>("sr6-finalization-accept-loss").IsChecked = true;
+                    confirm = Element<Button>("sr6-finalization-confirm");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
+                    Require(IssuedElements(page).OfType<Label>().Any(item => item.AutomationId == "sr6-finalization-saved"
+                        && item.Text == Sr6CreationCopy.Text("FinishSaved")), "Saved result was not shown: "
+                        + string.Join(" | ", IssuedElements(page).OfType<Label>().Select(item => item.Text)));
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var receipt = stored.Document.AuxiliaryState.Sr6CreationFinalizationArchive!.Receipt;
+                    Require(probe.FinalConfirms == 1 && stored.ContentRevision == state.Binding.ContentRevision + 1
+                        && stored.ContentRevision == stored.SavedRevision && runtime.Coordinator.State.Profile!.Created,
+                        "Finalization failed to save or refresh the runner.");
+                    confirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    await runtime.Presenter.LoadAsync(id, default);
+                    Require(runtime.Coordinator.State.Profile!.Created && !runtime.Coordinator.CanOpenSr6Foundation()
+                        && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.Document.AuxiliaryState.Sr6CreationFinalizationArchive!.Receipt == receipt
+                        && probe.FinalConfirms == 1, "Reopening replayed finalization or returned to Creation.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 finalization phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
+            foreach (string scenario in new[] { "owner-aba-review", "departed-review", "owner-aba-confirm", "departed-confirm",
+                         "forged-review", "cancel-after-commit", "lost-return", "owner-aba-after-commit", "blocked-gear" })
+            {
+                var owners = new ControlledLinkedOwner();
+                Sr6Probe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                    productionCreationOverview: true, linkedOwners: owners, sr6Decorator: actual => probe = new(actual, ui));
+                var state = await FinalizableDraft(runtime, "Priority", scenario == "blocked-gear");
+                void Aba() { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                bool currentPage = true;
+                if (scenario == "owner-aba-review") probe!.AfterFinalReview = Aba;
+                if (scenario == "departed-review") probe!.AfterFinalReview = () => currentPage = false;
+                var result = await runtime.Coordinator.ReviewSr6FinalizationAsync(state, () => currentPage);
+                if (scenario is "owner-aba-review" or "departed-review")
+                {
+                    Require(result.Value is null && probe!.FinalConfirms == 0, "Stale review was admitted.");
+                    Console.WriteLine("PASS SR6 finalization " + scenario); continue;
+                }
+                var review = result.Value!;
+                Require(review is not null, "Final review missing.");
+                if (scenario == "blocked-gear") Require(!review!.CanFinalize && review.Blockers.Contains("equipment-runtime-stats"), "Unimplemented equipment was finalized.");
+                if (scenario == "owner-aba-confirm") Aba();
+                if (scenario == "departed-confirm") currentPage = false;
+                if (scenario == "forged-review") review = review! with { };
+                using var cancellation = new CancellationTokenSource();
+                if (scenario == "cancel-after-commit") probe!.AfterFinalConfirm = cancellation.Cancel;
+                if (scenario == "lost-return") probe!.AfterFinalConfirm = () => throw new IOException("Lost committed finalization result");
+                if (scenario == "owner-aba-after-commit") probe!.AfterFinalConfirm = Aba;
+                var savedResult = await runtime.Coordinator.ConfirmSr6FinalizationAsync(review!, true, true, () => currentPage, cancellation.Token);
+                var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(state.Binding.WorkspaceId).Value!;
+                bool committed = scenario is "cancel-after-commit" or "lost-return" or "owner-aba-after-commit";
+                Require(probe!.FinalConfirms == (committed ? 1 : 0)
+                    && stored.ContentRevision == state.Binding.ContentRevision + (committed ? 1 : 0), "Finalization guard wrote unexpected state.");
+                if (committed)
+                {
+                    Require(stored.Document.AuxiliaryState.Sr6CreationFinalizationArchive is not null, "Committed finalization lost its archive.");
+                    if (scenario == "lost-return") Require(savedResult.Receipt is null && savedResult.Blockers.Contains(RunnerSessionCoordinator.Sr6OutcomeUnknown), "Unknown outcome was called a success.");
+                    else Require(savedResult.Receipt is not null && savedResult.Blockers.Contains(RunnerSessionCoordinator.Sr6SaveNeedsRefresh), "Post-commit interruption lost the save receipt.");
+                    if (scenario == "owner-aba-after-commit") Require(!runtime.Coordinator.CanDisplaySr6FinalizationReceipt(savedResult.Receipt!), "Foreign owner saw finalization receipt.");
+                    await runtime.Coordinator.ConfirmSr6FinalizationAsync(review!, true, true, () => true);
+                    Require(probe.FinalConfirms == 1, "Unknown/interrupted completion was replayed.");
+                }
+                ui.AssertHealthy();
+                Console.WriteLine("PASS SR6 finalization " + scenario);
+            }
+
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
                     await Bootstrap(runtime, method);
                     var id = runtime.Coordinator.State.WorkspaceId!.Value;
                     var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
@@ -141,7 +238,7 @@ internal static partial class AfterRunAuthorityHarness
                         && Summary<Label>("sr6-draft-status-attributes").Text == Sr6CreationCopy.Text("DraftStatus.unspent")
                         && Summary<Label>("sr6-draft-status-lifestyle").Text == Sr6CreationCopy.Text("DraftStatus.saved"),
                         "Summary confused missing, saved or unspent state.");
-                    Require(Summary<Label>("sr6-draft-finalization-unavailable").Text == Sr6CreationCopy.Text("DraftNotFinalized")
+                    Require(Summary<Label>("sr6-draft-finalization-help").Text == Sr6CreationCopy.Text("FinishHelp")
                         && !IssuedElements(summaryPage).OfType<Button>().Any(item => item.AutomationId is "sr6-foundation-confirm" or "sr6-foundation-preview"),
                         "Summary offered a write or claimed finalization.");
                     var naturalToggle = Summary<Button>("sr6-draft-natural-toggle");
@@ -1732,6 +1829,25 @@ internal static partial class AfterRunAuthorityHarness
             }
         });
 
+        static async Task<Sr6CreationFoundationState> FinalizableDraft(NativeRewardRuntime runtime, string method, bool gear = false)
+        {
+            await Bootstrap(runtime, method);
+            var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+            var selection = new Sr6CreationFoundationSelection("human", "mundane", method == "PointBuy" ? [] :
+                [new("heritage", "D"), new("talent", "E"), new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+            {
+                PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                Attributes = new(Sr6CreationAttributeIds.Ordered.Select(id => new Sr6CreationAttributeSpend(id, 0, 0)).ToArray()),
+                Skills = new([new("Athletics", 1, [])]), Karma = new([], [], 0),
+                Knowledge = new("German", [new(Guid.NewGuid(), "Seattle")], []), Contacts = new([]),
+                Gear = new(gear ? [new(Guid.NewGuid(), "lined-coat", 1)] : []), Lifestyle = new("street", 1)
+            };
+            var preview = await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection);
+            Require(preview.Value is not null, "Finalization seed invalid: " + string.Join(",", preview.Blockers));
+            Require((await runtime.Coordinator.ConfirmSr6FoundationAsync(preview.Value!, true)).Commit is not null, "Finalization seed was not saved.");
+            return (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+        }
+
         static async Task Bootstrap(NativeRewardRuntime runtime, string method)
         {
             await runtime.Coordinator.InitializeAsync();
@@ -1748,9 +1864,10 @@ internal static partial class AfterRunAuthorityHarness
 
     private sealed class Sr6Probe(ISr6CreationFoundationService actual, SynchronizationContext ui) : ISr6CreationFoundationService
     {
-        internal int Confirms;
+        internal int Confirms, FinalConfirms;
         internal bool FailNextLoad;
         internal Action? AfterLoad, AfterPreview, AfterConfirm;
+        internal Action? AfterFinalReview, AfterFinalConfirm;
         private void Background() => Require(!ReferenceEquals(SynchronizationContext.Current, ui), "SR6 Core call blocked the UI context.");
         public CharacterCreationFoundationResult<Sr6CreationFoundationState> Load(OwnerContextStamp owner, CharacterWorkspaceId id)
         {
@@ -1768,6 +1885,14 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<Sr6CreationCharacterProjection> ProjectCharacter(OwnerContextStamp owner,
             Sr6CreationFoundationBinding binding)
         { Background(); return actual.ProjectCharacter(owner, binding); }
+        public CharacterCreationFoundationResult<Sr6CreationFinalizationReview> ReviewFinalization(OwnerContextStamp owner,
+            Sr6CreationFoundationBinding binding)
+        { Background(); var result = actual.ReviewFinalization(owner, binding); AfterFinalReview?.Invoke(); return result; }
+        public CharacterCreationFoundationResult<Sr6CreationFinalizationCommit> ConfirmFinalization(OwnerContextStamp owner,
+            Sr6CreationFinalizationRequest request)
+        { Background(); FinalConfirms++; var result = actual.ConfirmFinalization(owner, request); AfterFinalConfirm?.Invoke(); return result; }
+        public CharacterCreationFoundationResult<Sr6CreationFinalizationReceipt> LoadFinalization(OwnerContextStamp owner, CharacterWorkspaceId id)
+        { Background(); return actual.LoadFinalization(owner, id); }
         public CharacterCreationFoundationResult<Sr6CreationFoundationCommit> Confirm(OwnerContextStamp owner, Sr6CreationFoundationConfirmRequest request)
         { Background(); Confirms++; var result = actual.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
     }

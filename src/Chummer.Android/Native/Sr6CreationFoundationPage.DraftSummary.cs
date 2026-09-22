@@ -9,9 +9,25 @@ internal sealed partial class Sr6CreationFoundationPage
         if (state.DraftSummary is not { } summary || summary.Binding != state.Binding)
         { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Stale"))); return; }
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("DraftHelp"), NativeTheme.Muted));
-        var finalization = NativeTheme.Body(Sr6CreationCopy.Text("DraftNotFinalized"), NativeTheme.Muted);
-        finalization.AutomationId = "sr6-draft-finalization-unavailable";
+        var finalization = NativeTheme.Body(Sr6CreationCopy.Text("FinishHelp"), NativeTheme.Muted);
+        finalization.AutomationId = "sr6-draft-finalization-help";
         _body.Add(finalization);
+        var finish = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FinishReview"));
+        finish.AutomationId = "sr6-draft-review-finalization";
+        finish.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (!current()) return;
+            finish.IsEnabled = false;
+            try
+            {
+                var result = await Coordinator.ReviewSr6FinalizationAsync(state, current);
+                if (!current()) return;
+                if (result.Value is { } review) await Navigation.PushAsync(new Sr6CreationFinalizationPage(Coordinator, review));
+                else finalization.Text = string.Join("\n", result.Blockers.Select(Sr6CreationCopy.Blocker));
+            }
+            finally { if (current()) finish.IsEnabled = true; }
+        });
+        _body.Add(finish);
         if (summary.Balances is { } balances)
         {
             var cash = NativeTheme.Body(Sr6CreationCopy.DraftBalances(balances));
@@ -152,5 +168,80 @@ internal sealed partial class Sr6CreationFoundationPage
         };
         _body.Add(toggle);
         _body.Add(details);
+    }
+}
+
+/// <summary>Only submits the reviewed Core command; never writes XML or calculates rules.</summary>
+internal sealed class Sr6CreationFinalizationPage : NativePageBase
+{
+    private readonly Sr6CreationFinalizationReview _review;
+    private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
+    private Sr6FinalizationPhoneCommit? _result;
+    private bool _busy, _lossAccepted;
+    private long _render;
+
+    internal Sr6CreationFinalizationPage(RunnerSessionCoordinator coordinator, Sr6CreationFinalizationReview review) : base(coordinator)
+    {
+        _review = review;
+        Title = Sr6CreationCopy.Text("FinishReview");
+        AutomationId = "sr6-finalization-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing() { _render++; base.OnDisappearing(); }
+
+    protected override void Refresh()
+    {
+        if (_busy) return;
+        long render = ++_render, appearance = CaptureAppearanceGeneration();
+        bool Visible() => render == _render && IsCurrentAppearanceGeneration(appearance);
+        bool Current() => Visible() && Coordinator.IsSr6FinalizationReviewCurrent(_review);
+        _body.Clear();
+        if (_result?.Receipt is { } receipt && Coordinator.CanDisplaySr6FinalizationReceipt(receipt))
+        {
+            var saved = NativeTheme.Body(Sr6CreationCopy.Text("FinishSaved"));
+            saved.AutomationId = "sr6-finalization-saved";
+            _body.Add(saved);
+            _body.Add(NativeTheme.Body(receipt.ReceiptDigest, NativeTheme.Muted));
+            foreach (string blocker in _result.Blockers) _body.Add(NativeTheme.Body(Sr6CreationCopy.Blocker(blocker)));
+            var done = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FinishDone"));
+            done.AutomationId = "sr6-finalization-done";
+            done.Clicked += async (_, _) => await RunAsync(async () =>
+            { if (Visible() && Coordinator.CanDisplaySr6FinalizationReceipt(receipt)) await Navigation.PopToRootAsync(); });
+            _body.Add(done);
+            return;
+        }
+        if (!Current())
+        {
+            _body.Add(NativeTheme.Body(_result is not null ? Sr6CreationCopy.Text("FinishReopen") : Sr6CreationCopy.Text("Stale")));
+            return;
+        }
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FinishHelp")));
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.DraftBalances(_review.Balances)));
+        foreach (var loss in _review.Losses)
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.DraftStepTitle(loss.DomainId) + ": "
+                + Sr6CreationCopy.DraftRemainder(new(loss.PoolId, loss.Amount))));
+        foreach (string blocker in _review.Blockers)
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FinishMissing") + " " + Sr6CreationCopy.FinishDomain(blocker), NativeTheme.Danger));
+        _body.Add(NativeTheme.Body(string.Join(" · ", _review.SourceAnchorIds), NativeTheme.Muted));
+        if (!_review.CanFinalize) return;
+        var confirm = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("FinishConfirm"));
+        confirm.AutomationId = "sr6-finalization-confirm";
+        confirm.IsEnabled = _review.Losses.Count == 0 || _lossAccepted;
+        if (_review.Losses.Count > 0)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FinishAcceptLoss")));
+            var consent = new CheckBox { AutomationId = "sr6-finalization-accept-loss", IsChecked = _lossAccepted };
+            consent.CheckedChanged += (_, args) => { if (Current()) { _lossAccepted = args.Value; confirm.IsEnabled = args.Value; } };
+            _body.Add(consent);
+        }
+        confirm.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (!Current() || _busy || _review.Losses.Count > 0 && !_lossAccepted) return;
+            _busy = true; _body.IsEnabled = false;
+            try { _result = await Coordinator.ConfirmSr6FinalizationAsync(_review, true, _lossAccepted, Visible); }
+            finally { _busy = false; if (Visible()) { _body.IsEnabled = true; Refresh(); } }
+        });
+        _body.Add(confirm);
     }
 }

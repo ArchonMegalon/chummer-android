@@ -6,6 +6,12 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string FinishDomain(string id) => id switch
+    {
+        "equipment-runtime-stats" or "spell-runtime-stats" or "complex-form-runtime-stats" or "magical-tradition" or "passive-effect-conflict"
+            => Text("FinishDomain." + id),
+        _ => DraftStepTitle(id)
+    };
     internal static string PassiveAttribute(Sr6CreationPassiveAttributeValue row) => row.Rating is null
         ? CreationAllocationStrings.Format("Sr6.PassiveUnresolved", "{0}: unresolved", Label(row.AttributeId))
         : CreationAllocationStrings.Format("Sr6.PassiveAttribute", "{0}: {1} natural + {2} permanent = {3}",
@@ -33,7 +39,7 @@ internal static class Sr6CreationCopy
     internal static string DraftStepTitle(string id) => Text(id switch
     {
         "foundation" => "Title", "qualities" => "QualitiesTitle", "attributes" => "AttributeTitle",
-        "skills" => "SkillTitle", "karma" => "KarmaTitle", "knowledge" => "KnowledgeTitle",
+        "skills" => "SkillTitle", "karma" => "KarmaTitle", "knowledge" => "KnowledgeTitle", "resources" => "FinishResources",
         "contacts" => "ContactsTitle", "talent" => "TalentTitle", "forms" => "FormsTitle",
         "spells" => "SpellsTitle", "powers" => "PowersTitle", "gear" => "GearTitle", "lifestyle" => "LifestyleTitle",
         _ => "DraftTitle"

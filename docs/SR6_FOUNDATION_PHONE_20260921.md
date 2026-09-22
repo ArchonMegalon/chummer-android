@@ -1,6 +1,6 @@
 # SR6 native foundation increment — 21 September 2026
 
-This is an experimental pending-draft wizard, not complete SR6 creation or a
+This is an experimental SR6 wizard increment, not complete SR6 creation or a
 Play delivery. The native New runner dialog shows Priority, Sum-to-Ten, Point
 Buy, Life Path and optional Karma (SR6). All five have Core-owned bootstrap
 identities; Priority, Sum-to-Ten and Point Buy have the foundation editor below.
@@ -8,6 +8,14 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
+- Separate DE/EN/ES completion review for Priority/Sum-to-Ten/Point Buy. Core
+  supplies the exact saved projection, carry-over/loss amounts and blockers.
+  Completion requires explicit confirmation and, when needed, a separate
+  unchecked loss-consent box. A single Core transaction saves the character
+  and retains the original draft and receipt. Duplicate/expired controls and
+  owner changes cannot resubmit. Unknown outcomes require reopening, not retry.
+  Unsupported equipment/formula statistics or magical tradition still block
+  completion; SR6 Career wizards are not unlocked by claiming SR5 compatibility.
 - Separate expandable passive-values review: permanent adept attribute/skill
   effects and Core-derived condition monitors, overflow, initiative, unarmored
   Defense Rating, defense dice and unarmed Attack Rating. Innate traits and
@@ -23,7 +31,8 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 - Saved draft overview for Priority/Sum-to-Ten/Point Buy, with Core-projected
   step status, dependencies, remaining pools and combined cash/Karma balances.
   It reads only confirmed saved state and links back to the typed editors.
-  It explicitly does not claim finalization, applied effects or Career entry.
+  The overview itself does not finalize; its separate review opens the guarded
+  Core completion transaction.
   Optional absent qualities are not mislabelled as reviewed or mandatory.
 - Native foundation route for pending SR6 Priority/Sum-to-Ten/Point Buy runners.
 - Explicit five-category priorities for the two priority methods; metatype and
@@ -126,12 +135,49 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 Further qualities (including other parameterized families and Bilingual),
 runtime quality/talent effects, the rest of the equipment catalogue (including
 ammunition, accessories, bodytech, SIN/license assignments and vehicles), custom
-lifestyles, SIN-linked lifestyle taxes, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
-not a completed creation method, even when all CP are spent. Life Path and
+lifestyles, SIN-linked lifestyle taxes and SR6 Career actions are still missing.
+Completion is limited to selections whose projected runtime state is supported;
+spending all CP does not bypass any missing-domain blocker. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current Core projection integration — 22 September 2026
+## Current completion verification — 22 September 2026
+
+`sr6-native-finalization-2.log`: **184 native managed scenarios PASS**, including
+three methods × DE/EN/ES completion, explicit loss consent, duplicate/stale page
+callbacks, owner ABA, interrupted/lost commit responses and blocked equipment.
+The first run retained an old button after a deliberately rejected click caused
+a render; the test was corrected to use the new live button. No guard was relaxed.
+This run precedes the final scope-copy-only clarification. Resource key parity
+was checked again afterward; both local APK builds have zero warnings/errors.
+
+Final tested Debug x64 APK: `sr6-finalization-debug-final.apk`, SHA-256
+`b2f00259dffa2275c977b721f83b7c3e59076d0f88121380ae971ca73a9daa96`.
+API36 emulator, isolated package `com.myexternalbrain.chummer.sr6foundationdebug`.
+A synthetic mundane Priority draft was created with the Core test fixture's
+real bootstrap and confirmed selection commands, then transferred to app-private
+test storage. This tests the affected completion route, not a fresh tap-through
+of every allocation wizard or a physical Play installation.
+
+The real page showed the exact losses, kept confirmation disabled until consent,
+then saved once from revision2/2 to3/3. The sheet showed Human/SR6,5 Karma and
+5,000 Nuyen; unsupported SR6 Career actions stayed blocked. Force-stop removed
+PID7059; cold start PID7441 reopened the same sheet and identical workspace bytes:
+`f1d175da2c27c2b072638e2a65d2e26624b943dd413e812648ad0eaf8a65160b`.
+Receipt: `sha256:ffbfca051dcff9d9b0d06b392695e7ea7461b86ffb03c6d3c01f1044eb89d3df`.
+Original draft and ledger remain archived. No confirmation was replayed.
+
+The emulator had a System UI ANR/system-server restart during initial boot and
+the first installation, before the final tested APK launch. Those diagnostics
+are retained, not labelled as an app failure or a clean environment. A null
+hierarchy during app transition was rejected. The final APK cold launch,
+completion and restart used fresh observations; no app crash appeared in the
+retained crash buffer. The owned emulator was stopped after verification.
+Artifacts/logs/screenshots remain in the existing local `life-module-book-tests-
+20260921.L0D7pON5` packet. No upload key, AAB, package seal, main merge or Play
+change is claimed.
+
+## Historical Core projection integration — 22 September 2026
 
 Core `b55ee2cc816330854a8629534f48d463e956b62c` adds an owner/revision-bound
 `ProjectCharacter` read operation for the saved Priority/Sum-to-Ten/Point Buy
@@ -1099,8 +1145,9 @@ to replay a mutation. The completed routes above used fresh visible state.
 
 Debug key only; no upload key, AAB, Play upload, physical installation, new
 package authority or hosted qualification. The installed user/Play package was
-not touched. Next work is SR6 character/effect materialization and explicit
-finalization, plus the distinct Life Path and optional Karma editors. Point Buy
-already has saved allocation editors but is not yet a complete runner route.
+not touched. Next work includes the remaining runtime equipment/formula values,
+magical tradition and distinct Life Path/optional Karma editors. The three
+supported draft methods now have a guarded completion transaction, not blanket
+SR6 creation or Career parity.
 SR5 Life Modules and its book remain an open
 priority before Windows; this increment does not declare them finished.
