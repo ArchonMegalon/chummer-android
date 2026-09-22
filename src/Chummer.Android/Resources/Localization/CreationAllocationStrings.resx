@@ -509,7 +509,21 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>taste</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Improved Reflexes cannot combine with other Reaction or initiative enhancements; runtime stacking is not applied in this draft.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Spend customization Karma</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy additional ratings, specialties and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets. Qualities and Karma knowledge/language purchases remain unavailable. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy ratings, specialties, knowledge, languages and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets. Qualities remain unavailable. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
+  <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>New knowledge: {0} Karma each. Languages: {1} Karma per additional level, up to Expert. Free pool choices and native language ({2}) stay separate. Core checks duplicates and recalculates the shared Karma budget.</value></data>
+  <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Additional knowledge topic (Karma)</value></data>
+  <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Remove Karma knowledge/language purchase</value></data>
+  <data name="Sr6.KarmaKnowledgeRequired" xml:space="preserve"><value>To buy knowledge/languages with Karma, first save the native language and free choices in Knowledge and languages.</value></data>
+  <data name="Sr6.KarmaKnowledgeConflict" xml:space="preserve"><value>This topic or language conflicts with existing choices. Do not buy a duplicate or native language. Select a higher target level for an existing language.</value></data>
+  <data name="Sr6.KarmaKnowledgeValue" xml:space="preserve"><value>Knowledge: {0} · {1} Karma · GM review</value></data>
+  <data name="Sr6.KarmaLanguageValue" xml:space="preserve"><value>{0}: {1} → {2} · {3} new levels · {4} Karma · comprehension +{5}</value></data>
+  <data name="Sr6.KarmaLanguageChoose" xml:space="preserve"><value>New language or existing pool language</value></data>
+  <data name="Sr6.KarmaLanguageNew" xml:space="preserve"><value>New language</value></data>
+  <data name="Sr6.KarmaLanguageTarget" xml:space="preserve"><value>Target language level</value></data>
+  <data name="Sr6.KarmaLanguageAdd" xml:space="preserve"><value>Add/update Karma language purchase</value></data>
+  <data name="Sr6.KarmaLanguageLevel.basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Sr6.KarmaLanguageLevel.specialist" xml:space="preserve"><value>Specialist</value></data>
+  <data name="Sr6.KarmaLanguageLevel.expert" xml:space="preserve"><value>Expert</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Save both attribute and skill allocations first (an empty skill allocation is allowed).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribute or skill to improve</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribute</value></data>

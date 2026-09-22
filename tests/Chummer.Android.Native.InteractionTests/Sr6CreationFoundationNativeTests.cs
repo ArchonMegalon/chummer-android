@@ -937,6 +937,107 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    Guid spanish = Guid.NewGuid();
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("human", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([]), Knowledge = new("English", [], [new(spanish, "Spanish", "basic")])
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, karmaMode: true);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key)
+                    {
+                        if (!key.StartsWith("karma-", StringComparison.Ordinal))
+                            return ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                        ((IButtonController)Element<Button>(key)).SendClicked(); return Task.CompletedTask;
+                    }
+                    Require(Element<Picker>("karma-knowledge-level").Items.Count == 3, "Native language was exposed as a Karma purchase.");
+                    Element<Entry>("karma-knowledge-topic").Text = "Seattle gangs";
+                    await Click("karma-knowledge-add-topic");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    async Task AddLanguage(int index, string name, int level)
+                    {
+                        Element<Picker>("karma-knowledge-language").SelectedIndex = index;
+                        Element<Entry>("karma-knowledge-name").Text = name;
+                        Element<Picker>("karma-knowledge-level").SelectedIndex = level;
+                        Require(Element<Button>("karma-knowledge-add-language").IsEnabled, "Language purchase not enabled.");
+                        await Click("karma-knowledge-add-language");
+                    }
+                    await AddLanguage(1, "Ignored rename", 2);
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Language edit reused an old confirmation.");
+                    await AddLanguage(0, "German", 2);
+                    await AddLanguage(0, "ENGLISH", 0);
+                    await Click("preview");
+                    Require(Element<Label>("status").Text == Sr6CreationCopy.Text("KarmaKnowledgeConflict"), "Native-language duplicate not rejected/localized.");
+                    var removeDuplicate = IssuedElements(page).OfType<Button>().Last(row =>
+                        row.AutomationId?.StartsWith("sr6-foundation-karma-knowledge-remove-language-", StringComparison.Ordinal) == true);
+                    ((IButtonController)removeDuplicate).SendClicked();
+                    Element<Picker>("karma-nuyen").SelectedIndex = 33;
+                    await Click("preview");
+                    Require(Element<Label>("status").Text == Sr6CreationCopy.Text("KarmaOverspend"), "Knowledge/language costs omitted from shared budget.");
+                    Element<Picker>("karma-nuyen").SelectedIndex = 32;
+                    await Click("preview");
+                    Require(IssuedElements(page).OfType<Label>().Any(row => row.Text ==
+                        Sr6CreationCopy.KarmaLanguageValue(new(spanish, "Spanish", "basic", "expert", 2, 6, 3))),
+                        "Existing language was renamed, charged twice or lost its exact rank delta.");
+                    Require(IssuedElements(page).OfType<Label>().Any(row => row.Text == Sr6CreationCopy.Text("KnowledgeGmReview")), "Knowledge lacked GM review.");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2
+                        && quote.Karma!.KarmaSpent == 50 && quote.Karma.Knowledge!.KarmaCost == 18,
+                        "Karma knowledge save lost or duplicated.");
+                    Require(quote.Knowledge!.PointsSpent == 1 && quote.Knowledge.Languages.Single().Level == "basic"
+                        && quote.PointBuy?.PointsSpent == seed.PointBuy?.PointsSpent, "Karma purchase changed the free pool or CP.");
+                    Guid topicId = quote.Karma!.Knowledge!.KnowledgeSkills.Single().Id;
+                    var oldAdd = Element<Button>("karma-knowledge-add-topic");
+                    var oldTopic = Element<Entry>("karma-knowledge-topic");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldTopic.Text = "stale"; oldAdd.IsEnabled = true; ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, karmaMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Any(row =>
+                        row.AutomationId == "sr6-foundation-karma-knowledge-remove-topic-" + topicId.ToString("N")), "Knowledge identity did not survive reopen.");
+                    Require(IssuedElements(reopened).OfType<Button>().Count(row => row.AutomationId?.StartsWith(
+                        "sr6-foundation-karma-knowledge-remove-language-", StringComparison.Ordinal) == true) == 2,
+                        "Language purchases did not reopen.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(row => row.AutomationId == "sr6-foundation-confirm") && probe.Confirms == 2,
+                        "Reopened Karma knowledge exposed historical confirmation.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 Karma knowledge phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

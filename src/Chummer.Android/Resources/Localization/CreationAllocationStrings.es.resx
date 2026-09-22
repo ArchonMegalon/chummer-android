@@ -509,7 +509,21 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>gusto</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Reflejos Mejorados no se combina con otras mejoras de Reacción o iniciativa; este borrador no aplica efectos.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Gastar Karma de personalización</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Compra niveles, especializaciones y nuyen con el fondo de Karma separado. Core conserva los puntos asignados y recalcula costes, límites de creación y presupuestos dependientes. Aún faltan cualidades y compras de conocimientos/idiomas con Karma. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación. El borrador puede superar el límite transferible; la finalización no está disponible.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Guarda primero los atributos y habilidades base. Compra niveles, especializaciones, conocimientos, idiomas y nuyen con el fondo de Karma separado. Core conserva los puntos asignados y recalcula costes, límites de creación y presupuestos dependientes. Aún faltan cualidades. Las pericias y los hechizos/formas con Karma están prohibidos durante la creación. El borrador puede superar el límite transferible; la finalización no está disponible.</value></data>
+  <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>Conocimientos nuevos: {0} Karma cada uno. Idiomas: {1} Karma por nivel adicional, hasta Experto. Las elecciones gratuitas y el idioma nativo ({2}) permanecen separados. Core comprueba duplicados y recalcula el presupuesto de Karma compartido.</value></data>
+  <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Tema de conocimiento adicional (Karma)</value></data>
+  <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Quitar compra de conocimiento/idioma con Karma</value></data>
+  <data name="Sr6.KarmaKnowledgeRequired" xml:space="preserve"><value>Para comprar conocimientos/idiomas con Karma, guarda primero el idioma nativo y las elecciones gratuitas en Conocimientos e idiomas.</value></data>
+  <data name="Sr6.KarmaKnowledgeConflict" xml:space="preserve"><value>El tema o idioma entra en conflicto con elecciones existentes. No compres duplicados ni el idioma nativo. Elige un nivel superior para un idioma existente.</value></data>
+  <data name="Sr6.KarmaKnowledgeValue" xml:space="preserve"><value>Conocimiento: {0} · {1} Karma · revisión del DJ</value></data>
+  <data name="Sr6.KarmaLanguageValue" xml:space="preserve"><value>{0}: {1} → {2} · {3} niveles nuevos · {4} Karma · comprensión +{5}</value></data>
+  <data name="Sr6.KarmaLanguageChoose" xml:space="preserve"><value>Idioma nuevo o idioma existente de puntos gratuitos</value></data>
+  <data name="Sr6.KarmaLanguageNew" xml:space="preserve"><value>Idioma nuevo</value></data>
+  <data name="Sr6.KarmaLanguageTarget" xml:space="preserve"><value>Nivel de idioma deseado</value></data>
+  <data name="Sr6.KarmaLanguageAdd" xml:space="preserve"><value>Añadir/actualizar compra de idioma con Karma</value></data>
+  <data name="Sr6.KarmaLanguageLevel.basic" xml:space="preserve"><value>Básico</value></data>
+  <data name="Sr6.KarmaLanguageLevel.specialist" xml:space="preserve"><value>Especialista</value></data>
+  <data name="Sr6.KarmaLanguageLevel.expert" xml:space="preserve"><value>Experto</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Guarda primero la asignación de atributos y habilidades (se admite una asignación de habilidades vacía).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Atributo o habilidad a mejorar</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Atributo</value></data>

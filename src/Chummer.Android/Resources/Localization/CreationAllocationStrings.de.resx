@@ -509,7 +509,21 @@
   <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>Geschmackssinn</value></data>
   <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Verbesserte Reflexe sind nicht mit anderen Reaktions- oder Initiativsteigerungen kombinierbar; dieser Entwurf wendet keine Effekte an.</value></data>
   <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Individualisierungskarma ausgeben</value></data>
-  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Zuerst Attribute und Fertigkeiten speichern. Kaufe zusätzliche Stufen, Spezialisierungen und Nuyen mit dem separaten Karmapool. Core erhält die Punkteverteilung und berechnet Kosten, Erschaffungsgrenzen und abhängige Budgets neu. Vor-/Nachteile und Karmakäufe für Wissen/Sprachen fehlen noch. Expertisen und Karmakäufe für Zauber/Formen sind bei der Erschaffung nicht erlaubt. Teilentwürfe dürfen die Mitnahmegrenze überschreiten; der Abschluss fehlt noch.</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Zuerst Attribute und Fertigkeiten speichern. Kaufe Stufen, Spezialisierungen, Wissen, Sprachen und Nuyen mit dem separaten Karmapool. Core erhält die Punkteverteilung und berechnet Kosten, Erschaffungsgrenzen und abhängige Budgets neu. Vor-/Nachteile fehlen noch. Expertisen und Karmakäufe für Zauber/Formen sind bei der Erschaffung nicht erlaubt. Teilentwürfe dürfen die Mitnahmegrenze überschreiten; der Abschluss fehlt noch.</value></data>
+  <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>Neues Wissen: jeweils {0} Karma. Sprachen: {1} Karma je zusätzlicher Stufe, höchstens Experte. Freie Punkte und Muttersprache ({2}) bleiben getrennt. Core prüft doppelte Einträge und berechnet das gemeinsame Karmabudget neu.</value></data>
+  <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Zusätzliches Wissensgebiet (Karma)</value></data>
+  <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Karmakauf für Wissen/Sprache entfernen</value></data>
+  <data name="Sr6.KarmaKnowledgeRequired" xml:space="preserve"><value>Für Karmakäufe von Wissen/Sprachen zuerst Muttersprache und freie Auswahl unter Wissen und Sprachen speichern.</value></data>
+  <data name="Sr6.KarmaKnowledgeConflict" xml:space="preserve"><value>Wissen oder Sprache widerspricht einer vorhandenen Auswahl. Keine doppelten Einträge oder Muttersprache kaufen. Für vorhandene Sprachen eine höhere Zielstufe wählen.</value></data>
+  <data name="Sr6.KarmaKnowledgeValue" xml:space="preserve"><value>Wissen: {0} · {1} Karma · SL-Prüfung</value></data>
+  <data name="Sr6.KarmaLanguageValue" xml:space="preserve"><value>{0}: {1} → {2} · {3} neue Stufen · {4} Karma · Verständnis +{5}</value></data>
+  <data name="Sr6.KarmaLanguageChoose" xml:space="preserve"><value>Neue Sprache oder vorhandene Sprache aus freien Punkten</value></data>
+  <data name="Sr6.KarmaLanguageNew" xml:space="preserve"><value>Neue Sprache</value></data>
+  <data name="Sr6.KarmaLanguageTarget" xml:space="preserve"><value>Zielstufe der Sprache</value></data>
+  <data name="Sr6.KarmaLanguageAdd" xml:space="preserve"><value>Sprach-Karmakauf hinzufügen/ändern</value></data>
+  <data name="Sr6.KarmaLanguageLevel.basic" xml:space="preserve"><value>Grundkenntnisse</value></data>
+  <data name="Sr6.KarmaLanguageLevel.specialist" xml:space="preserve"><value>Spezialist</value></data>
+  <data name="Sr6.KarmaLanguageLevel.expert" xml:space="preserve"><value>Experte</value></data>
   <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Zuerst Attribut- und Fertigkeitsverteilung speichern (auch eine leere Fertigkeitsverteilung ist möglich).</value></data>
   <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribut oder Fertigkeit steigern</value></data>
   <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribut</value></data>

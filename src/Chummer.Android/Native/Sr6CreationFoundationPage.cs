@@ -504,6 +504,15 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaValue(value)));
                 foreach (var value in karma.Specializations ?? [])
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaSpecializationValue(value)));
+                if (karma.Knowledge is { } purchases)
+                {
+                    foreach (var value in purchases.KnowledgeSkills)
+                        _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaKnowledgeValue(value)));
+                    foreach (var value in purchases.Languages)
+                        _review.Add(NativeTheme.Body(Sr6CreationCopy.KarmaLanguageValue(value)));
+                    if (purchases.KnowledgeSkills.Count > 0)
+                        _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeGmReview"), NativeTheme.Muted));
+                }
                 if (karma.Skills.Any(row => row.FirstExoticSpecialization is not null)
                     || karma.Specializations?.Any(row => row.NeedsGmReview) == true)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("SkillGmReview"), NativeTheme.Muted));
@@ -690,6 +699,10 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _body.Add(cash);
         if (_state?.KarmaSpecializationOptions is { } specialtyOptions)
             BuildKarmaSpecializations(specialtyOptions, current, change);
+        if (_state?.KarmaKnowledgeOptions is { } knowledgeOptions)
+            BuildKarmaKnowledge(knowledgeOptions, current, change);
+        else
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("KarmaKnowledgeRequired"), NativeTheme.Muted));
 
         void AddRows(IReadOnlyList<Sr6CreationKarmaIncrease> rows, bool skills)
         {
@@ -760,6 +773,83 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             Refresh();
         };
         _body.Add(picker); _body.Add(details); _body.Add(subject); _body.Add(add);
+    }
+
+    private void BuildKarmaKnowledge(Sr6CreationKarmaKnowledgeOptions options, Func<bool> current,
+        Action<Sr6CreationFoundationSelection> change)
+    {
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.KarmaKnowledgeHelp(options), NativeTheme.Muted));
+        var selected = _selection!.Karma!.Knowledge ?? new([], []);
+        foreach (var row in selected.KnowledgeSkills)
+        {
+            _body.Add(NativeTheme.Body(row.Name));
+            AddRemove("topic", row.Id, () => selected with
+                { KnowledgeSkills = selected.KnowledgeSkills.Where(value => value.Id != row.Id).ToArray() });
+        }
+        var topic = new Entry { Placeholder = Sr6CreationCopy.Text("KarmaKnowledgeTopic"), MaxLength = 80,
+            AutomationId = "sr6-foundation-karma-knowledge-topic" };
+        var addTopic = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KnowledgeAddTopic"));
+        addTopic.AutomationId = "sr6-foundation-karma-knowledge-add-topic"; addTopic.IsEnabled = false;
+        topic.TextChanged += (_, _) => { if (current()) addTopic.IsEnabled = !string.IsNullOrWhiteSpace(topic.Text); };
+        addTopic.Clicked += (_, _) =>
+        {
+            if (!current() || string.IsNullOrWhiteSpace(topic.Text)) return;
+            Change(selected with { KnowledgeSkills = [.. selected.KnowledgeSkills, new(Guid.NewGuid(), topic.Text.Trim())] });
+        };
+        _body.Add(topic); _body.Add(addTopic);
+        foreach (var row in selected.Languages)
+        {
+            _body.Add(NativeTheme.Body(row.Name + " · " + Sr6CreationCopy.KarmaLanguageLevel(row.Level)));
+            AddRemove("language", row.Id, () => selected with
+                { Languages = selected.Languages.Where(value => value.Id != row.Id).ToArray() });
+        }
+        var language = new Picker { Title = Sr6CreationCopy.Text("KarmaLanguageChoose"),
+            AutomationId = "sr6-foundation-karma-knowledge-language" };
+        language.Items.Add(Sr6CreationCopy.Text("KarmaLanguageNew"));
+        foreach (var row in options.PoolLanguages)
+            language.Items.Add(row.Name + " · " + Sr6CreationCopy.KarmaLanguageLevel(row.Level));
+        language.SelectedIndex = 0;
+        var name = new Entry { Placeholder = Sr6CreationCopy.Text("KnowledgeLanguage"), MaxLength = 80,
+            AutomationId = "sr6-foundation-karma-knowledge-name" };
+        var level = new Picker { Title = Sr6CreationCopy.Text("KarmaLanguageTarget"),
+            AutomationId = "sr6-foundation-karma-knowledge-level" };
+        foreach (string value in options.LanguageLevels) level.Items.Add(Sr6CreationCopy.KarmaLanguageLevel(value));
+        var addLanguage = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaLanguageAdd"));
+        addLanguage.AutomationId = "sr6-foundation-karma-knowledge-add-language"; addLanguage.IsEnabled = false;
+        bool CanAdd() => current() && language.SelectedIndex >= 0 && language.SelectedIndex <= options.PoolLanguages.Count
+            && level.SelectedIndex >= 0 && level.SelectedIndex < options.LanguageLevels.Count
+            && (language.SelectedIndex > 0 || !string.IsNullOrWhiteSpace(name.Text));
+        language.SelectedIndexChanged += (_, _) =>
+        {
+            if (!current()) return;
+            name.IsVisible = language.SelectedIndex == 0;
+            addLanguage.IsEnabled = CanAdd();
+        };
+        name.TextChanged += (_, _) => { if (current()) addLanguage.IsEnabled = CanAdd(); };
+        level.SelectedIndexChanged += (_, _) => { if (current()) addLanguage.IsEnabled = CanAdd(); };
+        addLanguage.Clicked += (_, _) =>
+        {
+            if (!CanAdd()) return;
+            var baseline = language.SelectedIndex == 0 ? null : options.PoolLanguages[language.SelectedIndex - 1];
+            var row = new Sr6CreationLanguageEntry(baseline?.Id ?? Guid.NewGuid(), baseline?.Name ?? name.Text!.Trim(),
+                options.LanguageLevels[level.SelectedIndex]);
+            Change(selected with { Languages = [.. selected.Languages.Where(value => value.Id != row.Id), row] });
+        };
+        _body.Add(language); _body.Add(name); _body.Add(level); _body.Add(addLanguage);
+
+        void Change(Sr6CreationKarmaKnowledgeSelection value)
+        {
+            if (!current()) return;
+            change(_selection with { Karma = _selection.Karma! with { Knowledge = value } });
+            Refresh();
+        }
+        void AddRemove(string kind, Guid id, Func<Sr6CreationKarmaKnowledgeSelection> removeSelection)
+        {
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("KarmaKnowledgeRemove"));
+            remove.AutomationId = "sr6-foundation-karma-knowledge-remove-" + kind + "-" + id.ToString("N");
+            remove.Clicked += (_, _) => { if (current()) Change(removeSelection()); };
+            _body.Add(remove);
+        }
     }
 
     private void BuildPowerEditor(IReadOnlyList<Sr6CreationAdeptPowerOption> catalog,

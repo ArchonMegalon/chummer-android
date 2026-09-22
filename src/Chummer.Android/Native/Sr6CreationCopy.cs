@@ -6,6 +6,15 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string KarmaLanguageLevel(string? level) => Text(level is null ? "KarmaLanguageNew" : "KarmaLanguageLevel." + level);
+    internal static string KarmaKnowledgeHelp(Sr6CreationKarmaKnowledgeOptions options) => CreationAllocationStrings.Format("Sr6.KarmaKnowledgeHelp",
+        "New knowledge: {0} Karma each. Languages: {1} Karma per additional level, up to Expert. Free pool choices and native language ({2}) stay separate. Core checks duplicates and recalculates the shared Karma budget.",
+        options.KnowledgeKarmaCost, options.LanguageLevelKarmaCost, options.NativeLanguage);
+    internal static string KarmaKnowledgeValue(Sr6CreationKarmaKnowledgeValue value) => CreationAllocationStrings.Format("Sr6.KarmaKnowledgeValue",
+        "Knowledge: {0} · {1} Karma · GM review", value.Name, value.KarmaCost);
+    internal static string KarmaLanguageValue(Sr6CreationKarmaLanguageValue value) => CreationAllocationStrings.Format("Sr6.KarmaLanguageValue",
+        "{0}: {1} → {2} · {3} new levels · {4} Karma · comprehension +{5}", value.Name,
+        KarmaLanguageLevel(value.BaseLevel), KarmaLanguageLevel(value.Level), value.LevelsPurchased, value.KarmaCost, value.ComprehensionBonus);
     internal static string KarmaSpecializationHelp(Sr6CreationKarmaSpecializationOptions options) => CreationAllocationStrings.Format("Sr6.KarmaSpecializationHelp",
         "A specialty costs {0} Karma; final skill rating must be at least {1}. One specialty per skill across pool and Karma purchases. Exotic Weapons may have several, without a bonus; the first comes free with the skill. Names require GM review. Expertise and Karma spells/forms are prohibited during creation.", options.KarmaCost, options.MinimumRating);
     internal static string KarmaSpecializationOption(Sr6CreationKarmaSpecializationOption option) => CreationAllocationStrings.Format("Sr6.KarmaSpecializationOption",
@@ -98,6 +107,8 @@ internal static class Sr6CreationCopy
         Sr6CreationKarmaBlockers.BudgetExceeded => Text("KarmaOverspend"),
         Sr6CreationKarmaBlockers.SpecializationLimit => Text("KarmaSpecializationLimit"),
         Sr6CreationKarmaBlockers.SpecializationRatingRequired => Text("KarmaSpecializationRatingRequired"),
+        Sr6CreationKarmaBlockers.KnowledgeRequired => Text("KarmaKnowledgeRequired"),
+        Sr6CreationKarmaBlockers.KnowledgeConflict => Text("KarmaKnowledgeConflict"),
         Sr6CreationTalentBlockers.InvalidSelection => Text("TalentInvalid"),
         Sr6CreationTalentBlockers.AttributesRequired => Text("TalentAttributesRequired"),
         Sr6CreationTalentBlockers.AspectRequired => Text("SkillAspectRequired"),
