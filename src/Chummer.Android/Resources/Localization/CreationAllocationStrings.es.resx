@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} puntos de poder por nivel · niveles elegidos: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Añadir un nivel</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>Base de SR6</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, talentos, hechizos/rituales, formas complejas, poderes de adepto y compras con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Borrador experimental de SR6: Prioridad / Suma de diez / Compra por puntos. Guarda la base, cualidades seleccionadas, atributos, habilidades, conocimientos, idiomas, contactos, talentos, hechizos/rituales, formas complejas, poderes de adepto y compras con Karma. Los pasos posteriores y Carrera aún no están disponibles.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Elegir base de SR6</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Este método de SR6 solo permite guardar un borrador vacío. Sus pasos de creación aún no están disponibles.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Asignar puntos de atributo</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirma la base antes de asignar atributos.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Asigna por separado los puntos de atributo y de ajuste. Puedes guardar el borrador con puntos sin gastar. Aquí no se incluyen cualidades, karma ni aumentos.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, cualidades, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Cambiar la base borra asignaciones, contactos, cualidades, capacidades y compras con Karma al confirmar el siguiente guardado. El historial se conserva.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Puntos de atributo</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Puntos de ajuste</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, máximo {2}</value></data>
@@ -568,4 +568,19 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>No disponible para este metatipo/talento, o ya otorgada por el metatipo.</value></data>
   <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>Estas cualidades son incompatibles o se ha elegido la misma familia dos veces.</value></data>
   <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Las ventajas cuestan más que el Karma disponible, incluidas las desventajas.</value></data>
+  <data name="Sr6.ContactsTitle" xml:space="preserve"><value>Contactos</value></data>
+  <data name="Sr6.ContactsName" xml:space="preserve"><value>Nombre del contacto</value></data>
+  <data name="Sr6.ContactsRole" xml:space="preserve"><value>Función (opcional)</value></data>
+  <data name="Sr6.ContactsConnection" xml:space="preserve"><value>Influencia</value></data>
+  <data name="Sr6.ContactsLoyalty" xml:space="preserve"><value>Lealtad</value></data>
+  <data name="Sr6.ContactsAdd" xml:space="preserve"><value>Añadir contacto</value></data>
+  <data name="Sr6.ContactsRemove" xml:space="preserve"><value>Eliminar contacto</value></data>
+  <data name="Sr6.ContactsGmReview" xml:space="preserve"><value>Los nombres y funciones son propuestas del jugador. Los contactos requieren revisión del DJ; guardar no implica su aprobación.</value></data>
+  <data name="Sr6.ContactsOptions" xml:space="preserve"><value>Carisma {0} × {1} = {2} puntos de contacto. Influencia y Lealtad: de {3} a {4} cada una. Coste: Influencia + Lealtad. Independiente del Karma y los puntos de personaje.</value></data>
+  <data name="Sr6.ContactsBudget" xml:space="preserve"><value>Contactos: {0}/{1} puntos gastados · {2} restantes · Carisma {3}</value></data>
+  <data name="Sr6.ContactsValue" xml:space="preserve"><value>{0} · {1} · Influencia {2} + Lealtad {3} = {4} puntos</value></data>
+  <data name="Sr6.ContactsAttributesRequired" xml:space="preserve"><value>Guarda primero los atributos para calcular los puntos de contacto.</value></data>
+  <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Comprueba nombres, funciones y niveles. Los nombres y funciones deben ser texto válido de 80 caracteres como máximo.</value></data>
+  <data name="Sr6.ContactsRating" xml:space="preserve"><value>Durante la creación, Influencia y Lealtad no pueden superar el Carisma natural final.</value></data>
+  <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Los contactos superan el presupuesto gratuito. Reduce niveles o elimina un contacto.</value></data>
 </root>

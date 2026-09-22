@@ -39,6 +39,11 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   another native language. Stable entry IDs survive editing and cold reopen.
   Attribute changes preserve the choices and reject any resulting overspend.
 - DE/EN/ES labels, validation feedback and explicit incomplete-feature scope.
+- Contacts after saved attributes: Core derives a separate final-Charisma × 6
+  pool, Connection + Loyalty costs and per-rating creation caps. Names and
+  optional roles are GM-reviewed player text, not approved NPCs. Stable IDs
+  survive edits/removal/reopen. Charisma changes cannot silently delete contacts
+  or retain illegal ratings. No Karma or CP are charged by this editor.
 - Talent planning after saved attributes: Core-derived free spell/form budgets,
   aspect selection, mystic-adept priority split and whole-power-point CP purchase
   for Point Buy. Saved budgets are distinguished from unconfirmed edits. This
@@ -96,7 +101,36 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current rated-quality increment — 22 September 2026
+## Current contact increment — 22 September 2026
+
+Core `80f803ca4`; Presentation `1eae38aa1` unchanged. The native Contacts page
+provides stable-ID add/edit/remove, optional roles, Core-provided rating ranges,
+separate budget/cost review and explicit confirmation. All controls and feedback
+are DE/EN/ES. Names/roles still need GM review. Dirty inputs invalidate old
+confirmation; departed controls cannot mutate. Foundation changes explicitly
+reset contacts with the other allocations; attribute/Karma changes revalidate.
+
+`core-sr6-contacts-1.log`: **242 focused Core tests PASS**.
+`sr6-native-contacts-1.log`: **148 native managed scenarios PASS**, including
+contact add/edit/remove, budget/CP separation, stale confirmation and saved
+reopen for three methods × DE/EN/ES. The keyless local Debug x64 build passed
+with **zero warnings/errors**, 1m37.99s (`sr6-contacts-debug-build-1.log`).
+Retained `sr6-contacts-debug.apk` SHA256:
+`1e86c414be4ce8042eb030a83bf491a0e00dc5e38e3c45cee0c0b4353bf09f8a`.
+
+The API36 emulator smoke restored the previous mixed-domain draft at 11/11,
+added Mira/Fixer with Connection1/Loyalty1, reviewed 2/6 contact points and
+confirmed once: **12/12, eleven decisions**. Existing history and all earlier
+selections/Karma/CP were unchanged. Force-stop removed PID4153; PID5021 restored
+the same contact, ID, budget and editable page without a historical Confirm.
+Save/restart workspace files compare byte-identical, SHA256:
+`f01fc0d3eb09709e4083c73c3016e4942f814803500366a99e5caf63c40d5e50`.
+The local packet retains `sr6-contacts-*` APK/PNG/XML/JSON/logs. Cold-boot Android
+system ANRs occurred before app testing; no Chummer ANR/crash was observed.
+The owned emulator and temporary containers were stopped. No release AAB,
+package seal, upload key, main merge or Play operation is part of this increment.
+
+## Historical rated-quality increment — 22 September 2026
 
 Core `bb6b32995baea76e58361f6303e2cf9ef499fba3`; Presentation `1eae38aa1`
 unchanged. Focused Concentration, Built Tough, Will to Live, Glass Jaw and

@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, talent budgets, spells/rituals, complex forms, adept powers and Karma purchases. Later creation steps and Career entry remain unavailable.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy draft. Save foundation, selected qualities, attributes, skills, knowledge, languages, contacts, talent budgets, spells/rituals, complex forms, adept powers and Karma purchases. Later creation steps and Career entry remain unavailable.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, qualities, ability choices and Karma purchases in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices and Karma purchases in the next confirmed draft. Saved history remains intact.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
@@ -568,4 +568,19 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>Unavailable for this metatype/talent, or already granted by the metatype.</value></data>
   <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>These qualities conflict, or the same quality family was chosen twice.</value></data>
   <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Advantages cost more than the available customization Karma including disadvantages.</value></data>
+  <data name="Sr6.ContactsTitle" xml:space="preserve"><value>Contacts</value></data>
+  <data name="Sr6.ContactsName" xml:space="preserve"><value>Contact name</value></data>
+  <data name="Sr6.ContactsRole" xml:space="preserve"><value>Role (optional)</value></data>
+  <data name="Sr6.ContactsConnection" xml:space="preserve"><value>Connection</value></data>
+  <data name="Sr6.ContactsLoyalty" xml:space="preserve"><value>Loyalty</value></data>
+  <data name="Sr6.ContactsAdd" xml:space="preserve"><value>Add contact</value></data>
+  <data name="Sr6.ContactsRemove" xml:space="preserve"><value>Remove contact</value></data>
+  <data name="Sr6.ContactsGmReview" xml:space="preserve"><value>Names and roles are player suggestions. Contacts need GM review; saving is not GM approval.</value></data>
+  <data name="Sr6.ContactsOptions" xml:space="preserve"><value>Charisma {0} × {1} = {2} contact points. Connection and Loyalty each range from {3} to {4}. Cost: Connection + Loyalty. Separate from Karma and character points.</value></data>
+  <data name="Sr6.ContactsBudget" xml:space="preserve"><value>Contacts: {0}/{1} points spent · {2} remaining · Charisma {3}</value></data>
+  <data name="Sr6.ContactsValue" xml:space="preserve"><value>{0} · {1} · Connection {2} + Loyalty {3} = {4} points</value></data>
+  <data name="Sr6.ContactsAttributesRequired" xml:space="preserve"><value>Save attributes first to calculate the contact budget.</value></data>
+  <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Check contact names, roles and ratings. Names and roles must be valid text of at most 80 characters.</value></data>
+  <data name="Sr6.ContactsRating" xml:space="preserve"><value>Connection and Loyalty may not exceed the final natural Charisma at creation.</value></data>
+  <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Contact costs exceed the free contact-point budget. Reduce ratings or remove a contact.</value></data>
 </root>

@@ -326,7 +326,7 @@
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} Kraftpunkte je Stufe · gewählte Stufen: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Eine Stufe hinzufügen</value></data>
   <data name="Sr6.Title" xml:space="preserve"><value>SR6-Grundauswahl</value></data>
-  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, ausgewählte Vor-/Nachteile, Attribute, Fertigkeiten, Wissen, Sprachen, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte und Karmakäufe lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimenteller SR6-Entwurf für Priorität / Sum-to-Ten / Punktekauf. Grundlage, ausgewählte Vor-/Nachteile, Attribute, Fertigkeiten, Wissen, Sprachen, Connections, Talentbudgets, Zauber/Rituale, Komplexe Formen, Adeptenkräfte und Karmakäufe lassen sich speichern. Weitere Erstellungsschritte und Karrierebeginn fehlen noch.</value></data>
   <data name="Sr6.Open" xml:space="preserve"><value>SR6-Grundauswahl öffnen</value></data>
   <data name="Sr6.OtherMethods" xml:space="preserve"><value>Diese SR6-Bauart kann derzeit nur einen leeren Entwurf speichern. Ihre eigenen Erstellungsschritte fehlen noch.</value></data>
   <data name="Sr6.Metatype" xml:space="preserve"><value>Metatyp</value></data>
@@ -364,7 +364,7 @@
   <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Attributpunkte verteilen</value></data>
   <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Bestätige zuerst die Grundauswahl.</value></data>
   <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Verteile normale Attribut- und Anpassungspunkte getrennt. Restpunkte dürfen im Entwurf bleiben. Vorteile, Karma und Augmentierungen sind hier noch nicht enthalten.</value></data>
-  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Punkteverteilungen, Vor-/Nachteile, Fähigkeiten und Karmakäufe beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Eine geänderte Grundauswahl setzt Punkteverteilungen, Connections, Vor-/Nachteile, Fähigkeiten und Karmakäufe beim nächsten bestätigten Speichern zurück. Der gespeicherte Verlauf bleibt erhalten.</value></data>
   <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attributpunkte</value></data>
   <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Anpassungspunkte</value></data>
   <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Basis {1}, Maximum {2}</value></data>
@@ -568,4 +568,19 @@ Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
   <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>Für diesen Metatyp/dieses Talent nicht verfügbar oder bereits vom Metatyp gewährt.</value></data>
   <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>Diese Vor-/Nachteile widersprechen sich oder dieselbe Familie wurde zweimal gewählt.</value></data>
   <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Die Vorteile kosten mehr als das verfügbare Individualisierungskarma einschließlich Nachteilen.</value></data>
+  <data name="Sr6.ContactsTitle" xml:space="preserve"><value>Connections</value></data>
+  <data name="Sr6.ContactsName" xml:space="preserve"><value>Name der Connection</value></data>
+  <data name="Sr6.ContactsRole" xml:space="preserve"><value>Rolle (optional)</value></data>
+  <data name="Sr6.ContactsConnection" xml:space="preserve"><value>Einfluss</value></data>
+  <data name="Sr6.ContactsLoyalty" xml:space="preserve"><value>Loyalität</value></data>
+  <data name="Sr6.ContactsAdd" xml:space="preserve"><value>Connection hinzufügen</value></data>
+  <data name="Sr6.ContactsRemove" xml:space="preserve"><value>Connection entfernen</value></data>
+  <data name="Sr6.ContactsGmReview" xml:space="preserve"><value>Namen und Rollen sind Spielervorschläge. Connections benötigen eine SL-Prüfung; Speichern bedeutet keine SL-Freigabe.</value></data>
+  <data name="Sr6.ContactsOptions" xml:space="preserve"><value>Charisma {0} × {1} = {2} Connection-Punkte. Einfluss und Loyalität jeweils von {3} bis {4}. Kosten: Einfluss + Loyalität. Getrennt von Karma und Charakterpunkten.</value></data>
+  <data name="Sr6.ContactsBudget" xml:space="preserve"><value>Connections: {0}/{1} Punkte ausgegeben · {2} übrig · Charisma {3}</value></data>
+  <data name="Sr6.ContactsValue" xml:space="preserve"><value>{0} · {1} · Einfluss {2} + Loyalität {3} = {4} Punkte</value></data>
+  <data name="Sr6.ContactsAttributesRequired" xml:space="preserve"><value>Speichere zuerst die Attribute, um das Connection-Budget zu berechnen.</value></data>
+  <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Prüfe Namen, Rollen und Stufen der Connections. Namen und Rollen müssen gültiger Text mit höchstens 80 Zeichen sein.</value></data>
+  <data name="Sr6.ContactsRating" xml:space="preserve"><value>Einfluss und Loyalität dürfen bei der Erschaffung das endgültige natürliche Charisma nicht übersteigen.</value></data>
+  <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Die Connections kosten mehr als das freie Punktebudget. Senke Stufen oder entferne eine Connection.</value></data>
 </root>

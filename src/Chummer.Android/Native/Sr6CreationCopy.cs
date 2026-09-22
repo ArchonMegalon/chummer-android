@@ -6,6 +6,15 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string ContactOptions(Sr6CreationContactOptions options) => CreationAllocationStrings.Format("Sr6.ContactsOptions",
+        "Charisma {0} × {1} = {2} contact points. Connection and Loyalty each range from {3} to {4}. Cost: Connection + Loyalty. Separate from Karma and character points.",
+        options.Charisma, options.PointsPerCharisma, options.PointBudget, options.MinimumRating, options.MaximumRating);
+    internal static string ContactBudget(Sr6CreationContactPreview preview) => CreationAllocationStrings.Format("Sr6.ContactsBudget",
+        "Contacts: {0}/{1} points spent · {2} remaining · Charisma {3}",
+        preview.PointsSpent, preview.Options.PointBudget, preview.PointsRemaining, preview.Options.Charisma);
+    internal static string ContactValue(Sr6CreationContactValue value) => CreationAllocationStrings.Format("Sr6.ContactsValue",
+        "{0} · {1} · Connection {2} + Loyalty {3} = {4} points", value.Contact.Name,
+        value.Contact.Role ?? "", value.Contact.Connection, value.Contact.Loyalty, value.PointCost);
     internal static string QualityName(Sr6CreationQualityOption option) => option.Name
         + (option.AttributeId is { } attribute ? " (" + Label(attribute) + ")" : "")
         + (option.SkillId is { } skill ? " (" + Label(skill) + ")" : "")
@@ -115,6 +124,10 @@ internal static class Sr6CreationCopy
         Sr6CreationFoundationBlockers.MetatypeUnavailable => Text("MetatypeRank"),
         Sr6CreationFoundationBlockers.TalentUnavailable => Text("TalentRank"),
         Sr6CreationFoundationBlockers.StaleBinding => Text("Stale"),
+        Sr6CreationContactBlockers.InvalidSelection => Text("ContactsInvalid"),
+        Sr6CreationContactBlockers.AttributesRequired => Text("ContactsAttributesRequired"),
+        Sr6CreationContactBlockers.RatingExceeded => Text("ContactsRating"),
+        Sr6CreationContactBlockers.BudgetExceeded => Text("ContactsOverspend"),
         Sr6CreationQualityBlockers.InvalidSelection => Text("QualitiesInvalid"),
         Sr6CreationQualityBlockers.LimitExceeded => Text("QualitiesLimit"),
         Sr6CreationQualityBlockers.Unavailable => Text("QualitiesUnavailable"),

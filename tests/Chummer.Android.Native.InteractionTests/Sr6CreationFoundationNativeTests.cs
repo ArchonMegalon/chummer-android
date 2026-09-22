@@ -1057,6 +1057,103 @@ internal static partial class AfterRunAuthorityHarness
                     {
                         PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
                         Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([]), Karma = new([new("Charisma", 2)], [], 0)
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, contactsMode: true);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == key);
+                    Task Click(string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                    Require(page.Title == Sr6CreationCopy.Text("ContactsTitle") && page.AutomationId == "sr6-contacts-page",
+                        "Contact page identity/localization missing.");
+                    Require(Element<Picker>("sr6-contact-new-connection").Items.SequenceEqual(new[] { "1", "2", "3" }),
+                        "Contact ratings do not use final Core Charisma.");
+                    void Add(string name, int rating)
+                    {
+                        Element<Entry>("sr6-contact-new-name").Text = name;
+                        Element<Entry>("sr6-contact-new-role").Text = "Fixer";
+                        Element<Picker>("sr6-contact-new-connection").SelectedIndex = rating - 1;
+                        Element<Picker>("sr6-contact-new-loyalty").SelectedIndex = rating - 1;
+                        ((IButtonController)Element<Button>("sr6-contact-add")).SendClicked();
+                    }
+                    Add("Café", 3);
+                    await Click("sr6-foundation-preview");
+                    var oldConfirm = Element<Button>("sr6-foundation-confirm");
+                    Add("Friend", 2);
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Adding a contact reused stale confirmation.");
+                    await Click("sr6-foundation-preview");
+                    await Click("sr6-foundation-confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2
+                        && quote.Contacts!.PointsSpent == 10 && quote.Contacts.PointsRemaining == 8,
+                        "Contact save lost Core costs or duplicated mutation.");
+                    Require(quote.Karma!.KarmaSpent == seed.Karma!.KarmaSpent && quote.PointBuy?.PointsSpent == seed.PointBuy?.PointsSpent,
+                        "Contacts changed Karma or character points.");
+                    Require(IssuedElements(page).OfType<Label>().Any(row => row.Text == Sr6CreationCopy.ContactBudget(quote.Contacts!)),
+                        "Saved contact budget missing.");
+                    string first = quote.Contacts!.Contacts.Single(row => row.Contact.Name == "Café").Contact.Id.ToString("N");
+                    string second = quote.Contacts.Contacts.Single(row => row.Contact.Name == "Friend").Contact.Id.ToString("N");
+                    await Click("sr6-foundation-preview");
+                    oldConfirm = Element<Button>("sr6-foundation-confirm");
+                    Element<Entry>("sr6-contact-name-" + first).Text = "Renamed";
+                    Element<Picker>("sr6-contact-loyalty-" + first).SelectedIndex = 0;
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe.Confirms == 2, "Edited contact reused old confirmation.");
+                    ((IButtonController)Element<Button>("sr6-contact-remove-" + second)).SendClicked();
+                    await Click("sr6-foundation-preview");
+                    await Click("sr6-foundation-confirm");
+                    stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    Require(stored.SavedRevision == 4 && quote.Contacts!.Contacts.Single().Contact.Id.ToString("N") == first
+                        && quote.Contacts.Contacts.Single().Contact.Name == "Renamed" && quote.Contacts.PointsSpent == 4,
+                        "Contact edit/remove lost stable identity or current text.");
+                    var oldName = Element<Entry>("sr6-contact-name-" + first);
+                    var oldRemove = Element<Button>("sr6-contact-remove-" + first);
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldName.Text = "Departed"; oldRemove.IsEnabled = true; ((IButtonController)oldRemove).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, contactsMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Entry>().Single(row => row.AutomationId == "sr6-contact-name-" + first).Text == "Renamed",
+                        "Confirmed contact did not reopen.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(row => row.AutomationId == "sr6-foundation-confirm") && probe.Confirms == 3,
+                        "Reopened contacts exposed historical confirmation.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 contacts phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("human", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
                         Skills = new([]), Karma = new([], [], 50)
                     };
                     var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;

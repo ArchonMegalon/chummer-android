@@ -21,6 +21,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private readonly bool _powersMode;
     private readonly bool _karmaMode;
     private readonly bool _qualitiesMode;
+    private readonly bool _contactsMode;
     private Sr6CreationFoundationState? _state;
     private Sr6CreationFoundationSelection? _selection;
     private Sr6CreationFoundationPreview? _preview;
@@ -39,13 +40,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
     private Button? _powers;
     private Button? _karma;
     private Button? _qualities;
+    private Button? _contacts;
     private VerticalStackLayout? _review;
 
     internal Sr6CreationFoundationPage(RunnerSessionCoordinator coordinator, bool attributesMode = false,
         bool skillsMode = false, bool knowledgeMode = false, bool talentMode = false, bool formsMode = false, bool spellsMode = false,
-        bool powersMode = false, bool karmaMode = false, bool qualitiesMode = false) : base(coordinator)
+        bool powersMode = false, bool karmaMode = false, bool qualitiesMode = false, bool contactsMode = false) : base(coordinator)
     {
-        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode, karmaMode, qualitiesMode }.Count(mode => mode) > 1)
+        if (new[] { attributesMode, skillsMode, knowledgeMode, talentMode, formsMode, spellsMode, powersMode, karmaMode, qualitiesMode, contactsMode }.Count(mode => mode) > 1)
             throw new ArgumentException("Select one SR6 allocation page.");
         _attributesMode = attributesMode;
         _skillsMode = skillsMode;
@@ -56,10 +58,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _powersMode = powersMode;
         _karmaMode = karmaMode;
         _qualitiesMode = qualitiesMode;
+        _contactsMode = contactsMode;
         _owner = coordinator.State.DisplayOwnerContext;
         _workspace = coordinator.State.WorkspaceId;
-        Title = Sr6CreationCopy.Text(qualitiesMode ? "QualitiesTitle" : karmaMode ? "KarmaTitle" : powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
-        AutomationId = qualitiesMode ? "sr6-qualities-page" : karmaMode ? "sr6-karma-page" : powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
+        Title = Sr6CreationCopy.Text(contactsMode ? "ContactsTitle" : qualitiesMode ? "QualitiesTitle" : karmaMode ? "KarmaTitle" : powersMode ? "PowersTitle" : spellsMode ? "SpellsTitle" : formsMode ? "FormsTitle" : talentMode ? "TalentTitle" : knowledgeMode ? "KnowledgeTitle" : skillsMode ? "SkillTitle" : attributesMode ? "AttributeTitle" : "Title");
+        AutomationId = contactsMode ? "sr6-contacts-page" : qualitiesMode ? "sr6-qualities-page" : karmaMode ? "sr6-karma-page" : powersMode ? "sr6-powers-page" : spellsMode ? "sr6-spells-page" : formsMode ? "sr6-forms-page" : talentMode ? "sr6-talent-page" : knowledgeMode ? "sr6-knowledge-page" : skillsMode ? "sr6-skills-page" : attributesMode ? "sr6-attributes-page" : "sr6-foundation-page";
         Content = new ScrollView { Content = _body };
     }
 
@@ -128,6 +131,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         _powers = null;
         _karma = null;
         _qualities = null;
+        _contacts = null;
         _body.IsEnabled = !_busy;
         _body.Add(NativeTheme.Title(Title));
         _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
@@ -148,7 +152,13 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             ? new("", "", []) { PointBuy = new(0, 0, 0, 0) }
             : new("", "", CharacterCreationPriorityCategoryIds.Ordered.Select(id => new Sr6CreationPriorityChoice(id, "")).ToArray());
 
-        if (_qualitiesMode)
+        if (_contactsMode)
+        {
+            if (state.ContactOptions is not { } options)
+            { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("ContactsAttributesRequired"))); return; }
+            BuildContactEditor(options, Current, Change);
+        }
+        else if (_qualitiesMode)
         {
             if (state.Selection is null || state.QualityOptions is not { Count: > 0 } catalog)
             { _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FoundationRequired"))); return; }
@@ -330,6 +340,19 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                     });
                 };
                 _body.Add(knowledge);
+                var contacts = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("ContactsTitle"));
+                _contacts = contacts;
+                contacts.AutomationId = "sr6-foundation-contacts";
+                contacts.IsEnabled = SavedCurrent() && saved.Attributes is not null;
+                contacts.Clicked += async (_, _) =>
+                {
+                    if (!SavedCurrent() || saved.Attributes is null) return;
+                    await RunAsync(async () =>
+                    {
+                        if (SavedCurrent()) await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator, contactsMode: true));
+                    });
+                };
+                _body.Add(contacts);
                 var talent = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("TalentOpen"));
                 _talent = talent;
                 talent.AutomationId = "sr6-foundation-talent-budget";
@@ -557,6 +580,14 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
                 if (knowledge.TopicsNeedGmReview)
                     _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("KnowledgeGmReview"), NativeTheme.Muted));
             }
+            if (quote.Contacts is { } contacts)
+            {
+                _review.Add(NativeTheme.Body(Sr6CreationCopy.ContactBudget(contacts)));
+                foreach (var contact in contacts.Contacts)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.ContactValue(contact)));
+                if (contacts.NeedsGmReview)
+                    _review.Add(NativeTheme.Body(Sr6CreationCopy.Text("ContactsGmReview"), NativeTheme.Muted));
+            }
             _review.Add(NativeTheme.Body(string.Join(" · ", quote.SourceAnchorIds), NativeTheme.Muted));
             _confirm = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("Confirm"));
             _confirm.AutomationId = "sr6-foundation-confirm";
@@ -594,9 +625,9 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
         void Change(Sr6CreationFoundationSelection selection)
         {
             if (!Current()) return;
-            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode && !_karmaMode && !_qualitiesMode;
-            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null || _selection.Karma is not null || _selection.Qualities is not null);
-            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null, Karma = null, Qualities = null };
+            bool foundationMode = !_attributesMode && !_skillsMode && !_knowledgeMode && !_talentMode && !_formsMode && !_spellsMode && !_powersMode && !_karmaMode && !_qualitiesMode && !_contactsMode;
+            bool cleared = foundationMode && (_selection.Attributes is not null || _selection.Skills is not null || _selection.Knowledge is not null || _selection.TalentAllocation is not null || _selection.ComplexForms is not null || _selection.Spells is not null || _selection.AdeptPowers is not null || _selection.Karma is not null || _selection.Qualities is not null || _selection.Contacts is not null);
+            if (foundationMode) selection = selection with { Attributes = null, Skills = null, Knowledge = null, TalentAllocation = null, ComplexForms = null, Spells = null, AdeptPowers = null, Karma = null, Qualities = null, Contacts = null };
             _selection = selection;
             _hasUnconfirmedChanges = true;
             _preview = null;
@@ -612,6 +643,7 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (_powers is not null) _powers.IsEnabled = false;
             if (_karma is not null) _karma.IsEnabled = false;
             if (_qualities is not null) _qualities.IsEnabled = false;
+            if (_contacts is not null) _contacts.IsEnabled = false;
             _review?.Clear();
             _status.Text = Sr6CreationCopy.Text(cleared ? "AttributeResetWarning" : "Changed");
             // Do not rebuild the Picker visual tree inside SelectedIndexChanged.
@@ -659,6 +691,85 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             {
                 if (Current() && picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Length)
                     change(options[picker.SelectedIndex]);
+            };
+            _body.Add(picker);
+        }
+    }
+
+    private void BuildContactEditor(Sr6CreationContactOptions options, Func<bool> current,
+        Action<Sr6CreationFoundationSelection> change)
+    {
+        _selection = _selection! with { Contacts = _selection.Contacts ?? new([]) };
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.ContactOptions(options)));
+        _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("ContactsGmReview"), NativeTheme.Muted));
+        if (_state?.Selection?.Contacts is { } saved)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("TalentSavedBudget"), NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.ContactBudget(saved)));
+        }
+        foreach (var row in _selection.Contacts.Contacts)
+        {
+            string key = row.Id.ToString("N");
+            AddName("name-" + key, "ContactsName", row.Name,
+                value => Update(row.Id, old => old with { Name = value }));
+            AddName("role-" + key, "ContactsRole", row.Role ?? "",
+                value => Update(row.Id, old => old with { Role = value.Length == 0 ? null : value }));
+            AddRating("connection-" + key, "ContactsConnection", row.Connection,
+                value => Update(row.Id, old => old with { Connection = value }));
+            AddRating("loyalty-" + key, "ContactsLoyalty", row.Loyalty,
+                value => Update(row.Id, old => old with { Loyalty = value }));
+            var remove = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("ContactsRemove"));
+            remove.AutomationId = "sr6-contact-remove-" + key;
+            remove.Clicked += (_, _) =>
+            {
+                if (!current()) return;
+                change(_selection with { Contacts = new(_selection.Contacts!.Contacts.Where(item => item.Id != row.Id).ToArray()) });
+                Refresh();
+            };
+            _body.Add(remove);
+        }
+        if (_selection.Contacts.Contacts.Count >= options.MaximumContacts) return;
+        var add = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("ContactsAdd"));
+        add.AutomationId = "sr6-contact-add";
+        add.IsEnabled = false;
+        var name = AddName("new-name", "ContactsName", "", value => add.IsEnabled = value.Length > 0);
+        var role = AddName("new-role", "ContactsRole", "", _ => { });
+        int connection = options.MinimumRating, loyalty = options.MinimumRating;
+        AddRating("new-connection", "ContactsConnection", connection, value => connection = value);
+        AddRating("new-loyalty", "ContactsLoyalty", loyalty, value => loyalty = value);
+        add.Clicked += (_, _) =>
+        {
+            if (!current() || string.IsNullOrWhiteSpace(name.Text)) return;
+            change(_selection with { Contacts = new([.. _selection.Contacts!.Contacts,
+                new(Guid.NewGuid(), name.Text.Trim(), string.IsNullOrWhiteSpace(role.Text) ? null : role.Text.Trim(), connection, loyalty)]) });
+            Refresh();
+        };
+        _body.Add(add);
+
+        void Update(Guid id, Func<Sr6CreationContactChoice, Sr6CreationContactChoice> update)
+        {
+            if (!current()) return;
+            change(_selection with { Contacts = new(_selection.Contacts!.Contacts.Select(row => row.Id == id ? update(row) : row).ToArray()) });
+        }
+        Entry AddName(string id, string title, string text, Action<string> update)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text(title)));
+            var entry = new Entry { Text = text, MaxLength = 80, AutomationId = "sr6-contact-" + id };
+            entry.TextChanged += (_, _) => { if (current()) update((entry.Text ?? "").Trim()); };
+            _body.Add(entry);
+            return entry;
+        }
+        void AddRating(string id, string title, int selected, Action<int> update)
+        {
+            _body.Add(NativeTheme.Body(Sr6CreationCopy.Text(title)));
+            var picker = new Picker { Title = Sr6CreationCopy.Text(title), AutomationId = "sr6-contact-" + id };
+            foreach (int value in Enumerable.Range(options.MinimumRating, options.MaximumRating - options.MinimumRating + 1))
+                picker.Items.Add(value.ToString(CultureInfo.InvariantCulture));
+            picker.SelectedIndex = selected - options.MinimumRating;
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (current() && picker.SelectedIndex >= 0 && picker.SelectedIndex < picker.Items.Count)
+                    update(picker.SelectedIndex + options.MinimumRating);
             };
             _body.Add(picker);
         }
