@@ -809,4 +809,17 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Sr6.EquipmentTrait.wireless-local-matrix-dice-nonstacking" xml:space="preserve"><value>WiFi-Angriffswürfelbonus durch lokale Matrix; nicht mit anderen Systemen kumulativ</value></data>
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate Startrohre; normalerweise einzeln abgefeuert</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline-Doppelstart teilt den Pool; Schütze muss diesem Feuerschaden widerstehen</value></data>
+  <data name="LifeCompletion.Title" xml:space="preserve"><value>Lebensmodule abschließen</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Eingabe geändert. Erneut speichern und prüfen; der Runner ist unverändert.</value></data>
+  <data name="LifeCompletion.Saved" xml:space="preserve"><value>Eingabeentwurf gespeichert. Der Runner ändert sich erst nach der endgültigen Bestätigung.</value></data>
+  <data name="LifeCompletion.Help" xml:space="preserve"><value>Deine Kapitel bleiben erhalten. Prüfe Modul-Zuwendungen und kaufe zusätzliche Werte. Nur Core bestimmt Kosten und ob der vollständige Runner bereit für die Karriere ist.</value></data>
+  <data name="LifeCompletion.Book" xml:space="preserve"><value>Dein Buch lesen</value></data>
+  <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Eingaben speichern und prüfen</value></data>
+  <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Gewährte Werte vor zusätzlichen Käufen prüfen</value></data>
+  <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Diese Auswahl prüfen (darf leer bleiben)</value></data>
+  <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · Modulstufen {2} · Kaufkosten {3} Karma</value></data>
+  <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Karriere: {0} Karma, {1:N2} ¥. Verfallen: {2} Karma, {3:N2} ¥.</value></data>
+  <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Diesen geprüften Runner einmalig übernehmen und die Karriere beginnen? Deine bestätigten Kapitel bleiben erhalten.</value></data>
+  <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Diese Eingaben verwerfen und neu beginnen. Bestätigte Module und Kapitel bleiben erhalten.</value></data>
 </root>

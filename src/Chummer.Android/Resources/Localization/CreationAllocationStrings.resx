@@ -809,4 +809,17 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Sr6.EquipmentTrait.wireless-local-matrix-dice-nonstacking" xml:space="preserve"><value>Local-matrix wireless attack dice bonus; does not stack with other systems</value></data>
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate launch tubes; normally fired individually</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline dual-launch override splits the pool; wielder must resist this fire damage</value></data>
+  <data name="LifeCompletion.Title" xml:space="preserve"><value>Complete Life Modules</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Input changed. Save and review again; the runner has not changed.</value></data>
+  <data name="LifeCompletion.Saved" xml:space="preserve"><value>Input draft saved. The runner changes only after final confirmation.</value></data>
+  <data name="LifeCompletion.Help" xml:space="preserve"><value>Your chapters are retained. Review module grants and buy any additional values. Only Core decides costs and whether the complete runner is ready for Career.</value></data>
+  <data name="LifeCompletion.Book" xml:space="preserve"><value>Read your book</value></data>
+  <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Save inputs and review</value></data>
+  <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Review granted values before adding purchases</value></data>
+  <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Review this selection (empty is allowed)</value></data>
+  <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · module levels {2} · purchase cost {3} Karma</value></data>
+  <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Career: {0} Karma, {1:N2} ¥. Discarded: {2} Karma, {3:N2} ¥.</value></data>
+  <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached.</value></data>
+  <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Discard these input choices and start again. Confirmed modules and chapters are kept.</value></data>
 </root>

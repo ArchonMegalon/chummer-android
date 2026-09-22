@@ -11,6 +11,7 @@ namespace Chummer.Android.Native;
 
 public sealed partial class RunnerSessionCoordinator
 {
+    internal LifeModuleCompletionDraftStore? LifeModuleInputDrafts { get; }
     private readonly IOwnerBoundCharacterCreationLifeModuleFinalizationService? _lifeModuleFinalizationService;
     private readonly ConditionalWeakTable<CharacterCreationFoundationState, CharacterOverviewState> _lifeCompletionStates = new();
     private readonly ConditionalWeakTable<CharacterCreationFoundationFinalizationPreview, LifeCompletionIntent> _lifeCompletionReviews = new();

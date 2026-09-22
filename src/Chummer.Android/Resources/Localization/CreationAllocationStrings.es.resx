@@ -809,4 +809,17 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Sr6.EquipmentTrait.wireless-local-matrix-dice-nonstacking" xml:space="preserve"><value>Bono de dados de ataque inalámbrico por matriz local; no acumulable con otros sistemas</value></data>
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Tubos separados; normalmente disparados individualmente</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>El lanzamiento doble sin conexión divide la reserva; el usuario debe resistir este daño de fuego</value></data>
+  <data name="LifeCompletion.Title" xml:space="preserve"><value>Completar módulos de vida</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Datos modificados. Guarda y revisa de nuevo; el runner no ha cambiado.</value></data>
+  <data name="LifeCompletion.Saved" xml:space="preserve"><value>Borrador guardado. El runner solo cambia tras la confirmación final.</value></data>
+  <data name="LifeCompletion.Help" xml:space="preserve"><value>Tus capítulos se conservan. Revisa lo otorgado por los módulos y compra valores adicionales. Solo Core determina los costes y si el runner completo está listo para la carrera.</value></data>
+  <data name="LifeCompletion.Book" xml:space="preserve"><value>Leer tu libro</value></data>
+  <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Guardar datos y revisar</value></data>
+  <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Revisar valores otorgados antes de comprar más</value></data>
+  <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Revisar esta selección (puede quedar vacía)</value></data>
+  <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · niveles de módulos {2} · coste de compra {3} Karma</value></data>
+  <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Carrera: {0} Karma, {1:N2} ¥. Se pierden: {2} Karma, {3:N2} ¥.</value></data>
+  <data name="LifeCompletion.Confirm" xml:space="preserve"><value>¿Aplicar este runner revisado una sola vez e iniciar la carrera? Tus capítulos confirmados se conservan.</value></data>
+  <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Descartar estas entradas y empezar de nuevo. Los módulos y capítulos confirmados se conservan.</value></data>
 </root>

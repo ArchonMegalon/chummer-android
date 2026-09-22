@@ -2724,7 +2724,10 @@ public sealed class BuildPage : NativePageBase
             await Coordinator.OpenSr5LifeModuleOriginAsync();
         if (opened.IsSuccess && opened.Completed && opened.StoryCheckpoint is { } savedStory)
         {
-            await Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name));
+            if (Coordinator.CanOpenLifeModuleCompletion())
+                await Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator,
+                    () => Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name))));
+            else await Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name));
             return;
         }
         if (!opened.IsSuccess || opened.State is null)

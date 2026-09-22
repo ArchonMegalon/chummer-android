@@ -6,9 +6,148 @@ using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls;
+using System.Text.Json;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            LifeCompletionNativeProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners, lifeCompletionDecorator: actual => probe = new(actual));
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Life Modules phone choices", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await Task.Run(() => SeedNativeLifeSequence(runtime.Services.GetRequiredService<CharacterCreationFoundationService>(), id));
+            await runtime.Presenter.LoadAsync(id, default);
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var drafts = new LifeModuleCompletionDraftStore(runtime.StateDirectory);
+            var root = new LifeModuleCompletionPage(runtime.Coordinator, store: drafts);
+            var navigation = new NavigationPage(new ContentPage());
+            await navigation.PushAsync(root, false);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(root, window);
+            await alerts.PreflightAsync();
+            await Appear();
+            Require(Session().Input is { TalentSelection: null, AttributePurchases: null, SkillSelection: null,
+                GearSelection: null, LifestyleSelection: null, ContactSelection: null, MagicSelection: null },
+                "Opening the completion wizard silently chose a talent or empty purchases.");
+            await Click("life-open-qualities");
+            foreach (var entry in IssuedElements(Current()).OfType<Entry>().Where(e => e.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true)) entry.Text = "Renraku";
+            await Click("life-review-qualities");
+            await Back();
+            await Click("life-open-talent");
+            await Click("life-talent-mundane");
+            await Back();
+            await Click("life-open-attributes");
+            await Click("life-begin-attributes");
+            var oldAgility = Element<Stepper>("life-attribute-AGI");
+            oldAgility.Value = 1;
+            await Click("life-review-attributes");
+            await Back();
+            await Click("life-open-attributes");
+            oldAgility.Value = 2;
+            Require(Element<Stepper>("life-attribute-AGI").Value == 1, "Departed attribute control changed the current draft.");
+            await Back();
+            await Click("life-open-skills");
+            await Click("life-begin-skills");
+            Element<SearchBar>("life-search").Text = "English";
+            await Click("life-search-go");
+            var english = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "English");
+            await Click(english.AutomationId);
+            Element<Switch>("life-native-language").IsToggled = true;
+            await Click("life-use-skill");
+            await Back();
+            await Click("life-open-resources");
+            Element<Entry>("life-resource-investment").Text = "0";
+            await Click("life-use-resources");
+            await Back();
+            await Click("life-open-gear"); await Click("life-begin-gear"); await Back();
+            await Click("life-open-lifestyles"); await Click("life-begin-lifestyles"); await Back();
+            await Click("life-open-contacts"); await Click("life-begin-contacts");
+            await Click("life-add-contact");
+            Element<Entry>("life-contact-name").Text = "Mara";
+            Element<Entry>("life-contact-role").Text = "Fixer";
+            await Click("life-use-contact"); await Back();
+            await Click("life-open-magic"); await Click("life-begin-magic"); await Back();
+            Require(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision
+                && probe!.ConfirmCalls == 0, "Draft phone inputs changed the runner before final confirmation.");
+            string expected = JsonSerializer.Serialize(Session().Input);
+            var retainedInput = Session().Input!;
+            IssuedPageLifecycle(Current(), "OnDisappearing");
+            string ownerKey = runtime.Coordinator.State.DisplayOwnerContext!.Value.Owner.Value;
+            var staleInput = retainedInput with { Binding = retainedInput.Binding with { ContentRevision = retainedInput.Binding.ContentRevision + 1 } };
+            await drafts.SaveAsync(ownerKey, staleInput, default);
+            var staleSession = new LifeModuleCompletionSession(runtime.Coordinator, drafts);
+            await staleSession.OpenAsync(default, () => true);
+            Require(staleSession.Halted && staleSession.CanDiscardInputDraft && !staleSession.CanConfirm
+                && JsonSerializer.Serialize(await drafts.LoadAsync(ownerKey, id, default)) == JsonSerializer.Serialize(staleInput),
+                "Stale persisted choices were silently rebound or overwritten.");
+            await staleSession.DiscardInputDraftAsync(default, () => true);
+            Require(staleSession.Input?.TalentSelection is null && staleSession.Ready
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision,
+                "Explicit input discard altered modules/runner or failed to reacquire review.");
+            // Restore the player's original test choices, not a cached preview or write permission.
+            await drafts.SaveAsync(ownerKey, retainedInput, default);
+            // A fresh page/session/store reads only inputs and obtains a new Core review.
+            // This is managed cold reopen, not Android force-stop evidence.
+            var reopened = new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory));
+            await navigation.PushAsync(reopened, false); await Appear();
+            Require(JsonSerializer.Serialize(Session().Input) == expected && Session().Reviewed,
+                "Cold phone reopen lost exact choices or reused old review authority.");
+            Require(await drafts.LoadAsync("different-owner", id, default) is null, "Input storage crossed owner namespaces.");
+            await Click("life-open-review");
+            Element<Entry>("life-starting-dice").Text = "6";
+            await Click("life-review-completion");
+            Require(Session().CanConfirm, "Phone-selected Life Modules runner is blocked: " + string.Join(", ", Session().Blockers));
+            Require(!Element<Button>("life-confirm-completion").IsEnabled, "Completion lacks explicit user acknowledgement.");
+            Element<Switch>("life-completion-confirmed").IsToggled = true;
+            var oldConfirm = Element<Button>("life-confirm-completion");
+            Element<Entry>("life-starting-dice").Text = "5";
+            await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+            Require(probe!.ConfirmCalls == 0, "Changed visible dice accepted the previous final review.");
+            Element<Entry>("life-starting-dice").Text = "6";
+            await Click("life-review-completion");
+            Element<Switch>("life-completion-confirmed").IsToggled = true;
+            await Click("life-confirm-completion");
+            Require(Element<Label>("life-completion-saved").Text == CreationKarmaCopy.CareerReady && probe!.ConfirmCalls == 1,
+                "Phone confirmation did not reopen the exact Career runner.");
+            var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
+                && cold.Document.AuxiliaryState.CharacterCreationFinalizationArchive is not null,
+                "Phone completion was not one durable Career transition.");
+            IssuedPageLifecycle(Current(), "OnDisappearing");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS Life Modules phone pages: explicit choices, stale controls/dice, input save/cold reopen, explicit stale-input recovery, owner separation, review and Career");
+
+            NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
+            LifeModuleCompletionSession Session() => (LifeModuleCompletionSession)typeof(LifeModuleCompletionPage)
+                .GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
+            T Element<T>(string key) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == key);
+            async Task Appear()
+            { var page = Current(); if (IssuedPageField<int>(page, "_subscribed") == 0) await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")); }
+            async Task Click(string key)
+            {
+                var previous = Current(); var button = Element<Button>(key);
+                Require(button.IsEnabled, "Disabled Life Modules action: " + key);
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                if (!ReferenceEquals(previous, Current()) && IssuedPageField<int>(previous, "_subscribed") != 0) IssuedPageLifecycle(previous, "OnDisappearing");
+                await Appear();
+            }
+            async Task Back()
+            { IssuedPageLifecycle(Current(), "OnDisappearing"); await navigation.PopAsync(false); await Appear(); }
+        });
+    }
+
     internal static async Task RunLifeModuleCompletionAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();
