@@ -65,18 +65,72 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   Base pool previews remain intact; Karma's final ratings drive dependent
   knowledge, magic/resonance and power budgets. The first exotic-weapon subject
   remains explicit GM-reviewed text. No extra CP are charged by this step.
+- Karma specialties share that budget and explicit review/save. Core enforces
+  the combined pool/Karma creation limit, positive final skill rating and the
+  multiple-weapon-type exception without a dice bonus. Free-text subjects carry
+  a GM-review warning. Removing earlier ranks cannot leave an orphan specialty.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Qualities (including Aptitude/Bilingual), further Karma purchases, runtime talent
-effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
+Qualities (including Aptitude/Bilingual), Karma knowledge/language purchases,
+runtime talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current customization-Karma increment — 22 September 2026
+## Current Karma-specialty increment — 22 September 2026
+
+Core `a1e10ae05` adds five-Karma specialization purchases from the owned German
+2024 core pp66/72/94/97. Normal skills allow one specialty across pool and Karma;
+Exotic Weapons allows multiple distinct weapon types without the ordinary +2
+bonus. Core requires a positive final rating, including a rating purchased in
+this same preview. Earlier saved drafts without specialty purchases retain their
+canonical bytes and reopen under the updated rules.
+
+Rule correction: expertise and Karma-bought spells/rituals/complex forms are
+prohibited during Creation, not merely unfinished features. The DE/EN/ES help
+now says so. Qualities, Karma knowledge/languages, equipment and finalization
+remain open. No source prose or equipment identity is invented from player text.
+
+The first emulator confirm exposed the old eight-source-anchor ledger limit.
+The existing mystic-adept draft needs nine anchors with this purchase, or ten
+with knowledge. The write was rejected and all revision-8 bytes stayed intact.
+Core `738b672d18d8ecc60cada66f0bb9a36844d5111d` fixes the bounded shape limit;
+exact source/digest re-evaluation is unchanged. The case first failed in a
+focused regression, then all **187 Core tests passed** in
+`core-sr6-specializations-anchor-fix-green.log`.
+
+Android functional `e30f394904f0c50df5e52d987ff333244fb12333`, tree
+`dfb76bc790764b4a8401150f0d3dc9bdd65aeb56`; Presentation `1eae38aa1` unchanged.
+`sr6-specializations-debug-build-2.log`: local keyless Docker Debug x64 build,
+**0 warnings/errors**, 1m25.68s. Explicit source assembly, not a package seal.
+Retained `sr6-specializations-fixed-debug.apk`, SHA-256:
+`b4dcb0f1752a44b821ebca210aaab35b77e0bfa1ff16d1eff86faceb5883c4fa`.
+`sr6-native-specializations-anchor-fix.log`: **112 native managed scenarios
+PASS** against the fixed Core, including all three methods in DE/EN/ES,
+combined specialty limits, zero-rank/duplicate rejection, budget overflow,
+departed callbacks, stale confirmations and saved specialty reopen.
+Actual API36 smoke used the unchanged historical Karma draft, revision 8/8,
+seven decisions (`sr6-karma-after-restart.json`); not a new bootstrap proof.
+The failed first candidate's rejected write left those bytes unchanged. After
+installing the corrected debug APK, the real Karma page added AstralCombat,
+reviewed **50/50 Karma**, and saved once to **revision 9/9**, eight decisions.
+Body 2, Magic 4, Astral 2, 10,000 Nuyen, 3 PP, two formulas and 38 spent CP
+remained intact. The specialty costs five Karma and displays +2 with GM review.
+
+Force-stop removed PID 5756; relaunch created PID 6249. Reopened Karma showed
+the saved budget, specialty and revision, with no historical Confirm button.
+The entire workspace stayed byte-identical before/after restart:
+`d33a3731e294574dab538f896ddc50a9f46cc1790f4b4a29d58ba384008b5598`.
+Retained `sr6-specializations-fixed-*` screenshots, hierarchies, JSON and logs.
+No debug-app crash/ANR appeared in captured events. Initial loading screens
+were not accepted as restored-state proof. The owned emulator and local
+build/test containers stopped. No main merge, package reseal, upload-key use,
+release AAB or Play change follows from this increment.
+
+## Historical customization-Karma increment — 22 September 2026
 
 Core `fdbc460a08a16685addb3c3391ddd3257430dbdf` supplies rules from the owned
 German 2024 core pp69/71–72/158 and Companion pp30–31. Attribute and active-skill
