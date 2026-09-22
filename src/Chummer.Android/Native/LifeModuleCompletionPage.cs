@@ -378,19 +378,54 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             Body(CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost));
             Body(string.Join(" · ", delta.SourceAnchorIds));
         }
-        bool confirmed = false;
+        bool confirmed = false, saving = false;
         var acknowledgement = new Switch { AutomationId = "life-completion-confirmed" };
         Body(LifeCopy("Confirm", "Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached."));
         _body.Add(acknowledgement);
-        var confirmButton = Button(CreationKarmaCopy.ConfirmCompletion, "life-confirm-completion", async () =>
-        {
-            long appearance = CaptureAppearanceGeneration();
-            if (confirmed && _session.CanConfirm && IsCurrentAppearanceGeneration(appearance))
-                await _session.ConfirmAsync(default, () => IsCurrentAppearanceGeneration(appearance));
-        }, _session.CanConfirm);
+        var progress = new ActivityIndicator { AutomationId = "life-completion-saving", IsVisible = false };
+        _body.Add(progress);
+        var confirmButton = NativeTheme.PrimaryButton(CreationKarmaCopy.ConfirmCompletion);
+        confirmButton.AutomationId = "life-confirm-completion";
         confirmButton.IsEnabled = false;
+        _body.Add(confirmButton);
         long render = _render, currentAppearance = CaptureAppearanceGeneration();
+        confirmButton.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (saving || !confirmed || !confirmButton.IsEnabled || !Current(render, currentAppearance) || !_session.CanConfirm) return;
+            // Update the actual tapped controls before yielding to the Core write.
+            // RunAsync already prevents overlapping actions, but that alone does
+            // not show Android users that a lengthy save is in progress.
+            saving = true;
+            _body.IsEnabled = false;
+            confirmButton.IsEnabled = false;
+            acknowledgement.IsEnabled = false;
+            dice.IsEnabled = false;
+            confirmButton.Text = LifeCopy("Saving", "Saving runner…");
+            progress.IsVisible = true;
+            progress.IsRunning = true;
+            try
+            {
+                await Task.Yield();
+                if (Current(render, currentAppearance))
+                    await _session.ConfirmAsync(default, () => IsCurrentAppearanceGeneration(currentAppearance));
+            }
+            finally
+            {
+                progress.IsRunning = false;
+                progress.IsVisible = false;
+                saving = false;
+                // Never rearm a consumed confirmation or restore a departed page.
+                // The normal refresh shows the receipt, blockers or a fresh review.
+                if (_render == render && IsCurrentAppearanceGeneration(currentAppearance))
+                {
+                    _body.IsEnabled = _session.FrameCurrent;
+                    dice.IsEnabled = _session.Ready;
+                    acknowledgement.IsEnabled = false;
+                    confirmButton.Text = CreationKarmaCopy.ConfirmCompletion;
+                }
+            }
+        });
         acknowledgement.Toggled += (_, args) =>
-        { if (Current(render, currentAppearance)) { confirmed = args.Value; confirmButton.IsEnabled = confirmed && _session.CanConfirm; } };
+        { if (!saving && Current(render, currentAppearance)) { confirmed = args.Value; confirmButton.IsEnabled = confirmed && _session.CanConfirm; } };
     }
 }

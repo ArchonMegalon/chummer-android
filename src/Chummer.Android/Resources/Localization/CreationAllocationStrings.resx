@@ -821,5 +821,6 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Career: {0} Karma, {1:N2} ¥. Discarded: {2} Karma, {3:N2} ¥.</value></data>
   <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached.</value></data>
   <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="LifeCompletion.Saving" xml:space="preserve"><value>Saving runner…</value></data>
   <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Discard these input choices and start again. Confirmed modules and chapters are kept.</value></data>
 </root>

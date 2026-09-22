@@ -821,5 +821,6 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Carrera: {0} Karma, {1:N2} ¥. Se pierden: {2} Karma, {3:N2} ¥.</value></data>
   <data name="LifeCompletion.Confirm" xml:space="preserve"><value>¿Aplicar este runner revisado una sola vez e iniciar la carrera? Tus capítulos confirmados se conservan.</value></data>
   <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="LifeCompletion.Saving" xml:space="preserve"><value>Guardando runner…</value></data>
   <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Descartar estas entradas y empezar de nuevo. Los módulos y capítulos confirmados se conservan.</value></data>
 </root>

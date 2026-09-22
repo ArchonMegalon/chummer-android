@@ -145,7 +145,37 @@ internal static partial class AfterRunAuthorityHarness
             Element<Entry>("life-starting-dice").Text = "6";
             await Click("life-review-completion");
             Element<Switch>("life-completion-confirmed").IsToggled = true;
-            await Click("life-confirm-completion");
+            var finalConfirm = Element<Button>("life-confirm-completion");
+            var finalAcknowledgement = Element<Switch>("life-completion-confirmed");
+            using var releaseConfirmation = new ManualResetEventSlim();
+            var confirmationEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            probe.BeforeConfirm = () =>
+            {
+                confirmationEntered.TrySetResult();
+                Require(releaseConfirmation.Wait(TimeSpan.FromSeconds(20)), "Test did not release the blocked Core confirmation.");
+            };
+            Task confirmation = ui.BeginAsyncVoid(() => ((IButtonController)finalConfirm).SendClicked());
+            try
+            {
+                await confirmationEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                Require(!finalConfirm.IsEnabled && !finalAcknowledgement.IsEnabled
+                    && !Element<Entry>("life-starting-dice").IsEnabled,
+                    "Pending Core confirmation still presents enabled confirmation/input controls.");
+                var saving = Element<ActivityIndicator>("life-completion-saving");
+                Require(saving.IsVisible && saving.IsRunning && finalConfirm.Text != CreationKarmaCopy.ConfirmCompletion,
+                    "Pending Core confirmation has no visible saving feedback.");
+                finalAcknowledgement.IsToggled = false;
+                finalAcknowledgement.IsToggled = true;
+                ((IButtonController)finalConfirm).SendClicked();
+                Require(!finalConfirm.IsEnabled && probe.ConfirmCalls == 1,
+                    "A pending confirmation was visually rearmed or dispatched twice.");
+            }
+            finally
+            {
+                releaseConfirmation.Set();
+                await confirmation;
+                probe.BeforeConfirm = null;
+            }
             Require(Element<Label>("life-completion-saved").Text == CreationKarmaCopy.CareerReady && probe!.ConfirmCalls == 1,
                 "Phone confirmation did not reopen the exact Career runner.");
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
@@ -508,14 +538,14 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class LifeCompletionNativeProbe(IOwnerBoundCharacterCreationLifeModuleFinalizationService inner)
         : IOwnerBoundCharacterCreationLifeModuleFinalizationService
     {
-        public Action? AfterLoad, AfterConfirm;
+        public Action? AfterLoad, BeforeConfirm, AfterConfirm;
         public int ConfirmCalls, PreviewCalls;
         public CharacterCreationFoundationResult<CharacterCreationFoundationState> Load(OwnerContextStamp owner, CharacterWorkspaceId id)
         { Require(SynchronizationContext.Current is null, "Life Modules load blocks the UI context."); var r = inner.Load(owner, id); AfterLoad?.Invoke(); return r; }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationPreview> Preview(OwnerContextStamp owner, CharacterCreationFoundationFinalizationPreviewRequest request)
         { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); PreviewCalls++; return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationReceipt> Confirm(OwnerContextStamp owner, CharacterCreationFoundationFinalizationConfirmRequest request)
-        { Require(SynchronizationContext.Current is null, "Life Modules confirmation blocks the UI context."); ConfirmCalls++; var r = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return r; }
+        { Require(SynchronizationContext.Current is null, "Life Modules confirmation blocks the UI context."); ConfirmCalls++; BeforeConfirm?.Invoke(); var r = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return r; }
     }
 
     private sealed class LifeBookOutputProbe : IAndroidDocumentService

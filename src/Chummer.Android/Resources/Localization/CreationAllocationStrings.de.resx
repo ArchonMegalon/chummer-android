@@ -821,5 +821,6 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Karriere: {0} Karma, {1:N2} ¥. Verfallen: {2} Karma, {3:N2} ¥.</value></data>
   <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Diesen geprüften Runner einmalig übernehmen und die Karriere beginnen? Deine bestätigten Kapitel bleiben erhalten.</value></data>
   <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="LifeCompletion.Saving" xml:space="preserve"><value>Runner wird gespeichert…</value></data>
   <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Diese Eingaben verwerfen und neu beginnen. Bestätigte Module und Kapitel bleiben erhalten.</value></data>
 </root>
