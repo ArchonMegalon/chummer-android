@@ -8,10 +8,17 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
+- Expandable DE/EN/ES equipment-statistics review in the saved overview. Core
+  supplies armor Defense Rating/capacity, separate matrix-device attributes,
+  program/slave limits and source-backed conditional/included traits. Values
+  are per item, not multiplied by quantity, and do not equip/activate anything.
+  Unsupported items are identified individually. Supported armor/device-only
+  baskets no longer trigger the blanket equipment completion blocker. Weapons,
+  medical gear and other unimplemented item statistics still block completion.
 - Separate DE/EN/ES completion review for Priority/Sum-to-Ten/Point Buy. Core
   supplies the exact saved projection, carry-over/loss amounts and blockers.
   Completion requires explicit confirmation and, when needed, a separate
-  unchecked loss-consent box. A single Core transaction saves the character
+  unchecked, semantically labelled loss-consent box. A single Core transaction saves the character
   and retains the original draft and receipt. Duplicate/expired controls and
   owner changes cannot resubmit. Unknown outcomes require reopening, not retry.
   Unsupported equipment/formula statistics or magical tradition still block
@@ -141,7 +148,41 @@ spending all CP does not bypass any missing-domain blocker. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current completion verification — 22 September 2026
+## Current equipment/completion verification — 22 September 2026
+
+`sr6-native-equipment-profiles-1.log`: **184 managed native scenarios PASS**,
+now including supported equipment in all three method/locale completion routes,
+the localized expandable equipment view, stale-page rejection and semantic
+loss-consent labels. Unsupported weapons still fail completion. DE/EN/ES
+resource-key parity passes (700 keys). `sr6-equipment-debug-build-1.log`:
+**0 warnings, 0 errors**. Core's focused foundation run passes 296 tests.
+
+Local Debug x64 APK `sr6-equipment-debug.apk`, SHA256
+`ce67fa640dadccf31872d18214af1a24eb8fc5b22439b509c505386e228c08a9`.
+The real API36 emulator route used a synthetic Priority fixture created through
+actual Core bootstrap/confirm commands, not hand-edited authority. Workspace
+`958be7098f044b7a91798e790e72a0db` held one lined coat and one Meta Link. The
+expanded overview showed coat DR+3/capacity7, conditional concealment Edge1,
+and Meta Link rating1/D1/F0/programs0/slaves1 with exact source anchors.
+
+The completion button was disabled until explicit loss consent. The checkbox
+now exposes its full accessible description. One real confirmation saved
+revision2/2→3/3 with both equipment profiles, unequipped, 5 Karma and 5,000¥.
+Receipt `sha256:416a7d17ccdae649016540a1cd2f97baeefc02e7d5a79d8951eab632cc2d4090`.
+Force-stop removed PID3697; cold process4385 reopened the created SR6 sheet.
+The exact saved workspace stayed byte-identical, SHA256
+`71d448e0f3d1d2c08fc57566ef00c43f53427b34f25283605e504a77f926cfd5`.
+Original draft and receipt were retained. SR6 Career remains explicitly blocked.
+
+The first install was refused while the emulator was still booting; installation
+was resumed only after boot/credential-encrypted storage readiness. A System UI
+startup ANR was retained and dismissed with Wait; the app route then succeeded.
+The retained crash buffer is empty. The owned emulator and local containers were
+stopped afterward. This proves the affected route, not every wizard allocation,
+a physical device, a Windows UI or a Play installation. No main merge, package
+seal, release signing or Play publication is asserted.
+
+## Historical completion verification — 22 September 2026
 
 `sr6-native-finalization-2.log`: **184 native managed scenarios PASS**, including
 three methods × DE/EN/ES completion, explicit loss consent, duplicate/stale page

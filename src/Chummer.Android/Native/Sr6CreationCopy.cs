@@ -6,6 +6,28 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string Equipment(Sr6CreationEquipmentProfile row)
+    {
+        var lines = new List<string> { CreationAllocationStrings.Format("Sr6.EquipmentItem", "{0} × {1}", row.Quantity, row.SourceName) };
+        if (!row.StatisticsAvailable) lines.Add(Text("EquipmentUnavailable"));
+        if (row.Armor is { } armor)
+            lines.Add(CreationAllocationStrings.Format("Sr6.EquipmentArmor", "Defense Rating +{0}; modification capacity {1}",
+                armor.DefenseRatingBonus, armor.ModificationCapacity));
+        if (row.Matrix is { } device)
+        {
+            foreach (var (id, value) in new (string, int?)[] { ("rating", device.DeviceRating), ("attack", device.Attack),
+                ("sleaze", device.Sleaze), ("data", device.DataProcessing), ("firewall", device.Firewall),
+                ("programs", device.ActiveProgramSlots), ("slaves", device.MaximumSlaves),
+                ("noise", device.NoiseReduction), ("shared-programs", device.SharedProgramSlots) })
+                if (value is { } known)
+                    lines.Add(CreationAllocationStrings.Format("Sr6.EquipmentStat", "{0}: {1}", Text("EquipmentStat." + id), known));
+        }
+        foreach (var trait in row.Traits)
+            lines.Add(trait.Value is { } value
+                ? CreationAllocationStrings.Format("Sr6.EquipmentStat", "{0}: {1}", Text("EquipmentTrait." + trait.Id), value)
+                : Text("EquipmentTrait." + trait.Id));
+        return string.Join("\n", lines);
+    }
     internal static string FinishDomain(string id) => id switch
     {
         "equipment-runtime-stats" or "spell-runtime-stats" or "complex-form-runtime-stats" or "magical-tradition" or "passive-effect-conflict"

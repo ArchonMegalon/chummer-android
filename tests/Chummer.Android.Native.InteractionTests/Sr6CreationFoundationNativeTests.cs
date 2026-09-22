@@ -39,6 +39,8 @@ internal static partial class AfterRunAuthorityHarness
                     var confirm = Element<Button>("sr6-finalization-confirm");
                     Require(page.Title == Sr6CreationCopy.Text("FinishReview") && !confirm.IsEnabled
                         && !Element<CheckBox>("sr6-finalization-accept-loss").IsChecked, "Loss acceptance was implicit.");
+                    Require(SemanticProperties.GetDescription(Element<CheckBox>("sr6-finalization-accept-loss"))
+                        == Sr6CreationCopy.Text("FinishAcceptLoss"), "Loss consent has no accessible label.");
                     confirm.IsEnabled = true;
                     await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
                     Require(probe!.FinalConfirms == 0, "Synthetic click bypassed loss consent.");
@@ -50,6 +52,8 @@ internal static partial class AfterRunAuthorityHarness
                         + string.Join(" | ", IssuedElements(page).OfType<Label>().Select(item => item.Text)));
                     var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
                     var receipt = stored.Document.AuxiliaryState.Sr6CreationFinalizationArchive!.Receipt;
+                    Require(System.Xml.Linq.XDocument.Parse(stored.Document.Content).Descendants("sr6equipmentprofile").Count() == 2,
+                        "Supported gear statistics were not saved with finalization.");
                     Require(probe.FinalConfirms == 1 && stored.ContentRevision == state.Binding.ContentRevision + 1
                         && stored.ContentRevision == stored.SavedRevision && runtime.Coordinator.State.Profile!.Created,
                         "Finalization failed to save or refresh the runner.");
@@ -276,6 +280,15 @@ internal static partial class AfterRunAuthorityHarness
                             "Passive calculation was not rendered in the selected locale.");
                     ((IButtonController)passiveToggle).SendClicked();
                     Require(!passiveDetails.IsVisible, "Passive values did not collapse.");
+                    var equipmentToggle = Summary<Button>("sr6-draft-equipment-toggle");
+                    var equipmentDetails = Summary<VerticalStackLayout>("sr6-draft-equipment-values");
+                    Require(!equipmentDetails.IsVisible, "Equipment details must start collapsed.");
+                    ((IButtonController)equipmentToggle).SendClicked();
+                    Require(equipmentDetails.IsVisible && equipmentToggle.Text == Sr6CreationCopy.Text("EquipmentHide"), "Equipment did not expand.");
+                    foreach (var item in storedSummary.Equipment)
+                        Require(Summary<Label>("sr6-draft-equipment-" + item.ItemId.ToString("N")).Text == Sr6CreationCopy.Equipment(item),
+                            "Saved equipment values were not displayed in the selected locale.");
+                    ((IButtonController)equipmentToggle).SendClicked();
                     var openLifestyle = Summary<Button>("sr6-draft-open-lifestyle");
                     await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
                     Require(navigation.Navigation.NavigationStack.Last().AutomationId == "sr6-lifestyle-page", "Summary did not reopen the exact typed wizard.");
@@ -287,6 +300,8 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!naturalDetails.IsVisible, "Departed summary expanded stale character values.");
                     ((IButtonController)passiveToggle).SendClicked();
                     Require(!passiveDetails.IsVisible, "Departed summary expanded stale passive values.");
+                    ((IButtonController)equipmentToggle).SendClicked();
+                    Require(!equipmentDetails.IsVisible, "Departed summary expanded stale equipment values.");
                     Require(navigation.Navigation.NavigationStack.Count == depth && probe.Confirms == 2,
                         "Departed summary navigation was replayed or saved.");
                     Require(Sr6CreationFoundationIntegrity.Digest(stored) == Sr6CreationFoundationIntegrity.Digest(
@@ -1838,9 +1853,10 @@ internal static partial class AfterRunAuthorityHarness
             {
                 PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
                 Attributes = new(Sr6CreationAttributeIds.Ordered.Select(id => new Sr6CreationAttributeSpend(id, 0, 0)).ToArray()),
-                Skills = new([new("Athletics", 1, [])]), Karma = new([], [], 0),
+                Skills = new([new("Athletics", 1, [])]), Karma = new([], [], 2),
                 Knowledge = new("German", [new(Guid.NewGuid(), "Seattle")], []), Contacts = new([]),
-                Gear = new(gear ? [new(Guid.NewGuid(), "lined-coat", 1)] : []), Lifestyle = new("street", 1)
+                Gear = new(gear ? [new(Guid.NewGuid(), "combat-knife", 1)]
+                    : [new(Guid.NewGuid(), "lined-coat", 1), new(Guid.NewGuid(), "meta-link", 1)]), Lifestyle = new("street", 1)
             };
             var preview = await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection);
             Require(preview.Value is not null, "Finalization seed invalid: " + string.Join(",", preview.Blockers));

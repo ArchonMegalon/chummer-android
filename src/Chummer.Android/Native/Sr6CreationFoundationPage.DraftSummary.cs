@@ -36,6 +36,7 @@ internal sealed partial class Sr6CreationFoundationPage
         }
         if (summary.NaturalValues is { } natural) BuildNaturalValues(natural, current);
         if (summary.PassiveValues is { } passive) BuildPassiveValues(passive, current);
+        if (summary.Equipment.Count > 0) BuildEquipmentValues(summary.Equipment, current);
         foreach (var step in summary.Steps)
         {
             var status = NativeTheme.Body(Sr6CreationCopy.Text("DraftStatus." + step.Status));
@@ -75,6 +76,30 @@ internal sealed partial class Sr6CreationFoundationPage
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.DraftRemainder(remainder), NativeTheme.Muted));
         }
         _body.Add(NativeTheme.Body(string.Join(" · ", summary.SourceAnchorIds), NativeTheme.Muted));
+    }
+
+    private void BuildEquipmentValues(IReadOnlyList<Sr6CreationEquipmentProfile> profiles, Func<bool> current)
+    {
+        var toggle = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("EquipmentTitle"));
+        toggle.AutomationId = "sr6-draft-equipment-toggle";
+        var details = new VerticalStackLayout { Spacing = 10, IsVisible = false, AutomationId = "sr6-draft-equipment-values" };
+        details.Add(NativeTheme.Body(Sr6CreationCopy.Text("EquipmentHelp"), NativeTheme.Muted));
+        foreach (var profile in profiles)
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.Equipment(profile),
+                profile.StatisticsAvailable ? NativeTheme.Text : NativeTheme.Danger);
+            label.AutomationId = "sr6-draft-equipment-" + profile.ItemId.ToString("N");
+            details.Add(label);
+            details.Add(NativeTheme.Body(string.Join(" · ", profile.SourceAnchorIds), NativeTheme.Muted));
+        }
+        toggle.Clicked += (_, _) =>
+        {
+            if (!current()) return;
+            details.IsVisible = !details.IsVisible;
+            toggle.Text = Sr6CreationCopy.Text(details.IsVisible ? "EquipmentHide" : "EquipmentTitle");
+        };
+        _body.Add(toggle);
+        _body.Add(details);
     }
 
     private void BuildNaturalValues(Sr6CreationNaturalValues values, Func<bool> current)
@@ -232,6 +257,7 @@ internal sealed class Sr6CreationFinalizationPage : NativePageBase
         {
             _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("FinishAcceptLoss")));
             var consent = new CheckBox { AutomationId = "sr6-finalization-accept-loss", IsChecked = _lossAccepted };
+            SemanticProperties.SetDescription(consent, Sr6CreationCopy.Text("FinishAcceptLoss"));
             consent.CheckedChanged += (_, args) => { if (Current()) { _lossAccepted = args.Value; confirm.IsEnabled = args.Value; } };
             _body.Add(consent);
         }

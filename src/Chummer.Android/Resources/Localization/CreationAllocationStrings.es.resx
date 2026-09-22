@@ -685,4 +685,28 @@ No se ha descartado nada ni aplicado a un runner terminado.</value></data>
   <data name="Sr6.PassiveStat.unarmored-defense-rating" xml:space="preserve"><value>Valor de defensa sin armadura: Constitución + depósitos dérmicos + Armadura mística</value></data>
   <data name="Sr6.PassiveStat.defense-dice-pool" xml:space="preserve"><value>Reserva de defensa: Reacción + Intuición + Sentido del combate</value></data>
   <data name="Sr6.PassiveStat.unarmed-attack-rating" xml:space="preserve"><value>Valor de ataque sin armas: Fuerza + Reacción</value></data>
+  <data name="Sr6.EquipmentTitle" xml:space="preserve"><value>Mostrar estadísticas del equipo</value></data>
+  <data name="Sr6.EquipmentHide" xml:space="preserve"><value>Ocultar estadísticas del equipo</value></data>
+  <data name="Sr6.EquipmentHelp" xml:space="preserve"><value>Valores del catálogo Core por objeto, sin multiplicarlos por la cantidad. Nada se equipa, conecta ni activa automáticamente. Los bonos condicionales se muestran, no se aplican. Los objetos sin resolver siguen bloqueando la finalización.</value></data>
+  <data name="Sr6.EquipmentItem" xml:space="preserve"><value>{0} × {1}</value></data>
+  <data name="Sr6.EquipmentUnavailable" xml:space="preserve"><value>Estadísticas aún no compatibles — bloquea la finalización.</value></data>
+  <data name="Sr6.EquipmentArmor" xml:space="preserve"><value>Valor de defensa +{0}; capacidad de modificación {1}</value></data>
+  <data name="Sr6.EquipmentStat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Sr6.EquipmentStat.rating" xml:space="preserve"><value>Nivel del dispositivo</value></data>
+  <data name="Sr6.EquipmentStat.attack" xml:space="preserve"><value>Ataque</value></data>
+  <data name="Sr6.EquipmentStat.sleaze" xml:space="preserve"><value>Sigilo</value></data>
+  <data name="Sr6.EquipmentStat.data" xml:space="preserve"><value>Procesamiento de datos</value></data>
+  <data name="Sr6.EquipmentStat.firewall" xml:space="preserve"><value>Cortafuegos</value></data>
+  <data name="Sr6.EquipmentStat.programs" xml:space="preserve"><value>Ranuras de programas activos</value></data>
+  <data name="Sr6.EquipmentStat.slaves" xml:space="preserve"><value>Máximo de dispositivos esclavos</value></data>
+  <data name="Sr6.EquipmentStat.noise" xml:space="preserve"><value>Reducción de ruido</value></data>
+  <data name="Sr6.EquipmentStat.shared-programs" xml:space="preserve"><value>Programas/autosofts compartidos</value></data>
+  <data name="Sr6.EquipmentTrait.armor-does-not-stack" xml:space="preserve"><value>Las armaduras no se acumulan salvo que una regla lo permita expresamente.</value></data>
+  <data name="Sr6.EquipmentTrait.included-concealed-holster" xml:space="preserve"><value>Funda oculta incluida.</value></data>
+  <data name="Sr6.EquipmentTrait.active-suit-stealth-edge" xml:space="preserve"><value>Edge para pruebas de Sigilo al llevar el traje activo</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-suit-defense-bonus" xml:space="preserve"><value>Valor de defensa adicional con el traje inalámbrico activado</value></data>
+  <data name="Sr6.EquipmentTrait.concealed-item-edge" xml:space="preserve"><value>Edge contra intentos de detectar objetos ocultos bajo el abrigo</value></data>
+  <data name="Sr6.EquipmentTrait.included-music-player" xml:space="preserve"><value>Reproductor de música incluido.</value></data>
+  <data name="Sr6.EquipmentTrait.included-biomonitor" xml:space="preserve"><value>Biomonitor incluido.</value></data>
+  <data name="Sr6.EquipmentTrait.included-hot-sim-module" xml:space="preserve"><value>Módulo de simulación caliente incluido; no activado.</value></data>
 </root>
