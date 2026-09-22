@@ -48,6 +48,22 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
         });
         _body.Add(export);
+        if (!Coordinator.Account.IsLinked)
+        {
+            var explanation = NativeTheme.Body(_copy["Origin.BookAccountExplanation"], NativeTheme.Muted);
+            explanation.AutomationId = "origin-book-account-explanation";
+            _body.Add(explanation);
+            var account = new Button { Text = _copy["Origin.BookAccount"], AutomationId = "origin-book-account",
+                IsEnabled = !Coordinator.Account.IsLoading };
+            account.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                    && Coordinator.IsRetainedOriginBookCurrent(book)
+                    && !Coordinator.Account.IsLinked && !Coordinator.Account.IsLoading)
+                    await Navigation.PushAsync(new AccountPrivacyPage(Coordinator));
+            });
+            _body.Add(account);
+        }
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
         foreach (var chapter in book.Chapters)
         {

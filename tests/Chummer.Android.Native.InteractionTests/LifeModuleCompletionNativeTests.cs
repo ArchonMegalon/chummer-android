@@ -213,6 +213,50 @@ internal static partial class AfterRunAuthorityHarness
                 var page = (RetainedOriginBookPage)Current();
                 Require(IssuedElements(page).OfType<Label>().Any(label => label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true),
                     "Career book page has no saved prose.");
+                Require(!IssuedElements(page).Any(element => element.AutomationId == "origin-book-account"),
+                    "A linked reader was asked to link again.");
+                Button? retiredAccountButton = null;
+                foreach (string locale in new[] { "de-DE", "en-US", "es-ES" })
+                {
+                    authoringProbe.Status = AndroidAccountLinkStatus.Unlinked;
+                    var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+                    RetainedOriginBookPage unlinkedReader;
+                    try
+                    {
+                        System.Globalization.CultureInfo.CurrentUICulture = new(locale);
+                        unlinkedReader = new RetainedOriginBookPage(runtime.Coordinator);
+                    }
+                    finally { System.Globalization.CultureInfo.CurrentUICulture = previousCulture; }
+                    await navigation.PushAsync(unlinkedReader, false); await Appear();
+                    var localizedCopy = AndroidSurfaceStrings.Resolve(locale);
+                    Require(Element<Label>("origin-book-account-explanation").Text == localizedCopy["Origin.BookAccountExplanation"],
+                        "The unlinked reader did not explain the account requirement in its UI language.");
+                    Require(Element<Button>("origin-book-export").IsEnabled
+                        && !IssuedElements(Current()).Any(e => e.AutomationId?.StartsWith("origin-author-chapter-", StringComparison.Ordinal) == true),
+                        "An unlinked reader lost local export or exposed a generation action.");
+                    retiredAccountButton = Element<Button>("origin-book-account");
+                    Require(retiredAccountButton.Text == localizedCopy["Origin.BookAccount"], "Account navigation was not localized.");
+                    authoringProbe.Status = AndroidAccountLinkStatus.Loading;
+                    typeof(RetainedOriginBookPage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(unlinkedReader, null);
+                    Require(!Element<Button>("origin-book-account").IsEnabled, "Account loading exposed an enabled account action.");
+                    authoringProbe.Status = AndroidAccountLinkStatus.Unlinked;
+                    typeof(RetainedOriginBookPage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(unlinkedReader, null);
+                    await Click("origin-book-account");
+                    Require(Current() is AccountPrivacyPage && authoringProbe.LinkStarts == 0
+                        && authoringProbe.Requests == 0 && authoringProbe.Reads == 0,
+                        "Opening account settings started authentication or sent chapter facts.");
+                    await Back();
+                    Require(Current() is RetainedOriginBookPage && Element<Button>("origin-book-export").IsEnabled,
+                        "Returning from account settings lost the saved book/export.");
+                    await Back();
+                }
+                authoringProbe.Status = AndroidAccountLinkStatus.Linked;
+                typeof(RetainedOriginBookPage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(page, null);
+                int beforeRetiredAccountClick = navigation.Navigation.NavigationStack.Count;
+                await ui.BeginAsyncVoid(() => ((IButtonController)retiredAccountButton!).SendClicked());
+                Require(navigation.Navigation.NavigationStack.Count == beforeRetiredAccountClick && authoringProbe.LinkStarts == 0,
+                    "A departed book action reopened account settings or began authentication.");
+                Console.WriteLine("PASS unlinked book: DE/EN/ES account explanation, explicit navigation, offline export and no automatic sign-in/generation");
                 await Click("origin-book-export");
                 Require(bookOutput.Deliveries == 1, "The context-bound HTML export was not delivered.");
                 Require(bookOutput.Html.Contains("<meta name=\"author\" content=\"chummer.run\">", StringComparison.Ordinal),

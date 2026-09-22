@@ -162,11 +162,14 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public int Acceptances { get; private set; }
     public bool FailAcceptance { get; set; }
     public bool Ready { get; set; }
+    public AndroidAccountLinkStatus Status { get; set; } = AndroidAccountLinkStatus.Linked;
+    public int LinkStarts { get; private set; }
     private OriginChapterAuthoringJob? _job;
 
     protected override object? Invoke(MethodInfo? method, object?[]? args)
     {
-        if (method?.Name == "get_Snapshot") return new AndroidAccountLinkSnapshot(AndroidAccountLinkStatus.Linked, "Test account");
+        if (method?.Name == "get_Snapshot") return new AndroidAccountLinkSnapshot(Status, "Test account");
+        if (method?.Name == "BeginLinkAsync") { LinkStarts++; return Task.CompletedTask; }
         if (method?.Name is "InitializeAsync" or "RefreshAsync") return Task.CompletedTask;
         return base.Invoke(method, args);
     }
