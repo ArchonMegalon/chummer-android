@@ -420,7 +420,22 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
             T Element<T>(string key) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == key);
             async Task Appear()
-            { var page = Current(); if (IssuedPageField<int>(page, "_subscribed") == 0) await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")).WaitAsync(TimeSpan.FromSeconds(30)); }
+            {
+                var page = Current();
+                if (IssuedPageField<int>(page, "_subscribed") != 0) return;
+                Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                if (page is RetainedOriginBookPage)
+                {
+                    Require(Element<ActivityIndicator>("origin-book-loading").IsRunning
+                        && !string.IsNullOrWhiteSpace(Element<Label>("origin-book-loading-message").Text)
+                        && !IssuedElements(page).Any(e => e is Button),
+                        "Opening or returning to the reader must show loading without stale book actions.");
+                }
+                await appearance.WaitAsync(TimeSpan.FromSeconds(30));
+                if (page is RetainedOriginBookPage)
+                    Require(!IssuedElements(page).Any(e => e.AutomationId == "origin-book-loading"),
+                        "The completed book reader retained its loading indicator.");
+            }
             async Task Click(string key)
             {
                 var previous = Current(); var button = Element<Button>(key);

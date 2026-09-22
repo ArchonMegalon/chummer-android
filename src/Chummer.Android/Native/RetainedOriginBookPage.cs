@@ -16,12 +16,26 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnAppearing()
+    {
+        ShowLoading();
+        base.OnAppearing();
+    }
+
+    private void ShowLoading()
+    {
+        _body.Clear();
+        _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "origin-book-loading" });
+        var message = NativeTheme.Body(_copy["Origin.BookLoading"], NativeTheme.Muted);
+        message.AutomationId = "origin-book-loading-message";
+        _body.Add(message);
+    }
+
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
     {
         long appearance = CaptureAppearanceGeneration();
         _book = null;
         _notice = null;
-        _body.Clear();
         _book = await Coordinator.LoadRetainedOriginBookAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
     }
 
