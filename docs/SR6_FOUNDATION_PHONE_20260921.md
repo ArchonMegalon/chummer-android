@@ -131,7 +131,21 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current passive-values increment — 22 September 2026
+## Current Core projection integration — 22 September 2026
+
+Core `b55ee2cc816330854a8629534f48d463e956b62c` adds an owner/revision-bound
+`ProjectCharacter` read operation for the saved Priority/Sum-to-Ten/Point Buy
+ledger. Its deterministic character XML remains uncreated, preserves unspent
+balances and marks incomplete domains. It is not a finalization or save command.
+Android's interaction-test adapter now forwards the expanded service contract;
+no production UI, route, persistence behavior or localization changed here.
+Core's final Creation/codec subset passes 292 tests. The native managed run
+passes all 166 scenarios (`sr6-native-character-projection-1.log`); this checks
+the expanded service contract and unchanged wizard routes, not a finalizer.
+No new APK/emulator pass, package seal, main merge or Play release is claimed.
+The earlier passive-values APK smoke below remains scoped to its earlier bytes.
+
+## Historical passive-values increment — 22 September 2026
 
 Core projects permanent powers and applicable monitor/armor qualities from the
 revalidated saved draft. The separate initially collapsed DE/EN/ES panel renders

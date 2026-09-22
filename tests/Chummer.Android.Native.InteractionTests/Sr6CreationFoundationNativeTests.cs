@@ -1765,6 +1765,9 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<Sr6CreationFoundationPreview> Preview(OwnerContextStamp owner,
             Sr6CreationFoundationBinding binding, Sr6CreationFoundationSelection selection)
         { Background(); var result = actual.Preview(owner, binding, selection); AfterPreview?.Invoke(); return result; }
+        public CharacterCreationFoundationResult<Sr6CreationCharacterProjection> ProjectCharacter(OwnerContextStamp owner,
+            Sr6CreationFoundationBinding binding)
+        { Background(); return actual.ProjectCharacter(owner, binding); }
         public CharacterCreationFoundationResult<Sr6CreationFoundationCommit> Confirm(OwnerContextStamp owner, Sr6CreationFoundationConfirmRequest request)
         { Background(); Confirms++; var result = actual.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
     }
