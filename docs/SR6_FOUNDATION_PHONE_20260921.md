@@ -13,7 +13,8 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   talent are explicit choices for all three methods.
 - Point Buy has its own four pool-purchase selectors, with Core-provided limits,
   costs and remaining CP. No priority ranks are invented. The separate 50 Karma
-  is displayed but not spent here. No free spells/forms/power points are granted.
+  is spent in its own customization step, not the pool selectors. The initial
+  Point Buy pools grant no free spells/forms/power points.
 - Core load/preview/confirm off the UI synchronization context. Android does
   not calculate rules or directly modify character XML.
 - Core-generated budget/source anchors followed by explicit confirmation.
@@ -58,18 +59,77 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   for senses, physical attributes and improved skills. Mixed-use skills expose
   explicit full-use/noncombat scope. Saved Astral Perception unlocks Astral.
   Removing prerequisites or lowering budgets cannot silently drop saved choices.
+- Separate customization-Karma editor after saved attribute/skill allocation.
+  Core supplies available targets and ceilings, cumulative per-rank costs,
+  the independent 50-Karma pool, Nuyen conversion and carry-over warning.
+  Base pool previews remain intact; Karma's final ratings drive dependent
+  knowledge, magic/resonance and power budgets. The first exotic-weapon subject
+  remains explicit GM-reviewed text. No extra CP are charged by this step.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Karma/Aptitude/Bilingual, runtime talent effects, equipment, finalization and
-Career entry are still missing. Point Buy pool purchases are a partial draft,
+Qualities (including Aptitude/Bilingual), further Karma purchases, runtime talent
+effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current adept-power selection increment — 22 September 2026
+## Current customization-Karma increment — 22 September 2026
+
+Core `fdbc460a08a16685addb3c3391ddd3257430dbdf` supplies rules from the owned
+German 2024 core pp69/71–72/158 and Companion pp30–31. Attribute and active-skill
+improvements cost five times every new rank, cumulatively, and still observe
+creation maxima. Cash costs one Karma per 2,000 Nuyen. Unspent Karma is retained
+in drafts; amounts above the five-Karma carry-over cap are visible. The step
+does not implement qualities, further specialties/expertise, purchased knowledge/
+languages or Karma-bought formulas. This is not the optional Karma build method.
+
+UI preserves the exact rendered binding, clears stale confirmation on edits,
+and requires explicit review/save. It never computes rule costs. Magic increases
+can grant adept/mystic power points without rebuying CP; they do not enlarge the
+earlier free or CP formula entitlements. Removing a prerequisite or increasing
+an earlier base allocation recalculates dependent choices instead of dropping
+them or silently reusing the old quote. Partial creation and finalization remain
+separate; no release or completed SR6 creation claim follows from this step.
+
+Android functional commit: `3928e07b1e4017b278413435a1169fe4ce8b4b27`, tree
+`b4fc2a5f09281f4a75eb530dc08d526c84faa86f`.
+Presentation remains `1eae38aa1af78c935875f81d6faf7d7a884ba669`.
+`core-sr6-karma-1.log`: **179 Core tests pass**.
+`sr6-native-karma-1.log`: **103 native managed scenarios pass**. Nine new page
+scenarios cover all three methods in DE/EN/ES, duplicate targets, unavailable
+ratings, first exotic subject, overspend, stale confirms and cold reopen.
+
+`sr6-karma-debug-build-1.log`: local keyless Docker Debug x64 build,
+**0 warnings/errors**, 1m46.84s. Explicit source assembly, not a package seal.
+Retained `sr6-karma-debug.apk`, SHA-256:
+`0799095611896675106397f013b1ce519ab29480e763a685dcb927e8c0d4617a`.
+
+Actual API36 smoke seeded unchanged `sr6-powers-after-restart.json` into the
+isolated debug app before first launch. Workspace
+`1924cafdb6ab458cbc105902fe931131` began at revision 7/7 with six decisions;
+this is not a fresh New-runner proof. Through the real Karma page, Magic +1,
+Body +1, Astral +1 and five Karma for cash reviewed as **45/50 Karma**,
+**5 remaining**, **10,000 Nuyen**, Magic 4 and one additional power point.
+One confirmation saved revision **8/8**, exactly seven decisions. Returning
+to the power page showed **1.5/3 PP**, with existing powers and formulas intact
+and unchanged 38/62 CP and 16-CP purchased-power cost.
+
+Force-stop removed PID 4742; relaunch created PID 5793. Reopened foundation and
+Karma pages retained revision, choices, cash and budget without a historical
+Confirm button. Entire workspace bytes were identical before/after restart:
+`17598fdd7f69b6d82c71c44f779ff47ff062cdf01c15157fd14a924c0e91b60e`.
+The existing local packet retains `sr6-karma-*` logs, screenshots, fresh
+hierarchies and workspace copies. Cold-boot system ANRs predated installation;
+Launcher/System UI dialogs were closed. Two post-restart null-root observer
+results were rejected; screenshots and resumed Activity showed the rendered
+page, and fresh reads then succeeded. No mutation was replayed, and captured
+events contained no debug-app crash/ANR. Owned emulator and build/test containers
+were stopped. No main merge, package reseal, release signing or Play upload.
+
+## Historical adept-power selection increment — 22 September 2026
 
 - Android functional commit: `92f18881c5608416f2c5bd6e941c5d27de5d57e6`.
 - Core: `f1d46fa86`.
