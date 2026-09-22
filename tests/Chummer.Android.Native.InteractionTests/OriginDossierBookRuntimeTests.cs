@@ -23,6 +23,7 @@ internal static class OriginDossierBookRuntimeTests
             Require(!OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest("sha256:" + digest, invalid),
                 "An invalid Origin digest bound the Foundation budget.");
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
+        RunLegacyChapterDisplay();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
@@ -117,6 +118,57 @@ internal static class OriginDossierBookRuntimeTests
             }
             finally { Directory.Delete(directory, recursive: true); }
         }
+    }
+
+    private static void RunLegacyChapterDisplay()
+    {
+        var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+        var opened = service.Start("workspace-1").Value!;
+        var prepared = service.Prepare(opened, "choice-1").Value!;
+        var book = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "display-fixture", true).Value!.Checkpoint.Projection;
+        var original = book.VisibleChapters.Single();
+        Require(OriginBookChapterText.Render(book, original) == original.VisibleMarkdown,
+            "Complete saved prose was rewritten merely for display.");
+        var legacy = original with { VisibleMarkdown = "$real grew up $LUCK in $ARCOLOGY. $CUSTOM_123" };
+        // Synthetic display fixtures, never written into a Core ledger. The
+        // production caller obtains the validated book from Core before rendering.
+        var fixture = book with
+        {
+            VisibleChapters = [legacy],
+            CanonicalLayer = book.CanonicalLayer with { Facts = [
+                new("answer", "accepted-life-module-answer", "Arcology: Renraku", original.ThroughAcceptedDecisionId, [], ""),
+                new("future", "accepted-life-module-answer", "future-school-must-not-appear", "later-decision", [], "")
+            ] }
+        };
+        foreach (var (locale, expected) in new[] { ("de-DE", "Vorgeschichte steht fest"), ("en-US", "background is settled"), ("es-ES", "historia de Neon") })
+        {
+            var localized = fixture with { CurrentTurn = fixture.CurrentTurn with { Locale = locale } };
+            string before = JsonSerializer.Serialize(localized);
+            string text = OriginBookChapterText.Render(localized, legacy);
+            Require(text.Contains(expected, StringComparison.Ordinal) && text.Contains("Renraku", StringComparison.Ordinal)
+                && !text.Contains('$') && !text.Contains("future-school", StringComparison.Ordinal),
+                "Legacy chapter retained template markers, wrong language or future biography.");
+            Require(JsonSerializer.Serialize(localized) == before, "Display normalization changed the accepted book/digests.");
+            var checkpoint = opened with { Projection = localized };
+            var reader = new OriginDossierBookPage(checkpoint, "es-ES");
+            Require(Elements(reader).OfType<Label>().Single(label => label.AutomationId == "origin-life-book-chapter-1").Text == text,
+                "Creation reader did not retain the story language or shared display text.");
+            var retained = new RetainedOriginBook(localized);
+            Require(retained.ChapterText(retained.Chapters.Single()) == text
+                && retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
+                "Career reader and private export disagree about the legacy chapter.");
+        }
+        var dollarAnswer = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [
+            new("literal", "accepted-life-module-answer", "Nickname: $real <script>", original.ThroughAcceptedDecisionId, [], "")
+        ] } };
+        Require(OriginBookChapterText.Render(dollarAnswer, legacy).Contains("Nickname: $real <script>", StringComparison.Ordinal)
+            && new RetainedOriginBook(dollarAnswer).ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains("&lt;script&gt;", StringComparison.Ordinal),
+            "Literal player text was recursively interpreted as a macro or escaped unsafely.");
+        bool denied = false;
+        try { OriginBookChapterText.Render(book, legacy); }
+        catch (InvalidOperationException) { denied = true; }
+        Require(denied, "A chapter outside the displayed book was accepted.");
+        Console.WriteLine("PASS Origin book: legacy templates → decision-scoped DE/EN/ES display, immutable history and matching safe export");
     }
 
     private static async Task RunConfirmOffUiContextAsync()

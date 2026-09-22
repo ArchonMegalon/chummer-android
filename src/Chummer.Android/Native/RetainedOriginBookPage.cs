@@ -52,7 +52,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         foreach (var chapter in book.Chapters)
         {
             _body.Add(NativeTheme.Title(chapter.Title, 21));
-            var text = NativeTheme.Body(chapter.VisibleMarkdown);
+            var text = NativeTheme.Body(book.ChapterText(chapter));
             text.AutomationId = $"origin-retained-chapter-{chapter.Sequence}";
             _body.Add(text);
         }

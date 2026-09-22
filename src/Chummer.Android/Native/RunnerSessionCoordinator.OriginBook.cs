@@ -17,9 +17,14 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection)
     public string Digest { get; } = projection.SeedDigest;
     public IReadOnlyList<OriginNarrativeChapterProjection> Chapters { get; } =
         Array.AsReadOnly(projection.VisibleChapters.ToArray());
+    private readonly IReadOnlyDictionary<string, string> _chapterText = projection.VisibleChapters.ToDictionary(
+        chapter => chapter.ChapterId, chapter => OriginBookChapterText.Render(projection, chapter), StringComparer.Ordinal);
+
+    public string ChapterText(OriginNarrativeChapterProjection chapter) => _chapterText[chapter.ChapterId];
 
     // No executable HTML, remote resources or private workspace metadata. The
-    // exact accepted prose is escaped, not regenerated or sent to a provider.
+    // Display text is escaped, not sent to a provider. Original chapter bytes
+    // remain untouched even when a legacy template needs a confirmed-facts view.
     public string ToHtml(AndroidSurfaceCopy copy)
     {
         static string E(string value) => WebUtility.HtmlEncode(value);
@@ -31,7 +36,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection)
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
         foreach (var chapter in Chapters)
             html.Append("<section><h2>").Append(E(chapter.Title)).Append("</h2><div class=\"prose\">")
-                .Append(E(chapter.VisibleMarkdown)).Append("</div></section>");
+                .Append(E(ChapterText(chapter))).Append("</div></section>");
         return html.Append("<footer>").Append(E(copy.Format("Origin.BookMetadata", OriginTechnicalPublicationMetadata.ChummerRunId)))
             .Append("</footer></body></html>").ToString();
     }
