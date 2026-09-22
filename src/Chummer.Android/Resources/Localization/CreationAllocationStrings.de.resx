@@ -655,4 +655,20 @@ Nichts wurde verworfen oder auf einen fertigen Runner angewendet.</value></data>
   <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Grundkenntnisse</value></data>
   <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Spezialist</value></data>
   <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Experte</value></data>
+  <data name="Sr6.PassiveTitle" xml:space="preserve"><value>Passive und abgeleitete Werte anzeigen</value></data>
+  <data name="Sr6.PassiveHide" xml:space="preserve"><value>Passive und abgeleitete Werte ausblenden</value></data>
+  <data name="Sr6.PassiveHelp" xml:space="preserve"><value>Gespeicherte Attribute, angeborene Merkmale, Vor-/Nachteile und dauerhafte Adeptenboni. Körperliche Basis ohne getragene Rüstung und Verletzungen: Gekaufte Ausrüstung wird nicht automatisch angelegt. Aktivierte Kräfte, Zauber, situationsabhängiges Edge und Modifikatoren sind nicht enthalten. Weiterhin ein Entwurf, kein abgeschlossener Runner.</value></data>
+  <data name="Sr6.PassiveAttribute" xml:space="preserve"><value>{0}: {1} natürlich + {2} dauerhaft = {3}</value></data>
+  <data name="Sr6.PassiveSkill" xml:space="preserve"><value>{0}: {1} natürlich + {2} dauerhaft = {3}; nur außerhalb des Kampfes +{4} = {5}</value></data>
+  <data name="Sr6.PassiveUnresolved" xml:space="preserve"><value>{0}: ungeklärt</value></data>
+  <data name="Sr6.PassiveWarning.reaction-power-conflict" xml:space="preserve"><value>Verbesserte Reflexe sind nicht mit Verbesserter Reaktion kombinierbar. Im Kräfte-Wizard klären; betroffene Werte bleiben ungeklärt.</value></data>
+  <data name="Sr6.PassiveWarning.combat-paralysis-rolled-total" xml:space="preserve"><value>Kampflähmung: Das gewürfelte Initiativeergebnis halbieren, nicht den Basiswert unten. In der ersten Runde zuletzt handeln; Bewegen und Sprinten sind gesperrt.</value></data>
+  <data name="Sr6.PassiveStat.physical-monitor" xml:space="preserve"><value>Körperliche Kästchen: 8 + halbe Konstitution (aufrunden) + Robust Gebaut</value></data>
+  <data name="Sr6.PassiveStat.stun-monitor" xml:space="preserve"><value>Betäubungskästchen: 8 + halbe Willenskraft (aufrunden) − Glaskinn</value></data>
+  <data name="Sr6.PassiveStat.overflow" xml:space="preserve"><value>Überzähliger Schaden: doppelte Konstitution + doppelter Überlebenswille</value></data>
+  <data name="Sr6.PassiveStat.initiative-base" xml:space="preserve"><value>Körperlicher Initiativewert: Reaktion + Intuition</value></data>
+  <data name="Sr6.PassiveStat.initiative-dice" xml:space="preserve"><value>Initiativewürfel (W6): 1 + Verbesserte Reflexe</value></data>
+  <data name="Sr6.PassiveStat.unarmored-defense-rating" xml:space="preserve"><value>Verteidigungswert ohne getragene Rüstung: Konstitution + Dermalablagerungen + Mystische Panzerung</value></data>
+  <data name="Sr6.PassiveStat.defense-dice-pool" xml:space="preserve"><value>Verteidigungswürfel: Reaktion + Intuition + Kampfsinn</value></data>
+  <data name="Sr6.PassiveStat.unarmed-attack-rating" xml:space="preserve"><value>Waffenloser Angriffswert: Stärke + Reaktion</value></data>
 </root>

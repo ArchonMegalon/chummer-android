@@ -6,6 +6,16 @@ internal static class Sr6CreationCopy
 {
     internal static string Text(string key) => CreationAllocationStrings.Get("Sr6." + key, key);
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
+    internal static string PassiveAttribute(Sr6CreationPassiveAttributeValue row) => row.Rating is null
+        ? CreationAllocationStrings.Format("Sr6.PassiveUnresolved", "{0}: unresolved", Label(row.AttributeId))
+        : CreationAllocationStrings.Format("Sr6.PassiveAttribute", "{0}: {1} natural + {2} permanent = {3}",
+            Label(row.AttributeId), row.NaturalRating, row.PermanentBonus, row.Rating);
+    internal static string PassiveSkill(Sr6CreationPassiveSkillValue row) => CreationAllocationStrings.Format("Sr6.PassiveSkill",
+        "{0}: {1} natural + {2} permanent = {3}; noncombat only +{4} = {5}",
+        Label(row.SkillId), row.NaturalRating, row.AlwaysBonus, row.AllUsesRating, row.NoncombatOnlyBonus, row.NoncombatRating);
+    internal static string PassiveDerived(Sr6CreationDerivedValue row) => row.Value is null
+        ? CreationAllocationStrings.Format("Sr6.PassiveUnresolved", "{0}: unresolved", Text("PassiveStat." + row.Id))
+        : Text("PassiveStat." + row.Id) + "\n" + row.Calculation;
     internal static string NaturalMissing(string domain) => CreationAllocationStrings.Format("Sr6.NaturalMissing",
         "{0}: no saved allocation yet", Text(domain));
     internal static string NaturalAttribute(Sr6CreationNaturalAttributeValue row) => CreationAllocationStrings.Format("Sr6.NaturalAttribute",

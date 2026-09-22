@@ -19,6 +19,7 @@ internal sealed partial class Sr6CreationFoundationPage
             _body.Add(cash);
         }
         if (summary.NaturalValues is { } natural) BuildNaturalValues(natural, current);
+        if (summary.PassiveValues is { } passive) BuildPassiveValues(passive, current);
         foreach (var step in summary.Steps)
         {
             var status = NativeTheme.Body(Sr6CreationCopy.Text("DraftStatus." + step.Status));
@@ -107,6 +108,47 @@ internal sealed partial class Sr6CreationFoundationPage
             if (!current()) return;
             details.IsVisible = !details.IsVisible;
             toggle.Text = Sr6CreationCopy.Text(details.IsVisible ? "NaturalHide" : "NaturalTitle");
+        };
+        _body.Add(toggle);
+        _body.Add(details);
+    }
+
+    private void BuildPassiveValues(Sr6CreationPassiveValues values, Func<bool> current)
+    {
+        var toggle = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("PassiveTitle"));
+        toggle.AutomationId = "sr6-draft-passive-toggle";
+        var details = new VerticalStackLayout { Spacing = 10, IsVisible = false, AutomationId = "sr6-draft-passive-values" };
+        details.Add(NativeTheme.Body(Sr6CreationCopy.Text("PassiveHelp"), NativeTheme.Muted));
+        foreach (string warning in values.WarningIds)
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.Text("PassiveWarning." + warning));
+            label.AutomationId = "sr6-draft-passive-warning-" + warning;
+            details.Add(label);
+        }
+        foreach (var row in values.Attributes.Where(row => row.PermanentBonus != 0))
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.PassiveAttribute(row));
+            label.AutomationId = "sr6-draft-passive-attribute-" + row.AttributeId;
+            details.Add(label);
+        }
+        foreach (var row in values.Skills?.Where(row => row.AlwaysBonus != 0 || row.NoncombatOnlyBonus != 0) ?? [])
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.PassiveSkill(row));
+            label.AutomationId = "sr6-draft-passive-skill-" + row.SkillId;
+            details.Add(label);
+        }
+        foreach (var row in values.Derived)
+        {
+            var label = NativeTheme.Body(Sr6CreationCopy.PassiveDerived(row));
+            label.AutomationId = "sr6-draft-passive-stat-" + row.Id;
+            details.Add(label);
+        }
+        details.Add(NativeTheme.Body(string.Join(" · ", values.SourceAnchorIds), NativeTheme.Muted));
+        toggle.Clicked += (_, _) =>
+        {
+            if (!current()) return;
+            details.IsVisible = !details.IsVisible;
+            toggle.Text = Sr6CreationCopy.Text(details.IsVisible ? "PassiveHide" : "PassiveTitle");
         };
         _body.Add(toggle);
         _body.Add(details);

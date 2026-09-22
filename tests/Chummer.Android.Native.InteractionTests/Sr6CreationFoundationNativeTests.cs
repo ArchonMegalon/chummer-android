@@ -165,6 +165,20 @@ internal static partial class AfterRunAuthorityHarness
                         "Mundane runner displayed unavailable magic as a usable skill.");
                     ((IButtonController)naturalToggle).SendClicked();
                     Require(!naturalDetails.IsVisible && naturalToggle.Text == Sr6CreationCopy.Text("NaturalTitle"), "Natural values did not collapse.");
+                    var passiveToggle = Summary<Button>("sr6-draft-passive-toggle");
+                    var passiveDetails = Summary<VerticalStackLayout>("sr6-draft-passive-values");
+                    Require(!passiveDetails.IsVisible, "Passive review must start collapsed.");
+                    ((IButtonController)passiveToggle).SendClicked();
+                    var passive = storedSummary.PassiveValues!;
+                    Require(passiveDetails.IsVisible && passiveToggle.Text == Sr6CreationCopy.Text("PassiveHide"), "Passive values did not expand.");
+                    Require(passive.Derived.Single(row => row.Id == "physical-monitor").Value == 10
+                        && passive.Derived.Single(row => row.Id == "unarmored-defense-rating").Value == 3,
+                        "Passive values lost saved Karma or automatically equipped the gear basket.");
+                    foreach (var stat in passive.Derived)
+                        Require(Summary<Label>("sr6-draft-passive-stat-" + stat.Id).Text == Sr6CreationCopy.PassiveDerived(stat),
+                            "Passive calculation was not rendered in the selected locale.");
+                    ((IButtonController)passiveToggle).SendClicked();
+                    Require(!passiveDetails.IsVisible, "Passive values did not collapse.");
                     var openLifestyle = Summary<Button>("sr6-draft-open-lifestyle");
                     await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
                     Require(navigation.Navigation.NavigationStack.Last().AutomationId == "sr6-lifestyle-page", "Summary did not reopen the exact typed wizard.");
@@ -174,6 +188,8 @@ internal static partial class AfterRunAuthorityHarness
                     await ui.BeginAsyncVoid(() => ((IButtonController)openLifestyle).SendClicked());
                     ((IButtonController)naturalToggle).SendClicked();
                     Require(!naturalDetails.IsVisible, "Departed summary expanded stale character values.");
+                    ((IButtonController)passiveToggle).SendClicked();
+                    Require(!passiveDetails.IsVisible, "Departed summary expanded stale passive values.");
                     Require(navigation.Navigation.NavigationStack.Count == depth && probe.Confirms == 2,
                         "Departed summary navigation was replayed or saved.");
                     Require(Sr6CreationFoundationIntegrity.Digest(stored) == Sr6CreationFoundationIntegrity.Digest(

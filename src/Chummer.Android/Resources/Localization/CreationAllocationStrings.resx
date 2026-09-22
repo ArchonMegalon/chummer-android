@@ -655,4 +655,20 @@ Nothing has been discarded or applied to a finished runner.</value></data>
   <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Basic</value></data>
   <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Specialist</value></data>
   <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Expert</value></data>
+  <data name="Sr6.PassiveTitle" xml:space="preserve"><value>Show passive and derived values</value></data>
+  <data name="Sr6.PassiveHide" xml:space="preserve"><value>Hide passive and derived values</value></data>
+  <data name="Sr6.PassiveHelp" xml:space="preserve"><value>Saved attributes, innate traits, qualities and permanent adept bonuses. Unarmored, unwounded physical baseline: bought gear is not worn automatically. Activated powers, spells, situational Edge and modifiers are excluded. This is still a draft, not a finalized runner.</value></data>
+  <data name="Sr6.PassiveAttribute" xml:space="preserve"><value>{0}: {1} natural + {2} permanent = {3}</value></data>
+  <data name="Sr6.PassiveSkill" xml:space="preserve"><value>{0}: {1} natural + {2} permanent = {3}; noncombat only +{4} = {5}</value></data>
+  <data name="Sr6.PassiveUnresolved" xml:space="preserve"><value>{0}: unresolved</value></data>
+  <data name="Sr6.PassiveWarning.reaction-power-conflict" xml:space="preserve"><value>Improved Reflexes cannot stack with Improved Reaction. Resolve this in the powers wizard; affected values remain unresolved.</value></data>
+  <data name="Sr6.PassiveWarning.combat-paralysis-rolled-total" xml:space="preserve"><value>Combat Paralysis: halve the rolled initiative total, not the base below. Act last and do not Move or Sprint in the first round.</value></data>
+  <data name="Sr6.PassiveStat.physical-monitor" xml:space="preserve"><value>Physical condition boxes: 8 + half Body (round up) + Built Tough</value></data>
+  <data name="Sr6.PassiveStat.stun-monitor" xml:space="preserve"><value>Stun condition boxes: 8 + half Willpower (round up) − Glass Jaw</value></data>
+  <data name="Sr6.PassiveStat.overflow" xml:space="preserve"><value>Overflow boxes: twice Body + twice Will to Live</value></data>
+  <data name="Sr6.PassiveStat.initiative-base" xml:space="preserve"><value>Physical initiative base: Reaction + Intuition</value></data>
+  <data name="Sr6.PassiveStat.initiative-dice" xml:space="preserve"><value>Initiative dice (D6): 1 + Improved Reflexes</value></data>
+  <data name="Sr6.PassiveStat.unarmored-defense-rating" xml:space="preserve"><value>Unarmored Defense Rating: Body + dermal deposits + Mystic Armor</value></data>
+  <data name="Sr6.PassiveStat.defense-dice-pool" xml:space="preserve"><value>Defense dice pool: Reaction + Intuition + Combat Sense</value></data>
+  <data name="Sr6.PassiveStat.unarmed-attack-rating" xml:space="preserve"><value>Unarmed Attack Rating: Strength + Reaction</value></data>
 </root>

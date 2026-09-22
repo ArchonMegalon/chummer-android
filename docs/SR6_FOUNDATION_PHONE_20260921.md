@@ -8,6 +8,12 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
 
 ## Implemented
 
+- Separate expandable passive-values review: permanent adept attribute/skill
+  effects and Core-derived condition monitors, overflow, initiative, unarmored
+  Defense Rating, defense dice and unarmed Attack Rating. Innate traits and
+  purchased quality upgrades are counted once. Noncombat skill bonuses stay
+  separate; incompatible reaction powers show unresolved values and a warning.
+  Bought gear, activated powers, wounds and situational modifiers are not assumed.
 - Expandable combined natural values within the saved overview: Core combines
   pool and Karma attribute/skill ratings, conditional specialties, exotic weapon
   permissions, knowledge and language upgrades. Missing allocations are labelled
@@ -125,7 +131,44 @@ not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current natural-values increment — 22 September 2026
+## Current passive-values increment — 22 September 2026
+
+Core projects permanent powers and applicable monitor/armor qualities from the
+revalidated saved draft. The separate initially collapsed DE/EN/ES panel renders
+Core equations, source anchors and conflict warnings. No rule math or save is
+performed by Android; existing current-page/state/owner guards remain in force.
+Combat Paralysis is a rolled-total/first-round warning, not an incorrectly halved
+base initiative. Neither this panel nor the natural-values panel finalizes SR6.
+
+Local Core Creation/codec suite: **285 PASS** (`core-sr6-passive-values-1.log`).
+Native managed interaction suite: **166 PASS** (`sr6-native-passive-values-1.log`),
+including nine existing method/locale overview scenarios extended with exact
+Core values, collapse/expand, departed-callback rejection and no-write checks.
+Localization: **662 parity/format/fallback/source/syntax keys PASS** (tool output).
+Keyless x64 Debug build: zero warnings/errors, 1m41.91s
+(`sr6-passive-values-debug-build-1.log`). `sr6-passive-values-debug.apk` SHA256:
+`286e2421d5184b4de35fa4b5cc5d62ec58f51a2f6b7b1dedefeca3a497085314`.
+This is an explicit local source assembly, not a package seal or Play release.
+
+API36 emulator smoke reopened the synthetic saved Point Buy draft (revision
+15/15, 14 decisions) and displayed all eight Core-derived values: physical13,
+stun9, overflow2, initiative2+1D6, unarmored Defense Rating3, defense pool2 and
+unarmed Attack Rating2. Built Tough4 and Mystic Armor2 were included; the bought
+coats were not implicitly equipped. Force-stop removed PID4756; PID5666 reopened
+the same draft and calculations. Four captures before/after opening and process
+restart have identical workspace SHA256:
+`40b1a4a5264ac55b7756c0e0f6b8adc6d6c7dc2a05c7e6320e620cec81c22cbb`.
+This proves read-only reopening, not a new allocation save or finalization.
+Fresh PNG/XML/JSON/event/crash files are retained as `sr6-passive-values-*` in
+the local Life Module test packet. No Chummer crash/ANR was found in these logs;
+Android system-app coldboot ANRs preceded the app test.
+
+Two installations on the older AVD failed at Android's native-library-copy
+watchdog, before Chummer could launch. Their logs remain failures. The same
+unchanged APK installed successfully on a separate fresh API36 AVD, which was
+used for the smoke above. No timeout or acceptance gate was relaxed.
+
+## Historical natural-values increment — 22 September 2026
 
 The saved overview has a collapsed combined-values panel. Core composes natural
 attribute/skill ratings from pool and Karma decisions without adding specialties

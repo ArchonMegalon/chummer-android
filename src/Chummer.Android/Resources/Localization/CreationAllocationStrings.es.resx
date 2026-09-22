@@ -655,4 +655,20 @@ No se ha descartado nada ni aplicado a un runner terminado.</value></data>
   <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Básico</value></data>
   <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Especialista</value></data>
   <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Experto</value></data>
+  <data name="Sr6.PassiveTitle" xml:space="preserve"><value>Mostrar valores pasivos y derivados</value></data>
+  <data name="Sr6.PassiveHide" xml:space="preserve"><value>Ocultar valores pasivos y derivados</value></data>
+  <data name="Sr6.PassiveHelp" xml:space="preserve"><value>Atributos guardados, rasgos innatos, cualidades y bonificaciones permanentes de adepto. Base física sin armadura ni heridas: el equipo comprado no se lleva automáticamente. No incluye poderes activados, hechizos, Edge situacional ni modificadores. Sigue siendo un borrador, no un runner terminado.</value></data>
+  <data name="Sr6.PassiveAttribute" xml:space="preserve"><value>{0}: {1} natural + {2} permanente = {3}</value></data>
+  <data name="Sr6.PassiveSkill" xml:space="preserve"><value>{0}: {1} natural + {2} permanente = {3}; solo fuera de combate +{4} = {5}</value></data>
+  <data name="Sr6.PassiveUnresolved" xml:space="preserve"><value>{0}: sin resolver</value></data>
+  <data name="Sr6.PassiveWarning.reaction-power-conflict" xml:space="preserve"><value>Reflejos mejorados no se acumula con Reacción mejorada. Resuélvelo en el asistente de poderes; los valores afectados quedan sin resolver.</value></data>
+  <data name="Sr6.PassiveWarning.combat-paralysis-rolled-total" xml:space="preserve"><value>Parálisis de combate: divide por dos el resultado total de iniciativa, no la base de abajo. Actúa al final y no te muevas ni esprintes en la primera ronda.</value></data>
+  <data name="Sr6.PassiveStat.physical-monitor" xml:space="preserve"><value>Casillas físicas: 8 + mitad de Constitución (redondeo arriba) + robustez</value></data>
+  <data name="Sr6.PassiveStat.stun-monitor" xml:space="preserve"><value>Casillas de aturdimiento: 8 + mitad de Voluntad (redondeo arriba) − mandíbula de cristal</value></data>
+  <data name="Sr6.PassiveStat.overflow" xml:space="preserve"><value>Casillas de exceso: doble de Constitución + doble de voluntad de vivir</value></data>
+  <data name="Sr6.PassiveStat.initiative-base" xml:space="preserve"><value>Iniciativa física base: Reacción + Intuición</value></data>
+  <data name="Sr6.PassiveStat.initiative-dice" xml:space="preserve"><value>Dados de iniciativa (D6): 1 + Reflejos mejorados</value></data>
+  <data name="Sr6.PassiveStat.unarmored-defense-rating" xml:space="preserve"><value>Valor de defensa sin armadura: Constitución + depósitos dérmicos + Armadura mística</value></data>
+  <data name="Sr6.PassiveStat.defense-dice-pool" xml:space="preserve"><value>Reserva de defensa: Reacción + Intuición + Sentido del combate</value></data>
+  <data name="Sr6.PassiveStat.unarmed-attack-rating" xml:space="preserve"><value>Valor de ataque sin armas: Fuerza + Reacción</value></data>
 </root>
