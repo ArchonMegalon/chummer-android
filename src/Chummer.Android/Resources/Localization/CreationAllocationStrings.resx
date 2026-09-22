@@ -552,7 +552,12 @@ Additional power points from Karma: {7}</value></data>
   <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>This skill already has its creation specialty, or this weapon type was selected twice.</value></data>
   <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Buy at least one level in the skill before adding a specialty. Both can be reviewed together.</value></data>
   <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>SR6 qualities</value></data>
-  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Partial catalogue from the German 2024 core book; source names remain German. At most six chosen qualities and 20 net bonus Karma. Innate metatype traits are separate and free. Core checks costs, eligibility and attribute/skill caps. Rated qualities and further parameterized choices remain unavailable; situational effects are not automated. Review before confirming.</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Partial catalogue from the German 2024 core book; source names remain German. At most six choices and 20 net bonus Karma. Five rated families are available. Innate levels are free; an upgrade counts as one choice and charges only extra levels. Glass Jaw must leave at least two stun boxes at final Willpower. Other parameterized choices remain unavailable; situational effects are not automated. Review before confirming.</value></data>
+  <data name="Sr6.QualitiesReplace" xml:space="preserve"><value>Replace selected quality</value></data>
+  <data name="Sr6.QualityLevel" xml:space="preserve"><value>level {0}</value></data>
+  <data name="Sr6.QualityRating" xml:space="preserve"><value>{0} total − {1} innate = {2} purchased · {3} Karma per purchased level (negative = bonus)</value></data>
+  <data name="Sr6.QualitiesAttributesRequired" xml:space="preserve"><value>Save attribute choices before selecting Glass Jaw; Core needs the final Willpower.</value></data>
+  <data name="Sr6.QualitiesRatingUnavailable" xml:space="preserve"><value>This Glass Jaw level would leave fewer than two stun boxes at the selected final Willpower.</value></data>
   <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Choose a quality</value></data>
   <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Add quality</value></data>
   <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Remove quality</value></data>

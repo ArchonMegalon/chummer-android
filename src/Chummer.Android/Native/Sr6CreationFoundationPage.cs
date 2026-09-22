@@ -688,8 +688,11 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             };
             _body.Add(remove);
         }
-        if (selected.Count >= 6) return;
-        var available = catalog.Where(row => !selected.Contains(row.Id, StringComparer.Ordinal)).ToArray();
+        var selectedFamilies = catalog.Where(row => selected.Contains(row.Id, StringComparer.Ordinal))
+            .Select(row => row.FamilyId).ToHashSet(StringComparer.Ordinal);
+        var available = catalog.Where(row => !selected.Contains(row.Id, StringComparer.Ordinal)
+            && (selected.Count < 6 || selectedFamilies.Contains(row.FamilyId))).ToArray();
+        if (available.Length == 0) return;
         var picker = new Picker { Title = Sr6CreationCopy.Text("QualitiesChoose"), AutomationId = "sr6-foundation-quality-catalog" };
         foreach (var option in available) picker.Items.Add(Sr6CreationCopy.QualityName(option));
         var details = NativeTheme.Body(""); details.AutomationId = "sr6-foundation-quality-details";
@@ -701,13 +704,18 @@ internal sealed partial class Sr6CreationFoundationPage : NativePageBase
             if (!current()) return;
             bool valid = picker.SelectedIndex >= 0 && picker.SelectedIndex < available.Length;
             add.IsEnabled = valid && available[picker.SelectedIndex].Available;
+            add.Text = Sr6CreationCopy.Text(valid && selectedFamilies.Contains(available[picker.SelectedIndex].FamilyId)
+                ? "QualitiesReplace" : "QualitiesAdd");
             details.Text = valid ? Sr6CreationCopy.QualityValue(available[picker.SelectedIndex]) : "";
         };
         add.Clicked += (_, _) =>
         {
             if (!current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= available.Length
                 || !available[picker.SelectedIndex].Available) return;
-            change(_selection with { Qualities = new([.. selected, available[picker.SelectedIndex].Id]) });
+            var chosen = available[picker.SelectedIndex];
+            var replaced = catalog.Where(row => row.FamilyId == chosen.FamilyId)
+                .Select(row => row.Id).ToHashSet(StringComparer.Ordinal);
+            change(_selection with { Qualities = new([.. selected.Where(id => !replaced.Contains(id)), chosen.Id]) });
             Refresh();
         };
         _body.Add(picker);

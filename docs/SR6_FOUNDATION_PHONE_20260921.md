@@ -80,18 +80,57 @@ Life Path and optional Karma must not enter an SR5 editor or priority service.
   Karma bonus cannot silently erase existing allocations or purchases. Innate
   metatype qualities are not charged; dwarf Toxin Resistance cannot be rebought.
   Names follow the labelled German source; controls and review are DE/EN/ES.
+- Five rated quality families extend the partial catalogue. Core supplies
+  total/innate/purchased levels, exact per-level costs and the final-Willpower
+  floor for Glass Jaw. Built Tough upgrades charge only above innate ork/troll
+  levels. Choosing another level explicitly replaces the same family, even
+  when all six choices are filled, and invalidates the old confirmation.
 - Returning from a saved child refreshes a clean parent from current Core state.
   Unsaved inputs are retained only for the same binding; a conflicting revision
   or lost dirty baseline blocks further editing. Old confirmation/navigation
   callbacks and owner A→B→A transitions remain rejected.
 
-Further qualities (including rated/parameterized families and Bilingual),
+Further qualities (including other parameterized families and Bilingual),
 runtime quality/talent effects, equipment, finalization and Career entry are still missing. Point Buy pool purchases are a partial draft,
 not a completed creation method, even when all CP are spent. Life Path and
 optional Karma still need their own rule implementations and native flows.
 This does not enable SR6 Origin generation or audiobook conversion.
 
-## Current quality increment — 22 September 2026
+## Current rated-quality increment — 22 September 2026
+
+Core `bb6b32995baea76e58361f6303e2cf9ef499fba3`; Presentation `1eae38aa1`
+unchanged. Focused Concentration, Built Tough, Will to Live, Glass Jaw and
+Dependents now have Core-owned levels/costs. Built Tough charges only above
+innate ork/troll levels; the upgrade still counts as one of six choices. Glass
+Jaw is checked against final Willpower and must leave two stun boxes. Other
+parameterized qualities remain unavailable; these are still draft choices.
+The native picker explicitly replaces the same family instead of appending
+another level, including when all six choices are occupied. Review is renewed.
+
+`core-sr6-rated-qualities-1.log`: **234 focused Core tests PASS**.
+`sr6-native-rated-qualities-1.log`: **139 native managed scenarios PASS**,
+including all three methods × DE/EN/ES for free-level pricing, replacement at
+six choices, stale confirmation, exact save and reopen. The unchanged old
+nonrated selections retain their serialized bytes and historical digests.
+`sr6-rated-qualities-debug-build-1.log`: local keyless Docker Debug x64 build,
+**zero warnings/errors**, 1m42.07s. Retained `sr6-rated-qualities-debug.apk`:
+SHA256 `6415961c107ecf51693f9c1a25dd560ff8538ef8ce36c2995cda8f7ea24652ff`.
+
+Actual API36 emulator smoke loaded the prior quality draft at revision10/10
+(nine decisions), added Built Tough3 then explicitly replaced it with4 before
+confirmation. Review showed three qualities, 19 positive/10 negative Karma,
+**41 Karma budget with unchanged18 spent**, 38CP, Magic3, 2PP and two formulas.
+One confirmation saved **revision11/11**, ten decisions. Force-stop/relaunch
+**PID4782→5619** restored level4 and the same budget, without an old Confirm.
+Whole workspace JSON was byte-identical before/after restart, SHA256
+`035af71eae1454d6ab882fa70efaddbd8b8a4c051bb6ba64439cc654b68a104c`.
+Local packet `sr6-rated-qualities-*` retains screenshots, hierarchies, workspace
+copies and event logs. No debug-app ANR/crash was recorded. Cold-boot system
+ANRs occurred before app installation; those are not passing app evidence.
+Owned emulator and test/build containers stopped. No main merge, package seal,
+upload-key use, release AAB or Play update follows from this feature increment.
+
+## Historical selected-quality increment — 22 September 2026
 
 Core `b54d4b779072bfa4a55c7aaed4493b5e88625b23`; Presentation remains `1eae38aa1`.
 The separate quality page is reachable before pool allocation from a saved

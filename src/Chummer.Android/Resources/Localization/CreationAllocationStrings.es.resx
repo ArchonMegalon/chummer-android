@@ -552,7 +552,12 @@ Puntos de poder adicionales por Karma: {7}</value></data>
   <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>La habilidad ya tiene su especialización de creación o se ha elegido dos veces el mismo tipo de arma.</value></data>
   <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Compra al menos un nivel de la habilidad antes de añadir la especialización. Puedes revisar ambas compras juntas.</value></data>
   <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>Cualidades de SR6</value></data>
-  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Catálogo parcial del reglamento alemán de 2024; los nombres de origen siguen en alemán. Máximo seis cualidades elegidas y 20 Karma de bonificación neta. Los rasgos innatos del metatipo son gratuitos y separados. Core comprueba costes, requisitos y límites de atributos/habilidades. Faltan cualidades por niveles y otras opciones parametrizadas; los efectos situacionales no se automatizan. Revisa antes de confirmar.</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Catálogo parcial del reglamento alemán de 2024; los nombres siguen en alemán. Máximo seis elecciones y 20 Karma de bonificación neta. Hay cinco familias por niveles. Los niveles innatos son gratuitos; una mejora cuenta como una elección y solo cobra los niveles adicionales. Glass Jaw debe dejar al menos dos casillas de aturdimiento con la Voluntad final. Faltan otras opciones parametrizadas; los efectos situacionales no se automatizan. Revisa antes de confirmar.</value></data>
+  <data name="Sr6.QualitiesReplace" xml:space="preserve"><value>Sustituir cualidad elegida</value></data>
+  <data name="Sr6.QualityLevel" xml:space="preserve"><value>nivel {0}</value></data>
+  <data name="Sr6.QualityRating" xml:space="preserve"><value>{0} total − {1} innato = {2} comprado · {3} Karma por nivel comprado (negativo = bonificación)</value></data>
+  <data name="Sr6.QualitiesAttributesRequired" xml:space="preserve"><value>Guarda los atributos antes de elegir Glass Jaw; Core necesita la Voluntad final.</value></data>
+  <data name="Sr6.QualitiesRatingUnavailable" xml:space="preserve"><value>Este nivel de Glass Jaw dejaría menos de dos casillas de aturdimiento con la Voluntad final elegida.</value></data>
   <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Elegir cualidad</value></data>
   <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Añadir cualidad</value></data>
   <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Quitar cualidad</value></data>

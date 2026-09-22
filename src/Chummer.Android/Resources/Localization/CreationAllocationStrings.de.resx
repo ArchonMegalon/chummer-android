@@ -552,7 +552,12 @@ Zusätzliche Kraftpunkte durch Karma: {7}</value></data>
   <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>Diese Fertigkeit hat bereits ihre Erschaffungsspezialisierung oder diese Waffenart wurde doppelt gewählt.</value></data>
   <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Erwirb mindestens eine Stufe der Fertigkeit vor der Spezialisierung. Beides kann gemeinsam geprüft werden.</value></data>
   <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>SR6 Vor- und Nachteile</value></data>
-  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Teilkatalog aus dem deutschen Grundregelwerk 2024. Höchstens sechs gewählte Vor-/Nachteile und 20 Karma Nettobonus. Angeborene Metatyp-Vorteile sind separat und kostenlos. Core prüft Kosten, Voraussetzungen und Attribut-/Fertigkeitsgrenzen. Gestufte und weitere parametrisierte Vor-/Nachteile fehlen noch; situative Effekte werden nicht automatisiert. Vor dem Bestätigen prüfen.</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Teilkatalog aus dem deutschen Grundregelwerk 2024. Höchstens sechs gewählte Vor-/Nachteile und 20 Karma Nettobonus. Fünf gestufte Familien sind verfügbar. Angeborene Stufen sind kostenlos; eine Aufwertung zählt als eine Auswahl und kostet nur zusätzliche Stufen. Glaskinn muss bei endgültiger Willenskraft mindestens zwei Betäubungskästchen lassen. Weitere parametrisierte Auswahl fehlt noch; situative Effekte werden nicht automatisiert. Vor dem Bestätigen prüfen.</value></data>
+  <data name="Sr6.QualitiesReplace" xml:space="preserve"><value>Gewählten Vor-/Nachteil ersetzen</value></data>
+  <data name="Sr6.QualityLevel" xml:space="preserve"><value>Stufe {0}</value></data>
+  <data name="Sr6.QualityRating" xml:space="preserve"><value>{0} gesamt − {1} angeboren = {2} gekauft · {3} Karma je gekaufter Stufe (negativ = Bonus)</value></data>
+  <data name="Sr6.QualitiesAttributesRequired" xml:space="preserve"><value>Speichere vor Glaskinn die Attributauswahl; Core benötigt die endgültige Willenskraft.</value></data>
+  <data name="Sr6.QualitiesRatingUnavailable" xml:space="preserve"><value>Diese Glaskinn-Stufe würde bei der gewählten endgültigen Willenskraft weniger als zwei Betäubungskästchen lassen.</value></data>
   <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Vor-/Nachteil auswählen</value></data>
   <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Vor-/Nachteil hinzufügen</value></data>
   <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Vor-/Nachteil entfernen</value></data>

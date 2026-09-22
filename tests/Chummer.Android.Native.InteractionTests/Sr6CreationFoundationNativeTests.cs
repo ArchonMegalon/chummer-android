@@ -1125,6 +1125,90 @@ internal static partial class AfterRunAuthorityHarness
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }
 
+            foreach (string method in new[] { "Priority", "SumtoTen", "PointBuy" })
+            foreach (string language in new[] { "en", "de", "es" })
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                try
+                {
+                    Sr6Probe? probe = null;
+                    await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                        productionCreationOverview: true, sr6Decorator: actual => probe = new(actual, ui));
+                    await Bootstrap(runtime, method);
+                    var id = runtime.Coordinator.State.WorkspaceId!.Value;
+                    var initial = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!;
+                    var selection = new Sr6CreationFoundationSelection("troll", "mundane",
+                        method == "PointBuy" ? [] : [new("heritage", "D"), new("talent", "E"),
+                            new("attributes", "A"), new("skills", "B"), new("resources", "C")])
+                    {
+                        PointBuy = method == "PointBuy" ? new(0, 0, 0, 0) : null,
+                        Attributes = new(Sr6CreationAttributeIds.Ordered.Select(attribute => new Sr6CreationAttributeSpend(attribute, 0, 0)).ToArray()),
+                        Skills = new([]), Karma = new([], [], 0)
+                    };
+                    var seed = (await runtime.Coordinator.PreviewSr6FoundationAsync(initial, selection)).Value!;
+                    await runtime.Coordinator.ConfirmSr6FoundationAsync(seed, true);
+                    var catalog = (await runtime.Coordinator.LoadSr6FoundationAsync()).Value!.QualityOptions!;
+                    Require(!catalog.Any(row => row.Id is "built-tough-1" or "built-tough-2"), "Innate levels were offered for purchase.");
+                    var page = new Sr6CreationFoundationPage(runtime.Coordinator, qualitiesMode: true);
+                    var navigation = new NavigationPage(page);
+                    var window = new Window(navigation);
+                    using var alerts = new IssuedPageAlerts(page, window);
+                    await alerts.PreflightAsync();
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    T Element<T>(string key) where T : Element => IssuedElements(page).OfType<T>()
+                        .Single(item => item.AutomationId == "sr6-foundation-" + key);
+                    Task Click(string key) => ui.BeginAsyncVoid(() => ((IButtonController)Element<Button>(key)).SendClicked());
+                    void Add(string key, bool replaces = false)
+                    {
+                        var option = catalog.Single(row => row.Id == key);
+                        Element<Picker>("quality-catalog").SelectedIndex = Element<Picker>("quality-catalog").Items.IndexOf(Sr6CreationCopy.QualityName(option));
+                        Require(Element<Button>("quality-add").IsEnabled && Element<Button>("quality-add").Text
+                            == Sr6CreationCopy.Text(replaces ? "QualitiesReplace" : "QualitiesAdd"), "Replacement not explicit or eligible.");
+                        Require(Element<Label>("quality-details").Text == Sr6CreationCopy.QualityValue(option), "Core rating/cost breakdown missing.");
+                        ((IButtonController)Element<Button>("quality-add")).SendClicked();
+                    }
+                    Add("built-tough-3");
+                    await Click("preview");
+                    var oldConfirm = Element<Button>("confirm");
+                    Add("built-tough-4", replaces: true);
+                    oldConfirm.IsEnabled = true;
+                    await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+                    Require(probe!.Confirms == 1, "Tier replacement retained stale confirmation.");
+                    foreach (string quality in new[] { "analytical-mind", "ambidextrous", "hardening", "insomnia", "shaky-hands" }) Add(quality);
+                    Require(IssuedElements(page).OfType<Button>().Count(row => row.AutomationId?.StartsWith("sr6-foundation-quality-remove-", StringComparison.Ordinal) == true) == 6,
+                        "Tier replacement duplicated a choice.");
+                    var fullPicker = Element<Picker>("quality-catalog");
+                    Require(!fullPicker.Items.Contains(Sr6CreationCopy.QualityName(catalog.Single(row => row.Id == "dependents-1"))),
+                        "Full selection still admits an unrelated seventh family.");
+                    Add("built-tough-3", replaces: true);
+                    await Click("preview");
+                    await Click("confirm");
+                    var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                    var quote = stored.Document.AuxiliaryState.Sr6CreationFoundationDecisions!.Last().Preview;
+                    var upgrade = quote.Qualities!.Values.Single(row => row.FamilyId == "built-tough");
+                    Require(stored.ContentRevision == 3 && stored.SavedRevision == 3 && probe.Confirms == 2
+                        && quote.Qualities.Values.Count == 6 && quote.Karma!.KarmaBudget == 37
+                        && upgrade.Id == "built-tough-3" && upgrade.KarmaCost == 4
+                        && upgrade.Rating == new Sr6CreationQualityRating(3, 2, 1, 4), "Innate upgrade/count/budget did not save exactly once.");
+                    var oldAdd = Element<Button>("quality-add");
+                    var oldPicker = Element<Picker>("quality-catalog");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    oldPicker.SelectedIndex = 0; oldAdd.IsEnabled = true; ((IButtonController)oldAdd).SendClicked();
+                    await runtime.Presenter.LoadAsync(id, default);
+                    var reopened = new Sr6CreationFoundationPage(runtime.Coordinator, qualitiesMode: true);
+                    await navigation.PushAsync(reopened, false);
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                    Require(IssuedElements(reopened).OfType<Button>().Count(row => row.AutomationId?.StartsWith("sr6-foundation-quality-remove-", StringComparison.Ordinal) == true) == 6
+                        && IssuedElements(reopened).OfType<Label>().Any(row => row.Text == Sr6CreationCopy.QualityValue(upgrade)), "Rated upgrade did not reopen.");
+                    Require(!IssuedElements(reopened).OfType<Button>().Any(row => row.AutomationId == "sr6-foundation-confirm") && probe.Confirms == 2,
+                        "Reopened upgrade exposed historical confirmation.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS SR6 rated qualities phone " + method + " " + language);
+                }
+                finally { CultureInfo.CurrentUICulture = previousCulture; }
+            }
+
             // Reuse the actual parent page, rather than constructing a replacement
             // after each child save. Unsaved input must not be rebased onto new state.
             {

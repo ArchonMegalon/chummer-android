@@ -8,9 +8,13 @@ internal static class Sr6CreationCopy
     internal static string Label(string id) => CreationAllocationStrings.Get("Sr6.Option." + id, id);
     internal static string QualityName(Sr6CreationQualityOption option) => option.Name
         + (option.AttributeId is { } attribute ? " (" + Label(attribute) + ")" : "")
-        + (option.SkillId is { } skill ? " (" + Label(skill) + ")" : "");
+        + (option.SkillId is { } skill ? " (" + Label(skill) + ")" : "")
+        + (option.Rating is { } rating ? " · " + CreationAllocationStrings.Format("Sr6.QualityLevel", "level {0}", rating.Total) : "");
     internal static string QualityValue(Sr6CreationQualityOption option) => CreationAllocationStrings.Format("Sr6.QualityValue",
         "{0} · Karma cost {1} (negative = bonus) · {2}", QualityName(option), option.KarmaCost, option.SourceAnchorId)
+        + (option.Rating is { } rating ? "\n" + CreationAllocationStrings.Format("Sr6.QualityRating",
+            "{0} total − {1} innate = {2} purchased · {3} Karma per purchased level (negative = bonus)",
+            rating.Total, rating.Innate, rating.Purchased, rating.KarmaPerLevel) : "")
         + (option.Available ? "" : " · " + Blocker(option.UnavailableReason!));
     internal static string QualityBudget(Sr6CreationQualityPreview preview) => CreationAllocationStrings.Format("Sr6.QualityBudget",
         "Qualities: {0}/{1} · advantages {2} Karma · disadvantages +{3} Karma · net bonus {4}/{5}\nRemaining customization budget: {6} Karma before other purchases",
@@ -116,6 +120,8 @@ internal static class Sr6CreationCopy
         Sr6CreationQualityBlockers.Unavailable => Text("QualitiesUnavailable"),
         Sr6CreationQualityBlockers.Conflict => Text("QualitiesConflict"),
         Sr6CreationQualityBlockers.BudgetExceeded => Text("QualitiesOverspend"),
+        Sr6CreationQualityBlockers.AttributesRequired => Text("QualitiesAttributesRequired"),
+        Sr6CreationQualityBlockers.RatingUnavailable => Text("QualitiesRatingUnavailable"),
         Sr6CreationKarmaBlockers.InvalidSelection => Text("KarmaInvalid"),
         Sr6CreationKarmaBlockers.AllocationsRequired => Text("KarmaAllocationsRequired"),
         Sr6CreationKarmaBlockers.RatingUnavailable => Text("KarmaRatingUnavailable"),
