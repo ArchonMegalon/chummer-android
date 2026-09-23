@@ -382,12 +382,26 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         var acknowledgement = new Switch { AutomationId = "life-completion-confirmed" };
         Body(LifeCopy("Confirm", "Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached."));
         _body.Add(acknowledgement);
-        var progress = new ActivityIndicator { AutomationId = "life-completion-saving", IsVisible = false };
-        _body.Add(progress);
+        var progress = new ActivityIndicator
+        {
+            AutomationId = "life-completion-saving", IsVisible = false,
+            WidthRequest = 24, HeightRequest = 24,
+            HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center
+        };
         var confirmButton = NativeTheme.PrimaryButton(CreationKarmaCopy.ConfirmCompletion);
         confirmButton.AutomationId = "life-confirm-completion";
         confirmButton.IsEnabled = false;
-        _body.Add(confirmButton);
+        // Reserve the indicator beside the button. Showing it during a save
+        // must not insert a new row and push the tapped action below the viewport.
+        var confirmationRow = new Grid
+        {
+            HeightRequest = confirmButton.HeightRequest,
+            ColumnSpacing = 10,
+            ColumnDefinitions = { new(GridLength.Star), new(new GridLength(32)) }
+        };
+        confirmationRow.Add(confirmButton, 0);
+        confirmationRow.Add(progress, 1);
+        _body.Add(confirmationRow);
         long render = _render, currentAppearance = CaptureAppearanceGeneration();
         confirmButton.Clicked += async (_, _) => await RunAsync(async () =>
         {

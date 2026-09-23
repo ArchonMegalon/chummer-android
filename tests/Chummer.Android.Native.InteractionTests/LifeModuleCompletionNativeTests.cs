@@ -147,6 +147,16 @@ internal static partial class AfterRunAuthorityHarness
             Element<Switch>("life-completion-confirmed").IsToggled = true;
             var finalConfirm = Element<Button>("life-confirm-completion");
             var finalAcknowledgement = Element<Switch>("life-completion-confirmed");
+            var saving = Element<ActivityIndicator>("life-completion-saving");
+            var confirmationRow = finalConfirm.Parent as Grid;
+            Require(confirmationRow is not null && ReferenceEquals(saving.Parent, confirmationRow)
+                && Grid.GetRow(finalConfirm) == Grid.GetRow(saving)
+                && Grid.GetColumn(finalConfirm) != Grid.GetColumn(saving)
+                && confirmationRow.ColumnDefinitions[Grid.GetColumn(saving)].Width.IsAbsolute
+                && confirmationRow.HeightRequest == finalConfirm.HeightRequest
+                && saving.HeightRequest > 0 && saving.HeightRequest <= confirmationRow.HeightRequest,
+                "The saving indicator must share a stable-height confirmation row, not insert a new scroll row.");
+            double confirmationRowHeight = confirmationRow!.HeightRequest;
             using var releaseConfirmation = new ManualResetEventSlim();
             var confirmationEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             probe.BeforeConfirm = () =>
@@ -161,9 +171,12 @@ internal static partial class AfterRunAuthorityHarness
                 Require(!finalConfirm.IsEnabled && !finalAcknowledgement.IsEnabled
                     && !Element<Entry>("life-starting-dice").IsEnabled,
                     "Pending Core confirmation still presents enabled confirmation/input controls.");
-                var saving = Element<ActivityIndicator>("life-completion-saving");
                 Require(saving.IsVisible && saving.IsRunning && finalConfirm.Text != CreationKarmaCopy.ConfirmCompletion,
                     "Pending Core confirmation has no visible saving feedback.");
+                Require(ReferenceEquals(finalConfirm.Parent, confirmationRow)
+                    && ReferenceEquals(saving.Parent, confirmationRow)
+                    && confirmationRow.HeightRequest == confirmationRowHeight,
+                    "Showing save feedback replaced or expanded the confirmation row.");
                 finalAcknowledgement.IsToggled = false;
                 finalAcknowledgement.IsToggled = true;
                 ((IButtonController)finalConfirm).SendClicked();
