@@ -58,7 +58,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Opening an unchanged child page repeated the expensive Core preview.");
             var qualityInputs = IssuedElements(Current()).OfType<Entry>()
                 .Where(e => e.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true).ToArray();
-            var dependentInputs = Session().Preview!.ModuleSequence!.DependentQualityInstances;
+            var dependentInputs = Session().Preview!.ModuleSequence!.DependentQualityInstances!;
             Require(dependentInputs.Count == 2 && qualityInputs.Length == 3,
                 "Military School requires both dependent quality inputs as well as the corporate SIN.");
             foreach (var entry in qualityInputs)
