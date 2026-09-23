@@ -1,5 +1,6 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 
 namespace Chummer.Android.Native;
 
@@ -220,7 +221,15 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         {
             Body(row.Group + " · " + row.Level.ToString(CultureInfo.CurrentCulture));
             if (row.InstancePrompt is not { } prompt) continue;
-            string selected = Input.QualityInstanceValues?.GetValueOrDefault(prompt.PromptId) ?? row.InstanceValue ?? "";
+            QualityInput(prompt, row.InstanceValue);
+        }
+        foreach (var row in Quote?.ModuleSequence?.DependentQualityInstances ?? [])
+            QualityInput(row.InstancePrompt, row.InstanceValue);
+        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-qualities", Review);
+
+        void QualityInput(LifeModuleFollowUpPromptDto prompt, string? currentValue)
+        {
+            string selected = Input.QualityInstanceValues?.GetValueOrDefault(prompt.PromptId) ?? currentValue ?? "";
             if (prompt.Options.Count == 0)
                 Text(prompt.Label, "life-quality-" + prompt.PromptId, selected, value => Set(value));
             else foreach (var option in prompt.Options)
@@ -232,7 +241,6 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
                 answers[prompt.PromptId] = value; Change(Input with { QualityInstanceValues = answers });
             }
         }
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-qualities", Review);
     }
 
     private void Talents()

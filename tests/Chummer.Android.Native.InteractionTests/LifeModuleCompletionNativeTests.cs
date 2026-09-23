@@ -56,7 +56,17 @@ internal static partial class AfterRunAuthorityHarness
             await Click("life-open-qualities");
             Require(ReferenceEquals(Session().Preview, initialPreview) && probe.PreviewCalls == openingPreviewCalls,
                 "Opening an unchanged child page repeated the expensive Core preview.");
-            foreach (var entry in IssuedElements(Current()).OfType<Entry>().Where(e => e.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true)) entry.Text = "Renraku";
+            var qualityInputs = IssuedElements(Current()).OfType<Entry>()
+                .Where(e => e.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true).ToArray();
+            var dependentInputs = Session().Preview!.ModuleSequence!.DependentQualityInstances;
+            Require(dependentInputs.Count == 2 && qualityInputs.Length == 3,
+                "Military School requires both dependent quality inputs as well as the corporate SIN.");
+            foreach (var entry in qualityInputs)
+            {
+                var dependent = dependentInputs.SingleOrDefault(row => entry.AutomationId == "life-quality-" + row.InstancePrompt.PromptId);
+                entry.Text = dependent is null ? "Renraku"
+                    : dependent.InstancePrompt.Label == "Code of Honor" ? "Protect noncombatants" : "Academy cadet";
+            }
             await Click("life-review-qualities");
             Require(probe.PreviewCalls == openingPreviewCalls + 1 && !ReferenceEquals(Session().Preview, initialPreview),
                 "Changed quality inputs reused the earlier review.");
@@ -192,6 +202,11 @@ internal static partial class AfterRunAuthorityHarness
             Require(Element<Label>("life-completion-saved").Text == CreationKarmaCopy.CareerReady && probe!.ConfirmCalls == 1,
                 "Phone confirmation did not reopen the exact Career runner.");
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var finalQualities = System.Xml.Linq.XDocument.Parse(cold.Document.Content).Root!
+                .Element("qualities")!.Elements("quality").ToArray();
+            Require(finalQualities.Single(row => row.Element("name")?.Value == "Code of Honor").Element("extra")?.Value == "Protect noncombatants"
+                && finalQualities.Single(row => row.Element("name")?.Value == "Rank (Neither Military nor Law Enforcement) I").Element("extra")?.Value == "Academy cadet",
+                "Cold Career reopen lost or swapped explicit dependent-quality descriptions.");
             Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
                 && cold.Document.AuxiliaryState.CharacterCreationFinalizationArchive is not null,
                 "Phone completion was not one durable Career transition.");
@@ -560,7 +575,7 @@ internal static partial class AfterRunAuthorityHarness
         Require(start.Value is not null, "Story setup failed: " + string.Join(", ", start.Blockers));
         var checkpoint = start.Value!;
         string[] modules = ["83c132b5-fcf5-4a43-b9de-6c8ab206a586", "924ccfd0-136c-4385-94fe-a8d7be2eb7ed",
-            "f0393b9e-2698-4955-bd31-112b619ac7b8", "5a2eee69-cedb-403e-9649-fdc9a1377374", "47bf63cf-9a2a-4008-b455-c8ab68add581"];
+            "15bd4283-f287-4be7-b174-9e5ab97bda1a", "5a2eee69-cedb-403e-9649-fdc9a1377374", "47bf63cf-9a2a-4008-b455-c8ab68add581"];
         for (int index = 0; index <= modules.Length; index++)
         {
             var choices = checkpoint.Projection.CurrentTurn.LegalChoices;
