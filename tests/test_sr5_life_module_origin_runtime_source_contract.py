@@ -20,7 +20,7 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("_interaction.Restore(persisted)", runtime)
         # Core Prepare includes its own fresh Restore; the phone does not
         # repeat the expensive catalog projection before delegating to it.
-        self.assertIn("_interaction.Prepare(checkpoint, choiceId)", runtime)
+        self.assertIn("_interaction.Prepare(checkpoint, choiceId, followUpValues)", runtime)
         self.assertIn("explicitlyConfirmed: true", runtime)
         self.assertIn("checkpoint.BoundSeedDigest", runtime)
         self.assertNotIn("_store.DeleteAsync", runtime)

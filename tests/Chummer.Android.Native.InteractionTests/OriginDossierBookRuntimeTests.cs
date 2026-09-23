@@ -398,9 +398,17 @@ internal static class OriginDossierBookRuntimeTests
                     FoundationSnapshotDigest = "sha256:" + Digest("foundation-" + result.State!.WorkspaceRevision)
                 };
             }
+            TaskCompletionSource? confirmEntered = null, confirmRelease = null;
+            bool rejectConfirmation = true;
             var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
                 async (choice, answers) => Display(await runtime.PrepareAsync("workspace-1", choice, followUpValues: answers)),
-                async (choice, preview) => Display(await runtime.ConfirmAsync("workspace-1", choice, preview)));
+                async (choice, preview) =>
+                {
+                    confirmEntered!.SetResult();
+                    await confirmRelease!.Task;
+                    if (rejectConfirmation) { rejectConfirmation = false; return null; }
+                    return Display(await runtime.ConfirmAsync("workspace-1", choice, preview));
+                });
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
@@ -421,7 +429,37 @@ internal static class OriginDossierBookRuntimeTests
                         && !Visible("origin-life-effect-0-0"),
                         "Confirmation is hidden behind unrelated expanded alternatives.");
                 }
-                await Click(oldConfirm);
+                confirmEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                confirmRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                Task saving = Click(oldConfirm);
+                await confirmEntered.Task;
+                var progress = Elements(page).OfType<ActivityIndicator>().Single(x => x.AutomationId == "origin-life-saving");
+                Require(progress.IsRunning && progress.IsVisible && !oldConfirm.IsEnabled
+                    && oldConfirm.Text == "Saving decision…"
+                    && page.Content is ScrollView { Content: VerticalStackLayout { IsEnabled: false } },
+                    "A pending save must show immediate feedback and disable overlapping decisions.");
+                ((IButtonController)oldConfirm).SendClicked();
+                Require(authority.MutationCount == chapter - 1, "Pending confirmation replayed a mutation.");
+                confirmRelease.SetResult();
+                await saving;
+                if (chapter == 1)
+                {
+                    Require(!progress.IsRunning && !progress.IsVisible && oldConfirm.IsEnabled
+                        && oldConfirm.Text == "Confirm this decision"
+                        && page.Content is ScrollView { Content: VerticalStackLayout { IsEnabled: true } }
+                        && authority.MutationCount == 0 && store.Checkpoint.Projection.VisibleChapters.Count == 0,
+                        "A rejected save must restore usable controls without inventing an accepted chapter.");
+                    confirmEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    confirmRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    saving = Click(oldConfirm);
+                    await confirmEntered.Task;
+                    Require(progress.IsRunning && progress.IsVisible && !oldConfirm.IsEnabled,
+                        "The explicit retry lost pending feedback.");
+                    confirmRelease.SetResult();
+                    await saving;
+                }
+                Require(!progress.IsRunning && !progress.IsVisible && !oldConfirm.IsEnabled,
+                    "Completed save left a running indicator or a callable old confirmation.");
                 Require(authority.MutationCount == chapter && store.Checkpoint.Projection.VisibleChapters.Count == chapter,
                     "The live page did not retain exactly one chapter per confirmation.");
                 Require(Visible("origin-life-read-book") && Visible("origin-life-choice-0") && !Visible("origin-life-confirm"),

@@ -388,12 +388,29 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = _state.CanConfirm;
+            var progress = new ActivityIndicator
+            {
+                AutomationId = "origin-life-saving", IsVisible = false,
+                WidthRequest = 24, HeightRequest = 24,
+                HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center
+            };
+            // Reserve space so showing feedback does not move the tapped action.
+            var confirmationRow = new Grid
+            {
+                HeightRequest = confirm.HeightRequest, ColumnSpacing = 10,
+                ColumnDefinitions = { new(GridLength.Star), new(new GridLength(32)) }
+            };
+            confirmationRow.Add(confirm, 0);
+            confirmationRow.Add(progress, 1);
             confirm.Clicked += async (_, _) =>
             {
                 if (_actionInFlight || generation != _renderGeneration)
                     return;
                 _actionInFlight = true;
                 confirm.IsEnabled = false;
+                body.IsEnabled = false;
+                confirm.Text = _copy["Origin.SavingDecision"];
+                progress.IsVisible = progress.IsRunning = true;
                 try
                 {
                     var confirmed = await _confirmChoice(selectedChoiceId, previewDigest);
@@ -404,9 +421,16 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     else if (TryAdoptConfirmed(confirmed))
                         Content = new ScrollView { Content = BuildBody() };
                 }
-                finally { _actionInFlight = false; confirm.IsEnabled = _state.CanConfirm; }
+                finally
+                {
+                    _actionInFlight = false;
+                    progress.IsRunning = progress.IsVisible = false;
+                    body.IsEnabled = true;
+                    confirm.Text = _copy["Origin.Confirm"];
+                    confirm.IsEnabled = generation == _renderGeneration && _state.CanConfirm;
+                }
             };
-            body.Add(confirm);
+            body.Add(confirmationRow);
         }
 
     }
