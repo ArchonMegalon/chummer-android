@@ -223,6 +223,13 @@ internal static partial class AfterRunAuthorityHarness
                 var projected = service.Load(owner, id, cold.ContentRevision, cold.SavedRevision);
                 Require(projected.Value is { VisibleChapters.Count: > 0 },
                     "Career book did not recover from the cold Core store: " + string.Join(", ", projected.Blockers));
+                var finishFact = projected.Value!.CanonicalLayer.Facts.Single(fact => fact.FactKind == "accepted-module-selection-finish");
+                var finishChapter = projected.Value.VisibleChapters.Single(chapter => chapter.ThroughAcceptedDecisionId == finishFact.AcceptedDecisionId);
+                string finishText = OriginBookChapterText.Render(projected.Value, finishChapter);
+                Require(projected.Value.CurrentTurn.Locale == "de-DE"
+                    && finishText != finishChapter.VisibleMarkdown && !finishText.Contains("**", StringComparison.Ordinal)
+                    && finishText.StartsWith("Deine Modulauswahl ist abgeschlossen.", StringComparison.Ordinal),
+                    "The real saved finish-selection chapter still contains the old Creation instructions.");
                 Require(service.Load(owner, id, cold.ContentRevision + 1, cold.SavedRevision).Value is null,
                     "Book accepted the wrong current revision.");
                 var runner = new BuildPage(runtime.Coordinator);
@@ -241,6 +248,8 @@ internal static partial class AfterRunAuthorityHarness
                 var page = (RetainedOriginBookPage)Current();
                 Require(IssuedElements(page).OfType<Label>().Any(label => label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true),
                     "Career book page has no saved prose.");
+                Require(Element<Label>($"origin-retained-chapter-{finishChapter.Sequence}").Text == finishText,
+                    "The native Career reader did not use the completed-selection display.");
                 Require(!IssuedElements(page).Any(element => element.AutomationId == "origin-book-account"),
                     "A linked reader was asked to link again.");
                 Button? retiredAccountButton = null;
@@ -289,6 +298,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(bookOutput.Deliveries == 1, "The context-bound HTML export was not delivered.");
                 Require(bookOutput.Html.Contains("<meta name=\"author\" content=\"chummer.run\">", StringComparison.Ordinal),
                     "Private HTML export lost the technical author.");
+                Require(bookOutput.Html.Contains(System.Net.WebUtility.HtmlEncode(finishText), StringComparison.Ordinal),
+                    "The exported book restored the stale finish-selection instructions.");
                 Require(bookOutput.Html.Contains("<h1>" + System.Net.WebUtility.HtmlEncode(projected.Value!.CurrentTurn.RunnerDisplayName) + "</h1>", StringComparison.Ordinal),
                     "Private HTML export lost the Core-issued runner display name.");
                 var malicious = projected.Value! with

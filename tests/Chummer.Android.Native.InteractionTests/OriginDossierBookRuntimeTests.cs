@@ -24,6 +24,7 @@ internal static class OriginDossierBookRuntimeTests
                 "An invalid Origin digest bound the Foundation budget.");
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         RunLegacyChapterDisplay();
+        RunFinishedSelectionDisplay();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
@@ -169,6 +170,67 @@ internal static class OriginDossierBookRuntimeTests
         catch (InvalidOperationException) { denied = true; }
         Require(denied, "A chapter outside the displayed book was accepted.");
         Console.WriteLine("PASS Origin book: legacy templates → decision-scoped DE/EN/ES display, immutable history and matching safe export");
+    }
+
+    private static void RunFinishedSelectionDisplay()
+    {
+        var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+        var opened = service.Start("workspace-1").Value!;
+        var prepared = service.Prepare(opened, "choice-1").Value!;
+        var book = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "finish-display", true).Value!.Checkpoint.Projection;
+        var chapter = book.VisibleChapters.Single() with
+        {
+            Title = "Heading is not completion authority",
+            VisibleMarkdown = "Choose the next part of your background.\n\n**Finish module selection**\n\nRule effects and the transition to Career still need review."
+        };
+        var finish = new OriginCanonicalNarrativeFact("finished", "accepted-module-selection-finish",
+            "Historic confirmation text", chapter.ThroughAcceptedDecisionId, [], "");
+        // Synthetic display fixtures only. Production gets this fact and the
+        // unchanged chapter/digest from the Core-validated retained ledger.
+        var fixture = book with { VisibleChapters = [chapter], CanonicalLayer = book.CanonicalLayer with { Facts = [finish] } };
+        foreach (var (locale, expected) in new[] {
+                     ("de-DE", "Deine Modulauswahl ist abgeschlossen."),
+                     ("en-US", "The Life Modules selection is complete."),
+                     ("es-ES", "La selección de módulos de vida está completa.") })
+        {
+            var localized = fixture with { CurrentTurn = fixture.CurrentTurn with { Locale = locale } };
+            string original = JsonSerializer.Serialize(localized);
+            string text = OriginBookChapterText.Render(localized, chapter);
+            Require(text.StartsWith(expected, StringComparison.Ordinal) && text.Contains(localized.CurrentTurn.RunnerDisplayName, StringComparison.Ordinal)
+                && !text.Contains("**", StringComparison.Ordinal) && !text.Contains("Career", StringComparison.Ordinal),
+                "The finished chapter still instructs a Career runner to create again, or declares Career from selection alone.");
+            var reader = new OriginDossierBookPage(opened with { Projection = localized }, "es-ES");
+            Require(Elements(reader).OfType<Label>().Single(label => label.AutomationId == "origin-life-book-chapter-1").Text == text,
+                "The Creation book did not use the story language's saved-selection display.");
+            var retained = new RetainedOriginBook(localized);
+            Require(retained.ChapterText(chapter) == text
+                && retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
+                "Career reading and HTML export disagree about completed selection.");
+            Require(JsonSerializer.Serialize(localized) == original, "Rendering rewrote the archived chapter, fact or digest.");
+
+            var prose = OriginBookProseDraft.Create(chapter, locale, "reviewed-finish", new string('b', 64),
+                "I chose my own path. <script>literal prose</script>");
+            var selected = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(chapter.ChapterId, prose, null)]));
+            Require(selected.ChapterText(chapter) == prose.Text
+                && selected.ToHtml(AndroidSurfaceStrings.Resolve("de")).Contains(System.Net.WebUtility.HtmlEncode(prose.Text), StringComparison.Ordinal),
+                "Finish display rewrote reader-approved narration or exported executable markup.");
+            var pending = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(chapter.ChapterId, null, prose)]));
+            Require(pending.ChapterText(chapter) == text, "Unconfirmed narration replaced the completed-selection display.");
+        }
+        var laterFinish = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [finish with { AcceptedDecisionId = "later" }] } };
+        Require(OriginBookChapterText.Render(laterFinish, chapter) == chapter.VisibleMarkdown,
+            "A later finish fact rewrote an earlier chapter.");
+        var mereTitle = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [finish with { FactKind = "accepted-life-module-answer" }] } };
+        Require(OriginBookChapterText.Render(mereTitle, chapter) == chapter.VisibleMarkdown,
+            "Finish-looking text was treated as completion authority.");
+        foreach (bool playerLayer in new[] { true, false })
+        {
+            var authored = playerLayer ? chapter with { PlayerLayerDigest = new string('c', 64) }
+                : chapter with { ProviderLayerDigest = new string('c', 64) };
+            Require(OriginBookChapterText.Render(fixture with { VisibleChapters = [authored] }, authored) == authored.VisibleMarkdown,
+                "The canonical-only finish formatter rewrote an authored layer.");
+        }
+        Console.WriteLine("PASS Origin book: finished selection display in DE/EN/ES, immutable history, matching readers/export and retained approved prose");
     }
 
     public static void RunAuthoringSource()
