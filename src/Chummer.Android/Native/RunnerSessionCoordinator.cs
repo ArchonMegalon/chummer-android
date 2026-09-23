@@ -6647,6 +6647,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             if (!saved.Success || saved.Value is null || saved.Value.Id != workspaceId
                 || !IsNativePersistenceViewCurrent(original, saved.Value.ContentRevision)) return;
             receipt = saved.Value;
+            await RefreshLifeModuleDashboardAfterSaveAsync(original, receipt, cancellationToken);
         }
         else await _presenter.SaveAsync(cancellationToken);
         if (State.Error is null)

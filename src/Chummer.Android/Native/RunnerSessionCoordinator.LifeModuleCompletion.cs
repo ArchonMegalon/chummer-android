@@ -4,6 +4,7 @@ using System.Text.Json;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Rulesets;
+using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 
@@ -28,6 +29,33 @@ public sealed partial class RunnerSessionCoordinator
     internal bool CanOpenLifeModuleCompletion()
         => _lifeModuleFinalizationService is not null && LifeCompletionDisplayCurrent(State)
            && State.CreationFoundation?.PendingDraft is { ModuleSelectionFinished: true, CharacterEffectsApplied: false };
+
+    private async Task RefreshLifeModuleDashboardAfterSaveAsync(
+        CharacterOverviewState original, WorkspaceSaveReceipt receipt, CancellationToken ct)
+    {
+        // Save advances SavedRevision without changing the runner's content.
+        // Reload the display through its existing original-owner path, rather
+        // than rewriting Core bindings or leaving the next wizard disabled.
+        if (ct.IsCancellationRequested || receipt.Id != original.WorkspaceId
+            || receipt.ContentRevision != original.ContentRevision
+            || receipt.SavedRevision != receipt.ContentRevision
+            || !IsNativePersistenceViewCurrent(original, receipt.ContentRevision)
+            || original.CreationWizard is not
+                { RulesetId: RulesetDefaults.Sr5, BuildMethod: CharacterCreationBuildMethods.LifeModules, CharacterCreated: false }
+            || State.CreationFoundation is not { } foundation
+            || foundation.Binding.SavedRevision == receipt.SavedRevision
+            || original.DisplayOwnerContext is not { IsValid: true } owner
+            || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh) return;
+        try
+        {
+            await refresh.LoadAsync(owner, receipt.Id, ct);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // The original Save is already committed. Never replay it because
+            // the following read failed; stale display admission stays closed.
+        }
+    }
 
     // Display only: use the same captured Core foundation as the current owner
     // and workspace. Opening a wizard still reloads and validates its authority.

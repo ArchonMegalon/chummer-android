@@ -36,6 +36,22 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
             await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
             var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            var unsaved = runtime.Coordinator.State;
+            Require(unsaved.ContentRevision == 1 && unsaved.SavedRevision == 0
+                && runtime.Coordinator.IsLifeModuleDashboardCurrent(unsaved),
+                "Fresh Life Modules setup did not expose the actual unsaved dashboard.");
+            await runtime.Coordinator.SaveAsync();
+            Require(runtime.Coordinator.State.ContentRevision == 1 && runtime.Coordinator.State.SavedRevision == 1
+                && runtime.Coordinator.HasDurableSaveNotice
+                && runtime.Coordinator.IsLifeModuleDashboardCurrent(runtime.Coordinator.State)
+                && runtime.Coordinator.CanOpenSr5LifeModuleOrigin()
+                && runtime.Coordinator.State.CreationFoundation!.Binding.SavedRevision == 1
+                && !ReferenceEquals(unsaved.CreationFoundation, runtime.Coordinator.State.CreationFoundation),
+                "Toolbar Save left the Life Modules dashboard bound to the old saved revision.");
+            var alreadySaved = runtime.Coordinator.State.CreationFoundation;
+            await runtime.Coordinator.SaveAsync();
+            Require(ReferenceEquals(alreadySaved, runtime.Coordinator.State.CreationFoundation),
+                "Saving an unchanged Life Modules runner needlessly rebuilt its current projection.");
             await Task.Run(() => SeedNativeLifeStory(runtime, id));
             await runtime.Presenter.LoadAsync(id, default);
             var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
@@ -508,6 +524,62 @@ internal static partial class AfterRunAuthorityHarness
             async Task Back()
             { IssuedPageLifecycle(Current(), "OnDisappearing"); await navigation.PopAsync(false); await Appear(); }
         });
+        await ui.RunAsync(async () =>
+        {
+            await RunLifeModuleToolbarSaveBoundariesAsync(contentRoot);
+            ui.AssertHealthy();
+        });
+    }
+
+    internal static async Task RunLifeModuleToolbarSaveBoundariesAsync(string contentRoot)
+    {
+        foreach (string scenario in new[] { "post-cancel", "post-b", "post-aba" })
+        {
+            var owners = new ControlledLinkedOwner();
+            var roaming = new PersistenceRoamingProbe(owners);
+            var account = System.Reflection.DispatchProxy.Create<IAndroidAccountLinkService, OriginAuthoringPageAccount>();
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners, persistenceRoaming: roaming,
+                accountService: account, lifeCompletionDecorator: actual => actual);
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var original = runtime.Coordinator.State;
+            var id = original.WorkspaceId!.Value;
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            var before = store.Get(id).Value!;
+            int saves = roaming.BoundCalls;
+            using var cancellation = new CancellationTokenSource();
+            roaming.ExpectedOwner = owners.Capture();
+            roaming.AfterCommit = () =>
+            {
+                if (scenario == "post-cancel") cancellation.Cancel();
+                else
+                {
+                    owners.Set(ContactsOwnerB);
+                    if (scenario == "post-aba") owners.Set(OwnerScope.LocalSingleUser);
+                }
+            };
+            await runtime.Coordinator.SaveAsync(cancellation.Token);
+            var saved = store.Get(id).Value!;
+            Require(saved.ContentRevision == before.ContentRevision && saved.SavedRevision == saved.ContentRevision
+                && saved.Document.Content == before.Document.Content
+                && store.Get(ContactsOwnerB, id).Value is null
+                && roaming.BoundCalls == saves + 1 && roaming.UnboundCalls == 0 && owners.ActiveLeases == 0,
+                "Post-save refresh changed the runner, replayed its save or retargeted another owner: " + scenario);
+            Require(runtime.Coordinator.HasDurableSaveNotice == (scenario == "post-cancel")
+                // Account transition may clear the display entirely. It must
+                // never replace the old snapshot with a newly admitted owner.
+                && (runtime.Coordinator.State.CreationFoundation is null
+                    || ReferenceEquals(original.CreationFoundation, runtime.Coordinator.State.CreationFoundation))
+                && !runtime.Coordinator.IsLifeModuleDashboardCurrent(runtime.Coordinator.State),
+                "Canceled/stale-owner refresh fabricated a current Life Modules projection: " + scenario);
+            Console.WriteLine("PASS Life Modules toolbar Save boundary: " + scenario);
+        }
+        foreach (string scenario in new[] { "same", "post-b", "post-aba", "post-cancel" })
+            await RunNativeSaveCommitAsync(contentRoot, scenario);
     }
 
     internal static async Task RunLifeModuleCompletionAsync(string contentRoot)
