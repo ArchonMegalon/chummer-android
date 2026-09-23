@@ -820,7 +820,14 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · Modulstufen {2} · Kaufkosten {3} Karma</value></data>
   <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Karriere: {0} Karma, {1:N2} ¥. Verfallen: {2} Karma, {3:N2} ¥.</value></data>
   <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Diesen geprüften Runner einmalig übernehmen und die Karriere beginnen? Deine bestätigten Kapitel bleiben erhalten.</value></data>
-  <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
   <data name="LifeCompletion.Saving" xml:space="preserve"><value>Runner wird gespeichert…</value></data>
   <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Diese Eingaben verwerfen und neu beginnen. Bestätigte Module und Kapitel bleiben erhalten.</value></data>
+  <data name="LifeDashboard.StoryHelp" xml:space="preserve"><value>Setze deine Vorgeschichte Entscheidung für Entscheidung fort. Diese Kosten umfassen nur bestätigte Module und den Metatyp; zusätzliche Verteilungen und der Karriere-Einstieg müssen noch abschließend geprüft werden.</value></data>
+  <data name="LifeDashboard.FinishHelp" xml:space="preserve"><value>Die Modulauswahl ist gespeichert. Prüfe kumulierte Zuwendungen und zusätzliche Verteilungen im Lebensmodule-Wizard, bevor du den Karriere-Einstieg bestätigst.</value></data>
+  <data name="LifeDashboard.BudgetTitle" xml:space="preserve"><value>Budget der bestätigten Module</value></data>
+  <data name="LifeDashboard.Budget" xml:space="preserve"><value>Bestätigte Module und Metatyp: {0} / {1} Karma · vor abschließenden Verteilungen übrig: {2}</value></data>
+  <data name="LifeDashboard.Unavailable" xml:space="preserve"><value>Die aktuellen Lebensmodul-Daten sind nicht verfügbar. Öffne den Runner erneut; Restbudget und Abschluss werden nicht geschätzt.</value></data>
+  <data name="LifeDashboard.Complete" xml:space="preserve"><value>Deinen Runner fertigstellen</value></data>
+  <data name="LifeDashboard.Continue" xml:space="preserve"><value>Deine Geschichte fortsetzen</value></data>
+  <data name="LifeDashboard.Review" xml:space="preserve"><value>Prüfe die exakten Core-Auswirkungen, bevor du eine Änderung bestätigst.</value></data>
 </root>

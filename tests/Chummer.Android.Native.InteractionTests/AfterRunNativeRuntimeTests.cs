@@ -3,6 +3,7 @@ using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
 using Chummer.Application.Characters;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
@@ -11,6 +12,7 @@ using Chummer.Infrastructure.Workspaces;
 using Chummer.Infrastructure.Files;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
+using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -697,6 +699,12 @@ internal static partial class AfterRunAuthorityHarness
                     lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
                     lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
+                    originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
+                        new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(
+                            new CharacterCreationFoundationLifeModuleDecisionAuthority(store,
+                                _provider.GetRequiredService<ICharacterCreationFoundationService>(),
+                                _provider.GetRequiredService<ICharacterFileQueries>(), () => "de-DE"))),
+                        new FileOriginDossierDraftTimelineStore(StateDirectory)),
                     originBookReadings: new OriginBookReadingStore(StateDirectory));
             }
             catch

@@ -820,7 +820,14 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · module levels {2} · purchase cost {3} Karma</value></data>
   <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Career: {0} Karma, {1:N2} ¥. Discarded: {2} Karma, {3:N2} ¥.</value></data>
   <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached.</value></data>
-  <data name="LifeCompletion.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="LifeCompletion.Saving" xml:space="preserve"><value>Saving runner…</value></data>
   <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Discard these input choices and start again. Confirmed modules and chapters are kept.</value></data>
+  <data name="LifeDashboard.StoryHelp" xml:space="preserve"><value>Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review.</value></data>
+  <data name="LifeDashboard.FinishHelp" xml:space="preserve"><value>Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.</value></data>
+  <data name="LifeDashboard.BudgetTitle" xml:space="preserve"><value>Confirmed module budget</value></data>
+  <data name="LifeDashboard.Budget" xml:space="preserve"><value>Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}</value></data>
+  <data name="LifeDashboard.Unavailable" xml:space="preserve"><value>The current Life Modules authority is unavailable. Reopen this runner; no balance or completion is inferred.</value></data>
+  <data name="LifeDashboard.Complete" xml:space="preserve"><value>Complete your runner</value></data>
+  <data name="LifeDashboard.Continue" xml:space="preserve"><value>Continue your story</value></data>
+  <data name="LifeDashboard.Review" xml:space="preserve"><value>Review exact Core effects before confirming any change.</value></data>
 </root>

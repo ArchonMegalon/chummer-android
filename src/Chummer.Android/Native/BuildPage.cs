@@ -1192,6 +1192,17 @@ public sealed class BuildPage : NativePageBase
         binding.AutomationId = "creation-wizard-binding";
         _body.Add(binding);
 
+        if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.LifeModules)
+        {
+            // Life Modules has its own cumulative completion authority. Generic
+            // Priority ledgers and finalization placeholders do not describe it.
+            // Leave that snapshot unchanged; the destination still revalidates Core.
+            CancelCreationProjectionQueues();
+            _creationProjection = null;
+            AddLifeModuleCreationDashboard();
+            return;
+        }
+
         CharacterCreationWizardStageState? lifeModuleStage = snapshot.Steps.FirstOrDefault(candidate =>
             string.Equals(
                 candidate.StepId,
@@ -1289,6 +1300,52 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources, readiness);
         AddFinalizationReviewAction();
+    }
+
+    private void AddLifeModuleCreationDashboard()
+    {
+        var displayed = Coordinator.State;
+        bool current = Coordinator.IsLifeModuleDashboardCurrent(displayed);
+        var foundation = current ? displayed.CreationFoundation : null;
+        bool finished = foundation?.PendingDraft?.ModuleSelectionFinished == true;
+        var budget = foundation?.LifeModuleBudget;
+
+        var scope = NativeTheme.Body(finished
+            ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
+            : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review."), NativeTheme.Muted);
+        scope.AutomationId = "creation-life-module-scope";
+        _body.Add(scope);
+
+        var card = new VerticalStackLayout { Spacing = 8 };
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("LifeDashboard.BudgetTitle", "Confirmed module budget")));
+        bool exact = budget is { BudgetId: CharacterCreationBudgetIds.LifeModules, IsExact: true, Blockers.Count: 0 };
+        var values = NativeTheme.Body(exact
+            ? CreationAllocationStrings.Format("LifeDashboard.Budget",
+                "Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}",
+                budget!.Used, budget.Total, budget.Remaining)
+            : CreationAllocationStrings.Get("LifeDashboard.Unavailable", "The current Life Modules authority is unavailable. Reopen this runner; no balance or completion is inferred."),
+            exact ? NativeTheme.Muted : NativeTheme.Danger);
+        values.AutomationId = "creation-life-module-budget-values";
+        card.Add(values);
+        foreach (string blocker in (foundation?.AuthorityBlockers ?? []).Concat(budget?.Blockers ?? []).Distinct(StringComparer.Ordinal))
+            card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        var budgetCard = NativeTheme.Card(card);
+        budgetCard.AutomationId = "creation-life-module-budget";
+        _body.Add(budgetCard);
+
+        bool canOpen = current && Coordinator.CanOpenSr5LifeModuleOrigin()
+            && (!finished || Coordinator.CanOpenLifeModuleCompletion());
+        long render = _dossierRenderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(CreationNavigationRow(
+            finished ? CreationAllocationStrings.Get("LifeDashboard.Complete", "Complete your runner") : CreationAllocationStrings.Get("LifeDashboard.Continue", "Continue your story"),
+            CurrentPhoneWizardScope.MarkExperimental(CreationAllocationStrings.Get("LifeDashboard.Review", "Review exact Core effects before confirming any change.")),
+            async () =>
+            {
+                if (!canOpen || render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || !Coordinator.IsLifeModuleDashboardCurrent(displayed)) return;
+                await OpenSr5LifeModuleOriginAsync();
+            }, canOpen, "creation-life-module-continue"));
     }
 
     private void ScheduleCreationDashboardRouteReady(

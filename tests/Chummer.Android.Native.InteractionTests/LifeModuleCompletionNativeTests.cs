@@ -40,13 +40,35 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Presenter.LoadAsync(id, default);
             var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
             var drafts = new LifeModuleCompletionDraftStore(runtime.StateDirectory);
-            var root = new LifeModuleCompletionPage(runtime.Coordinator, store: drafts);
+            var root = new BuildPage(runtime.Coordinator);
+            // Headless MAUI supplies scroll geometry only, never route or budget authority.
+            ((ScrollView)root.Content!).ScrollToRequested += (_, _) => ((ScrollView)root.Content!).SendScrollFinished();
             var navigation = new NavigationPage(new ContentPage());
             await navigation.PushAsync(root, false);
             var window = new Window(navigation);
             using var alerts = new IssuedPageAlerts(root, window);
             await alerts.PreflightAsync();
             await Appear();
+            var displayedWizard = runtime.Coordinator.State.CreationWizard!;
+            string originalWizard = JsonSerializer.Serialize(displayedWizard);
+            var moduleBudget = runtime.Coordinator.State.CreationFoundation!.LifeModuleBudget;
+            Require(IssuedElements(root).Any(element => element.AutomationId == "creation-life-module-budget")
+                && !IssuedElements(root).OfType<Label>().Any(label => label.Text?.Contains("creation-wizard-budget-authority-unavailable", StringComparison.Ordinal) == true),
+                "The Life Modules landing page still shows unrelated Priority budget failures.");
+            Require(Element<Label>("creation-life-module-budget-values").Text == CreationAllocationStrings.Format(
+                    "LifeDashboard.Budget", "Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}",
+                    moduleBudget.Used, moduleBudget.Total, moduleBudget.Remaining),
+                "Life Modules landing budget differs from the current Core projection.");
+            Require(Element<Label>("creation-life-module-scope").Text.Contains("Career", StringComparison.Ordinal)
+                && JsonSerializer.Serialize(runtime.Coordinator.State.CreationWizard) == originalWizard,
+                "The dashboard lost the final-review boundary or rewrote generic finalization authority.");
+            var dashboardState = runtime.Coordinator.State;
+            Require(runtime.Coordinator.IsLifeModuleDashboardCurrent(dashboardState)
+                && !runtime.Coordinator.IsLifeModuleDashboardCurrent(dashboardState with { WorkspaceId = new CharacterWorkspaceId("another-runner") })
+                && !runtime.Coordinator.IsLifeModuleDashboardCurrent(dashboardState with { CreationFoundation = dashboardState.CreationFoundation! with { SnapshotDigest = "sha256:" + new string('0', 64) } }),
+                "A different workspace or replacement Foundation gained dashboard authority.");
+            await Click("creation-life-module-continue");
+            Require(Current() is LifeModuleCompletionPage, "The completed module selection did not open its own completion wizard.");
             Require(Session().Input is { TalentSelection: null, AttributePurchases: null, SkillSelection: null,
                 GearSelection: null, LifestyleSelection: null, ContactSelection: null, MagicSelection: null },
                 "Opening the completion wizard silently chose a talent or empty purchases.");
@@ -605,6 +627,9 @@ internal static partial class AfterRunAuthorityHarness
         }
         Require(checkpoint.Projection.CurrentTurn.IsTerminal && checkpoint.Projection.VisibleChapters.Count == modules.Length + 1,
             "Story setup did not retain every confirmed chapter.");
+        // Match the phone runtime's durable timeline, so opening the real Build
+        // page restores the accepted story rather than inventing a new one.
+        new FileOriginDossierDraftTimelineStore(runtime.StateDirectory).SaveAsync(checkpoint).GetAwaiter().GetResult();
     }
 
     private static void SeedNativeLifeSequence(CharacterCreationFoundationService service, CharacterWorkspaceId id)

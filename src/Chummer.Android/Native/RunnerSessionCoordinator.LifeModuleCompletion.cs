@@ -29,6 +29,24 @@ public sealed partial class RunnerSessionCoordinator
         => _lifeModuleFinalizationService is not null && LifeCompletionDisplayCurrent(State)
            && State.CreationFoundation?.PendingDraft is { ModuleSelectionFinished: true, CharacterEffectsApplied: false };
 
+    // Display only: use the same captured Core foundation as the current owner
+    // and workspace. Opening a wizard still reloads and validates its authority.
+    internal bool IsLifeModuleDashboardCurrent(CharacterOverviewState original)
+        => LifeCompletionDisplayCurrent(original)
+           && ReferenceEquals(State.CreationWizard, original.CreationWizard)
+           && ReferenceEquals(State.CreationFoundation, original.CreationFoundation)
+           && original.CreationFoundation is
+           { RulesetId: RulesetDefaults.Sr5, BuildMethod: CharacterCreationBuildMethods.LifeModules, CharacterCreated: false } foundation
+           && foundation.Binding.WorkspaceId == original.WorkspaceId
+           && foundation.Binding.ContentRevision == original.ContentRevision
+           && foundation.Binding.SavedRevision == original.SavedRevision
+           && foundation.Binding.RawCharacterXmlDigest == original.CreationWizard!.ContentDigest
+           && foundation.Binding.SourceDigest == original.CreationWizard.SourceDigest
+           && !foundation.Binding.SourceFilterApplied
+           && foundation.PendingDraft?.CharacterEffectsApplied != true
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(foundation.SnapshotDigest)
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(foundation.Binding.SourceDigest);
+
     private bool LifeCompletionDisplayCurrent(CharacterOverviewState original)
         => original.Profile?.Created == false && IsNativeEditDisplayCurrent(original)
            && original.CreationWizard is
