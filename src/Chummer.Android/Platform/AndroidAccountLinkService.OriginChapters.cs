@@ -18,8 +18,9 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
     };
 
     public Task<AndroidOriginChapterResult> RequestChapterAsync(OwnerContextStamp owner,
-        OriginChapterSource approvedSource, bool externalProcessingConsent, CancellationToken ct = default)
-        => externalProcessingConsent ? ChapterRequestAsync(owner, approvedSource, create: true, ct)
+        OriginChapterSource approvedSource, bool externalProcessingConsent, CancellationToken ct = default,
+        OriginChapterPredecessor? previous = null)
+        => externalProcessingConsent ? ChapterRequestAsync(owner, approvedSource, create: true, ct, previous: previous)
             : Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
 
     public Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner,
@@ -41,7 +42,8 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             : Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
 
     private async Task<AndroidOriginChapterResult> ChapterRequestAsync(OwnerContextStamp owner,
-        OriginChapterSource source, bool create, CancellationToken ct, ReaderAcceptance? acceptance = null)
+        OriginChapterSource source, bool create, CancellationToken ct, ReaderAcceptance? acceptance = null,
+        OriginChapterPredecessor? previous = null)
     {
         bool proofReleased = false, knownRejected = false;
         bool changesRemote = create || acceptance is not null;
@@ -54,10 +56,12 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             var captured = OriginChapterSourceIdentity.Capture(source);
             string digest = OriginChapterSourceIdentity.Digest(captured);
             string requestId = OriginChapterSourceIdentity.RequestId(captured);
+            previous = OriginChapterSourceIdentity.CapturePredecessor(previous);
+            if (previous?.RequestId == requestId) throw new ArgumentException("A chapter cannot precede itself.");
             StoredGrant grant = await ReadContinuationGrantAsync(expected, ct);
             object payload = create
                 ? new { installationId = grant.InstallationId,
-                    authoring = new OriginChapterAuthoringRequest(requestId, captured, true) }
+                    authoring = new OriginChapterAuthoringRequest(requestId, captured, true) { Previous = previous } }
                 : acceptance is not null
                     ? new { installationId = grant.InstallationId, requestId, sourceDigest = digest,
                         providerReceiptDigest = acceptance.ProviderReceiptDigest, textDigest = acceptance.TextDigest,
@@ -83,6 +87,8 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
                 || body.GetProperty("affectsMechanics").GetBoolean()
                 || body.GetProperty("publicationAuthorized").GetBoolean()) throw new JsonException();
             var job = body.Deserialize<OriginChapterAuthoringJob>(ChapterWireJson) ?? throw new JsonException();
+            OriginChapterSourceIdentity.CapturePredecessor(job.Previous);
+            if (job.Previous?.RequestId == requestId || create && job.Previous != previous) throw new JsonException();
             if (job.RequestId != requestId || job.SourceDigest != digest
                 || OriginChapterSourceIdentity.Digest(job.Source) != digest || job.Provider != "first_book_ai"
                 || job.State is not (OriginChapterAuthoringStates.AwaitingAuthoring

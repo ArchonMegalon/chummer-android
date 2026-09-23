@@ -10,7 +10,7 @@ public sealed record AndroidOriginChapterResult(AndroidOriginChapterOutcome Outc
 public interface IAndroidOriginChapterTransport
 {
     Task<AndroidOriginChapterResult> RequestChapterAsync(OwnerContextStamp owner, OriginChapterSource approvedSource,
-        bool externalProcessingConsent, CancellationToken ct = default);
+        bool externalProcessingConsent, CancellationToken ct = default, OriginChapterPredecessor? previous = null);
     Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner, OriginChapterSource originalSource,
         CancellationToken ct = default);
     Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource originalSource,

@@ -33,6 +33,38 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal OriginBookProseDraft? Pending(OriginNarrativeChapterProjection chapter)
         => Reading(chapter)?.Pending;
 
+    internal bool TryGetAuthoringPredecessor(OriginNarrativeChapterProjection chapter,
+        out OriginChapterPredecessor? previous)
+    {
+        previous = null;
+        if (!Chapters.Contains(chapter)) return false;
+        var decisions = Projection.CanonicalLayer.AcceptedDecisionIds.ToArray();
+        if (decisions.Distinct(StringComparer.Ordinal).Count() != decisions.Length) return false;
+        int boundary = Array.IndexOf(decisions, chapter.ThroughAcceptedDecisionId);
+        if (boundary < 0) return false;
+        var ordered = Chapters.Select(c => (Chapter: c, Index: Array.IndexOf(decisions, c.ThroughAcceptedDecisionId))).ToArray();
+        if (ordered.Any(c => c.Index < 0)) return false;
+        var earlier = ordered.Where(c => c.Index < boundary).OrderBy(c => c.Index).ToArray();
+        // Core's decision order defines chronology, not sorted chapter IDs or
+        // the private provider's slot numbering. Ambiguous boundaries stop.
+        if (earlier.GroupBy(c => c.Index).Any(group => group.Count() != 1)
+            || Chapters.Count(c => c.ThroughAcceptedDecisionId == chapter.ThroughAcceptedDecisionId) != 1)
+            return false;
+        if (earlier.Length == 0) return true;
+        var preceding = earlier[^1].Chapter;
+        if (Reading(preceding)?.Selected is not { } selected || !selected.IsValid()
+            || !selected.Matches(preceding, Locale)) return false;
+        try
+        {
+            var source = OriginBookAuthoringSource.Create(Projection, preceding);
+            if (selected.JobId != OriginChapterSourceIdentity.RequestId(source)) return false;
+            previous = new(selected.JobId, OriginChapterSourceIdentity.Digest(source), selected.ProviderReceiptDigest,
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(selected.Text))).ToLowerInvariant());
+            return true;
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
+    }
+
     // No executable HTML, remote resources or private workspace metadata. The
     // Display text is escaped, not sent to a provider. Original chapter bytes
     // remain untouched even when a legacy template needs a confirmed-facts view.
@@ -98,7 +130,13 @@ public sealed partial class RunnerSessionCoordinator
         var result = await transport.ReadChapterAsync(owner, source, ct);
         if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
         if (result.Outcome == AndroidOriginChapterOutcome.NotFound && consentToCreate)
-            result = await transport.RequestChapterAsync(owner, source, true, ct);
+        {
+            if (!book.TryGetAuthoringPredecessor(chapter, out var previous))
+                return (new(AndroidOriginChapterOutcome.Conflict), book);
+            // Hub validates the prior reading's explicit acceptance. This
+            // request cannot turn an unacknowledged local edition into consent.
+            result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
+        }
         if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);
         if (result.Job is not { State: OriginChapterAuthoringStates.ReviewRequired } job)
             return (result, book);

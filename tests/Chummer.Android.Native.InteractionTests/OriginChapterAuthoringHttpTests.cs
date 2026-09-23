@@ -49,6 +49,26 @@ internal static partial class AfterRunAuthorityHarness
             var pending = await transport.RequestChapterAsync(owner, source, true);
             Require(pending.Job?.State == OriginChapterAuthoringStates.AwaitingAuthoring && !pending.UnknownRemoteOutcome,
                 "The exact chapter request was not retained.");
+            var previous = new OriginChapterPredecessor("accepted-previous", new string('c', 64), new string('d', 64), new string('e', 64));
+            fixture.ChapterResponse = (path, body) =>
+            {
+                var request = body["authoring"]!.Deserialize<OriginChapterAuthoringRequest>(json)!;
+                Require(request.Previous == previous, "The signed request lost its exact accepted predecessor.");
+                return ContinuationJsonResponse(Wire(queued with { Previous = previous }));
+            };
+            Require((await transport.RequestChapterAsync(owner, source, true, previous: previous)).Job?.Previous == previous,
+                "The exact predecessor was not retained in request readback.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(queued));
+            Require((await transport.RequestChapterAsync(owner, source, true, previous: previous)).Job is null,
+                "The server silently dropping the predecessor was accepted.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(queued with
+                { Previous = previous with { TextDigest = new string('f', 64) } }));
+            Require((await transport.RequestChapterAsync(owner, source, true, previous: previous)).Job is null,
+                "A changed accepted predecessor was accepted.");
+            int priorRequests = fixture.ChapterRequests;
+            Require((await transport.RequestChapterAsync(owner, source, true, previous: previous with { SourceDigest = "invalid" })).Job is null
+                && (await transport.RequestChapterAsync(owner, source, true, previous: previous with { RequestId = id })).Job is null
+                && fixture.ChapterRequests == priorRequests, "Invalid/self predecessors reached the network.");
             int before = fixture.ChapterRequests;
             fixture.ChapterResponse = (_, _) => throw new HttpRequestException("Lost after possible write.");
             var lost = await transport.RequestChapterAsync(owner, source, true);
@@ -190,12 +210,12 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     }
 
     public Task<AndroidOriginChapterResult> RequestChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
-        bool externalProcessingConsent, CancellationToken ct = default)
+        bool externalProcessingConsent, CancellationToken ct = default, OriginChapterPredecessor? previous = null)
     {
         if (!externalProcessingConsent) throw new InvalidOperationException("No consent.");
         Requests++;
         _job ??= new(OriginChapterSourceIdentity.RequestId(source), OriginChapterSourceIdentity.Digest(source), source,
-            OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null);
+            OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null) { Previous = previous };
         return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _job));
     }
 

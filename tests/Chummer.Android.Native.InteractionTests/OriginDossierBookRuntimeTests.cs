@@ -6,6 +6,7 @@ using Chummer.Application.LifeModules;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.OriginBooks;
+using Chummer.Run.Contracts.Community;
 using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
@@ -267,6 +268,31 @@ internal static class OriginDossierBookRuntimeTests
         try { OriginBookAuthoringSource.Create(fixture with { AllowedCanonicalFactIds = [] }, chapter); }
         catch (InvalidOperationException) { rejected = true; }
         Require(rejected, "A chapter with no approved facts could be sent to a provider.");
+        var nextChapter = chapter with { ChapterId = "next-chapter", ChapterDigest = new string('f', 64), ThroughAcceptedDecisionId = "later" };
+        var chronological = fixture with { VisibleChapters = [nextChapter, chapter] };
+        var unreviewedBook = new RetainedOriginBook(chronological);
+        Require(unreviewedBook.TryGetAuthoringPredecessor(chapter, out var firstPrevious) && firstPrevious is null,
+            "The first chapter acquired an invented predecessor.");
+        Require(!unreviewedBook.TryGetAuthoringPredecessor(nextChapter, out _), "A successor skipped its unreviewed preceding chapter.");
+        string jobId = OriginChapterSourceIdentity.RequestId(source);
+        var prose = OriginBookProseDraft.Create(chapter, chronological.CurrentTurn.Locale, jobId, new string('b', 64), "Reviewed fictional scene.");
+        var readings = new OriginBookReadingState("local-single-user", source.WorkspaceId, [new(chapter.ChapterId, prose, null)]);
+        var reader = new RetainedOriginBook(chronological, readings);
+        Require(reader.TryGetAuthoringPredecessor(nextChapter, out var previous)
+            && previous?.RequestId == jobId && previous.SourceDigest == OriginChapterSourceIdentity.Digest(source)
+            && previous.ProviderReceiptDigest == prose.ProviderReceiptDigest
+            && previous.TextDigest == Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(prose.Text))).ToLowerInvariant(),
+            "Continuation guessed provider order or lost the selected exact reading.");
+        var restoredReadings = JsonSerializer.Deserialize<OriginBookReadingState>(JsonSerializer.Serialize(readings))!;
+        Require(new RetainedOriginBook(chronological, restoredReadings).TryGetAuthoringPredecessor(nextChapter, out var restoredPrevious)
+            && restoredPrevious == previous, "Reading restart changed the predecessor binding.");
+        var pendingOnly = readings with { Chapters = [new(chapter.ChapterId, null, prose)] };
+        Require(!new RetainedOriginBook(chronological, pendingOnly).TryGetAuthoringPredecessor(nextChapter, out _),
+            "A pending draft was treated as a selected reading.");
+        Require(!new RetainedOriginBook(chronological with { VisibleChapters = [chapter, nextChapter with
+            { ThroughAcceptedDecisionId = chapter.ThroughAcceptedDecisionId }] }, readings)
+            .TryGetAuthoringPredecessor(chapter, out _), "Ambiguous Core chapter boundaries were guessed.");
         Console.WriteLine("PASS Origin authoring projection: confirmed facts only, no future choices, source prose, anchors or mutation");
     }
 
