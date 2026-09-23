@@ -185,9 +185,65 @@ internal static partial class AfterRunAuthorityHarness
             await Click("life-review-completion");
             Require(Session().CanConfirm, "Phone-selected Life Modules runner is blocked: " + string.Join(", ", Session().Blockers));
             Require(!Element<Button>("life-confirm-completion").IsEnabled, "Completion lacks explicit user acknowledgement.");
+            var reviewed = Session().Preview!;
+            string unchangedReview = JsonSerializer.Serialize(reviewed);
+            string unchangedInputs = JsonSerializer.Serialize(Session().Input);
+            int reviewedCalls = probe.PreviewCalls;
+            var changes = reviewed.FinalizationPlan!.OrderedDeltas;
+            var details = Element<VerticalStackLayout>("life-calculation-details");
+            var detailToggle = Element<Button>("life-toggle-calculation-details");
+            Require(!details.IsVisible && details.Children.Count == 0,
+                "Technical details must start collapsed and unmaterialized.");
+            foreach (var delta in changes)
+            {
+                Require(Element<Label>("life-change-" + delta.Order).Text == LifeModuleCompletionPage.ReviewChange(reviewed, delta),
+                    "An ordered change was omitted or displayed from a different review.");
+                var costs = IssuedElements(Current()).OfType<Label>().Where(label => label.AutomationId == "life-cost-" + delta.Order).ToArray();
+                Require(delta.KarmaCost == 0 && delta.NuyenCost == 0 ? costs.Length == 0
+                    : costs.Single().Text == CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost),
+                    "A nonzero charge or credit was omitted or changed.");
+            }
+            var englishDelta = changes.Single(delta => delta.Kind == CharacterCreationFinalizationDeltaKinds.Skill && delta.AfterValue == "native");
+            Require(LifeModuleCompletionPage.ReviewChange(reviewed, englishDelta).Contains("English", StringComparison.Ordinal)
+                && !LifeModuleCompletionPage.ReviewChange(reviewed, englishDelta).Contains("life-module-skill:", StringComparison.Ordinal),
+                "The reader still sees an internal skill identity instead of its exact reviewed name.");
+            var unknownSkill = englishDelta with { TargetId = englishDelta.TargetId + ":different-identity" };
+            Require(LifeModuleCompletionPage.ReviewChange(reviewed, unknownSkill).Contains(unknownSkill.TargetId, StringComparison.Ordinal),
+                "A merely similar skill identity received another skill's display name.");
+            var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (var (locale, native, detailsText) in new[]
+                {
+                    ("en", "Native language", "Show calculation details and sources"),
+                    ("de", "Muttersprache", "Berechnungsdetails und Quellen anzeigen"),
+                    ("es", "Lengua materna", "Mostrar cálculos y fuentes")
+                })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                    Require(LifeModuleCompletionPage.ReviewChange(reviewed, englishDelta) == "English: " + native
+                        && CreationAllocationStrings.Get("LifeCompletion.ShowDetails", "missing") == detailsText,
+                        "Completion review localization fell back or changed the skill name: " + locale);
+                }
+            }
+            finally { System.Globalization.CultureInfo.CurrentUICulture = originalCulture; }
+            ((IButtonController)detailToggle).SendClicked();
+            Require(details.IsVisible && details.Children.Count == changes.Count, "The complete calculation trace did not expand.");
+            foreach (var delta in changes)
+                Require(Element<Label>("life-calculation-" + delta.Order).Text == delta.Kind + " · " + delta.TargetId + ": "
+                    + delta.BeforeValue + " → " + delta.AfterValue + "\n" + CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost)
+                    + "\n" + string.Join(" · ", delta.SourceAnchorIds), "The original calculation/source trace was altered.");
+            ((IButtonController)detailToggle).SendClicked();
+            Require(!details.IsVisible && ReferenceEquals(Session().Preview, reviewed)
+                && JsonSerializer.Serialize(reviewed) == unchangedReview && JsonSerializer.Serialize(Session().Input) == unchangedInputs
+                && probe.PreviewCalls == reviewedCalls && probe.ConfirmCalls == 0
+                && !Element<Button>("life-confirm-completion").IsEnabled,
+                "Inspecting calculation details recomputed, modified, confirmed or acknowledged the runner.");
             Element<Switch>("life-completion-confirmed").IsToggled = true;
             var oldConfirm = Element<Button>("life-confirm-completion");
             Element<Entry>("life-starting-dice").Text = "5";
+            ((IButtonController)detailToggle).SendClicked();
+            Require(!details.IsVisible, "Changed inputs reopened the retired calculation details.");
             await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
             Require(probe!.ConfirmCalls == 0, "Changed visible dice accepted the previous final review.");
             Element<Entry>("life-starting-dice").Text = "6";
@@ -228,6 +284,9 @@ internal static partial class AfterRunAuthorityHarness
                 finalAcknowledgement.IsToggled = false;
                 finalAcknowledgement.IsToggled = true;
                 ((IButtonController)finalConfirm).SendClicked();
+                var pendingDetails = Element<VerticalStackLayout>("life-calculation-details");
+                ((IButtonController)Element<Button>("life-toggle-calculation-details")).SendClicked();
+                Require(!pendingDetails.IsVisible, "Pending confirmation accepted a details action on disabled content.");
                 Require(!finalConfirm.IsEnabled && probe.ConfirmCalls == 1,
                     "A pending confirmation was visually rearmed or dispatched twice.");
             }

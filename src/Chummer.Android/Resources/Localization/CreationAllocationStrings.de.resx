@@ -830,4 +830,16 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeDashboard.Complete" xml:space="preserve"><value>Deinen Runner fertigstellen</value></data>
   <data name="LifeDashboard.Continue" xml:space="preserve"><value>Deine Geschichte fortsetzen</value></data>
   <data name="LifeDashboard.Review" xml:space="preserve"><value>Prüfe die exakten Core-Auswirkungen, bevor du eine Änderung bestätigst.</value></data>
+  <data name="LifeCompletion.ShowDetails" xml:space="preserve"><value>Berechnungsdetails und Quellen anzeigen</value></data>
+  <data name="LifeCompletion.HideDetails" xml:space="preserve"><value>Berechnungsdetails und Quellen ausblenden</value></data>
+  <data name="LifeCompletion.QualityKarma" xml:space="preserve"><value>Karma-Anpassung durch Vor- und Nachteile</value></data>
+  <data name="LifeCompletion.MagicKarma" xml:space="preserve"><value>Karma für Magie / Resonanz</value></data>
+  <data name="LifeCompletion.ContactKarma" xml:space="preserve"><value>Karma für Kontakte</value></data>
+  <data name="LifeCompletion.CreationFunding" xml:space="preserve"><value>Geld für die Erschaffung</value></data>
+  <data name="LifeCompletion.ResourceRounding" xml:space="preserve"><value>Karma-Rundung für Ressourcen</value></data>
+  <data name="LifeCompletion.CareerKarma" xml:space="preserve"><value>Karma beim Karrierebeginn</value></data>
+  <data name="LifeCompletion.NuyenCarried" xml:space="preserve"><value>Übernommene ungenutzte Nuyen</value></data>
+  <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Ausgewürfeltes Startkapital</value></data>
+  <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Erschaffung → Karriere</value></data>
+  <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Muttersprache</value></data>
 </root>

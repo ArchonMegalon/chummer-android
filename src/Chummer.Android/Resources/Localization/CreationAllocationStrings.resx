@@ -830,4 +830,16 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeDashboard.Complete" xml:space="preserve"><value>Complete your runner</value></data>
   <data name="LifeDashboard.Continue" xml:space="preserve"><value>Continue your story</value></data>
   <data name="LifeDashboard.Review" xml:space="preserve"><value>Review exact Core effects before confirming any change.</value></data>
+  <data name="LifeCompletion.ShowDetails" xml:space="preserve"><value>Show calculation details and sources</value></data>
+  <data name="LifeCompletion.HideDetails" xml:space="preserve"><value>Hide calculation details and sources</value></data>
+  <data name="LifeCompletion.QualityKarma" xml:space="preserve"><value>Quality Karma adjustment</value></data>
+  <data name="LifeCompletion.MagicKarma" xml:space="preserve"><value>Magic / Resonance Karma</value></data>
+  <data name="LifeCompletion.ContactKarma" xml:space="preserve"><value>Contact Karma</value></data>
+  <data name="LifeCompletion.CreationFunding" xml:space="preserve"><value>Creation funds</value></data>
+  <data name="LifeCompletion.ResourceRounding" xml:space="preserve"><value>Resource Karma rounding</value></data>
+  <data name="LifeCompletion.CareerKarma" xml:space="preserve"><value>Karma carried into Career</value></data>
+  <data name="LifeCompletion.NuyenCarried" xml:space="preserve"><value>Unspent nuyen carried into Career</value></data>
+  <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Rolled starting cash</value></data>
+  <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creation → Career</value></data>
+  <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
 </root>

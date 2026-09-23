@@ -380,12 +380,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         if (Quote.FinalizationBudget is { } budget)
             Body(CreationAllocationStrings.Format("LifeCompletion.Carryover", "Career: {0} Karma, {1:N2} ¥. Discarded: {2} Karma, {3:N2} ¥.",
                 budget.KarmaCarried, budget.CareerNuyen, budget.KarmaDiscarded, budget.NuyenDiscarded));
-        foreach (var delta in Quote.FinalizationPlan?.OrderedDeltas ?? [])
-        {
-            Body(delta.Kind + " · " + delta.TargetId + ": " + delta.BeforeValue + " → " + delta.AfterValue);
-            Body(CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost));
-            Body(string.Join(" · ", delta.SourceAnchorIds));
-        }
+        CompletionChanges(Quote);
         bool confirmed = false, saving = false;
         var acknowledgement = new Switch { AutomationId = "life-completion-confirmed" };
         Body(LifeCopy("Confirm", "Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached."));
@@ -449,5 +444,97 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         });
         acknowledgement.Toggled += (_, args) =>
         { if (!saving && Current(render, currentAppearance)) { confirmed = args.Value; confirmButton.IsEnabled = confirmed && _session.CanConfirm; } };
+    }
+
+    private void CompletionChanges(CharacterCreationFoundationFinalizationPreview quote)
+    {
+        var deltas = quote.FinalizationPlan?.OrderedDeltas ?? [];
+        foreach (var delta in deltas)
+        {
+            Body(ReviewChange(quote, delta), "life-change-" + delta.Order);
+            if (delta.KarmaCost != 0 || delta.NuyenCost != 0)
+                Body(CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost), "life-cost-" + delta.Order);
+        }
+
+        // Presentation only: never request another preview or rebuild this page
+        // just to inspect sources. The acknowledgement remains a separate action.
+        var details = new VerticalStackLayout { AutomationId = "life-calculation-details", IsVisible = false, Spacing = 10 };
+        var toggle = NativeTheme.SecondaryButton(LifeCopy("ShowDetails", "Show calculation details and sources"));
+        toggle.AutomationId = "life-toggle-calculation-details";
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        toggle.Clicked += (_, _) =>
+        {
+            if (!toggle.IsEnabled || !_body.IsEnabled || !Current(render, appearance)
+                || !_session.Reviewed || !ReferenceEquals(_session.Preview, quote)) return;
+            if (details.Children.Count == 0)
+                foreach (var delta in deltas)
+                {
+                    var line = NativeTheme.Body(delta.Kind + " · " + delta.TargetId + ": " + delta.BeforeValue + " → " + delta.AfterValue
+                        + "\n" + CreationKarmaCopy.DeltaCost(delta.KarmaCost, delta.NuyenCost)
+                        + "\n" + string.Join(" · ", delta.SourceAnchorIds));
+                    line.AutomationId = "life-calculation-" + delta.Order;
+                    details.Add(line);
+                }
+            details.IsVisible = !details.IsVisible;
+            toggle.Text = details.IsVisible ? LifeCopy("HideDetails", "Hide calculation details and sources")
+                : LifeCopy("ShowDetails", "Show calculation details and sources");
+        };
+        _body.Add(toggle);
+        _body.Add(details);
+    }
+
+    internal static string ReviewChange(CharacterCreationFoundationFinalizationPreview quote, CharacterCreationFinalizationDelta delta)
+    {
+        string label = delta.Kind switch
+        {
+            CharacterCreationFinalizationDeltaKinds.Attribute => CreationAllocationStrings.AttributeName(delta.TargetId),
+            CharacterCreationFinalizationDeltaKinds.Metatype => CreationKarmaCopy.Metatype,
+            CharacterCreationFinalizationDeltaKinds.Skill => SkillLabel(),
+            CharacterCreationFinalizationDeltaKinds.SkillGroup => quote.SkillsQuote?.Groups
+                .SingleOrDefault(row => row.Allocation.GroupId == delta.TargetId)?.Name ?? delta.TargetId,
+            CharacterCreationFinalizationDeltaKinds.Gear => quote.GearQuote?.Lines
+                .SingleOrDefault(row => "gear:" + row.OptionId == delta.DeltaId)?.Name ?? delta.TargetId,
+            CharacterCreationFinalizationDeltaKinds.Quality => delta.TargetId == "qualities-karma-adjustment"
+                ? LifeCopy("QualityKarma", "Quality Karma adjustment") : CreationKarmaCopy.Qualities,
+            CharacterCreationFinalizationDeltaKinds.MagicResonance => delta.TargetId == "magic-karma"
+                ? LifeCopy("MagicKarma", "Magic / Resonance Karma") : CreationKarmaCopy.Magic,
+            CharacterCreationFinalizationDeltaKinds.Build => delta.TargetId == "contacts-karma"
+                ? LifeCopy("ContactKarma", "Contact Karma") : delta.DeltaId.StartsWith("contact:", StringComparison.Ordinal)
+                    ? CreationKarmaCopy.Contacts : delta.TargetId,
+            CharacterCreationFinalizationDeltaKinds.Resources => delta.TargetId switch
+            {
+                "startingnuyen" => LifeCopy("CreationFunding", "Creation funds"),
+                "resource-karma-rounding" => LifeCopy("ResourceRounding", "Resource Karma rounding"),
+                "karma" => LifeCopy("CareerKarma", "Karma carried into Career"),
+                "nuyen-carried" => LifeCopy("NuyenCarried", "Unspent nuyen carried into Career"),
+                "lifestyle-starting-nuyen" => LifeCopy("StartingCash", "Rolled starting cash"),
+                _ => delta.DeltaId.StartsWith("lifestyle:", StringComparison.Ordinal) ? CreationKarmaCopy.Lifestyles : delta.TargetId
+            },
+            _ => delta.TargetId
+        };
+        if (delta.Kind == CharacterCreationFinalizationDeltaKinds.Lifecycle && delta.TargetId == "created"
+            && delta.BeforeValue == "False" && delta.AfterValue == "True")
+            return LifeCopy("EnterCareer", "Creation → Career");
+        string? after = delta.Kind == CharacterCreationFinalizationDeltaKinds.Skill && delta.AfterValue == "native"
+            ? LifeCopy("NativeLanguage", "Native language") : delta.AfterValue;
+        return string.IsNullOrEmpty(delta.BeforeValue)
+            ? label + ": " + after : label + ": " + delta.BeforeValue + " → " + after;
+
+        string SkillLabel()
+        {
+            foreach (var row in quote.SkillsQuote?.Skills ?? [])
+            {
+                var source = quote.SkillsCatalog?.ActiveSkills.Concat(quote.SkillsCatalog.KnowledgeSkills)
+                    .SingleOrDefault(option => option.Kind == row.Allocation.Kind && option.SourceSkillId == row.Allocation.SourceSkillId);
+                if (source is null) continue;
+                string identity = $"life-module-skill:{source.Kind}:{source.SourceSkillId}"
+                    + (source.IsExotic ? ":" + row.Allocation.SpecializationOptionId : "");
+                if (identity != delta.TargetId) continue;
+                string? specialization = source.Specializations.SingleOrDefault(option => option.OptionId == row.Allocation.SpecializationOptionId)?.Name;
+                return specialization is null ? row.Name : row.Name + " (" + specialization + ")";
+            }
+            // Unknown identities stay explicit; a similar source is not a match.
+            return delta.TargetId;
+        }
     }
 }

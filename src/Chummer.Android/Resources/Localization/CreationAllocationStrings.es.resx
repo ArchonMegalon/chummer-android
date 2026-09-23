@@ -830,4 +830,16 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="LifeDashboard.Complete" xml:space="preserve"><value>Completar tu runner</value></data>
   <data name="LifeDashboard.Continue" xml:space="preserve"><value>Continuar tu historia</value></data>
   <data name="LifeDashboard.Review" xml:space="preserve"><value>Revisa los efectos exactos de Core antes de confirmar cualquier cambio.</value></data>
+  <data name="LifeCompletion.ShowDetails" xml:space="preserve"><value>Mostrar cálculos y fuentes</value></data>
+  <data name="LifeCompletion.HideDetails" xml:space="preserve"><value>Ocultar cálculos y fuentes</value></data>
+  <data name="LifeCompletion.QualityKarma" xml:space="preserve"><value>Ajuste de Karma por cualidades</value></data>
+  <data name="LifeCompletion.MagicKarma" xml:space="preserve"><value>Karma de magia / resonancia</value></data>
+  <data name="LifeCompletion.ContactKarma" xml:space="preserve"><value>Karma de contactos</value></data>
+  <data name="LifeCompletion.CreationFunding" xml:space="preserve"><value>Fondos de creación</value></data>
+  <data name="LifeCompletion.ResourceRounding" xml:space="preserve"><value>Redondeo de Karma de recursos</value></data>
+  <data name="LifeCompletion.CareerKarma" xml:space="preserve"><value>Karma conservado para la carrera</value></data>
+  <data name="LifeCompletion.NuyenCarried" xml:space="preserve"><value>Nuyen no gastados conservados para la carrera</value></data>
+  <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Dinero inicial obtenido con dados</value></data>
+  <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creación → Carrera</value></data>
+  <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
 </root>
