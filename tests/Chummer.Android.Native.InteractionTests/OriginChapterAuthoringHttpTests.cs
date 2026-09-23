@@ -125,6 +125,21 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.Owner.Capture() == owner && fixture.Account.Snapshot.IsLinked
                 && JsonSerializer.Serialize(fixture.Metadata.Inner.Rows) == originalCredentials,
                 "Chapter conflict cleared or rotated account credentials.");
+            fixture.ChapterResponse = (_, _) => new(HttpStatusCode.ServiceUnavailable);
+            before = fixture.ChapterRequests;
+            var unavailableRead = await transport.ReadChapterAsync(owner, source);
+            var unavailableCreate = await transport.RequestChapterAsync(owner, source, true);
+            var unavailableAccept = await transport.AcceptChapterAsync(owner, source,
+                ready.ProviderReceiptDigest!, ready.DraftText, true);
+            Require(unavailableRead.Outcome == AndroidOriginChapterOutcome.Unavailable
+                && unavailableCreate.Outcome == AndroidOriginChapterOutcome.Unavailable
+                && unavailableAccept.Outcome == AndroidOriginChapterOutcome.Unavailable
+                && unavailableRead.Job is null && unavailableCreate.Job is null && unavailableAccept.Job is null
+                && !unavailableRead.UnknownRemoteOutcome && unavailableCreate.UnknownRemoteOutcome
+                && unavailableAccept.UnknownRemoteOutcome && fixture.ChapterRequests == before + 3
+                && fixture.Owner.Capture() == owner && fixture.Account.Snapshot.IsLinked
+                && JsonSerializer.Serialize(fixture.Metadata.Inner.Rows) == originalCredentials,
+                "Temporary Hub unavailability revoked credentials, exposed a job, retried, or hid an uncertain write.");
         }
         foreach (bool signing in new[] { true, false })
         foreach (bool accept in new[] { true, false })
@@ -149,7 +164,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(result.Outcome == AndroidOriginChapterOutcome.Unauthorized && result.Job is null
                 && fixture.ChapterRequests == (signing ? 0 : 1), "Retired A-to-B-to-A owner accepted a chapter.");
         }
-        Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, conflict and owner ABA");
+        Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, conflict, unavailable authority and owner ABA");
     }
 }
 
