@@ -12,19 +12,30 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         runtime = (NATIVE / "OriginDossierLifeModulePhoneRuntime.cs").read_text(encoding="utf-8")
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
 
-        self.assertIn("AddSingleton<ILifeModuleDecisionAuthority>", program)
-        self.assertIn("CharacterCreationFoundationLifeModuleDecisionAuthority", program)
-        self.assertIn("AddSingleton<LifeModuleOriginDossierInteractionService>", program)
+        # Core's runtime registers the exact-owner service. Android must not
+        # shadow it with a local-only decision authority for linked runners.
+        self.assertIn("AddChummerLocalRuntimeClient(", program)
+        self.assertNotIn("AddSingleton<ILifeModuleDecisionAuthority>", program)
+        self.assertNotIn("AddSingleton<LifeModuleOriginDossierInteractionService>", program)
         self.assertIn("AddSingleton<OriginDossierLifeModulePhoneRuntime>", program)
+        self.assertIn("IOwnerBoundLifeModuleOriginService interaction", runtime)
         self.assertIn("IOriginDossierDraftTimelineStore", runtime)
-        self.assertIn("_interaction.Restore(checkpoint)", runtime)
+        self.assertIn("_interaction.Restore(owner, persisted)", runtime)
+        self.assertIn("_store.LoadAsync(owner.Owner.NormalizedValue, workspaceId", runtime)
+        self.assertIn("if (!_interaction.IsCurrent(owner)) return StaleOwner();", runtime)
+        # Core Prepare includes its own fresh Restore; the phone does not
+        # repeat the expensive catalog projection before delegating to it.
+        self.assertIn("_interaction.Prepare(owner, checkpoint, choiceId, followUpValues)", runtime)
         self.assertIn("explicitlyConfirmed: true", runtime)
         self.assertIn("checkpoint.BoundSeedDigest", runtime)
-        self.assertIn("_store.DeleteAsync", runtime)
+        self.assertNotIn("_store.DeleteAsync", runtime)
+        self.assertIn("_store.SaveAsync(advance.Checkpoint, CancellationToken.None)", runtime)
+        self.assertIn("StoryCheckpoint: checkpoint", runtime)
         self.assertIn("BoundContentDigest: checkpoint.BoundContentDigest", runtime)
         self.assertIn("BoundSourceDigest: checkpoint.BoundSourceDigest", runtime)
         self.assertIn("BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest", runtime)
-        self.assertIn("BindCurrentLifeModuleBudget(result)", coordinator)
+        self.assertIn("BindCurrentLifeModuleBudgetAsync(original, result)", coordinator)
+        self.assertIn("await Task.Run(() => service.Load(owner, id))", coordinator)
         self.assertIn("foundation.LifeModuleBudget.IsExact", coordinator)
         self.assertIn("foundation.Binding.RawCharacterXmlDigest", coordinator)
         self.assertIn("foundation.Binding.SourceDigest", coordinator)
@@ -69,6 +80,18 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("_interaction.Confirm(", runtime)
         self.assertNotIn("IWorkspaceStore", runtime)
         self.assertNotIn("ReplaceWorkspace", runtime)
+
+    def test_confirmation_refreshes_every_accepted_turn_not_only_terminal(self):
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        confirmation = coordinator[coordinator.index("internal async Task<OriginDossierLifeModulePhoneResult> ConfirmSr5LifeModuleOriginAsync"):]
+        confirmation = confirmation[:confirmation.index("public CharacterCreationFoundationInteractionPrepareResult")]
+        self.assertIn("if (result.IsSuccess)", confirmation)
+        self.assertNotIn("result.IsSuccess && result.Completed", confirmation)
+        self.assertIn("return await BindCurrentLifeModuleBudgetAsync(State, result)", confirmation)
+        self.assertIn("IOwnerBoundWorkspaceRefreshPresenter refresh", confirmation)
+        self.assertIn("refresh.LoadAsync(owner, workspaceId, CancellationToken.None)", confirmation)
+        self.assertIn("IsNativePersistenceViewCurrent(original, original.ContentRevision)", confirmation)
+        self.assertIn("IsNativePersistenceOwnerCurrent(owner)", confirmation)
 
     def test_phone_renders_exact_core_budget_and_source_anchors(self):
         page = (NATIVE / "OriginDossierLifeModuleDecisionPage.cs").read_text(encoding="utf-8")

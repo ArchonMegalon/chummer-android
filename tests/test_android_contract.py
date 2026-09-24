@@ -274,16 +274,16 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("578f1658e32091944e62ef03a9c02dc252c1bc2d",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("12236cdfe828f147bf3b8623f19e6cbd3fbaca3f",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d",
-                    "1d8cf694d0412b3bd9f4a241fb95244fad341160",
-                    "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d",
+                    "5160e78a60bcefd952e8720aae6032a127c3a755",
+                    "1e477c0f5e036eed241f4fe723a0e2eda30c51dd",
+                    "5160e78a60bcefd952e8720aae6032a127c3a755",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("e35db6feca8f194161302064a9f77d4f8e60fe14",)),
+            ("ArchonMegalon/chummer6-hub", ("42d0bfbb117ab6250e8b0512dd92585916c6469f",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("f3c955488210c69abdf96689dd3b3d67afba80d2",)),
@@ -496,6 +496,33 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("Coordinator.BeginAccountLinkAsync()", home)
         self.assertIn('"Unlink this device?"', privacy)
         self.assertIn('"Account & privacy"', more + privacy)
+
+    def test_keystore_reopens_java_private_keys_not_managed_wrapper_types(self) -> None:
+        keystore = (
+            PROJECT / "Platforms" / "Android" / "AndroidKeystoreDeviceKeyStore.cs"
+        ).read_text(encoding="utf-8")
+        # Native regression: GetKey returned a valid Java private key through
+        # an IKey wrapper, so a C# `is IPrivateKey` rejected the resumed link.
+        # Keep both lookup and signing on Android's runtime-checked cast. The
+        # emulator smoke supplies behavioral coverage; this guards the source
+        # boundary without pretending the managed fake store exercises JNI.
+        self.assertIn("using Android.Runtime;", keystore)
+        self.assertNotIn("key is not IPrivateKey", keystore)
+        probe = keystore[
+            keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync"):
+            keystore.index("public Task<byte[]> SignAsync")
+        ]
+        signing = keystore[
+            keystore.index("public Task<byte[]> SignAsync"):
+            keystore.index("public Task DeleteAsync")
+        ]
+        for operation in (probe, signing):
+            self.assertIn("using IPrivateKey? privateKey = key.JavaCast<IPrivateKey>();", operation)
+            self.assertIn("if (privateKey is null)", operation)
+            self.assertIn("catch (InvalidCastException", operation)
+            self.assertIn("AndroidDeviceKeyAvailability.Invalidated", operation)
+            self.assertIn("RequireNonExportable(privateKey)", operation)
+            self.assertIn("signer.InitSign(privateKey)", operation)
 
     def test_account_unlink_failure_retains_retryable_grant_authority(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
@@ -2613,6 +2640,34 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("verified app links", combined)
         self.assertNotIn("queued, synced", combined)
 
+    def test_troll_launcher_uses_transparent_foreground_and_separate_unmasked_background(self) -> None:
+        project = ET.parse(PROJECT / "Chummer.Android.csproj")
+        icons = project.getroot().findall(".//MauiIcon")
+        self.assertEqual(1, len(icons))
+        icon = icons[0]
+        foreground = PROJECT / icon.attrib["ForegroundFile"]
+        self.assertEqual("appiconfg.svg", foreground.name)
+        artwork = ET.parse(foreground).getroot()
+        svg = "{http://www.w3.org/2000/svg}"
+        self.assertEqual(svg + "svg", artwork.tag)
+        self.assertEqual("0 0 2048 2048", artwork.attrib["viewBox"])
+        self.assertEqual(artwork.attrib["width"], artwork.attrib["height"])
+        self.assertEqual(208, len(artwork.findall(svg + "path")))
+        self.assertEqual(14, len(artwork.findall(".//" + svg + "linearGradient")))
+        self.assertEqual({svg + "defs", svg + "path"}, {shape.tag for shape in artwork})
+        self.assertFalse(artwork.findall(".//" + svg + "image"), "keep the user's vector, not a raster replacement")
+        self.assertFalse(artwork.findall(".//" + svg + "script"))
+        for element in artwork.iter():
+            self.assertFalse(any(key.lower().endswith("href") for key in element.attrib), "icon must be self-contained")
+        self.assertGreater(float(icon.attrib["ForegroundScale"]), 0)
+        self.assertLessEqual(float(icon.attrib["ForegroundScale"]), 0.60)
+        background = ET.parse(PROJECT / icon.attrib["Include"]).getroot()
+        shapes = list(background)
+        self.assertEqual(1, len(shapes), "the old S/hexagon must not remain behind the troll")
+        self.assertEqual("{http://www.w3.org/2000/svg}rect", shapes[0].tag)
+        self.assertEqual(icon.attrib["Color"], shapes[0].attrib["fill"])
+        self.assertNotIn("rx", shapes[0].attrib, "Android owns the adaptive corner mask")
+
     def test_store_graphics_have_upload_dimensions(self) -> None:
         assets = REPO / "play" / "assets"
         feature = self._png_header(assets / "feature-graphic-1024x500.png")
@@ -2620,6 +2675,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual((1024, 500), feature[:2])
         self.assertNotIn(feature[2], {4, 6}, "feature graphic must not have alpha")
         self.assertEqual((512, 512), icon[:2])
+        self.assertNotIn(icon[2], {4, 6}, "store icon must be opaque; Play supplies its own mask")
 
         phones = sorted((assets / "screenshots").glob("phone-*.png"))
         tablets = sorted((assets / "screenshots").glob("tablet-*.png"))

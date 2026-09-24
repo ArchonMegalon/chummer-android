@@ -3,6 +3,7 @@ using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
 using Chummer.Application.Characters;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
@@ -11,6 +12,7 @@ using Chummer.Infrastructure.Workspaces;
 using Chummer.Infrastructure.Files;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
+using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -560,7 +562,9 @@ internal static partial class AfterRunAuthorityHarness
             bool productionCreationOverview = false,
             Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null,
             Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
-            Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null)
+            Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
+            Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
+            Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -625,7 +629,8 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetService<ICharacterCreationMagicResonanceService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                         ownerBoundCreationFinalizationService: productionFinalization,
-                        ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>())
+                        ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
+                        ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
@@ -690,7 +695,15 @@ internal static partial class AfterRunAuthorityHarness
                             ? _provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()
                             : prerequisiteDecorator(_provider.GetRequiredService<IOwnerBoundCharacterCreationPrerequisiteService>()),
                     ownerBoundCreationKarmaService: karmaDecorator?.Invoke(
-                        _provider.GetRequiredService<IOwnerBoundCharacterCreationKarmaMetatypeService>()));
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationKarmaMetatypeService>()),
+                    sr6CreationFoundationService: sr6Decorator?.Invoke(_provider.GetRequiredService<ISr6CreationFoundationService>()),
+                    lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
+                    lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
+                    originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
+                        _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
+                        new FileOriginDossierDraftTimelineStore(StateDirectory)),
+                    originBookReadings: new OriginBookReadingStore(StateDirectory));
             }
             catch
             {

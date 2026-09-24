@@ -425,6 +425,40 @@ def test_acceptance_rejects_mutation_replay_and_receipt_tamper():
         driver.validate_acceptance_record(initial, applied, imported, authority)
 
 
+@pytest.mark.parametrize("corruption", (None, "missing-chapter", "duplicate-chapter", "pending", "owner", "decision", "digest"))
+def test_completed_book_retains_exact_accepted_chapter(corruption):
+    snapshot = initial_checkpoint()
+    value = snapshot.payload
+    value["workspaceRevision"] = 2
+    turn = value["projection"]["currentTurn"]
+    turn.update(isTerminal=True, legalChoices=[], acceptedDecisionIds=["decision-1"])
+    chapter = {
+        "throughAcceptedDecisionId": "decision-1",
+        "visibleMarkdown": "The accepted scene.",
+        "chapterDigest": digest("chapter-1"),
+    }
+    value["projection"]["visibleChapters"] = [chapter]
+    value["timelineChapterDigests"] = [chapter["chapterDigest"]]
+    receipt = {
+        "workspaceRevision": 2, "decisionId": "decision-1",
+        "contentDigest": value["boundContentDigest"], "sourceDigest": value["boundSourceDigest"],
+        "rulesDigest": value["boundRulesDigest"], "runtimeDigest": value["boundRuntimeDigest"],
+        "mechanicsSnapshotDigest": value["boundMechanicsSnapshotDigest"],
+    }
+    if corruption == "missing-chapter": value["projection"]["visibleChapters"] = []
+    if corruption == "duplicate-chapter": value["projection"]["visibleChapters"].append(copy.deepcopy(chapter))
+    if corruption == "pending": value["pendingPreview"] = {"previewDigest": digest("unexpected")}
+    if corruption == "owner": value["ownerId"] = "someone-else"
+    if corruption == "decision": chapter["throughAcceptedDecisionId"] = "another-decision"
+    value["checkpointDigest"] = driver.checkpoint_digest(value)
+    if corruption == "digest": value["checkpointDigest"] = digest("forged")
+    if corruption is None:
+        driver.validate_completed_checkpoint(snapshot, value["workspaceId"], receipt)
+    else:
+        with pytest.raises(RuntimeError):
+            driver.validate_completed_checkpoint(snapshot, value["workspaceId"], receipt)
+
+
 @pytest.mark.parametrize("mutation", ("source-digest", "foreign-fact-anchor"))
 def test_acceptance_rejects_receipt_detached_from_reviewed_turn(mutation):
     _, authority = valid_initial()
@@ -482,7 +516,7 @@ def test_duplicate_json_key_is_rejected():
 
 def test_fixture_is_exact_sr5_life_modules_creation_runner():
     root = driver.fixture_root(driver.FIXTURE)
-    assert root.findtext("buildmethod") == "LifeModules"
+    assert root.findtext("buildmethod") == "LifeModule"
     assert root.findtext("created") == "False"
 
 

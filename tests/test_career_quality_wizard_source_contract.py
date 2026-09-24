@@ -57,8 +57,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(content)
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
-        self.assertEqual(core.group(1), "d1c6e3d22360ce61fd32ed58cb571ac2b50b070d")
-        self.assertEqual(presentation.group(1), "578f1658e32091944e62ef03a9c02dc252c1bc2d")
+        self.assertEqual(core.group(1), "5160e78a60bcefd952e8720aae6032a127c3a755")
+        self.assertEqual(presentation.group(1), "12236cdfe828f147bf3b8623f19e6cbd3fbaca3f")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
@@ -223,9 +223,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         self.assertEqual(
-            manifest["coreRevision"], "1d8cf694d0412b3bd9f4a241fb95244fad341160"
+            manifest["coreRevision"], "1e477c0f5e036eed241f4fe723a0e2eda30c51dd"
         )
-        self.assertEqual(manifest["bundleDigest"], "66c8f82cf338d359ac8a8f1ff5bafc73ec208a36dbc87c40acdb7fa9b09cf2be")
+        self.assertEqual(manifest["bundleDigest"], "33e154dbca9513af4eab7190a3ee9e10851208e1f18d8a705ad931931dbde914")
         self.assertEqual(len(manifest["files"]), 330)
         runtime_core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)
         self.assertIsNotNone(runtime_core)

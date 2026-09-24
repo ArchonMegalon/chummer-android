@@ -13,6 +13,42 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--life-module-linked-owner-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleLinkedOwnerStartAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--life-module-save-boundaries-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleToolbarSaveBoundariesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--origin-chapter-http")
+        {
+            await AfterRunAuthorityHarness.RunOriginChapterHttpCasesAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--life-module-pages-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleCompletionPagesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--life-module-completion-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleCompletionAsync(args[1]);
+            await AfterRunAuthorityHarness.RunLifeModuleCompletionPagesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--sr6-foundation-content-root")
+        {
+            await AfterRunAuthorityHarness.RunSr6FoundationAsync(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--origin-book-continuity")
+        {
+            await OriginDossierBookRuntimeTests.RunAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-starting-cash-content-root")
         {
             await AfterRunAuthorityHarness.RunStartingCashPhonePagesAsync(args[1]);

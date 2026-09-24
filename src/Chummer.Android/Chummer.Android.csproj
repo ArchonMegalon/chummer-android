@@ -10,8 +10,8 @@
     <MauiVersion>10.0.20</MauiVersion>
     <ApplicationTitle>Chummer</ApplicationTitle>
     <ApplicationId>com.myexternalbrain.chummer</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0-preview.28</ApplicationDisplayVersion>
-    <ApplicationVersion>28</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0-preview.29</ApplicationDisplayVersion>
+    <ApplicationVersion>29</ApplicationVersion>
     <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
     <TargetSdkVersion>36</TargetSdkVersion>
     <AndroidMinSdkVersion>24</AndroidMinSdkVersion>
@@ -93,7 +93,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#102426" />
+    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" ForegroundScale="0.58" Color="#102426" />
     <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#102426" BaseSize="512,512" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/data/**"

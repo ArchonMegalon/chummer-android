@@ -497,13 +497,37 @@ def read_checkpoint(device: shared.Device, workspace_id: str) -> JsonSnapshot:
     )
 
 
-def require_checkpoint_absent(device: shared.Device, workspace_id: str) -> None:
-    result = device.run(
-        "shell", "run-as", shared.PACKAGE, "test", "!", "-e",
-        checkpoint_path(workspace_id),
-    )
-    if result.returncode != 0:
-        raise RuntimeError("Completed Origin draft checkpoint was not deleted")
+def validate_completed_checkpoint(
+    snapshot: JsonSnapshot, workspace_id: str, receipt: dict[str, object]
+) -> None:
+    value = snapshot.payload
+    require_exact_fields(value, CHECKPOINT_FIELDS, "Saved Origin book")
+    if (value["schema"] != DRAFT_SCHEMA or value["ownerId"] != OWNER_ID
+            or value["workspaceId"] != workspace_id
+            or value["workspaceRevision"] != receipt["workspaceRevision"]
+            or value["pendingPreview"] is not None):
+        raise RuntimeError("Saved Origin book identity or pending state differs")
+    projection = require_object(value["projection"], "Saved projection")
+    turn = require_object(projection.get("currentTurn"), "Saved turn")
+    if (turn.get("isTerminal") is not True or turn.get("legalChoices") != []
+            or turn.get("acceptedDecisionIds") != [receipt["decisionId"]]):
+        raise RuntimeError("Saved Origin book is not the accepted terminal turn")
+    chapters = require_array(projection.get("visibleChapters"), "Saved chapters")
+    if len(chapters) != 1:
+        raise RuntimeError("Saved Origin book lost or duplicated its accepted chapter")
+    chapter = require_object(chapters[0], "Saved chapter")
+    if (chapter.get("throughAcceptedDecisionId") != receipt["decisionId"]
+            or not chapter.get("visibleMarkdown")
+            or value["timelineChapterDigests"] != [chapter.get("chapterDigest")]):
+        raise RuntimeError("Saved Origin chapter differs from the accepted decision")
+    for checkpoint_key, receipt_key in (
+        ("boundContentDigest", "contentDigest"), ("boundSourceDigest", "sourceDigest"),
+        ("boundRulesDigest", "rulesDigest"), ("boundRuntimeDigest", "runtimeDigest"),
+        ("boundMechanicsSnapshotDigest", "mechanicsSnapshotDigest"),
+    ):
+        fixed_digest_equal(value[checkpoint_key], receipt[receipt_key], checkpoint_key)
+    fixed_digest_equal(value["boundSeedDigest"], projection.get("seedDigest"), "Book seed")
+    fixed_digest_equal(value["checkpointDigest"], checkpoint_digest(value), "Book checkpoint")
 
 
 def read_workspace_record(
@@ -898,10 +922,10 @@ def fixture_root(path: Path) -> ET.Element:
     expected = {
         "alias": FIXTURE_ALIAS,
         "metatype": "Human",
-        "buildmethod": "LifeModules",
+        "buildmethod": "LifeModule",
         "created": "False",
         "gameedition": "SR5",
-        "settings": "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+        "settings": "8a31af6d-7137-4284-872b-7d8087e156c6",
     }
     for key, value in expected.items():
         if root.findtext(key) != value:
@@ -986,11 +1010,12 @@ def prove_journey(
         surface_name="Creation dashboard after Origin confirmation",
     )
 
-    require_checkpoint_absent(device, imported.workspace_id)
     applied_record = read_workspace_record(device, imported.workspace_id)
     receipt = validate_acceptance_record(
         initial_record, applied_record, imported, initial_turn
     )
+    completed_checkpoint = read_checkpoint(device, imported.workspace_id)
+    validate_completed_checkpoint(completed_checkpoint, imported.workspace_id, receipt)
 
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device, timeout=120)
@@ -1007,7 +1032,8 @@ def prove_journey(
     validate_acceptance_record(
         initial_record, same_process_record, imported, initial_turn
     )
-    require_checkpoint_absent(device, imported.workspace_id)
+    if read_checkpoint(device, imported.workspace_id).raw_bytes != completed_checkpoint.raw_bytes:
+        raise RuntimeError("Same-process reopen changed the saved Origin book")
     device.capture("life-module-nationality-origin-same-process-reopen")
 
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
@@ -1023,7 +1049,8 @@ def prove_journey(
     validate_acceptance_record(
         initial_record, restored_record, imported, initial_turn
     )
-    require_checkpoint_absent(device, imported.workspace_id)
+    if read_checkpoint(device, imported.workspace_id).raw_bytes != completed_checkpoint.raw_bytes:
+        raise RuntimeError("Process restart changed the saved Origin book")
     shared.open_creation_dashboard(device)
     final_record = read_workspace_record(device, imported.workspace_id)
     if final_record.raw_bytes != applied_record.raw_bytes:

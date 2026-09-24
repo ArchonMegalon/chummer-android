@@ -1,7 +1,51 @@
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
+using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
+
+/// <summary>
+/// Read-only view of a Core-validated, locally retained chapter stream. A
+/// terminal decision is not a claim that the whole character or book is done.
+/// </summary>
+internal sealed class OriginDossierBookPage : ContentPage
+{
+    public OriginDossierBookPage(LifeModuleOriginDossierDraftCheckpoint checkpoint, string activeAppLocale)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        // Reading an existing book must survive a phone language change. Show
+        // its recorded language; do not silently translate or rewrite chapters.
+        OriginDossierNarrativeLocaleBinding locale = OriginDossierNarrativeLocalePolicy.Resolve(
+            checkpoint.Projection.CurrentTurn.Locale);
+        AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve(activeAppLocale);
+        Title = copy["Origin.ReadBook"];
+        AutomationId = "origin-life-book";
+        var body = new VerticalStackLayout { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
+        body.Add(NativeTheme.Eyebrow(copy["Origin.BookDraft"]));
+        body.Add(NativeTheme.Title(checkpoint.Projection.CurrentTurn.RunnerDisplayName));
+        body.Add(NativeTheme.Body(copy.Format("Origin.BookLanguage", locale.FormattingLocale), NativeTheme.Muted));
+        body.Add(NativeTheme.Body(copy["Origin.BookSavedChapters"], NativeTheme.Muted));
+        if (checkpoint.Projection.CurrentTurn.StageId == CharacterCreationLifeModuleStageIds.SelectionFinished)
+        {
+            Label saved = NativeTheme.Body(copy["Origin.ModuleSelectionSaved"], NativeTheme.Ink);
+            saved.AutomationId = "origin-life-module-selection-saved";
+            body.Add(saved);
+        }
+        foreach (OriginNarrativeChapterProjection chapter in checkpoint.Projection.VisibleChapters)
+        {
+            var content = new VerticalStackLayout { Spacing = 8 };
+            content.Add(NativeTheme.Title(chapter.Title, 21));
+            Label prose = NativeTheme.Body(OriginBookChapterText.Render(checkpoint.Projection, chapter));
+            prose.AutomationId = $"origin-life-book-chapter-{chapter.Sequence}";
+            content.Add(prose);
+            body.Add(NativeTheme.Card(content));
+        }
+        body.Add(NativeTheme.Body(copy.Format("Origin.BookMetadata",
+            OriginTechnicalPublicationMetadata.ChummerRunId), NativeTheme.Muted));
+        Content = new ScrollView { Content = body };
+    }
+}
 
 public sealed class OriginDossierPage : NativePageBase
 {
@@ -31,6 +75,13 @@ public sealed class OriginDossierPage : NativePageBase
         }
 
         string identity = FirstNonBlank(profile.Alias, profile.Name, "Not set");
+        if (Coordinator.CanReadRetainedOriginBook())
+        {
+            AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve(System.Globalization.CultureInfo.CurrentUICulture.Name);
+            _body.Add(NativeTheme.NavigationRow(copy["Origin.ReadBook"], copy["Origin.BookSavedChapters"],
+                () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)),
+                automationId: "origin-dossier-retained-book"));
+        }
         _body.Add(NativeTheme.NavigationRow(
             "Identity",
             identity,

@@ -325,4 +325,521 @@
   <data name="Karma.RemovePowerPoint" xml:space="preserve"><value>Remove one power point</value></data>
   <data name="Karma.PowerLevel" xml:space="preserve"><value>{0} power points per level · selected levels: {1}</value></data>
   <data name="Karma.AddPowerLevel" xml:space="preserve"><value>Add one level</value></data>
+  <data name="Sr6.Title" xml:space="preserve"><value>SR6 foundation</value></data>
+  <data name="Sr6.Scope" xml:space="preserve"><value>Experimental SR6 Priority / Sum-to-Ten / Point Buy wizards. Save your choices, then open the saved overview to review completion separately. Missing selections or unsupported game statistics block completion. SR6 Career actions, Life Path and optional Karma creation remain unfinished.</value></data>
+  <data name="Sr6.Open" xml:space="preserve"><value>Choose SR6 foundation</value></data>
+  <data name="Sr6.OtherMethods" xml:space="preserve"><value>This SR6 build method can currently save an empty draft only. Its own creation steps are not available yet.</value></data>
+  <data name="Sr6.Metatype" xml:space="preserve"><value>Metatype</value></data>
+  <data name="Sr6.Talent" xml:space="preserve"><value>Talent</value></data>
+  <data name="Sr6.Preview" xml:space="preserve"><value>Review selection</value></data>
+  <data name="Sr6.Confirm" xml:space="preserve"><value>Confirm and save draft</value></data>
+  <data name="Sr6.Changed" xml:space="preserve"><value>Selection changed. Review again before saving.</value></data>
+  <data name="Sr6.Saved" xml:space="preserve"><value>SR6 choices saved. The runner is still a draft.</value></data>
+  <data name="Sr6.SavedReopen" xml:space="preserve"><value>Saved. Reopen the runner before continuing.</value></data>
+  <data name="Sr6.Stale" xml:space="preserve"><value>This page is no longer current. Return to the runner and reopen it; nothing is applied automatically.</value></data>
+  <data name="Sr6.Unknown" xml:space="preserve"><value>The save result could not be confirmed. Reopen the runner to check the saved draft. Do not repeat the save blindly.</value></data>
+  <data name="Sr6.ChooseAll" xml:space="preserve"><value>Choose all five priorities, a metatype and a talent.</value></data>
+  <data name="Sr6.UniqueRanks" xml:space="preserve"><value>Priority requires each rank A–E exactly once.</value></data>
+  <data name="Sr6.SumTen" xml:space="preserve"><value>Sum-to-Ten requires a total of ten priority points.</value></data>
+  <data name="Sr6.MetatypeRank" xml:space="preserve"><value>This metatype is unavailable at the selected metatype priority.</value></data>
+  <data name="Sr6.TalentRank" xml:space="preserve"><value>This talent is unavailable at the selected Magic/Resonance priority.</value></data>
+  <data name="Sr6.Budget" xml:space="preserve"><value>Attributes: {0} · Skills: {1} · Resources: {2:N0} ¥ · Adjustment: {3} · Base Magic: {4} · Base Resonance: {5}</value></data>
+  <data name="Sr6.Option.heritage" xml:space="preserve"><value>Metatype priority</value></data>
+  <data name="Sr6.Option.talent" xml:space="preserve"><value>Magic/Resonance priority</value></data>
+  <data name="Sr6.Option.attributes" xml:space="preserve"><value>Attribute priority</value></data>
+  <data name="Sr6.Option.skills" xml:space="preserve"><value>Skill priority</value></data>
+  <data name="Sr6.Option.resources" xml:space="preserve"><value>Resource priority</value></data>
+  <data name="Sr6.Option.human" xml:space="preserve"><value>Human</value></data>
+  <data name="Sr6.Option.elf" xml:space="preserve"><value>Elf</value></data>
+  <data name="Sr6.Option.dwarf" xml:space="preserve"><value>Dwarf</value></data>
+  <data name="Sr6.Option.ork" xml:space="preserve"><value>Ork</value></data>
+  <data name="Sr6.Option.troll" xml:space="preserve"><value>Troll</value></data>
+  <data name="Sr6.Option.mundane" xml:space="preserve"><value>Mundane</value></data>
+  <data name="Sr6.Option.magician" xml:space="preserve"><value>Magician</value></data>
+  <data name="Sr6.Option.aspected-magician" xml:space="preserve"><value>Aspected magician</value></data>
+  <data name="Sr6.Option.adept" xml:space="preserve"><value>Adept</value></data>
+  <data name="Sr6.Option.mystic-adept" xml:space="preserve"><value>Mystic adept</value></data>
+  <data name="Sr6.Option.technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Sr6.AttributeTitle" xml:space="preserve"><value>SR6 attributes</value></data>
+  <data name="Sr6.AttributeOpen" xml:space="preserve"><value>Allocate attribute points</value></data>
+  <data name="Sr6.FoundationRequired" xml:space="preserve"><value>Confirm the foundation before allocating attributes.</value></data>
+  <data name="Sr6.AttributeHelp" xml:space="preserve"><value>Assign normal and adjustment points separately. Unspent points can be saved in the draft. Qualities, Karma and augmentation are not included here.</value></data>
+  <data name="Sr6.AttributeResetWarning" xml:space="preserve"><value>Changing the foundation clears allocations, contacts, qualities, ability choices, Karma purchases, equipment and lifestyle in the next confirmed draft. Saved history remains intact.</value></data>
+  <data name="Sr6.AttributePoints" xml:space="preserve"><value>Attribute points</value></data>
+  <data name="Sr6.AdjustmentPoints" xml:space="preserve"><value>Adjustment points</value></data>
+  <data name="Sr6.AttributeRange" xml:space="preserve"><value>{0} · Base {1}, maximum {2}</value></data>
+  <data name="Sr6.AttributeBudget" xml:space="preserve"><value>Unspent attribute points: {0} · Unspent adjustment points: {1}</value></data>
+  <data name="Sr6.AttributeValue" xml:space="preserve"><value>{0}: {1} + {2} attribute + {3} adjustment = {4} (maximum {5})</value></data>
+  <data name="Sr6.AttributeInvalid" xml:space="preserve"><value>The attribute allocation is invalid. Reopen this step.</value></data>
+  <data name="Sr6.AttributePointKind" xml:space="preserve"><value>This attribute cannot use that kind of point.</value></data>
+  <data name="Sr6.AttributeMaximum" xml:space="preserve"><value>An attribute exceeds its metatype or talent maximum.</value></data>
+  <data name="Sr6.AttributeMaximumCount" xml:space="preserve"><value>Only one physical or mental attribute may reach its metatype maximum.</value></data>
+  <data name="Sr6.AttributeOverspend" xml:space="preserve"><value>You have assigned more attribute points than available.</value></data>
+  <data name="Sr6.AdjustmentOverspend" xml:space="preserve"><value>You have assigned more adjustment points than available.</value></data>
+  <data name="Sr6.Option.Body" xml:space="preserve"><value>Body</value></data>
+  <data name="Sr6.Option.Agility" xml:space="preserve"><value>Agility</value></data>
+  <data name="Sr6.Option.Reaction" xml:space="preserve"><value>Reaction</value></data>
+  <data name="Sr6.Option.Strength" xml:space="preserve"><value>Strength</value></data>
+  <data name="Sr6.Option.Willpower" xml:space="preserve"><value>Willpower</value></data>
+  <data name="Sr6.Option.Logic" xml:space="preserve"><value>Logic</value></data>
+  <data name="Sr6.Option.Intuition" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Sr6.Option.Charisma" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Sr6.Option.Edge" xml:space="preserve"><value>Edge</value></data>
+  <data name="Sr6.Option.Magic" xml:space="preserve"><value>Magic</value></data>
+  <data name="Sr6.Option.Resonance" xml:space="preserve"><value>Resonance</value></data>
+  <data name="Sr6.SkillTitle" xml:space="preserve"><value>SR6 skills</value></data>
+  <data name="Sr6.SkillOpen" xml:space="preserve"><value>Allocate skill points</value></data>
+  <data name="Sr6.SkillHelp" xml:space="preserve"><value>Spend pool points on skills and specialties. Only one skill may reach 6. Knowledge/languages and Karma increases have separate steps. Aptitude is not included yet. Availability is checked on review.</value></data>
+  <data name="Sr6.SkillAspect" xml:space="preserve"><value>Magical aspect</value></data>
+  <data name="Sr6.SkillSpecialization" xml:space="preserve"><value>Specialization (optional; one per skill)</value></data>
+  <data name="Sr6.SkillExoticSpecializations" xml:space="preserve"><value>Weapon types (separate with ; — first free)</value></data>
+  <data name="Sr6.SkillGmReview" xml:space="preserve"><value>Specializations are player-entered: review their scope with the GM. Saving does not record GM approval.</value></data>
+  <data name="Sr6.SkillBudget" xml:space="preserve"><value>Skill points spent: {0} · remaining: {1}</value></data>
+  <data name="Sr6.SkillValue" xml:space="preserve"><value>{0}: rating {1} + specializations {2} = {3} points · {4}</value></data>
+  <data name="Sr6.SkillInvalid" xml:space="preserve"><value>Check skill IDs, ratings (0–6) and specialization names.</value></data>
+  <data name="Sr6.SkillUnavailable" xml:space="preserve"><value>This talent does not provide access to this skill.</value></data>
+  <data name="Sr6.SkillAspectRequired" xml:space="preserve"><value>Select the magical aspect matching the skill.</value></data>
+  <data name="Sr6.SkillAstralPower" xml:space="preserve"><value>Save Astral Perception in the adept-power step before assigning Astral skill.</value></data>
+  <data name="Sr6.SkillMaximumCount" xml:space="preserve"><value>Only one skill may reach the creation maximum.</value></data>
+  <data name="Sr6.SkillOverspend" xml:space="preserve"><value>The allocation exceeds the skill-point budget.</value></data>
+  <data name="Sr6.SkillSpecializationInvalid" xml:space="preserve"><value>A specialization requires a learned skill. Ordinary skills allow one; exotic weapons require at least one weapon type.</value></data>
+  <data name="Sr6.Option.Astral" xml:space="preserve"><value>Astral</value></data>
+  <data name="Sr6.Option.Athletics" xml:space="preserve"><value>Athletics</value></data>
+  <data name="Sr6.Option.Biotech" xml:space="preserve"><value>Biotech</value></data>
+  <data name="Sr6.Option.CloseCombat" xml:space="preserve"><value>Close Combat</value></data>
+  <data name="Sr6.Option.Con" xml:space="preserve"><value>Con</value></data>
+  <data name="Sr6.Option.Conjuring" xml:space="preserve"><value>Conjuring</value></data>
+  <data name="Sr6.Option.Cracking" xml:space="preserve"><value>Cracking</value></data>
+  <data name="Sr6.Option.Electronics" xml:space="preserve"><value>Electronics</value></data>
+  <data name="Sr6.Option.Enchanting" xml:space="preserve"><value>Enchanting</value></data>
+  <data name="Sr6.Option.Engineering" xml:space="preserve"><value>Engineering</value></data>
+  <data name="Sr6.Option.ExoticWeapons" xml:space="preserve"><value>Exotic Weapons</value></data>
+  <data name="Sr6.Option.Firearms" xml:space="preserve"><value>Firearms</value></data>
+  <data name="Sr6.Option.Influence" xml:space="preserve"><value>Influence</value></data>
+  <data name="Sr6.Option.Outdoors" xml:space="preserve"><value>Outdoors</value></data>
+  <data name="Sr6.Option.Perception" xml:space="preserve"><value>Perception</value></data>
+  <data name="Sr6.Option.Piloting" xml:space="preserve"><value>Piloting</value></data>
+  <data name="Sr6.Option.Sorcery" xml:space="preserve"><value>Sorcery</value></data>
+  <data name="Sr6.Option.Stealth" xml:space="preserve"><value>Stealth</value></data>
+  <data name="Sr6.Option.Tasking" xml:space="preserve"><value>Tasking</value></data>
+  <data name="Sr6.KnowledgeTitle" xml:space="preserve"><value>SR6 knowledge and languages</value></data>
+  <data name="Sr6.KnowledgeOpen" xml:space="preserve"><value>Choose knowledge and languages</value></data>
+  <data name="Sr6.KnowledgePool" xml:space="preserve"><value>Knowledge/language picks: {0} (Logic) + one free native language</value></data>
+  <data name="Sr6.KnowledgeHelp" xml:space="preserve"><value>Knowledge topics have no rating and cost one pick each. Language levels cost 1/2/3 picks in total. Native is free once, not a purchasable level. Only free creation picks here; Karma, Bilingual and other quality adjustments are not included.</value></data>
+  <data name="Sr6.KnowledgeNative" xml:space="preserve"><value>Native language — free</value></data>
+  <data name="Sr6.KnowledgeTopic" xml:space="preserve"><value>Knowledge topic — one pick</value></data>
+  <data name="Sr6.KnowledgeLanguage" xml:space="preserve"><value>Additional language</value></data>
+  <data name="Sr6.KnowledgeLevel" xml:space="preserve"><value>Language level</value></data>
+  <data name="Sr6.KnowledgeLevel.basic" xml:space="preserve"><value>Basic (1 pick)</value></data>
+  <data name="Sr6.KnowledgeLevel.specialist" xml:space="preserve"><value>Specialist (2 picks)</value></data>
+  <data name="Sr6.KnowledgeLevel.expert" xml:space="preserve"><value>Expert (3 picks)</value></data>
+  <data name="Sr6.KnowledgeRemove" xml:space="preserve"><value>Remove draft entry</value></data>
+  <data name="Sr6.KnowledgeAddTopic" xml:space="preserve"><value>Add knowledge topic</value></data>
+  <data name="Sr6.KnowledgeAddLanguage" xml:space="preserve"><value>Add language</value></data>
+  <data name="Sr6.KnowledgeBudget" xml:space="preserve"><value>Knowledge/language picks spent: {0} · remaining: {1} · Logic: {2}</value></data>
+  <data name="Sr6.KnowledgeLanguageValue" xml:space="preserve"><value>{0}: {1} · {2} picks · comprehension +{3}</value></data>
+  <data name="Sr6.KnowledgeAttributesRequired" xml:space="preserve"><value>Review and save attributes first; Core derives the knowledge/language pool from Logic.</value></data>
+  <data name="Sr6.KnowledgeInvalid" xml:space="preserve"><value>Enter one native language and distinct, non-empty names (up to 80 characters). Choose a supported language level; remove unused blank rows.</value></data>
+  <data name="Sr6.KnowledgeOverspend" xml:space="preserve"><value>Knowledge and language choices exceed Logic. Reduce the choices or review the attribute allocation; nothing was saved.</value></data>
+  <data name="Sr6.KnowledgeGmReview" xml:space="preserve"><value>Knowledge topics are player-entered and unrated. Agree their scope with the GM; saving does not record GM approval.</value></data>
+  <data name="Sr6.PointBuyHelp" xml:space="preserve"><value>Point Buy uses CP, not Karma or priority ranks. Partial drafts can be saved; all CP must be spent before finalization. After attributes, plan talent budgets and select spells/rituals, complex forms or adept powers. Finalization remains unavailable.</value></data>
+  <data name="Sr6.PointBuyAttributes" xml:space="preserve"><value>Buy additional attribute points</value></data>
+  <data name="Sr6.PointBuySkills" xml:space="preserve"><value>Buy additional skill points</value></data>
+  <data name="Sr6.PointBuyAdjustment" xml:space="preserve"><value>Buy additional adjustment points</value></data>
+  <data name="Sr6.PointBuyResources" xml:space="preserve"><value>Buy resource units</value></data>
+  <data name="Sr6.PointBuyInvalid" xml:space="preserve"><value>Choose valid Point Buy pools and one metatype/talent. Priority ranks cannot be combined with CP.</value></data>
+  <data name="Sr6.PointBuySource" xml:space="preserve"><value>The saved SR6 Companion profile does not authorize Point Buy.</value></data>
+  <data name="Sr6.PointBuyOverspend" xml:space="preserve"><value>These purchases exceed 100 CP. Reduce a pool or change the talent and review again; nothing was saved.</value></data>
+  <data name="Sr6.PointBuyLimits" xml:space="preserve"><value>{0} CP. Free: {1} attribute, {2} skill, {3} adjustment points. Costs per extra point: {4}/{5}/{6} CP. Resource unit: {7:N0} ¥ for {8} CP. Awakened/technomancer: {9} CP. Separate customization Karma: {10}.</value></data>
+  <data name="Sr6.PointBuyBudget" xml:space="preserve"><value>CP spent: {0}/{1} · remaining: {2}&#10;Talent {3} + attributes {4} + skills {5} + adjustment {6} + resources {7} + power points {9} + complex forms {10} + spells/rituals {11}. Separate base Karma before qualities: {8}.</value></data>
+  <data name="Sr6.TalentTitle" xml:space="preserve"><value>SR6 talent budget</value></data>
+  <data name="Sr6.TalentOpen" xml:space="preserve"><value>Plan magic and resonance</value></data>
+  <data name="Sr6.TalentPowerPoints" xml:space="preserve"><value>Whole power points to allocate / purchase</value></data>
+  <data name="Sr6.TalentHelp" xml:space="preserve"><value>This page plans budgets only. Choose spells/rituals, complex forms or adept powers in their separate steps. Karma rating increases have a separate step; they do not expand prior free or CP formula grants. Finalization remains unavailable.</value></data>
+  <data name="Sr6.TalentAttributesRequired" xml:space="preserve"><value>Review and save attributes first; talent budgets depend on the validated Magic/Resonance.</value></data>
+  <data name="Sr6.TalentInvalid" xml:space="preserve"><value>Choose a supported whole-power-point allocation within the Core limit.</value></data>
+  <data name="Sr6.TalentOptions" xml:space="preserve"><value>Automatic power points: {0}. Maximum selectable whole power points: {1}; CP per point: {2}.</value></data>
+  <data name="Sr6.TalentBudget" xml:space="preserve"><value>Magic {0} · Resonance {1}&#10;Power-point budget {2} · CP cost {3}&#10;Spells/rituals: limit {4}, free {5}&#10;Alchemical spells: limit {6}, free {7}&#10;Complex forms: limit {8}, free {9}&#10;CP per purchased spell/form: {10}</value></data>
+  <data name="Sr6.TalentSavedBudget" xml:space="preserve"><value>Saved budget — edits below apply only after review and confirmation.</value></data>
+  <data name="Sr6.FormsTitle" xml:space="preserve"><value>Choose complex forms</value></data>
+  <data name="Sr6.FormsHelp" xml:space="preserve"><value>SR6 core catalog; names follow the German 2024 source. Selections are saved in this draft after review. This does not activate Matrix effects, spend Karma or finalize the runner.</value></data>
+  <data name="Sr6.FormsTalentRequired" xml:space="preserve"><value>Save a Technomancer foundation, attributes and talent budget first.</value></data>
+  <data name="Sr6.FormsChoose" xml:space="preserve"><value>Complex form or program variant</value></data>
+  <data name="Sr6.FormsAdd" xml:space="preserve"><value>Add selected form</value></data>
+  <data name="Sr6.FormsRemove" xml:space="preserve"><value>Remove form</value></data>
+  <data name="Sr6.FormsSubject.drone-model" xml:space="preserve"><value>Exact drone model</value></data>
+  <data name="Sr6.FormsSubject.weapon-model" xml:space="preserve"><value>Exact weapon model</value></data>
+  <data name="Sr6.FormsSubjectReview" xml:space="preserve"><value>The named weapon/drone model needs GM review. Its existence and compatibility are not verified here.</value></data>
+  <data name="Sr6.FormsInvalid" xml:space="preserve"><value>Select valid SR6 form variants without duplicates and complete every required model name.</value></data>
+  <data name="Sr6.FormsLimit" xml:space="preserve"><value>Too many complex forms for the current talent budget. Remove forms or adjust the foundation first.</value></data>
+  <data name="Sr6.FormsBudget" xml:space="preserve"><value>Complex forms: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}</value></data>
+  <data name="Sr6.SpellsTitle" xml:space="preserve"><value>Choose spells and rituals</value></data>
+  <data name="Sr6.SpellsHelp" xml:space="preserve"><value>SR6 core formulas; names follow the German 2024 source. Spells and rituals share the shown budget. Alchemy uses known spells, not duplicate purchases. This saves draft choices, not cast effects, prepared objects or a finished runner. This selection does not verify requirements for performing a ritual.</value></data>
+  <data name="Sr6.SpellsTalentRequired" xml:space="preserve"><value>Save attributes and a spell-capable talent budget first. Aspected magicians need Sorcery or Enchanting; Conjuring grants no spells.</value></data>
+  <data name="Sr6.SpellsChoose" xml:space="preserve"><value>Spell or ritual</value></data>
+  <data name="Sr6.SpellsAdd" xml:space="preserve"><value>Add selected formula</value></data>
+  <data name="Sr6.SpellsRemove" xml:space="preserve"><value>Remove formula</value></data>
+  <data name="Sr6.SpellsKind.spell" xml:space="preserve"><value>Spell</value></data>
+  <data name="Sr6.SpellsKind.ritual" xml:space="preserve"><value>Ritual</value></data>
+  <data name="Sr6.SpellsUse.sorcery-and-enchanting" xml:space="preserve"><value>Magic access: Sorcery and Enchanting. A known spell is not a prepared alchemical object.</value></data>
+  <data name="Sr6.SpellsUse.sorcery" xml:space="preserve"><value>Sorcery aspect: spells and rituals; no Enchanting access.</value></data>
+  <data name="Sr6.SpellsUse.enchanting" xml:space="preserve"><value>Enchanting aspect: alchemical spells only; no Sorcery or rituals.</value></data>
+  <data name="Sr6.SpellsInvalid" xml:space="preserve"><value>Choose available SR6 spells/rituals without duplicates. The catalog must match your saved talent and aspect.</value></data>
+  <data name="Sr6.SpellsLimit" xml:space="preserve"><value>Too many spells/rituals for the current talent budget. Remove choices or adjust the talent first.</value></data>
+  <data name="Sr6.SpellsBudget" xml:space="preserve"><value>Spells/rituals: {0}/{1} · slots remaining: {2} · free slots used: {3} · CP cost: {4}</value></data>
+  <data name="Sr6.PowersTitle" xml:space="preserve"><value>Choose adept powers</value></data>
+  <data name="Sr6.PowersHelp" xml:space="preserve"><value>SR6 draft choices, not active effects. Names follow the German 2024 core. Costs and limits come from Core. Improved skills use saved natural ratings; the cheaper noncombat option excludes combat tests (official FAQ). Save Astral Perception before assigning Astral skill. Qi foci, quality discounts and finalization are not included.</value></data>
+  <data name="Sr6.PowersTalentRequired" xml:space="preserve"><value>Save attributes and the adept/mystic-adept power-point budget first.</value></data>
+  <data name="Sr6.PowersChoose" xml:space="preserve"><value>Adept power</value></data>
+  <data name="Sr6.PowersRating" xml:space="preserve"><value>Level</value></data>
+  <data name="Sr6.PowersAdd" xml:space="preserve"><value>Add selected power</value></data>
+  <data name="Sr6.PowersRemove" xml:space="preserve"><value>Remove power</value></data>
+  <data name="Sr6.PowersOption" xml:space="preserve"><value>{0} PP per level · maximum {1} · {2}</value></data>
+  <data name="Sr6.PowersValue" xml:space="preserve"><value>{0} · level {1} · {2} PP · {3}</value></data>
+  <data name="Sr6.PowersBudget" xml:space="preserve"><value>Power points: {0}/{1} · remaining: {2}</value></data>
+  <data name="Sr6.PowersRatingUnavailable" xml:space="preserve"><value>Level exceeds Magic or the natural attribute/skill limit. A skill must have a saved natural rating first.</value></data>
+  <data name="Sr6.PowersInvalid" xml:space="preserve"><value>Choose valid powers and levels without duplicates. Select only one combat scope per improved skill.</value></data>
+  <data name="Sr6.PowersOverspend" xml:space="preserve"><value>The powers exceed the saved power-point budget. Remove or lower a choice, or adjust the budget first.</value></data>
+  <data name="Sr6.PowersUse.all" xml:space="preserve"><value>all tests</value></data>
+  <data name="Sr6.PowersUse.noncombat" xml:space="preserve"><value>noncombat tests only</value></data>
+  <data name="Sr6.PowersSense.sight" xml:space="preserve"><value>sight</value></data>
+  <data name="Sr6.PowersSense.hearing" xml:space="preserve"><value>hearing</value></data>
+  <data name="Sr6.PowersSense.touch" xml:space="preserve"><value>touch</value></data>
+  <data name="Sr6.PowersSense.smell" xml:space="preserve"><value>smell</value></data>
+  <data name="Sr6.PowersSense.taste" xml:space="preserve"><value>taste</value></data>
+  <data name="Sr6.PowersWarning.improved-reflexes-no-stacking" xml:space="preserve"><value>Improved Reflexes cannot combine with other Reaction or initiative enhancements; runtime stacking is not applied in this draft.</value></data>
+  <data name="Sr6.KarmaTitle" xml:space="preserve"><value>Spend customization Karma</value></data>
+  <data name="Sr6.KarmaHelp" xml:space="preserve"><value>Save base attributes and skills first. Buy ratings, specialties, knowledge, languages and Nuyen with the separate Karma pool. Core preserves pool allocations and recalculates costs, creation caps and dependent budgets including saved qualities. Expertise and Karma spells/forms are prohibited during creation. Partial drafts may exceed the carry-over limit; finalization is not available.</value></data>
+  <data name="Sr6.KarmaKnowledgeHelp" xml:space="preserve"><value>New knowledge: {0} Karma each. Languages: {1} Karma per additional level, up to Expert. Free pool choices and native language ({2}) stay separate. Core checks duplicates and recalculates the shared Karma budget.</value></data>
+  <data name="Sr6.KarmaKnowledgeTopic" xml:space="preserve"><value>Additional knowledge topic (Karma)</value></data>
+  <data name="Sr6.KarmaKnowledgeRemove" xml:space="preserve"><value>Remove Karma knowledge/language purchase</value></data>
+  <data name="Sr6.KarmaKnowledgeRequired" xml:space="preserve"><value>To buy knowledge/languages with Karma, first save the native language and free choices in Knowledge and languages.</value></data>
+  <data name="Sr6.KarmaKnowledgeConflict" xml:space="preserve"><value>This topic or language conflicts with existing choices. Do not buy a duplicate or native language. Select a higher target level for an existing language.</value></data>
+  <data name="Sr6.KarmaKnowledgeValue" xml:space="preserve"><value>Knowledge: {0} · {1} Karma · GM review</value></data>
+  <data name="Sr6.KarmaLanguageValue" xml:space="preserve"><value>{0}: {1} → {2} · {3} new levels · {4} Karma · comprehension +{5}</value></data>
+  <data name="Sr6.KarmaLanguageChoose" xml:space="preserve"><value>New language or existing pool language</value></data>
+  <data name="Sr6.KarmaLanguageNew" xml:space="preserve"><value>New language</value></data>
+  <data name="Sr6.KarmaLanguageTarget" xml:space="preserve"><value>Target language level</value></data>
+  <data name="Sr6.KarmaLanguageAdd" xml:space="preserve"><value>Add/update Karma language purchase</value></data>
+  <data name="Sr6.KarmaLanguageLevel.basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Sr6.KarmaLanguageLevel.specialist" xml:space="preserve"><value>Specialist</value></data>
+  <data name="Sr6.KarmaLanguageLevel.expert" xml:space="preserve"><value>Expert</value></data>
+  <data name="Sr6.KarmaAllocationsRequired" xml:space="preserve"><value>Save both attribute and skill allocations first (an empty skill allocation is allowed).</value></data>
+  <data name="Sr6.KarmaChoose" xml:space="preserve"><value>Attribute or skill to improve</value></data>
+  <data name="Sr6.KarmaAttribute" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Sr6.KarmaSkill" xml:space="preserve"><value>Skill</value></data>
+  <data name="Sr6.KarmaIncrease" xml:space="preserve"><value>Additional levels</value></data>
+  <data name="Sr6.KarmaAdd" xml:space="preserve"><value>Add increase</value></data>
+  <data name="Sr6.KarmaRemove" xml:space="preserve"><value>Remove increase</value></data>
+  <data name="Sr6.KarmaNuyen" xml:space="preserve"><value>Karma to exchange for Nuyen</value></data>
+  <data name="Sr6.KarmaInvalid" xml:space="preserve"><value>Choose valid increases without duplicates. Each target may appear once.</value></data>
+  <data name="Sr6.KarmaRatingUnavailable" xml:space="preserve"><value>This increase exceeds the creation maximum or is unavailable for this character.</value></data>
+  <data name="Sr6.KarmaOverspend" xml:space="preserve"><value>These increases and cash conversion exceed the available Karma.</value></data>
+  <data name="Sr6.KarmaOptions" xml:space="preserve"><value>Customization Karma: {0} · {1:N0} ¥ per Karma · carry over at most {2}</value></data>
+  <data name="Sr6.KarmaOption" xml:space="preserve"><value>Before Karma: {0} · up to {1} additional levels</value></data>
+  <data name="Sr6.KarmaChoice" xml:space="preserve"><value>{0}: +{1} levels · {2}</value></data>
+  <data name="Sr6.KarmaValue" xml:space="preserve"><value>{0}: {1} → {2} · Karma {3} = {4} · {5}</value></data>
+  <data name="Sr6.KarmaBudget" xml:space="preserve"><value>Karma: {0}/{1} spent · {2} left ({3} above carry-over cap)
+Cash: {4} Karma → {5:N0} ¥ · total resources {6:N0} ¥
+Additional power points from Karma: {7}</value></data>
+  <data name="Sr6.KarmaSpecializationHelp" xml:space="preserve"><value>A specialty costs {0} Karma; final skill rating must be at least {1}. One specialty per skill across pool and Karma purchases. Exotic Weapons may have several, without a bonus; the first comes free with the skill. Names require GM review. Expertise and Karma spells/forms are prohibited during creation.</value></data>
+  <data name="Sr6.KarmaSpecializationOption" xml:space="preserve"><value>Before Karma: rating {0} · existing pool specialties: {1} · dice bonus +{2}</value></data>
+  <data name="Sr6.KarmaSpecializationValue" xml:space="preserve"><value>{0}: {1} · {2} Karma · dice bonus +{3}</value></data>
+  <data name="Sr6.KarmaSpecializationSkill" xml:space="preserve"><value>Skill for the specialty</value></data>
+  <data name="Sr6.KarmaSpecializationSubject" xml:space="preserve"><value>Specialty / exotic weapon type (GM review)</value></data>
+  <data name="Sr6.KarmaSpecializationAdd" xml:space="preserve"><value>Add Karma specialty</value></data>
+  <data name="Sr6.KarmaSpecializationRemove" xml:space="preserve"><value>Remove Karma specialty</value></data>
+  <data name="Sr6.KarmaSpecializationLimit" xml:space="preserve"><value>This skill already has its creation specialty, or this weapon type was selected twice.</value></data>
+  <data name="Sr6.KarmaSpecializationRatingRequired" xml:space="preserve"><value>Buy at least one level in the skill before adding a specialty. Both can be reviewed together.</value></data>
+  <data name="Sr6.QualitiesTitle" xml:space="preserve"><value>SR6 qualities</value></data>
+  <data name="Sr6.QualitiesHelp" xml:space="preserve"><value>Partial catalogue from the German 2024 core book; source names remain German. At most six choices and 20 net bonus Karma. Five rated families are available. Innate levels are free; an upgrade counts as one choice and charges only extra levels. Glass Jaw must leave at least two stun boxes at final Willpower. Other parameterized choices remain unavailable; situational effects are not automated. Review before confirming.</value></data>
+  <data name="Sr6.QualitiesReplace" xml:space="preserve"><value>Replace selected quality</value></data>
+  <data name="Sr6.QualityLevel" xml:space="preserve"><value>level {0}</value></data>
+  <data name="Sr6.QualityRating" xml:space="preserve"><value>{0} total − {1} innate = {2} purchased · {3} Karma per purchased level (negative = bonus)</value></data>
+  <data name="Sr6.QualitiesAttributesRequired" xml:space="preserve"><value>Save attribute choices before selecting Glass Jaw; Core needs the final Willpower.</value></data>
+  <data name="Sr6.QualitiesRatingUnavailable" xml:space="preserve"><value>This Glass Jaw level would leave fewer than two stun boxes at the selected final Willpower.</value></data>
+  <data name="Sr6.QualitiesChoose" xml:space="preserve"><value>Choose a quality</value></data>
+  <data name="Sr6.QualitiesAdd" xml:space="preserve"><value>Add quality</value></data>
+  <data name="Sr6.QualitiesRemove" xml:space="preserve"><value>Remove quality</value></data>
+  <data name="Sr6.QualityValue" xml:space="preserve"><value>{0} · Karma cost {1} (negative = bonus) · {2}</value></data>
+  <data name="Sr6.QualityBudget" xml:space="preserve"><value>Qualities: {0}/{1} · advantages {2} Karma · disadvantages +{3} Karma · net bonus {4}/{5}&#10;Remaining customization budget: {6} Karma before other purchases</value></data>
+  <data name="Sr6.QualitiesInvalid" xml:space="preserve"><value>Choose at most six distinct qualities from the available catalogue.</value></data>
+  <data name="Sr6.QualitiesLimit" xml:space="preserve"><value>The net bonus from disadvantages may not exceed 20 Karma.</value></data>
+  <data name="Sr6.QualitiesUnavailable" xml:space="preserve"><value>Unavailable for this metatype/talent, or already granted by the metatype.</value></data>
+  <data name="Sr6.QualitiesConflict" xml:space="preserve"><value>These qualities conflict, or the same quality family was chosen twice.</value></data>
+  <data name="Sr6.QualitiesOverspend" xml:space="preserve"><value>Advantages cost more than the available customization Karma including disadvantages.</value></data>
+  <data name="Sr6.ContactsTitle" xml:space="preserve"><value>Contacts</value></data>
+  <data name="Sr6.ContactsName" xml:space="preserve"><value>Contact name</value></data>
+  <data name="Sr6.ContactsRole" xml:space="preserve"><value>Role (optional)</value></data>
+  <data name="Sr6.ContactsConnection" xml:space="preserve"><value>Connection</value></data>
+  <data name="Sr6.ContactsLoyalty" xml:space="preserve"><value>Loyalty</value></data>
+  <data name="Sr6.ContactsAdd" xml:space="preserve"><value>Add contact</value></data>
+  <data name="Sr6.ContactsRemove" xml:space="preserve"><value>Remove contact</value></data>
+  <data name="Sr6.ContactsGmReview" xml:space="preserve"><value>Names and roles are player suggestions. Contacts need GM review; saving is not GM approval.</value></data>
+  <data name="Sr6.ContactsOptions" xml:space="preserve"><value>Charisma {0} × {1} = {2} contact points. Connection and Loyalty each range from {3} to {4}. Cost: Connection + Loyalty. Separate from Karma and character points.</value></data>
+  <data name="Sr6.ContactsBudget" xml:space="preserve"><value>Contacts: {0}/{1} points spent · {2} remaining · Charisma {3}</value></data>
+  <data name="Sr6.ContactsValue" xml:space="preserve"><value>{0} · {1} · Connection {2} + Loyalty {3} = {4} points</value></data>
+  <data name="Sr6.ContactsAttributesRequired" xml:space="preserve"><value>Save attributes first to calculate the contact budget.</value></data>
+  <data name="Sr6.ContactsInvalid" xml:space="preserve"><value>Check contact names, roles and ratings. Names and roles must be valid text of at most 80 characters.</value></data>
+  <data name="Sr6.ContactsRating" xml:space="preserve"><value>Connection and Loyalty may not exceed the final natural Charisma at creation.</value></data>
+  <data name="Sr6.ContactsOverspend" xml:space="preserve"><value>Contact costs exceed the free contact-point budget. Reduce ratings or remove a contact.</value></data>
+  <data name="Sr6.GearTitle" xml:space="preserve"><value>Buy equipment</value></data>
+  <data name="Sr6.GearHelp" xml:space="preserve"><value>Experimental purchase basket; German source catalogue. Basic weapons, armor, electronics, empty credsticks and medical gear only. Ammunition, accessories, bodytech, SIN/license assignments and lifestyles are not included. Saving does not equip items or grant their in-play effects.</value></data>
+  <data name="Sr6.GearSearch" xml:space="preserve"><value>Search catalogue by name or ID</value></data>
+  <data name="Sr6.GearChoose" xml:space="preserve"><value>Choose equipment</value></data>
+  <data name="Sr6.GearQuantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Sr6.GearAdd" xml:space="preserve"><value>Add to basket</value></data>
+  <data name="Sr6.GearRemove" xml:space="preserve"><value>Remove item</value></data>
+  <data name="Sr6.GearRating" xml:space="preserve"><value>rating {0}</value></data>
+  <data name="Sr6.GearOption" xml:space="preserve"><value>{0} · availability {1}, {2}&#10;Base {3:N2} ¥ + {4}% size surcharge = {5:N2} ¥ each · {6}</value></data>
+  <data name="Sr6.GearValue" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥</value></data>
+  <data name="Sr6.GearResources" xml:space="preserve"><value>Purchase budget: {0:N2} ¥</value></data>
+  <data name="Sr6.GearBudget" xml:space="preserve"><value>Spent {0:N2} / {1:N2} ¥ · remaining {2:N2} ¥&#10;Carry-over limit {3:N2} ¥ · unspent above limit {4:N2} ¥</value></data>
+  <data name="Sr6.GearRestricted" xml:space="preserve"><value>Licensed or illegal items need GM review. This purchase does not grant a license or permission to possess or carry them.</value></data>
+  <data name="Sr6.GearInvalid" xml:space="preserve"><value>Check basket entries and whole-number quantities (1–999).</value></data>
+  <data name="Sr6.GearCatalogUnavailable" xml:space="preserve"><value>This item is not in the supported SR6 catalogue.</value></data>
+  <data name="Sr6.GearAvailabilityExceeded" xml:space="preserve"><value>Unavailable at creation: availability exceeds 7.</value></data>
+  <data name="Sr6.GearBudgetExceeded" xml:space="preserve"><value>Purchases exceed available Nuyen. Reduce the basket or save more resources/Karma conversion first.</value></data>
+  <data name="Sr6.GearLegality.legal" xml:space="preserve"><value>legal</value></data>
+  <data name="Sr6.GearLegality.licensed" xml:space="preserve"><value>license required</value></data>
+  <data name="Sr6.GearLegality.illegal" xml:space="preserve"><value>illegal</value></data>
+  <data name="Sr6.LifestyleTitle" xml:space="preserve"><value>Lifestyle and starting cash</value></data>
+  <data name="Sr6.LifestyleHelp" xml:space="preserve"><value>Choose one basic lifestyle and prepaid whole months. Core checks its cost together with your equipment basket. Starting cash is a projection capped at 5,000 ¥; nothing is discarded or finalized here. Custom lifestyles, SIN-linked taxes and recurring Career payments are not included.</value></data>
+  <data name="Sr6.LifestyleChoose" xml:space="preserve"><value>Choose lifestyle</value></data>
+  <data name="Sr6.LifestyleMonths" xml:space="preserve"><value>Prepaid months (whole number, at least 1)</value></data>
+  <data name="Sr6.LifestyleOption" xml:space="preserve"><value>{0} · {1:N2} ¥/month</value></data>
+  <data name="Sr6.LifestyleBudget" xml:space="preserve"><value>{0}: {1} × {2:N2} ¥ = {3:N2} ¥&#10;Equipment {4:N2} ¥ · total resources {5:N2} ¥ · remaining {6:N2} ¥&#10;Projected starting cash {7:N2} ¥ (limit {8:N2} ¥) · unspent above limit {9:N2} ¥</value></data>
+  <data name="Sr6.LifestyleInvalid" xml:space="preserve"><value>Choose a lifestyle and enter a positive whole number of months.</value></data>
+  <data name="Sr6.LifestyleUnavailable" xml:space="preserve"><value>Choose one of the supported SR6 basic lifestyles.</value></data>
+  <data name="Sr6.LifestyleBudgetExceeded" xml:space="preserve"><value>Equipment and lifestyle together exceed available Nuyen. Reduce purchases or prepaid months, or increase your resources.</value></data>
+  <data name="Sr6.Lifestyle.street" xml:space="preserve"><value>Street</value></data>
+  <data name="Sr6.Lifestyle.squatter" xml:space="preserve"><value>Squatter</value></data>
+  <data name="Sr6.Lifestyle.low" xml:space="preserve"><value>Low</value></data>
+  <data name="Sr6.Lifestyle.middle" xml:space="preserve"><value>Middle</value></data>
+  <data name="Sr6.Lifestyle.high" xml:space="preserve"><value>High</value></data>
+  <data name="Sr6.Lifestyle.luxury" xml:space="preserve"><value>Luxury</value></data>
+  <data name="Sr6.DraftTitle" xml:space="preserve"><value>Saved draft overview</value></data>
+  <data name="Sr6.DraftHelp" xml:space="preserve"><value>This overview uses your saved draft, not unconfirmed edits. “Saved” does not mean every point is spent or that this is a finished runner. “None selected” does not claim a review. Open a step to continue.</value></data>
+  <data name="Sr6.DraftStatus.none-selected" xml:space="preserve"><value>None selected (optional)</value></data>
+  <data name="Sr6.FinishReview" xml:space="preserve"><value>Review SR6 creation</value></data>
+  <data name="Sr6.FinishHelp" xml:space="preserve"><value>Review the saved choices before finishing. Missing or unsupported selections block completion. Nothing changes until you explicitly confirm. Finishing creation does not unlock unsupported SR6 Career wizards.</value></data>
+  <data name="Sr6.FinishSaved" xml:space="preserve"><value>SR6 creation saved. Your original draft and completion receipt have been retained.</value></data>
+  <data name="Sr6.FinishDone" xml:space="preserve"><value>Return to runner</value></data>
+  <data name="Sr6.FinishReopen" xml:space="preserve"><value>This confirmation cannot be reused. Reopen the runner to check the saved result before continuing.</value></data>
+  <data name="Sr6.FinishMissing" xml:space="preserve"><value>Completion blocked:</value></data>
+  <data name="Sr6.FinishConfirm" xml:space="preserve"><value>Finish creation and save</value></data>
+  <data name="Sr6.FinishAcceptLoss" xml:space="preserve"><value>I accept that the listed unused points and amounts above carry-over limits will be discarded. Go back to spend them instead.</value></data>
+  <data name="Sr6.FinishResources" xml:space="preserve"><value>Resources</value></data>
+  <data name="Sr6.DraftBudget.nuyen-above-cap" xml:space="preserve"><value>Nuyen above the carry-over limit</value></data>
+  <data name="Sr6.FinishDomain.equipment-runtime-stats" xml:space="preserve"><value>Game statistics for the selected equipment are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.spell-runtime-stats" xml:space="preserve"><value>Game statistics for the selected spells are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.complex-form-runtime-stats" xml:space="preserve"><value>Game statistics for the selected complex forms are not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.magical-tradition" xml:space="preserve"><value>The magical-tradition step is not yet supported.</value></data>
+  <data name="Sr6.FinishDomain.passive-effect-conflict" xml:space="preserve"><value>Conflicting permanent effects need to be resolved.</value></data>
+  <data name="Sr6.DraftBalances" xml:space="preserve"><value>Saved resources {0:N2} ¥ − equipment {1:N2} ¥ − lifestyle {2:N2} ¥ = {3:N2} ¥
+Projected starting cash {4:N2} ¥ · above carry-over limit {5:N2} ¥
+Karma remaining {6} · projected carry-over {7} · above limit {8}
+Nothing has been discarded or applied to a finished runner.</value></data>
+  <data name="Sr6.DraftRemainder" xml:space="preserve"><value>{0}: {1:0.##}</value></data>
+  <data name="Sr6.DraftStatus.missing" xml:space="preserve"><value>Not reviewed yet</value></data>
+  <data name="Sr6.DraftStatus.waiting" xml:space="preserve"><value>Complete the preceding choices first</value></data>
+  <data name="Sr6.DraftStatus.saved" xml:space="preserve"><value>Saved</value></data>
+  <data name="Sr6.DraftStatus.unspent" xml:space="preserve"><value>Saved — points remain</value></data>
+  <data name="Sr6.DraftBudget.character-points" xml:space="preserve"><value>Unspent character points</value></data>
+  <data name="Sr6.DraftBudget.attribute-points" xml:space="preserve"><value>Unspent attribute points</value></data>
+  <data name="Sr6.DraftBudget.adjustment-points" xml:space="preserve"><value>Unspent adjustment points</value></data>
+  <data name="Sr6.DraftBudget.skill-points" xml:space="preserve"><value>Unspent skill points</value></data>
+  <data name="Sr6.DraftBudget.karma-above-cap" xml:space="preserve"><value>Karma above the carry-over limit</value></data>
+  <data name="Sr6.DraftBudget.knowledge-points" xml:space="preserve"><value>Unspent knowledge/language points</value></data>
+  <data name="Sr6.DraftBudget.contact-points" xml:space="preserve"><value>Unspent contact points</value></data>
+  <data name="Sr6.DraftBudget.free-form-slots" xml:space="preserve"><value>Unused free complex-form slots</value></data>
+  <data name="Sr6.DraftBudget.free-spell-slots" xml:space="preserve"><value>Unused free spell/ritual slots</value></data>
+  <data name="Sr6.DraftBudget.power-points" xml:space="preserve"><value>Unspent power points</value></data>
+  <data name="Sr6.NaturalTitle" xml:space="preserve"><value>Show combined character values</value></data>
+  <data name="Sr6.NaturalHide" xml:space="preserve"><value>Hide combined character values</value></data>
+  <data name="Sr6.NaturalHelp" xml:space="preserve"><value>Saved pool allocations and Karma purchases combined. These natural ratings exclude powers, equipment and situational effects; they are not final dice pools or a completed runner. No purchases are applied again.</value></data>
+  <data name="Sr6.NaturalMissing" xml:space="preserve"><value>{0}: no saved allocation yet</value></data>
+  <data name="Sr6.NaturalAttribute" xml:space="preserve"><value>{0}: {1} base + {2} attribute + {3} adjustment + {4} Karma increase = {5} (maximum {6})</value></data>
+  <data name="Sr6.NaturalSkill" xml:space="preserve"><value>{0}: {1} pool + {2} Karma increase = rating {3}</value></data>
+  <data name="Sr6.NaturalExotic" xml:space="preserve"><value>Weapon permission: {0} (no specialty dice bonus)</value></data>
+  <data name="Sr6.NaturalSpecialty" xml:space="preserve"><value>{0}: +{1} dice only when applicable; GM review</value></data>
+  <data name="Sr6.NaturalNative" xml:space="preserve"><value>Native language: {0}</value></data>
+  <data name="Sr6.NaturalKnowledge" xml:space="preserve"><value>Knowledge: {0}</value></data>
+  <data name="Sr6.NaturalLanguage" xml:space="preserve"><value>{0}: {1} · comprehension bonus +{2}</value></data>
+  <data name="Sr6.NaturalLevel.basic" xml:space="preserve"><value>Basic</value></data>
+  <data name="Sr6.NaturalLevel.specialist" xml:space="preserve"><value>Specialist</value></data>
+  <data name="Sr6.NaturalLevel.expert" xml:space="preserve"><value>Expert</value></data>
+  <data name="Sr6.PassiveTitle" xml:space="preserve"><value>Show passive and derived values</value></data>
+  <data name="Sr6.PassiveHide" xml:space="preserve"><value>Hide passive and derived values</value></data>
+  <data name="Sr6.PassiveHelp" xml:space="preserve"><value>Saved attributes, innate traits, qualities and permanent adept bonuses. Unarmored, unwounded physical baseline: bought gear is not worn automatically. Activated powers, spells, situational Edge and modifiers are excluded. This is still a draft, not a finalized runner.</value></data>
+  <data name="Sr6.PassiveAttribute" xml:space="preserve"><value>{0}: {1} natural + {2} permanent = {3}</value></data>
+  <data name="Sr6.PassiveSkill" xml:space="preserve"><value>{0}: {1} natural + {2} permanent = {3}; noncombat only +{4} = {5}</value></data>
+  <data name="Sr6.PassiveUnresolved" xml:space="preserve"><value>{0}: unresolved</value></data>
+  <data name="Sr6.PassiveWarning.reaction-power-conflict" xml:space="preserve"><value>Improved Reflexes cannot stack with Improved Reaction. Resolve this in the powers wizard; affected values remain unresolved.</value></data>
+  <data name="Sr6.PassiveWarning.combat-paralysis-rolled-total" xml:space="preserve"><value>Combat Paralysis: halve the rolled initiative total, not the base below. Act last and do not Move or Sprint in the first round.</value></data>
+  <data name="Sr6.PassiveStat.physical-monitor" xml:space="preserve"><value>Physical condition boxes: 8 + half Body (round up) + Built Tough</value></data>
+  <data name="Sr6.PassiveStat.stun-monitor" xml:space="preserve"><value>Stun condition boxes: 8 + half Willpower (round up) − Glass Jaw</value></data>
+  <data name="Sr6.PassiveStat.overflow" xml:space="preserve"><value>Overflow boxes: twice Body + twice Will to Live</value></data>
+  <data name="Sr6.PassiveStat.initiative-base" xml:space="preserve"><value>Physical initiative base: Reaction + Intuition</value></data>
+  <data name="Sr6.PassiveStat.initiative-dice" xml:space="preserve"><value>Initiative dice (D6): 1 + Improved Reflexes</value></data>
+  <data name="Sr6.PassiveStat.unarmored-defense-rating" xml:space="preserve"><value>Unarmored Defense Rating: Body + dermal deposits + Mystic Armor</value></data>
+  <data name="Sr6.PassiveStat.defense-dice-pool" xml:space="preserve"><value>Defense dice pool: Reaction + Intuition + Combat Sense</value></data>
+  <data name="Sr6.PassiveStat.unarmed-attack-rating" xml:space="preserve"><value>Unarmed Attack Rating: Strength + Reaction</value></data>
+  <data name="Sr6.EquipmentTitle" xml:space="preserve"><value>Show equipment statistics</value></data>
+  <data name="Sr6.EquipmentHide" xml:space="preserve"><value>Hide equipment statistics</value></data>
+  <data name="Sr6.EquipmentHelp" xml:space="preserve"><value>Core catalog values per item, not multiplied by quantity. Nothing is worn, connected or activated automatically. Conditional bonuses are listed, not applied. Unresolved items still block completion.</value></data>
+  <data name="Sr6.EquipmentItem" xml:space="preserve"><value>{0} × {1}</value></data>
+  <data name="Sr6.EquipmentUnavailable" xml:space="preserve"><value>Statistics not yet supported — blocks completion.</value></data>
+  <data name="Sr6.EquipmentArmor" xml:space="preserve"><value>Defense Rating +{0}; modification capacity {1}</value></data>
+  <data name="Sr6.EquipmentStat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Sr6.EquipmentStat.rating" xml:space="preserve"><value>Device rating</value></data>
+  <data name="Sr6.EquipmentStat.attack" xml:space="preserve"><value>Attack</value></data>
+  <data name="Sr6.EquipmentStat.sleaze" xml:space="preserve"><value>Sleaze</value></data>
+  <data name="Sr6.EquipmentStat.data" xml:space="preserve"><value>Data Processing</value></data>
+  <data name="Sr6.EquipmentStat.firewall" xml:space="preserve"><value>Firewall</value></data>
+  <data name="Sr6.EquipmentStat.programs" xml:space="preserve"><value>Active program slots</value></data>
+  <data name="Sr6.EquipmentStat.slaves" xml:space="preserve"><value>Maximum slave devices</value></data>
+  <data name="Sr6.EquipmentStat.noise" xml:space="preserve"><value>Noise reduction</value></data>
+  <data name="Sr6.EquipmentStat.shared-programs" xml:space="preserve"><value>Shared programs/autosofts</value></data>
+  <data name="Sr6.EquipmentTrait.armor-does-not-stack" xml:space="preserve"><value>Armor does not stack unless a rule expressly allows it.</value></data>
+  <data name="Sr6.EquipmentTrait.included-concealed-holster" xml:space="preserve"><value>Included concealed holster.</value></data>
+  <data name="Sr6.EquipmentTrait.active-suit-stealth-edge" xml:space="preserve"><value>Edge for Stealth tests while wearing the active suit</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-suit-defense-bonus" xml:space="preserve"><value>Additional Defense Rating with wireless suit enabled</value></data>
+  <data name="Sr6.EquipmentTrait.concealed-item-edge" xml:space="preserve"><value>Edge against attempts to detect items hidden under the coat</value></data>
+  <data name="Sr6.EquipmentTrait.included-music-player" xml:space="preserve"><value>Included music player.</value></data>
+  <data name="Sr6.EquipmentTrait.included-biomonitor" xml:space="preserve"><value>Included biomonitor.</value></data>
+  <data name="Sr6.EquipmentTrait.included-hot-sim-module" xml:space="preserve"><value>Included hot-sim module; not activated.</value></data>
+  <data name="Sr6.WeaponHelp" xml:space="preserve"><value>Printed weapon statistics, not a combat result. No ammunition is included or loaded. Accessories and conditional effects are listed, not activated.</value></data>
+  <data name="Sr6.WeaponAttack" xml:space="preserve"><value>{0} · {1}
+Damage: {2}
+Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
+  <data name="Sr6.WeaponAttack.primary" xml:space="preserve"><value>Primary attack</value></data>
+  <data name="Sr6.WeaponAttack.thrown" xml:space="preserve"><value>Thrown attack</value></data>
+  <data name="Sr6.WeaponAttack.underbarrel-grenade" xml:space="preserve"><value>Underbarrel grenade launcher</value></data>
+  <data name="Sr6.WeaponAttack.underbarrel-shotgun" xml:space="preserve"><value>Underbarrel shotgun</value></data>
+  <data name="Sr6.WeaponDamage.physical" xml:space="preserve"><value>physical</value></data>
+  <data name="Sr6.WeaponDamage.stun" xml:space="preserve"><value>stun</value></data>
+  <data name="Sr6.WeaponDamage.none" xml:space="preserve"><value>direct damage</value></data>
+  <data name="Sr6.WeaponDamage.payload" xml:space="preserve"><value>Depends on ammunition</value></data>
+  <data name="Sr6.WeaponElectrical" xml:space="preserve"><value>electrical</value></data>
+  <data name="Sr6.WeaponPayload.grenade" xml:space="preserve"><value>grenade effect; grenade required</value></data>
+  <data name="Sr6.WeaponPayload.rocket" xml:space="preserve"><value>rocket effect; rocket required</value></data>
+  <data name="Sr6.WeaponPayload.contact-toxin" xml:space="preserve"><value>plus contact toxin effect; toxin required</value></data>
+  <data name="Sr6.WeaponPayload.injection-toxin" xml:space="preserve"><value>plus injection toxin effect; toxin required</value></data>
+  <data name="Sr6.WeaponSpecialty" xml:space="preserve"><value>Required weapon specialization: {0}</value></data>
+  <data name="Sr6.WeaponSpecialty.whips" xml:space="preserve"><value>whips</value></data>
+  <data name="Sr6.WeaponSpecialty.launchers" xml:space="preserve"><value>launchers</value></data>
+  <data name="Sr6.WeaponSpecialty.airguns" xml:space="preserve"><value>airguns</value></data>
+  <data name="Sr6.WeaponModes" xml:space="preserve"><value>Modes: {0}</value></data>
+  <data name="Sr6.WeaponMode.SS" xml:space="preserve"><value>SS</value></data>
+  <data name="Sr6.WeaponMode.SA" xml:space="preserve"><value>SA</value></data>
+  <data name="Sr6.WeaponMode.BF" xml:space="preserve"><value>BF</value></data>
+  <data name="Sr6.WeaponMode.FA" xml:space="preserve"><value>FA</value></data>
+  <data name="Sr6.WeaponMode.short-burst" xml:space="preserve"><value>short burst</value></data>
+  <data name="Sr6.WeaponMagazines" xml:space="preserve"><value>Capacity options (no ammunition included): {0}</value></data>
+  <data name="Sr6.WeaponOr" xml:space="preserve"><value>or</value></data>
+  <data name="Sr6.WeaponFeed.internal" xml:space="preserve"><value>internal magazine</value></data>
+  <data name="Sr6.WeaponFeed.clip" xml:space="preserve"><value>clip</value></data>
+  <data name="Sr6.WeaponFeed.break-action" xml:space="preserve"><value>break-action</value></data>
+  <data name="Sr6.WeaponFeed.cylinder" xml:space="preserve"><value>cylinder</value></data>
+  <data name="Sr6.WeaponFeed.drum" xml:space="preserve"><value>drum magazine</value></data>
+  <data name="Sr6.WeaponFeed.belt" xml:space="preserve"><value>belt</value></data>
+  <data name="Sr6.WeaponFeed.muzzle-loading" xml:space="preserve"><value>muzzle-loading</value></data>
+  <data name="Sr6.WeaponMaximumRange" xml:space="preserve"><value>Maximum range: {0} m</value></data>
+  <data name="Sr6.WeaponCarryStrength" xml:space="preserve"><value>Minimum Strength to carry: {0}</value></data>
+  <data name="Sr6.WeaponAccessories" xml:space="preserve"><value>Included: {0}</value></data>
+  <data name="Sr6.WeaponAccessory.gps" xml:space="preserve"><value>GPS</value></data>
+  <data name="Sr6.WeaponAccessory.mini-multitool" xml:space="preserve"><value>mini multitool</value></data>
+  <data name="Sr6.WeaponAccessory.micro-lighter" xml:space="preserve"><value>micro lighter</value></data>
+  <data name="Sr6.WeaponAccessory.illuminated-blade" xml:space="preserve"><value>illuminated blade</value></data>
+  <data name="Sr6.WeaponAccessory.laser-sight" xml:space="preserve"><value>laser sight</value></data>
+  <data name="Sr6.WeaponAccessory.smartgun" xml:space="preserve"><value>smartgun system</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-stock" xml:space="preserve"><value>detachable stock</value></data>
+  <data name="Sr6.WeaponAccessory.gas-vent" xml:space="preserve"><value>gas vent</value></data>
+  <data name="Sr6.WeaponAccessory.silencer" xml:space="preserve"><value>silencer</value></data>
+  <data name="Sr6.WeaponAccessory.folding-stock" xml:space="preserve"><value>folding stock</value></data>
+  <data name="Sr6.WeaponAccessory.selectable-ammunition-magazine" xml:space="preserve"><value>selectable-ammunition magazine</value></data>
+  <data name="Sr6.WeaponAccessory.fixed-stock" xml:space="preserve"><value>fixed stock</value></data>
+  <data name="Sr6.WeaponAccessory.three-mode-flashlight" xml:space="preserve"><value>three-mode flashlight</value></data>
+  <data name="Sr6.WeaponAccessory.retractable-stock" xml:space="preserve"><value>retractable stock</value></data>
+  <data name="Sr6.WeaponAccessory.shock-pad" xml:space="preserve"><value>shock pad</value></data>
+  <data name="Sr6.WeaponAccessory.scope" xml:space="preserve"><value>scope</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-scope" xml:space="preserve"><value>detachable scope</value></data>
+  <data name="Sr6.WeaponAccessory.folding-bipod" xml:space="preserve"><value>folding bipod</value></data>
+  <data name="Sr6.WeaponAccessory.detachable-tripod" xml:space="preserve"><value>detachable tripod</value></data>
+  <data name="Sr6.EquipmentTrait.exotic-specialization-required" xml:space="preserve"><value>Exotic weapon use requires the matching specialization.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-held-location-vitals" xml:space="preserve"><value>Wireless while held: location and vital-status readout.</value></data>
+  <data name="Sr6.EquipmentTrait.minor-deploy-retract" xml:space="preserve"><value>Minor Action to deploy/retract.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-deploy-extra-minor" xml:space="preserve"><value>Wireless deployment/retraction grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.charge-capacity" xml:space="preserve"><value>Charge capacity (not current charge)</value></data>
+  <data name="Sr6.EquipmentTrait.wired-charge-seconds" xml:space="preserve"><value>Seconds per charge when wired</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-charge-minutes" xml:space="preserve"><value>Minutes per wireless recharge</value></data>
+  <data name="Sr6.EquipmentTrait.activation-minor" xml:space="preserve"><value>Minor Action to activate.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-activation-extra-minor" xml:space="preserve"><value>Wireless activation grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.retracted-concealability" xml:space="preserve"><value>Concealability when retracted</value></data>
+  <data name="Sr6.EquipmentTrait.extended-concealability" xml:space="preserve"><value>Concealability when extended</value></data>
+  <data name="Sr6.EquipmentTrait.concealability" xml:space="preserve"><value>Concealability</value></data>
+  <data name="Sr6.EquipmentTrait.trip-extra-minor" xml:space="preserve"><value>Trip grants an additional Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.critical-glitch-self-damage" xml:space="preserve"><value>Base self-damage to resist on a critical glitch</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-attack-rating-bonus" xml:space="preserve"><value>Additional Attack Rating when wireless is enabled</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-glitch-safe-retract" xml:space="preserve"><value>Wireless: retracts on a critical glitch instead of striking the wielder.</value></data>
+  <data name="Sr6.EquipmentTrait.hands-required" xml:space="preserve"><value>Hands required</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-embedded-smartlink-dice" xml:space="preserve"><value>Non-stacking dice bonus with embedded wireless weapon and smartlink</value></data>
+  <data name="Sr6.EquipmentTrait.contact-taser-use" xml:space="preserve"><value>Also usable in direct contact at the same damage.</value></data>
+  <data name="Sr6.EquipmentTrait.wired-hit-sustain-major" xml:space="preserve"><value>Major Action repeats base damage while the hit target remains wired.</value></data>
+  <data name="Sr6.EquipmentTrait.top-mount-only" xml:space="preserve"><value>Accessories: top mount only.</value></data>
+  <data name="Sr6.EquipmentTrait.contact-attack-as-club" xml:space="preserve"><value>Contact electrodes: melee attack as a club.</value></data>
+  <data name="Sr6.EquipmentTrait.caseless-flechette-only" xml:space="preserve"><value>Caseless flechettes only; already reflected in printed damage.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-visual-concealment-bonus" xml:space="preserve"><value>Wireless visual concealment threshold bonus</value></data>
+  <data name="Sr6.EquipmentTrait.no-accessory-mounts" xml:space="preserve"><value>No weapon accessories or modifications.</value></data>
+  <data name="Sr6.EquipmentTrait.mad-threshold-bonus" xml:space="preserve"><value>MAD scanner detection threshold bonus</value></data>
+  <data name="Sr6.EquipmentTrait.active-smartgun-additional-rating" xml:space="preserve"><value>Additional Attack Rating when using the smartgun (not applied above)</value></data>
+  <data name="Sr6.EquipmentTrait.unique-flechette-only" xml:space="preserve"><value>Unique flechettes only; printed damage already includes them.</value></data>
+  <data name="Sr6.EquipmentTrait.pump-clear-jam-minor" xml:space="preserve"><value>Pump mechanism clears a jam with a Minor Action.</value></data>
+  <data name="Sr6.EquipmentTrait.short-burst-two-barrels" xml:space="preserve"><value>Short burst uses both barrels; use the insufficient-ammunition rule.</value></data>
+  <data name="Sr6.EquipmentTrait.heavy-pistol-flechette-compatible" xml:space="preserve"><value>Also accepts heavy-pistol flechette ammunition.</value></data>
+  <data name="Sr6.EquipmentTrait.no-underbarrel-mount" xml:space="preserve"><value>No underbarrel mount.</value></data>
+  <data name="Sr6.EquipmentTrait.underbarrel-mounts" xml:space="preserve"><value>Underbarrel mounts</value></data>
+  <data name="Sr6.EquipmentTrait.assembly-firearms-logic-extended" xml:space="preserve"><value>Assembly: extended Firearms + Logic test, Major Action interval; threshold</value></data>
+  <data name="Sr6.EquipmentTrait.contact-toxin-dmso" xml:space="preserve"><value>Contact toxin delivered with DMSO; payload must be supplied separately.</value></data>
+  <data name="Sr6.EquipmentTrait.barrel-underbarrel-mounts-only" xml:space="preserve"><value>Accessories: barrel and underbarrel only.</value></data>
+  <data name="Sr6.EquipmentTrait.injection-dart-only" xml:space="preserve"><value>Injection darts only; toxin is a separate payload.</value></data>
+  <data name="Sr6.EquipmentTrait.top-underbarrel-mounts-only" xml:space="preserve"><value>Accessories: top and underbarrel only.</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-minimum-detonation-distance" xml:space="preserve"><value>Wireless ammunition safety distance in meters</value></data>
+  <data name="Sr6.EquipmentTrait.wireless-local-matrix-dice-nonstacking" xml:space="preserve"><value>Local-matrix wireless attack dice bonus; does not stack with other systems</value></data>
+  <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate launch tubes; normally fired individually</value></data>
+  <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline dual-launch override splits the pool; wielder must resist this fire damage</value></data>
+  <data name="LifeCompletion.Title" xml:space="preserve"><value>Complete Life Modules</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Input changed. Save and review again; the runner has not changed.</value></data>
+  <data name="LifeCompletion.Saved" xml:space="preserve"><value>Input draft saved. The runner changes only after final confirmation.</value></data>
+  <data name="LifeCompletion.Help" xml:space="preserve"><value>Your chapters are retained. Review module grants and buy any additional values. Only Core decides costs and whether the complete runner is ready for Career.</value></data>
+  <data name="LifeCompletion.Book" xml:space="preserve"><value>Read your book</value></data>
+  <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Save inputs and review</value></data>
+  <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Review granted values before adding purchases</value></data>
+  <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Review this selection (empty is allowed)</value></data>
+  <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · module levels {2} · purchase cost {3} Karma</value></data>
+  <data name="LifeCompletion.Carryover" xml:space="preserve"><value>Career: {0} Karma, {1:N2} ¥. Discarded: {2} Karma, {3:N2} ¥.</value></data>
+  <data name="LifeCompletion.Confirm" xml:space="preserve"><value>Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached.</value></data>
+  <data name="LifeCompletion.Saving" xml:space="preserve"><value>Saving runner…</value></data>
+  <data name="LifeCompletion.DiscardInputs" xml:space="preserve"><value>Discard these input choices and start again. Confirmed modules and chapters are kept.</value></data>
+  <data name="LifeDashboard.StoryHelp" xml:space="preserve"><value>Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review.</value></data>
+  <data name="LifeDashboard.FinishHelp" xml:space="preserve"><value>Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.</value></data>
+  <data name="LifeDashboard.BudgetTitle" xml:space="preserve"><value>Confirmed module budget</value></data>
+  <data name="LifeDashboard.Budget" xml:space="preserve"><value>Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}</value></data>
+  <data name="LifeDashboard.Unavailable" xml:space="preserve"><value>The current Life Modules authority is unavailable. Reopen this runner; no balance or completion is inferred.</value></data>
+  <data name="LifeDashboard.Complete" xml:space="preserve"><value>Complete your runner</value></data>
+  <data name="LifeDashboard.Continue" xml:space="preserve"><value>Continue your story</value></data>
+  <data name="LifeDashboard.Review" xml:space="preserve"><value>Review exact Core effects before confirming any change.</value></data>
+  <data name="LifeCompletion.ShowDetails" xml:space="preserve"><value>Show calculation details and sources</value></data>
+  <data name="LifeCompletion.HideDetails" xml:space="preserve"><value>Hide calculation details and sources</value></data>
+  <data name="LifeCompletion.QualityKarma" xml:space="preserve"><value>Quality Karma adjustment</value></data>
+  <data name="LifeCompletion.MagicKarma" xml:space="preserve"><value>Magic / Resonance Karma</value></data>
+  <data name="LifeCompletion.ContactKarma" xml:space="preserve"><value>Contact Karma</value></data>
+  <data name="LifeCompletion.CreationFunding" xml:space="preserve"><value>Creation funds</value></data>
+  <data name="LifeCompletion.ResourceRounding" xml:space="preserve"><value>Resource Karma rounding</value></data>
+  <data name="LifeCompletion.CareerKarma" xml:space="preserve"><value>Karma carried into Career</value></data>
+  <data name="LifeCompletion.NuyenCarried" xml:space="preserve"><value>Unspent nuyen carried into Career</value></data>
+  <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Rolled starting cash</value></data>
+  <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creation → Career</value></data>
+  <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
 </root>

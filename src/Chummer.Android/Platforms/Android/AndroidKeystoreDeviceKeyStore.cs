@@ -1,3 +1,4 @@
+using Android.Runtime;
 using Android.Security.Keystore;
 using Java.Security;
 using Java.Security.Cert;
@@ -81,7 +82,10 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
             }
 
             using IKey? key = keyStore.GetKey(alias, null);
-            if (key is not IPrivateKey privateKey)
+            // GetKey can return an IKeyInvoker even when the Java object implements
+            // PrivateKey. Check the Java type, not only the managed wrapper's type.
+            using IPrivateKey? privateKey = key.JavaCast<IPrivateKey>();
+            if (privateKey is null)
             {
                 return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
             }
@@ -97,6 +101,10 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
                 ExportProtocolPublicKey(certificate.PublicKey)));
         }
         catch (KeyPermanentlyInvalidatedException)
+        {
+            return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
+        }
+        catch (InvalidCastException)
         {
             return Task.FromResult(new AndroidDevicePublicKey(AndroidDeviceKeyAvailability.Invalidated));
         }
@@ -125,7 +133,8 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
         {
             using KeyStore keyStore = OpenKeyStore();
             using IKey? key = keyStore.GetKey(alias, null);
-            if (key is not IPrivateKey privateKey)
+            using IPrivateKey? privateKey = key.JavaCast<IPrivateKey>();
+            if (privateKey is null)
             {
                 throw RelinkRequired(AndroidDeviceKeyAvailability.Missing);
             }
@@ -148,6 +157,10 @@ public sealed class AndroidKeystoreDeviceKeyStore : IAndroidDeviceKeyStore
         catch (AndroidDeviceRelinkRequiredException)
         {
             throw;
+        }
+        catch (InvalidCastException exception)
+        {
+            throw RelinkRequired(AndroidDeviceKeyAvailability.Invalidated, exception);
         }
         catch (KeyPermanentlyInvalidatedException exception)
         {

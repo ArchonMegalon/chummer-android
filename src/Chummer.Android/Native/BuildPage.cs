@@ -930,6 +930,32 @@ public sealed class BuildPage : NativePageBase
         {
             Title = "Create";
             AddWorkspacePicker();
+            if (string.Equals(Coordinator.State.Rules?.GameEdition, "SR6", StringComparison.OrdinalIgnoreCase))
+            {
+                _body.Add(NativeTheme.Title(Sr6CreationCopy.Text("Title")));
+                _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
+                if (Coordinator.CanOpenSr6Foundation())
+                {
+                    var displayed = Coordinator.State;
+                    long appearance = CaptureAppearanceGeneration();
+                    long render = _dossierRenderGeneration;
+                    var open = NativeTheme.PrimaryButton(Sr6CreationCopy.Text("Open"));
+                    open.AutomationId = "sr6-foundation-open";
+                    open.Clicked += async (_, _) => await RunAsync(async () =>
+                    {
+                        if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                            || !ReferenceEquals(displayed.Profile, Coordinator.State.Profile)
+                            || displayed.DisplayOwnerContext != Coordinator.State.DisplayOwnerContext
+                            || !Coordinator.CanOpenSr6Foundation()) return;
+                        await Navigation.PushAsync(new Sr6CreationFoundationPage(Coordinator));
+                    });
+                    _body.Add(open);
+                }
+                else _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("OtherMethods"), NativeTheme.Muted));
+                AddFeedback();
+                return;
+            }
+            AddRetainedOriginBookRoute();
             AddCreationWizardDashboard();
             AddFeedback();
             return;
@@ -947,6 +973,7 @@ public sealed class BuildPage : NativePageBase
             // of native controls while Android is returning focus from the document picker.
             // Their implementations remain available for later, separately composed parity
             // work; the current phone beta does not instantiate them on this critical route.
+            AddRetainedOriginBookRoute();
             AddSr5CareerWizardRoute();
             AddSummary();
             AddFeedback();
@@ -989,6 +1016,25 @@ public sealed class BuildPage : NativePageBase
             await Task.Yield();
             await _bodyScroll.ScrollToAsync(0, 0, animated: false);
         });
+    }
+
+    private void AddRetainedOriginBookRoute()
+    {
+        var original = Coordinator.State;
+        if (!Coordinator.CanReadRetainedOriginBook(original)) return;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
+        var copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
+        var open = NativeTheme.SecondaryButton(copy["Origin.ReadBook"]);
+        open.AutomationId = "build-retained-origin-book";
+        open.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                || !Coordinator.CanReadRetainedOriginBook(original)) return;
+            // Direct read-only route: do not revive the deferred generic editors.
+            await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+        });
+        _body.Add(open);
     }
 
     private void AddSr5CareerWizardRoute()
@@ -1146,6 +1192,17 @@ public sealed class BuildPage : NativePageBase
         binding.AutomationId = "creation-wizard-binding";
         _body.Add(binding);
 
+        if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.LifeModules)
+        {
+            // Life Modules has its own cumulative completion authority. Generic
+            // Priority ledgers and finalization placeholders do not describe it.
+            // Leave that snapshot unchanged; the destination still revalidates Core.
+            CancelCreationProjectionQueues();
+            _creationProjection = null;
+            AddLifeModuleCreationDashboard();
+            return;
+        }
+
         CharacterCreationWizardStageState? lifeModuleStage = snapshot.Steps.FirstOrDefault(candidate =>
             string.Equals(
                 candidate.StepId,
@@ -1243,6 +1300,52 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources, readiness);
         AddFinalizationReviewAction();
+    }
+
+    private void AddLifeModuleCreationDashboard()
+    {
+        var displayed = Coordinator.State;
+        bool current = Coordinator.IsLifeModuleDashboardCurrent(displayed);
+        var foundation = current ? displayed.CreationFoundation : null;
+        bool finished = foundation?.PendingDraft?.ModuleSelectionFinished == true;
+        var budget = foundation?.LifeModuleBudget;
+
+        var scope = NativeTheme.Body(finished
+            ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
+            : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review."), NativeTheme.Muted);
+        scope.AutomationId = "creation-life-module-scope";
+        _body.Add(scope);
+
+        var card = new VerticalStackLayout { Spacing = 8 };
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("LifeDashboard.BudgetTitle", "Confirmed module budget")));
+        bool exact = budget is { BudgetId: CharacterCreationBudgetIds.LifeModules, IsExact: true, Blockers.Count: 0 };
+        var values = NativeTheme.Body(exact
+            ? CreationAllocationStrings.Format("LifeDashboard.Budget",
+                "Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}",
+                budget!.Used, budget.Total, budget.Remaining)
+            : CreationAllocationStrings.Get("LifeDashboard.Unavailable", "The current Life Modules authority is unavailable. Reopen this runner; no balance or completion is inferred."),
+            exact ? NativeTheme.Muted : NativeTheme.Danger);
+        values.AutomationId = "creation-life-module-budget-values";
+        card.Add(values);
+        foreach (string blocker in (foundation?.AuthorityBlockers ?? []).Concat(budget?.Blockers ?? []).Distinct(StringComparer.Ordinal))
+            card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        var budgetCard = NativeTheme.Card(card);
+        budgetCard.AutomationId = "creation-life-module-budget";
+        _body.Add(budgetCard);
+
+        bool canOpen = current && Coordinator.CanOpenSr5LifeModuleOrigin()
+            && (!finished || Coordinator.CanOpenLifeModuleCompletion());
+        long render = _dossierRenderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(CreationNavigationRow(
+            finished ? CreationAllocationStrings.Get("LifeDashboard.Complete", "Complete your runner") : CreationAllocationStrings.Get("LifeDashboard.Continue", "Continue your story"),
+            CurrentPhoneWizardScope.MarkExperimental(CreationAllocationStrings.Get("LifeDashboard.Review", "Review exact Core effects before confirming any change.")),
+            async () =>
+            {
+                if (!canOpen || render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || !Coordinator.IsLifeModuleDashboardCurrent(displayed)) return;
+                await OpenSr5LifeModuleOriginAsync();
+            }, canOpen, "creation-life-module-continue"));
     }
 
     private void ScheduleCreationDashboardRouteReady(
@@ -2697,6 +2800,14 @@ public sealed class BuildPage : NativePageBase
         AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve();
         OriginDossierLifeModulePhoneResult opened =
             await Coordinator.OpenSr5LifeModuleOriginAsync();
+        if (opened.IsSuccess && opened.Completed && opened.StoryCheckpoint is { } savedStory)
+        {
+            if (Coordinator.CanOpenLifeModuleCompletion())
+                await Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator,
+                    () => Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name))));
+            else await Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name));
+            return;
+        }
         if (!opened.IsSuccess || opened.State is null)
         {
             await DisplayAlertAsync(
@@ -2710,10 +2821,10 @@ public sealed class BuildPage : NativePageBase
         var page = new OriginDossierLifeModuleDecisionPage(
             opened,
             CultureInfo.CurrentUICulture.Name,
-            async choiceId =>
+            async (choiceId, answers) =>
             {
                 OriginDossierLifeModulePhoneResult prepared =
-                    await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
+                    await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId, followUpValues: answers);
                 if (prepared.IsSuccess)
                     return prepared;
                 await DisplayAlertAsync(
@@ -2726,13 +2837,13 @@ public sealed class BuildPage : NativePageBase
             {
                 OriginDossierLifeModulePhoneResult confirmed =
                     await Coordinator.ConfirmSr5LifeModuleOriginAsync(choiceId, previewDigest);
-                if (confirmed.IsSuccess && confirmed.Completed)
-                    return true;
+                if (confirmed.IsSuccess)
+                    return confirmed;
                 await DisplayAlertAsync(
                     copy["Origin.DecisionNotSavedTitle"],
                     confirmed.Blockers.FirstOrDefault() ?? copy["Origin.DecisionNotSavedDetail"],
                     copy["Common.Ok"]);
-                return false;
+                return null;
             });
         await Navigation.PushAsync(page);
     }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
 
 namespace Chummer.Android.Native;
@@ -13,20 +14,26 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 {
     private OriginDossierLifeModuleDecisionState _state;
     private CharacterCreationBudgetState _budget;
-    private readonly string _foundationSnapshotDigest;
-    private readonly string _boundContentDigest;
-    private readonly string _boundSourceDigest;
-    private readonly string _boundMechanicsSnapshotDigest;
+    private string _foundationSnapshotDigest;
+    private string _boundContentDigest;
+    private string _boundSourceDigest;
+    private string _boundMechanicsSnapshotDigest;
     private readonly OriginDossierNarrativeLocaleBinding _locale;
     private readonly AndroidSurfaceCopy _copy;
-    private readonly Func<string, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
-    private readonly Func<string, string, Task<bool>> _confirmChoice;
+    private Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
+    private readonly Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
+    private readonly Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> _confirmChoice;
+    private string? _selectedMetatypeOptionId;
+    private int _renderGeneration;
+    private bool _actionInFlight;
+    private string? _editingChoiceId;
+    private readonly Dictionary<string, string> _answers = new(StringComparer.Ordinal);
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModulePhoneResult opened,
         string activeAppLocale,
-        Func<string, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
-        Func<string, string, Task<bool>> confirmChoice)
+        Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
+        Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -38,6 +45,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 "The Origin Dossier decision has no exact Life Modules budget authority.");
         }
         _state = state;
+        _storyCheckpoint = opened.StoryCheckpoint;
         _budget = budget;
         _foundationSnapshotDigest = opened.FoundationSnapshotDigest!;
         _boundContentDigest = opened.BoundContentDigest!;
@@ -55,13 +63,28 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _locale = locale;
         _prepareChoice = prepareChoice ?? throw new ArgumentNullException(nameof(prepareChoice));
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
+        _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
+            .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
         AutomationId = "origin-life-decision";
         Content = new ScrollView { Content = BuildBody() };
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        Content = new ScrollView { Content = BuildBody() };
+    }
+
+    protected override void OnDisappearing()
+    {
+        ++_renderGeneration;
+        base.OnDisappearing();
+    }
+
     private VerticalStackLayout BuildBody()
     {
+        int generation = ++_renderGeneration;
         var body = new VerticalStackLayout
         {
             Padding = new Thickness(20, 18, 20, 40),
@@ -82,6 +105,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _locale.FormattingLocale,
                 _copy[_locale.UsesEnglishFallback ? "Common.Yes" : "Common.No"]));
         body.Add(locale);
+
+        if (_storyCheckpoint?.Projection.VisibleChapters.Count > 0)
+        {
+            Button readBook = NativeTheme.SecondaryButton(_copy["Origin.ReadBook"]);
+            readBook.AutomationId = "origin-life-read-book";
+            readBook.Clicked += async (_, _) => await Navigation.PushAsync(
+                new OriginDossierBookPage(_storyCheckpoint, _locale.FormattingLocale));
+            body.Add(readBook);
+        }
 
         var budget = new VerticalStackLayout { Spacing = 6 };
         budget.Add(NativeTheme.Eyebrow(_copy["Origin.Budget"]));
@@ -123,9 +155,48 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         prompt.AutomationId = "origin-life-prompt";
         body.Add(prompt);
 
-        for (int choiceIndex = 0; choiceIndex < _state.Choices.Count; choiceIndex++)
+        // This is a view filter over Core's exact composite Foundation choices,
+        // not a metatype mutation. Only the subsequent explicit confirmation
+        // persists metatype + nationality together, through the Core authority.
+        OriginDossierLifeModuleEffectState[] metatypes = _state.Choices
+            .Select(MetatypeEffect).OfType<OriginDossierLifeModuleEffectState>()
+            .GroupBy(effect => effect.TargetId, StringComparer.Ordinal)
+            .Select(group => group.First()).OrderBy(effect => effect.AfterValue, StringComparer.Ordinal)
+            .ToArray();
+        if (metatypes.Length > 0)
+        {
+            body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseMetatype"]));
+            body.Add(NativeTheme.Body(_copy["Origin.MetatypeReviewDetail"], NativeTheme.Muted));
+            foreach (OriginDossierLifeModuleEffectState metatype in metatypes)
+            {
+                Button selectMetatype = _selectedMetatypeOptionId == metatype.TargetId
+                    ? NativeTheme.PrimaryButton(metatype.AfterValue)
+                    : NativeTheme.SecondaryButton(metatype.AfterValue);
+                selectMetatype.AutomationId = "origin-life-metatype-" + metatype.TargetId;
+                selectMetatype.Clicked += (_, _) =>
+                {
+                    if (_actionInFlight || generation != _renderGeneration)
+                        return;
+                    _selectedMetatypeOptionId = metatype.TargetId;
+                    Content = new ScrollView { Content = BuildBody() };
+                };
+                body.Add(selectMetatype);
+            }
+            if (_selectedMetatypeOptionId is not null)
+                body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseNationality"]));
+        }
+
+        // Keep stable automation identities while moving the selected review
+        // ahead of compact alternatives. Confirmation must not require
+        // scrolling through every other module's effects.
+        foreach (int choiceIndex in Enumerable.Range(0, _state.Choices.Count)
+                     .OrderByDescending(index => _state.Choices[index].ChoiceId == _editingChoiceId)
+                     .ThenByDescending(index => _state.Choices[index].IsSelected)
+                     .ThenByDescending(index => IsSelectionFinish(_state.Choices[index])))
         {
             OriginDossierLifeModuleChoiceState choice = _state.Choices[choiceIndex];
+            if (metatypes.Length > 0 && MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId)
+                continue;
             var card = new VerticalStackLayout { Spacing = 8 };
             Button select = choice.IsSelected
                 ? NativeTheme.PrimaryButton(choice.Label)
@@ -134,12 +205,24 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             string choiceId = choice.ChoiceId;
             select.Clicked += async (_, _) =>
             {
-                OriginDossierLifeModulePhoneResult? prepared =
-                    await _prepareChoice(choiceId);
-                if (prepared is not null && TryAdoptPrepared(prepared))
+                if (_actionInFlight || generation != _renderGeneration)
+                    return;
+                if (FollowUps(choiceId).Count > 0)
                 {
+                    BeginEditing(choiceId);
                     Content = new ScrollView { Content = BuildBody() };
+                    return;
                 }
+                _editingChoiceId = null;
+                _actionInFlight = true;
+                select.IsEnabled = false;
+                try
+                {
+                    OriginDossierLifeModulePhoneResult? prepared = await _prepareChoice(choiceId, null);
+                    if (prepared is not null && generation == _renderGeneration && TryAdoptPrepared(prepared))
+                        Content = new ScrollView { Content = BuildBody() };
+                }
+                finally { _actionInFlight = false; select.IsEnabled = true; }
             };
             card.Add(select);
 
@@ -150,6 +233,18 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 NativeTheme.Muted);
             source.AutomationId = $"origin-life-choice-source-{choiceIndex}";
             card.Add(source);
+            card.Add(NativeTheme.Metric(_copy["Origin.Karma"], choice.KarmaRaw));
+            if (choiceId == _editingChoiceId)
+            {
+                AddInputForm(card, choiceId, generation);
+                body.Add(NativeTheme.Card(card));
+                continue;
+            }
+            if (!choice.IsSelected || _editingChoiceId is not null)
+            {
+                body.Add(NativeTheme.Card(card));
+                continue;
+            }
             Label anchors = NativeTheme.Body(
                 _copy.Format(
                     "Origin.SourceAnchors",
@@ -157,11 +252,21 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 NativeTheme.Muted);
             anchors.AutomationId = $"origin-life-choice-anchors-{choiceIndex}";
             card.Add(anchors);
-            card.Add(NativeTheme.Metric(_copy["Origin.Karma"], choice.KarmaRaw));
+            if (_storyCheckpoint?.PendingPreview?.InputResolution is { } answers)
+                foreach (var question in FollowUps(choiceId))
+                    if (answers.Values.TryGetValue(question.PromptId, out string? answer))
+                        card.Add(NativeTheme.Body(question.Label + ": " + answer));
 
-            for (int effectIndex = 0; effectIndex < choice.Effects.Count; effectIndex++)
+            // The reviewed values come from Core's resolved preview, not the
+            // unanswered catalog option. No mechanics are calculated here.
+            var effects = _storyCheckpoint?.PendingPreview?.InputResolution?.MechanicsPreview.Items;
+            int effectCount = effects?.Count ?? choice.Effects.Count;
+            for (int effectIndex = 0; effectIndex < effectCount; effectIndex++)
             {
-                OriginDossierLifeModuleEffectState effect = choice.Effects[effectIndex];
+                var resolved = effects?[effectIndex];
+                var effect = resolved is null ? choice.Effects[effectIndex] : new OriginDossierLifeModuleEffectState(
+                    resolved.EffectId, resolved.Domain, resolved.TargetId, resolved.BeforeValue,
+                    resolved.AfterValue, resolved.BudgetDelta, resolved.SourceAnchorIds, resolved.ItemDigest);
                 Label effectLabel = NativeTheme.Body(_copy.Format(
                     "Origin.Effect",
                     RunnerSessionCoordinator.HumanizeId(effect.Domain),
@@ -172,6 +277,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 card.Add(effectLabel);
             }
             body.Add(NativeTheme.Card(card));
+            AddConfirmation(body, generation);
         }
 
         Label provenance = NativeTheme.Body(
@@ -180,6 +286,97 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         provenance.AutomationId = "origin-life-ltd-provenance";
         body.Add(provenance);
 
+        return body;
+    }
+
+    private IReadOnlyList<LifeModuleFollowUpPromptDto> FollowUps(string choiceId)
+        => _storyCheckpoint?.Projection.CurrentTurn.LegalChoices
+            .SingleOrDefault(choice => choice.ChoiceId == choiceId)?.FollowUps ?? [];
+
+    private void BeginEditing(string choiceId)
+    {
+        _editingChoiceId = choiceId;
+        _answers.Clear();
+        if (_storyCheckpoint?.PendingPreview?.InputResolution is { } pending && pending.ChoiceId == choiceId)
+            foreach (var answer in pending.Values)
+                _answers.Add(answer.Key, answer.Value);
+    }
+
+    private void AddInputForm(VerticalStackLayout card, string choiceId, int generation)
+    {
+        var prompts = FollowUps(choiceId);
+        var review = NativeTheme.PrimaryButton(_copy["Origin.ReviewAnswers"]);
+        review.AutomationId = "origin-life-review-answers";
+        void UpdateReady() => review.IsEnabled = !_actionInFlight && prompts.All(prompt => !prompt.IsRequired
+            || _answers.TryGetValue(prompt.PromptId, out var answer) && !string.IsNullOrWhiteSpace(answer));
+        card.Add(NativeTheme.Body(_copy["Origin.AnswersDetail"], NativeTheme.Muted));
+        foreach (var prompt in prompts)
+        {
+            card.Add(NativeTheme.Body(prompt.Label + (prompt.IsRequired ? " *" : string.Empty)));
+            string promptId = prompt.PromptId;
+            _answers.TryGetValue(promptId, out var previous);
+            if (prompt.InputKind == "single-select")
+            {
+                var options = prompt.Options.Where(option => option.IsEnabled).ToArray();
+                var picker = new Picker
+                {
+                    Title = _copy["Origin.ChooseAnswer"],
+                    AutomationId = "origin-life-answer-" + promptId,
+                    ItemsSource = options,
+                    ItemDisplayBinding = new Binding(nameof(LifeModuleFollowUpOptionDto.Label)),
+                    SelectedIndex = Array.FindIndex(options, option => option.SourceValue == previous)
+                };
+                picker.SelectedIndexChanged += (_, _) =>
+                {
+                    if (_actionInFlight || generation != _renderGeneration) return;
+                    if (picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Length)
+                        _answers[promptId] = options[picker.SelectedIndex].SourceValue;
+                    else _answers.Remove(promptId);
+                    UpdateReady();
+                };
+                card.Add(picker);
+            }
+            else
+            {
+                var entry = new Entry
+                {
+                    AutomationId = "origin-life-answer-" + promptId,
+                    Text = previous, MaxLength = 1024, Placeholder = _copy["Origin.EnterAnswer"]
+                };
+                entry.TextChanged += (_, _) =>
+                {
+                    if (_actionInFlight || generation != _renderGeneration) return;
+                    _answers[promptId] = entry.Text?.Trim() ?? string.Empty;
+                    UpdateReady();
+                };
+                card.Add(entry);
+            }
+        }
+        UpdateReady();
+        review.Clicked += async (_, _) =>
+        {
+            if (_actionInFlight || generation != _renderGeneration) return;
+            _actionInFlight = true;
+            review.IsEnabled = false;
+            try
+            {
+                var answers = new Dictionary<string, string>(_answers, StringComparer.Ordinal);
+                var prepared = await _prepareChoice(choiceId, answers);
+                if (generation == _renderGeneration && prepared is not null && TryAdoptPrepared(prepared))
+                {
+                    _editingChoiceId = null;
+                    Content = new ScrollView { Content = BuildBody() };
+                }
+            }
+            finally { _actionInFlight = false; UpdateReady(); }
+        };
+        card.Add(review);
+    }
+
+    // Only called after rendering the selected, metatype-filtered card and its
+    // exact Core preview. Changing metatype hides the old preview and action.
+    private void AddConfirmation(VerticalStackLayout body, int generation)
+    {
         if (_state.SelectedChoiceId is { } selectedChoiceId
             && _state.PendingPreviewDigest is { } previewDigest)
         {
@@ -191,17 +388,62 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = _state.CanConfirm;
+            var progress = new ActivityIndicator
+            {
+                AutomationId = "origin-life-saving", IsVisible = false,
+                WidthRequest = 24, HeightRequest = 24,
+                HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center
+            };
+            // Reserve space so showing feedback does not move the tapped action.
+            var confirmationRow = new Grid
+            {
+                HeightRequest = confirm.HeightRequest, ColumnSpacing = 10,
+                ColumnDefinitions = { new(GridLength.Star), new(new GridLength(32)) }
+            };
+            confirmationRow.Add(confirm, 0);
+            confirmationRow.Add(progress, 1);
             confirm.Clicked += async (_, _) =>
             {
-                bool completed = await _confirmChoice(selectedChoiceId, previewDigest);
-                if (completed)
-                    await Navigation.PopAsync();
+                if (_actionInFlight || generation != _renderGeneration)
+                    return;
+                _actionInFlight = true;
+                confirm.IsEnabled = false;
+                body.IsEnabled = false;
+                confirm.Text = _copy["Origin.SavingDecision"];
+                progress.IsVisible = progress.IsRunning = true;
+                try
+                {
+                    var confirmed = await _confirmChoice(selectedChoiceId, previewDigest);
+                    if (generation != _renderGeneration || confirmed?.IsSuccess != true)
+                        return;
+                    if (confirmed.Completed)
+                        await Navigation.PopAsync();
+                    else if (TryAdoptConfirmed(confirmed))
+                        Content = new ScrollView { Content = BuildBody() };
+                }
+                finally
+                {
+                    _actionInFlight = false;
+                    progress.IsRunning = progress.IsVisible = false;
+                    body.IsEnabled = true;
+                    confirm.Text = _copy["Origin.Confirm"];
+                    confirm.IsEnabled = generation == _renderGeneration && _state.CanConfirm;
+                }
             };
-            body.Add(confirm);
+            body.Add(confirmationRow);
         }
 
-        return body;
     }
+
+    private static OriginDossierLifeModuleEffectState? MetatypeEffect(OriginDossierLifeModuleChoiceState choice)
+        => choice.Effects.SingleOrDefault(effect => effect.Domain == "metatype-choice");
+
+    // Core determines whether finishing is available. Only promote an already
+    // admitted typed action; never infer permission from stage, cost or label.
+    private static bool IsSelectionFinish(OriginDossierLifeModuleChoiceState choice)
+        => choice.Effects.Any(effect => effect.Domain == "creation-stage"
+            && effect.TargetId == CharacterCreationLifeModuleStageIds.SelectionFinished
+            && effect.AfterValue == "true");
 
     private Grid BudgetMetric(
         string automationId,
@@ -244,6 +486,33 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
         _state = state;
         _budget = budget;
+        _storyCheckpoint = prepared.StoryCheckpoint;
+        return true;
+    }
+
+    private bool TryAdoptConfirmed(OriginDossierLifeModulePhoneResult confirmed)
+    {
+        if (!TryReadDisplayAuthority(confirmed, out var state, out var budget)
+            || confirmed.StoryCheckpoint is not { } checkpoint
+            || state.WorkspaceId != _state.WorkspaceId || state.OwnerId != _state.OwnerId
+            || state.Locale != _state.Locale || state.WorkspaceRevision != _state.WorkspaceRevision + 1
+            || state.TurnSequence != _state.TurnSequence + 1 || state.StageOrder < _state.StageOrder
+            || state.CanConfirm || checkpoint.PendingPreview is not null
+            || checkpoint.Projection.CurrentTurn.PreviousTurnDigest != _state.BoundTurnSeedDigest
+            || confirmed.BoundSourceDigest != _boundSourceDigest
+            || budget.Total != _budget.Total || budget.Unit != _budget.Unit)
+            return false;
+
+        _state = state;
+        _budget = budget;
+        _storyCheckpoint = checkpoint;
+        _foundationSnapshotDigest = confirmed.FoundationSnapshotDigest!;
+        _boundContentDigest = confirmed.BoundContentDigest!;
+        _boundSourceDigest = confirmed.BoundSourceDigest!;
+        _boundMechanicsSnapshotDigest = confirmed.BoundMechanicsSnapshotDigest!;
+        _selectedMetatypeOptionId = null;
+        _editingChoiceId = null;
+        _answers.Clear();
         return true;
     }
 

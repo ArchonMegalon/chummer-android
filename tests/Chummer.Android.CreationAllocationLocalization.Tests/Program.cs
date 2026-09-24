@@ -111,6 +111,19 @@ finally
     CultureInfo.CurrentUICulture = previousCulture;
 }
 
+foreach ((string locale, string expert) in new[]
+{
+    ("en-GB", "Expert"), ("de-AT", "Experte"), ("es-MX", "Experto")
+})
+{
+    var culture = CultureInfo.GetCultureInfo(locale);
+    string level = CreationAllocationStrings.Get("Sr6.NaturalLevel.expert", "missing", culture);
+    Assert(level == expert, "Saved language level must not reuse the picker point-cost caption: " + locale);
+    Assert(CreationAllocationStrings.Format(culture, "Sr6.NaturalLanguage", "missing", "Spanish", level, 3)
+        .Contains("Spanish: " + expert + " · ", StringComparison.Ordinal),
+        "Natural language projection must display the reached level, not charge pool picks again: " + locale);
+}
+
 string[] surfaceFiles =
 [
     "CreationAttributesPage.cs",
@@ -122,10 +135,35 @@ string[] surfaceFiles =
 Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(
              native,
-             ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs"]))
+             ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs", "Sr6CreationCopy.cs",
+              "LifeModuleCompletionPage.cs", "LifeModuleCompletionPage.Purchases.cs"]))
 {
     usedCopy.TryAdd(key, fallback);
 }
+foreach ((string key, string fallback) in ReadSourceCopy(native,
+    ["LifeModuleCompletionPage.cs", "LifeModuleCompletionPage.Purchases.cs"], "LifeCopy", "LifeCompletion."))
+    usedCopy.TryAdd(key, fallback);
+// SR6 shares this resource catalogue through a prefixed helper, including
+// conditional captions and typed-ID label families. Do not classify every
+// helper-backed key as unused simply because it has no inline English fallback.
+string[] sr6Files = Directory.EnumerateFiles(native, "Sr6Creation*.cs")
+    .Concat(Directory.EnumerateFiles(native, "*.cs").Where(path => File.ReadAllText(path)
+        .Contains("Sr6CreationCopy.", StringComparison.Ordinal))).Distinct(StringComparer.Ordinal).ToArray();
+var sr6Literals = sr6Files.SelectMany(path => CSharpSyntaxTree.ParseText(File.ReadAllText(path))
+    .GetRoot().DescendantTokens().Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+    .Select(token => token.ValueText)).ToHashSet(StringComparer.Ordinal);
+foreach ((string key, string value) in neutral.Where(pair => pair.Key.StartsWith("Sr6.", StringComparison.Ordinal)))
+{
+    string suffix = key[4..];
+    if (sr6Literals.Contains(suffix) || sr6Literals.Any(literal => literal.EndsWith('.') && literal.Length > 1
+            && literal != "Sr6." && (suffix.StartsWith(literal, StringComparison.Ordinal)
+                || key.StartsWith(literal, StringComparison.Ordinal))))
+        usedCopy.TryAdd(key, value);
+}
+foreach (string path in sr6Files)
+foreach (Match match in Regex.Matches(File.ReadAllText(path),
+    (Path.GetFileName(path) == "Sr6CreationCopy.cs" ? @"(?<![\w.])Text" : @"Sr6CreationCopy\.Text") + @"\(""([^""]+)""\)"))
+    Assert(neutral.ContainsKey("Sr6." + match.Groups[1].Value), "SR6 helper key missing: " + match.Groups[1].Value);
 string[] missingUsedKeys = usedCopy.Keys
     .Except(neutral.Keys, StringComparer.Ordinal)
     .Order(StringComparer.Ordinal)
@@ -153,6 +191,7 @@ AssertNoDirectVisibleCopy(native, surfaceFiles);
 AssertAuthorityBoundary(native);
 AssertHelperScope(native, surfaceFiles);
 AssertSourcesParse(native, surfaceFiles.Append("CreationAllocationStrings.cs"));
+AssertSourcesParse(native, sr6Files.Select(Path.GetFileName).OfType<string>());
 
 Console.WriteLine(
     $"Creation allocation localization tests passed ({neutral.Count} parity-checked keys; "
@@ -206,12 +245,13 @@ static string[] Placeholders(string value)
         .Order(StringComparer.Ordinal)
         .ToArray();
 
-static Dictionary<string, string> ReadSourceCopy(string native, IEnumerable<string> files)
+static Dictionary<string, string> ReadSourceCopy(string native, IEnumerable<string> files,
+    string? helperName = null, string keyPrefix = "")
 {
     var result = new Dictionary<string, string>(StringComparer.Ordinal);
     foreach (string file in files)
     {
-        string call = file switch
+        string call = helperName is not null ? Regex.Escape(helperName) : file switch
         {
             "BuildPage.cs" => @"CreationAllocationStrings\.(?:Get|Format)",
             "CreationSkillsReReviewPage.cs" => @"(?:Text|Format)",
@@ -221,7 +261,7 @@ static Dictionary<string, string> ReadSourceCopy(string native, IEnumerable<stri
             RegexOptions.Singleline);
         foreach (Match match in pattern.Matches(File.ReadAllText(Path.Combine(native, file))))
         {
-            string key = (file == "CreationSkillsReReviewPage.cs" ? "SkillsReReview." : "") + match.Groups[1].Value;
+            string key = keyPrefix + (file == "CreationSkillsReReviewPage.cs" ? "SkillsReReview." : "") + match.Groups[1].Value;
             string fallback = Regex.Unescape(match.Groups[2].Value);
             if (result.TryGetValue(key, out string? previous))
                 Assert(previous == fallback, $"conflicting English fallbacks for {key}");
@@ -280,7 +320,7 @@ static void AssertHelperScope(string native, IReadOnlyCollection<string> surface
     // BuildPage owns allocation route captions; CreationFinalizationPage owns
     // shared starting-cash copy. Their other copy belongs to other catalogs.
     string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs").Append("BuildPage.cs")
-        .Append("CreationFinalizationPage.cs")
+        .Append("CreationFinalizationPage.cs").Append("Sr6CreationCopy.cs").Append("LifeModuleCompletionPage.cs")
         .Order(StringComparer.Ordinal)
         .ToArray();
     string[] actual = Directory.EnumerateFiles(native, "*.cs", SearchOption.TopDirectoryOnly)
