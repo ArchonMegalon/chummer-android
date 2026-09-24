@@ -179,32 +179,32 @@ for forbidden in \
 done
 
 [[ -f "$lock" && ! -L "$lock" ]] || fail "full-project-lock-missing"
-[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "d1add06bcf6c4e15de497dbc5ca78cca4114a1b764ad488ab9a260e7c7f271fc" ]] \
+[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2" ]] \
   || fail "full-project-lock-digest-mismatch"
 [[ "$($dotnet_command --version)" == "10.0.111" ]] || fail "dotnet-sdk-not-10.0.111"
 [[ -z "$("$git_command" -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "2a79298d9a14c1ce0f75819d46a6adb29a1eacac" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "12236cdfe828f147bf3b8623f19e6cbd3fbaca3f" ]] \
   || fail "presentation-revision-input-mismatch"
-[[ "$CHUMMER_CORE_ENGINE_REVISION" == "d9051e0d214a56b515e14b164500f9e70f09edcd" ]] \
+[[ "$CHUMMER_CORE_ENGINE_REVISION" == "5160e78a60bcefd952e8720aae6032a127c3a755" ]] \
   || fail "core-runtime-revision-input-mismatch"
-[[ "$CHUMMER_RUN_SERVICES_REVISION" == "026943cd5d3413f390452dfbec06852ef10b0d55" ]] \
+[[ "$CHUMMER_RUN_SERVICES_REVISION" == "42d0bfbb117ab6250e8b0512dd92585916c6469f" ]] \
   || fail "hub-revision-input-mismatch"
 [[ "$CHUMMER_UI_KIT_REVISION" == "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61" ]] \
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "2a79298d9a14c1ce0f75819d46a6adb29a1eacac" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "12236cdfe828f147bf3b8623f19e6cbd3fbaca3f" ]] \
   || fail "current-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "55cad613a144d6f2b857fccc59d8bc842ee6f231" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "6074a0d1e01727dea2fa0aabd019c70c501abc8b" ]] \
   || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "current-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "4cfb7779547290a81d768a182186ce4378f84195ed4d6da9bafce87aab12b975" ]] \
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "2532d48fd196adf6e77437d90242be523d386ecb0c1136405ae4e557abdfdb04" ]] \
   || fail "current-presentation-lock-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "bd955ad8e5ef4344ec6f87180b872d563f081ac8" ]] \
+[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "1e477c0f5e036eed241f4fe723a0e2eda30c51dd" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
   || fail "core-content-not-clean"
@@ -298,11 +298,11 @@ package_args=(
   "-p:AndroidSdkDirectory=$android_sdk_root"
   "-p:AndroidSdkBuildToolsVersion=$android_build_tools_version"
   "-p:JavaSdkDirectory=$java_home"
-  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.shd9051e0d214a5"
-  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.shd9051e0d214a5"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.sh5160e78a60bce"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.sh5160e78a60bce"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
-  "-p:ChummerRunContractsPackageVersion=0.1.1-packageplane.20260924.2"
-  "-p:ChummerHubRegistryContractsPackageVersion=0.1.1-packageplane.20260924.2"
+  "-p:ChummerRunContractsPackageVersion=0.1.1-packageplane.20260924.3"
+  "-p:ChummerHubRegistryContractsPackageVersion=0.1.1-packageplane.20260924.3"
   "-p:ChummerUiKitPackageVersion=0.1.0-preview"
 )
 

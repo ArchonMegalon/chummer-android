@@ -4,37 +4,37 @@
   "authorityState": "current_graph_verified",
   "publicationAuthorized": false,
   "presentationSource": {
-    "commit": "2a79298d9a14c1ce0f75819d46a6adb29a1eacac",
-    "tree": "55cad613a144d6f2b857fccc59d8bc842ee6f231",
+    "commit": "12236cdfe828f147bf3b8623f19e6cbd3fbaca3f",
+    "tree": "6074a0d1e01727dea2fa0aabd019c70c501abc8b",
     "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
   "packagePlaneLock": {
     "path": "config/package-plane.lock.json",
     "contractName": "chummer6-ui.fresh-package-plane-lock",
     "contractVersion": 11,
-    "sha256": "4cfb7779547290a81d768a182186ce4378f84195ed4d6da9bafce87aab12b975",
+    "sha256": "2532d48fd196adf6e77437d90242be523d386ecb0c1136405ae4e557abdfdb04",
     "sizeBytes": 67862,
-    "gitBlob": "1b5029bc5f7e4c9b2e59ec2fe0ef64ae5fe034f7"
+    "gitBlob": "ff37792c07c3d19808e608f62b8fde76d4cc8c73"
   },
   "verificationReceipt": {
     "contractName": "chummer6-ui.fresh-package-plane-verification",
     "contractVersion": 11,
-    "sha256": "b3e562579dd41e2606fc8e275afd111115a2520c24e731544d1848a44a326c7c",
+    "sha256": "63299515adc56d5e93901d4e33951a256ea970ff2955eeb0bf7521dc2ad325c8",
     "sizeBytes": 80373,
     "status": "passed"
   },
   "artifactCache": {
     "contractName": "chummer6-ui.owner-package-artifact-cache/v1",
-    "cacheKey": "4bd67d4c3905c1ea12b5d567a512bb274e2da650df9af2fcd5c16b5f4ea70bc1",
+    "cacheKey": "93c77ec30782376d79e40b959021bac3c47f0b5e1340b75fed033964d78a2f42",
     "manifestFileName": "owner-package-cache.json",
-    "manifestSha256": "022f07401d8a2974bc8b18e659ccf3e42ada518a1f4cd6e0e4c989bbc94361ae",
+    "manifestSha256": "d363d27a4b30be20ed06785f3f6f308389dac1813ffd366baebb89f2490d6b69",
     "manifestSizeBytes": 13597,
     "packageCount": 18
   },
   "sourceGraph": {
-    "corePackageRecipeCommit": "bd955ad8e5ef4344ec6f87180b872d563f081ac8",
-    "coreRuntimeSourceCommit": "d9051e0d214a56b515e14b164500f9e70f09edcd",
-    "hubProducerCommit": "026943cd5d3413f390452dfbec06852ef10b0d55",
+    "corePackageRecipeCommit": "1e477c0f5e036eed241f4fe723a0e2eda30c51dd",
+    "coreRuntimeSourceCommit": "5160e78a60bcefd952e8720aae6032a127c3a755",
+    "hubProducerCommit": "42d0bfbb117ab6250e8b0512dd92585916c6469f",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
   },
@@ -72,13 +72,13 @@
     {
       "project": "src/Chummer.Android/Chummer.Android.csproj",
       "path": "src/Chummer.Android/packages.lock.json",
-      "sha256": "d1add06bcf6c4e15de497dbc5ca78cca4114a1b764ad488ab9a260e7c7f271fc",
+      "sha256": "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2",
       "sizeBytes": 70263
     },
     {
       "project": "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
       "path": "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-      "sha256": "db741a9531cf9c8899f263d331bf0e46cc59e9622cc33e6aa78b14b26c46024d",
+      "sha256": "299a58df9a85b8b517bcf17035f9fc356d214c571869b077c6f22302690d5ead",
       "sizeBytes": 16066
     }
   ],
