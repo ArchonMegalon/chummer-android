@@ -81,7 +81,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 578f1658e32091944e62ef03a9c02dc252c1bc2d
+          ref: 2a79298d9a14c1ce0f75819d46a6adb29a1eacac
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: d1c6e3d22360ce61fd32ed58cb571ac2b50b070d
+          ref: d9051e0d214a56b515e14b164500f9e70f09edcd
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
@@ -106,7 +106,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 1d8cf694d0412b3bd9f4a241fb95244fad341160
+          ref: bd955ad8e5ef4344ec6f87180b872d563f081ac8
           path: chummer-core-content
           persist-credentials: false
           fetch-depth: 1
@@ -119,7 +119,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-hub
-          ref: e35db6feca8f194161302064a9f77d4f8e60fe14
+          ref: 026943cd5d3413f390452dfbec06852ef10b0d55
           path: chummer.run-services
           persist-credentials: false
           fetch-depth: 1
@@ -410,10 +410,10 @@ jobs:
           python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py \
             materialize \
             --source android https://github.com/ArchonMegalon/chummer-android.git "$GITHUB_SHA" "$GITHUB_WORKSPACE/chummer-android" \
-            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git 578f1658e32091944e62ef03a9c02dc252c1bc2d "$GITHUB_WORKSPACE/chummer-presentation" \
-            --source core-runtime https://github.com/ArchonMegalon/chummer6-core.git d1c6e3d22360ce61fd32ed58cb571ac2b50b070d "$GITHUB_WORKSPACE/chummer-core-engine" \
-            --source core-content https://github.com/ArchonMegalon/chummer6-core.git 1d8cf694d0412b3bd9f4a241fb95244fad341160 "$GITHUB_WORKSPACE/chummer-core-content" \
-            --source hub https://github.com/ArchonMegalon/chummer6-hub.git e35db6feca8f194161302064a9f77d4f8e60fe14 "$GITHUB_WORKSPACE/chummer.run-services" \
+            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git 2a79298d9a14c1ce0f75819d46a6adb29a1eacac "$GITHUB_WORKSPACE/chummer-presentation" \
+            --source core-runtime https://github.com/ArchonMegalon/chummer6-core.git d9051e0d214a56b515e14b164500f9e70f09edcd "$GITHUB_WORKSPACE/chummer-core-engine" \
+            --source core-content https://github.com/ArchonMegalon/chummer6-core.git bd955ad8e5ef4344ec6f87180b872d563f081ac8 "$GITHUB_WORKSPACE/chummer-core-content" \
+            --source hub https://github.com/ArchonMegalon/chummer6-hub.git 026943cd5d3413f390452dfbec06852ef10b0d55 "$GITHUB_WORKSPACE/chummer.run-services" \
             --source registry https://github.com/ArchonMegalon/chummer6-hub-registry.git af9a7e19c3bf331e96411dfb8f9e7820a98cab29 "$GITHUB_WORKSPACE/chummer-hub-registry" \
             --source ui-kit https://github.com/ArchonMegalon/chummer6-ui-kit.git d51ecd99cf72098d4adc8db0192bff7bf9fd8e61 "$GITHUB_WORKSPACE/chummer-ui-kit" \
             --source media https://github.com/ArchonMegalon/chummer6-media-factory.git f3c955488210c69abdf96689dd3b3d67afba80d2 "$GITHUB_WORKSPACE/fleet/repos/chummer-media-factory" \
@@ -532,7 +532,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 578f1658e32091944e62ef03a9c02dc252c1bc2d
+          ref: 2a79298d9a14c1ce0f75819d46a6adb29a1eacac
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -542,7 +542,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: d1c6e3d22360ce61fd32ed58cb571ac2b50b070d
+          ref: d9051e0d214a56b515e14b164500f9e70f09edcd
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
