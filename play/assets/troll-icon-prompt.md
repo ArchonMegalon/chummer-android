@@ -1,4 +1,34 @@
-# Stylized Troll icon — 2026-09-22
+# User-supplied Troll icon — 2026-09-24
+
+The user replaced the generated head below with an exact, full-body SVG.
+The current launcher foreground is
+`src/Chummer.Android/Resources/AppIcon/appiconfg.svg` (208 paths, 14 gradients).
+Its artwork is copied unchanged from the user's message, with only a final
+newline added. SHA-256:
+`404d590668e91f9330463a799e8bd34dc9619fdaa4f42a158b5c751f39ba64d0`.
+There are no external resources, scripts or embedded raster images.
+
+MAUI consumes the SVG directly, retaining the full figure and transparent
+surroundings. Keep the separate opaque `#102426` background and foreground
+scale 0.58 so Android owns the round/squircle mask without clipping the troll.
+The Play icon uses the same supplied artwork, rasterized by librsvg/Cairo to
+opaque 512×512. A standard librsvg CLI equivalent for regeneration is:
+
+```sh
+rsvg-convert --width 512 --height 512 --background-color '#102426' \
+  --output play/assets/app-icon-512x512.png \
+  src/Chummer.Android/Resources/AppIcon/appiconfg.svg
+```
+
+This supersedes the generated PNG as the active icon. Its historical source
+and prompt remain below; they do not describe the current launcher asset.
+Do not use ImageMagick's internal SVG renderer for this master: it renders
+some of the supplied gradients black. MAUI Resizetizer 10.0.20 successfully
+generated all five Android density sets and adaptive XML from the exact SVG.
+The prior unsigned Preview 29 AAB does not contain this change. Rebuild the
+candidate before signing; no Play listing update or publication is claimed.
+
+## Historical generated head — 2026-09-22
 
 Requested by the user: replace the S/hexagon app icon with a stylized troll.
 Generated with the built-in image-generation tool, not the API/CLI fallback.

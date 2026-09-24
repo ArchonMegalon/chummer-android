@@ -2646,11 +2646,19 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual(1, len(icons))
         icon = icons[0]
         foreground = PROJECT / icon.attrib["ForegroundFile"]
-        self.assertEqual("appiconfg.png", foreground.name)
-        width, height, color_type = self._png_header(foreground)
-        self.assertEqual(width, height)
-        self.assertGreaterEqual(width, 512)
-        self.assertEqual(6, color_type, "adaptive foreground retains generated RGBA transparency")
+        self.assertEqual("appiconfg.svg", foreground.name)
+        artwork = ET.parse(foreground).getroot()
+        svg = "{http://www.w3.org/2000/svg}"
+        self.assertEqual(svg + "svg", artwork.tag)
+        self.assertEqual("0 0 2048 2048", artwork.attrib["viewBox"])
+        self.assertEqual(artwork.attrib["width"], artwork.attrib["height"])
+        self.assertEqual(208, len(artwork.findall(svg + "path")))
+        self.assertEqual(14, len(artwork.findall(".//" + svg + "linearGradient")))
+        self.assertEqual({svg + "defs", svg + "path"}, {shape.tag for shape in artwork})
+        self.assertFalse(artwork.findall(".//" + svg + "image"), "keep the user's vector, not a raster replacement")
+        self.assertFalse(artwork.findall(".//" + svg + "script"))
+        for element in artwork.iter():
+            self.assertFalse(any(key.lower().endswith("href") for key in element.attrib), "icon must be self-contained")
         self.assertGreater(float(icon.attrib["ForegroundScale"]), 0)
         self.assertLessEqual(float(icon.attrib["ForegroundScale"]), 0.60)
         background = ET.parse(PROJECT / icon.attrib["Include"]).getroot()
@@ -2659,7 +2667,6 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual("{http://www.w3.org/2000/svg}rect", shapes[0].tag)
         self.assertEqual(icon.attrib["Color"], shapes[0].attrib["fill"])
         self.assertNotIn("rx", shapes[0].attrib, "Android owns the adaptive corner mask")
-        self.assertFalse((PROJECT / "Resources/AppIcon/appiconfg.svg").exists())
 
     def test_store_graphics_have_upload_dimensions(self) -> None:
         assets = REPO / "play" / "assets"
