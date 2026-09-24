@@ -497,6 +497,33 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"Unlink this device?"', privacy)
         self.assertIn('"Account & privacy"', more + privacy)
 
+    def test_keystore_reopens_java_private_keys_not_managed_wrapper_types(self) -> None:
+        keystore = (
+            PROJECT / "Platforms" / "Android" / "AndroidKeystoreDeviceKeyStore.cs"
+        ).read_text(encoding="utf-8")
+        # Native regression: GetKey returned a valid Java private key through
+        # an IKey wrapper, so a C# `is IPrivateKey` rejected the resumed link.
+        # Keep both lookup and signing on Android's runtime-checked cast. The
+        # emulator smoke supplies behavioral coverage; this guards the source
+        # boundary without pretending the managed fake store exercises JNI.
+        self.assertIn("using Android.Runtime;", keystore)
+        self.assertNotIn("key is not IPrivateKey", keystore)
+        probe = keystore[
+            keystore.index("public Task<AndroidDevicePublicKey> GetPublicKeyAsync"):
+            keystore.index("public Task<byte[]> SignAsync")
+        ]
+        signing = keystore[
+            keystore.index("public Task<byte[]> SignAsync"):
+            keystore.index("public Task DeleteAsync")
+        ]
+        for operation in (probe, signing):
+            self.assertIn("using IPrivateKey? privateKey = key.JavaCast<IPrivateKey>();", operation)
+            self.assertIn("if (privateKey is null)", operation)
+            self.assertIn("catch (InvalidCastException", operation)
+            self.assertIn("AndroidDeviceKeyAvailability.Invalidated", operation)
+            self.assertIn("RequireNonExportable(privateKey)", operation)
+            self.assertIn("signer.InitSign(privateKey)", operation)
+
     def test_account_unlink_failure_retains_retryable_grant_authority(self) -> None:
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
         unlink = service[
