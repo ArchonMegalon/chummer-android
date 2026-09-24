@@ -564,7 +564,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
             Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
             Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
-            Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null)
+            Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null,
+            Action? beforeShellWorkspaceList = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -611,7 +612,8 @@ internal static partial class AfterRunAuthorityHarness
                 _provider = services.BuildServiceProvider();
                 Client = _provider.GetRequiredService<IChummerClient>();
                 Require(Client is InProcessChummerClient, "Runtime integration must never use a network client.");
-                Shell = new ShellPresenter(Client);
+                Shell = new ShellPresenter(beforeShellWorkspaceList is null ? Client
+                    : ObservedShellClientProxy.Wrap(Client, beforeShellWorkspaceList));
                 var operations = _provider.GetRequiredService<IWorkspaceOperationCoordinator>();
                 var boundBootstrap = creationBootstrap ? _provider.GetRequiredService<IOwnerBoundCharacterCreationBootstrapService>() : null;
                 var productionFinalization = productionCreationOverview
