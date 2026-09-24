@@ -2565,6 +2565,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     internal bool CanOpenSr5LifeModuleOrigin()
         => _originLifeModuleRuntime is not null
+           && IsLifeModuleDashboardCurrent(State)
            && State.Profile?.Created == false
            && State.WorkspaceId is { } workspaceId
            && State.CreationWizard is { } wizard
@@ -2580,7 +2581,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     internal async Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
         CancellationToken cancellationToken = default)
     {
-        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        var original = State;
+        if (!CanOpenSr5LifeModuleOrigin() || original.WorkspaceId is not { } workspaceId
+            || original.DisplayOwnerContext is not { IsValid: true } owner)
         {
             return new OriginDossierLifeModulePhoneResult(
                 LifeModuleOriginDossierOutcomes.Blocked,
@@ -2589,8 +2592,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
-            .OpenAsync(workspaceId.Value, cancellationToken);
-        return BindCurrentLifeModuleBudget(result);
+            .OpenAsync(owner, workspaceId.Value, cancellationToken);
+        return await BindCurrentLifeModuleBudgetAsync(original, result);
     }
 
     internal async Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
@@ -2598,7 +2601,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default,
         IReadOnlyDictionary<string, string>? followUpValues = null)
     {
-        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        var original = State;
+        if (!CanOpenSr5LifeModuleOrigin() || original.WorkspaceId is not { } workspaceId
+            || original.DisplayOwnerContext is not { IsValid: true } owner)
         {
             return new OriginDossierLifeModulePhoneResult(
                 LifeModuleOriginDossierOutcomes.Blocked,
@@ -2607,23 +2612,29 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
-            .PrepareAsync(workspaceId.Value, choiceId, cancellationToken, followUpValues);
-        return BindCurrentLifeModuleBudget(result);
+            .PrepareAsync(owner, workspaceId.Value, choiceId, cancellationToken, followUpValues);
+        return await BindCurrentLifeModuleBudgetAsync(original, result);
     }
 
-    private OriginDossierLifeModulePhoneResult BindCurrentLifeModuleBudget(
-        OriginDossierLifeModulePhoneResult result)
+    private async Task<OriginDossierLifeModulePhoneResult> BindCurrentLifeModuleBudgetAsync(
+        CharacterOverviewState original, OriginDossierLifeModulePhoneResult result)
     {
+        if (!IsNativeEditDisplayCurrent(original))
+            return new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.WorkspaceStale]);
         if (!result.IsSuccess || result.State is not { } decision)
             return result;
 
-        CharacterCreationFoundationInteractionLoadResult loaded =
-            _foundationInteractionPresenter.Load(State);
+        if (_lifeModuleFinalizationService is not { } service || original.DisplayOwnerContext is not { } owner
+            || original.WorkspaceId is not { } id)
+            return new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.AuthorityInvalid]);
+        var loaded = await Task.Run(() => service.Load(owner, id));
         if (!string.Equals(
                 loaded.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
                 StringComparison.Ordinal)
-            || loaded.State is not { } foundation
+            || !IsNativeEditDisplayCurrent(original)
+            || loaded.Value is not { } foundation
+            || foundation.SnapshotDigest != original.CreationFoundation?.SnapshotDigest
             || foundation.Binding.WorkspaceId.Value != decision.WorkspaceId
             || foundation.Binding.ContentRevision != decision.WorkspaceRevision
             || !OriginDossierLifeModulePhoneRuntime.MatchesFoundationDigest(
@@ -2633,7 +2644,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 foundation.Binding.SourceDigest,
                 result.BoundSourceDigest)
             || string.IsNullOrWhiteSpace(result.BoundMechanicsSnapshotDigest)
-            || string.IsNullOrWhiteSpace(foundation.FoundationSnapshotDigest)
+            || string.IsNullOrWhiteSpace(foundation.SnapshotDigest)
             || !string.Equals(
                 foundation.LifeModuleBudget.BudgetId,
                 CharacterCreationBudgetIds.LifeModules,
@@ -2654,7 +2665,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result with
         {
             LifeModuleBudget = foundation.LifeModuleBudget,
-            FoundationSnapshotDigest = foundation.FoundationSnapshotDigest
+            FoundationSnapshotDigest = foundation.SnapshotDigest
         };
     }
 
@@ -2663,7 +2674,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         string previewDigest,
         CancellationToken cancellationToken = default)
     {
-        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        var original = State;
+        if (!CanOpenSr5LifeModuleOrigin() || original.WorkspaceId is not { } workspaceId
+            || original.DisplayOwnerContext is not { IsValid: true } owner)
         {
             return new OriginDossierLifeModulePhoneResult(
                 "blocked",
@@ -2671,17 +2684,22 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 ["sr5-life-module-origin-authority-unavailable"]);
         }
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
-            .ConfirmAsync(workspaceId.Value, choiceId, previewDigest, cancellationToken);
+            .ConfirmAsync(owner, workspaceId.Value, choiceId, previewDigest, cancellationToken);
         if (result.IsSuccess)
         {
             // Core and the book checkpoint have committed. Refresh every
             // accepted turn, not just the last one, and don't hide that commit
             // behind cancellation while returning its next exact budget.
-            await _presenter.LoadAsync(workspaceId, CancellationToken.None);
+            if (!IsNativePersistenceViewCurrent(original, original.ContentRevision)
+                || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh)
+                return new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.WorkspaceStale]);
+            await refresh.LoadAsync(owner, workspaceId, CancellationToken.None);
             await SyncShellAsync(CancellationToken.None);
+            if (!IsNativePersistenceOwnerCurrent(owner) || State.WorkspaceId != workspaceId)
+                return new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.WorkspaceStale]);
             _notice = "Life Module decision saved. Continue character creation.";
             NotifyChanged();
-            return BindCurrentLifeModuleBudget(result);
+            return await BindCurrentLifeModuleBudgetAsync(State, result);
         }
         return result;
     }

@@ -148,13 +148,6 @@ public static class MauiProgram
         // and source resolver. Android only adds its app-private intent journal.
         builder.Services.AddSingleton(provider => Sr5CareerReputationJournal.CreateDefault(
             statePath, provider.GetRequiredService<ICharacterCareerReputationService>()));
-        builder.Services.AddSingleton<ILifeModuleDecisionAuthority>(provider =>
-            new CharacterCreationFoundationLifeModuleDecisionAuthority(
-                provider.GetRequiredService<IWorkspaceStore>(),
-                provider.GetRequiredService<ICharacterCreationFoundationService>(),
-                provider.GetRequiredService<ICharacterFileQueries>()));
-        builder.Services.AddSingleton<LifeModuleOriginDossierService>();
-        builder.Services.AddSingleton<LifeModuleOriginDossierInteractionService>();
         builder.Services.AddSingleton<OriginDossierLifeModulePhoneRuntime>();
         builder.Services.AddSingleton<ICareerQualityAtomicWorkspace,
             AndroidCareerQualityAtomicWorkspace>();
@@ -183,7 +176,8 @@ public static class MauiProgram
                 provider.GetService<ICharacterCreationMagicResonanceService>(),
                 ownerBoundCreationContactsService: provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                 ownerBoundCreationFinalizationService: provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>(),
-                ownerBoundCreationLifestylesReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>()));
+                ownerBoundCreationLifestylesReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
+                ownerBoundFoundationReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));

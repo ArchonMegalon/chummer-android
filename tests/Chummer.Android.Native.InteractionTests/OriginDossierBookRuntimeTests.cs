@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.LifeModules;
+using Chummer.Application.Owners;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.OriginBooks;
@@ -11,6 +13,15 @@ using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
 {
+    private static readonly OwnerContextStamp TestOwner = new(OwnerScope.LocalSingleUser, "origin-test-owner", 0);
+    private sealed class TestOrigin(LifeModuleOriginDossierInteractionService inner) : IOwnerBoundLifeModuleOriginService
+    {
+        public bool IsCurrent(OwnerContextStamp owner) => owner == TestOwner;
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Start(OwnerContextStamp owner, string id) => inner.Start(id);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Restore(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint) => inner.Restore(checkpoint);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Prepare(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint, string choiceId, IReadOnlyDictionary<string, string>? followUpValues = null) => inner.Prepare(checkpoint, choiceId, followUpValues);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierInteractionAdvance> Confirm(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint, string previewDigest, string idempotencyKey, bool explicitlyConfirmed) => inner.Confirm(checkpoint, previewDigest, idempotencyKey, explicitlyConfirmed);
+    }
     public static async Task RunAsync()
     {
         string digest = Digest("foundation");
@@ -41,16 +52,16 @@ internal static class OriginDossierBookRuntimeTests
                 var files = new FileOriginDossierDraftTimelineStore(directory);
                 var store = new FaultStore(files);
                 OriginDossierLifeModulePhoneRuntime Runtime() => new(
-                    new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority)), store);
+                    new TestOrigin(new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority))), store);
                 var runtime = Runtime();
-                Require((await runtime.OpenAsync("workspace-1")).IsSuccess, "Initial turn unavailable.");
-                var prepared = await runtime.PrepareAsync("workspace-1", "choice-1");
+                Require((await runtime.OpenAsync(TestOwner, "workspace-1")).IsSuccess, "Initial turn unavailable.");
+                var prepared = await runtime.PrepareAsync(TestOwner, "workspace-1", "choice-1");
                 Require(prepared.IsSuccess && prepared.State?.PendingPreviewDigest is not null, "Preview missing.");
                 if (scenario == "tampered-pending")
                 {
                     var checkpoint = (await files.LoadAsync("local-single-user", "workspace-1"))!;
                     await files.SaveAsync(checkpoint with { TimelineChapterDigests = [Digest("invented")] });
-                    Require(!(await Runtime().OpenAsync("workspace-1")).IsSuccess && authority.MutationCount == 0,
+                    Require(!(await Runtime().OpenAsync(TestOwner, "workspace-1")).IsSuccess && authority.MutationCount == 0,
                         "A corrupt pending preview was exposed as a recoverable live decision.");
                     Console.WriteLine("PASS Origin book: " + scenario);
                     continue;
@@ -61,7 +72,7 @@ internal static class OriginDossierBookRuntimeTests
                 OriginDossierLifeModulePhoneResult confirmed;
                 try
                 {
-                    confirmed = await runtime.ConfirmAsync("workspace-1", "choice-1",
+                    confirmed = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-1",
                         prepared.State!.PendingPreviewDigest!, cancellation.Token);
                     Require(scenario != "storage-failure", "Injected storage error was not exercised.");
                 }
@@ -69,19 +80,19 @@ internal static class OriginDossierBookRuntimeTests
                 {
                     // New runtime and disk read: replay only the already accepted command.
                     runtime = Runtime();
-                    var recovered = await runtime.OpenAsync("workspace-1");
+                    var recovered = await runtime.OpenAsync(TestOwner, "workspace-1");
                     Require(recovered.IsSuccess && recovered.State?.PendingPreviewDigest == prepared.State!.PendingPreviewDigest,
                         "Lost the idempotent recovery preview after a failed chapter save.");
-                    confirmed = await runtime.ConfirmAsync("workspace-1", "choice-1", recovered.State!.PendingPreviewDigest!);
+                    confirmed = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-1", recovered.State!.PendingPreviewDigest!);
                 }
                 Require(confirmed.IsSuccess && authority.MutationCount == 1, "Confirmation changed mechanics more than once.");
                 if (scenario == "two-chapters")
                 {
                     Require(!confirmed.Completed && confirmed.State?.Timeline.Count == 1, "The live next turn lost its first chapter.");
                     runtime = Runtime();
-                    Require((await runtime.OpenAsync("workspace-1")).State?.Timeline.Count == 1, "The next turn did not reopen.");
-                    prepared = await runtime.PrepareAsync("workspace-1", "choice-2");
-                    confirmed = await runtime.ConfirmAsync("workspace-1", "choice-2", prepared.State!.PendingPreviewDigest!);
+                    Require((await runtime.OpenAsync(TestOwner, "workspace-1")).State?.Timeline.Count == 1, "The next turn did not reopen.");
+                    prepared = await runtime.PrepareAsync(TestOwner, "workspace-1", "choice-2");
+                    confirmed = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-2", prepared.State!.PendingPreviewDigest!);
                 }
                 Require(confirmed.Completed && confirmed.StoryCheckpoint?.Projection.VisibleChapters.Count == authority.MutationCount,
                     "The terminal result discarded confirmed chapters.");
@@ -89,7 +100,7 @@ internal static class OriginDossierBookRuntimeTests
                 Require(persisted?.CheckpointDigest == confirmed.StoryCheckpoint!.CheckpointDigest && persisted.PendingPreview is null,
                     "The complete sealed book was not retained on disk.");
                 if (scenario == "stale-book") authority.Current = authority.Current with { SourceDigest = Digest("changed-source") };
-                var reopened = await Runtime().OpenAsync("workspace-1");
+                var reopened = await Runtime().OpenAsync(TestOwner, "workspace-1");
                 if (scenario == "stale-book")
                     Require(!reopened.IsSuccess && reopened.StoryCheckpoint is null, "A stale book was admitted as live authority.");
                 else
@@ -309,8 +320,8 @@ internal static class OriginDossierBookRuntimeTests
             var store = new SynchronousStore(pending);
             authority.AfterCommit = () => Require(!ReferenceEquals(callerContext, SynchronizationContext.Current),
                 "Core confirmation ran on the phone UI synchronization context.");
-            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
-            var result = await runtime.ConfirmAsync("workspace-1", "choice-1", pending.PendingPreview!.PreviewDigest);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(new TestOrigin(interaction), store);
+            var result = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-1", pending.PendingPreview!.PreviewDigest);
             Require(result.IsSuccess && authority.MutationCount == 1 && store.Checkpoint.PendingPreview is null,
                 "Background confirmation did not retain the exact accepted chapter.");
         });
@@ -334,16 +345,16 @@ internal static class OriginDossierBookRuntimeTests
             }] };
             var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
             var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
-            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(new TestOrigin(interaction), store);
             OriginDossierLifeModulePhoneResult Display(OriginDossierLifeModulePhoneResult result) => result with
             {
                 LifeModuleBudget = new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
                 FoundationSnapshotDigest = "sha256:" + Digest("foundation-" + result.State!.WorkspaceRevision)
             };
             int requests = 0;
-            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
-                async (id, values) => { requests++; return Display(await runtime.PrepareAsync("workspace-1", id, followUpValues: values)); },
-                async (id, digest) => Display(await runtime.ConfirmAsync("workspace-1", id, digest)));
+            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync(TestOwner, "workspace-1")), "en-US",
+                async (id, values) => { requests++; return Display(await runtime.PrepareAsync(TestOwner, "workspace-1", id, followUpValues: values)); },
+                async (id, digest) => Display(await runtime.ConfirmAsync(TestOwner, "workspace-1", id, digest)));
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
             await Click(Button("origin-life-choice-0"));
@@ -358,7 +369,7 @@ internal static class OriginDossierBookRuntimeTests
             Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
                 "Review must only persist the bound preview.");
             var oldConfirm = Button("origin-life-confirm");
-            var reopened = await runtime.OpenAsync("workspace-1");
+            var reopened = await runtime.OpenAsync(TestOwner, "workspace-1");
             Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
                 "Reviewed answers did not survive reopen.");
             await Click(Button("origin-life-choice-0"));
@@ -388,7 +399,7 @@ internal static class OriginDossierBookRuntimeTests
             authority.Current = authority.Current with { LegalChoices = [.. authority.Current.LegalChoices, extra] };
             var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
             var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
-            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
+            var runtime = new OriginDossierLifeModulePhoneRuntime(new TestOrigin(interaction), store);
             OriginDossierLifeModulePhoneResult Display(OriginDossierLifeModulePhoneResult result)
             {
                 decimal spent = result.StoryCheckpoint!.Projection.VisibleChapters.Count * 15m;
@@ -400,14 +411,14 @@ internal static class OriginDossierBookRuntimeTests
             }
             TaskCompletionSource? confirmEntered = null, confirmRelease = null;
             bool rejectConfirmation = true;
-            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync("workspace-1")), "en-US",
-                async (choice, answers) => Display(await runtime.PrepareAsync("workspace-1", choice, followUpValues: answers)),
+            var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync(TestOwner, "workspace-1")), "en-US",
+                async (choice, answers) => Display(await runtime.PrepareAsync(TestOwner, "workspace-1", choice, followUpValues: answers)),
                 async (choice, preview) =>
                 {
                     confirmEntered!.SetResult();
                     await confirmRelease!.Task;
                     if (rejectConfirmation) { rejectConfirmation = false; return null; }
-                    return Display(await runtime.ConfirmAsync("workspace-1", choice, preview));
+                    return Display(await runtime.ConfirmAsync(TestOwner, "workspace-1", choice, preview));
                 });
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             bool Visible(string id) => Elements(page).Any(element => element.AutomationId == id);
@@ -469,7 +480,7 @@ internal static class OriginDossierBookRuntimeTests
                 ((IButtonController)oldConfirm).SendClicked();
                 Require(authority.MutationCount == chapter, "A detached previous-turn control replayed confirmation.");
             }
-            var wrongWorkspace = Display(await runtime.OpenAsync("workspace-1"));
+            var wrongWorkspace = Display(await runtime.OpenAsync(TestOwner, "workspace-1"));
             wrongWorkspace = wrongWorkspace with { State = wrongWorkspace.State! with { WorkspaceId = "another-runner" } };
             bool adopted = (bool)typeof(OriginDossierLifeModuleDecisionPage).GetMethod("TryAdoptConfirmed",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(page, [wrongWorkspace])!;
@@ -500,8 +511,8 @@ internal static class OriginDossierBookRuntimeTests
             authority.Current = authority.Current with { LegalChoices = [ordinary, finish] };
             var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
             var store = new SynchronousStore(interaction.Start("workspace-1").Value!);
-            var runtime = new OriginDossierLifeModulePhoneRuntime(interaction, store);
-            var opened = await runtime.OpenAsync("workspace-1");
+            var runtime = new OriginDossierLifeModulePhoneRuntime(new TestOrigin(interaction), store);
+            var opened = await runtime.OpenAsync(TestOwner, "workspace-1");
             opened = opened with
             {
                 LifeModuleBudget = new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 145, 605, true, [], "karma"),

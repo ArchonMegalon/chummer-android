@@ -15,6 +15,73 @@ using System.Text.Json;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunLifeModuleLinkedOwnerStartAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        owners.Set(ContactsOwnerA);
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+            productionCreationOverview: true, linkedOwners: owners,
+            lifeCompletionDecorator: actual => actual);
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        await runtime.Coordinator.CreateRunnerAsync();
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Linked Life Modules", default);
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+        await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+        var created = runtime.Coordinator.State;
+        Require(created.WorkspaceId is not null && created.DisplayOwnerContext?.Owner == ContactsOwnerA,
+            "The linked-owner creation fixture did not create a runner for owner A.");
+        Require(runtime.Coordinator.IsLifeModuleDashboardCurrent(created),
+            $"Linked Life Modules dashboard unavailable: foundation={created.CreationFoundation is not null}, "
+            + $"revision={created.ContentRevision}/{created.SavedRevision}, error={created.Error is not null}.");
+        var opened = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+        Require(opened.IsSuccess && opened.State is not null,
+            "Linked Life Modules could not load its first real Core decision: " + string.Join(",", opened.Blockers));
+        var owner = owners.Capture();
+        var id = created.WorkspaceId!.Value;
+        Require(opened.State!.OwnerId == ContactsOwnerA.NormalizedValue,
+            "The linked Origin decision is still labeled as local-single-user.");
+        var choice = opened.StoryCheckpoint!.Projection.CurrentTurn.LegalChoices.First(row =>
+            row.Label.StartsWith("Elf ·", StringComparison.Ordinal)
+            && row.SourceAnchorIds.Any(anchor => anchor.Contains("604831d9-0fdc-4579-aa7e-bc5d99bcee5d", StringComparison.Ordinal)));
+        var answers = choice.FollowUps?.ToDictionary(prompt => prompt.PromptId,
+            prompt => prompt.Options.FirstOrDefault(option => option.IsEnabled)?.SourceValue ?? "Renraku");
+        var prepared = await runtime.Coordinator.PrepareSr5LifeModuleOriginAsync(choice.ChoiceId, followUpValues: answers);
+        Require(prepared.IsSuccess && prepared.State?.PendingPreviewDigest is not null,
+            "Linked choice review failed: " + string.Join(",", prepared.Blockers));
+        var confirmed = await runtime.Coordinator.ConfirmSr5LifeModuleOriginAsync(
+            choice.ChoiceId, prepared.State!.PendingPreviewDigest!);
+        Require(confirmed.IsSuccess && confirmed.State?.Timeline.Count == 1,
+            "Linked choice commit/reload failed: " + string.Join(",", confirmed.Blockers));
+        await runtime.Coordinator.SaveAsync();
+        var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!;
+        Require(cold.ContentRevision == 2 && cold.SavedRevision == 2
+            && !new FileWorkspaceStore(runtime.StateDirectory).Get(id).Success,
+            "Linked choice was not saved exactly once, or leaked into the local store.");
+        var service = runtime.Services.GetRequiredService<IOwnerBoundLifeModuleOriginService>();
+        var freshPhone = new OriginDossierLifeModulePhoneRuntime(service,
+            new FileOriginDossierDraftTimelineStore(runtime.StateDirectory));
+        var reopened = await freshPhone.OpenAsync(owner, id.Value);
+        Require(reopened.IsSuccess && reopened.State?.Timeline.Count == 1
+            && reopened.StoryCheckpoint?.CheckpointDigest == confirmed.StoryCheckpoint!.CheckpointDigest,
+            "A new phone runtime/disk read did not recover the exact linked chapter.");
+        var stored = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
+        Require(await stored.LoadAsync(OwnerScope.LocalSingleUser.NormalizedValue, id.Value) is null,
+            "Linked Origin checkpoint leaked into the local timeline namespace.");
+        owners.Set(ContactsOwnerB);
+        Require(service.Start(owners.Capture(), id.Value).Value is null
+            && service.Restore(owners.Capture(), prepared.StoryCheckpoint!).Value is null,
+            "Another owner read the linked decision or restored its checkpoint.");
+        owners.Set(ContactsOwnerA);
+        Require(!service.IsCurrent(owner)
+            && service.Confirm(owner, prepared.StoryCheckpoint!, prepared.State.PendingPreviewDigest!, "stale-linked-origin", true).Value is null,
+            "Owner A-to-B-to-A accepted an old confirmation authority.");
+        RequireSameRewardDocument(cold, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!);
+        Require(service.Restore(owners.Capture(), reopened.StoryCheckpoint!).Value is not null,
+            "Returning owner could not restore the current persisted chapter with fresh admission.");
+        Console.WriteLine("PASS linked-owner Life Modules start, review, commit, save, cold reopen, namespace isolation and ABA rejection");
+    }
+
     internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();

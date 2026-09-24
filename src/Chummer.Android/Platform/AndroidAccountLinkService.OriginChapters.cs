@@ -41,7 +41,27 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
                 new(providerReceiptDigest, ChapterTextDigest(draftText)))
             : Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
 
-    private async Task<AndroidOriginChapterResult> ChapterRequestAsync(OwnerContextStamp owner,
+    private Task<AndroidOriginChapterResult> ChapterRequestAsync(OwnerContextStamp owner,
+        OriginChapterSource source, bool create, CancellationToken ct, ReaderAcceptance? acceptance = null,
+        OriginChapterPredecessor? previous = null)
+    {
+        try
+        {
+            // Capture mutable caller facts before scheduling. Android's native
+            // HTTP stream can do synchronous network work even when disposing
+            // an unread 404 response. Keep the entire request/body/disposal
+            // lifetime off the UI thread, not just SendAsync.
+            var captured = OriginChapterSourceIdentity.Capture(source);
+            var predecessor = OriginChapterSourceIdentity.CapturePredecessor(previous);
+            return Task.Run(() => ChapterRequestCoreAsync(owner, captured, create, ct, acceptance, predecessor));
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException)
+        {
+            return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
+        }
+    }
+
+    private async Task<AndroidOriginChapterResult> ChapterRequestCoreAsync(OwnerContextStamp owner,
         OriginChapterSource source, bool create, CancellationToken ct, ReaderAcceptance? acceptance = null,
         OriginChapterPredecessor? previous = null)
     {
@@ -50,6 +70,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
         AndroidAccountOwnerState? expected = null;
         try
         {
+            ct.ThrowIfCancellationRequested();
             expected = RequireContinuationOwner(owner);
             // Snapshot before awaiting credentials, including the caller's fact
             // collection. The same source always addresses the same private job.

@@ -24,6 +24,46 @@ internal static partial class AfterRunAuthorityHarness
         string textDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
             Encoding.UTF8.GetBytes(ready.DraftText))).ToLowerInvariant();
         var accepted = ready with { ReaderAcceptedTextDigest = textDigest };
+        using (var fixture = new ContinuationAccountFixture())
+        using (var ui = new IssuedPageUiContext())
+        {
+            await fixture.LinkAsync("subject", "chapter-ui-thread");
+            IAndroidOriginChapterTransport transport = fixture.Account;
+            var owner = fixture.Owner.Capture();
+            await ui.RunAsync(async () =>
+            {
+                foreach (int operation in new[] { 0, 1, 2 })
+                {
+                    bool disposed = false;
+                    fixture.ChapterResponse = (_, _) =>
+                    {
+                        Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                            "Chapter HTTP dispatch ran on the UI context.");
+                        return new(operation == 0 ? HttpStatusCode.NotFound : HttpStatusCode.OK)
+                        {
+                            Content = new OffUiChapterContent(operation == 0 ? "missing" :
+                                JsonSerializer.Serialize(operation == 1 ? queued : accepted, json), () =>
+                                {
+                                    Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                                        "Chapter response disposal ran on the UI context.");
+                                    disposed = true;
+                                })
+                        };
+                    };
+                    var response = operation switch
+                    {
+                        0 => await transport.ReadChapterAsync(owner, source),
+                        1 => await transport.RequestChapterAsync(owner, source, true),
+                        _ => await transport.AcceptChapterAsync(owner, source,
+                            ready.ProviderReceiptDigest!, ready.DraftText!, true)
+                    };
+                    Require(response.Outcome == (operation == 0 ? AndroidOriginChapterOutcome.NotFound
+                            : AndroidOriginChapterOutcome.Available) && disposed
+                        && ReferenceEquals(SynchronizationContext.Current, ui),
+                        "Chapter I/O must leave the UI context, dispose even unread responses off-thread, and return to its caller.");
+                }
+            });
+        }
         // Parse with case-sensitive object keys, as an actual wire payload does.
         // SerializeToNode(Web options) would replace an existing property when
         // adding a differently cased alias, erasing the hostile test condition.
@@ -185,6 +225,16 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.ChapterRequests == (signing ? 0 : 1), "Retired A-to-B-to-A owner accepted a chapter.");
         }
         Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, conflict, unavailable authority and owner ABA");
+    }
+
+    private sealed class OffUiChapterContent(string text, Action onDispose)
+        : StringContent(text, Encoding.UTF8, "application/json")
+    {
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) onDispose();
+            base.Dispose(disposing);
+        }
     }
 }
 

@@ -629,7 +629,8 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetService<ICharacterCreationMagicResonanceService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                         ownerBoundCreationFinalizationService: productionFinalization,
-                        ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>())
+                        ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
+                        ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
@@ -700,10 +701,7 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
                     lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
                     originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
-                        new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(
-                            new CharacterCreationFoundationLifeModuleDecisionAuthority(store,
-                                _provider.GetRequiredService<ICharacterCreationFoundationService>(),
-                                _provider.GetRequiredService<ICharacterFileQueries>(), () => "de-DE"))),
+                        _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
                         new FileOriginDossierDraftTimelineStore(StateDirectory)),
                     originBookReadings: new OriginBookReadingStore(StateDirectory));
             }
