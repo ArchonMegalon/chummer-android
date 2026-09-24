@@ -223,7 +223,9 @@ public sealed partial class RunnerSessionCoordinator
             {
                 if (ct.IsCancellationRequested || isCurrentPage?.Invoke() == false || !IsPrerequisiteOriginalOwnerVisible(intent.Original)
                     || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh) return NeedsReopen();
-                await refresh.LoadAsync(owner, receipt.WorkspaceId, ct);
+                // Android owns the final owner-bound shell sync below. Avoid
+                // listing and reopening every workspace twice after this commit.
+                await refresh.LoadBeforeShellSyncAsync(owner, receipt.WorkspaceId, ct);
                 if (ct.IsCancellationRequested || isCurrentPage?.Invoke() == false || !IsLifeModuleCompletionReceiptCurrent(receipt)) return NeedsReopen();
                 await SyncShellAsync(ct);
                 if (ct.IsCancellationRequested || isCurrentPage?.Invoke() == false || !IsLifeModuleCompletionReceiptCurrent(receipt)) return NeedsReopen();

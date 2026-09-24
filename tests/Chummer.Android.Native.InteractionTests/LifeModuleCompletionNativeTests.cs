@@ -11,6 +11,10 @@ using Chummer.Infrastructure.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
 using Chummer.Presentation.OriginBooks;
+using Chummer.Presentation;
+using Chummer.Presentation.Shell;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
 internal static partial class AfterRunAuthorityHarness
@@ -713,13 +717,26 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
-            foreach (string scenario in new[] { "save-career-reopen", "owner-aba-during-open", "cancel-after-commit" })
+            foreach (string scenario in new[] { "save-career-reopen", "owner-aba-during-open", "cancel-after-commit",
+                         "shell-sync-failure", "owner-aba-during-shell-sync", "cancel-during-shell-sync" })
             {
                 var owners = new ControlledLinkedOwner();
+                using var cancel = new CancellationTokenSource();
+                int shellLists = 0;
+                bool observingCommit = false;
                 LifeCompletionNativeProbe? probe = null;
                 await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                     productionCreationOverview: true, linkedOwners: owners,
-                    lifeCompletionDecorator: actual => probe = new(actual));
+                    lifeCompletionDecorator: actual => probe = new(actual),
+                    beforeShellWorkspaceList: () =>
+                    {
+                        shellLists++;
+                        if (!observingCommit) return;
+                        if (scenario == "shell-sync-failure") throw new IOException("Synthetic shell read failure.");
+                        if (scenario == "owner-aba-during-shell-sync")
+                        { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                        if (scenario == "cancel-during-shell-sync") cancel.Cancel();
+                    });
                 await runtime.Coordinator.InitializeAsync();
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                 await runtime.Coordinator.CreateRunnerAsync();
@@ -731,7 +748,15 @@ internal static partial class AfterRunAuthorityHarness
                 // Seed exact typed module confirmations. These tests exercise
                 // the native final allocation boundary, not the story page.
                 await Task.Run(() => SeedNativeLifeSequence(runtime.Services.GetRequiredService<CharacterCreationFoundationService>(), id));
+                int beforeNormalLoad = shellLists;
                 await runtime.Presenter.LoadAsync(id, default);
+                Require(shellLists == beforeNormalLoad + 1, "Normal presenter reload must retain its shell synchronization.");
+                var refresh = (IOwnerBoundWorkspaceRefreshPresenter)runtime.Presenter;
+                int beforeDeferredLoad = shellLists;
+                await refresh.LoadBeforeShellSyncAsync(runtime.Presenter.State.DisplayOwnerContext!.Value, id, default);
+                Require(shellLists == beforeDeferredLoad && runtime.Presenter.State.WorkspaceId == id
+                    && runtime.Presenter.State.Error is null,
+                    "Host-owned shell synchronization must not repeat the presenter's workspace-list read.");
                 var store = new FileWorkspaceStore(runtime.StateDirectory);
                 var before = store.Get(id).Value!;
                 Require(runtime.Coordinator.CanOpenLifeModuleCompletion(), "Finished module sequence has no native completion entry.");
@@ -774,9 +799,13 @@ internal static partial class AfterRunAuthorityHarness
                     && probe!.ConfirmCalls == 0, "An unconfirmed preview dispatched a write.");
                 Require((await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(preview with { }, true)).Value is null,
                     "An unissued copy acquired native confirmation authority.");
-                using var cancel = new CancellationTokenSource();
                 if (scenario == "cancel-after-commit") probe!.AfterConfirm = cancel.Cancel;
+                observingCommit = true;
+                int beforeCommitShellLists = shellLists;
                 var applied = await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(preview, true, cancel.Token);
+                observingCommit = false;
+                Require(shellLists == beforeCommitShellLists + (scenario == "cancel-after-commit" ? 0 : 1),
+                    "Native completion must perform exactly one shell list, or none when canceled before refresh.");
                 Require(applied.Value is { CharacterCreated: true, CharacterEffectsApplied: true },
                     "Native completion lost a committed result: " + string.Join(", ", applied.Blockers));
                 var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
@@ -785,14 +814,44 @@ internal static partial class AfterRunAuthorityHarness
                     "Native completion did not retain the single atomic Career transition.");
                 Require((await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(preview, true)).Value is null
                     && probe!.ConfirmCalls == 1, "A consumed review replayed its native command.");
-                if (scenario == "save-career-reopen") Require(runtime.Coordinator.IsLifeModuleCompletionReceiptCurrent(applied.Value!),
-                    "Known saved Life Modules runner did not reopen in Career.");
+                if (scenario == "save-career-reopen") Require(runtime.Coordinator.IsLifeModuleCompletionReceiptCurrent(applied.Value!)
+                    && applied.Blockers.Count == 0 && runtime.Shell.State.ActiveWorkspaceId == id
+                    && runtime.Shell.State.OwnerContext == runtime.Presenter.State.DisplayOwnerContext,
+                    "Known saved Life Modules runner did not reopen in Career with the current owner-bound shell.");
                 else Require(applied.Blockers.Contains(CharacterCreationFinalizationBlockers.PostCommitReopenRequired),
                     "Cancellation after commit did not preserve the known result/reopen instruction.");
                 ui.AssertHealthy();
                 Console.WriteLine("PASS Life Modules native completion: " + scenario);
             }
         });
+    }
+
+    // Observe only the real shell's roster reads. All other calls, including
+    // exact owner capture/admission, continue to the real in-process client.
+    public interface IObservedShellClient : IChummerClient, IOwnerBoundShellStateClient { }
+
+    public class ObservedShellClientProxy : DispatchProxy
+    {
+        private IChummerClient _inner = null!;
+        private Action _beforeList = null!;
+
+        internal static IChummerClient Wrap(IChummerClient inner, Action beforeList)
+        {
+            var client = Create<IObservedShellClient, ObservedShellClientProxy>();
+            var proxy = (ObservedShellClientProxy)(object)client;
+            proxy._inner = inner;
+            proxy._beforeList = beforeList;
+            return client;
+        }
+
+        protected override object? Invoke(MethodInfo? method, object?[]? args)
+        {
+            ArgumentNullException.ThrowIfNull(method);
+            if (method.Name == nameof(IOwnerBoundShellStateClient.ListWorkspacesAsync)) _beforeList();
+            try { return method.Invoke(_inner, args); }
+            catch (TargetInvocationException error) when (error.InnerException is not null)
+            { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
+        }
     }
 
     private static void SeedNativeLifeStory(NativeRewardRuntime runtime, CharacterWorkspaceId id)
