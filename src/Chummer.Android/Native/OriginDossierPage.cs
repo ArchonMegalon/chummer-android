@@ -21,6 +21,7 @@ internal sealed class OriginDossierBookPage : ContentPage
         AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve(activeAppLocale);
         Title = copy["Origin.ReadBook"];
         AutomationId = "origin-life-book";
+        BackgroundColor = NativeTheme.Paper;
         var body = new VerticalStackLayout { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
         body.Add(NativeTheme.Eyebrow(copy["Origin.BookDraft"]));
         body.Add(NativeTheme.Title(checkpoint.Projection.CurrentTurn.RunnerDisplayName));

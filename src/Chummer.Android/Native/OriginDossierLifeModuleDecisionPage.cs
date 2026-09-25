@@ -67,6 +67,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
         AutomationId = "origin-life-decision";
+        // NativeTheme uses fixed dark text, including outside the white cards.
+        // Match NativePageBase instead of inheriting the OS dark background.
+        BackgroundColor = NativeTheme.Paper;
         Content = new ScrollView { Content = BuildBody() };
     }
 
@@ -342,6 +345,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 var picker = new Picker
                 {
                     Title = _copy["Origin.ChooseAnswer"],
+                    TextColor = NativeTheme.Text,
+                    TitleColor = NativeTheme.Muted,
+                    BackgroundColor = NativeTheme.Surface,
                     AutomationId = "origin-life-answer-" + promptId,
                     ItemsSource = options,
                     ItemDisplayBinding = new Binding(nameof(LifeModuleFollowUpOptionDto.Label)),
@@ -362,6 +368,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 var entry = new Entry
                 {
                     AutomationId = "origin-life-answer-" + promptId,
+                    TextColor = NativeTheme.Text,
+                    PlaceholderColor = NativeTheme.Muted,
+                    BackgroundColor = NativeTheme.Surface,
                     Text = previous, MaxLength = 1024, Placeholder = _copy["Origin.EnterAnswer"]
                 };
                 entry.TextChanged += (_, _) =>
