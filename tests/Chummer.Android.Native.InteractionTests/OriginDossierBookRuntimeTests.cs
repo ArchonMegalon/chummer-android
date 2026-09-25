@@ -259,14 +259,16 @@ internal static class OriginDossierBookRuntimeTests
         var chapter = book.VisibleChapters.Single();
         var fixture = book with
         {
-            AllowedCanonicalFactIds = ["metatype", "answer", "future", "private"],
+            AllowedCanonicalFactIds = ["metatype", "answer", "contributions", "future", "future-contributions", "private"],
             CanonicalLayer = book.CanonicalLayer with
             {
                 AcceptedDecisionIds = [chapter.ThroughAcceptedDecisionId, "later"],
                 Facts = [
                     new("metatype", "accepted-metatype", "Elf", chapter.ThroughAcceptedDecisionId, ["private-anchor"], ""),
                     new("answer", "accepted-life-module-answer", "Childhood: Renraku", chapter.ThroughAcceptedDecisionId, [], ""),
+                    new("contributions", "accepted-life-module-contributions", "Confirmed module contributions, not final ratings: Survival +1", chapter.ThroughAcceptedDecisionId, ["private-effect-anchor"], ""),
                     new("future", "accepted-life-module-answer", "Future not chosen in this chapter", "later", [], ""),
+                    new("future-contributions", "accepted-life-module-contributions", "Future bonus not chosen in this chapter", "later", [], ""),
                     new("private", "private-notes", "Do not send", chapter.ThroughAcceptedDecisionId, [], ""),
                     new("not-allowed", "accepted-life-module-answer", "Not approved", chapter.ThroughAcceptedDecisionId, [], "")
                 ]
@@ -274,10 +276,20 @@ internal static class OriginDossierBookRuntimeTests
         };
         string before = JsonSerializer.Serialize(fixture);
         var source = OriginBookAuthoringSource.Create(fixture, chapter);
-        Require(source.Facts.Count == 2 && source.Facts.All(f => f.DecisionId == chapter.ThroughAcceptedDecisionId),
+        Require(source.Facts.Count == 3 && source.Facts.All(f => f.DecisionId == chapter.ThroughAcceptedDecisionId)
+            && source.Facts.Single(f => f.FactId == "contributions").Text == fixture.CanonicalLayer.Facts.Single(f => f.FactId == "contributions").LocalizedSummary,
             "Provider input leaked a later, private or non-allowlisted fact.");
+        var historical = fixture with {
+            CanonicalLayer = fixture.CanonicalLayer with {
+                Facts = fixture.CanonicalLayer.Facts.Where(f => f.FactKind != "accepted-life-module-contributions").ToArray() }
+        };
+        var historicalSource = OriginBookAuthoringSource.Create(historical, chapter);
+        Require(historicalSource.Facts.Count == 2
+            && historicalSource.Facts.All(f => f.FactId is "metatype" or "answer"),
+            "Historical books acquired newly inferred mechanics or new request identities.");
         string serialized = JsonSerializer.Serialize(source);
         Require(!serialized.Contains("private-anchor", StringComparison.Ordinal)
+            && !serialized.Contains("private-effect-anchor", StringComparison.Ordinal)
             && !serialized.Contains(chapter.VisibleMarkdown, StringComparison.Ordinal)
             && before == JsonSerializer.Serialize(fixture), "Authoring projection copied source prose or mutated the Core book.");
         bool rejected = false;
