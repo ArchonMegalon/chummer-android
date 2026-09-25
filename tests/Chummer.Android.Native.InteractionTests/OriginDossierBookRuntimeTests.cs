@@ -113,6 +113,8 @@ internal static class OriginDossierBookRuntimeTests
                     {
                         var reader = new OriginDossierBookPage(reopened.StoryCheckpoint!, locale);
                         Require(reader.AutomationId == "origin-life-book", "Reader route missing after locale change.");
+                        Require(reader.BackgroundColor == NativeTheme.Paper,
+                            "The book's fixed dark text must not inherit a system-dark page background.");
                         Require(!Elements(reader).Any(element => element.AutomationId == "origin-life-module-selection-saved"),
                             "A halted turn was mislabeled as explicitly finished module selection.");
                         var finishedCopy = reopened.StoryCheckpoint! with { Projection = reopened.StoryCheckpoint.Projection with
@@ -357,6 +359,8 @@ internal static class OriginDossierBookRuntimeTests
             var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync(TestOwner, "workspace-1")), "en-US",
                 async (id, values) => { requests++; return Display(await runtime.PrepareAsync(TestOwner, "workspace-1", id, followUpValues: values)); },
                 async (id, digest) => Display(await runtime.ConfirmAsync(TestOwner, "workspace-1", id, digest)));
+            Require(page.BackgroundColor == NativeTheme.Paper,
+                "Life Modules' fixed dark text must not inherit a system-dark page background.");
             Button Button(string id) => Elements(page).OfType<Button>().Single(button => button.AutomationId == id);
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
             await Click(Button("origin-life-choice-0"));
@@ -366,7 +370,15 @@ internal static class OriginDossierBookRuntimeTests
             Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology *")
                 && Elements(page).OfType<Label>().Any(label => label.Text == "Language *"),
                 "The form lost fresh display context or the canonical-label fallback.");
-            Elements(page).OfType<Entry>().Single().Text = "Renraku";
+            var answer = Elements(page).OfType<Entry>().Single();
+            var options = Elements(page).OfType<Picker>().Single();
+            Require(answer.TextColor == NativeTheme.Text && answer.PlaceholderColor == NativeTheme.Muted
+                && answer.BackgroundColor == NativeTheme.Surface,
+                "A Life Modules answer must retain contrasting text and placeholder on its light card in dark mode.");
+            Require(options.TextColor == NativeTheme.Text && options.TitleColor == NativeTheme.Muted
+                && options.BackgroundColor == NativeTheme.Surface,
+                "A Life Modules choice must retain contrasting selected text and title on its light card in dark mode.");
+            answer.Text = "Renraku";
             Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
             Elements(page).OfType<Picker>().Single().SelectedIndex = 0;
             Require(review.IsEnabled, "Explicit complete answers did not enable review.");
