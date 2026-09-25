@@ -13,7 +13,28 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 30 — September 24, 2026
+## Current observed Internal release: Preview 31 — September 25, 2026
+
+Scoped authenticated Console readback at `2026-09-25T00:50:35Z` shows
+`31 (0.1.0-preview.31)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview31-internal-observation.md).
+
+Life Modules displays Core-reviewed contributions before confirmation. Older
+pending previews preserve answers but require explicit re-review. Focused
+managed checks and the affected Debug API36 confirm/save/new-process reopen
+route passed; full Creation/Career and ARM64 Release performance are not proved.
+The exact local ARM64 AAB was separately signed with the existing upload key,
+independently verified and uploaded once. Android and UI producer heads were
+pushed but unmerged; protected source integration remains separate.
+
+Physical Play installation/update remains unverified and explicitly deferred.
+This is an experimental Internal increment, not complete phone beta. Dependency
+mode is locked package closure with pinned Presentation source and Core content,
+not a package-only APK or hosted qualification. Code31 is consumed; use32 or a
+higher unused code next. Preview30 and older evidence remain immutable.
+
+## Historical observed Internal release: Preview 30 — September 24, 2026
 
 Scoped authenticated Console readback at `2026-09-24T21:37:45Z` shows
 `30 (0.1.0-preview.30)` as **Available to internal testers**.
