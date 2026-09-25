@@ -249,20 +249,28 @@ public sealed partial class RunnerSessionCoordinator
             if (!isCurrentPage() || !CanReadRetainedOriginBook() || !IsNativeEditDisplayCurrent(original)
                 || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id
                 || _lifeModuleBookService is not { } service) return null;
-            var result = await Task.Run(() => service.Load(owner, id, original.ContentRevision, original.SavedRevision), ct);
+            var result = await ReadOriginBookAsync(owner,
+                () => service.Load(owner, id, original.ContentRevision, original.SavedRevision), ct);
             ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
                 || result.Outcome != LifeModuleOriginDossierOutcomes.Success || result.Value is not { } projection
                 || projection.CurrentTurn.WorkspaceId != id.Value || projection.VisibleChapters.Count == 0) return null;
             OriginBookReadingState? readings = null;
             if (_originBookReadings is { } readingStore)
-                readings = await Task.Run(() =>
+                readings = await ReadOriginBookAsync(owner, () =>
                 {
+                    ct.ThrowIfCancellationRequested();
                     if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
                         || !TryAcquireDamageJournalOwner(owner, id, out var lease))
                         throw new OperationCanceledException("The book context changed.");
-                    using (lease) return readingStore.Load(owner.Owner.Value, id.Value);
+                    using (lease)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+                        return readingStore.Load(owner.Owner.Value, id.Value);
+                    }
                 }, ct);
+            ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
             RetireDifferentBookEditions(original, readings?.Digest);
             var book = new RetainedOriginBook(projection, readings);
@@ -270,6 +278,11 @@ public sealed partial class RunnerSessionCoordinator
             return book;
         }, ct);
     }
+
+    private Task<T> ReadOriginBookAsync<T>(Chummer.Application.Owners.OwnerContextStamp owner,
+        Func<T> read, CancellationToken ct)
+        => _damageJournalOwnerAccessor is AndroidAccountOwnerContextAccessor androidOwner
+            ? androidOwner.RunReadAsync(owner, read, ct) : Task.Run(read, ct);
 
     // The authenticated Hub job adapter will call this only after validating its
     // response provenance. It stages prose, never invokes a provider or adopts it.
