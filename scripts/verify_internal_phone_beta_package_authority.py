@@ -38,23 +38,23 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "98801e837c6d6b5d9bdd1a6b44ab68088c56ef56"
-EXPECTED_PRESENTATION_TREE = "b4e469879cbba496fb6bb2c42d7da72554c93db3"
+EXPECTED_PRESENTATION_COMMIT = "91f4f2dca8363e01ab7e08b5f377d85dd40f9723"
+EXPECTED_PRESENTATION_TREE = "6db4a501f084a2300634eb5ed59941194cc9d8ee"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "f2ad80974c0afc1f170363a4ede0607ef46053c8d6878451ea928b469a6093ac"
+EXPECTED_LOCK_SHA256 = "160539ee1017ebe116bfcb09da6af5632b7f13db49e502322f567de76ecf9301"
 EXPECTED_LOCK_SIZE = 68066
-EXPECTED_LOCK_BLOB = "aff4ebb5f40e764930904252f2dca45e6600b7ef"
-EXPECTED_RECEIPT_SHA256 = "6f44e20386dc2e25008b5f04595209db95ec4d148c25a506423b3c715a7be67b"
+EXPECTED_LOCK_BLOB = "887efd3fcdfd80f579d681bf8ac0d3be61b352d2"
+EXPECTED_RECEIPT_SHA256 = "0ad74c1cc0b88fb1ac66274edebede919af38fb161b0c609d62d74c9734ebf84"
 EXPECTED_RECEIPT_SIZE = 80661
-EXPECTED_CACHE_KEY = "1989876a80606146f87d14782fda754a34d61c25ea659804a26c7b7f83ad10a8"
-EXPECTED_CACHE_MANIFEST_SHA256 = "4248eab4e4f7bdbfb502541fe26d81ff0c2ff397587c3647e38089cf5518292d"
+EXPECTED_CACHE_KEY = "50437d13e3d8e8a75ebdf5e3f99bd105ccb20b21ded0df8006e6a4be6b812922"
+EXPECTED_CACHE_MANIFEST_SHA256 = "ed0d408ec0a59a2c0418f17c87efb92620f2cf4d7115dde7b779ac48e3d6afdf"
 EXPECTED_CACHE_MANIFEST_SIZE = 13789
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "69f6fb96fd237976c48a3671d01bf7d01a6e0cad",
-    "coreRuntimeSourceCommit": "f3ca90e11c838c83cd296902ce981c5b2f011f52",
+    "corePackageRecipeCommit": "991e2a86c9ebee9942b0dcd8d354bef9b8617168",
+    "coreRuntimeSourceCommit": "35f488463e0a38204ac06f64770effb516b4049a",
     "hubProducerCommit": "42d0bfbb117ab6250e8b0512dd92585916c6469f",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
@@ -65,17 +65,17 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "28be8a4e6aefbec26152e6a9db4f2dc0667ac35313de47eb0f0a97a1c5ee0bb5",
+        "22aca074439f45dcea93687aaa89a805f5fab71295b35e5c73956b3b20c0a021",
         70708,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "e6f81db2a56a3b8fb325076afea12ecf45d70b0fd52940f3d77f375412448dd6",
+        "f5e0e2c8f799ed231b485aa3cd28e32ce31acb618487f5d1487d6bc07fb7ecb3",
         16511,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.v20260925.3.shf3ca90e11c838"
+CORE_VERSION = "0.0.0-packageplane.candidate.v20260925.5.sh35f488463e0a3"
 HUB_VERSION = "0.1.1-packageplane.20260924.3"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
