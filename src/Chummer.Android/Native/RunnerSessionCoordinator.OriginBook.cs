@@ -183,7 +183,8 @@ public sealed partial class RunnerSessionCoordinator
 
     internal async Task<(AndroidOriginChapterResult Result, RetainedOriginBook? Book)> SyncOriginChapterAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, OriginChapterSource approvedSource,
-        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct)
+        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct,
+        bool reconcileReaderAcceptance = true)
     {
         bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -214,7 +215,7 @@ public sealed partial class RunnerSessionCoordinator
             // The durable selected edition is the local acceptance outbox.
             // Recover a lost acknowledgement without regenerating or adopting
             // an unselected draft. A read alone never grants new acceptance.
-            if (job.ReaderAcceptedTextDigest is null)
+            if (reconcileReaderAcceptance && job.ReaderAcceptedTextDigest is null)
                 await RecordOriginBookReaderAcceptanceAsync(book, draft, isCurrentPage, ct);
             return (result, Current() ? book : null);
         }

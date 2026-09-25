@@ -18,6 +18,8 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
     private bool _busy;
     private string? _notice;
     private string? _jobState;
+    private bool _watchPending;
+    private CancellationTokenSource? _pollLifetime;
     private readonly CharacterOverviewState _original;
 
     internal OriginBookAuthoringPage(RunnerSessionCoordinator coordinator, RetainedOriginBook book,
@@ -117,18 +119,26 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         }
     }
 
-    private async Task SyncAsync(bool create, Func<bool> current)
+    private async Task<bool> SyncAsync(bool create, Func<bool> current,
+        bool automatic = false, CancellationToken ct = default)
     {
-        if (_busy || !current() || _book is not { } book || _source is not { } source || create && !_consent) return;
+        if (_busy || !current() || _book is not { } book || _source is not { } source || create && !_consent) return false;
+        var priorNotice = _notice;
+        var priorState = _jobState;
+        _watchPending = false;
         _busy = true;
-        Refresh();
+        // A status read must not repeatedly rebuild the fact/consent controls
+        // or move the reader's scroll position while they wait.
+        if (!automatic) Refresh();
         (AndroidOriginChapterResult result, RetainedOriginBook? updated) response;
-        try { response = await Coordinator.SyncOriginChapterAsync(book, _chapter, source, create, current, CancellationToken.None); }
+        try { response = await Coordinator.SyncOriginChapterAsync(book, _chapter, source, create, current, ct,
+            reconcileReaderAcceptance: !automatic); }
         finally { _busy = false; }
         var (result, updated) = response;
         // Staging may retire book, so test the issued updated edition rather than
         // accepting an old export/review handle after a durable store change.
-        if (!ReferenceEquals(_book, book) || updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated)) return;
+        if (!ReferenceEquals(_book, book) || updated is null || ct.IsCancellationRequested
+            || !Coordinator.IsRetainedOriginBookCurrent(updated)) return false;
         _book = updated;
         _jobState = result.Outcome == AndroidOriginChapterOutcome.Available ? result.Job?.State : null;
         _notice = _copy[result.Outcome switch
@@ -143,11 +153,65 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
             },
             _ => result.UnknownRemoteOutcome ? "Origin.AuthoringUnknown" : "Origin.AuthoringUnavailable"
         }];
+        _watchPending = _jobState is OriginChapterAuthoringStates.AwaitingAuthoring
+            or OriginChapterAuthoringStates.ReconciliationRequired
+            || create && result.UnknownRemoteOutcome;
+        if (_watchPending && !automatic) StartPendingStatusWatch();
+        return !ReferenceEquals(book, updated) || priorState != _jobState || priorNotice != _notice;
+    }
+
+    private void StartPendingStatusWatch()
+    {
+        if (_pollLifetime is not null) return;
+        var lifetime = new CancellationTokenSource();
+        _pollLifetime = lifetime;
+        long appearance = CaptureAppearanceGeneration();
+        _ = WatchPendingStatusAsync(appearance, lifetime);
+    }
+
+    private async Task WatchPendingStatusAsync(long appearance, CancellationTokenSource lifetime)
+    {
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            // Bounded foreground observation, never a generation retry. A
+            // network/authentication failure stops until an explicit refresh.
+            while (_watchPending && IsCurrentAppearanceGeneration(appearance)
+                && elapsed.Elapsed < TimeSpan.FromMinutes(10))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), lifetime.Token);
+                if (elapsed.Elapsed >= TimeSpan.FromMinutes(10)) break;
+                await PollPendingChapterOnceAsync(appearance, lifetime.Token);
+            }
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        finally
+        {
+            if (ReferenceEquals(_pollLifetime, lifetime)) _pollLifetime = null;
+            lifetime.Dispose();
+        }
+    }
+
+    internal Task PollPendingChapterOnceAsync(long appearance, CancellationToken ct)
+    {
+        if (ct.IsCancellationRequested || !_watchPending || _busy
+            || !IsCurrentAppearanceGeneration(appearance)) return Task.CompletedTask;
+        return RunWithConditionalRefreshAsync(async () =>
+        {
+            if (ct.IsCancellationRequested || !_watchPending || _busy
+                || !IsCurrentAppearanceGeneration(appearance) || _book is not { } book) return false;
+            bool Current() => !ct.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+                && ReferenceEquals(_book, book) && Coordinator.CanRequestOriginChapter(book);
+            return await SyncAsync(create: false, Current, automatic: true, ct);
+        });
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _watchPending = false;
+        _pollLifetime?.Cancel();
+        _pollLifetime = null;
         _book = null;
         _source = null;
         _consent = false;

@@ -246,6 +246,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public int Reads { get; private set; }
     public int Acceptances { get; private set; }
     public bool FailAcceptance { get; set; }
+    public bool FailRead { get; set; }
     public bool Ready { get; set; }
     public AndroidAccountLinkStatus Status { get; set; } = AndroidAccountLinkStatus.Linked;
     public int LinkStarts { get; private set; }
@@ -273,6 +274,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
         CancellationToken ct = default)
     {
         Reads++;
+        if (FailRead) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
         if (_job is null) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound));
         if (Ready) _job = _job with { State = OriginChapterAuthoringStates.ReviewRequired,
             DraftText = "Synthetic transport chapter for explicit review.", ProviderReceiptDigest = new string('d', 64) };
