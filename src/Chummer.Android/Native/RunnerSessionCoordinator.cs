@@ -1535,9 +1535,22 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityTableCreationReceipt()
+    internal Task<CharacterCreationFinalizationReceipt?> LoadPersistedPriorityTableCreationReceiptAsync(
+        CharacterOverviewState original, CancellationToken cancellationToken)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var receipt = LoadPersistedPriorityTableCreationReceipt(original);
+            cancellationToken.ThrowIfCancellationRequested();
+            return receipt;
+        }, cancellationToken), cancellationToken);
+
+    internal bool IsPersistedCreationReceiptDisplayCurrent(CharacterOverviewState original)
+        => original.Profile?.Created == true && IsCreationFinalizationDisplayCurrent(original);
+
+    private CharacterCreationFinalizationReceipt? LoadPersistedPriorityTableCreationReceipt(
+        CharacterOverviewState original)
     {
-        CharacterOverviewState original = State;
         if (!IsCreationFinalizationDisplayCurrent(original)
             || original.Profile?.Created != true
             || original.WorkspaceId is not { } workspaceId)

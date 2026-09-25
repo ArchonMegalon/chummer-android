@@ -797,6 +797,8 @@ public sealed class BuildPage : NativePageBase
     private readonly CreationNavigationActionRunner _creationNavigationActionRunner;
     private int _creationNavigationTraceCount;
     private bool _resetScrollOnNextRefresh;
+    private CharacterOverviewState? _persistedReceiptDisplay;
+    private CharacterCreationFinalizationReceipt? _persistedCreationReceipt;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -888,8 +890,24 @@ public sealed class BuildPage : NativePageBase
         base.OnAppearing();
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        long appearance = CaptureAppearanceGeneration();
+        _persistedReceiptDisplay = null;
+        _persistedCreationReceipt = null;
+        var original = Coordinator.State;
+        if (original.Profile?.Created != true) return;
+        var receipt = await Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(original, cancellationToken);
+        if (!IsCurrentAppearanceGeneration(appearance)
+            || !Coordinator.IsPersistedCreationReceiptDisplayCurrent(original)) return;
+        _persistedReceiptDisplay = original;
+        _persistedCreationReceipt = receipt;
+    }
+
     protected override void OnDisappearing()
     {
+        _persistedReceiptDisplay = null;
+        _persistedCreationReceipt = null;
         _creationNavigationRefreshLease.DiscardForDeparture();
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
@@ -995,7 +1013,9 @@ public sealed class BuildPage : NativePageBase
         Label marker = NativeTheme.Eyebrow(label);
         marker.AutomationId = automationId;
         CharacterCreationFinalizationReceipt? persistedReceipt =
-            Coordinator.LoadPersistedPriorityTableCreationReceipt();
+            _persistedReceiptDisplay is { } original
+            && Coordinator.IsPersistedCreationReceiptDisplayCurrent(original)
+                ? _persistedCreationReceipt : null;
         _body.Add(persistedReceipt is null
             ? marker
             : NativeAuthoritySemantics.Overlay(

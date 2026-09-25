@@ -127,7 +127,10 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             "receipt.SavedRevision != savedRevision",
         ):
             self.assertIn(marker, coordinator + projection)
-        self.assertIn("Coordinator.LoadPersistedPriorityTableCreationReceipt()", build)
+        self.assertIn("await Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(original, cancellationToken)", build)
+        marker = build.split("private void AddRouteMarker(", 1)[1].split("private void ResetScroll", 1)[0]
+        self.assertNotIn("LoadPersisted", marker)
+        self.assertIn("Coordinator.IsPersistedCreationReceiptDisplayCurrent(original)", marker)
         for forbidden in (
             "Preferences.Default.Set",
             "ReceiptDigest =",
@@ -139,11 +142,14 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
     def test_persisted_receipt_load_is_owner_bound_and_fenced_before_and_after_read(self) -> None:
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         load = coordinator.split(
-            "internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityTableCreationReceipt()", 1
+            "internal Task<CharacterCreationFinalizationReceipt?> LoadPersistedPriorityTableCreationReceiptAsync(", 1
         )[1].split(
             "public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>>", 1
         )[0]
-        capture = load.index("CharacterOverviewState original = State;")
+        capture = load.index("CharacterOverviewState original, CancellationToken cancellationToken")
+        self.assertNotIn("original = State", load)
+        self.assertIn("WithWorkspaceActivationGateAsync(() => Task.Run(() =>", load)
+        self.assertIn("cancellationToken.ThrowIfCancellationRequested();", load)
         before = load.index("!IsCreationFinalizationDisplayCurrent(original)")
         dispatch = load.index("LoadFinalizationForDisplay(original, workspaceId)")
         after = load.index("!IsCreationFinalizationDisplayCurrent(original)", before + 1)
