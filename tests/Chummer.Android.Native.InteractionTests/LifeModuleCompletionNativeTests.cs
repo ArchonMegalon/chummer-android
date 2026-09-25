@@ -639,6 +639,20 @@ internal static partial class AfterRunAuthorityHarness
                 int terminalReads = authoringProbe.Reads;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 Require(authoringProbe.Reads == terminalReads, "A terminal draft kept polling the provider job.");
+                authoringProbe.TransientReadFailure = true;
+                await Click("origin-authoring-refresh");
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d
+                    && IssuedElements(Current()).OfType<Label>().Any(label => label.Text ==
+                        AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusInterrupted"])
+                    && authoringProbe.Reads == terminalReads + 1 && authoringProbe.Requests == 1
+                    && authoringProbe.Acceptances == 0,
+                    "A manual transport interruption erased the confirmed draft or claimed an account/generation failure.");
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == terminalReads + 1,
+                    "A failed manual read of a terminal job silently started automatic polling.");
+                authoringProbe.TransientReadFailure = false;
+                await Click("origin-authoring-refresh");
+                terminalReads = authoringProbe.Reads;
                 await Click("origin-authoring-review");
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 Require(authoringProbe.Reads == terminalReads, "A departed authoring page polled private chapter status.");
