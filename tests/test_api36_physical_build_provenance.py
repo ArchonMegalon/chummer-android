@@ -1210,6 +1210,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             )
 
         validate(pristine)
+        identity = pristine["releaseIdentity"]
+        changed_name = identity["versionName"] + ".changed"
+        changed_code = identity["versionCode"] + 1
         for field in ("commit", "tree"):
             with self.subTest(source_head_field=field):
                 graph = copy.deepcopy(pristine)
@@ -1217,8 +1220,8 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "source head does not bind"):
                     validate(graph)
         for field, value, project_field in (
-            ("versionName", "0.1.0-preview.13", "ApplicationDisplayVersion"),
-            ("versionCode", 13, "ApplicationVersion"),
+            ("versionName", changed_name, "ApplicationDisplayVersion"),
+            ("versionCode", changed_code, "ApplicationVersion"),
         ):
             with self.subTest(identity_field=field):
                 graph = copy.deepcopy(pristine)
@@ -1229,11 +1232,14 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         project = self.android / "src/Chummer.Android/Chummer.Android.csproj"
         original_project = project.read_bytes()
         graph = copy.deepcopy(pristine)
-        graph["releaseIdentity"].update({"versionName": "0.1.0-preview.13", "versionCode": 13})
+        graph["releaseIdentity"].update({"versionName": changed_name, "versionCode": changed_code})
         try:
             project.write_bytes(original_project.replace(
-                b"0.1.0-preview.12", b"0.1.0-preview.13",
-            ).replace(b"<ApplicationVersion>12</", b"<ApplicationVersion>13</"))
+                identity["versionName"].encode(), changed_name.encode(),
+            ).replace(
+                f"<ApplicationVersion>{identity['versionCode']}</".encode(),
+                f"<ApplicationVersion>{changed_code}</".encode(),
+            ))
             with self.assertRaisesRegex(ValueError, "exact clean source-graph authority"):
                 validate(graph)
         finally:
@@ -2095,7 +2101,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "b0a3ba7b8edf203d456973a83eacca0622386ed777b11715b95470687413be09",
+            "cd5f96e826351b4ba29dc5273ac237908a6d1386f56d872567d3e3350912fbcf",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -2141,7 +2147,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "b0a3ba7b8edf203d456973a83eacca0622386ed777b11715b95470687413be09",
+            "cd5f96e826351b4ba29dc5273ac237908a6d1386f56d872567d3e3350912fbcf",
             provenance.file_sha256(lock_path),
         )
         self.assertEqual(70707, lock_path.stat().st_size)

@@ -21,6 +21,7 @@ SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(SCRIPTS))
 import api36_arm64_physical_contract as contract
+from read_android_version import read_project_version
 
 
 def write_json(path: Path, value: object) -> None:
@@ -216,6 +217,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
 
     @staticmethod
     def graph_payload() -> dict[str, object]:
+        # Capture fixtures bind to the real project; historical producer tests
+        # below keep their independently seeded release identity.
+        version_name, version_code = read_project_version(
+            ROOT / "src/Chummer.Android/Chummer.Android.csproj"
+        )
         repositories = []
         for index, (name, role, repository) in enumerate(zip(
             contract.REPOSITORY_NAMES, contract.REPOSITORY_ROLES,
@@ -264,7 +270,7 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
             "publicationAuthorized": False,
             "releaseIdentity": {
                 "packageId": contract.PACKAGE,
-                "versionName": "0.1.0-preview.12", "versionCode": 12,
+                "versionName": version_name, "versionCode": int(version_code),
                 "intentAuthority": "explicit_build_input", "minimumExclusiveVersionCode": 11,
             },
             "generator": {
@@ -386,10 +392,11 @@ class Api36Arm64PhysicalContractTests(unittest.TestCase):
                     contract.validate_source_graph(self.bound_graph(graph))
 
     def test_v3_identity_is_bound_to_current_project_not_only_well_formed_json(self) -> None:
+        identity = self.graph_payload()["releaseIdentity"]
         for field, value, project_field in (
-            ("versionName", "0.1.0-preview.11", "ApplicationDisplayVersion"),
-            ("versionName", "0.1.0-preview.13", "ApplicationDisplayVersion"),
-            ("versionCode", 13, "ApplicationVersion"),
+            ("versionName", identity["versionName"] + ".previous", "ApplicationDisplayVersion"),
+            ("versionName", identity["versionName"] + ".next", "ApplicationDisplayVersion"),
+            ("versionCode", identity["versionCode"] + 1, "ApplicationVersion"),
         ):
             with self.subTest(field=field, value=value):
                 graph = self.graph_payload()
