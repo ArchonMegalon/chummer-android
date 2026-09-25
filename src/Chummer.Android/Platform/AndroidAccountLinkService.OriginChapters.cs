@@ -98,7 +98,9 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             if (response.StatusCode == HttpStatusCode.Conflict) return new(AndroidOriginChapterOutcome.Conflict);
             if (!create && response.StatusCode == HttpStatusCode.NotFound) return new(AndroidOriginChapterOutcome.NotFound);
             if (!response.IsSuccessStatusCode)
-                return new(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: changesRemote && !knownRejected);
+                return new(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: changesRemote && !knownRejected,
+                    RetryableReadFailure: !changesRemote && !ct.IsCancellationRequested && response.StatusCode is
+                        HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout);
             JsonElement body = await _httpTransport.ReadJsonAsync<JsonElement>(response, ct, 512 * 1024);
             RequireContinuationOwnerCurrent(expected);
             RejectContinuationWireDuplicates(body);
@@ -135,11 +137,18 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or KeyNotFoundException
             or JsonException or InvalidDataException or IOException or HttpRequestException or OperationCanceledException or CryptographicException)
         {
-            // No automatic retry, token rotation, draft adoption, or provider
-            // action. Read the same stable job after an uncertain write outcome.
-            return new(expected is not null && !ReferenceEquals(OwnerAuthority.Capture(), expected)
-                    ? AndroidOriginChapterOutcome.Unauthorized : AndroidOriginChapterOutcome.Unavailable,
-                UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected);
+            bool ownerChanged = expected is not null && !ReferenceEquals(OwnerAuthority.Capture(), expected);
+            // Classify only dispatched, read-only transport failures. This layer
+            // never retries. Generic HTTP failures also include rejected redirects
+            // and untrusted origins; TLS, invalid content, storage and signing
+            // failures must not enter the page's bounded observation reserve.
+            bool transientRead = !changesRemote && proofReleased && !ownerChanged && !ct.IsCancellationRequested
+                && (error is OperationCanceledException
+                    || error is HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError
+                        or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded });
+            return new(ownerChanged ? AndroidOriginChapterOutcome.Unauthorized : AndroidOriginChapterOutcome.Unavailable,
+                UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected,
+                RetryableReadFailure: transientRead);
         }
     }
 }

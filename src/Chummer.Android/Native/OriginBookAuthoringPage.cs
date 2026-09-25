@@ -19,6 +19,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
     private string? _notice;
     private string? _jobState;
     private bool _watchPending;
+    private int _consecutiveReadFailures;
     private CancellationTokenSource? _pollLifetime;
     private readonly CharacterOverviewState _original;
 
@@ -125,6 +126,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (_busy || !current() || _book is not { } book || _source is not { } source || create && !_consent) return false;
         var priorNotice = _notice;
         var priorState = _jobState;
+        bool wasWatching = _watchPending;
         _watchPending = false;
         _busy = true;
         // A status read must not repeatedly rebuild the fact/consent controls
@@ -140,6 +142,16 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (!ReferenceEquals(_book, book) || updated is null || ct.IsCancellationRequested
             || !Coordinator.IsRetainedOriginBookCurrent(updated)) return false;
         _book = updated;
+        if (!create && wasWatching && result.Outcome == AndroidOriginChapterOutcome.Unavailable
+            && result.RetryableReadFailure)
+        {
+            _watchPending = ++_consecutiveReadFailures < 3;
+            // Keep the last confirmed stage, not an invented percentage or ETA.
+            _notice = _copy[_watchPending ? "Origin.AuthoringStatusRetrying" : "Origin.AuthoringStatusPaused"];
+            if (_watchPending && !automatic) StartPendingStatusWatch();
+            return !ReferenceEquals(book, updated) || priorNotice != _notice;
+        }
+        _consecutiveReadFailures = 0;
         _jobState = result.Outcome == AndroidOriginChapterOutcome.Available ? result.Job?.State : null;
         _notice = _copy[result.Outcome switch
         {
@@ -174,8 +186,9 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            // Bounded foreground observation, never a generation retry. A
-            // network/authentication failure stops until an explicit refresh.
+            // Bounded foreground observation, never a generation retry. Only
+            // classified transient reads have a three-failure reserve; all
+            // authentication, integrity and unclassified failures stop at once.
             while (_watchPending && IsCurrentAppearanceGeneration(appearance)
                 && elapsed.Elapsed < TimeSpan.FromMinutes(10))
             {
@@ -183,6 +196,8 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
                 if (elapsed.Elapsed >= TimeSpan.FromMinutes(10)) break;
                 await PollPendingChapterOnceAsync(appearance, lifetime.Token);
             }
+            if (elapsed.Elapsed >= TimeSpan.FromMinutes(10))
+                await PausePendingStatusObservationAsync(appearance, lifetime.Token);
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         finally
@@ -191,6 +206,17 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
             lifetime.Dispose();
         }
     }
+
+    internal Task PausePendingStatusObservationAsync(long appearance, CancellationToken ct)
+        => RunWithConditionalRefreshAsync(() =>
+        {
+            if (ct.IsCancellationRequested || !_watchPending || _busy
+                || !IsCurrentAppearanceGeneration(appearance) || _book is not { } book
+                || !Coordinator.CanRequestOriginChapter(book)) return Task.FromResult(false);
+            _watchPending = false;
+            _notice = _copy["Origin.AuthoringStatusPaused"];
+            return Task.FromResult(true);
+        });
 
     internal Task PollPendingChapterOnceAsync(long appearance, CancellationToken ct)
     {
@@ -210,6 +236,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
     {
         base.OnDisappearing();
         _watchPending = false;
+        _consecutiveReadFailures = 0;
         _pollLifetime?.Cancel();
         _pollLifetime = null;
         _book = null;

@@ -590,11 +590,40 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance - 1, default);
                 Require(authoringProbe.Reads == 3, "Canceled or retired appearance polled private chapter status.");
+                authoringProbe.TransientReadFailure = true;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d,
+                    "A transient status read erased the last confirmed authoring stage.");
+                authoringProbe.TransientReadFailure = false;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == 5 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                    "A classified transient read did not recover the same job without another generation or acceptance.");
+                authoringProbe.TransientReadFailure = true;
+                for (int failedRead = 0; failedRead < 3; failedRead++)
+                    await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                authoringProbe.TransientReadFailure = false;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == 8 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                    "The consecutive transient-read limit failed to stop automatic observation.");
+                Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text ==
+                    AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusPaused"]),
+                    "Exhausted status observation silently left the reader waiting.");
+                await Click("origin-authoring-refresh");
+                int beforeBudgetPause = authoringProbe.Reads;
+                await authoringPage.PausePendingStatusObservationAsync(authoringAppearance, default);
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == beforeBudgetPause
+                    && Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d
+                    && IssuedElements(Current()).OfType<Label>().Any(label => label.Text ==
+                        AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusPaused"]),
+                    "Elapsed observation budget did not preserve progress, explain the pause and stop reads.");
+                await Click("origin-authoring-refresh");
+                int beforeUnclassifiedFailure = authoringProbe.Reads;
                 authoringProbe.FailRead = true;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 authoringProbe.FailRead = false;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
-                Require(authoringProbe.Reads == 4 && authoringProbe.Requests == 1,
+                Require(authoringProbe.Reads == beforeUnclassifiedFailure + 1 && authoringProbe.Requests == 1,
                     "An automatic status failure retried without an explicit refresh.");
                 await Click("origin-authoring-refresh");
                 authoringProbe.Ready = true;
