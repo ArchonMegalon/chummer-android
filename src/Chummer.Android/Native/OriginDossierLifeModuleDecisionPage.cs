@@ -255,7 +255,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             if (_storyCheckpoint?.PendingPreview?.InputResolution is { } answers)
                 foreach (var question in FollowUps(choiceId))
                     if (answers.Values.TryGetValue(question.PromptId, out string? answer))
-                        card.Add(NativeTheme.Body(question.Label + ": " + answer));
+                        card.Add(NativeTheme.Body((question.DisplayLabel ?? question.Label) + ": " + answer));
 
             // Historic mechanics rows are raw source projections, not ratings.
             // Only display the fresh compiler review. Do not repair old digests
@@ -333,7 +333,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         card.Add(NativeTheme.Body(_copy["Origin.AnswersDetail"], NativeTheme.Muted));
         foreach (var prompt in prompts)
         {
-            card.Add(NativeTheme.Body(prompt.Label + (prompt.IsRequired ? " *" : string.Empty)));
+            card.Add(NativeTheme.Body((prompt.DisplayLabel ?? prompt.Label) + (prompt.IsRequired ? " *" : string.Empty)));
             string promptId = prompt.PromptId;
             _answers.TryGetValue(promptId, out var previous);
             if (prompt.InputKind == "single-select")

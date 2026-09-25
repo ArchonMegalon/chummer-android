@@ -338,7 +338,8 @@ internal static class OriginDossierBookRuntimeTests
             var choice = authority.Current.LegalChoices.Single();
             authority.Current = authority.Current with { LegalChoices = [choice with
             {
-                FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text"),
+                FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text")
+                    { DisplayLabel = "Street · Arcology" },
                     new("language", "Language", "single-select", true,
                         [new("english", "English", true, null, new Dictionary<string, string>(), "English")],
                         choice.SourceAnchorIds, "effect", "select")],
@@ -362,6 +363,9 @@ internal static class OriginDossierBookRuntimeTests
             var review = Button("origin-life-review-answers");
             Require(!review.IsEnabled && requests == 0 && authority.MutationCount == 0,
                 "Opening the form invented required answers or a mutation.");
+            Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology *")
+                && Elements(page).OfType<Label>().Any(label => label.Text == "Language *"),
+                "The form lost fresh display context or the canonical-label fallback.");
             Elements(page).OfType<Entry>().Single().Text = "Renraku";
             Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
             Elements(page).OfType<Picker>().Single().SelectedIndex = 0;
@@ -369,6 +373,9 @@ internal static class OriginDossierBookRuntimeTests
             await Click(review);
             Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
                 "Review must only persist the bound preview.");
+            Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology: Renraku")
+                && Elements(page).OfType<Label>().Any(label => label.Text == "Language: English"),
+                "The review lost the question context or changed the answer.");
             var oldConfirm = Button("origin-life-confirm");
             var reopened = await runtime.OpenAsync(TestOwner, "workspace-1");
             Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
