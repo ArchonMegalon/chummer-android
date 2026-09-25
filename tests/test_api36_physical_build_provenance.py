@@ -50,11 +50,10 @@ class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
         self.assertEqual(
             manifest["sourceGraph"]["coreRuntimeSourceCommit"], provenance.CORE_RUNTIME_REVISION
         )
-        self.assertEqual(3, len({
-            provenance.CORE_CONTENT_REVISION,
-            provenance.CORE_PACKAGE_RECIPE_REVISION,
-            provenance.CORE_RUNTIME_REVISION,
-        }))
+        # Current content is frozen at the recipe, not the runtime-source commit.
+        # Each role is checked against its own manifest above, even when equal.
+        self.assertEqual(provenance.CORE_CONTENT_REVISION, provenance.CORE_PACKAGE_RECIPE_REVISION)
+        self.assertNotEqual(provenance.CORE_RUNTIME_REVISION, provenance.CORE_PACKAGE_RECIPE_REVISION)
         self.assertEqual(
             manifest["packagePlaneLock"]["sha256"], provenance.PRESENTATION_PACKAGE_LOCK_SHA256
         )
@@ -1211,6 +1210,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             )
 
         validate(pristine)
+        identity = pristine["releaseIdentity"]
+        changed_name = identity["versionName"] + ".changed"
+        changed_code = identity["versionCode"] + 1
         for field in ("commit", "tree"):
             with self.subTest(source_head_field=field):
                 graph = copy.deepcopy(pristine)
@@ -1218,8 +1220,8 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "source head does not bind"):
                     validate(graph)
         for field, value, project_field in (
-            ("versionName", "0.1.0-preview.13", "ApplicationDisplayVersion"),
-            ("versionCode", 13, "ApplicationVersion"),
+            ("versionName", changed_name, "ApplicationDisplayVersion"),
+            ("versionCode", changed_code, "ApplicationVersion"),
         ):
             with self.subTest(identity_field=field):
                 graph = copy.deepcopy(pristine)
@@ -1230,11 +1232,14 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         project = self.android / "src/Chummer.Android/Chummer.Android.csproj"
         original_project = project.read_bytes()
         graph = copy.deepcopy(pristine)
-        graph["releaseIdentity"].update({"versionName": "0.1.0-preview.13", "versionCode": 13})
+        graph["releaseIdentity"].update({"versionName": changed_name, "versionCode": changed_code})
         try:
             project.write_bytes(original_project.replace(
-                b"0.1.0-preview.12", b"0.1.0-preview.13",
-            ).replace(b"<ApplicationVersion>12</", b"<ApplicationVersion>13</"))
+                identity["versionName"].encode(), changed_name.encode(),
+            ).replace(
+                f"<ApplicationVersion>{identity['versionCode']}</".encode(),
+                f"<ApplicationVersion>{changed_code}</".encode(),
+            ))
             with self.assertRaisesRegex(ValueError, "exact clean source-graph authority"):
                 validate(graph)
         finally:
@@ -2096,7 +2101,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2",
+            "cd5f96e826351b4ba29dc5273ac237908a6d1386f56d872567d3e3350912fbcf",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -2142,10 +2147,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2",
+            "cd5f96e826351b4ba29dc5273ac237908a6d1386f56d872567d3e3350912fbcf",
             provenance.file_sha256(lock_path),
         )
-        self.assertEqual(70263, lock_path.stat().st_size)
+        self.assertEqual(70707, lock_path.stat().st_size)
         self.assertEqual(142, len(lock["dependencies"][provenance.TARGET_FRAMEWORK]))
 
         hub_package_ids = (

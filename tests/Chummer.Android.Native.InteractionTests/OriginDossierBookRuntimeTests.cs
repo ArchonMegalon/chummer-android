@@ -37,6 +37,7 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         RunLegacyChapterDisplay();
         RunFinishedSelectionDisplay();
+        await RunEffectContributionDisplayAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
@@ -337,7 +338,8 @@ internal static class OriginDossierBookRuntimeTests
             var choice = authority.Current.LegalChoices.Single();
             authority.Current = authority.Current with { LegalChoices = [choice with
             {
-                FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text"),
+                FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text")
+                    { DisplayLabel = "Street · Arcology" },
                     new("language", "Language", "single-select", true,
                         [new("english", "English", true, null, new Dictionary<string, string>(), "English")],
                         choice.SourceAnchorIds, "effect", "select")],
@@ -361,6 +363,9 @@ internal static class OriginDossierBookRuntimeTests
             var review = Button("origin-life-review-answers");
             Require(!review.IsEnabled && requests == 0 && authority.MutationCount == 0,
                 "Opening the form invented required answers or a mutation.");
+            Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology *")
+                && Elements(page).OfType<Label>().Any(label => label.Text == "Language *"),
+                "The form lost fresh display context or the canonical-label fallback.");
             Elements(page).OfType<Entry>().Single().Text = "Renraku";
             Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
             Elements(page).OfType<Picker>().Single().SelectedIndex = 0;
@@ -368,6 +373,9 @@ internal static class OriginDossierBookRuntimeTests
             await Click(review);
             Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
                 "Review must only persist the bound preview.");
+            Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology: Renraku")
+                && Elements(page).OfType<Label>().Any(label => label.Text == "Language: English"),
+                "The review lost the question context or changed the answer.");
             var oldConfirm = Button("origin-life-confirm");
             var reopened = await runtime.OpenAsync(TestOwner, "workspace-1");
             Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
@@ -551,6 +559,76 @@ internal static class OriginDossierBookRuntimeTests
             => throw new InvalidOperationException("The book must be retained.");
     }
 
+    private static async Task RunEffectContributionDisplayAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                var authority = new DecisionAuthority(1);
+                authority.Current = authority.Current with { Locale = locale };
+                // These are explicit compiler-output display fixtures. Numeric
+                // defaults and target binding are covered by Core's real-source tests.
+                LifeModuleEffectContribution Contribution(string kind, string target, decimal? amount,
+                    string selection = "", string status = CharacterCreationFoundationEffectCompilationStatuses.Supported)
+                    => new(kind, kind, "bound-" + kind, target, amount, selection,
+                        new Dictionary<string, string>(), ["lifemodules.xml#module:fixture"], status, null);
+                authority.Contributions = [
+                    Contribution("attributelevel", "LOG", 1),
+                    Contribution("skilllevel", "Survival", 1),
+                    Contribution("knowledgeskilllevel", "FreeKnowledgeSkills", 1) with
+                        { DescriptiveMetadata = new Dictionary<string, string> { ["name"] = "History" } },
+                    Contribution("qualitylevel", "SINner (National)", 1),
+                    Contribution("pushtext", "", null, "Salish-Shidhe", "pending"),
+                    Contribution("unknown-effect", "Unresolved effect", null, status: "unsupported")
+                ];
+                var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+                var checkpoint = interaction.Prepare(interaction.Start("workspace-1").Value!, "choice-1").Value!;
+                OriginDossierLifeModulePhoneResult Display(LifeModuleOriginDossierDraftCheckpoint value) => new(
+                    LifeModuleOriginDossierOutcomes.Success, OriginDossierLifeModuleInteractionProjector.Project(value), [],
+                    LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                    FoundationSnapshotDigest: "sha256:" + Digest("foundation"),
+                    BoundContentDigest: value.BoundContentDigest, BoundSourceDigest: value.BoundSourceDigest,
+                    BoundMechanicsSnapshotDigest: value.BoundMechanicsSnapshotDigest, StoryCheckpoint: value);
+                int confirmations = 0;
+                OriginDossierLifeModuleDecisionPage Page(LifeModuleOriginDossierDraftCheckpoint value) => new(Display(value), locale,
+                    (_, _) => Task.FromResult<OriginDossierLifeModulePhoneResult?>(null),
+                    (_, _) => { confirmations++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); });
+                var page = Page(checkpoint);
+                string before = JsonSerializer.Serialize(checkpoint);
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                string Effect(int index) => Elements(page).OfType<Label>().Single(label =>
+                    label.AutomationId == "origin-life-effect-0-" + index).Text;
+                Require(Effect(0) == copy.Format("Origin.AttributeContribution", "LOG", "+1")
+                    && Effect(1) == copy.Format("Origin.SkillContribution", "Survival", "+1")
+                    && Effect(2) == copy.Format("Origin.KnowledgePoolContribution", "+1")
+                    && Effect(3) == copy.Format("Origin.QualityLevelContribution", "SINner (National)", "1")
+                    && Effect(4) == copy.Format("Origin.SelectionContribution", "Salish-Shidhe")
+                    && Effect(5) == copy.Format("Origin.EffectPending", "Unresolved effect"),
+                    "The native review lost exact Core contributions, quality identity, or pool/selection semantics.");
+                Require(Elements(page).OfType<Label>().Any(label => label.Text == copy.Format("Origin.EffectSourceContext", "History"))
+                    && Elements(page).OfType<Label>().Any(label => label.Text == copy["Origin.ContributionScope"])
+                    && Elements(page).OfType<Button>().Single(button => button.AutomationId == "origin-life-confirm").IsEnabled,
+                    "The reviewed page confused descriptive metadata with grants or lost confirmation.");
+                Require(JsonSerializer.Serialize(checkpoint) == before && authority.MutationCount == 0,
+                    "Rendering rewrote the reviewed checkpoint or applied mechanics.");
+
+                // Display-only historical fixture. Actual legacy restore and
+                // re-prepare admission are exercised against real Core storage.
+                var legacy = Page(checkpoint with { PendingPreview = checkpoint.PendingPreview! with { EffectReview = null } });
+                var oldConfirm = Elements(legacy).OfType<Button>().Single(button => button.AutomationId == "origin-life-confirm");
+                Require(!oldConfirm.IsEnabled && Elements(legacy).OfType<Label>().Any(label => label.Text == copy["Origin.EffectReviewRequired"])
+                    && !Elements(legacy).Any(element => element.AutomationId?.StartsWith("origin-life-effect-", StringComparison.Ordinal) == true),
+                    "A legacy raw preview was shown as compiler-reviewed or remained confirmable.");
+                ((IButtonController)oldConfirm).SendClicked();
+                await Task.Yield();
+                Require(confirmations == 0, "A stale preview dispatched confirmation through a disabled control.");
+            }
+        });
+        Console.WriteLine("PASS Origin book: exact contribution display in DE/EN/ES; legacy preview requires review, no rendering mutation");
+    }
+
     private static async Task RunMetatypePageAsync()
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
@@ -663,11 +741,16 @@ internal static class OriginDossierBookRuntimeTests
 
     // A deterministic authority double exercises the real interaction, Core
     // projection and Android storage. It does not claim full Life Modules rules.
-    private sealed class DecisionAuthority(int terminalAfter) : ILifeModuleDecisionAuthority, ILifeModuleDecisionInputAuthority
+    private sealed class DecisionAuthority(int terminalAfter) : ILifeModuleDecisionAuthority, ILifeModuleDecisionInputAuthority,
+        ILifeModuleDecisionEffectReviewAuthority
     {
         private readonly Dictionary<string, LifeModuleDecisionAcceptance> _accepted = new(StringComparer.Ordinal);
         public int MutationCount { get; private set; }
         public Action? AfterCommit { get; set; }
+        public IReadOnlyList<LifeModuleEffectContribution> Contributions { get; set; } =
+            [new("fixture-effect", "skilllevel", "fixture-skill", "Etiquette", 1, string.Empty,
+                new Dictionary<string, string>(), ["lifemodules.xml#module:fixture"],
+                CharacterCreationFoundationEffectCompilationStatuses.Supported, null)];
         public LifeModuleDecisionAuthorityStep Current { get; set; } = new(
             OriginDossierSchemas.DecisionAuthorityStepV1, "sr5", "workspace-1", 1,
             "local-single-user", "runner-1", "Neon", "en-US", "journey-1", "nationality", 1, "turn-1", 1,
@@ -677,6 +760,11 @@ internal static class OriginDossierBookRuntimeTests
 
         public LifeModuleDecisionAuthorityResult<LifeModuleDecisionAuthorityStep> Load(string workspaceId)
             => new(LifeModuleOriginDossierOutcomes.Success, Current, []);
+
+        public LifeModuleDecisionAuthorityResult<LifeModuleEffectReview> ReviewEffects(LifeModuleDecisionInputRequest request)
+            => new(LifeModuleOriginDossierOutcomes.Success, LifeModuleEffectReviewIntegrity.Seal(new(request,
+                "sha256:" + Digest("fixture-preview"), "sha256:" + Digest("fixture-compiler"), "sha256:" + Digest("fixture-compilation"),
+                Contributions, string.Empty)), []);
         public LifeModuleDecisionAuthorityResult<LifeModuleDecisionAcceptance> FindAcceptance(string workspaceId, string key)
             => _accepted.TryGetValue(key, out var found)
                 ? new(LifeModuleOriginDossierOutcomes.Success, found, [])

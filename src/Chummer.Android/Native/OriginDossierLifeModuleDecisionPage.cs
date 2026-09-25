@@ -255,26 +255,24 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             if (_storyCheckpoint?.PendingPreview?.InputResolution is { } answers)
                 foreach (var question in FollowUps(choiceId))
                     if (answers.Values.TryGetValue(question.PromptId, out string? answer))
-                        card.Add(NativeTheme.Body(question.Label + ": " + answer));
+                        card.Add(NativeTheme.Body((question.DisplayLabel ?? question.Label) + ": " + answer));
 
-            // The reviewed values come from Core's resolved preview, not the
-            // unanswered catalog option. No mechanics are calculated here.
-            var effects = _storyCheckpoint?.PendingPreview?.InputResolution?.MechanicsPreview.Items;
-            int effectCount = effects?.Count ?? choice.Effects.Count;
-            for (int effectIndex = 0; effectIndex < effectCount; effectIndex++)
+            // Historic mechanics rows are raw source projections, not ratings.
+            // Only display the fresh compiler review. Do not repair old digests
+            // or infer numeric defaults/quality identities in the Android host.
+            var review = _storyCheckpoint?.PendingPreview?.EffectReview;
+            card.Add(NativeTheme.Body(_copy[review is null
+                ? "Origin.EffectReviewRequired" : "Origin.ContributionScope"], NativeTheme.Muted));
+            for (int effectIndex = 0; effectIndex < (review?.Contributions.Count ?? 0); effectIndex++)
             {
-                var resolved = effects?[effectIndex];
-                var effect = resolved is null ? choice.Effects[effectIndex] : new OriginDossierLifeModuleEffectState(
-                    resolved.EffectId, resolved.Domain, resolved.TargetId, resolved.BeforeValue,
-                    resolved.AfterValue, resolved.BudgetDelta, resolved.SourceAnchorIds, resolved.ItemDigest);
-                Label effectLabel = NativeTheme.Body(_copy.Format(
-                    "Origin.Effect",
-                    RunnerSessionCoordinator.HumanizeId(effect.Domain),
-                    RunnerSessionCoordinator.HumanizeId(effect.TargetId),
-                    effect.BeforeValue,
-                    effect.AfterValue));
+                var effect = review!.Contributions[effectIndex];
+                Label effectLabel = NativeTheme.Body(ContributionText(effect));
                 effectLabel.AutomationId = $"origin-life-effect-{choiceIndex}-{effectIndex}";
                 card.Add(effectLabel);
+                if (effect.DescriptiveMetadata.Count > 0)
+                    card.Add(NativeTheme.Body(_copy.Format("Origin.EffectSourceContext",
+                        string.Join(" · ", effect.DescriptiveMetadata.OrderBy(item => item.Key, StringComparer.Ordinal)
+                            .Select(item => item.Value))), NativeTheme.Muted));
             }
             body.Add(NativeTheme.Card(card));
             AddConfirmation(body, generation);
@@ -287,6 +285,29 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         body.Add(provenance);
 
         return body;
+    }
+
+    private string ContributionText(LifeModuleEffectContribution effect)
+    {
+        if (effect.Kind == "pushtext" && !string.IsNullOrEmpty(effect.SelectionText))
+            return _copy.Format("Origin.SelectionContribution", effect.SelectionText);
+        if (effect.CompilationStatus != CharacterCreationFoundationEffectCompilationStatuses.Supported)
+            return _copy.Format("Origin.EffectPending", effect.TargetName);
+        string amount = effect.Amount?.ToString("+0.################;-0.################;0",
+            CultureInfo.GetCultureInfo(_locale.FormattingLocale)) ?? string.Empty;
+        return effect.Kind switch
+        {
+            "attributelevel" => _copy.Format("Origin.AttributeContribution", effect.TargetName, amount),
+            "skilllevel" => _copy.Format("Origin.SkillContribution", effect.TargetName, amount),
+            "skillgrouplevel" => _copy.Format("Origin.GroupContribution", effect.TargetName, amount),
+            "knowledgeskilllevel" => _copy.Format("Origin.KnowledgePoolContribution", amount),
+            "freepositivequalities" => _copy.Format("Origin.PositivePoolContribution", amount),
+            "freenegativequalities" => _copy.Format("Origin.NegativePoolContribution", amount),
+            "qualitylevel" => _copy.Format("Origin.QualityLevelContribution", effect.TargetName,
+                effect.Amount?.ToString(CultureInfo.GetCultureInfo(_locale.FormattingLocale)) ?? string.Empty),
+            "addqualities" => _copy.Format("Origin.QualityContribution", effect.TargetName, effect.SelectionText),
+            _ => _copy.Format("Origin.EffectPending", effect.TargetName)
+        };
     }
 
     private IReadOnlyList<LifeModuleFollowUpPromptDto> FollowUps(string choiceId)
@@ -312,7 +333,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         card.Add(NativeTheme.Body(_copy["Origin.AnswersDetail"], NativeTheme.Muted));
         foreach (var prompt in prompts)
         {
-            card.Add(NativeTheme.Body(prompt.Label + (prompt.IsRequired ? " *" : string.Empty)));
+            card.Add(NativeTheme.Body((prompt.DisplayLabel ?? prompt.Label) + (prompt.IsRequired ? " *" : string.Empty)));
             string promptId = prompt.PromptId;
             _answers.TryGetValue(promptId, out var previous);
             if (prompt.InputKind == "single-select")
@@ -387,7 +408,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             body.Add(preview);
             Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
-            confirm.IsEnabled = _state.CanConfirm;
+            confirm.IsEnabled = CanConfirmReviewed;
             var progress = new ActivityIndicator
             {
                 AutomationId = "origin-life-saving", IsVisible = false,
@@ -404,7 +425,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             confirmationRow.Add(progress, 1);
             confirm.Clicked += async (_, _) =>
             {
-                if (_actionInFlight || generation != _renderGeneration)
+                if (_actionInFlight || generation != _renderGeneration || !CanConfirmReviewed)
                     return;
                 _actionInFlight = true;
                 confirm.IsEnabled = false;
@@ -427,13 +448,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     progress.IsRunning = progress.IsVisible = false;
                     body.IsEnabled = true;
                     confirm.Text = _copy["Origin.Confirm"];
-                    confirm.IsEnabled = generation == _renderGeneration && _state.CanConfirm;
+                    confirm.IsEnabled = generation == _renderGeneration && CanConfirmReviewed;
                 }
             };
             body.Add(confirmationRow);
         }
 
     }
+
+    private bool CanConfirmReviewed => _state.CanConfirm && _storyCheckpoint?.PendingPreview?.EffectReview is not null;
 
     private static OriginDossierLifeModuleEffectState? MetatypeEffect(OriginDossierLifeModuleChoiceState choice)
         => choice.Effects.SingleOrDefault(effect => effect.Domain == "metatype-choice");
