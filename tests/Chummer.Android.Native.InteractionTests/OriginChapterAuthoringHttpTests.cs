@@ -174,11 +174,14 @@ internal static partial class AfterRunAuthorityHarness
                 var row = Wire(ready); attacks[attackIndex](row);
                 fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(row);
                 var malformed = await transport.ReadChapterAsync(owner, source);
-                Require(malformed.Outcome == AndroidOriginChapterOutcome.Unavailable && malformed.Job is null,
+                Require(malformed.Outcome == AndroidOriginChapterOutcome.Unavailable && malformed.Job is null
+                    && !malformed.RetryableReadFailure,
                     $"Malformed chapter case {attackIndex} returned {malformed.Outcome}; job present: {malformed.Job is not null}.");
             }
             fixture.ChapterResponse = (_, _) => new(HttpStatusCode.OK) { Content = new StringContent(new string(' ', 512 * 1024 + 1)) };
-            Require((await transport.ReadChapterAsync(owner, source)).Job is null, "Oversized chapter body was accepted.");
+            var oversized = await transport.ReadChapterAsync(owner, source);
+            Require(oversized.Job is null && !oversized.RetryableReadFailure,
+                "Oversized chapter body was accepted or admitted for automatic retry.");
             fixture.ChapterResponse = (_, _) => new(HttpStatusCode.Conflict);
             string originalCredentials = JsonSerializer.Serialize(fixture.Metadata.Inner.Rows);
             Require((await transport.RequestChapterAsync(owner, source, true)).Outcome == AndroidOriginChapterOutcome.Conflict
@@ -192,17 +195,74 @@ internal static partial class AfterRunAuthorityHarness
             var unavailableAccept = await transport.AcceptChapterAsync(owner, source,
                 ready.ProviderReceiptDigest!, ready.DraftText, true);
             Require(unavailableRead.Outcome == AndroidOriginChapterOutcome.Unavailable
+                && unavailableRead.RetryableReadFailure
                 && unavailableCreate.Outcome == AndroidOriginChapterOutcome.Unavailable
                 && unavailableAccept.Outcome == AndroidOriginChapterOutcome.Unavailable
+                && !unavailableCreate.RetryableReadFailure && !unavailableAccept.RetryableReadFailure
                 && unavailableRead.Job is null && unavailableCreate.Job is null && unavailableAccept.Job is null
                 && !unavailableRead.UnknownRemoteOutcome && unavailableCreate.UnknownRemoteOutcome
                 && unavailableAccept.UnknownRemoteOutcome && fixture.ChapterRequests == before + 3
                 && fixture.Owner.Capture() == owner && fixture.Account.Snapshot.IsLinked
                 && JsonSerializer.Serialize(fixture.Metadata.Inner.Rows) == originalCredentials,
                 "Temporary Hub unavailability revoked credentials, exposed a job, retried, or hid an uncertain write.");
+            foreach (var status in new[] { HttpStatusCode.BadGateway, HttpStatusCode.GatewayTimeout,
+                HttpStatusCode.InternalServerError, HttpStatusCode.TooManyRequests, HttpStatusCode.Unauthorized,
+                HttpStatusCode.Forbidden, HttpStatusCode.Conflict, HttpStatusCode.NotFound, HttpStatusCode.Redirect })
+            {
+                fixture.ChapterResponse = (path, body) =>
+                {
+                    Require(path.EndsWith("/read", StringComparison.Ordinal)
+                        && body["requestId"]!.GetValue<string>() == id && !body.ContainsKey("authoring"),
+                        "Status classification changed the job or resent narrative facts.");
+                    return new(status);
+                };
+                before = fixture.ChapterRequests;
+                var response = await transport.ReadChapterAsync(owner, source);
+                Require(response.RetryableReadFailure == (status is HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout)
+                    && response.Job is null && !response.UnknownRemoteOutcome && fixture.ChapterRequests == before + 1,
+                    $"HTTP {status} classification retried, exposed a job or admitted a non-transient read.");
+            }
+            foreach (var error in new[] { HttpRequestError.NameResolutionError, HttpRequestError.ConnectionError,
+                HttpRequestError.ResponseEnded, HttpRequestError.SecureConnectionError,
+                HttpRequestError.InvalidResponse, HttpRequestError.Unknown })
+            {
+                fixture.ChapterResponse = (_, _) => throw new HttpRequestException(error, "Synthetic transport interruption.");
+                before = fixture.ChapterRequests;
+                var response = await transport.ReadChapterAsync(owner, source);
+                bool retryable = error is HttpRequestError.NameResolutionError or HttpRequestError.ConnectionError
+                    or HttpRequestError.ResponseEnded;
+                Require(response.RetryableReadFailure == retryable && response.Job is null
+                    && !response.UnknownRemoteOutcome && fixture.ChapterRequests == before + 1,
+                    $"Transport failure {error} was retried or misclassified.");
+                var createResponse = await transport.RequestChapterAsync(owner, source, true);
+                var acceptResponse = await transport.AcceptChapterAsync(owner, source,
+                    ready.ProviderReceiptDigest!, ready.DraftText, true);
+                Require(!createResponse.RetryableReadFailure && !acceptResponse.RetryableReadFailure
+                    && createResponse.UnknownRemoteOutcome && acceptResponse.UnknownRemoteOutcome
+                    && fixture.ChapterRequests == before + 3,
+                    "A write transport interruption became an automatic retry.");
+            }
+            fixture.ChapterResponse = (_, _) => throw new TaskCanceledException("Synthetic internal deadline.");
+            Require((await transport.ReadChapterAsync(owner, source)).RetryableReadFailure,
+                "An internal read deadline could not be observed again.");
+            using var cancellation = new CancellationTokenSource();
+            fixture.ChapterResponse = (_, _) =>
+            {
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            };
+            before = fixture.ChapterRequests;
+            var canceled = await transport.ReadChapterAsync(owner, source, cancellation.Token);
+            Require(!canceled.RetryableReadFailure && canceled.Job is null && fixture.ChapterRequests == before + 1,
+                "Caller cancellation was treated as a recoverable deadline.");
+            Require(!(await transport.ReadChapterAsync(owner, source, cancellation.Token)).RetryableReadFailure
+                && fixture.ChapterRequests == before + 1, "Pre-canceled status read reached the network.");
+            Require(fixture.Owner.Capture() == owner && fixture.Account.Snapshot.IsLinked
+                && JsonSerializer.Serialize(fixture.Metadata.Inner.Rows) == originalCredentials,
+                "Read-failure classification mutated account authority.");
         }
         foreach (bool signing in new[] { true, false })
-        foreach (bool accept in new[] { true, false })
+        foreach (int operation in new[] { 0, 1, 2 })
         {
             using var fixture = new ContinuationAccountFixture();
             await fixture.LinkAsync("subject", "chapter-A");
@@ -213,18 +273,24 @@ internal static partial class AfterRunAuthorityHarness
             async Task Wait() { started.SetResult(); await release.Task; }
             if (signing) fixture.Keys.BeforeRelease = async () => { fixture.Keys.BeforeRelease = null; await Wait(); };
             else fixture.BeforeHttpResponse = Wait;
-            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(accept ? accepted : ready));
-            var pending = accept ? transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true)
-                : transport.RequestChapterAsync(owner, source, true);
+            fixture.ChapterResponse = (_, _) => operation == 0
+                ? throw new HttpRequestException(HttpRequestError.ConnectionError, "Read interrupted after owner changed.")
+                : ContinuationJsonResponse(Wire(operation == 2 ? accepted : ready));
+            var pending = operation switch
+            {
+                0 => transport.ReadChapterAsync(owner, source),
+                1 => transport.RequestChapterAsync(owner, source, true),
+                _ => transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText, true)
+            };
             await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await fixture.LinkAsync("other-subject", "chapter-B").WaitAsync(TimeSpan.FromSeconds(5));
             await fixture.LinkAsync("subject", "chapter-A2").WaitAsync(TimeSpan.FromSeconds(5));
             release.SetResult();
             var result = await pending.WaitAsync(TimeSpan.FromSeconds(5));
-            Require(result.Outcome == AndroidOriginChapterOutcome.Unauthorized && result.Job is null
+            Require(result.Outcome == AndroidOriginChapterOutcome.Unauthorized && result.Job is null && !result.RetryableReadFailure
                 && fixture.ChapterRequests == (signing ? 0 : 1), "Retired A-to-B-to-A owner accepted a chapter.");
         }
-        Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, conflict, unavailable authority and owner ABA");
+        Console.WriteLine("PASS signed Origin chapter consent/reader acceptance, stable recovery, 15 hostile readbacks, bounds, classified transient reads, cancellation, no write retry and owner ABA");
     }
 
     private sealed class OffUiChapterContent(string text, Action onDispose)
@@ -247,6 +313,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public int Acceptances { get; private set; }
     public bool FailAcceptance { get; set; }
     public bool FailRead { get; set; }
+    public bool TransientReadFailure { get; set; }
     public bool Ready { get; set; }
     public AndroidAccountLinkStatus Status { get; set; } = AndroidAccountLinkStatus.Linked;
     public int LinkStarts { get; private set; }
@@ -274,6 +341,8 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
         CancellationToken ct = default)
     {
         Reads++;
+        if (TransientReadFailure) return Task.FromResult(new AndroidOriginChapterResult(
+            AndroidOriginChapterOutcome.Unavailable, RetryableReadFailure: true));
         if (FailRead) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
         if (_job is null) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound));
         if (Ready) _job = _job with { State = OriginChapterAuthoringStates.ReviewRequired,
