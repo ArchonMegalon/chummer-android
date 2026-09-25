@@ -46,8 +46,9 @@ assert '"Origin.LocaleSemantic"' in decision
 assert '("Origin.LocaleSemantic", "Origin story resource language {0}; formatting locale {1}; English fallback {2}")' in copy
 assert "choice.Source" in decision
 assert "choice.PageReference" in decision
-assert "effect.BeforeValue" in decision
-assert "effect.AfterValue" in decision
+assert "review!.Contributions[effectIndex]" in decision
+assert "ContributionText(effect)" in decision
+assert "Origin.EffectReviewRequired" in decision
 assert '"Origin.NarrativeOnly"' in decision
 assert '("Origin.NarrativeOnly", "{0} · narrative only; mechanics unchanged")' in copy
 assert "_confirmChoice(selectedChoiceId, previewDigest)" in decision

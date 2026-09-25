@@ -842,4 +842,5 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Ausgewürfeltes Startkapital</value></data>
   <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Erschaffung → Karriere</value></data>
   <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Karma.DiceTotalHelp" xml:space="preserve"><value>Würfle für das Startgeld die angezeigte Anzahl sechsseitiger Würfel und addiere alle Augenzahlen, nicht die Erfolge. Beispiel: 2 und 5 ergeben 7. Trage nur diese Summe ein; Chummer wendet den angezeigten ¥-Faktor an. Dieses Geld ist erst in der Karriere verfügbar, nicht für Einkäufe während der Erschaffung.</value></data>
 </root>

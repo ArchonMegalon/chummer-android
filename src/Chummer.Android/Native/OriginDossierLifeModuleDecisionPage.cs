@@ -23,6 +23,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint? _storyCheckpoint;
     private readonly Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
     private readonly Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> _confirmChoice;
+    private readonly Func<Task>? _openBook;
     private string? _selectedMetatypeOptionId;
     private int _renderGeneration;
     private bool _actionInFlight;
@@ -33,7 +34,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         OriginDossierLifeModulePhoneResult opened,
         string activeAppLocale,
         Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
-        Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice)
+        Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice,
+        Func<Task>? openBook = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -63,6 +65,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _locale = locale;
         _prepareChoice = prepareChoice ?? throw new ArgumentNullException(nameof(prepareChoice));
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
+        _openBook = openBook;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
@@ -108,13 +111,24 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _locale.FormattingLocale,
                 _copy[_locale.UsesEnglishFallback ? "Common.Yes" : "Common.No"]));
         body.Add(locale);
+        if (_storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
+            && _state.StageOrder <= LifeModuleJourneyStageOrders.FormativeYears)
+        {
+            var setup = NativeTheme.Body(_copy["Origin.OpeningSetupRequired"], NativeTheme.Muted);
+            setup.AutomationId = "origin-life-opening-setup";
+            body.Add(setup);
+        }
 
         if (_storyCheckpoint?.Projection.VisibleChapters.Count > 0)
         {
             Button readBook = NativeTheme.SecondaryButton(_copy["Origin.ReadBook"]);
             readBook.AutomationId = "origin-life-read-book";
-            readBook.Clicked += async (_, _) => await Navigation.PushAsync(
-                new OriginDossierBookPage(_storyCheckpoint, _locale.FormattingLocale));
+            readBook.Clicked += async (_, _) =>
+            {
+                if (_actionInFlight || generation != _renderGeneration) return;
+                if (_openBook is not null) await _openBook();
+                else await Navigation.PushAsync(new OriginDossierBookPage(_storyCheckpoint, _locale.FormattingLocale));
+            };
             body.Add(readBook);
         }
 
@@ -148,7 +162,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _budget.Unit));
         body.Add(budgetCard);
 
-        Label story = NativeTheme.Body(_state.VisibleStoryMarkdown);
+        Label story = NativeTheme.BookProse(_state.VisibleStoryMarkdown);
         story.AutomationId = "origin-life-story";
         SemanticProperties.SetDescription(
             story,
@@ -157,11 +171,16 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Label prompt = NativeTheme.Title(_state.DecisionPrompt, 21);
         prompt.AutomationId = "origin-life-prompt";
         body.Add(prompt);
+        if (_state.Choices.Any(choice => !IsAffordable(choice)))
+            body.Add(NativeTheme.Body(_copy["Origin.AffordableChoicesOnly"], NativeTheme.Muted));
+        if (!_state.Choices.Any(IsAffordable))
+            body.Add(NativeTheme.Body(_copy["Origin.NoAffordableChoices"], NativeTheme.Danger));
 
         // This is a view filter over Core's exact composite Foundation choices,
         // not a metatype mutation. Only the subsequent explicit confirmation
         // persists metatype + nationality together, through the Core authority.
         OriginDossierLifeModuleEffectState[] metatypes = _state.Choices
+            .Where(IsAffordable)
             .Select(MetatypeEffect).OfType<OriginDossierLifeModuleEffectState>()
             .GroupBy(effect => effect.TargetId, StringComparer.Ordinal)
             .Select(group => group.First()).OrderBy(effect => effect.AfterValue, StringComparer.Ordinal)
@@ -193,6 +212,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         // ahead of compact alternatives. Confirmation must not require
         // scrolling through every other module's effects.
         foreach (int choiceIndex in Enumerable.Range(0, _state.Choices.Count)
+                     .Where(index => IsAffordable(_state.Choices[index]))
                      .OrderByDescending(index => _state.Choices[index].ChoiceId == _editingChoiceId)
                      .ThenByDescending(index => _state.Choices[index].IsSelected)
                      .ThenByDescending(index => IsSelectionFinish(_state.Choices[index])))
@@ -204,6 +224,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Button select = choice.IsSelected
                 ? NativeTheme.PrimaryButton(choice.Label)
                 : NativeTheme.SecondaryButton(choice.Label);
+            select.HeightRequest = -1;
+            select.MinimumHeightRequest = 50;
+            select.LineBreakMode = LineBreakMode.WordWrap;
             select.AutomationId = $"origin-life-choice-{choiceIndex}";
             string choiceId = choice.ChoiceId;
             select.Clicked += async (_, _) =>
@@ -466,6 +489,11 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     }
 
     private bool CanConfirmReviewed => _state.CanConfirm && _storyCheckpoint?.PendingPreview?.EffectReview is not null;
+
+    // Both operands are exact Core projections from the same display authority.
+    // This only hides unaffordable rows; prepare/confirm still enforce all rules.
+    private bool IsAffordable(OriginDossierLifeModuleChoiceState choice)
+        => choice.KarmaCost >= 0 && choice.KarmaCost <= _budget.Remaining;
 
     private static OriginDossierLifeModuleEffectState? MetatypeEffect(OriginDossierLifeModuleChoiceState choice)
         => choice.Effects.SingleOrDefault(effect => effect.Domain == "metatype-choice");

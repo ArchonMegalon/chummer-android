@@ -32,13 +32,16 @@ internal sealed class OriginBookProseReviewPage : NativePageBase
         bool matchesChapter = _draft.Matches(_chapter, _book.Locale);
         if (!matchesChapter) _body.Add(NativeTheme.Body(_copy["Origin.ProseStale"]));
         _body.Add(NativeTheme.Title(_copy["Origin.ProseCurrent"], 18));
-        _body.Add(NativeTheme.Body(_book.ChapterText(_chapter)));
+        _body.Add(NativeTheme.BookProse(_book.ChapterText(_chapter)));
         _body.Add(NativeTheme.Title(_copy["Origin.ProseProposed"], 18));
-        var prose = NativeTheme.Body(_draft.Text); prose.AutomationId = "origin-prose-proposal"; _body.Add(prose);
+        var prose = NativeTheme.BookProse(_draft.Text); prose.AutomationId = "origin-prose-proposal"; _body.Add(prose);
         _body.Add(NativeTheme.Body(_copy["Origin.ProseAcknowledgement"]));
         var acknowledgement = new Switch { AutomationId = "origin-prose-confirmed" };
-        var use = new Button { Text = _copy["Origin.ProseUse"], IsEnabled = false, AutomationId = "origin-prose-use" };
-        var discard = new Button { Text = _copy["Origin.ProseDiscard"], AutomationId = "origin-prose-discard" };
+        SemanticProperties.SetDescription(acknowledgement, _copy["Origin.ProseAcknowledgement"]);
+        var use = NativeTheme.ReadingButton(_copy["Origin.ProseUse"]);
+        use.IsEnabled = false; use.AutomationId = "origin-prose-use";
+        var discard = NativeTheme.ReadingButton(_copy["Origin.ProseDiscard"]);
+        discard.AutomationId = "origin-prose-discard";
         long appearance = CaptureAppearanceGeneration();
         bool Current() => !_finished && IsCurrentAppearanceGeneration(appearance)
             && Coordinator.IsRetainedOriginBookCurrent(_book) && _body.Contains(use);

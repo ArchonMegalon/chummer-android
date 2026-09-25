@@ -37,6 +37,7 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         RunLegacyChapterDisplay();
         RunFinishedSelectionDisplay();
+        RunAuthoringSource();
         await RunEffectContributionDisplayAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
@@ -307,7 +308,68 @@ internal static class OriginDossierBookRuntimeTests
         Require(!new RetainedOriginBook(chronological with { VisibleChapters = [chapter, nextChapter with
             { ThroughAcceptedDecisionId = chapter.ThroughAcceptedDecisionId }] }, readings)
             .TryGetAuthoringPredecessor(chapter, out _), "Ambiguous Core chapter boundaries were guessed.");
+        RunOpeningChapterBoundary(chronological, chapter, nextChapter);
         Console.WriteLine("PASS Origin authoring projection: confirmed facts only, no future choices, source prose, anchors or mutation");
+    }
+
+    private static void RunOpeningChapterBoundary(OriginStoryArcSeed seed,
+        OriginNarrativeChapterProjection foundation, OriginNarrativeChapterProjection childhood)
+    {
+        var adolescent = childhood with { ChapterId = "adolescent", ThroughAcceptedDecisionId = "teen", ChapterDigest = Digest("teen") };
+        var facts = new OriginCanonicalNarrativeFact[] {
+            new("race", "accepted-metatype", "Troll", foundation.ThroughAcceptedDecisionId, [], ""),
+            new("birth", "accepted-life-module", "Birth background: UCAS", foundation.ThroughAcceptedDecisionId, [], ""),
+            new("childhood", "accepted-life-module", "Childhood: street life", childhood.ThroughAcceptedDecisionId, [], ""),
+            new("childhood-answer", "accepted-life-module-answer", "Raised by an aunt", childhood.ThroughAcceptedDecisionId, [], ""),
+            new("teen", "accepted-life-module", "Future school", adolescent.ThroughAcceptedDecisionId, [], "") };
+        var ready = seed with {
+            CurrentTurn = seed.CurrentTurn with { JourneyId = "sr5-life-modules-foundation", StageOrder = LifeModuleJourneyStageOrders.TeenYears },
+            VisibleChapters = [adolescent, foundation, childhood],
+            AllowedCanonicalFactIds = facts.Select(f => f.FactId).ToArray(),
+            CanonicalLayer = seed.CanonicalLayer with {
+                AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId, childhood.ThroughAcceptedDecisionId, adolescent.ThroughAcceptedDecisionId], Facts = facts }
+        };
+        string immutable = JsonSerializer.Serialize(ready);
+        var incomplete = ready with {
+            CurrentTurn = ready.CurrentTurn with { StageOrder = LifeModuleJourneyStageOrders.FormativeYears },
+            VisibleChapters = [foundation],
+            CanonicalLayer = ready.CanonicalLayer with { AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId], Facts = facts.Take(2).ToArray() }
+        };
+        var setup = new RetainedOriginBook(incomplete);
+        Require(!setup.OpeningSetupComplete && !setup.CanOpenAuthoring(foundation)
+            && !setup.TryGetAuthoringPredecessor(foundation, out _), "A book could start before childhood was confirmed.");
+        var book = new RetainedOriginBook(ready);
+        Require(book.OpeningSetupComplete && !book.CanOpenAuthoring(foundation)
+            && book.TryGetAuthoringPredecessor(childhood, out var first) && first is null,
+            "Opening decisions were split into paid chapters or required an invented predecessor.");
+        var source = OriginBookAuthoringSource.Create(ready, childhood);
+        Require(source.Facts.Select(f => f.FactId).ToHashSet().SetEquals(["race", "birth", "childhood", "childhood-answer"]),
+            "The first chapter omitted its initial situation or leaked a later decision.");
+        Require(!book.CanOpenAuthoring(adolescent), "A later story skipped the unread first chapter.");
+        var prose = OriginBookProseDraft.Create(childhood, book.Locale, OriginChapterSourceIdentity.RequestId(source), Digest("provider"), "Reviewed opening story.");
+        var reading = new OriginBookReadingState("local-single-user", ready.CurrentTurn.WorkspaceId, [new(childhood.ChapterId, prose, null)]);
+        var reopened = new RetainedOriginBook(JsonSerializer.Deserialize<OriginStoryArcSeed>(JsonSerializer.Serialize(ready))!,
+            JsonSerializer.Deserialize<OriginBookReadingState>(JsonSerializer.Serialize(reading))!);
+        Require(reopened.TryGetAuthoringPredecessor(adolescent, out var predecessor) && predecessor?.RequestId == prose.JobId,
+            "Restart lost the first chapter's exact accepted predecessor.");
+        Require(!new RetainedOriginBook(ready, reading with { Chapters = [new(childhood.ChapterId, null, prose)] })
+            .CanOpenAuthoring(adolescent), "An unaccepted first draft unlocked a later chapter.");
+        Require(!new RetainedOriginBook(ready with { AllowedCanonicalFactIds = ["birth", "childhood"] }).OpeningSetupComplete,
+            "The opening accepted an unapproved metatype fact.");
+        var legacySource = OriginBookAuthoringSource.Create(ready, foundation);
+        var legacyProse = OriginBookProseDraft.Create(foundation, book.Locale,
+            OriginChapterSourceIdentity.RequestId(legacySource), Digest("legacy-provider"), "Previously written opening.");
+        var legacyReading = reading with { Chapters = [new(foundation.ChapterId, legacyProse, null)] };
+        var legacy = new RetainedOriginBook(ready, legacyReading);
+        Require(legacy.CanOpenAuthoring(foundation) && !legacy.TryGetAuthoringPredecessor(foundation, out _)
+            && legacy.ChapterText(foundation) == legacyProse.Text
+            && legacy.TryGetAuthoringPredecessor(childhood, out var legacyPrevious)
+            && legacyPrevious?.RequestId == legacyProse.JobId,
+            "An existing opening was lost, regenerated or omitted from the exact predecessor chain.");
+        Require(!new RetainedOriginBook(ready, legacyReading with { Chapters = [new(foundation.ChapterId, null, legacyProse)] })
+            .TryGetAuthoringPredecessor(childhood, out _), "A legacy pending opening was silently skipped.");
+        Require(immutable == JsonSerializer.Serialize(ready), "Opening chapter grouping rewrote Core history.");
+        Console.WriteLine("PASS first story: confirmed race/birth/childhood together, no future facts, no early generation, read-before-next and cold reopen");
     }
 
     private static async Task RunConfirmOffUiContextAsync()
@@ -553,6 +615,22 @@ internal static class OriginDossierBookRuntimeTests
             await ui.BeginAsyncVoid(() => ((IButtonController)choices[0]).SendClicked());
             Require(preparedChoice == finish.ChoiceId && authority.MutationCount == 0,
                 "The promoted control prepared a different command or skipped explicit confirmation.");
+            foreach (decimal remaining in new[] { 0m, ordinary.MechanicsPreview.KarmaCost - 1m, ordinary.MechanicsPreview.KarmaCost })
+            {
+                var budgeted = opened with
+                {
+                    LifeModuleBudget = opened.LifeModuleBudget! with { Used = 750m - remaining, Remaining = remaining }
+                };
+                var filtered = new OriginDossierLifeModuleDecisionPage(budgeted, "en-US",
+                    (_, _) => throw new InvalidOperationException("Rendering may not prepare."),
+                    (_, _) => throw new InvalidOperationException("Rendering may not mutate."));
+                var visible = Elements(filtered).OfType<Button>().Where(button =>
+                    button.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true).ToArray();
+                Require(visible[0].AutomationId == "origin-life-choice-1"
+                    && visible.Length == (remaining >= ordinary.MechanicsPreview.KarmaCost ? 2 : 1),
+                    "Unaffordable module remained visible, exact-budget option disappeared, or free finish lost its identity.");
+                Require(authority.MutationCount == 0, "Affordability display changed the runner.");
+            }
         });
         Console.WriteLine("PASS Origin book: typed finish action first, stable identity, preview only");
     }

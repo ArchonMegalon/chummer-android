@@ -2804,8 +2804,8 @@ public sealed class BuildPage : NativePageBase
         {
             if (Coordinator.CanOpenLifeModuleCompletion())
                 await Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator,
-                    () => Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name))));
-            else await Navigation.PushAsync(new OriginDossierBookPage(savedStory, CultureInfo.CurrentUICulture.Name));
+                    () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator))));
+            else await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
             return;
         }
         if (!opened.IsSuccess || opened.State is null)
@@ -2844,7 +2844,8 @@ public sealed class BuildPage : NativePageBase
                     confirmed.Blockers.FirstOrDefault() ?? copy["Origin.DecisionNotSavedDetail"],
                     copy["Common.Ok"]);
                 return null;
-            });
+            },
+            () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)));
         await Navigation.PushAsync(page);
     }
 

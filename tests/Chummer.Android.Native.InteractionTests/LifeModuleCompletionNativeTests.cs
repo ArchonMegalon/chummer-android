@@ -481,7 +481,12 @@ internal static partial class AfterRunAuthorityHarness
                     && escaped.Contains("&lt;script&gt;", StringComparison.Ordinal), "Book export executed untrusted prose markup.");
                 var book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(book is not null, "Retained book load failed.");
-                var chapter = book!.Chapters[0];
+                Require(book!.OpeningSetupComplete && book.IsOpeningSetup(book.Chapters[0])
+                    && runtime.Coordinator.PrepareOriginChapterSource(book, book.Chapters[0]) is null,
+                    "The birth-background decision was offered as an independent generated chapter.");
+                var chapter = book.Chapters[1];
+                Require(book.TryGetAuthoringPredecessor(chapter, out var openingPrevious) && openingPrevious is null,
+                    "The first story chapter required a nonexistent pre-childhood story.");
                 string canonicalText = book.ChapterText(chapter);
                 var proposal = OriginBookProseDraft.Create(chapter, book.Locale, "synthetic-review-job",
                     new string('a', 64), "Synthetic proposed chapter. <script>not executable</script>");

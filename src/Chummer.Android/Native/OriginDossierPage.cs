@@ -37,7 +37,7 @@ internal sealed class OriginDossierBookPage : ContentPage
         {
             var content = new VerticalStackLayout { Spacing = 8 };
             content.Add(NativeTheme.Title(chapter.Title, 21));
-            Label prose = NativeTheme.Body(OriginBookChapterText.Render(checkpoint.Projection, chapter));
+            Label prose = NativeTheme.BookProse(OriginBookChapterText.Render(checkpoint.Projection, chapter));
             prose.AutomationId = $"origin-life-book-chapter-{chapter.Sequence}";
             content.Add(prose);
             body.Add(NativeTheme.Card(content));

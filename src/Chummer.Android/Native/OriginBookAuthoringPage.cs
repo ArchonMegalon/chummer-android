@@ -66,13 +66,18 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookLanguage", source.Locale)));
         _body.Add(NativeTheme.Title(source.RunnerName, 21));
         foreach (var fact in source.Facts) _body.Add(NativeTheme.Body(fact.Text));
-        _body.Add(NativeTheme.Body(_copy["Origin.AuthoringConsent"]));
-        var consent = new Switch { IsToggled = _consent, IsEnabled = !_busy, AutomationId = "origin-authoring-consent" };
-        var submit = new Button { Text = _copy["Origin.AuthoringRequest"], IsEnabled = _consent && !_busy,
-            AutomationId = "origin-authoring-request" };
-        consent.Toggled += (_, args) => { if (Current() && !_busy) { _consent = args.Value; submit.IsEnabled = _consent; } };
+        bool canCreate = book.TryGetAuthoringPredecessor(_chapter, out _);
+        if (canCreate) _body.Add(NativeTheme.Body(_copy["Origin.AuthoringConsent"]));
+        var consent = new Switch { IsToggled = _consent, IsEnabled = !_busy && canCreate,
+            IsVisible = canCreate, AutomationId = "origin-authoring-consent" };
+        SemanticProperties.SetDescription(consent, _copy["Origin.AuthoringConsent"]);
+        var submit = NativeTheme.ReadingButton(_copy["Origin.AuthoringRequest"]);
+        submit.IsEnabled = _consent && !_busy && canCreate; submit.IsVisible = canCreate;
+        submit.AutomationId = "origin-authoring-request";
+        consent.Toggled += (_, args) => { if (Current() && !_busy && canCreate) { _consent = args.Value; submit.IsEnabled = _consent; } };
         submit.Clicked += async (_, _) => await RunAsync(() => SyncAsync(create: true, Current));
-        var refresh = new Button { Text = _copy["Origin.AuthoringRefresh"], IsEnabled = !_busy, AutomationId = "origin-authoring-refresh" };
+        var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
+        refresh.IsEnabled = !_busy; refresh.AutomationId = "origin-authoring-refresh";
         refresh.Clicked += async (_, _) => await RunAsync(() => SyncAsync(create: false, Current));
         _body.Add(consent);
         _body.Add(submit);
@@ -80,7 +85,8 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
         if (book.Pending(_chapter) is { } draft)
         {
-            var review = new Button { Text = _copy["Origin.ReviewProse"], AutomationId = "origin-authoring-review" };
+            var review = NativeTheme.ReadingButton(_copy["Origin.ReviewProse"]);
+            review.AutomationId = "origin-authoring-review";
             review.Clicked += async (_, _) => await RunAsync(async () =>
             {
                 if (Current()) await Navigation.PushAsync(new OriginBookProseReviewPage(Coordinator, book, _chapter, draft));
