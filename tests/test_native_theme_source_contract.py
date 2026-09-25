@@ -8,6 +8,19 @@ NATIVE = ROOT / "src" / "Chummer.Android" / "Native"
 
 
 class NativeThemeSourceContractTests(unittest.TestCase):
+    def test_modal_wizard_navigation_has_explicit_light_surface_and_dark_text(self) -> None:
+        app = ET.parse(ROOT / "src/Chummer.Android/App.xaml").getroot()
+        ns = {"m": "http://schemas.microsoft.com/dotnet/2021/maui"}
+        key = "{http://schemas.microsoft.com/winfx/2009/xaml}Key"
+        colours = {node.get(key): node.text for node in app.findall(".//m:Color", ns)}
+        styles = app.findall(".//m:Style[@TargetType='NavigationPage']", ns)
+        self.assertEqual(1, len(styles))
+        setters = {node.get("Property"): node.get("Value") for node in styles[0]}
+        self.assertEqual("{StaticResource ChummerSurface}", setters["BarBackgroundColor"])
+        self.assertEqual("{StaticResource ChummerInk}", setters["BarTextColor"])
+        self.assertEqual("#FFFFFF", colours["ChummerSurface"])
+        self.assertEqual("#102426", colours["ChummerInk"])
+
     def test_launcher_assigns_generated_troll_assets(self) -> None:
         manifest = ET.parse(ROOT / "src/Chummer.Android/Platforms/Android/AndroidManifest.xml").getroot()
         app = manifest.find("application")

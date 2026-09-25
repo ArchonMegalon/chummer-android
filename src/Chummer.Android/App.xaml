@@ -8,6 +8,13 @@
             <Color x:Key="ChummerInk">#102426</Color>
             <Color x:Key="ChummerSignal">#54D6B3</Color>
             <Color x:Key="ChummerPaper">#F3F7F4</Color>
+            <Color x:Key="ChummerSurface">#FFFFFF</Color>
+            <!-- Modal wizard stacks do not inherit Shell's navigation colours. -->
+            <Style TargetType="NavigationPage">
+                <Setter Property="BarBackgroundColor" Value="{StaticResource ChummerSurface}" />
+                <Setter Property="BarTextColor" Value="{StaticResource ChummerInk}" />
+                <Setter Property="BackgroundColor" Value="{StaticResource ChummerPaper}" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
