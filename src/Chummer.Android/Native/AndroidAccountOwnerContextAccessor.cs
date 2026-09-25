@@ -10,6 +10,23 @@ public sealed class AndroidAccountOwnerContextAccessor(AndroidAccountLinkService
 {
     private readonly AndroidAccountOwnerAuthority _authority = account.OwnerAuthority;
     private CoreLease? _activeLease;
+    [ThreadStatic] private static ReadAdmission? _readAdmission;
+
+    // Only a deliberately scheduled, synchronous local read may wait for the
+    // short credential writer. Normal UI/mutation admission stays non-blocking.
+    // The scope does not flow into async work and holds no lease itself: Core
+    // and the reading store each acquire/release their own exact owner lease.
+    internal Task<T> RunReadAsync<T>(OwnerContextStamp expected, Func<T> read, CancellationToken ct)
+        => Task.Run(() =>
+        {
+            ReadAdmission? previous = _readAdmission;
+            _readAdmission = new(this, expected, ct);
+            try { ct.ThrowIfCancellationRequested(); return read(); }
+            finally { _readAdmission = previous; }
+        }, ct);
+
+    private sealed record ReadAdmission(AndroidAccountOwnerContextAccessor Accessor,
+        OwnerContextStamp Expected, CancellationToken CancellationToken);
 
     public Task InitializeAsync(CancellationToken cancellationToken = default)
         => account.InitializeOwnerContextAsync(cancellationToken);
@@ -27,9 +44,15 @@ public sealed class AndroidAccountOwnerContextAccessor(AndroidAccountLinkService
     public bool TryAcquire(OwnerContextStamp expected, [NotNullWhen(true)] out IOwnerContextLease? lease)
     {
         lease = null;
+        // A nested acquisition must fail, not wait on its own thread's lease.
+        if (Volatile.Read(ref _activeLease) is { IsActiveOnCurrentThread: true }) return false;
+        ReadAdmission? read = _readAdmission;
+        bool waitForWriter = read is not null && ReferenceEquals(read.Accessor, this);
+        if (waitForWriter && read!.Expected != expected) return false;
         AndroidAccountOwnerState? current = _authority.Capture();
         if (!expected.IsValid || current is null || ToStamp(current) != expected
-            || !_authority.TryAcquire(current, out IDisposable? credentialLease)) return false;
+            || !_authority.TryAcquire(current, out IDisposable? credentialLease, waitForWriter,
+                waitForWriter ? read!.CancellationToken : default)) return false;
         var acquired = new CoreLease(this, expected, credentialLease!);
         Volatile.Write(ref _activeLease, acquired);
         lease = acquired;

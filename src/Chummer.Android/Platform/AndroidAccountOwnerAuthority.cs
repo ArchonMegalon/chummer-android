@@ -61,10 +61,12 @@ internal sealed class AndroidAccountOwnerAuthority
             ? current : null;
     }
 
-    internal bool TryAcquire(AndroidAccountOwnerState expected, out IDisposable? lease)
+    internal bool TryAcquire(AndroidAccountOwnerState expected, out IDisposable? lease,
+        bool waitForWriter = false, CancellationToken cancellationToken = default)
     {
         lease = null;
-        if (!_credentialGate.Wait(0)) return false;
+        if (waitForWriter) _credentialGate.Wait(cancellationToken);
+        else if (!_credentialGate.Wait(0)) return false;
         if (!ReferenceEquals(Capture(), expected))
         {
             _credentialGate.Release();

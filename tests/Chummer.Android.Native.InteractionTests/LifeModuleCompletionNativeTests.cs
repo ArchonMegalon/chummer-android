@@ -94,6 +94,7 @@ internal static partial class AfterRunAuthorityHarness
 
     internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
     {
+        await RunOriginBookCredentialReadContentionAsync(contentRoot);
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -927,6 +928,114 @@ internal static partial class AfterRunAuthorityHarness
             catch (TargetInvocationException error) when (error.InnerException is not null)
             { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
         }
+    }
+
+    private static async Task RunOriginBookCredentialReadContentionAsync(string contentRoot)
+    {
+        await RunOriginBookReadLeaseBoundariesAsync();
+        using var account = new ActualAccountFixture();
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+            productionCreationOverview: true, linkedOwners: account.Owner, accountService: account.Account);
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        await runtime.Coordinator.CreateRunnerAsync();
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Cold book owner read", default);
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+        await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+        var id = runtime.Coordinator.State.WorkspaceId!.Value;
+        await runtime.Coordinator.SaveAsync();
+        await Task.Run(() => SeedNativeLifeStory(runtime, id));
+        await runtime.Presenter.LoadAsync(id, default);
+        var original = runtime.Coordinator.State;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        account.Metadata.BeforeReadAsync = _ => { entered.TrySetResult(); return release.Task; };
+        Task writer = account.Owner.InitializeAsync();
+        Task<RetainedOriginBook?>? reading = null;
+        bool returnedWhileWriterHeld = false;
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Require(account.Owner.Capture() == original.DisplayOwnerContext,
+                "The contention control changed the owner instead of excluding a reader.");
+            reading = runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+            await Task.WhenAny(reading, Task.Delay(150));
+            returnedWhileWriterHeld = reading.IsCompleted;
+        }
+        finally
+        {
+            release.TrySetResult();
+            await writer.WaitAsync(TimeSpan.FromSeconds(5));
+            account.Metadata.BeforeReadAsync = null;
+        }
+        var book = await reading!.WaitAsync(TimeSpan.FromSeconds(10));
+        Require(!returnedWhileWriterHeld && book is { Chapters.Count: > 0 }
+            && runtime.Coordinator.IsRetainedOriginBookCurrent(book),
+            "A current saved book was rejected while the real credential reader held its short exclusion gate.");
+        Require(runtime.Coordinator.State.ContentRevision == original.ContentRevision
+            && runtime.Coordinator.State.SavedRevision == original.SavedRevision && account.Requests == 0,
+            "Waiting for local book access changed the runner or contacted Hub.");
+        Console.WriteLine("PASS saved Origin book waits for actual local credential hydration without provider calls or mutations");
+    }
+
+    private static async Task RunOriginBookReadLeaseBoundariesAsync()
+    {
+        using var account = new ActualAccountFixture();
+        await account.Owner.InitializeAsync();
+        var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService).GetField("_credentialCommitGate",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(account.Account)!;
+        foreach (bool cancel in new[] { true, false })
+        {
+            var owner = account.Owner.Capture();
+            using var cancellation = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await gate.WaitAsync();
+            Task<bool>? read = null;
+            try
+            {
+                Require(!account.Owner.TryAcquire(owner, out _), "Ordinary owner admission started blocking.");
+                read = account.Owner.RunReadAsync(owner, () =>
+                {
+                    entered.TrySetResult();
+                    bool acquired = account.Owner.TryAcquire(owner, out var lease);
+                    using (lease) return acquired;
+                }, cancellation.Token);
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                if (cancel)
+                {
+                    cancellation.Cancel();
+                    try
+                    {
+                        await read.WaitAsync(TimeSpan.FromSeconds(5));
+                        throw new InvalidOperationException("A canceled book read acquired credential access.");
+                    }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                }
+                else
+                {
+                    // Exercise the same publisher under its real exclusion:
+                    // Local → unavailable → Local must retire the old epoch.
+                    account.Account.OwnerAuthority.Invalidate();
+                    account.Account.OwnerAuthority.PublishLocal();
+                    Require(account.Owner.Capture().Owner == owner.Owner && account.Owner.Capture() != owner,
+                        "The queued read negative control did not create an ABA transition.");
+                }
+            }
+            finally { gate.Release(); }
+            if (!cancel) Require(!await read!.WaitAsync(TimeSpan.FromSeconds(5)),
+                "A queued book read accepted an owner stamp retired while waiting.");
+        }
+        var current = account.Owner.Capture();
+        bool admitted = await account.Owner.RunReadAsync(current, () =>
+        {
+            Require(account.Owner.TryAcquire(current, out var lease), "Current read did not acquire its lease.");
+            using (lease)
+                Require(!account.Owner.TryAcquire(current, out _), "Nested read admission waited on or bypassed its own lease.");
+            return account.Owner.Capture() == current;
+        }, default).WaitAsync(TimeSpan.FromSeconds(5));
+        Require(admitted && gate.CurrentCount == 1 && account.Requests == 0,
+            "Book read admission leaked its lease or performed a remote call.");
+        Console.WriteLine("PASS book read lease: cancellation while excluded, post-wait owner ABA rejection, non-reentrancy and no network");
     }
 
     private static void SeedNativeLifeStory(NativeRewardRuntime runtime, CharacterWorkspaceId id)
