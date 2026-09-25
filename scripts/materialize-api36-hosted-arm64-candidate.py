@@ -168,7 +168,7 @@ def content_receipt_binding(path: Path, apk_sha256: str) -> dict[str, object]:
         or receipt.get("status") != "pass"
         or receipt.get("schema") != "chummer.android.content-bundle/v1"
         or receipt.get("coreRevision")
-        != "1e477c0f5e036eed241f4fe723a0e2eda30c51dd"
+        != "89377b41ce428490d73d763f2e7aed76f983f87d"
         or receipt.get("apkVerified") is not True
         or receipt.get("apkSha256") != apk_sha256
         or receipt.get("issues") != []
@@ -354,7 +354,7 @@ def validate_observation(value: object) -> dict[str, object]:
         or set(content) != {"contractName", "coreRevision", "sha256", "sizeBytes", "status"}
         or content["contractName"] != "chummer.android.content-bundle/v1"
         or content["coreRevision"]
-        != "1e477c0f5e036eed241f4fe723a0e2eda30c51dd"
+        != "89377b41ce428490d73d763f2e7aed76f983f87d"
         or content["status"] != "pass"
         or not isinstance(content["sha256"], str)
         or SHA256.fullmatch(content["sha256"]) is None

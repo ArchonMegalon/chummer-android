@@ -50,11 +50,10 @@ class CurrentPhysicalAuthorityBindingTests(unittest.TestCase):
         self.assertEqual(
             manifest["sourceGraph"]["coreRuntimeSourceCommit"], provenance.CORE_RUNTIME_REVISION
         )
-        self.assertEqual(3, len({
-            provenance.CORE_CONTENT_REVISION,
-            provenance.CORE_PACKAGE_RECIPE_REVISION,
-            provenance.CORE_RUNTIME_REVISION,
-        }))
+        # Current content is frozen at the recipe, not the runtime-source commit.
+        # Each role is checked against its own manifest above, even when equal.
+        self.assertEqual(provenance.CORE_CONTENT_REVISION, provenance.CORE_PACKAGE_RECIPE_REVISION)
+        self.assertNotEqual(provenance.CORE_RUNTIME_REVISION, provenance.CORE_PACKAGE_RECIPE_REVISION)
         self.assertEqual(
             manifest["packagePlaneLock"]["sha256"], provenance.PRESENTATION_PACKAGE_LOCK_SHA256
         )
@@ -2096,7 +2095,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
-            "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2",
+            "b0a3ba7b8edf203d456973a83eacca0622386ed777b11715b95470687413be09",
             "presentation-revision-input-mismatch",
             "current-presentation-tree-mismatch",
             "current-presentation-lock-mismatch",
@@ -2142,10 +2141,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
         lock = provenance.validate_full_project_lock(lock_path)
         self.assertEqual(
-            "0a2483b831b3fee96a0bac9ce76b54535d9ac6aad4cc88b55bed4a769c94abe2",
+            "b0a3ba7b8edf203d456973a83eacca0622386ed777b11715b95470687413be09",
             provenance.file_sha256(lock_path),
         )
-        self.assertEqual(70263, lock_path.stat().st_size)
+        self.assertEqual(70707, lock_path.stat().st_size)
         self.assertEqual(142, len(lock["dependencies"][provenance.TARGET_FRAMEWORK]))
 
         hub_package_ids = (

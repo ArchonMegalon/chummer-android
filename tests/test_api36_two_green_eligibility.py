@@ -52,14 +52,18 @@ class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
             (REPO / "eng/internal-phone-beta-package-authority.json").read_bytes()
         )
 
-    def test_current_pins_accept_distinct_frozen_content_runtime_and_package_recipe(self) -> None:
+    def test_current_pins_bind_content_recipe_and_distinct_runtime(self) -> None:
         content = self.sources["core-content"]["commit"]
         runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
         recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
-        self.assertEqual("1e477c0f5e036eed241f4fe723a0e2eda30c51dd", content)
-        self.assertEqual("5160e78a60bcefd952e8720aae6032a127c3a755", runtime)
+        self.assertEqual("89377b41ce428490d73d763f2e7aed76f983f87d", content)
+        self.assertEqual("123f896c5e22670a965dfd2bf4cd325ea4d0ded0", runtime)
         self.assertEqual(runtime, self.sources["core-runtime"]["commit"])
-        self.assertEqual(3, len({content, runtime, recipe}))
+        # This candidate freezes content at the recipe commit. The independently
+        # compiled runtime remains a different exact commit; roles need not have
+        # three different SHA values to remain independently authenticated.
+        self.assertEqual(content, recipe)
+        self.assertNotEqual(runtime, recipe)
         self.assertEqual(
             self.manifest["sourceGraph"]["hubProducerCommit"],
             consumer._validate_current_dependency_pins(self.sources),
@@ -71,7 +75,7 @@ class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
         recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
         substitutions = (
             ("core-content", runtime),
-            ("core-content", recipe),
+            ("core-content", "1e477c0f5e036eed241f4fe723a0e2eda30c51dd"),
             ("core-runtime", content),
             ("core-runtime", recipe),
         )
@@ -90,6 +94,25 @@ class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
         changed["core-runtime"]["commit"] = content
         with self.assertRaisesRegex(ValueError, "two-green graph: core-content"):
             consumer._validate_current_dependency_pins(changed)
+
+    def test_distinct_frozen_content_still_rejects_recipe_and_runtime_substitution(self) -> None:
+        content = "c" * 40
+        runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
+        recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
+        self.assertEqual(3, len({content, runtime, recipe}))
+        sources = copy.deepcopy(self.sources)
+        sources["core-content"]["commit"] = content
+        with mock.patch.dict(consumer.TWO_GREEN.P0.EXPECTED_DEPENDENCY_COMMITS,
+                             {"core-content": content}):
+            self.assertEqual(self.manifest["sourceGraph"]["hubProducerCommit"],
+                             consumer._validate_current_dependency_pins(sources))
+            for role, wrong_commit in (("core-content", runtime), ("core-content", recipe),
+                                       ("core-runtime", content), ("core-runtime", recipe)):
+                with self.subTest(role=role, commit=wrong_commit):
+                    changed = copy.deepcopy(sources)
+                    changed[role]["commit"] = wrong_commit
+                    with self.assertRaisesRegex(ValueError, f"two-green graph: {role}"):
+                        consumer._validate_current_dependency_pins(changed)
 
 
 class FakeAuthenticatedGitHubClient:
