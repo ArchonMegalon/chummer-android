@@ -222,6 +222,21 @@ internal static partial class AfterRunAuthorityHarness
                     && response.Job is null && !response.UnknownRemoteOutcome && fixture.ChapterRequests == before + 1,
                     $"HTTP {status} classification retried, exposed a job or admitted a non-transient read.");
             }
+            // Android's typed Java DNS cause is qualified on-device. A message
+            // that merely resembles it, or an arbitrary nested I/O exception,
+            // must never turn Unknown/TLS/invalid responses into retry grants.
+            foreach (var classification in new[] { HttpRequestError.Unknown,
+                HttpRequestError.SecureConnectionError, HttpRequestError.InvalidResponse })
+            {
+                fixture.ChapterResponse = (_, _) => throw new HttpRequestException(classification,
+                    "Java.Net.UnknownHostException: synthetic text is not type authority",
+                    new IOException("DNS lookup failed; synthetic untyped I/O"));
+                before = fixture.ChapterRequests;
+                var response = await transport.ReadChapterAsync(owner, source);
+                Require(!response.RetryableReadFailure && response.Job is null
+                    && !response.UnknownRemoteOutcome && fixture.ChapterRequests == before + 1,
+                    "Unknown or unsafe nested errors were accepted by message matching.");
+            }
             foreach (var error in new[] { HttpRequestError.NameResolutionError, HttpRequestError.ConnectionError,
                 HttpRequestError.ResponseEnded, HttpRequestError.SecureConnectionError,
                 HttpRequestError.InvalidResponse, HttpRequestError.Unknown })

@@ -145,7 +145,16 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             bool transientRead = !changesRemote && proofReleased && !ownerChanged && !ct.IsCancellationRequested
                 && (error is OperationCanceledException
                     || error is HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError
-                        or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded });
+                        or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded }
+#if ANDROID
+                    // AndroidMessageHandler reports DNS failure as Unknown with
+                    // a typed Java cause, not NameResolutionError. Admit only
+                    // this observed cause; never infer transport safety from
+                    // exception text or accept every Unknown/Java I/O failure.
+                    || error is HttpRequestException { HttpRequestError: HttpRequestError.Unknown,
+                        InnerException: global::Java.Net.UnknownHostException }
+#endif
+                    );
             return new(ownerChanged ? AndroidOriginChapterOutcome.Unauthorized : AndroidOriginChapterOutcome.Unavailable,
                 UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected,
                 RetryableReadFailure: transientRead);

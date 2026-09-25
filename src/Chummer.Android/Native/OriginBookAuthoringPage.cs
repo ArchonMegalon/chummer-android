@@ -142,12 +142,15 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (!ReferenceEquals(_book, book) || updated is null || ct.IsCancellationRequested
             || !Coordinator.IsRetainedOriginBookCurrent(updated)) return false;
         _book = updated;
-        if (!create && wasWatching && result.Outcome == AndroidOriginChapterOutcome.Unavailable
+        if (!create && result.Outcome == AndroidOriginChapterOutcome.Unavailable
             && result.RetryableReadFailure)
         {
-            _watchPending = ++_consecutiveReadFailures < 3;
+            _watchPending = wasWatching && ++_consecutiveReadFailures < 3;
             // Keep the last confirmed stage, not an invented percentage or ETA.
-            _notice = _copy[_watchPending ? "Origin.AuthoringStatusRetrying" : "Origin.AuthoringStatusPaused"];
+            // A failed manual read of an idle/terminal job does not start a
+            // watcher or turn a transport interruption into an account failure.
+            _notice = _copy[!wasWatching ? "Origin.AuthoringStatusInterrupted"
+                : _watchPending ? "Origin.AuthoringStatusRetrying" : "Origin.AuthoringStatusPaused"];
             if (_watchPending && !automatic) StartPendingStatusWatch();
             return !ReferenceEquals(book, updated) || priorNotice != _notice;
         }
