@@ -17,6 +17,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
     private bool _consent;
     private bool _busy;
     private string? _notice;
+    private string? _jobState;
     private readonly CharacterOverviewState _original;
 
     internal OriginBookAuthoringPage(RunnerSessionCoordinator coordinator, RetainedOriginBook book,
@@ -83,6 +84,27 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         _body.Add(submit);
         _body.Add(refresh);
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
+        int? stage = _jobState switch
+        {
+            OriginChapterAuthoringStates.AwaitingAuthoring => 1,
+            OriginChapterAuthoringStates.ReconciliationRequired => 2,
+            OriginChapterAuthoringStates.ReviewRequired => 3,
+            _ => null
+        };
+        if (stage is not null)
+        {
+            var progress = new ProgressBar { Progress = stage.Value / 3d,
+                ProgressColor = NativeTheme.Ink, AutomationId = "origin-authoring-progress" };
+            SemanticProperties.SetDescription(progress, _copy.Format("Origin.AuthoringStage", stage.Value));
+            _body.Add(progress);
+            _body.Add(NativeTheme.Body(_copy.Format("Origin.AuthoringStage", stage.Value), NativeTheme.Muted));
+            if (stage < 3)
+            {
+                var eta = NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted);
+                eta.AutomationId = "origin-authoring-eta";
+                _body.Add(eta);
+            }
+        }
         if (book.Pending(_chapter) is { } draft)
         {
             var review = NativeTheme.ReadingButton(_copy["Origin.ReviewProse"]);
@@ -108,6 +130,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         // accepting an old export/review handle after a durable store change.
         if (!ReferenceEquals(_book, book) || updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated)) return;
         _book = updated;
+        _jobState = result.Outcome == AndroidOriginChapterOutcome.Available ? result.Job?.State : null;
         _notice = _copy[result.Outcome switch
         {
             AndroidOriginChapterOutcome.NotFound => "Origin.AuthoringNotFound",
@@ -128,6 +151,8 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         _book = null;
         _source = null;
         _consent = false;
+        _jobState = null;
+        _notice = null;
         _body.Clear();
     }
 }

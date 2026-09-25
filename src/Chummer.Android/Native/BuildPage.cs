@@ -2818,6 +2818,7 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
+        var decisionOwner = Coordinator.State.DisplayOwnerContext;
         var page = new OriginDossierLifeModuleDecisionPage(
             opened,
             CultureInfo.CurrentUICulture.Name,
@@ -2845,7 +2846,9 @@ public sealed class BuildPage : NativePageBase
                     copy["Common.Ok"]);
                 return null;
             },
-            () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)));
+            () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)),
+            (checkpoint, current) => Coordinator.HasReadCurrentLifeModuleStoryAsync(checkpoint,
+                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner));
         await Navigation.PushAsync(page);
     }
 

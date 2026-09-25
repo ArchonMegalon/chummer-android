@@ -14,6 +14,7 @@ using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation;
 using Chummer.Presentation.Shell;
 using System.Reflection;
+using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
@@ -69,6 +70,11 @@ internal static partial class AfterRunAuthorityHarness
         Require(reopened.IsSuccess && reopened.State?.Timeline.Count == 1
             && reopened.StoryCheckpoint?.CheckpointDigest == confirmed.StoryCheckpoint!.CheckpointDigest,
             "A new phone runtime/disk read did not recover the exact linked chapter.");
+        var retainedOpening = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+        Require(retainedOpening is not null && retainedOpening.Digest == confirmed.StoryCheckpoint!.Projection.SeedDigest
+            && !retainedOpening.OpeningSetupComplete
+            && !await runtime.Coordinator.HasReadCurrentLifeModuleStoryAsync(confirmed.StoryCheckpoint!, () => true),
+            "The retained Core book and live checkpoint disagree, or birth alone became a completed first story.");
         var stored = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
         Require(await stored.LoadAsync(OwnerScope.LocalSingleUser.NormalizedValue, id.Value) is null,
             "Linked Origin checkpoint leaked into the local timeline namespace.");
@@ -564,8 +570,14 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("origin-authoring-request");
                 Require(authoringProbe.Requests == 1 && authoringProbe.Reads == 2,
                     "Consented chapter request did not read before creating.");
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d
+                    && Element<Label>("origin-authoring-eta").Text == AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringEtaUnknown"],
+                    "A queued request needs confirmed-stage progress and an honest unknown ETA.");
                 authoringProbe.Ready = true;
                 await Click("origin-authoring-refresh");
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d
+                    && !IssuedElements(Current()).Any(element => element.AutomationId == "origin-authoring-eta"),
+                    "A ready draft retained a fabricated time estimate or incorrect generation progress.");
                 var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
                     && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,

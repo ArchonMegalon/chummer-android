@@ -68,6 +68,27 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         => Chapters.Contains(chapter) && (HasRetainedAuthoring(chapter)
             || TryGetAuthoringPredecessor(chapter, out _));
 
+    // Phone pacing only, not rules/mutation authority. A generated draft is not
+    // a presented story: Selected is written by explicit confirmation in the
+    // prose reader. Recompute from the retained edition after Back/restart.
+    internal bool HasReadCurrentStory
+    {
+        get
+        {
+            if (!OpeningSetupComplete) return false;
+            var narrative = Chapters.Where(c => !IsOpeningSetup(c) || HasRetainedAuthoring(c)).ToArray();
+            if (narrative.Length == 0) return false;
+            try
+            {
+                return narrative.All(chapter => Reading(chapter)?.Selected is { } selected
+                    && selected.IsValid() && selected.Matches(chapter, Locale)
+                    && selected.JobId == OriginChapterSourceIdentity.RequestId(
+                        OriginBookAuthoringSource.Create(Projection, chapter)));
+            }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
+        }
+    }
+
     internal bool TryGetAuthoringPredecessor(OriginNarrativeChapterProjection chapter,
         out OriginChapterPredecessor? previous)
     {
@@ -144,6 +165,14 @@ public sealed partial class RunnerSessionCoordinator
     internal bool CanRequestOriginChapter(RetainedOriginBook book)
         => _account is IAndroidOriginChapterTransport && _account.Snapshot.IsLinked
             && IsRetainedOriginBookCurrent(book);
+
+    internal async Task<bool> HasReadCurrentLifeModuleStoryAsync(
+        LifeModuleOriginDossierDraftCheckpoint checkpoint, Func<bool> isCurrentPage)
+    {
+        var book = await LoadRetainedOriginBookAsync(CancellationToken.None, isCurrentPage);
+        return isCurrentPage() && book is not null && IsRetainedOriginBookCurrent(book)
+            && book.Digest == checkpoint.Projection.SeedDigest && book.HasReadCurrentStory;
+    }
 
     internal OriginChapterSource? PrepareOriginChapterSource(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
     {

@@ -24,6 +24,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private readonly Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> _prepareChoice;
     private readonly Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> _confirmChoice;
     private readonly Func<Task>? _openBook;
+    private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? _readStoryReady;
+    private bool _storyReady;
+    private bool _checkingStory;
     private string? _selectedMetatypeOptionId;
     private int _renderGeneration;
     private bool _actionInFlight;
@@ -35,7 +38,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         string activeAppLocale,
         Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
         Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice,
-        Func<Task>? openBook = null)
+        Func<Task>? openBook = null,
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? readStoryReady = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -66,6 +70,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _prepareChoice = prepareChoice ?? throw new ArgumentNullException(nameof(prepareChoice));
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
         _openBook = openBook;
+        _readStoryReady = readStoryReady;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
@@ -76,16 +81,46 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Content = new ScrollView { Content = BuildBody() };
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
-        Content = new ScrollView { Content = BuildBody() };
+        await RefreshStoryReadinessAsync();
     }
 
     protected override void OnDisappearing()
     {
         ++_renderGeneration;
+        _storyReady = false;
         base.OnDisappearing();
+    }
+
+    private bool NeedsStoryBeforeChoices => _storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
+        && _state.StageOrder > LifeModuleJourneyStageOrders.FormativeYears;
+
+    private async Task RefreshStoryReadinessAsync()
+    {
+        _storyReady = false;
+        _checkingStory = NeedsStoryBeforeChoices;
+        Content = new ScrollView { Content = BuildBody() };
+        int generation = _renderGeneration;
+        var checkpoint = _storyCheckpoint;
+        bool Current() => generation == _renderGeneration && ReferenceEquals(_storyCheckpoint, checkpoint);
+        if (!_checkingStory) return;
+        bool ready = false;
+        try
+        {
+            if (checkpoint is not null && _readStoryReady is not null)
+                ready = await _readStoryReady(checkpoint, Current);
+        }
+        catch (Exception error) when (error is OperationCanceledException or IOException or InvalidOperationException)
+        {
+            // No reading proof is no permission to advance. Keep the book and
+            // explicit refresh available; never manufacture a read acceptance.
+        }
+        if (!Current()) return;
+        _checkingStory = false;
+        _storyReady = ready;
+        Content = new ScrollView { Content = BuildBody() };
     }
 
     private VerticalStackLayout BuildBody()
@@ -161,6 +196,28 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _budget.Remaining.ToString("0.##", formattingCulture),
                 _budget.Unit));
         body.Add(budgetCard);
+
+        if (NeedsStoryBeforeChoices && !_storyReady)
+        {
+            var waiting = NativeTheme.Body(_copy[_checkingStory
+                ? "Origin.StoryReadChecking" : "Origin.StoryReadRequired"]);
+            waiting.AutomationId = "origin-life-story-wait";
+            body.Add(NativeTheme.Card(waiting));
+            if (_checkingStory)
+                body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "origin-life-story-checking" });
+            else
+            {
+                var refresh = NativeTheme.ReadingButton(_copy["Origin.StoryReadRefresh"]);
+                refresh.AutomationId = "origin-life-story-refresh";
+                refresh.Clicked += async (_, _) =>
+                {
+                    if (!_actionInFlight && generation == _renderGeneration)
+                        await RefreshStoryReadinessAsync();
+                };
+                body.Add(refresh);
+            }
+            return body;
+        }
 
         Label story = NativeTheme.BookProse(_state.VisibleStoryMarkdown);
         story.AutomationId = "origin-life-story";
@@ -472,7 +529,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     if (confirmed.Completed)
                         await Navigation.PopAsync();
                     else if (TryAdoptConfirmed(confirmed))
-                        Content = new ScrollView { Content = BuildBody() };
+                        await RefreshStoryReadinessAsync();
                 }
                 finally
                 {

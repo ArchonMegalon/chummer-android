@@ -38,6 +38,7 @@ internal static class OriginDossierBookRuntimeTests
         RunLegacyChapterDisplay();
         RunFinishedSelectionDisplay();
         RunAuthoringSource();
+        await RunReadBeforeNextChoiceAsync();
         await RunEffectContributionDisplayAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
@@ -354,6 +355,20 @@ internal static class OriginDossierBookRuntimeTests
             "Restart lost the first chapter's exact accepted predecessor.");
         Require(!new RetainedOriginBook(ready, reading with { Chapters = [new(childhood.ChapterId, null, prose)] })
             .CanOpenAuthoring(adolescent), "An unaccepted first draft unlocked a later chapter.");
+        var throughChildhood = ready with {
+            VisibleChapters = [foundation, childhood],
+            CanonicalLayer = ready.CanonicalLayer with {
+                AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId, childhood.ThroughAcceptedDecisionId],
+                Facts = facts.Where(f => f.AcceptedDecisionId != "teen").ToArray() }
+        };
+        Require(!new RetainedOriginBook(throughChildhood).HasReadCurrentStory
+            && !new RetainedOriginBook(throughChildhood, reading with { Chapters = [new(childhood.ChapterId, null, prose)] }).HasReadCurrentStory,
+            "A missing or merely generated opening unlocked the next module.");
+        Require(new RetainedOriginBook(throughChildhood, reading).HasReadCurrentStory && !reopened.HasReadCurrentStory,
+            "Readiness ignored the latest decision or required a paid foundation chapter.");
+        var unrelated = OriginBookProseDraft.Create(childhood, book.Locale, "unrelated-request", Digest("provider"), "Unrelated story.");
+        Require(!new RetainedOriginBook(throughChildhood, reading with { Chapters = [new(childhood.ChapterId, unrelated, null)] }).HasReadCurrentStory,
+            "Reading accepted a draft not bound to the exact canonical source.");
         Require(!new RetainedOriginBook(ready with { AllowedCanonicalFactIds = ["birth", "childhood"] }).OpeningSetupComplete,
             "The opening accepted an unapproved metatype fact.");
         var legacySource = OriginBookAuthoringSource.Create(ready, foundation);
@@ -370,6 +385,73 @@ internal static class OriginDossierBookRuntimeTests
             .TryGetAuthoringPredecessor(childhood, out _), "A legacy pending opening was silently skipped.");
         Require(immutable == JsonSerializer.Serialize(ready), "Opening chapter grouping rewrote Core history.");
         Console.WriteLine("PASS first story: confirmed race/birth/childhood together, no future facts, no early generation, read-before-next and cold reopen");
+    }
+
+    private static async Task RunReadBeforeNextChoiceAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(3)));
+            var checkpoint = service.Start("workspace-1").Value!;
+            OriginDossierLifeModulePhoneResult Display(int stage, string locale) => new(
+                LifeModuleOriginDossierOutcomes.Success,
+                OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { StageOrder = stage, Locale = locale }, [],
+                LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest: "sha256:" + Digest("foundation"),
+                BoundContentDigest: checkpoint.BoundContentDigest, BoundSourceDigest: checkpoint.BoundSourceDigest,
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                StoryCheckpoint: checkpoint with { Projection = checkpoint.Projection with {
+                    CurrentTurn = checkpoint.Projection.CurrentTurn with { JourneyId = "sr5-life-modules-foundation", StageOrder = stage, Locale = locale } } });
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                bool ready = false;
+                int reads = 0, prepares = 0;
+                TaskCompletionSource<bool>? pending = null;
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                OriginDossierLifeModuleDecisionPage Page(int stage) => new(Display(stage, locale), locale,
+                    (_, _) => { prepares++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
+                    (_, _) => throw new InvalidOperationException("A reading check may not mutate."),
+                    readStoryReady: async (_, current) => { reads++; return (pending is null ? ready : await pending.Task) && current(); });
+                Task Appear(OriginDossierLifeModuleDecisionPage page) => ui.BeginAsyncVoid(() =>
+                    typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null));
+                bool Choices(OriginDossierLifeModuleDecisionPage page) => Elements(page).OfType<Button>()
+                    .Any(button => button.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
+                foreach (int stage in new[] { LifeModuleJourneyStageOrders.Nationality, LifeModuleJourneyStageOrders.FormativeYears })
+                {
+                    var initial = Page(stage); await Appear(initial);
+                    Require(Choices(initial) && reads == 0, "Initial race/birth/childhood decisions waited for an impossible first chapter.");
+                }
+                var next = Page(LifeModuleJourneyStageOrders.TeenYears);
+                Require(!Choices(next), "The next choices flashed before reading readiness was known.");
+                await Appear(next);
+                Require(!Choices(next) && Elements(next).OfType<Label>().Any(label =>
+                    label.AutomationId == "origin-life-story-wait" && label.Text == copy["Origin.StoryReadRequired"]),
+                    "Unread story did not explain the next-step gate in the selected language.");
+                ready = true;
+                var refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
+                await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
+                Require(Choices(next) && prepares == 0, "Reading confirmation failed to unlock choices or prepared a mutation automatically.");
+                var retiredChoice = Elements(next).OfType<Button>().First(b => b.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
+                pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                var checking = Appear(next);
+                Require(!Choices(next) && Elements(next).OfType<ActivityIndicator>().Single().IsRunning,
+                    "Returning from the reader exposed the old choices during a pending read.");
+                typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnDisappearing",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(next, null);
+                pending.SetResult(true); await checking;
+                await ui.BeginAsyncVoid(() => ((IButtonController)retiredChoice).SendClicked());
+                Require(!Choices(next) && prepares == 0, "A late read or departed control unlocked a retired page.");
+                pending = null; ready = false;
+                await Appear(next);
+                Require(!Choices(next), "Reopening cached an obsolete read permission.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS phone story pacing: initial setup free, read-before-next, DE/EN/ES, no auto mutation, retired-read rejection");
     }
 
     private static async Task RunConfirmOffUiContextAsync()
