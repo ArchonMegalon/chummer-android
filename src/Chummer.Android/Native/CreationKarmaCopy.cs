@@ -67,6 +67,7 @@ internal static class CreationKarmaCopy
     public static string Finish => CreationAllocationStrings.Get("Karma.Finish", "Finish Karma creation");
     public static string CompletionHelp => CreationAllocationStrings.Get("Karma.CompletionHelp", "Review all changes before entering Career mode. Amounts above the carryover limits are lost. Starting cash cannot fund creation purchases. Awakened builds need a saved, valid Magic / Resonance selection.");
     public static string DiceTotal => CreationAllocationStrings.Get("Karma.DiceTotal", "Enter your dice total (no automatic roll)");
+    public static string DiceTotalHelp => CreationAllocationStrings.Get("Karma.DiceTotalHelp", "For starting cash, roll the displayed number of six-sided dice and add all face values, not hits. For example, 2 and 5 make 7. Enter only that sum; Chummer applies the displayed ¥ multiplier. This money becomes available in Career, not for creation purchases.");
     public static string PreviewCompletion => CreationAllocationStrings.Get("Karma.PreviewCompletion", "Review Career transition");
     public static string ConfirmCompletion => CreationAllocationStrings.Get("Karma.ConfirmCompletion", "Confirm and enter Career");
     public static string CareerReady => CreationAllocationStrings.Get("Karma.CareerReady", "Creation saved. Career mode was reopened from the saved runner.");

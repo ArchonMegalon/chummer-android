@@ -33,11 +33,67 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal OriginBookProseDraft? Pending(OriginNarrativeChapterProjection chapter)
         => Reading(chapter)?.Pending;
 
+    // Core's SR5 foundation journey commits metatype + birth background in its
+    // first decision, then Formative Years in its second. Those are an opening
+    // situation, not two paid chapters. Keep the sealed decision chapters intact;
+    // the second boundary already includes all three facts in the authoring input.
+    internal bool UsesSr5Opening => Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation";
+
+    internal bool OpeningSetupComplete
+    {
+        get
+        {
+            if (!UsesSr5Opening) return true;
+            var decisions = Projection.CanonicalLayer.AcceptedDecisionIds;
+            if (decisions.Count < 2 || decisions.Distinct(StringComparer.Ordinal).Count() != decisions.Count
+                || Projection.CurrentTurn.StageOrder < LifeModuleJourneyStageOrders.TeenYears) return false;
+            bool Has(string decision, string kind) => Projection.CanonicalLayer.Facts.Any(f =>
+                f.AcceptedDecisionId == decision && f.FactKind == kind
+                && !string.IsNullOrWhiteSpace(f.LocalizedSummary) && Projection.AllowedCanonicalFactIds.Contains(f.FactId));
+            return Has(decisions[0], "accepted-metatype") && Has(decisions[0], "accepted-life-module")
+                && Has(decisions[1], "accepted-life-module")
+                && decisions.Take(2).All(id => Chapters.Count(c => c.ThroughAcceptedDecisionId == id) == 1);
+        }
+    }
+
+    internal bool IsOpeningSetup(OriginNarrativeChapterProjection chapter)
+        => UsesSr5Opening && Chapters.Contains(chapter)
+            && Projection.CanonicalLayer.AcceptedDecisionIds.FirstOrDefault() == chapter.ThroughAcceptedDecisionId;
+
+    private bool HasRetainedAuthoring(OriginNarrativeChapterProjection chapter)
+        => new[] { Reading(chapter)?.Selected, Pending(chapter) }.Any(draft =>
+            draft is not null && draft.IsValid() && draft.Matches(chapter, Locale));
+
+    internal bool CanOpenAuthoring(OriginNarrativeChapterProjection chapter)
+        => Chapters.Contains(chapter) && (HasRetainedAuthoring(chapter)
+            || TryGetAuthoringPredecessor(chapter, out _));
+
+    // Phone pacing only, not rules/mutation authority. A generated draft is not
+    // a presented story: Selected is written by explicit confirmation in the
+    // prose reader. Recompute from the retained edition after Back/restart.
+    internal bool HasReadCurrentStory
+    {
+        get
+        {
+            if (!OpeningSetupComplete) return false;
+            var narrative = Chapters.Where(c => !IsOpeningSetup(c) || HasRetainedAuthoring(c)).ToArray();
+            if (narrative.Length == 0) return false;
+            try
+            {
+                return narrative.All(chapter => Reading(chapter)?.Selected is { } selected
+                    && selected.IsValid() && selected.Matches(chapter, Locale)
+                    && selected.JobId == OriginChapterSourceIdentity.RequestId(
+                        OriginBookAuthoringSource.Create(Projection, chapter)));
+            }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
+        }
+    }
+
     internal bool TryGetAuthoringPredecessor(OriginNarrativeChapterProjection chapter,
         out OriginChapterPredecessor? previous)
     {
         previous = null;
-        if (!Chapters.Contains(chapter)) return false;
+        if (!Chapters.Contains(chapter) || !OpeningSetupComplete || IsOpeningSetup(chapter)) return false;
         var decisions = Projection.CanonicalLayer.AcceptedDecisionIds.ToArray();
         if (decisions.Distinct(StringComparer.Ordinal).Count() != decisions.Length) return false;
         int boundary = Array.IndexOf(decisions, chapter.ThroughAcceptedDecisionId);
@@ -50,6 +106,9 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         if (earlier.GroupBy(c => c.Index).Any(group => group.Count() != 1)
             || Chapters.Count(c => c.ThroughAcceptedDecisionId == chapter.ThroughAcceptedDecisionId) != 1)
             return false;
+        // A previously generated opening is preserved and must still be read.
+        // New books have no paid foundation chapter to acknowledge or invent.
+        earlier = earlier.Where(c => !IsOpeningSetup(c.Chapter) || HasRetainedAuthoring(c.Chapter)).ToArray();
         if (earlier.Length == 0) return true;
         var preceding = earlier[^1].Chapter;
         if (Reading(preceding)?.Selected is not { } selected || !selected.IsValid()
@@ -74,7 +133,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         var html = new StringBuilder("<!doctype html><html lang=\"").Append(E(Locale))
             .Append("\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
             .Append("<meta name=\"author\" content=\"chummer.run\"><title>").Append(E(RunnerName))
-            .Append("</title><style>body{max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}footer{margin-top:3rem}</style></head><body><h1>")
+            .Append("</title><style>body{color:#192c35;background:#fff;max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}footer{margin-top:3rem}</style></head><body><h1>")
             .Append(E(RunnerName)).Append("</h1><p>").Append(E(copy["Origin.BookSavedChapters"]))
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
         foreach (var chapter in Chapters)
@@ -107,16 +166,25 @@ public sealed partial class RunnerSessionCoordinator
         => _account is IAndroidOriginChapterTransport && _account.Snapshot.IsLinked
             && IsRetainedOriginBookCurrent(book);
 
+    internal async Task<bool> HasReadCurrentLifeModuleStoryAsync(
+        LifeModuleOriginDossierDraftCheckpoint checkpoint, Func<bool> isCurrentPage)
+    {
+        var book = await LoadRetainedOriginBookAsync(CancellationToken.None, isCurrentPage);
+        return isCurrentPage() && book is not null && IsRetainedOriginBookCurrent(book)
+            && book.Digest == checkpoint.Projection.SeedDigest && book.HasReadCurrentStory;
+    }
+
     internal OriginChapterSource? PrepareOriginChapterSource(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
     {
-        if (!CanRequestOriginChapter(book)) return null;
+        if (!CanRequestOriginChapter(book) || !book.CanOpenAuthoring(chapter)) return null;
         try { return OriginBookAuthoringSource.Create(book.Projection, chapter); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return null; }
     }
 
     internal async Task<(AndroidOriginChapterResult Result, RetainedOriginBook? Book)> SyncOriginChapterAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, OriginChapterSource approvedSource,
-        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct)
+        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct,
+        bool reconcileReaderAcceptance = true)
     {
         bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -147,7 +215,7 @@ public sealed partial class RunnerSessionCoordinator
             // The durable selected edition is the local acceptance outbox.
             // Recover a lost acknowledgement without regenerating or adopting
             // an unselected draft. A read alone never grants new acceptance.
-            if (job.ReaderAcceptedTextDigest is null)
+            if (reconcileReaderAcceptance && job.ReaderAcceptedTextDigest is null)
                 await RecordOriginBookReaderAcceptanceAsync(book, draft, isCurrentPage, ct);
             return (result, Current() ? book : null);
         }

@@ -105,7 +105,9 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     {
         Body(title);
         long render = _render, appearance = CaptureAppearanceGeneration();
-        var input = new Entry { Text = value, AutomationId = id, Keyboard = numeric ? Keyboard.Numeric : Keyboard.Default };
+        var input = NativeTheme.TextField(id, value);
+        input.Keyboard = numeric ? Keyboard.Numeric : Keyboard.Default;
+        SemanticProperties.SetDescription(input, title);
         input.TextChanged += (_, e) => { if (Current(render, appearance)) changed?.Invoke(e.NewTextValue ?? ""); };
         _body.Add(input); return input;
     }
@@ -114,13 +116,16 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         Body(title);
         long render = _render, appearance = CaptureAppearanceGeneration();
         var input = new Switch { IsToggled = value, AutomationId = id };
+        SemanticProperties.SetDescription(input, title);
         input.Toggled += (_, e) => { if (Current(render, appearance)) changed(e.Value); };
         _body.Add(input);
     }
     private void Search()
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
-        var input = new SearchBar { Text = _search, Placeholder = CreationKarmaCopy.Search, AutomationId = "life-search" };
+        var input = new SearchBar { Text = _search, Placeholder = CreationKarmaCopy.Search, AutomationId = "life-search",
+            BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text, PlaceholderColor = NativeTheme.Muted };
+        SemanticProperties.SetDescription(input, CreationKarmaCopy.Search);
         input.TextChanged += (_, e) => { if (Current(render, appearance)) _search = e.NewTextValue ?? ""; };
         _body.Add(input);
         Button(CreationKarmaCopy.Search, "life-search-go", () => { _page = 0; return Task.CompletedTask; });
@@ -368,6 +373,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         Body(CreationKarmaCopy.CompletionHelp);
         if (Quote?.StartingCashSource is { } cash)
             Body(CreationKarmaCopy.StartingCash(cash.Name, cash.Dice, cash.Multiplier));
+        Body(CreationKarmaCopy.DiceTotalHelp, "life-starting-dice-help");
         var dice = Text(CreationKarmaCopy.DiceTotal, "life-starting-dice", Input.StartingNuyenDiceTotal?.ToString(CultureInfo.CurrentCulture) ?? "",
             value => Change(Input with { StartingNuyenDiceTotal = int.TryParse(value, NumberStyles.None, CultureInfo.CurrentCulture, out int total) ? total : null }), numeric: true);
         Button(CreationKarmaCopy.PreviewCompletion, "life-review-completion", async () =>
@@ -383,6 +389,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         CompletionChanges(Quote);
         bool confirmed = false, saving = false;
         var acknowledgement = new Switch { AutomationId = "life-completion-confirmed" };
+        SemanticProperties.SetDescription(acknowledgement, LifeCopy("Confirm", "Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached."));
         Body(LifeCopy("Confirm", "Apply this reviewed runner once and enter Career? Your confirmed chapters remain attached."));
         _body.Add(acknowledgement);
         var progress = new ActivityIndicator

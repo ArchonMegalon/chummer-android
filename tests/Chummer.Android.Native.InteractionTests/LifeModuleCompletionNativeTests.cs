@@ -14,6 +14,7 @@ using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation;
 using Chummer.Presentation.Shell;
 using System.Reflection;
+using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
@@ -69,6 +70,11 @@ internal static partial class AfterRunAuthorityHarness
         Require(reopened.IsSuccess && reopened.State?.Timeline.Count == 1
             && reopened.StoryCheckpoint?.CheckpointDigest == confirmed.StoryCheckpoint!.CheckpointDigest,
             "A new phone runtime/disk read did not recover the exact linked chapter.");
+        var retainedOpening = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+        Require(retainedOpening is not null && retainedOpening.Digest == confirmed.StoryCheckpoint!.Projection.SeedDigest
+            && !retainedOpening.OpeningSetupComplete
+            && !await runtime.Coordinator.HasReadCurrentLifeModuleStoryAsync(confirmed.StoryCheckpoint!, () => true),
+            "The retained Core book and live checkpoint disagree, or birth alone became a completed first story.");
         var stored = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
         Require(await stored.LoadAsync(OwnerScope.LocalSingleUser.NormalizedValue, id.Value) is null,
             "Linked Origin checkpoint leaked into the local timeline namespace.");
@@ -481,7 +487,12 @@ internal static partial class AfterRunAuthorityHarness
                     && escaped.Contains("&lt;script&gt;", StringComparison.Ordinal), "Book export executed untrusted prose markup.");
                 var book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(book is not null, "Retained book load failed.");
-                var chapter = book!.Chapters[0];
+                Require(book!.OpeningSetupComplete && book.IsOpeningSetup(book.Chapters[0])
+                    && runtime.Coordinator.PrepareOriginChapterSource(book, book.Chapters[0]) is null,
+                    "The birth-background decision was offered as an independent generated chapter.");
+                var chapter = book.Chapters[1];
+                Require(book.TryGetAuthoringPredecessor(chapter, out var openingPrevious) && openingPrevious is null,
+                    "The first story chapter required a nonexistent pre-childhood story.");
                 string canonicalText = book.ChapterText(chapter);
                 var proposal = OriginBookProseDraft.Create(chapter, book.Locale, "synthetic-review-job",
                     new string('a', 64), "Synthetic proposed chapter. <script>not executable</script>");
@@ -553,19 +564,54 @@ internal static partial class AfterRunAuthorityHarness
                 Require(Current() is OriginBookAuthoringPage && authoringProbe.Requests == 0 && authoringProbe.Reads == 0
                     && !Element<Button>("origin-authoring-request").IsEnabled,
                     "Opening authoring sent private facts or enabled generation without consent.");
+                var authoringPage = (OriginBookAuthoringPage)Current();
+                long authoringAppearance = IssuedPageField<long>(authoringPage, "_appearanceGeneration");
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == 0 && authoringProbe.Requests == 0,
+                    "Automatic observation started before an explicit authoring/status action.");
                 await Click("origin-authoring-refresh");
                 Require(authoringProbe.Reads == 1 && authoringProbe.Requests == 0, "Read-only status created a job.");
                 Element<Switch>("origin-authoring-consent").IsToggled = true;
                 await Click("origin-authoring-request");
                 Require(authoringProbe.Requests == 1 && authoringProbe.Reads == 2,
                     "Consented chapter request did not read before creating.");
-                authoringProbe.Ready = true;
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d
+                    && Element<Label>("origin-authoring-eta").Text == AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringEtaUnknown"],
+                    "A queued request needs confirmed-stage progress and an honest unknown ETA.");
+                var waitingConsent = Element<Switch>("origin-authoring-consent");
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == 3 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0
+                    && ReferenceEquals(waitingConsent, Element<Switch>("origin-authoring-consent")),
+                    "Unchanged automatic status rebuilt controls, generated prose or accepted a draft.");
+                using (var canceledPoll = new CancellationTokenSource())
+                {
+                    canceledPoll.Cancel();
+                    await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, canceledPoll.Token);
+                }
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance - 1, default);
+                Require(authoringProbe.Reads == 3, "Canceled or retired appearance polled private chapter status.");
+                authoringProbe.FailRead = true;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                authoringProbe.FailRead = false;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == 4 && authoringProbe.Requests == 1,
+                    "An automatic status failure retried without an explicit refresh.");
                 await Click("origin-authoring-refresh");
+                authoringProbe.Ready = true;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d
+                    && !IssuedElements(Current()).Any(element => element.AutomationId == "origin-authoring-eta"),
+                    "A ready draft retained a fabricated time estimate or incorrect generation progress.");
                 var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
                     && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
                     "Readback auto-adopted prose or submitted another generation.");
+                int terminalReads = authoringProbe.Reads;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == terminalReads, "A terminal draft kept polling the provider job.");
                 await Click("origin-authoring-review");
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == terminalReads, "A departed authoring page polled private chapter status.");
                 authoringProbe.FailAcceptance = true;
                 Element<Switch>("origin-prose-confirmed").IsToggled = true;
                 await Click("origin-prose-use");

@@ -37,6 +37,8 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         RunLegacyChapterDisplay();
         RunFinishedSelectionDisplay();
+        RunAuthoringSource();
+        await RunReadBeforeNextChoiceAsync();
         await RunEffectContributionDisplayAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
@@ -257,14 +259,16 @@ internal static class OriginDossierBookRuntimeTests
         var chapter = book.VisibleChapters.Single();
         var fixture = book with
         {
-            AllowedCanonicalFactIds = ["metatype", "answer", "future", "private"],
+            AllowedCanonicalFactIds = ["metatype", "answer", "contributions", "future", "future-contributions", "private"],
             CanonicalLayer = book.CanonicalLayer with
             {
                 AcceptedDecisionIds = [chapter.ThroughAcceptedDecisionId, "later"],
                 Facts = [
                     new("metatype", "accepted-metatype", "Elf", chapter.ThroughAcceptedDecisionId, ["private-anchor"], ""),
                     new("answer", "accepted-life-module-answer", "Childhood: Renraku", chapter.ThroughAcceptedDecisionId, [], ""),
+                    new("contributions", "accepted-life-module-contributions", "Confirmed module contributions, not final ratings: Survival +1", chapter.ThroughAcceptedDecisionId, ["private-effect-anchor"], ""),
                     new("future", "accepted-life-module-answer", "Future not chosen in this chapter", "later", [], ""),
+                    new("future-contributions", "accepted-life-module-contributions", "Future bonus not chosen in this chapter", "later", [], ""),
                     new("private", "private-notes", "Do not send", chapter.ThroughAcceptedDecisionId, [], ""),
                     new("not-allowed", "accepted-life-module-answer", "Not approved", chapter.ThroughAcceptedDecisionId, [], "")
                 ]
@@ -272,10 +276,20 @@ internal static class OriginDossierBookRuntimeTests
         };
         string before = JsonSerializer.Serialize(fixture);
         var source = OriginBookAuthoringSource.Create(fixture, chapter);
-        Require(source.Facts.Count == 2 && source.Facts.All(f => f.DecisionId == chapter.ThroughAcceptedDecisionId),
+        Require(source.Facts.Count == 3 && source.Facts.All(f => f.DecisionId == chapter.ThroughAcceptedDecisionId)
+            && source.Facts.Single(f => f.FactId == "contributions").Text == fixture.CanonicalLayer.Facts.Single(f => f.FactId == "contributions").LocalizedSummary,
             "Provider input leaked a later, private or non-allowlisted fact.");
+        var historical = fixture with {
+            CanonicalLayer = fixture.CanonicalLayer with {
+                Facts = fixture.CanonicalLayer.Facts.Where(f => f.FactKind != "accepted-life-module-contributions").ToArray() }
+        };
+        var historicalSource = OriginBookAuthoringSource.Create(historical, chapter);
+        Require(historicalSource.Facts.Count == 2
+            && historicalSource.Facts.All(f => f.FactId is "metatype" or "answer"),
+            "Historical books acquired newly inferred mechanics or new request identities.");
         string serialized = JsonSerializer.Serialize(source);
         Require(!serialized.Contains("private-anchor", StringComparison.Ordinal)
+            && !serialized.Contains("private-effect-anchor", StringComparison.Ordinal)
             && !serialized.Contains(chapter.VisibleMarkdown, StringComparison.Ordinal)
             && before == JsonSerializer.Serialize(fixture), "Authoring projection copied source prose or mutated the Core book.");
         bool rejected = false;
@@ -307,7 +321,149 @@ internal static class OriginDossierBookRuntimeTests
         Require(!new RetainedOriginBook(chronological with { VisibleChapters = [chapter, nextChapter with
             { ThroughAcceptedDecisionId = chapter.ThroughAcceptedDecisionId }] }, readings)
             .TryGetAuthoringPredecessor(chapter, out _), "Ambiguous Core chapter boundaries were guessed.");
+        RunOpeningChapterBoundary(chronological, chapter, nextChapter);
         Console.WriteLine("PASS Origin authoring projection: confirmed facts only, no future choices, source prose, anchors or mutation");
+    }
+
+    private static void RunOpeningChapterBoundary(OriginStoryArcSeed seed,
+        OriginNarrativeChapterProjection foundation, OriginNarrativeChapterProjection childhood)
+    {
+        var adolescent = childhood with { ChapterId = "adolescent", ThroughAcceptedDecisionId = "teen", ChapterDigest = Digest("teen") };
+        var facts = new OriginCanonicalNarrativeFact[] {
+            new("race", "accepted-metatype", "Troll", foundation.ThroughAcceptedDecisionId, [], ""),
+            new("birth", "accepted-life-module", "Birth background: UCAS", foundation.ThroughAcceptedDecisionId, [], ""),
+            new("childhood", "accepted-life-module", "Childhood: street life", childhood.ThroughAcceptedDecisionId, [], ""),
+            new("childhood-answer", "accepted-life-module-answer", "Raised by an aunt", childhood.ThroughAcceptedDecisionId, [], ""),
+            new("teen", "accepted-life-module", "Future school", adolescent.ThroughAcceptedDecisionId, [], "") };
+        var ready = seed with {
+            CurrentTurn = seed.CurrentTurn with { JourneyId = "sr5-life-modules-foundation", StageOrder = LifeModuleJourneyStageOrders.TeenYears },
+            VisibleChapters = [adolescent, foundation, childhood],
+            AllowedCanonicalFactIds = facts.Select(f => f.FactId).ToArray(),
+            CanonicalLayer = seed.CanonicalLayer with {
+                AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId, childhood.ThroughAcceptedDecisionId, adolescent.ThroughAcceptedDecisionId], Facts = facts }
+        };
+        string immutable = JsonSerializer.Serialize(ready);
+        var incomplete = ready with {
+            CurrentTurn = ready.CurrentTurn with { StageOrder = LifeModuleJourneyStageOrders.FormativeYears },
+            VisibleChapters = [foundation],
+            CanonicalLayer = ready.CanonicalLayer with { AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId], Facts = facts.Take(2).ToArray() }
+        };
+        var setup = new RetainedOriginBook(incomplete);
+        Require(!setup.OpeningSetupComplete && !setup.CanOpenAuthoring(foundation)
+            && !setup.TryGetAuthoringPredecessor(foundation, out _), "A book could start before childhood was confirmed.");
+        var book = new RetainedOriginBook(ready);
+        Require(book.OpeningSetupComplete && !book.CanOpenAuthoring(foundation)
+            && book.TryGetAuthoringPredecessor(childhood, out var first) && first is null,
+            "Opening decisions were split into paid chapters or required an invented predecessor.");
+        var source = OriginBookAuthoringSource.Create(ready, childhood);
+        Require(source.Facts.Select(f => f.FactId).ToHashSet().SetEquals(["race", "birth", "childhood", "childhood-answer"]),
+            "The first chapter omitted its initial situation or leaked a later decision.");
+        Require(!book.CanOpenAuthoring(adolescent), "A later story skipped the unread first chapter.");
+        var prose = OriginBookProseDraft.Create(childhood, book.Locale, OriginChapterSourceIdentity.RequestId(source), Digest("provider"), "Reviewed opening story.");
+        var reading = new OriginBookReadingState("local-single-user", ready.CurrentTurn.WorkspaceId, [new(childhood.ChapterId, prose, null)]);
+        var reopened = new RetainedOriginBook(JsonSerializer.Deserialize<OriginStoryArcSeed>(JsonSerializer.Serialize(ready))!,
+            JsonSerializer.Deserialize<OriginBookReadingState>(JsonSerializer.Serialize(reading))!);
+        Require(reopened.TryGetAuthoringPredecessor(adolescent, out var predecessor) && predecessor?.RequestId == prose.JobId,
+            "Restart lost the first chapter's exact accepted predecessor.");
+        Require(!new RetainedOriginBook(ready, reading with { Chapters = [new(childhood.ChapterId, null, prose)] })
+            .CanOpenAuthoring(adolescent), "An unaccepted first draft unlocked a later chapter.");
+        var throughChildhood = ready with {
+            VisibleChapters = [foundation, childhood],
+            CanonicalLayer = ready.CanonicalLayer with {
+                AcceptedDecisionIds = [foundation.ThroughAcceptedDecisionId, childhood.ThroughAcceptedDecisionId],
+                Facts = facts.Where(f => f.AcceptedDecisionId != "teen").ToArray() }
+        };
+        Require(!new RetainedOriginBook(throughChildhood).HasReadCurrentStory
+            && !new RetainedOriginBook(throughChildhood, reading with { Chapters = [new(childhood.ChapterId, null, prose)] }).HasReadCurrentStory,
+            "A missing or merely generated opening unlocked the next module.");
+        Require(new RetainedOriginBook(throughChildhood, reading).HasReadCurrentStory && !reopened.HasReadCurrentStory,
+            "Readiness ignored the latest decision or required a paid foundation chapter.");
+        var unrelated = OriginBookProseDraft.Create(childhood, book.Locale, "unrelated-request", Digest("provider"), "Unrelated story.");
+        Require(!new RetainedOriginBook(throughChildhood, reading with { Chapters = [new(childhood.ChapterId, unrelated, null)] }).HasReadCurrentStory,
+            "Reading accepted a draft not bound to the exact canonical source.");
+        Require(!new RetainedOriginBook(ready with { AllowedCanonicalFactIds = ["birth", "childhood"] }).OpeningSetupComplete,
+            "The opening accepted an unapproved metatype fact.");
+        var legacySource = OriginBookAuthoringSource.Create(ready, foundation);
+        var legacyProse = OriginBookProseDraft.Create(foundation, book.Locale,
+            OriginChapterSourceIdentity.RequestId(legacySource), Digest("legacy-provider"), "Previously written opening.");
+        var legacyReading = reading with { Chapters = [new(foundation.ChapterId, legacyProse, null)] };
+        var legacy = new RetainedOriginBook(ready, legacyReading);
+        Require(legacy.CanOpenAuthoring(foundation) && !legacy.TryGetAuthoringPredecessor(foundation, out _)
+            && legacy.ChapterText(foundation) == legacyProse.Text
+            && legacy.TryGetAuthoringPredecessor(childhood, out var legacyPrevious)
+            && legacyPrevious?.RequestId == legacyProse.JobId,
+            "An existing opening was lost, regenerated or omitted from the exact predecessor chain.");
+        Require(!new RetainedOriginBook(ready, legacyReading with { Chapters = [new(foundation.ChapterId, null, legacyProse)] })
+            .TryGetAuthoringPredecessor(childhood, out _), "A legacy pending opening was silently skipped.");
+        Require(immutable == JsonSerializer.Serialize(ready), "Opening chapter grouping rewrote Core history.");
+        Console.WriteLine("PASS first story: confirmed race/birth/childhood together, no future facts, no early generation, read-before-next and cold reopen");
+    }
+
+    private static async Task RunReadBeforeNextChoiceAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(3)));
+            var checkpoint = service.Start("workspace-1").Value!;
+            OriginDossierLifeModulePhoneResult Display(int stage, string locale) => new(
+                LifeModuleOriginDossierOutcomes.Success,
+                OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { StageOrder = stage, Locale = locale }, [],
+                LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest: "sha256:" + Digest("foundation"),
+                BoundContentDigest: checkpoint.BoundContentDigest, BoundSourceDigest: checkpoint.BoundSourceDigest,
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                StoryCheckpoint: checkpoint with { Projection = checkpoint.Projection with {
+                    CurrentTurn = checkpoint.Projection.CurrentTurn with { JourneyId = "sr5-life-modules-foundation", StageOrder = stage, Locale = locale } } });
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                bool ready = false;
+                int reads = 0, prepares = 0;
+                TaskCompletionSource<bool>? pending = null;
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                OriginDossierLifeModuleDecisionPage Page(int stage) => new(Display(stage, locale), locale,
+                    (_, _) => { prepares++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
+                    (_, _) => throw new InvalidOperationException("A reading check may not mutate."),
+                    readStoryReady: async (_, current) => { reads++; return (pending is null ? ready : await pending.Task) && current(); });
+                Task Appear(OriginDossierLifeModuleDecisionPage page) => ui.BeginAsyncVoid(() =>
+                    typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null));
+                bool Choices(OriginDossierLifeModuleDecisionPage page) => Elements(page).OfType<Button>()
+                    .Any(button => button.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
+                foreach (int stage in new[] { LifeModuleJourneyStageOrders.Nationality, LifeModuleJourneyStageOrders.FormativeYears })
+                {
+                    var initial = Page(stage); await Appear(initial);
+                    Require(Choices(initial) && reads == 0, "Initial race/birth/childhood decisions waited for an impossible first chapter.");
+                }
+                var next = Page(LifeModuleJourneyStageOrders.TeenYears);
+                Require(!Choices(next), "The next choices flashed before reading readiness was known.");
+                await Appear(next);
+                Require(!Choices(next) && Elements(next).OfType<Label>().Any(label =>
+                    label.AutomationId == "origin-life-story-wait" && label.Text == copy["Origin.StoryReadRequired"]),
+                    "Unread story did not explain the next-step gate in the selected language.");
+                ready = true;
+                var refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
+                await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
+                Require(Choices(next) && prepares == 0, "Reading confirmation failed to unlock choices or prepared a mutation automatically.");
+                var retiredChoice = Elements(next).OfType<Button>().First(b => b.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
+                pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                var checking = Appear(next);
+                Require(!Choices(next) && Elements(next).OfType<ActivityIndicator>().Single().IsRunning,
+                    "Returning from the reader exposed the old choices during a pending read.");
+                typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnDisappearing",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(next, null);
+                pending.SetResult(true); await checking;
+                await ui.BeginAsyncVoid(() => ((IButtonController)retiredChoice).SendClicked());
+                Require(!Choices(next) && prepares == 0, "A late read or departed control unlocked a retired page.");
+                pending = null; ready = false;
+                await Appear(next);
+                Require(!Choices(next), "Reopening cached an obsolete read permission.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS phone story pacing: initial setup free, read-before-next, DE/EN/ES, no auto mutation, retired-read rejection");
     }
 
     private static async Task RunConfirmOffUiContextAsync()
@@ -553,6 +709,22 @@ internal static class OriginDossierBookRuntimeTests
             await ui.BeginAsyncVoid(() => ((IButtonController)choices[0]).SendClicked());
             Require(preparedChoice == finish.ChoiceId && authority.MutationCount == 0,
                 "The promoted control prepared a different command or skipped explicit confirmation.");
+            foreach (decimal remaining in new[] { 0m, ordinary.MechanicsPreview.KarmaCost - 1m, ordinary.MechanicsPreview.KarmaCost })
+            {
+                var budgeted = opened with
+                {
+                    LifeModuleBudget = opened.LifeModuleBudget! with { Used = 750m - remaining, Remaining = remaining }
+                };
+                var filtered = new OriginDossierLifeModuleDecisionPage(budgeted, "en-US",
+                    (_, _) => throw new InvalidOperationException("Rendering may not prepare."),
+                    (_, _) => throw new InvalidOperationException("Rendering may not mutate."));
+                var visible = Elements(filtered).OfType<Button>().Where(button =>
+                    button.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true).ToArray();
+                Require(visible[0].AutomationId == "origin-life-choice-1"
+                    && visible.Length == (remaining >= ordinary.MechanicsPreview.KarmaCost ? 2 : 1),
+                    "Unaffordable module remained visible, exact-budget option disappeared, or free finish lost its identity.");
+                Require(authority.MutationCount == 0, "Affordability display changed the runner.");
+            }
         });
         Console.WriteLine("PASS Origin book: typed finish action first, stable identity, preview only");
     }

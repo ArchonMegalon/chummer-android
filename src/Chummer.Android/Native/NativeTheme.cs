@@ -42,6 +42,23 @@ internal static class NativeTheme
         LineBreakMode = LineBreakMode.WordWrap
     };
 
+    public static Label BookProse(string text)
+    {
+        var label = Body(text);
+        label.FontSize = 18;
+        label.LineHeight = 1.4;
+        return label;
+    }
+
+    public static Button ReadingButton(string text)
+    {
+        var button = SecondaryButton(text);
+        button.HeightRequest = -1;
+        button.MinimumHeightRequest = 50;
+        button.LineBreakMode = LineBreakMode.WordWrap;
+        return button;
+    }
+
     public static Button PrimaryButton(string text) => new()
     {
         Text = text,

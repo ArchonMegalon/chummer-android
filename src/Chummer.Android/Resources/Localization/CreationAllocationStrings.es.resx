@@ -842,4 +842,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="LifeCompletion.StartingCash" xml:space="preserve"><value>Dinero inicial obtenido con dados</value></data>
   <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creación → Carrera</value></data>
   <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
+  <data name="Karma.DiceTotalHelp" xml:space="preserve"><value>Para el dinero inicial, tira la cantidad indicada de dados de seis caras y suma sus valores, no los éxitos. Por ejemplo, 2 y 5 suman 7. Introduce solo esa suma; Chummer aplica el multiplicador de ¥ indicado. Este dinero estará disponible en Carrera, no para compras durante la creación.</value></data>
 </root>

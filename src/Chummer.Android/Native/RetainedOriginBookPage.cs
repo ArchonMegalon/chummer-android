@@ -51,8 +51,16 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _body.Add(NativeTheme.Title(book.RunnerName));
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookLanguage", book.Locale), NativeTheme.Muted));
         _body.Add(NativeTheme.Body(_copy["Origin.BookSavedChapters"], NativeTheme.Muted));
+        if (book.UsesSr5Opening)
+        {
+            var opening = NativeTheme.Body(_copy[book.OpeningSetupComplete
+                ? "Origin.OpeningSetupReady" : "Origin.OpeningSetupRequired"], NativeTheme.Muted);
+            opening.AutomationId = "origin-book-opening-setup";
+            _body.Add(opening);
+        }
         long appearance = CaptureAppearanceGeneration();
-        var export = new Button { Text = _copy["Origin.ExportBook"], AutomationId = "origin-book-export" };
+        var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
+        export.AutomationId = "origin-book-export";
         export.Clicked += async (_, _) => await RunAsync(async () =>
         {
             bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
@@ -67,8 +75,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             var explanation = NativeTheme.Body(_copy["Origin.BookAccountExplanation"], NativeTheme.Muted);
             explanation.AutomationId = "origin-book-account-explanation";
             _body.Add(explanation);
-            var account = new Button { Text = _copy["Origin.BookAccount"], AutomationId = "origin-book-account",
-                IsEnabled = !Coordinator.Account.IsLoading };
+            var account = NativeTheme.ReadingButton(_copy["Origin.BookAccount"]);
+            account.AutomationId = "origin-book-account";
+            account.IsEnabled = !Coordinator.Account.IsLoading;
             account.Clicked += async (_, _) => await RunAsync(async () =>
             {
                 if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
@@ -81,13 +90,15 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
         foreach (var chapter in book.Chapters)
         {
-            _body.Add(NativeTheme.Title(chapter.Title, 21));
-            var text = NativeTheme.Body(book.ChapterText(chapter));
+            _body.Add(NativeTheme.Title(book.IsOpeningSetup(chapter)
+                ? _copy["Origin.OpeningSetupTitle"] : chapter.Title, 21));
+            var text = NativeTheme.BookProse(book.ChapterText(chapter));
             text.AutomationId = $"origin-retained-chapter-{chapter.Sequence}";
             _body.Add(text);
             if (Coordinator.PrepareOriginChapterSource(book, chapter) is not null)
             {
-                var author = new Button { Text = _copy["Origin.AuthorChapter"], AutomationId = $"origin-author-chapter-{chapter.Sequence}" };
+                var author = NativeTheme.ReadingButton(_copy["Origin.AuthorChapter"]);
+                author.AutomationId = $"origin-author-chapter-{chapter.Sequence}";
                 author.Clicked += async (_, _) => await RunAsync(async () =>
                 {
                     if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
@@ -98,7 +109,8 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             }
             if (book.Pending(chapter) is { } draft)
             {
-                var review = new Button { Text = _copy["Origin.ReviewProse"], AutomationId = $"origin-review-prose-{chapter.Sequence}" };
+                var review = NativeTheme.ReadingButton(_copy["Origin.ReviewProse"]);
+                review.AutomationId = $"origin-review-prose-{chapter.Sequence}";
                 review.Clicked += async (_, _) => await RunAsync(async () =>
                 {
                     if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
