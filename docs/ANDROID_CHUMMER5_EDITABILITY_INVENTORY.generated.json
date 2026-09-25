@@ -14,15 +14,15 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 342,
-      "missing": 985,
+      "implemented_pending_emulator": 368,
+      "missing": 959,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 318
     },
     "tabletStatusCounts": {
-      "implemented_pending_emulator": 53,
-      "missing": 1554,
+      "implemented_pending_emulator": 79,
+      "missing": 1528,
       "not_applicable_non_mutating": 478,
       "partial_exact_saved_data": 144
     }
@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "5ce1c682a794e2300f1ec4016b266b8fd59b2cbaac5877e0d03b1d2d1f4e3be0"
+        "sha256": "67390c4aa64ae5d1c1ae27af0124ef26c2f6e443515c3510d684b8b0dbb16ebc"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "22d8791c42f672b3c9b257680860b868cebdb75839e43dd845e1d343dc98485a"
+        "sha256": "5a57989028f0806f6f240ae5d6a0817b39ac8832f406df0d48f19e93aebefa43"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "5878f7e18d333aa7f90361bba8ad6b11ff6e796f71695abfa0a418bea9652d43"
+        "sha256": "e7466607256022881c82c643ef2321241c46206bfdde6d0aa518d3b28b19b03d"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "6c1bd3b3e039b089a74a2d8aefd34863b106d6fe315ddfa506b3164c0cf53312"
+        "sha256": "74b68d4b1bcf5fddc6977c6056a23f4104b89c151d400f175ff776784f5e38b1"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "01f39de24fc9c751bb50bd5d2be6796897ab85b01030b649b113f7e89b0087c7"
+        "sha256": "ca1237f9eabf4bb117d6e8e809c9be8e6407ed943ee47ccfff9ee60b44cbaaa1"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -3134,8 +3134,8 @@
     "contacts": {
       "rowCount": 63,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 37,
-      "tabletMissingCount": 43,
+      "phoneMissingCount": 11,
+      "tabletMissingCount": 17,
       "completionProvenCount": 20
     },
     "crash_report_and_diagnostics": {
@@ -3770,7 +3770,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-role-{stable-target}",
@@ -3785,7 +3785,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-role",
         "sourceRefs": [
@@ -3838,7 +3838,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-name-{stable-target}",
@@ -3853,7 +3853,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-name",
         "sourceRefs": [
@@ -3906,7 +3906,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-location-{stable-target}",
@@ -3921,7 +3921,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-location",
         "sourceRefs": [
@@ -4036,7 +4036,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-delete-{stable-target}",
@@ -4051,7 +4051,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-inspector-delete",
         "sourceRefs": [
@@ -4166,7 +4166,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -4189,7 +4189,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-linked-remove",
         "sourceRefs": [
@@ -4255,7 +4255,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -4278,7 +4278,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-linked-attach",
         "sourceRefs": [
@@ -4344,7 +4344,7 @@
       "mutationFamily": "contacts",
       "operation": "edit",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-target}",
@@ -4359,7 +4359,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-notes",
         "sourceRefs": [
@@ -4412,7 +4412,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-contact-connection-{stable-target}",
@@ -4427,7 +4427,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-contact-connection",
         "sourceRefs": [
@@ -4480,7 +4480,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-contact-loyalty-{stable-target}",
@@ -4495,7 +4495,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-contact-loyalty",
         "sourceRefs": [
@@ -4548,7 +4548,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-group-{stable-target}",
@@ -4563,7 +4563,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-group",
         "sourceRefs": [
@@ -4616,7 +4616,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-free-{stable-target}",
@@ -4631,7 +4631,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-free",
         "sourceRefs": [
@@ -4684,7 +4684,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-blackmail-{stable-target}",
@@ -4699,7 +4699,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-blackmail",
         "sourceRefs": [
@@ -4752,7 +4752,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-family-{stable-target}",
@@ -4767,7 +4767,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-family",
         "sourceRefs": [
@@ -4872,7 +4872,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-metatype-{stable-target}",
@@ -4887,7 +4887,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-metatype",
         "sourceRefs": [
@@ -4940,7 +4940,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-gender-{stable-target}",
@@ -4955,7 +4955,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-gender",
         "sourceRefs": [
@@ -5008,7 +5008,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-contacttype-{stable-target}",
@@ -5023,7 +5023,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-contacttype",
         "sourceRefs": [
@@ -5076,7 +5076,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-age-{stable-target}",
@@ -5091,7 +5091,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-age",
         "sourceRefs": [
@@ -5144,7 +5144,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-personallife-{stable-target}",
@@ -5159,7 +5159,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-personallife",
         "sourceRefs": [
@@ -5212,7 +5212,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-preferredpayment-{stable-target}",
@@ -5227,7 +5227,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-preferredpayment",
         "sourceRefs": [
@@ -5280,7 +5280,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-hobbiesvice-{stable-target}",
@@ -5295,7 +5295,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-hobbiesvice",
         "sourceRefs": [
@@ -5348,7 +5348,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-name-{stable-target}",
@@ -5364,7 +5364,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-name",
         "sourceRefs": [
@@ -5423,7 +5423,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-metatype-{stable-target}",
@@ -5439,7 +5439,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-metatype",
         "sourceRefs": [
@@ -5555,7 +5555,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -5578,7 +5578,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-linked-remove",
         "sourceRefs": [
@@ -5644,7 +5644,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -5667,7 +5667,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-linked-attach",
         "sourceRefs": [
@@ -5790,7 +5790,7 @@
       "mutationFamily": "contacts",
       "operation": "edit",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-target}",
@@ -5806,7 +5806,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-notes",
         "sourceRefs": [
@@ -5865,7 +5865,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-delete-{stable-target}",
@@ -5881,7 +5881,7 @@
         ]
       },
       "tablet": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-inspector-delete",
         "sourceRefs": [

@@ -641,12 +641,51 @@ internal static partial class AfterRunAuthorityHarness
             && runtime.Coordinator.State.ContentRevision == cold.ContentRevision
             && runtime.Coordinator.State.SavedRevision == cold.SavedRevision,
             "Local baseline did not preserve the actual atomic finalization receipt/checkpoint and live owner.");
+        threadProbe!.RequireOffContextLoads = true;
+        var retained = await StartFromUiContext(uiContext, () =>
+            runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(runtime.Coordinator.State, default));
         Require(applied.Value!.BuildMethod == method
-            && runtime.Coordinator.LoadPersistedPriorityTableCreationReceipt()?.ReceiptDigest == applied.Value.ReceiptDigest,
+            && retained?.ReceiptDigest == applied.Value.ReceiptDigest,
             "The native Career route must retain the exact method's persisted receipt.");
         await HydrateFinalizationOwnerAsync(runtime, owners, cold, expectedCreated: true);
-        Require(runtime.Coordinator.LoadPersistedPriorityTableCreationReceipt()?.ReceiptDigest == applied.Value.ReceiptDigest,
+        var originalDisplay = runtime.Coordinator.State;
+        retained = await StartFromUiContext(uiContext, () =>
+            runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(originalDisplay, default));
+        Require(retained?.ReceiptDigest == applied.Value.ReceiptDigest,
             "A fresh native display from the cold store lost the finalization receipt.");
+        int loadsBeforeRender = threadProbe!.LoadCalls;
+        var careerPage = new BuildPage(runtime.Coordinator);
+        await StartFromUiContext(uiContext, () =>
+        {
+            typeof(BuildPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(careerPage, null);
+            return Task.FromResult(true);
+        });
+        Require(threadProbe.LoadCalls == loadsBeforeRender,
+            "Rendering the Career route synchronously reentered Core finalization on the UI thread.");
+        using (var cancelled = new CancellationTokenSource())
+        {
+            cancelled.Cancel();
+            try
+            {
+                await runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(originalDisplay, cancelled.Token);
+                throw new InvalidOperationException("Canceled receipt load was admitted.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Require(threadProbe.LoadCalls == loadsBeforeRender, "Canceled receipt load entered Core.");
+        threadProbe.AfterLoad = () =>
+        {
+            owners.Set(ContactsOwnerB);
+            owners.Set(OwnerScope.LocalSingleUser);
+        };
+        Require(await runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(originalDisplay, default) is null,
+            "A read completed across an owner transition must not become display authority.");
+        loadsBeforeRender = threadProbe.LoadCalls;
+        Require(!runtime.Coordinator.IsPersistedCreationReceiptDisplayCurrent(originalDisplay)
+            && await runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(originalDisplay, default) is null
+            && threadProbe.LoadCalls == loadsBeforeRender,
+            "A prior account generation must not display or reload a retained receipt after A->B->A.");
         Console.WriteLine("FINALIZATION_LOCAL_BASELINE " + JsonSerializer.Serialize(new
         {
             applied.Outcome, applied.Value.BuildMethod, before.ContentRevision, before.SavedRevision,
@@ -859,8 +898,19 @@ internal static partial class AfterRunAuthorityHarness
     {
         public int OffContextReviews { get; private set; }
         public int OffContextConfirms { get; private set; }
+        public int LoadCalls { get; private set; }
+        public bool RequireOffContextLoads { get; set; }
+        public Action? AfterLoad { get; set; }
         public CharacterCreationFinalizationResult<CharacterCreationFinalizationState> Load(
-            OwnerContextStamp owner, CharacterCreationFinalizationLoadRequest request) => actual.Load(owner, request);
+            OwnerContextStamp owner, CharacterCreationFinalizationLoadRequest request)
+        {
+            Require(!RequireOffContextLoads || !ReferenceEquals(SynchronizationContext.Current, uiContext),
+                "Persisted receipt Load ran synchronously on the caller's UI context.");
+            LoadCalls++;
+            var result = actual.Load(owner, request);
+            AfterLoad?.Invoke();
+            return result;
+        }
         public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> Review(
             OwnerContextStamp owner, CharacterCreationFinalizationReviewRequest request)
         {
