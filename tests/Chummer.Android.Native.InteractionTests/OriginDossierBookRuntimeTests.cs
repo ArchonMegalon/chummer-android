@@ -237,7 +237,12 @@ internal static class OriginDossierBookRuntimeTests
             var pending = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(chapter.ChapterId, null, prose)]));
             Require(pending.ChapterText(chapter) == text, "Unconfirmed narration replaced the completed-selection display.");
             VerifyEpub(pending, text, locale);
-            if (locale == "de-DE") VerifyLongEpub(localized, chapter);
+            if (locale == "de-DE")
+            {
+                VerifyLongEpub(localized, chapter);
+                VerifyIllustratedEpub(selected, chapter);
+                WriteIllustratedPreview(localized, chapter);
+            }
         }
         var laterFinish = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [finish with { AcceptedDecisionId = "later" }] } };
         Require(OriginBookChapterText.Render(laterFinish, chapter) == chapter.VisibleMarkdown,
@@ -253,6 +258,77 @@ internal static class OriginDossierBookRuntimeTests
                 "The canonical-only finish formatter rewrote an authored layer.");
         }
         Console.WriteLine("PASS Origin book: finished selection display in DE/EN/ES, immutable history, matching readers/export and retained approved prose");
+    }
+
+    private static void VerifyIllustratedEpub(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
+    {
+        byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+        var picture = new OriginBookEpub.Illustration(chapter.ChapterId, Digest(book.ChapterText(chapter)),
+            "A quiet forest scene <not markup> & a spiral of stones", png);
+        var copy = AndroidSurfaceStrings.Resolve(book.Locale);
+        byte[] exported = OriginBookEpub.Create(book, copy, [picture]);
+        using var archive = new ZipArchive(new MemoryStream(exported), ZipArchiveMode.Read);
+        using var imageStream = archive.GetEntry("EPUB/images/scene-1.png")!.Open();
+        using var image = new MemoryStream(); imageStream.CopyTo(image);
+        Require(image.ToArray().SequenceEqual(png), "EPUB did not retain the exact offline image bytes.");
+        using var chapterStream = archive.GetEntry("EPUB/chapter-1.xhtml")!.Open();
+        var page = XDocument.Load(chapterStream);
+        XNamespace html = "http://www.w3.org/1999/xhtml";
+        var element = page.Descendants(html + "img").Single();
+        Require(element.Attribute("src")?.Value == "images/scene-1.png"
+            && element.Attribute("alt")?.Value == picture.AltText
+            && string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == book.ChapterText(chapter),
+            "An illustration used a remote URL, lost its accessible description or changed prose.");
+        using var packageStream = archive.GetEntry("EPUB/package.opf")!.Open();
+        XNamespace opf = "http://www.idpf.org/2007/opf";
+        Require(XDocument.Load(packageStream).Descendants(opf + "item").Any(item =>
+                item.Attribute("href")?.Value == "images/scene-1.png" && item.Attribute("media-type")?.Value == "image/png"),
+            "The offline image is not declared in the EPUB manifest.");
+        void Reject(OriginBookEpub.Illustration invalid)
+        {
+            bool rejected = false;
+            try { OriginBookEpub.Create(book, copy, [invalid]); }
+            catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "An invalid, oversized or wrong-chapter illustration was exported.");
+        }
+        Reject(picture with { TextDigest = Digest("unselected or stale story") });
+        Reject(picture with { ChapterId = "another-book-chapter" });
+        Reject(picture with { Bytes = Encoding.UTF8.GetBytes("<svg onload='bad()'/>") });
+        Reject(picture with { Bytes = new byte[4 * 1024 * 1024 + 1] });
+        Reject(picture with { AltText = "" });
+        byte[] oversizedDimensions = png.ToArray();
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(oversizedDimensions.AsSpan(16), 50000);
+        Reject(picture with { Bytes = oversizedDimensions });
+        bool tooManyRejected = false;
+        try { OriginBookEpub.Create(book, copy, Enumerable.Repeat(picture, 9).ToArray()); }
+        catch (InvalidDataException) { tooManyRejected = true; }
+        Require(tooManyRejected, "The EPUB illustration-count bound was ignored.");
+        Console.WriteLine("PASS Origin EPUB: exact embedded raster, alt text, selected-chapter binding and unsafe/oversized image rejection");
+    }
+
+    // Optional, operator-selected example inputs for visual review, never part
+    // of normal tests or a Hub/provider handoff. This does not select app prose.
+    private static void WriteIllustratedPreview(OriginStoryArcSeed projection, OriginNarrativeChapterProjection original)
+    {
+        string? directory = Environment.GetEnvironmentVariable("CHUMMER_ORIGIN_EPUB_PREVIEW_DIRECTORY");
+        if (string.IsNullOrEmpty(directory)) return;
+        string markdown = File.ReadAllText(Path.Combine(directory, "chapter.md"));
+        int newline = markdown.IndexOf('\n');
+        var chapter = original with { Title = markdown[..newline].TrimStart('#', ' ').Trim() };
+        string prose = markdown[(newline + 1)..].Trim();
+        var selected = OriginBookProseDraft.Create(chapter, "en-US", "illustrated-layout-test", new string('e', 64), prose);
+        var book = new RetainedOriginBook(projection with
+        {
+            CurrentTurn = projection.CurrentTurn with { Locale = "en-US", RunnerDisplayName = "Grounding — illustrated test excerpt" },
+            VisibleChapters = [chapter]
+        }, new("synthetic-test-owner", "synthetic-test-workspace", [new(chapter.ChapterId, selected, null)]));
+        var picture = new OriginBookEpub.Illustration(chapter.ChapterId, Digest(prose),
+            "A spiral of pale and dark stones on damp evergreen forest soil, beside a small rainwater channel.",
+            File.ReadAllBytes(Path.Combine(directory, "scene.png")));
+        string output = Path.Combine(directory, "origin-illustrated-preview.epub");
+        using var file = new FileStream(output, FileMode.CreateNew);
+        file.Write(OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve("en-US"), [picture]));
+        Console.WriteLine("PASS Origin EPUB: wrote explicitly labeled synthetic illustrated test excerpt, not a production book");
     }
 
     private static void VerifyLongEpub(OriginStoryArcSeed projection, OriginNarrativeChapterProjection chapter)
