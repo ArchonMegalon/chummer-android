@@ -86,6 +86,15 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         _body.Add(consent);
         _body.Add(submit);
         _body.Add(refresh);
+        if (_jobState == OriginChapterAuthoringStates.ReconciliationRequired)
+        {
+            // Dispatch is not a worker heartbeat or a completed draft. Keep
+            // this distinction visible even when a transient read or a paused
+            // observer replaces the ordinary status notice.
+            var uncertain = NativeTheme.Body(_copy["Origin.AuthoringOutcomeUnconfirmed"]);
+            uncertain.AutomationId = "origin-authoring-outcome-unconfirmed";
+            _body.Add(uncertain);
+        }
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
         int? stage = _jobState switch
         {
