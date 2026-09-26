@@ -5,12 +5,46 @@ internal static class Program
 {
     private static async Task Main()
     {
+        ImageDecodeRequiresPremultiplicationOnlyForAlpha();
         await ProviderWorkLeavesAndReturnsToTheUiContextAsync();
         await AccountStartupWorkLeavesTheUiContextAsync();
         await CancellationReachesProviderWorkAndRunsCleanupAsync();
         await PreCancelledWorkNeverTouchesTheProviderAsync();
         await DocumentRequestOwnerAndCancellationAreScopedAsync();
-        Console.WriteLine("Android responsiveness boundary tests passed: 5");
+        Console.WriteLine("Android document-provider boundary tests passed: 6");
+    }
+
+    private static void ImageDecodeRequiresPremultiplicationOnlyForAlpha()
+    {
+        // Execute the production guard against controlled Android decoder results.
+        // A real opaque Bitmap has HasAlpha=false and IsPremultiplied=false,
+        // even when decoded with InPremultiplied=true.
+        var decode = typeof(AndroidImageDocumentService).GetMethod(
+            "DecodeAndValidate",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        object? Decode() => decode.Invoke(null,
+            System.Reflection.BindingFlags.DoNotWrapExceptions, null, [new byte[] { 1 }], null);
+        try
+        {
+            Android.Graphics.BitmapFactory.DecodedBitmap = new()
+                { HasAlpha = false, IsPremultiplied = false };
+            Require(Decode() is ValueTuple<int, int, string> result
+                && result == (1, 1, "image/png"), "Opaque decoded pixels were rejected.");
+
+            Android.Graphics.BitmapFactory.DecodedBitmap = new()
+                { HasAlpha = true, IsPremultiplied = true };
+            Require(Decode() is not null, "Premultiplied transparent pixels were rejected.");
+
+            Android.Graphics.BitmapFactory.DecodedBitmap = new()
+                { HasAlpha = true, IsPremultiplied = false };
+            RequireThrows<InvalidDataException>(() => Decode());
+            Android.Graphics.BitmapFactory.DecodedBitmap = null;
+            RequireThrows<InvalidDataException>(() => Decode());
+        }
+        finally
+        {
+            Android.Graphics.BitmapFactory.DecodedBitmap = new();
+        }
     }
 
     private static async Task AccountStartupWorkLeavesTheUiContextAsync()

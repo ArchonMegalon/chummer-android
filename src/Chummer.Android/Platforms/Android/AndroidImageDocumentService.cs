@@ -120,7 +120,9 @@ public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
             || decoded.Width != bounds.OutWidth
             || decoded.Height != bounds.OutHeight
             || decoded.GetConfig() != Bitmap.Config.Argb8888
-            || !decoded.IsPremultiplied
+            // Android reports IsPremultiplied=false for opaque images, which
+            // are safe to draw. Only alpha-bearing pixels require this flag.
+            || (decoded.HasAlpha && !decoded.IsPremultiplied)
             || !AndroidImageDocumentValidation.IsAllowedPixelSize(decoded.Width, decoded.Height))
         {
             throw new InvalidDataException("Android could not fully decode the selected image as ARGB pixels.");

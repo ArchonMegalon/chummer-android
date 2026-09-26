@@ -97,7 +97,8 @@ namespace Android.Graphics
 
         public int Width => 1;
         public int Height => 1;
-        public bool IsPremultiplied => true;
+        public bool HasAlpha { get; init; } = true;
+        public bool IsPremultiplied { get; init; } = true;
 
         public Config? GetConfig() => Config.Argb8888;
 
@@ -108,6 +109,8 @@ namespace Android.Graphics
 
     public static class BitmapFactory
     {
+        public static Bitmap? DecodedBitmap { get; set; } = new();
+
         public sealed class Options : IDisposable
         {
             public bool InJustDecodeBounds { get; init; }
@@ -123,7 +126,7 @@ namespace Android.Graphics
         }
 
         public static Bitmap? DecodeByteArray(byte[] data, int offset, int length, Options options)
-            => new();
+            => options.InJustDecodeBounds ? null : DecodedBitmap;
     }
 }
 
