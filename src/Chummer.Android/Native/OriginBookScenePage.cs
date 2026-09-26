@@ -232,7 +232,9 @@ internal sealed class OriginBookScenePage : NativePageBase
         base.OnDisappearing();
         _selection = null;
         _remoteSelection = false;
-        _excerpt = "";
+        // Keep the unsubmitted excerpt alongside the description if this same
+        // page returns. Refresh still revalidates its exact book/owner edition,
+        // and newly composed controls always require fresh generation consent.
         _body.Clear();
     }
 }

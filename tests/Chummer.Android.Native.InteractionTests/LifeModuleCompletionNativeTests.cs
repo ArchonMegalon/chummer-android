@@ -792,6 +792,32 @@ internal static partial class AfterRunAuthorityHarness
                 await Click($"origin-scene-chapter-{chapter.Sequence}");
                 Require(!Element<Switch>("origin-scene-consent").IsToggled && authoringProbe.SceneReads == 0
                     && authoringProbe.SceneRequests == 0, "Opening illustrations granted consent or contacted a provider.");
+                Element<Editor>("origin-scene-description").Text = "Synthetic chapter scene";
+                Element<Editor>("origin-scene-excerpt").Text = "Synthetic transport chapter";
+                var departedConsent = Element<Switch>("origin-scene-consent");
+                departedConsent.IsToggled = true;
+                var departedRequest = Element<Button>("origin-scene-request");
+                var returningScenePage = Current();
+                IssuedPageLifecycle(returningScenePage, "OnDisappearing");
+                Require(!IssuedElements(returningScenePage).OfType<Editor>().Any(),
+                    "A hidden illustration page retained visible private inputs.");
+                await Appear();
+                Require(Element<Editor>("origin-scene-excerpt").Text == "Synthetic transport chapter"
+                    && Element<Editor>("origin-scene-description").Text == "Synthetic chapter scene"
+                    && !Element<Switch>("origin-scene-consent").IsToggled
+                    && !Element<Button>("origin-scene-request").IsEnabled
+                    && authoringProbe.SceneReads == 0 && authoringProbe.SceneRequests == 0,
+                    "Returning to illustrations lost the reviewed excerpt, retained consent or contacted a provider.");
+                departedConsent.IsToggled = false;
+                departedConsent.IsToggled = true;
+                // Model an already queued tap even though the retired toggle
+                // has correctly disabled the old control in the meantime.
+                departedRequest.IsEnabled = true;
+                await ui.BeginAsyncVoid(() => ((IButtonController)departedRequest).SendClicked());
+                Require(!Element<Switch>("origin-scene-consent").IsToggled
+                    && !Element<Button>("origin-scene-request").IsEnabled
+                    && authoringProbe.SceneReads == 0 && authoringProbe.SceneRequests == 0,
+                    "Departed illustration controls granted consent or dispatched a request on return.");
                 await Click("origin-scene-read");
                 Require(authoringProbe.SceneReads == 1 && authoringProbe.SceneRequests == 0,
                     "Read-only absence generated an image.");
@@ -910,6 +936,11 @@ internal static partial class AfterRunAuthorityHarness
                 catch (OperationCanceledException) { canceled = true; }
                 Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
                     "Owner A→B→A during the document picker exported the old book.");
+                typeof(OriginBookScenePage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                    .Invoke(returningScenePage, null);
+                Require(!IssuedElements(returningScenePage).Any(element => element is Microsoft.Maui.Controls.Editor
+                    or Microsoft.Maui.Controls.Image or Microsoft.Maui.Controls.Switch or Microsoft.Maui.Controls.Button),
+                    "A retired illustration page exposed retained inputs after an owner transition.");
                 Require(await runtime.Coordinator.SaveOriginBookSceneAsync(book!, chapter, retainedScene.Scenes.Single(),
                     true, () => true, default) is null, "A retired owner stamp saved a scene.");
                 bool rejectedOwner = false;
