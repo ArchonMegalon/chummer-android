@@ -13,7 +13,28 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 42 — September 26, 2026
+## Current observed Internal release: Preview 43 — September 26, 2026
+
+Scoped authenticated Console readback at `2026-09-26T21:40:45Z` shows
+`43 (0.1.0-preview.43)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview43-internal-observation.md).
+
+Missing server acknowledgement of an already explicit saved reader choice is
+reconciled before a consented next-chapter request. Exact identity/text and owner
+checks remain enforced; status reads never generate and paid jobs are not replayed.
+Focused managed/transport tests and native retained-reader/new-process smoke pass.
+The version-only candidate then passed the local ARM64 Release build, bundle/content/
+proof checks, separate existing-key signing and independent payload/certificate
+verification. Android PR146/147 merged normally; UI/Core inputs are unchanged.
+
+Physical Play installation remains deferred. The separately interrupted FirstBook
+write stays fenced; full Life Modules/Career and whole-book completion remain
+unverified. Store drafts/icon review were untouched. This is bounded Internal
+availability, not hosted qualification or complete phone beta. Code43 is consumed;
+use44 or higher unused code next. Prior artifacts/evidence remain immutable.
+
+## Historical observed Internal release: Preview 42 — September 26, 2026
 
 Scoped authenticated Console readback at `2026-09-26T20:50:01Z` shows
 `42 (0.1.0-preview.42)` as **Available to internal testers**.
