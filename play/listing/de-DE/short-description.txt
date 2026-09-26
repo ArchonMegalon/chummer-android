@@ -1,1 +1,1 @@
-Sieben SR5-Flows; andere Wizard-Routen sind experimentell. Interner Telefontest.
+SR5-Runner-Wizards und Origin-Geschichten mit EPUB-Export. Interner Test.

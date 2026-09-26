@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Verify the exact, truthful Preview.12 Google Play listing localizations."""
+"""Validate current Internal store copy; preserve historical release evidence.
+
+Copy validation grants neither runtime qualification nor Play publication authority.
+The default Play en-GB listing deliberately reuses the en-US English source.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +21,6 @@ CURRENT_FILES = (
     "title.txt",
     "short-description.txt",
     "full-description.txt",
-    "release-notes-12.txt",
 )
 LIMITS = {
     "title.txt": 30,
@@ -26,9 +29,13 @@ LIMITS = {
     "release-notes-12.txt": 500,
 }
 PACKAGE_ID = "com.myexternalbrain.chummer"
-VERSION_NAME = "0.1.0-preview.12"
-VERSION_CODE = "12"
-FULL_DESCRIPTION_RELEASE_PREFIX = f"Chummer Preview.{VERSION_CODE} "
+DEFAULT_STORE_LOCALE = "en-GB"
+DEFAULT_SOURCE_LOCALE = "en-US"
+PREVIEW12_NOTES_SHA256 = {
+    "en-US": "c840e9d3c75c0aa2e59b9e96b7d463869d714965b43fa0140a2ffec682263586",
+    "de-DE": "020f80bff2d89a425115b0727848fd940db9a8b1798acce6f5666f703f7cb1a1",
+    "es-ES": "ebc9e1d7b1cb73178f9993672fc33d4753588822c762880bf28f934a4b611a0d",
+}
 DATA_SAFETY_SHA256 = "0379209d99ba666ba72a150d88c1855e6b4db17d64199402eb0f9bb80f4fa0f3"
 PREVIEW10_EVIDENCE_SHA256 = "8f245fcf6e8fd62d6ed2d7e75170617d3c5430e024ce14ab77535ca1c57fece9"
 PREVIEW10_NOTES_SHA256 = "b45905778f70e9c459b37c5a450a75800aca780f8ca4a4c8aa176f685cb39037"
@@ -48,152 +55,55 @@ REQUIRED_GATE_JOURNEYS = (
     "after-run-settlement",
 )
 
+# Current copy is version-neutral: source versions are not distribution evidence.
 REQUIRED_FRAGMENTS = {
     "en-US": {
-        "short-description.txt": (
-            "Seven SR5 phone flows",
-            "wizard routes are experimental",
-            "Internal test",
-        ),
+        "short-description.txt": ("SR5", "EPUB", "Internal test"),
         "full-description.txt": (
-            "Internal testing build for phones",
-            "covers exactly seven SR5 flows",
-            "Additional visible wizard routes remain available for feedback",
-            "Experimental — not covered by the current Preview authority",
-            "limited to the seven named SR5 phone flows",
-            "Full Editing",
-            "tablet or foldable support",
-            "SR4 or SR6 creation",
-            "Rook or live-avatar support",
-            "public availability",
-            "production release are not included",
-        ),
-        "release-notes-12.txt": (
-            "Internal testing build for phones",
-            "Upgrading from Preview.10? Link your account again.",
-            "seven named flows",
-            "Additional wizard routes are marked Experimental",
-            "not covered by the current Preview authority",
-            "remain outside this test",
+            "experimental SR5 runner companion for phones",
+            "available to invited Internal testers",
+            "not every build method or Career action is complete",
+            "cumulative rules effects",
+            "Confirm your metatype, birth background and childhood",
+            "Read accepted chapters", "export them as an EPUB",
+            "included offline when available",
+            "explicit consent to share character facts", "available provider credits",
+            "An entire accepted Origin book and the complete Life Modules-to-Career journey are still being completed",
+            "Audiobooks are not included", "Account linking remains optional",
+            "a physical Play-managed installation is not yet verified",
+            "Visible experimental features do not all have the same test coverage",
         ),
     },
     "de-DE": {
-        "short-description.txt": (
-            "Sieben SR5-Flows",
-            "Wizard-Routen sind experimentell",
-            "Interner Telefontest",
-        ),
+        "short-description.txt": ("SR5", "EPUB", "Interner Test"),
         "full-description.txt": (
-            "interne Testversion für Telefone",
-            "deckt genau sieben SR5-Flows ab",
-            "Zusätzliche sichtbare Wizard-Routen bleiben für Feedback verfügbar",
-            "Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt",
-            "auf die sieben genannten SR5-Flows für Telefone begrenzt",
-            "Vollständige Bearbeitung",
-            "Tablet- oder Foldable-Unterstützung",
-            "SR4- oder SR6-Erstellung",
-            "Rook- oder Live-Avatar-Unterstützung",
-            "öffentliche Verfügbarkeit",
-            "Produktivveröffentlichung",
-        ),
-        "release-notes-12.txt": (
-            "interner Telefontest",
-            "Beim Update von Preview.10 das Konto neu verknüpfen.",
-            "Sieben Flows",
-            "Weitere Wizard-Routen: Experimentell",
-            "nicht durch die aktuelle Preview-Autorität abgedeckt",
-            "nicht Teil dieses Tests",
+            "experimenteller SR5-Runner-Begleiter für Telefone",
+            "im internen Test für eingeladene Tester",
+            "nicht jede Bauart oder Karriere-Aktion ist fertig",
+            "kumulierte Regeleffekte", "Bestätige Metatyp, Geburtsumstände und Kindheit",
+            "Lies angenommene Kapitel", "exportiere sie als EPUB",
+            "offline enthalten, sofern verfügbar",
+            "ausdrückliche Zustimmung zur Weitergabe der Charakterfakten", "verfügbare Anbieter-Credits",
+            "Ein vollständig angenommenes Origin-Buch und der gesamte Life-Modules-Weg bis zur Karriere sind noch in Arbeit",
+            "Hörbücher sind nicht enthalten", "Kontoverknüpfung bleibt optional",
+            "eine physische Installation über Play ist noch nicht verifiziert",
+            "Sichtbare experimentelle Funktionen haben nicht alle dieselbe Testabdeckung",
         ),
     },
     "es-ES": {
-        "short-description.txt": (
-            "Siete flujos SR5",
-            "rutas son experimentales",
-            "Prueba interna en móvil",
-        ),
+        "short-description.txt": ("SR5", "EPUB", "Prueba interna"),
         "full-description.txt": (
-            "versión de prueba interna para teléfonos",
-            "cubre exactamente siete flujos de SR5",
-            "rutas adicionales visibles de los asistentes siguen disponibles",
-            "Experimental — no cubierta por la autoridad de la vista previa actual",
-            "limitada a los siete flujos de SR5 para teléfonos indicados",
-            "edición completa",
-            "tabletas o los plegables",
-            "creación para SR4 o SR6",
-            "Rook o los avatares en directo",
-            "disponibilidad pública",
-            "publicación en producción",
-        ),
-        "release-notes-12.txt": (
-            "prueba interna para teléfonos",
-            "Al actualizar desde Preview.10, vuelve a vincular tu cuenta.",
-            "Siete flujos",
-            "Otras rutas: Experimental",
-            "no cubiertas por la autoridad de la vista previa actual",
-            "no forman parte de esta prueba",
-        ),
-    },
-}
-
-EXACT_FLOW_LABELS = {
-    "en-US": {
-        "full-description.txt": (
-            "Creation Prerequisite",
-            "Career Active Skill Advance",
-            "Career Weapon Fire",
-            "Before Run Edge",
-            "Playtime Short Burst",
-            "Downtime Calendar",
-            "After Run Settlement",
-        ),
-        "release-notes-12.txt": (
-            "Creation Prerequisite",
-            "Career Active Skill Advance",
-            "Career Weapon Fire",
-            "Before Run Edge",
-            "Playtime Short Burst",
-            "Downtime Calendar",
-            "After Run Settlement",
-        ),
-    },
-    "de-DE": {
-        "full-description.txt": (
-            "Erstellungs-Voraussetzungen",
-            "Steigerung einer aktiven Fertigkeit",
-            "Karriere-Waffenfeuer",
-            "Edge vor dem Run",
-            "kurzer Spielzeit-Einsatz",
-            "Auszeit-Kalender",
-            "Abrechnung nach dem Run",
-        ),
-        "release-notes-12.txt": (
-            "Erstellungs-Voraussetzungen",
-            "aktive Fertigkeit steigern",
-            "Karriere-Waffenfeuer",
-            "Edge vor dem Run",
-            "kurzer Spielzeit-Einsatz",
-            "Auszeit-Kalender",
-            "Abrechnung nach dem Run",
-        ),
-    },
-    "es-ES": {
-        "full-description.txt": (
-            "Requisitos de creación",
-            "Avance de habilidad activa en Carrera",
-            "Disparo de arma en Carrera",
-            "Edge antes de la misión",
-            "Cambio breve durante la partida",
-            "Calendario de tiempo libre",
-            "Liquidación después de la misión",
-        ),
-        "release-notes-12.txt": (
-            "Requisitos de creación",
-            "Avance de habilidad activa",
-            "Disparo de arma",
-            "Edge antes de la misión",
-            "Cambio breve durante la partida",
-            "Calendario de tiempo libre",
-            "Liquidación después de la misión",
+            "asistente experimental de runners de SR5 para teléfonos",
+            "en prueba interna para participantes invitados",
+            "no todos los métodos ni las acciones de Carrera están completos",
+            "efectos acumulados de las reglas", "Confirma metatipo, circunstancias del nacimiento e infancia",
+            "Lee los capítulos aceptados", "expórtalos como EPUB",
+            "sin conexión cuando están disponibles",
+            "consentimiento explícito para compartir los datos del personaje", "créditos disponibles del proveedor",
+            "Un libro de Origin aceptado completo y toda la ruta de Life Modules hasta Carrera siguen en desarrollo",
+            "No se incluyen audiolibros", "vinculación sigue siendo opcional",
+            "la instalación física mediante Play aún no está verificada",
+            "No todas las funciones experimentales visibles tienen la misma cobertura de pruebas",
         ),
     },
 }
@@ -288,7 +198,7 @@ def _sha256(path: Path, label: str) -> str:
 
 
 def _read_listing(path: Path, label: str) -> str:
-    raw = _regular_file(path, label).read_text(encoding="utf-8")
+    raw = _regular_file(path, label).read_bytes().decode("utf-8")
     if raw.startswith("\ufeff") or "\r" in raw or "\x00" in raw:
         raise ValueError(f"{label} must be canonical UTF-8 text")
     if not raw.endswith("\n") or raw.endswith("\n\n"):
@@ -349,7 +259,7 @@ def _reject_positive_or_unproven_claims(
     fields: dict[str, str],
 ) -> None:
     scrubbed: list[str] = []
-    for name in ("short-description.txt", "full-description.txt", "release-notes-12.txt"):
+    for name in ("short-description.txt", "full-description.txt"):
         value = fields[name]
         permitted = NONCLAIM_SENTENCES.get(locale, {}).get(name)
         if permitted is not None:
@@ -363,10 +273,10 @@ def _reject_positive_or_unproven_claims(
             raise ValueError(f"{locale} contains a prohibited positive product claim")
     for pattern in FORBIDDEN_UNPROVEN_CLAIMS[locale]:
         if re.search(pattern, candidate, flags=re.IGNORECASE | re.DOTALL):
-            raise ValueError(f"{locale} claims runtime proof before a green aggregate")
+            raise ValueError(f"{locale} claims runtime proof from store copy")
     for pattern in FORBIDDEN_BROAD_WIZARD_CLAIMS[locale]:
         if re.search(pattern, candidate, flags=re.IGNORECASE | re.DOTALL):
-            raise ValueError(f"{locale} broadens the exact seven-flow wizard scope")
+            raise ValueError(f"{locale} broadens the current experimental wizard scope")
 
 
 def _project_identity(project: Path) -> tuple[str, str, str]:
@@ -382,11 +292,16 @@ def _project_identity(project: Path) -> tuple[str, str, str]:
             values[name].append((node.text or "").strip())
     if values["ApplicationId"] != [PACKAGE_ID]:
         raise ValueError("Android package identity is not exact")
-    if values["ApplicationDisplayVersion"] != [VERSION_NAME]:
-        raise ValueError("Android version name is not exact Preview.12")
-    if values["ApplicationVersion"] != [VERSION_CODE]:
-        raise ValueError("Android version code is not exact Preview.12")
-    return PACKAGE_ID, VERSION_NAME, VERSION_CODE
+    if len(values["ApplicationDisplayVersion"]) != 1:
+        raise ValueError("Android version name must be unique")
+    version_name = values["ApplicationDisplayVersion"][0]
+    match = re.fullmatch(r"0\.1\.0-preview\.([1-9][0-9]*)", version_name)
+    if match is None:
+        raise ValueError("Android version name is not an Internal preview identity")
+    version_code = match.group(1)
+    if values["ApplicationVersion"] != [version_code]:
+        raise ValueError("Android version code does not match its version name")
+    return PACKAGE_ID, version_name, version_code
 
 
 def _supported_ui_locales(policy: Path) -> tuple[str, ...]:
@@ -413,7 +328,7 @@ def validate_listing(
 ) -> dict[str, Any]:
     if listing_root.is_symlink() or not listing_root.is_dir():
         raise ValueError("Play listing root must be one real directory")
-    _project_identity(project)
+    _, source_version, _ = _project_identity(project)
     _supported_ui_locales(phone_locale_policy)
     wizard_gate_digest, required_journeys = _read_wizard_gate(wizard_gate_authority)
     if _sha256(data_safety, "Data safety source") != DATA_SAFETY_SHA256:
@@ -435,7 +350,7 @@ def validate_listing(
         if locale_root.is_symlink() or not locale_root.is_dir():
             raise ValueError(f"Play listing locale {locale} must be one real directory")
         expected_files = set(CURRENT_FILES)
-        expected_files.add("release-notes-11.txt")
+        expected_files.update(f"release-notes-{version}.txt" for version in (11, 12, 15, 16, 17))
         if locale == "en-US":
             expected_files.update(f"release-notes-{version}.txt" for version in range(1, 11))
         actual_files = {entry.name for entry in locale_root.iterdir()}
@@ -452,25 +367,14 @@ def validate_listing(
             locale_lengths[name] = len(value)
         if fields["title.txt"] != "Chummer":
             raise ValueError(f"Play title is not the exact product identity for {locale}")
-        if (
-            not fields["full-description.txt"].startswith(FULL_DESCRIPTION_RELEASE_PREFIX)
-            or re.findall(r"\bPreview\.([0-9]+)\b", fields["full-description.txt"])
-            != [VERSION_CODE]
-        ):
-            raise ValueError(
-                f"{locale}/full-description.txt must describe the exact Preview.12 candidate"
-            )
+        if any(re.search(r"\b(?:Preview[. ]?|version(?:Code)?\s*)[0-9]+", value, re.IGNORECASE)
+               for value in fields.values()):
+            raise ValueError(f"{locale} current copy must be version-neutral, not a release receipt")
         for name, fragments in REQUIRED_FRAGMENTS[locale].items():
             for fragment in fragments:
                 if fragment not in fields[name]:
                     raise ValueError(
                         f"{locale}/{name} is missing exact wizard-scope or non-claim copy"
-                    )
-        for name, labels in EXACT_FLOW_LABELS[locale].items():
-            for label in labels:
-                if label not in fields[name]:
-                    raise ValueError(
-                        f"{locale}/{name} must name every exact required flow"
                     )
         _reject_positive_or_unproven_claims(locale, fields)
         localized_fields[locale] = fields
@@ -479,7 +383,6 @@ def validate_listing(
     for name in (
         "short-description.txt",
         "full-description.txt",
-        "release-notes-12.txt",
     ):
         values = {localized_fields[locale][name] for locale in LOCALES}
         if len(values) != len(LOCALES):
@@ -504,13 +407,22 @@ def validate_listing(
         ):
             raise ValueError(f"{locale} Preview.11 historical release notes drifted")
 
+    for locale, expected_digest in PREVIEW12_NOTES_SHA256.items():
+        if _sha256(listing_root / locale / "release-notes-12.txt",
+                   f"{locale} Preview.12 release notes") != expected_digest:
+            raise ValueError(f"{locale} Preview.12 historical release notes drifted")
+
     return {
         "packageId": PACKAGE_ID,
-        "release": VERSION_NAME,
+        "sourceVersion": source_version,
+        "defaultStoreLocale": DEFAULT_STORE_LOCALE,
+        "defaultSourceLocale": DEFAULT_SOURCE_LOCALE,
+        "copyOnly": True,
         "trackPosture": "internal_testing_only",
-        "scope": "sr5_phone_wizards_only",
-        "wizardGateSha256": wizard_gate_digest,
-        "requiredJourneys": list(required_journeys),
+        "scope": "experimental_sr5_phone_wizards_and_origin_reader",
+        "historicalWizardGateSha256": wizard_gate_digest,
+        "historicalRequiredJourneys": list(required_journeys),
+        "runtimeQualificationAsserted": False,
         "locales": list(LOCALES),
         "lengths": lengths,
         "publicationAuthorized": False,
@@ -556,8 +468,9 @@ def main() -> int:
         raise SystemExit(f"Play listing localization is invalid: {error}") from error
     print(
         "play_listing_localizations=pass "
-        f"locales={len(result['locales'])} journeys={len(result['requiredJourneys'])} "
-        f"scope={result['scope']} gate_sha256={result['wizardGateSha256']} "
+        f"locales={len(result['locales'])} default={result['defaultStoreLocale']} "
+        "copy_only=true historical_gate_preserved=true "
+        "runtime_qualification_asserted=false "
         "publication_authorized=false"
     )
     return 0
