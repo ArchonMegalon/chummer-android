@@ -222,8 +222,17 @@ public sealed partial class RunnerSessionCoordinator
         {
             if (!book.TryGetAuthoringPredecessor(chapter, out var previous))
                 return (new(AndroidOriginChapterOutcome.Conflict), book);
-            // Hub validates the prior reading's explicit acceptance. This
-            // request cannot turn an unacknowledged local edition into consent.
+            // A previous explicit reader decision may be durable locally while
+            // its Hub acknowledgement was lost. Recover that exact outbox before
+            // the new request, not by making the user reopen the old chapter.
+            // Status-only reads never acknowledge, adopt or generate anything.
+            if (previous is not null)
+            {
+                var recovery = await ReconcileOriginPredecessorAsync(book, previous, owner, transport, Current, ct);
+                if (!Current() || ct.IsCancellationRequested)
+                    return (new(AndroidOriginChapterOutcome.Unauthorized), null);
+                if (recovery is not null) return (recovery, book);
+            }
             result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
         }
         if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);
@@ -242,6 +251,31 @@ public sealed partial class RunnerSessionCoordinator
         }
         var updated = await StageOriginBookProseDraftAsync(book, draft, isCurrentPage, ct);
         return (result, updated);
+    }
+
+    private async Task<AndroidOriginChapterResult?> ReconcileOriginPredecessorAsync(RetainedOriginBook book,
+        OriginChapterPredecessor previous, Chummer.Application.Owners.OwnerContextStamp owner,
+        IAndroidOriginChapterTransport transport, Func<bool> current, CancellationToken ct)
+    {
+        var chapter = book.Chapters.SingleOrDefault(c => book.Reading(c)?.Selected?.JobId == previous.RequestId);
+        if (chapter is null || book.Reading(chapter)?.Selected is not { } selected)
+            return new(AndroidOriginChapterOutcome.Conflict);
+        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        var read = await transport.ReadChapterAsync(owner, source, ct);
+        if (!current() || ct.IsCancellationRequested) return new(AndroidOriginChapterOutcome.Unauthorized);
+        if (read.Outcome != AndroidOriginChapterOutcome.Available)
+            return read with { Job = null, Outcome = read.Outcome == AndroidOriginChapterOutcome.NotFound
+                ? AndroidOriginChapterOutcome.Conflict : read.Outcome };
+        // Never accept replacement prose or expose the prior chapter's job as
+        // the successor's progress. Both identities must match the saved edition.
+        if (read.Job is not { State: OriginChapterAuthoringStates.ReviewRequired } job
+            || job.RequestId != previous.RequestId || job.SourceDigest != previous.SourceDigest
+            || job.ProviderReceiptDigest != previous.ProviderReceiptDigest || job.DraftText != selected.Text
+            || job.ReaderAcceptedTextDigest is not null && job.ReaderAcceptedTextDigest != previous.TextDigest)
+            return new(AndroidOriginChapterOutcome.Conflict);
+        if (job.ReaderAcceptedTextDigest == previous.TextDigest) return null;
+        return await RecordOriginBookReaderAcceptanceAsync(book, selected, current, ct)
+            ? null : new(AndroidOriginChapterOutcome.Unavailable);
     }
 
     internal async Task<bool> RecordOriginBookReaderAcceptanceAsync(RetainedOriginBook book,

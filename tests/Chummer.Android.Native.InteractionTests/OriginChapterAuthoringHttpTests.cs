@@ -321,6 +321,63 @@ internal static partial class AfterRunAuthorityHarness
 
 // Only the remote job is synthetic here. Page/coordinator/Core/file-store paths
 // are real; signed HTTP and owner admission are exercised separately above.
+public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTransport
+{
+    private OriginChapterAuthoringJob? _previous, _next;
+    public int Requests, Acceptances;
+    public bool FailAcceptance, CorruptPredecessor;
+    public AndroidOriginChapterOutcome? PredecessorReadFailure;
+    public Action? AfterPredecessorRead, AfterAcceptance;
+    public void ResetCounts() { Requests = Acceptances = 0; }
+    public void RemoveSuccessor() => _next = null;
+    public void Seed(OriginChapterSource source, Chummer.Presentation.OriginBooks.OriginBookProseDraft draft)
+        => _previous = new(draft.JobId, OriginChapterSourceIdentity.Digest(source), source,
+            OriginChapterAuthoringStates.ReviewRequired, "first_book_ai", draft.Text, draft.ProviderReceiptDigest);
+    protected override object? Invoke(MethodInfo? method, object?[]? args)
+        => method?.Name switch
+        {
+            "get_Snapshot" => new AndroidAccountLinkSnapshot(AndroidAccountLinkStatus.Linked, "Test account"),
+            "InitializeAsync" or "RefreshAsync" => Task.CompletedTask,
+            _ => base.Invoke(method, args)
+        };
+    public Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner, OriginChapterSource source, CancellationToken ct = default)
+    {
+        var job = _previous?.SourceDigest == OriginChapterSourceIdentity.Digest(source) ? _previous : _next;
+        if (ReferenceEquals(job, _previous) && job is not null)
+        {
+            AfterPredecessorRead?.Invoke();
+            if (PredecessorReadFailure is { } failure) return Task.FromResult(new AndroidOriginChapterResult(failure));
+            if (CorruptPredecessor) job = job with { DraftText = "Different unselected prose." };
+        }
+        return Task.FromResult(job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
+            : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job));
+    }
+    public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)
+    {
+        if (!explicitlyConfirmed || _previous?.SourceDigest != OriginChapterSourceIdentity.Digest(source)
+            || _previous.DraftText != draftText || _previous.ProviderReceiptDigest != providerReceiptDigest)
+            throw new InvalidOperationException("Wrong recovered acceptance.");
+        Acceptances++;
+        if (FailAcceptance) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
+        _previous = _previous with { ReaderAcceptedTextDigest = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(draftText))) };
+        AfterAcceptance?.Invoke();
+        return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _previous));
+    }
+    public Task<AndroidOriginChapterResult> RequestChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
+        bool externalProcessingConsent, CancellationToken ct = default, OriginChapterPredecessor? previous = null)
+    {
+        Requests++;
+        if (!externalProcessingConsent || previous is null || previous.RequestId != _previous?.RequestId
+            || previous.TextDigest != _previous.ReaderAcceptedTextDigest)
+            return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Conflict));
+        _next ??= new(OriginChapterSourceIdentity.RequestId(source), OriginChapterSourceIdentity.Digest(source), source,
+            OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null) { Previous = previous };
+        return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _next));
+    }
+}
+
 public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapterTransport, IAndroidOriginSceneTransport
 {
     public int Requests { get; private set; }
