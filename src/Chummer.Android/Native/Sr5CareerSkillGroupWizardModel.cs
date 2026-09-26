@@ -23,13 +23,13 @@ public sealed record Sr5CareerSkillGroupRuntimeAuthority(
     public const string CurrentContractName =
         "chummer.android.sr5-career-skill-group-runtime/v2";
     public const string CurrentCoreRevision =
-        "3004181b467a0f77653ce97aef8cd16d4bc4a0ff";
+        "c27201749190db6c3ebfec0c3e5a05d0ea0be37f";
     public const string CurrentPresentationRevision =
-        "fc614e38aa1ec7dfab5be7c8bac3eae542f7cfd4";
+        "0a814992884dc1244fe0bfdb0b8ad233ccde92da";
     public const string CurrentContentDigest =
-        "921b61626238cb7fa4d35e52c759fb24e8ebd88618854c784bb15a8f0d4c88e7";
+        "ea644bf13b10859758ae29c5ec79de361de7fee131e3286dbb2c8b8bd569d078";
     public const string CurrentRuntimeDigest =
-        "40faf0bf933228fa88920c2ba11907261f058dd9aa8313cc3c3fa03c62b91bf6";
+        "f4be9ec6ecf117cc590c26f1c471b040a3c35d8df02e821d7f120b73ba3582f2";
 
     public static Sr5CareerSkillGroupRuntimeAuthority Embedded { get; } = new(
         CurrentContractName,
