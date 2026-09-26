@@ -142,7 +142,9 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (!ReferenceEquals(_book, book) || updated is null || ct.IsCancellationRequested
             || !Coordinator.IsRetainedOriginBookCurrent(updated)) return false;
         _book = updated;
-        if (!create && result.Outcome == AndroidOriginChapterOutcome.Unavailable
+        // Request/resume first performs a read. A failure of that read is still
+        // read-only: preserve the stage and never infer absence or create a job.
+        if (result.Outcome == AndroidOriginChapterOutcome.Unavailable
             && result.RetryableReadFailure)
         {
             _watchPending = wasWatching && ++_consecutiveReadFailures < 3;

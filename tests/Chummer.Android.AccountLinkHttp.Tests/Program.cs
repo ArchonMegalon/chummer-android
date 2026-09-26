@@ -29,6 +29,7 @@ internal static class Program
         AccountOwnerKeyPreservesOpaqueSubjectIdentity();
         await LegacyOwnerHydratesFromExactStatusAsync();
         await RequestDeadlinesPreserveLinkedAccountAsync();
+        await RequestDeadlineRetainsRedactedInterruptionTypeAsync();
         await CallerCancellationRemainsCancellationAsync();
         await GrantStatusCannotInventOrReplaceOwnerAsync();
         await LegacyOwnerCommitIsRestartableAndFencedAsync();
@@ -76,7 +77,7 @@ internal static class Program
         await StoredOwnerBindingsFailClosedAcrossRestartAsync();
         await LegacyStagedGrantCannotInheritAnOwnerAsync();
         await BoundOwnerErasureAndUnlinkCleanupAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 50");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 51");
     }
 
     private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()
@@ -180,6 +181,21 @@ internal static class Program
             Require(!service.Snapshot.ToString().Contains(AccessToken, StringComparison.Ordinal));
             Console.WriteLine($"PASS bounded account deadline preserves existing identity: headers={beforeHeaders}");
         }
+    }
+
+    private static async Task RequestDeadlineRetainsRedactedInterruptionTypeAsync()
+    {
+        var terminal = new RecordingHandler(async (_, token) =>
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return JsonResponse("{}");
+        });
+        using var transport = CreateTransport(terminal, TimeSpan.FromMilliseconds(100));
+        var error = await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+            transport.PostJsonAsync("/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                CreateAuthority(), CancellationToken.None));
+        Require(error.InnerException is null && terminal.Requests.Count == 1
+            && !error.ToString().Contains(AccessToken, StringComparison.Ordinal));
     }
 
     private static async Task CallerCancellationRemainsCancellationAsync()
@@ -1074,7 +1090,7 @@ internal static class Program
             CreateAuthority(),
             CancellationToken.None);
         Stopwatch elapsed = Stopwatch.StartNew();
-        HttpRequestException error = await RequireThrowsAsync<HttpRequestException>(
+        HttpRequestException error = await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(
             () => transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None));
         elapsed.Stop();
 

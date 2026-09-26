@@ -9,6 +9,16 @@ namespace Chummer.Android.Platform;
 
 internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 {
+    // Preserve a typed, credential-free interruption after redacting the handler
+    // exception. Callers still decide whether an operation was read-only; this
+    // marker never authorizes replay of a possibly committed request.
+    internal sealed class InterruptedException : HttpRequestException
+    {
+        internal InterruptedException(bool readingBody)
+            : base(readingBody ? "Chummer account response timed out."
+                : "Chummer account request timed out.") { }
+    }
+
     internal const long MaxResponseBodyBytes = 16L * 1024 * 1024;
     internal static readonly Uri TrustedOrigin = new("https://chummer.run/");
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(20);
@@ -98,7 +108,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             // HttpClient's own deadline is a transport failure, not caller
             // cancellation or broken SecureStorage. Do not retain exception
             // details from the HTTP handler, which may contain credentials.
-            throw new HttpRequestException("Chummer account request timed out.");
+            throw new InterruptedException(readingBody: false);
         }
         if (!IsRedirect(response.StatusCode))
         {
@@ -157,7 +167,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         {
             // ResponseHeadersRead requires a separate body-read deadline. Use
             // the same recoverable transport contract as a headers timeout.
-            throw new HttpRequestException("Chummer account response timed out.");
+            throw new InterruptedException(readingBody: true);
         }
         catch (ResponseBodyTooLargeException)
         {

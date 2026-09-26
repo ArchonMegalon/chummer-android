@@ -143,7 +143,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             // and untrusted origins; TLS, invalid content, storage and signing
             // failures must not enter the page's bounded observation reserve.
             bool transientRead = !changesRemote && proofReleased && !ownerChanged && !ct.IsCancellationRequested
-                && (error is OperationCanceledException
+                && (error is OperationCanceledException or AndroidAccountLinkHttpTransport.InterruptedException
                     || error is HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError
                         or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded }
 #if ANDROID
