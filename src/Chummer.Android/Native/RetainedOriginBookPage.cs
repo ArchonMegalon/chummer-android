@@ -59,6 +59,17 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _body.Add(opening);
         }
         long appearance = CaptureAppearanceGeneration();
+        var epub = NativeTheme.ReadingButton(_copy["Origin.ExportEpub"]);
+        epub.AutomationId = "origin-book-export-epub";
+        epub.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                && Coordinator.IsRetainedOriginBookCurrent(book);
+            if (!Current()) return;
+            bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None, epub: true);
+            if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
+        });
+        _body.Add(epub);
         var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
         export.AutomationId = "origin-book-export";
         export.Clicked += async (_, _) => await RunAsync(async () =>

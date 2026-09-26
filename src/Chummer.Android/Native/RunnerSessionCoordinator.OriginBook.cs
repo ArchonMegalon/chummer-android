@@ -345,17 +345,18 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     internal async Task<bool> ExportRetainedOriginBookAsync(RetainedOriginBook book, AndroidSurfaceCopy copy,
-        Func<bool> isCurrentPage, CancellationToken ct)
+        Func<bool> isCurrentPage, CancellationToken ct, bool epub = false)
     {
         bool Current() => isCurrentPage() && IsRetainedOriginBookCurrent(book);
         if (!Current()) throw new OperationCanceledException("The book context changed.");
-        byte[] bytes = await Task.Run(() => Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
+        byte[] bytes = await Task.Run(() => epub ? OriginBookEpub.Create(book, copy) : Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
         try
         {
             ct.ThrowIfCancellationRequested();
             if (!Current()) throw new OperationCanceledException("The book context changed.");
             await using var stream = new MemoryStream(bytes, writable: false);
-            return await _documents.SaveAsAsync("origin-dossier.html", "text/html", stream, Current, ct);
+            return await _documents.SaveAsAsync(epub ? "origin-dossier.epub" : "origin-dossier.html",
+                epub ? "application/epub+zip" : "text/html", stream, Current, ct);
         }
         finally { CryptographicOperations.ZeroMemory(bytes); }
     }
