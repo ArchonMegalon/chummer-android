@@ -105,9 +105,13 @@ internal static partial class AfterRunAuthorityHarness
                 Require(result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.Image is null,
                     "Hostile scene readback reached the reader.");
             }
-            fixture.SceneResponse = (_, _) => new(HttpStatusCode.OK) { Content = new UnboundedSceneContent() };
-            Require((await transport.ReadSceneAsync(owner, source, prose)).Outcome == AndroidOriginSceneOutcome.Unavailable,
-                "Oversized chunked image response passed materialization limits.");
+            // Valid JSON with leading whitespace: rejection must be the byte
+            // cap, not an early syntax error or later scene-schema rejection.
+            var oversized = new SceneChunkStream(Encoding.UTF8.GetBytes(new string(' ', 7 * 1024 * 1024) + "{}"));
+            fixture.SceneResponse = (_, _) => new(HttpStatusCode.OK) { Content = new StreamContent(oversized) };
+            Require((await transport.ReadSceneAsync(owner, source, prose)).Outcome == AndroidOriginSceneOutcome.Unavailable
+                && oversized.BytesRead == 6 * 1024 * 1024 + 1,
+                "Chunked image was not stopped at the scene byte limit plus one overflow probe.");
             fixture.SceneResponse = (_, _) => new(HttpStatusCode.Redirect);
             Require((await transport.ReadSceneAsync(owner, source, prose)).Image is null, "Redirect delivered provider content.");
             fixture.SceneResponse = (_, _) => throw new HttpRequestException("Lost possible render acknowledgement.");
@@ -148,10 +152,11 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS signed scene consent, exact image admission/review, 21 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");
     }
 
-    private sealed class UnboundedSceneContent : HttpContent
+    private sealed class SceneChunkStream(byte[] bytes) : MemoryStream(bytes, writable: false)
     {
-        protected override bool TryComputeLength(out long length) { length = 0; return false; }
-        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
-            => stream.WriteAsync(new byte[6 * 1024 * 1024 + 1]).AsTask();
+        public override bool CanSeek => false;
+        internal int BytesRead;
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        { int read = await base.ReadAsync(buffer, ct); BytesRead += read; return read; }
     }
 }
