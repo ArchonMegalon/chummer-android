@@ -38,6 +38,7 @@ internal static class OriginDossierBookRuntimeTests
                 "An invalid Origin digest bound the Foundation budget.");
         Console.WriteLine("PASS Origin book: Foundation digest boundary");
         RunLegacyChapterDisplay();
+        RunOpeningSetupDisplay();
         RunFinishedSelectionDisplay();
         RunAuthoringSource();
         await RunReadBeforeNextChoiceAsync();
@@ -138,6 +139,72 @@ internal static class OriginDossierBookRuntimeTests
             }
             finally { Directory.Delete(directory, recursive: true); }
         }
+    }
+
+    private static void RunOpeningSetupDisplay()
+    {
+        var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+        var opened = service.Start("workspace-1").Value!;
+        var prepared = service.Prepare(opened, "choice-1").Value!;
+        var seed = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "setup-display", true).Value!.Checkpoint.Projection;
+        var foundation = seed.VisibleChapters.Single() with
+        { Title = "Troll · UCAS · Seattle", VisibleMarkdown = "$real was born in $ARCOLOGY." };
+        var fixture = seed with
+        {
+            CurrentTurn = seed.CurrentTurn with { JourneyId = "sr5-life-modules-foundation" },
+            VisibleChapters = [foundation],
+            AllowedCanonicalFactIds = ["race", "birth", "answer", "future"],
+            CanonicalLayer = seed.CanonicalLayer with { Facts = [
+                new("race", "accepted-metatype", "Troll", foundation.ThroughAcceptedDecisionId, [], ""),
+                new("birth", "accepted-life-module", "UCAS", foundation.ThroughAcceptedDecisionId, [], ""),
+                new("answer", "accepted-life-module-answer", "Birthplace: $real <script>", foundation.ThroughAcceptedDecisionId, [], ""),
+                new("hidden", "accepted-life-module-answer", "unapproved-secret", foundation.ThroughAcceptedDecisionId, [], ""),
+                new("future", "accepted-life-module-answer", "future-school", "later-decision", [], "")
+            ] }
+        };
+        foreach (var (locale, expected) in new[] { ("de-DE", "kein separates KI-Kapitel"),
+                     ("en-US", "not a separate AI chapter"), ("es-ES", "no es un capítulo de IA separado") })
+        {
+            var localized = fixture with { CurrentTurn = fixture.CurrentTurn with { Locale = locale } };
+            string original = JsonSerializer.Serialize(localized);
+            string text = OriginBookChapterText.Render(localized, foundation);
+            Require(text.Contains(expected, StringComparison.Ordinal) && text.Contains("Troll", StringComparison.Ordinal)
+                && text.Contains(foundation.Title, StringComparison.Ordinal) && text.Contains("Birthplace: $real <script>", StringComparison.Ordinal)
+                && !text.Contains("unapproved-secret", StringComparison.Ordinal) && !text.Contains("future-school", StringComparison.Ordinal)
+                && !text.Contains("$ARCOLOGY", StringComparison.Ordinal),
+                "Opening setup looks like a missing AI chapter or includes unconfirmed/later biography.");
+            var retained = new RetainedOriginBook(localized);
+            Require(retained.ChapterText(foundation) == text && !retained.CanOpenAuthoring(foundation)
+                && !retained.HasReadCurrentStory, "A setup summary grants authoring or story-reading authority.");
+            var copy = AndroidSurfaceStrings.Resolve(locale);
+            string html = retained.ToHtml(copy);
+            Require(html.Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal)
+                && html.Contains("<h2>" + System.Net.WebUtility.HtmlEncode(copy["Origin.OpeningSetupTitle"]) + "</h2>", StringComparison.Ordinal)
+                && !html.Contains("<script>", StringComparison.Ordinal), "HTML lost setup title/text or escaped markup.");
+            VerifyEpub(retained, text, locale);
+            var page = new OriginDossierBookPage(opened with { Projection = localized }, "en-US");
+            Require(Elements(page).OfType<Label>().Single(l => l.AutomationId == "origin-life-book-chapter-1").Text == text,
+                "Creation and retained readers disagree about the setup.");
+            var authored = OriginBookProseDraft.Create(foundation, locale, Digest("setup-job"), Digest("setup-provider"), "Previously accepted opening prose.");
+            var selected = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(foundation.ChapterId, authored, null)]));
+            Require(selected.ChapterText(foundation) == authored.Text, "Setup summary replaced an accepted reading edition.");
+            VerifyEpub(selected, authored.Text, locale);
+            var cold = JsonSerializer.Deserialize<OriginStoryArcSeed>(original)!;
+            Require(new RetainedOriginBook(cold).ChapterText(cold.VisibleChapters.Single()) == text
+                && JsonSerializer.Serialize(localized) == original, "Display changed the sealed story or cannot reopen.");
+
+            // Non-template or authored source remains verbatim, even with dollar expressions.
+            foreach (var chapter in new[] {
+                         foundation with { VisibleMarkdown = "An already written beginning." },
+                         foundation with { PlayerLayerDigest = Digest("player"), VisibleMarkdown = "I kept $real as my nickname." },
+                         foundation with { ProviderLayerDigest = Digest("provider"), VisibleMarkdown = "A story about $real." } })
+                Require(OriginBookChapterText.Render(localized with { VisibleChapters = [chapter] }, chapter) == chapter.VisibleMarkdown,
+                    "Opening display replaced authored or non-template source prose.");
+            var otherJourney = localized with { CurrentTurn = localized.CurrentTurn with { JourneyId = "sr6-life-path" } };
+            Require(!OriginBookChapterText.Render(otherJourney, foundation).Contains(expected, StringComparison.Ordinal),
+                "SR5 opening semantics leaked into another journey.");
+        }
+        Console.WriteLine("PASS Origin book: confirmed opening setup, immutable authored editions, reader/HTML/EPUB parity");
     }
 
     private static void RunLegacyChapterDisplay()
