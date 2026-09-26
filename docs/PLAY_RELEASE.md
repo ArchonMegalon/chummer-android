@@ -13,7 +13,26 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 31 — September 25, 2026
+## Current observed Internal release: Preview 41 — September 26, 2026
+
+Scoped authenticated Console readback at `2026-09-26T19:02:16Z` shows
+`41 (0.1.0-preview.41)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview41-internal-observation.md).
+
+The reader/EPUB now presents the confirmed starting situation before the first
+story; chapter-status deadlines do not restart generation. Focused managed tests,
+diagnostic API36 cold-reopen/EPUB smoke and the exact local ARM64 build passed.
+The existing-key signature and unchanged payload were independently checked before
+the single Internal upload. Android and UI protected source integration completed.
+
+Physical Play installation remains explicitly deferred and unverified. The
+interrupted FirstBook successor is separately fenced; full Life Modules/Career
+and whole-book completion are not claimed. This is a bounded Internal update,
+not hosted qualification, package-only assembly or complete phone beta.
+Code41 is consumed; use42 or a higher unused code next. Prior evidence is historical.
+
+## Historical observed Internal release: Preview 31 — September 25, 2026
 
 Scoped authenticated Console readback at `2026-09-25T00:50:35Z` shows
 `31 (0.1.0-preview.31)` as **Available to internal testers**.
