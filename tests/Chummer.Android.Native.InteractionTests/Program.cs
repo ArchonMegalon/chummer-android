@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--origin-successor-acceptance-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginSuccessorAcceptanceAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--life-module-linked-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunLifeModuleLinkedOwnerStartAsync(args[1]);

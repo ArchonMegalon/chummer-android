@@ -20,6 +20,106 @@ using System.Text.Json;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunOriginSuccessorAcceptanceAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        var account = DispatchProxy.Create<IAndroidAccountLinkService, OriginSuccessorAccount>();
+        var remote = (OriginSuccessorAccount)account;
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+            productionCreationOverview: true, linkedOwners: owners, accountService: account);
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        await runtime.Coordinator.CreateRunnerAsync();
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Successor recovery", default);
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+        await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+        var id = runtime.Coordinator.State.WorkspaceId!.Value;
+        await runtime.Coordinator.SaveAsync();
+        await Task.Run(() => SeedNativeLifeStory(runtime, id));
+        await runtime.Presenter.LoadAsync(id, default);
+        var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+        var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        var first = book.Chapters[1];
+        var next = book.Chapters[2];
+        var firstSource = OriginBookAuthoringSource.Create(book.Projection, first);
+        var nextSource = OriginBookAuthoringSource.Create(book.Projection, next);
+        var draft = OriginBookProseDraft.Create(first, book.Locale,
+            Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(firstSource),
+            new string('d', 64), "Synthetic accepted opening, retained before the network acknowledgement.");
+        remote.Seed(firstSource, draft);
+        book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, draft, () => true, default))!;
+        var pending = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(pending.Result.Outcome == AndroidOriginChapterOutcome.Conflict && remote.Acceptances == 0 && remote.Requests == 0,
+            "An unaccepted predecessor was acknowledged or generated a successor.");
+        book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, draft, true, true, () => true, default))!;
+        remote.FailAcceptance = true;
+        Require(!await runtime.Coordinator.RecordOriginBookReaderAcceptanceAsync(book, draft, () => true, default),
+            "Synthetic offline acknowledgement unexpectedly succeeded.");
+        // A new disk-backed edition must be sufficient: no transient page flag is acceptance authority.
+        book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        string readingDigest = book.Readings!.Digest;
+        remote.ResetCounts();
+        var readOnly = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, false, () => true, default);
+        Require(readOnly.Result.Outcome == AndroidOriginChapterOutcome.NotFound && remote.Acceptances == 0 && remote.Requests == 0,
+            "Reading successor status acknowledged a predecessor or created a job.");
+        var failed = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(failed.Result.Outcome == AndroidOriginChapterOutcome.Unavailable && remote.Acceptances == 1 && remote.Requests == 0,
+            "Successor creation did not recover the saved acceptance first, or dispatched despite a lost acknowledgement.");
+        remote.FailAcceptance = false;
+        foreach (var failure in new[] { AndroidOriginChapterOutcome.Unavailable, AndroidOriginChapterOutcome.Unauthorized,
+            AndroidOriginChapterOutcome.Conflict, AndroidOriginChapterOutcome.NotFound })
+        {
+            remote.PredecessorReadFailure = failure;
+            remote.ResetCounts();
+            var result = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+            Require(result.Result.Outcome != AndroidOriginChapterOutcome.Available && remote.Acceptances == 0 && remote.Requests == 0,
+                "A failed predecessor read was treated as permission to acknowledge or generate.");
+        }
+        remote.PredecessorReadFailure = null;
+        remote.CorruptPredecessor = true;
+        remote.ResetCounts();
+        var wrong = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(wrong.Result.Outcome == AndroidOriginChapterOutcome.Conflict && remote.Acceptances == 0 && remote.Requests == 0,
+            "Different remote prose was accepted as the locally selected predecessor.");
+        remote.CorruptPredecessor = false;
+        bool current = true;
+        remote.AfterPredecessorRead = () => current = false;
+        var departed = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => current, default);
+        Require(departed.Book is null && remote.Acceptances == 0 && remote.Requests == 0,
+            "A departed page acknowledged or created a successor after its read.");
+        remote.AfterPredecessorRead = null;
+        current = true;
+        using (var canceled = new CancellationTokenSource())
+        {
+            remote.AfterAcceptance = canceled.Cancel;
+            var stopped = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, canceled.Token);
+            Require(stopped.Book is null && remote.Acceptances == 1 && remote.Requests == 0,
+                "Cancellation after acknowledgement still generated the successor.");
+        }
+        remote.AfterAcceptance = null;
+        remote.ResetCounts();
+        var recovered = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(recovered.Result.Outcome == AndroidOriginChapterOutcome.Available && remote.Requests == 1 && remote.Acceptances == 0,
+            "An already acknowledged predecessor was resent or did not admit exactly one successor.");
+        await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(remote.Requests == 1 && remote.Acceptances == 0, "Existing successor was generated twice.");
+        remote.RemoveSuccessor();
+        remote.Seed(firstSource, draft); // Simulate an independently lost server acknowledgement again.
+        remote.ResetCounts();
+        var restored = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(restored.Result.Outcome == AndroidOriginChapterOutcome.Available && remote.Acceptances == 1 && remote.Requests == 1,
+            "Cold saved acceptance did not recover then generate exactly one successor in order.");
+        remote.RemoveSuccessor(); remote.Seed(firstSource, draft); remote.ResetCounts();
+        remote.AfterAcceptance = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
+        var aba = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(aba.Book is null && remote.Acceptances == 1 && remote.Requests == 0,
+            "Owner A-to-B-to-A dispatched after predecessor acknowledgement.");
+        Require(new OriginBookReadingStore(runtime.StateDirectory).Load(OwnerScope.LocalSingleUser.Value, id.Value).Digest == readingDigest,
+            "Acknowledgement recovery changed local selected prose or its pending edition.");
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+        Console.WriteLine("PASS successor: cold explicit acceptance recovery, read-only/no-replay boundaries, failed/mismatched reads, cancellation and owner ABA");
+    }
+
     internal static async Task RunLifeModuleLinkedOwnerStartAsync(string contentRoot)
     {
         var owners = new ControlledLinkedOwner();
