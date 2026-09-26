@@ -58,7 +58,7 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
         self.assertEqual(core.group(1), "c27201749190db6c3ebfec0c3e5a05d0ea0be37f")
-        self.assertEqual(presentation.group(1), "0a814992884dc1244fe0bfdb0b8ad233ccde92da")
+        self.assertEqual(presentation.group(1), "72513b1e67200d0cfb3e3c90eb554b09c8987929")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
