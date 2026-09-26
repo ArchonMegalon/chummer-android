@@ -712,6 +712,34 @@ internal static partial class AfterRunAuthorityHarness
                     && Element<Image>("origin-scene-preview").Source is StreamImageSource
                     && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
                     "Remote preview was auto-adopted, regenerated or retained blanket consent.");
+                int sceneReads = authoringProbe.SceneReads;
+                var copy = AndroidSurfaceStrings.Resolve(System.Globalization.CultureInfo.CurrentUICulture);
+                authoringProbe.SceneReadOverride = new(AndroidOriginSceneOutcome.Unavailable, RetryableReadFailure: true);
+                await Click("origin-scene-read");
+                Require(Element<Image>("origin-scene-preview").Source is StreamImageSource
+                    && Element<Button>("origin-scene-save").IsEnabled
+                    && Element<Label>("origin-scene-status").Text == copy["Origin.ScenePreviewRetained"]
+                    && authoringProbe.SceneReads == sceneReads + 1 && authoringProbe.SceneRequests == 1
+                    && authoringProbe.SceneDecisions == 0
+                    && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
+                    "An interrupted scene read discarded, adopted or regenerated the retained preview.");
+                foreach (var unavailable in new[] { new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable),
+                    new(AndroidOriginSceneOutcome.Unauthorized), new(AndroidOriginSceneOutcome.Conflict),
+                    new(AndroidOriginSceneOutcome.Available, "dispatching"), new(AndroidOriginSceneOutcome.Available, "uncertain") })
+                {
+                    authoringProbe.SceneReadOverride = unavailable;
+                    await Click("origin-scene-read");
+                    Require(!IssuedElements(Current()).OfType<Image>().Any(image => image.AutomationId == "origin-scene-preview")
+                        && !Element<Button>("origin-scene-save").IsEnabled && authoringProbe.SceneRequests == 1,
+                        "An invalidated/pending scene retained its remote preview or generated another image.");
+                    if (unavailable.State is "dispatching" or "uncertain")
+                        Require(Element<Label>("origin-scene-status").Text == copy[unavailable.State == "dispatching"
+                            ? "Origin.SceneDispatching" : "Origin.SceneUncertain"], "Scene progress invented a completed render.");
+                    authoringProbe.SceneReadOverride = null;
+                    await Click("origin-scene-read");
+                    Require(Element<Image>("origin-scene-preview").Source is StreamImageSource && authoringProbe.SceneRequests == 1,
+                        "Re-reading an existing scene did not restore the preview without regeneration.");
+                }
                 authoringProbe.FailSceneDecision = true;
                 await Click("origin-scene-save");
                 Require(Current() is OriginBookScenePage && authoringProbe.SceneDecisions == 1

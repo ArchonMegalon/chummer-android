@@ -85,7 +85,9 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
             if (response.StatusCode == HttpStatusCode.Conflict) return new(AndroidOriginSceneOutcome.Conflict);
             if (response.StatusCode == HttpStatusCode.NotFound) return new(AndroidOriginSceneOutcome.NotFound);
             if (!response.IsSuccessStatusCode)
-                return new(AndroidOriginSceneOutcome.Unavailable, UnknownRemoteOutcome: mutation && !knownRejected);
+                return new(AndroidOriginSceneOutcome.Unavailable, UnknownRemoteOutcome: mutation && !knownRejected,
+                    RetryableReadFailure: !mutation && !ct.IsCancellationRequested && response.StatusCode is
+                        HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout);
             // Cap chunked and Content-Length responses before base64/JSON allocation.
             JsonElement json = await _httpTransport.ReadJsonAsync<JsonElement>(response, ct, 6 * 1024 * 1024);
             RequireContinuationOwnerCurrent(expected);
@@ -137,8 +139,21 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
             or JsonException or InvalidDataException or IOException or HttpRequestException or OperationCanceledException or CryptographicException or FormatException)
         {
             bool changed = expected is not null && !ReferenceEquals(OwnerAuthority.Capture(), expected);
+            // A retained preview may survive a dispatched read interruption,
+            // never a rejected origin, corrupt payload, owner change or write.
+            // Match chapter transport classification; no automatic retries here.
+            bool transientRead = !mutation && proofReleased && !changed && !ct.IsCancellationRequested
+                && (error is OperationCanceledException or AndroidAccountLinkHttpTransport.InterruptedException
+                    || error is HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError
+                        or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded }
+#if ANDROID
+                    || error is HttpRequestException { HttpRequestError: HttpRequestError.Unknown,
+                        InnerException: global::Java.Net.UnknownHostException }
+#endif
+                    );
             return new(changed ? AndroidOriginSceneOutcome.Unauthorized : AndroidOriginSceneOutcome.Unavailable,
-                UnknownRemoteOutcome: mutation && proofReleased && !knownRejected);
+                UnknownRemoteOutcome: mutation && proofReleased && !knownRejected,
+                RetryableReadFailure: transientRead);
         }
         finally { if (image is not null) CryptographicOperations.ZeroMemory(image); }
     }

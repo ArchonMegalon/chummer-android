@@ -102,7 +102,7 @@ internal static partial class AfterRunAuthorityHarness
                 var wire = Wire(); attack(wire);
                 fixture.SceneResponse = (_, _) => ContinuationJsonResponse(wire);
                 var result = await transport.ReadSceneAsync(owner, source, prose);
-                Require(result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.Image is null,
+                Require(result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.Image is null && !result.RetryableReadFailure,
                     "Hostile scene readback reached the reader.");
             }
             // Valid JSON with leading whitespace: rejection must be the byte
@@ -121,6 +121,51 @@ internal static partial class AfterRunAuthorityHarness
             fixture.SceneResponse = (_, _) => ContinuationJsonResponse(Wire("persisted"));
             Require((await transport.ReadSceneAsync(owner, source, prose)).Image?.ImageHash == imageHash,
                 "Accepted image could not be recovered by an idempotent read.");
+            foreach (var status in new[] { HttpStatusCode.BadGateway, HttpStatusCode.ServiceUnavailable,
+                HttpStatusCode.GatewayTimeout, HttpStatusCode.InternalServerError, HttpStatusCode.TooManyRequests,
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden, HttpStatusCode.NotFound, HttpStatusCode.Conflict,
+                HttpStatusCode.Redirect })
+            {
+                fixture.SceneResponse = (_, _) => new(status);
+                before = fixture.SceneRequests;
+                var result = await transport.ReadSceneAsync(owner, source, prose);
+                Require(result.RetryableReadFailure == (status is HttpStatusCode.BadGateway
+                    or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout)
+                    && result.Image is null && !result.UnknownRemoteOutcome && fixture.SceneRequests == before + 1,
+                    $"Scene read {status} was retried or incorrectly classified.");
+                var request = await transport.RequestSceneAsync(owner, source, prose, excerpt, alt, true);
+                var decision = await transport.DecideSceneAsync(owner, source, prose, imageHash, true, true);
+                Require(!request.RetryableReadFailure && !decision.RetryableReadFailure && fixture.SceneRequests == before + 3,
+                    "A scene write became a retryable read.");
+            }
+            foreach (var error in new[] { HttpRequestError.NameResolutionError, HttpRequestError.ConnectionError,
+                HttpRequestError.ResponseEnded, HttpRequestError.SecureConnectionError,
+                HttpRequestError.InvalidResponse, HttpRequestError.Unknown })
+            {
+                fixture.SceneResponse = (_, _) => throw new HttpRequestException(error, "Synthetic scene interruption.");
+                before = fixture.SceneRequests;
+                var result = await transport.ReadSceneAsync(owner, source, prose);
+                Require(result.RetryableReadFailure == (error is HttpRequestError.NameResolutionError
+                    or HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded)
+                    && result.Image is null && !result.UnknownRemoteOutcome && fixture.SceneRequests == before + 1,
+                    $"Scene transport {error} was retried or incorrectly classified.");
+                var request = await transport.RequestSceneAsync(owner, source, prose, excerpt, alt, true);
+                var decision = await transport.DecideSceneAsync(owner, source, prose, imageHash, true, true);
+                Require(!request.RetryableReadFailure && !decision.RetryableReadFailure
+                    && request.UnknownRemoteOutcome && decision.UnknownRemoteOutcome && fixture.SceneRequests == before + 3,
+                    "Uncertain scene writes were replayed or admitted as recoverable reads.");
+            }
+            fixture.SceneResponse = (_, _) => throw new TaskCanceledException("Synthetic internal deadline.");
+            Require((await transport.ReadSceneAsync(owner, source, prose)).RetryableReadFailure,
+                "A scene read deadline could not retain the preview.");
+            using var cancellation = new CancellationTokenSource();
+            fixture.SceneResponse = (_, _) => { cancellation.Cancel(); throw new OperationCanceledException(cancellation.Token); };
+            before = fixture.SceneRequests;
+            var canceled = await transport.ReadSceneAsync(owner, source, prose, cancellation.Token);
+            Require(!canceled.RetryableReadFailure && canceled.Image is null && fixture.SceneRequests == before + 1,
+                "Caller cancellation retained the remote preview.");
+            Require(!(await transport.ReadSceneAsync(owner, source, prose, cancellation.Token)).RetryableReadFailure
+                && fixture.SceneRequests == before + 1, "Pre-canceled scene read reached the network.");
         }
         foreach (bool signing in new[] { true, false })
         foreach (int operation in new[] { 0, 1, 2 })
@@ -146,7 +191,7 @@ internal static partial class AfterRunAuthorityHarness
             await fixture.LinkAsync("subject", "scene-A2");
             release.SetResult();
             var result = await pending.WaitAsync(TimeSpan.FromSeconds(5));
-            Require(result.Outcome == AndroidOriginSceneOutcome.Unauthorized && result.Image is null
+            Require(result.Outcome == AndroidOriginSceneOutcome.Unauthorized && result.Image is null && !result.RetryableReadFailure
                 && fixture.SceneRequests == (signing ? 0 : 1), "Owner A→B→A accepted a retired private illustration.");
         }
         Console.WriteLine("PASS signed scene consent, exact image admission/review, 21 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");

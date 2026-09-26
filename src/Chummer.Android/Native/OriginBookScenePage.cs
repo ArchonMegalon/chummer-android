@@ -56,7 +56,12 @@ internal sealed class OriginBookScenePage : NativePageBase
         if (!Current()) { _selection = null; _body.Add(NativeTheme.Body(_copy["Origin.BookUnavailable"])); return; }
         _body.Add(NativeTheme.Title(_chapter.Title));
         _body.Add(NativeTheme.Body(_copy["Origin.SceneExplanation"]));
-        if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
+        if (_notice is not null)
+        {
+            var notice = NativeTheme.Body(_notice);
+            notice.AutomationId = "origin-scene-status";
+            _body.Add(notice);
+        }
         var description = new Editor { Text = _description, MaxLength = 1024,
             Placeholder = _copy["Origin.SceneDescription"], AutoSize = EditorAutoSizeOption.TextChanges,
             TextColor = NativeTheme.Ink, BackgroundColor = NativeTheme.Paper,
@@ -121,7 +126,12 @@ internal sealed class OriginBookScenePage : NativePageBase
                     _notice = SceneNotice(synced.Result);
                     if (synced.Scene is { } scene)
                     { _selection = scene; _remoteSelection = true; _description = scene.Identity.AltText; }
-                    else if (_remoteSelection) { _selection = null; _remoteSelection = false; }
+                    else if (_remoteSelection)
+                    {
+                        if (IsInterruptedRead(synced.Result))
+                            _notice = _copy["Origin.ScenePreviewRetained"];
+                        else { _selection = null; _remoteSelection = false; }
+                    }
                 }
                 finally { busy.IsVisible = busy.IsRunning = waiting.IsVisible = false; }
             }
@@ -190,8 +200,11 @@ internal sealed class OriginBookScenePage : NativePageBase
         }
     }
 
+    private static bool IsInterruptedRead(AndroidOriginSceneResult result) =>
+        result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.RetryableReadFailure && !result.UnknownRemoteOutcome;
+
     private string SceneNotice(AndroidOriginSceneResult result) => _copy[result.UnknownRemoteOutcome
-        ? "Origin.SceneUnknown" : result.Outcome switch
+        ? "Origin.SceneUnknown" : IsInterruptedRead(result) ? "Origin.SceneReadInterrupted" : result.Outcome switch
         {
             AndroidOriginSceneOutcome.NotFound => "Origin.SceneAbsent",
             AndroidOriginSceneOutcome.Conflict => "Origin.SceneConflict",
@@ -199,6 +212,8 @@ internal sealed class OriginBookScenePage : NativePageBase
             {
                 "review" or "persisted" => "Origin.SceneReview",
                 "rejected" or "expired" => "Origin.SceneClosed",
+                "dispatching" => "Origin.SceneDispatching",
+                "uncertain" => "Origin.SceneUncertain",
                 _ => "Origin.SceneUnknown"
             },
             _ => "Origin.SceneUnavailable"

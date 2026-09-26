@@ -338,6 +338,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public int SceneDecisions { get; private set; }
     public bool FailSceneDecision { get; set; }
     public bool FailSceneRead { get; set; }
+    public AndroidOriginSceneResult? SceneReadOverride { get; set; }
     public byte[] SceneBytes { get; set; } = [];
     private string? _sceneState;
     private string _sceneAlt = "";
@@ -346,6 +347,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
         string acceptedText, CancellationToken ct = default)
     {
         SceneReads++;
+        if (SceneReadOverride is { } result) return Task.FromResult(result);
         if (FailSceneRead) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
         if (_sceneState is null) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.NotFound));
         var image = _sceneState is "review" or "persisted" ? new AndroidOriginSceneImage(_sceneAlt,
