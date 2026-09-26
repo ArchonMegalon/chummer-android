@@ -1,8 +1,9 @@
 # Play graphics
 
-- `app-icon-512x512.png` is the square, opaque stylized-troll store icon.
-  Its transparent source is `src/Chummer.Android/Resources/AppIcon/appiconfg.png`
-  (relative to the repository root), generated with the built-in image tool.
+- `app-icon-512x512.png` is the square, opaque user-supplied full-body Troll icon.
+  Its current transparent source is `src/Chummer.Android/Resources/AppIcon/appiconfg.svg`
+  (relative to the repository root), copied from the user's supplied artwork.
+  The older generated `appiconfg.png` is historical, not the active foreground.
   The launcher uses that same foreground over a solid dark-green background,
   scaled to preserve horns and tusks inside adaptive masks. Play applies its own
   mask to the store PNG. Prompt and export commands: `troll-icon-prompt.md`.
@@ -24,5 +25,8 @@ an original, no-text Chummer product-art prompt. Final SHA-256:
 The graphic dimensions follow the current official Play asset contract:
 https://support.google.com/googleplay/android-developer/answer/9866151.
 
-These are source assets for the next build. Updating them does not change an
-already-installed app or constitute a Play listing upload.
+Updating source assets does not change an already-installed app or itself
+constitute a Play listing upload. The exact Troll PNG has a separate
+[2026-09-26 icon-only review submission](../evidence/troll-store-icon-review-20260926.md);
+approval and live artwork are not yet verified. Historical screenshots do not
+establish current whole-app or tablet readiness.

@@ -10,7 +10,8 @@ There are no external resources, scripts or embedded raster images.
 
 MAUI consumes the SVG directly, retaining the full figure and transparent
 surroundings. Keep the separate opaque `#102426` background and foreground
-scale 0.58 so Android owns the round/squircle mask without clipping the troll.
+scale 0.78, as declared by the current MAUI project. Android owns the
+round/squircle mask; this value describes the launcher, not the Play asset.
 The Play icon uses the same supplied artwork, rasterized by librsvg/Cairo to
 opaque 512×512. A standard librsvg CLI equivalent for regeneration is:
 
@@ -25,8 +26,13 @@ and prompt remain below; they do not describe the current launcher asset.
 Do not use ImageMagick's internal SVG renderer for this master: it renders
 some of the supplied gradients black. MAUI Resizetizer 10.0.20 successfully
 generated all five Android density sets and adaptive XML from the exact SVG.
-The prior unsigned Preview 29 AAB does not contain this change. Rebuild the
-candidate before signing; no Play listing update or publication is claimed.
+The prior unsigned Preview 29 AAB did not contain this change; that is a
+historical build observation, not an instruction to rebuild a consumed release.
+On 2026-09-26 the exact tracked 512x512 PNG was uploaded to the Chummer default
+Play listing and its icon-only change was saved and submitted for review.
+Preliminary checks were still running; a live store icon or physical installed
+icon is not yet proved. See the [store-artwork observation](../evidence/troll-store-icon-review-20260926.md).
+Preview 41 remains unchanged; store artwork does not require another AAB.
 
 ## Historical generated head — 2026-09-22
 
