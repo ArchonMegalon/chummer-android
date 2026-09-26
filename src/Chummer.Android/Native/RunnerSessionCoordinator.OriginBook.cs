@@ -145,7 +145,8 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
         foreach (var chapter in Chapters)
         {
-            html.Append("<section><h2>").Append(E(chapter.Title)).Append("</h2>");
+            html.Append("<section><h2>").Append(E(IsOpeningSetup(chapter)
+                ? copy["Origin.OpeningSetupTitle"] : chapter.Title)).Append("</h2>");
             if (Scene(chapter) is { } scene)
             {
                 using var image = scene.Open();
