@@ -303,7 +303,76 @@ internal static class OriginDossierBookRuntimeTests
         try { OriginBookEpub.Create(book, copy, Enumerable.Repeat(picture, 9).ToArray()); }
         catch (InvalidDataException) { tooManyRejected = true; }
         Require(tooManyRejected, "The EPUB illustration-count bound was ignored.");
+        VerifySceneStore(book, chapter, png);
         Console.WriteLine("PASS Origin EPUB: exact embedded raster, alt text, selected-chapter binding and unsafe/oversized image rejection");
+    }
+
+    private static void VerifySceneStore(RetainedOriginBook book, OriginNarrativeChapterProjection chapter, byte[] png)
+    {
+        string directory = Directory.CreateTempSubdirectory("chummer-origin-scenes-").FullName;
+        try
+        {
+            var store = new OriginBookSceneStore(directory);
+            var empty = store.Load("owner-a", "workspace");
+            byte[] input = png.ToArray();
+            var scene = OriginBookScene.ForChapter(book, chapter, "Forest & stones <scene>", input);
+            input[0] = 0;
+            var next = new OriginBookScenes(empty.Owner, empty.Workspace, [scene]);
+            Require(scene.Export().Bytes.SequenceEqual(png), "Scene custody shares mutable input bytes.");
+            byte[] exportedCopy = scene.Export().Bytes; exportedCopy[0] = 0;
+            Require(scene.Export().Bytes.SequenceEqual(png), "An export mutated the retained scene.");
+            using (var cancellation = new CancellationTokenSource())
+            {
+                cancellation.Cancel();
+                bool rejected = false;
+                try { store.Save(empty, next, () => true, cancellation.Token); }
+                catch (OperationCanceledException) { rejected = true; }
+                Require(rejected && store.Load(empty.Owner, empty.Workspace).Scenes.Count == 0,
+                    "Cancellation committed a scene.");
+            }
+            bool stale = false;
+            int checks = 0;
+            try { store.Save(empty, next, () => ++checks == 1, default); }
+            catch (OperationCanceledException) { stale = true; }
+            Require(stale && store.Load(empty.Owner, empty.Workspace).Scenes.Count == 0
+                && !Directory.EnumerateFiles(directory, "*.tmp", SearchOption.AllDirectories).Any(),
+                "A changed context committed a scene or left temporary private bytes.");
+            store.Save(empty, next, () => true, default);
+            var reopened = new OriginBookSceneStore(directory).Load(empty.Owner, empty.Workspace);
+            Require(reopened.Digest == next.Digest && reopened.Scenes.Single().Export().Bytes.SequenceEqual(png)
+                && store.Load("owner-b", "workspace").Scenes.Count == 0
+                && store.Load("owner-a", "other-workspace").Scenes.Count == 0,
+                "Cold scene read lost exact bytes or crossed owner/workspace boundaries.");
+            var illustrated = new RetainedOriginBook(book.Projection, book.Readings, reopened);
+            Require(illustrated.Scene(chapter) is not null && illustrated.ToHtml(AndroidSurfaceStrings.Resolve("en"))
+                    .Contains("data:image/png;base64,", StringComparison.Ordinal),
+                "Saved scenes were omitted from the offline reader/HTML.");
+            using (var epub = new ZipArchive(new MemoryStream(OriginBookEpub.Create(illustrated, AndroidSurfaceStrings.Resolve("en"))), ZipArchiveMode.Read))
+                Require(epub.GetEntry("EPUB/images/scene-1.png") is not null,
+                    "Normal EPUB export did not include the retained book scene.");
+            var changed = new RetainedOriginBook(book.Projection, null, reopened);
+            Require(changed.Scene(chapter) is null && changed.SceneExports().Count == 0,
+                "An illustration survived a change of selected prose.");
+            var changedChapter = chapter with { ChapterDigest = Digest("different canonical chapter") };
+            Require(!scene.Matches(new RetainedOriginBook(book.Projection with { VisibleChapters = [changedChapter] }, book.Readings, reopened), changedChapter),
+                "Scene binding ignored canonical chapter identity.");
+            bool conflict = false;
+            try { store.Save(empty, next, () => true, default); }
+            catch (InvalidOperationException) { conflict = true; }
+            Require(conflict, "A stale scene collection silently overwrote a newer edition.");
+            string archive = Directory.EnumerateFiles(Path.Combine(directory, "origin-book-scenes"), "*.zip").Single();
+            using (var zip = new ZipArchive(File.Open(archive, FileMode.Open, FileAccess.ReadWrite), ZipArchiveMode.Update))
+            {
+                var entry = zip.GetEntry("scene-0")!;
+                using var bytes = entry.Open(); bytes.Position = 0; bytes.WriteByte(0);
+            }
+            bool corruption = false;
+            try { store.Load(empty.Owner, empty.Workspace); }
+            catch (InvalidDataException) { corruption = true; }
+            Require(corruption, "Tampered scene bytes passed cold readback.");
+            Console.WriteLine("PASS Origin scenes: offline restart, exact PNG, text/canon binding, owner isolation, canceled/stale writes and corruption rejection");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     // Optional, operator-selected example inputs for visual review, never part

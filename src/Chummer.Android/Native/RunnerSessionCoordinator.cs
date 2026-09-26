@@ -438,7 +438,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IOwnerBoundCharacterCreationLifeModuleFinalizationService? lifeModuleFinalizationService = null,
         LifeModuleCompletionDraftStore? lifeModuleInputDrafts = null,
         Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService? lifeModuleBookService = null,
-        OriginBookReadingStore? originBookReadings = null)
+        OriginBookReadingStore? originBookReadings = null,
+        OriginBookSceneStore? originBookScenes = null,
+        IAndroidImageDocumentService? originSceneDocuments = null)
     {
         _presenter = presenter;
         _client = client;
@@ -458,6 +460,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         LifeModuleInputDrafts = lifeModuleInputDrafts;
         _lifeModuleBookService = lifeModuleBookService;
         _originBookReadings = originBookReadings;
+        _originBookScenes = originBookScenes;
+        _originSceneDocuments = originSceneDocuments;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;

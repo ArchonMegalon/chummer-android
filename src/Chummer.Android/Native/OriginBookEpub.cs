@@ -33,7 +33,7 @@ internal static class OriginBookEpub
             Title = book.IsOpeningSetup(chapter) ? copy["Origin.OpeningSetupTitle"] : chapter.Title,
             Text = book.ChapterText(chapter)
         }).ToArray();
-        var pictures = CaptureIllustrations(book, illustrations);
+        var pictures = CaptureIllustrations(book, illustrations ?? book.SceneExports());
         string language;
         try { language = CultureInfo.GetCultureInfo(book.Locale).Name; }
         catch (CultureNotFoundException) { language = "en"; }
@@ -129,7 +129,7 @@ internal static class OriginBookEpub
 
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
-    private static string ImageType(ReadOnlySpan<byte> bytes)
+    internal static string ImageType(ReadOnlySpan<byte> bytes)
     {
         // Only inert raster formats with bounded dimensions; no SVG, HTML,
         // data URLs or archive paths supplied by a provider can reach the EPUB.
