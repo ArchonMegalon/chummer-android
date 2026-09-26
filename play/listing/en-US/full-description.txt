@@ -1,21 +1,18 @@
-Chummer Preview.12 is a candidate Internal testing build for phones. Current Preview authority covers exactly seven SR5 flows: Creation Prerequisite, Career Active Skill Advance, Career Weapon Fire, Before Run Edge, Playtime Short Burst, Downtime Calendar, and After Run Settlement.
+Chummer is an experimental SR5 runner companion for phones, available to invited Internal testers.
 
-CREATE THE COVERED START
-Use the Creation Prerequisite flow to make the Priority selections and Resources choice exercised by the current phone test. Other visible creation stages are not claimed by this Preview authority.
+CREATE AND CONTINUE YOUR RUNNER
+Use native Creation and Career wizards. A minimal Priority route has been exercised from creation into Career, including save and reopen. Life Modules lets you review choices and cumulative rules effects. Other routes remain experimental; not every build method or Career action is complete.
 
-ADVANCE AND PLAY
-Advance one active skill, resolve one governed weapon-fire action, prepare Edge before a run, record a short Playtime Edge change, manage the Downtime calendar, or settle an After Run result. These are the six Career and table flows in the current Preview authority.
+YOUR ORIGIN STORY
+Confirm your metatype, birth background and childhood before the opening story. Review generated text before accepting it and continuing to the next Life Modules choices. Read accepted chapters in the app and export them as an EPUB; reviewed scene illustrations are included offline when available. The confirmed starting situation appears before the story.
 
-TRY EXPERIMENTAL ROUTES
-Additional visible wizard routes remain available for feedback. Each is marked Experimental — not covered by the current Preview authority.
+Generation requires a linked account, explicit consent to share character facts, an online service and available provider credits. It can be interrupted or unavailable. An entire accepted Origin book and the complete Life Modules-to-Career journey are still being completed. Audiobooks are not included.
 
 WORK LOCAL-FIRST
-Open and save runner files you choose through Android's document picker. The app does not request broad storage access. Optional linked-account features use encrypted connections to Chummer services.
+Open and save runner files you choose through Android's document picker, without broad storage access. Account linking remains optional for local runner files. Connected features use encrypted connections to Chummer services.
 
-UPGRADING FROM PREVIEW.10
-Link your account again to resume linked-account features. Account linking remains optional; local runner files can still be opened without it.
-
-CURRENT PREVIEW LIMITS
-This Internal testing preview is limited to the seven named SR5 phone flows. Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
+CURRENT LIMITS
+This is an Internal phone test, not a finished editor. Local checks cover selected routes; a physical Play-managed installation is not yet verified. Visible experimental features do not all have the same test coverage.
+Full Editing, tablet or foldable support, SR4 or SR6 creation, Rook or live-avatar support, public availability, and production release are not included.
 
 Chummer is a community character-management project. It is not an official tabletop game publisher app, does not include rulebook text, and does not replace the books required for play.

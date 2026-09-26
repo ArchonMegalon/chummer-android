@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -52,13 +53,18 @@ class PlayListingLocalizationTests(unittest.TestCase):
         result = self.validate()
         self.assertEqual(["en-US", "de-DE", "es-ES"], result["locales"])
         self.assertEqual("com.myexternalbrain.chummer", result["packageId"])
-        self.assertEqual("0.1.0-preview.12", result["release"])
+        self.assertRegex(result["sourceVersion"], r"^0\.1\.0-preview\.[1-9][0-9]*$")
+        self.assertNotIn("release", result)
+        self.assertEqual("en-GB", result["defaultStoreLocale"])
+        self.assertEqual("en-US", result["defaultSourceLocale"])
+        self.assertTrue(result["copyOnly"])
+        self.assertFalse(result["runtimeQualificationAsserted"])
         self.assertEqual("internal_testing_only", result["trackPosture"])
-        self.assertEqual("sr5_phone_wizards_only", result["scope"])
-        self.assertEqual(self.module.WIZARD_GATE_SHA256, result["wizardGateSha256"])
+        self.assertEqual("experimental_sr5_phone_wizards_and_origin_reader", result["scope"])
+        self.assertEqual(self.module.WIZARD_GATE_SHA256, result["historicalWizardGateSha256"])
         self.assertEqual(
             list(self.module.REQUIRED_GATE_JOURNEYS),
-            result["requiredJourneys"],
+            result["historicalRequiredJourneys"],
         )
         self.assertFalse(result["publicationAuthorized"])
         for locale, fields in result["lengths"].items():
@@ -83,7 +89,7 @@ class PlayListingLocalizationTests(unittest.TestCase):
                 )
                 self.assertIn("Preview.10", notes)
                 self.assertIn(release_notice, notes)
-                self.assertIn("PREVIEW.10", description)
+                self.assertNotIn("PREVIEW.10", description)
                 self.assertIn(optional_notice, description)
 
     def test_cli_reports_listing_validation_without_publication_authority(self) -> None:
@@ -95,9 +101,9 @@ class PlayListingLocalizationTests(unittest.TestCase):
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         self.assertEqual(
-            "play_listing_localizations=pass locales=3 journeys=7 "
-            "scope=sr5_phone_wizards_only "
-            f"gate_sha256={self.module.WIZARD_GATE_SHA256} "
+            "play_listing_localizations=pass locales=3 default=en-GB "
+            "copy_only=true historical_gate_preserved=true "
+            "runtime_qualification_asserted=false "
             "publication_authorized=false\n",
             completed.stdout,
         )
@@ -110,12 +116,12 @@ class PlayListingLocalizationTests(unittest.TestCase):
                 description = listing / locale / "full-description.txt"
                 description.write_text(
                     description.read_text(encoding="utf-8").replace(
-                        "Preview.12", "Preview.11", 1
+                        "Chummer", "Chummer Preview.12", 1
                     ),
                     encoding="utf-8",
                 )
                 with self.subTest(locale=locale), self.assertRaisesRegex(
-                    ValueError, "exact Preview.12 candidate"
+                    ValueError, "version-neutral"
                 ):
                     self.validate(listing)
 
@@ -152,7 +158,7 @@ class PlayListingLocalizationTests(unittest.TestCase):
         replacements = (
             (
                 "en-US",
-                "limited to the seven named SR5 phone flows",
+                "available to invited Internal testers",
                 "available for every device",
             ),
             (
@@ -201,62 +207,19 @@ class PlayListingLocalizationTests(unittest.TestCase):
                 )
                 with self.subTest(locale=locale, claim=claim), self.assertRaisesRegex(
                     ValueError,
-                    "prohibited positive product claim|runtime proof before a green aggregate",
+                    "prohibited positive product claim|runtime proof from store copy",
                 ):
                     self.validate(listing)
 
-    def test_each_locale_must_name_all_seven_flows_and_disclose_experimental_routes(self) -> None:
-        cases = (
-            ("en-US", "Career Weapon Fire", "another Career action"),
-            ("de-DE", "Karriere-Waffenfeuer", "eine andere Karriere-Aktion"),
-            ("es-ES", "Disparo de arma en Carrera", "otra acción de Carrera"),
-        )
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            for index, (locale, required_flow, replacement) in enumerate(cases):
-                listing = self.copy_listing(root / f"flow-{index}")
-                path = listing / locale / "full-description.txt"
-                path.write_text(
-                    path.read_text(encoding="utf-8").replace(required_flow, replacement),
-                    encoding="utf-8",
-                )
-                with self.subTest(locale=locale), self.assertRaisesRegex(
-                    ValueError,
-                    "must name every exact required flow",
-                ):
-                    self.validate(listing)
-
-        disclosures = (
-            (
-                "en-US",
-                "Experimental — not covered by the current Preview authority",
-                "included in the current Preview authority",
-            ),
-            (
-                "de-DE",
-                "Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt",
-                "in der aktuellen Preview-Autorität enthalten",
-            ),
-            (
-                "es-ES",
-                "Experimental — no cubierta por la autoridad de la vista previa actual",
-                "incluida en la autoridad de la vista previa actual",
-            ),
-        )
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            for index, (locale, disclosure, replacement) in enumerate(disclosures):
-                listing = self.copy_listing(root / f"disclosure-{index}")
-                path = listing / locale / "full-description.txt"
-                path.write_text(
-                    path.read_text(encoding="utf-8").replace(disclosure, replacement),
-                    encoding="utf-8",
-                )
-                with self.subTest(locale=locale), self.assertRaisesRegex(
-                    ValueError,
-                    "missing exact wizard-scope or non-claim copy",
-                ):
-                    self.validate(listing)
+    def test_origin_consent_scope_and_physical_install_disclosures_are_required(self) -> None:
+        for locale in self.module.LOCALES:
+            for fragment in self.module.REQUIRED_FRAGMENTS[locale]["full-description.txt"]:
+                with self.subTest(locale=locale, fragment=fragment), tempfile.TemporaryDirectory() as temporary:
+                    listing = self.copy_listing(Path(temporary))
+                    path = listing / locale / "full-description.txt"
+                    path.write_text(path.read_text(encoding="utf-8").replace(fragment, ""), encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, "missing exact wizard-scope or non-claim"):
+                        self.validate(listing)
 
     def test_broad_wizard_inclusion_claims_fail_closed_in_every_locale(self) -> None:
         cases = (
@@ -268,9 +231,8 @@ class PlayListingLocalizationTests(unittest.TestCase):
             root = Path(temporary)
             for index, (locale, claim) in enumerate(cases):
                 listing = self.copy_listing(root / str(index))
-                # The real release notes approach Play's size cap. Use the full
-                # description to isolate the scope rejection from length rejection;
-                # both fields pass through the same positive-claim validator.
+                # Use the full description to isolate scope rejection from the
+                # short-description length cap. Historical notes stay immutable.
                 path = listing / locale / "full-description.txt"
                 path.write_text(
                     path.read_text(encoding="utf-8").rstrip("\n") + claim + "\n",
@@ -278,7 +240,7 @@ class PlayListingLocalizationTests(unittest.TestCase):
                 )
                 with self.subTest(locale=locale), self.assertRaisesRegex(
                     ValueError,
-                    "broadens the exact seven-flow wizard scope",
+                    "broadens the current experimental wizard scope",
                 ):
                     self.validate(listing)
 
@@ -300,8 +262,8 @@ class PlayListingLocalizationTests(unittest.TestCase):
             versioned_project = root / "Versioned.Chummer.Android.csproj"
             versioned_project.write_text(
                 PROJECT.read_text(encoding="utf-8").replace(
-                    "0.1.0-preview.12",
-                    "0.1.0-preview.13",
+                    "0.1.0-preview.",
+                    "1.0.0-release.",
                 ),
                 encoding="utf-8",
             )
@@ -346,6 +308,48 @@ class PlayListingLocalizationTests(unittest.TestCase):
                     "Preview.11 historical release notes",
                 ):
                     self.validate(listing)
+
+    def test_next_source_version_does_not_become_a_store_publication_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "next.csproj"
+            source = PROJECT.read_text(encoding="utf-8")
+            source = re.sub(r"<ApplicationDisplayVersion>[^<]+</ApplicationDisplayVersion>",
+                            "<ApplicationDisplayVersion>0.1.0-preview.999</ApplicationDisplayVersion>", source)
+            source = re.sub(r"<ApplicationVersion>[^<]+</ApplicationVersion>",
+                            "<ApplicationVersion>999</ApplicationVersion>", source)
+            project.write_text(source, encoding="utf-8")
+            result = self.validate(project=project)
+            self.assertEqual("0.1.0-preview.999", result["sourceVersion"])
+            self.assertNotIn("release", result)
+            self.assertFalse(result["publicationAuthorized"])
+            project.write_text(source.replace("<ApplicationVersion>999", "<ApplicationVersion>998"), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "version code"):
+                self.validate(project=project)
+
+    def test_historical_preview12_notes_are_not_rewritten_as_current_copy(self) -> None:
+        for locale in self.module.LOCALES:
+            with self.subTest(locale=locale), tempfile.TemporaryDirectory() as temporary:
+                listing = self.copy_listing(Path(temporary))
+                path = listing / locale / "release-notes-12.txt"
+                path.write_bytes(path.read_bytes() + b"\n")
+                with self.assertRaisesRegex(ValueError, "Preview.12 historical release notes drifted"):
+                    self.validate(listing)
+
+    def test_noncanonical_and_symlink_copy_fail_closed(self) -> None:
+        for raw in (b"Chummer", b"Chummer\r\n", b"Chummer\n\n",
+                    b"\xef\xbb\xbfChummer\n", b"Chummer\x00\n"):
+            with self.subTest(raw=raw), tempfile.TemporaryDirectory() as temporary:
+                listing = self.copy_listing(Path(temporary))
+                (listing / "en-US" / "title.txt").write_bytes(raw)
+                with self.assertRaises(ValueError):
+                    self.validate(listing)
+        with tempfile.TemporaryDirectory() as temporary:
+            listing = self.copy_listing(Path(temporary))
+            path = listing / "de-DE" / "title.txt"
+            path.unlink()
+            path.symlink_to(listing / "en-US" / "title.txt")
+            with self.assertRaisesRegex(ValueError, "non-symlink"):
+                self.validate(listing)
 
 
 if __name__ == "__main__":

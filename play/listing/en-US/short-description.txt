@@ -1,1 +1,1 @@
-Seven SR5 phone flows; other wizard routes are experimental. Internal test.
+SR5 runner wizards and an Origin story reader with EPUB export. Internal test.
