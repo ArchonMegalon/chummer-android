@@ -386,6 +386,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public bool FailAcceptance { get; set; }
     public bool FailRead { get; set; }
     public bool TransientReadFailure { get; set; }
+    public bool Dispatched { get; set; }
     public bool Ready { get; set; }
     public AndroidAccountLinkStatus Status { get; set; } = AndroidAccountLinkStatus.Linked;
     public int LinkStarts { get; private set; }
@@ -459,6 +460,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
             AndroidOriginChapterOutcome.Unavailable, RetryableReadFailure: true));
         if (FailRead) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable));
         if (_job is null) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound));
+        if (Dispatched) _job = _job with { State = OriginChapterAuthoringStates.ReconciliationRequired };
         if (Ready) _job = _job with { State = OriginChapterAuthoringStates.ReviewRequired,
             DraftText = "Synthetic transport chapter for explicit review.", ProviderReceiptDigest = new string('d', 64) };
         return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _job));

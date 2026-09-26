@@ -729,10 +729,34 @@ internal static partial class AfterRunAuthorityHarness
                 Require(authoringProbe.Reads == beforeUnclassifiedFailure + 1 && authoringProbe.Requests == 1,
                     "An automatic status failure retried without an explicit refresh.");
                 await Click("origin-authoring-refresh");
+                authoringProbe.Dispatched = true;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(Element<ProgressBar>("origin-authoring-progress").Progress == 2d / 3d
+                    && IssuedElements(Current()).OfType<Label>().Any(label =>
+                        label.AutomationId == "origin-authoring-outcome-unconfirmed" && !string.IsNullOrWhiteSpace(label.Text))
+                    && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                    "Dispatch without a confirmed result must visibly explain uncertainty, not imply an active writer.");
+                // A stopped provider and a running provider share this remote
+                // state. A failed observation must not erase that distinction.
+                authoringProbe.TransientReadFailure = true;
+                for (int failedRead = 0; failedRead < 3; failedRead++)
+                    await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                int pausedUnconfirmedReads = authoringProbe.Reads;
+                await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
+                Require(authoringProbe.Reads == pausedUnconfirmedReads
+                    && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0
+                    && Element<ProgressBar>("origin-authoring-progress").Progress == 2d / 3d
+                    && IssuedElements(Current()).Any(element => element.AutomationId == "origin-authoring-outcome-unconfirmed")
+                    && IssuedElements(Current()).OfType<Label>().Any(label => label.Text ==
+                        AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusPaused"]),
+                    "Paused status reads hid the unconfirmed outcome, restarted writing or accepted prose.");
+                authoringProbe.TransientReadFailure = false;
+                await Click("origin-authoring-refresh");
                 authoringProbe.Ready = true;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d
-                    && !IssuedElements(Current()).Any(element => element.AutomationId == "origin-authoring-eta"),
+                    && !IssuedElements(Current()).Any(element => element.AutomationId is "origin-authoring-eta"
+                        or "origin-authoring-outcome-unconfirmed"),
                     "A ready draft retained a fabricated time estimate or incorrect generation progress.");
                 var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
