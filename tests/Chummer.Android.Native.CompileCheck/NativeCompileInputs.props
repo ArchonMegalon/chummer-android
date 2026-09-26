@@ -24,6 +24,8 @@
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.Continuations.cs" Link="Platform/AndroidAccountLinkService.Continuations.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.OriginChapters.cs" Link="Platform/AndroidAccountLinkService.OriginChapters.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidOriginChapterTransport.cs" Link="Platform/IAndroidOriginChapterTransport.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.OriginScenes.cs" Link="Platform/AndroidAccountLinkService.OriginScenes.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidOriginSceneTransport.cs" Link="Platform/IAndroidOriginSceneTransport.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountOwnerAuthority.cs" Link="Platform/AndroidAccountOwnerAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AccountStartupWorkScheduler.cs" Link="Platform/AccountStartupWorkScheduler.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />

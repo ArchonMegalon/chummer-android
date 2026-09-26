@@ -677,6 +677,58 @@ internal static partial class AfterRunAuthorityHarness
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text == "Synthetic transport chapter for explicit review."),
                     "The accepted transport draft did not return to the reader.");
                 Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, explicit adoption, offline acceptance recovery and book return");
+                authoringProbe.SceneBytes = LifeSceneInputProbe.Png.ToArray();
+                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                Require(!Element<Switch>("origin-scene-consent").IsToggled && authoringProbe.SceneReads == 0
+                    && authoringProbe.SceneRequests == 0, "Opening illustrations granted consent or contacted a provider.");
+                await Click("origin-scene-read");
+                Require(authoringProbe.SceneReads == 1 && authoringProbe.SceneRequests == 0,
+                    "Read-only absence generated an image.");
+                Element<Editor>("origin-scene-description").Text = "Synthetic chapter scene";
+                Element<Editor>("origin-scene-excerpt").Text = "unchosen future";
+                Element<Switch>("origin-scene-consent").IsToggled = true;
+                Require(!Element<Button>("origin-scene-request").IsEnabled, "An invented scene could be submitted.");
+                Element<Editor>("origin-scene-excerpt").Text = "Synthetic transport chapter";
+                Require(Element<Button>("origin-scene-request").IsEnabled, "Exact excerpt consent did not enable generation.");
+                authoringProbe.FailSceneRead = true;
+                await Click("origin-scene-request");
+                Require(authoringProbe.SceneRequests == 0, "Transport failure was treated as confirmed absence.");
+                authoringProbe.FailSceneRead = false;
+                Element<Switch>("origin-scene-consent").IsToggled = true;
+                await Click("origin-scene-request");
+                Require(authoringProbe.SceneRequests == 1 && authoringProbe.SceneDecisions == 0
+                    && !Element<Switch>("origin-scene-consent").IsToggled
+                    && Element<Image>("origin-scene-preview").Source is StreamImageSource
+                    && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
+                    "Remote preview was auto-adopted, regenerated or retained blanket consent.");
+                authoringProbe.FailSceneDecision = true;
+                await Click("origin-scene-save");
+                Require(Current() is OriginBookScenePage && authoringProbe.SceneDecisions == 1
+                    && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
+                    "Unknown server approval silently committed the image.");
+                authoringProbe.FailSceneDecision = false;
+                await Click("origin-scene-read");
+                Require(authoringProbe.SceneRequests == 1, "Recovering the existing image generated a duplicate.");
+                var remoteScenePage = Current();
+                await Click("origin-scene-save");
+                IssuedPageLifecycle(remoteScenePage, "OnDisappearing");
+                Require(Current() is RetainedOriginBookPage && authoringProbe.SceneDecisions == 2
+                    && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Single().Identity.ImageDigest
+                        == OriginBookScene.Hash(LifeSceneInputProbe.Png), "Explicit remote adoption failed cold image readback.");
+                await Click("origin-book-export-epub");
+                using (var generatedEpub = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
+                {
+                    using var picture = generatedEpub.GetEntry("EPUB/images/scene-1.png")!.Open();
+                    using var captured = new MemoryStream(); picture.CopyTo(captured);
+                    Require(captured.ToArray().SequenceEqual(LifeSceneInputProbe.Png), "The generated scene did not reach the offline EPUB.");
+                }
+                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                var removeScenePage = Current();
+                await Click("origin-scene-remove");
+                IssuedPageLifecycle(removeScenePage, "OnDisappearing");
+                Require(authoringProbe.SceneDecisions == 2 && authoringProbe.SceneRequests == 1,
+                    "Removing the local copy changed private remote approval or started another render.");
+                Console.WriteLine("PASS actual MAUI exact scene consent, read-before-create, unknown approval recovery, explicit adoption, cold storage and offline EPUB");
                 await Click($"origin-scene-chapter-{chapter.Sequence}");
                 Require(Current() is OriginBookScenePage && !Element<Button>("origin-scene-save").IsEnabled,
                     "Scene selection did not require a reviewed image.");
@@ -693,7 +745,7 @@ internal static partial class AfterRunAuthorityHarness
                     && Element<Image>($"origin-book-scene-{chapter.Sequence}").Source is StreamImageSource,
                     "Confirmed scene did not return to the readable book.");
                 await Click("origin-book-export-epub");
-                Require(bookOutput.EpubDeliveries == 1, "The scene reader did not deliver an EPUB through Save As.");
+                Require(bookOutput.EpubDeliveries == 2, "The scene reader did not deliver an EPUB through Save As.");
                 using (var epub = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
                 {
                     using var picture = epub.GetEntry("EPUB/images/scene-1.png")!.Open();

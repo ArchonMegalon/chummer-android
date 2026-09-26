@@ -321,7 +321,7 @@ internal static partial class AfterRunAuthorityHarness
 
 // Only the remote job is synthetic here. Page/coordinator/Core/file-store paths
 // are real; signed HTTP and owner admission are exercised separately above.
-public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapterTransport
+public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapterTransport, IAndroidOriginSceneTransport
 {
     public int Requests { get; private set; }
     public int Reads { get; private set; }
@@ -333,6 +333,46 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public AndroidAccountLinkStatus Status { get; set; } = AndroidAccountLinkStatus.Linked;
     public int LinkStarts { get; private set; }
     private OriginChapterAuthoringJob? _job;
+    public int SceneRequests { get; private set; }
+    public int SceneReads { get; private set; }
+    public int SceneDecisions { get; private set; }
+    public bool FailSceneDecision { get; set; }
+    public bool FailSceneRead { get; set; }
+    public byte[] SceneBytes { get; set; } = [];
+    private string? _sceneState;
+    private string _sceneAlt = "";
+
+    public Task<AndroidOriginSceneResult> ReadSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string acceptedText, CancellationToken ct = default)
+    {
+        SceneReads++;
+        if (FailSceneRead) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
+        if (_sceneState is null) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.NotFound));
+        var image = _sceneState is "review" or "persisted" ? new AndroidOriginSceneImage(_sceneAlt,
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(SceneBytes)), "onemin", new string('e', 64), SceneBytes.ToArray()) : null;
+        return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, _sceneState, image));
+    }
+
+    public Task<AndroidOriginSceneResult> RequestSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string acceptedText, string sceneExcerpt, string altText, bool externalProcessingConsent, CancellationToken ct = default)
+    {
+        if (!externalProcessingConsent || !acceptedText.Contains(sceneExcerpt, StringComparison.Ordinal)
+            || _job?.ReaderAcceptedTextDigest != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(acceptedText))))
+            throw new InvalidOperationException("No scene or acknowledged prose consent.");
+        SceneRequests++; _sceneState ??= "review"; _sceneAlt = altText;
+        return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, _sceneState));
+    }
+
+    public Task<AndroidOriginSceneResult> DecideSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string acceptedText, string expectedImageHash, bool approve, bool explicitlyConfirmed, CancellationToken ct = default)
+    {
+        if (!explicitlyConfirmed || expectedImageHash != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(SceneBytes)))
+            throw new InvalidOperationException("No exact scene confirmation.");
+        SceneDecisions++;
+        if (FailSceneDecision) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable, UnknownRemoteOutcome: true));
+        _sceneState = approve ? "persisted" : "rejected";
+        return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, _sceneState));
+    }
 
     protected override object? Invoke(MethodInfo? method, object?[]? args)
     {

@@ -28,6 +28,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunOriginChapterHttpCasesAsync();
             return;
         }
+        if (args.Length == 1 && args[0] == "--origin-scene-http")
+        {
+            await AfterRunAuthorityHarness.RunOriginSceneHttpCasesAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--life-module-pages-content-root")
         {
             await AfterRunAuthorityHarness.RunLifeModuleCompletionPagesAsync(args[1]);
