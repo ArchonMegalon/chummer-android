@@ -28,6 +28,8 @@ internal static class Program
     {
         AccountOwnerKeyPreservesOpaqueSubjectIdentity();
         await LegacyOwnerHydratesFromExactStatusAsync();
+        await RequestDeadlinesPreserveLinkedAccountAsync();
+        await CallerCancellationRemainsCancellationAsync();
         await GrantStatusCannotInventOrReplaceOwnerAsync();
         await LegacyOwnerCommitIsRestartableAndFencedAsync();
         await InFlightStatusCannotResurrectRevokedOwnerAsync();
@@ -74,7 +76,7 @@ internal static class Program
         await StoredOwnerBindingsFailClosedAcrossRestartAsync();
         await LegacyStagedGrantCannotInheritAnOwnerAsync();
         await BoundOwnerErasureAndUnlinkCleanupAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 48");
+        Console.WriteLine("Account-link HTTP hardening tests passed: 50");
     }
 
     private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()
@@ -143,6 +145,79 @@ internal static class Program
         await restart.InitializeAsync();
         Require(restart.Snapshot.IsLinked && fixture.Metadata.GetRaw(OwnerBindingKey) == binding);
         Console.WriteLine("PASS legacy owner fresh status, idempotent validation and zero-network restart");
+    }
+
+    private static async Task RequestDeadlinesPreserveLinkedAccountAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            string? ownerBinding = fixture.Metadata.GetRaw(OwnerBindingKey);
+            string? expiry = fixture.Metadata.GetRaw(StoredGrantExpiryKey);
+            var terminal = new RecordingHandler(async (_, token) =>
+            {
+                if (beforeHeaders) await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(new NeverCompletingReadStream())
+                };
+            });
+            using var transport = CreateTransport(terminal, TimeSpan.FromMilliseconds(100));
+            var service = CreateService(transport, fixture);
+            await service.InitializeOwnerContextAsync();
+            var owner = service.OwnerAuthority.Capture();
+            Stopwatch elapsed = Stopwatch.StartNew();
+            await service.InitializeAsync();
+            Require(elapsed.Elapsed < TimeSpan.FromSeconds(5));
+            Require(service.Snapshot.IsLinked);
+            Require(service.Snapshot.Detail == "Available offline.");
+            Require(service.OwnerAuthority.Capture() == owner && owner is not null);
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken
+                && fixture.Metadata.GetRaw(OwnerBindingKey) == ownerBinding
+                && fixture.Metadata.GetRaw(StoredGrantExpiryKey) == expiry
+                && !fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(terminal.Requests.Count == 1);
+            Require(!service.Snapshot.ToString().Contains(AccessToken, StringComparison.Ordinal));
+            Console.WriteLine($"PASS bounded account deadline preserves existing identity: headers={beforeHeaders}");
+        }
+    }
+
+    private static async Task CallerCancellationRemainsCancellationAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        {
+            using var cancellation = new CancellationTokenSource();
+            var terminal = new RecordingHandler((_, token) =>
+            {
+                if (beforeHeaders)
+                {
+                    cancellation.Cancel();
+                    token.ThrowIfCancellationRequested();
+                }
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(new NeverCompletingReadStream())
+                });
+            });
+            using var transport = CreateTransport(terminal);
+            if (beforeHeaders)
+            {
+                await RequireThrowsAsync<OperationCanceledException>(() => transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), cancellation.Token));
+            }
+            else
+            {
+                using var response = await transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), cancellation.Token);
+                cancellation.Cancel();
+                await RequireThrowsAsync<OperationCanceledException>(() =>
+                    transport.ReadJsonAsync<CollectionEnvelope>(response, cancellation.Token));
+            }
+            Require(cancellation.IsCancellationRequested && terminal.Requests.Count == 1);
+            Console.WriteLine($"PASS caller cancellation is not converted to offline: headers={beforeHeaders}");
+        }
     }
 
     private static async Task GrantStatusCannotInventOrReplaceOwnerAsync()
@@ -999,11 +1074,12 @@ internal static class Program
             CreateAuthority(),
             CancellationToken.None);
         Stopwatch elapsed = Stopwatch.StartNew();
-        OperationCanceledException error = await RequireThrowsAsync<OperationCanceledException>(
+        HttpRequestException error = await RequireThrowsAsync<HttpRequestException>(
             () => transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None));
         elapsed.Stop();
 
         Require(elapsed.Elapsed < TimeSpan.FromSeconds(5));
+        Require(error.InnerException is null);
         Require(!error.ToString().Contains(AccessToken, StringComparison.Ordinal));
     }
 
