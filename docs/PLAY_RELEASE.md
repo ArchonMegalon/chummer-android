@@ -13,30 +13,34 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 41 — September 26, 2026
+## Current observed Internal release: Preview 42 — September 26, 2026
 
-Scoped authenticated Console readback at `2026-09-26T19:02:16Z` shows
-`41 (0.1.0-preview.41)` as **Available to internal testers**.
+Scoped authenticated Console readback at `2026-09-26T20:50:01Z` shows
+`42 (0.1.0-preview.42)` as **Available to internal testers**.
 [Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
-See the [exact local artifact and availability](../play/evidence/preview41-internal-observation.md).
+See the [exact local artifact and availability](../play/evidence/preview42-internal-observation.md).
 
-The reader/EPUB now presents the confirmed starting situation before the first
-story; chapter-status deadlines do not restart generation. Focused managed tests,
-diagnostic API36 cold-reopen/EPUB smoke and the exact local ARM64 build passed.
+Interrupted scene-status reads retain loaded previews, with distinct dispatching
+and uncertain-result messages and no automatic paid retry. Focused managed tests,
+diagnostic API36 offline-read/cold-reopen smoke and the local ARM64 build passed.
+The confirmed starting situation, accepted prose and EPUB behavior from
+[Preview41](../play/evidence/preview41-internal-observation.md) remain intact.
 The existing-key signature and unchanged payload were independently checked before
-the single Internal upload. Android and UI protected source integration completed.
+the single Internal upload. Android protected integration completed; UI and Core
+inputs are unchanged from the preceding release.
 
 Physical Play installation remains explicitly deferred and unverified. The
 interrupted FirstBook successor is separately fenced; full Life Modules/Career
 and whole-book completion are not claimed. This is a bounded Internal update,
 not hosted qualification, package-only assembly or complete phone beta.
-Code41 is consumed; use42 or a higher unused code next. Prior evidence is historical.
+Code42 is consumed; use43 or a higher unused code next. Prior evidence is historical.
 
 Separate store-artwork follow-up: the exact supplied Troll PNG was saved and
 [submitted for icon-only review](../play/evidence/troll-store-icon-review-20260926.md)
-on September 26. Preliminary checks were still running; live artwork is not yet
-verified. No AAB or release identity changed. The actual older listing copy
-also still needs reconciliation with the current bounded release claims.
+on September26. Icon approval/live status was not rechecked during Preview42
+delivery. Revised en-GB short/full descriptions were saved separately but not
+submitted, because doing so would restart the icon review. No listing change was
+made by this AAB transaction; source copy and actual publication remain distinct.
 
 ## Historical observed Internal release: Preview 31 — September 25, 2026
 
