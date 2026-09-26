@@ -363,6 +363,8 @@ internal static partial class AfterRunAuthorityHarness
         internal Func<Task>? BeforeHttpResponse;
         internal int ChapterRequests;
         internal Func<string, JsonObject, HttpResponseMessage>? ChapterResponse;
+        internal int SceneRequests;
+        internal Func<string, JsonObject, HttpResponseMessage>? SceneResponse;
         private string _subject = "subject";
         private string _grant = "continuation-grant";
 
@@ -396,10 +398,12 @@ internal static partial class AfterRunAuthorityHarness
             byte[] bytes = await request.Content!.ReadAsByteArrayAsync(token);
             JsonObject body = JsonNode.Parse(bytes)!.AsObject();
             if (path.Contains("/continuation/workspaces/", StringComparison.Ordinal)
-                || path.StartsWith("/api/v2/android/linked/origin/chapters/", StringComparison.Ordinal))
+                || path.StartsWith("/api/v2/android/linked/origin/chapters/", StringComparison.Ordinal)
+                || path.StartsWith("/api/v2/android/linked/origin/scenes/", StringComparison.Ordinal))
             {
                 bool chapterRequest = path.StartsWith("/api/v2/android/linked/origin/chapters/", StringComparison.Ordinal);
-                if (chapterRequest) ChapterRequests++; else ContinuationRequests++;
+                bool sceneRequest = path.StartsWith("/api/v2/android/linked/origin/scenes/", StringComparison.Ordinal);
+                if (chapterRequest) ChapterRequests++; else if (sceneRequest) SceneRequests++; else ContinuationRequests++;
                 Require(request.Headers.Authorization?.Scheme == "Bearer"
                     && request.Headers.Authorization.Parameter == "continuation-test-token"
                     && !Encoding.UTF8.GetString(bytes).Contains("continuation-test-token", StringComparison.Ordinal)
@@ -415,6 +419,8 @@ internal static partial class AfterRunAuthorityHarness
                     Convert.FromBase64String(Header("X-Chummer-Packet-Signature")), HashAlgorithmName.SHA256,
                     RSASignaturePadding.Pkcs1), "The real continuation HTTP body was not covered by the device signature.");
                 if (BeforeHttpResponse is not null) await BeforeHttpResponse();
+                if (sceneRequest)
+                    return SceneResponse?.Invoke(path, body) ?? new(HttpStatusCode.NotFound);
                 if (chapterRequest)
                     return ChapterResponse?.Invoke(path, body) ?? new(HttpStatusCode.NotFound);
                 if (path.EndsWith("/list", StringComparison.Ordinal))
