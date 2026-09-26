@@ -63,7 +63,7 @@ class AndroidImageDocumentServiceContractTests(unittest.TestCase):
             "Bitmap.Config.Argb8888",
             "InPremultiplied = true",
             "decoded.GetConfig() != Bitmap.Config.Argb8888",
-            "!decoded.IsPremultiplied",
+            "(decoded.HasAlpha && !decoded.IsPremultiplied)",
             "CryptographicOperations.ZeroMemory(encodedBytes)",
         ):
             self.assertIn(marker, implementation)
