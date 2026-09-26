@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.IO.Compression;
+using System.Xml.Linq;
 using Chummer.Android.Native;
 using Chummer.Application.LifeModules;
 using Chummer.Application.Owners;
@@ -231,8 +233,16 @@ internal static class OriginDossierBookRuntimeTests
             Require(selected.ChapterText(chapter) == prose.Text
                 && selected.ToHtml(AndroidSurfaceStrings.Resolve("de")).Contains(System.Net.WebUtility.HtmlEncode(prose.Text), StringComparison.Ordinal),
                 "Finish display rewrote reader-approved narration or exported executable markup.");
+            VerifyEpub(selected, prose.Text, locale);
             var pending = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(chapter.ChapterId, null, prose)]));
             Require(pending.ChapterText(chapter) == text, "Unconfirmed narration replaced the completed-selection display.");
+            VerifyEpub(pending, text, locale);
+            if (locale == "de-DE")
+            {
+                VerifyLongEpub(localized, chapter);
+                VerifyIllustratedEpub(selected, chapter);
+                WriteIllustratedPreview(localized, chapter);
+            }
         }
         var laterFinish = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [finish with { AcceptedDecisionId = "later" }] } };
         Require(OriginBookChapterText.Render(laterFinish, chapter) == chapter.VisibleMarkdown,
@@ -248,6 +258,212 @@ internal static class OriginDossierBookRuntimeTests
                 "The canonical-only finish formatter rewrote an authored layer.");
         }
         Console.WriteLine("PASS Origin book: finished selection display in DE/EN/ES, immutable history, matching readers/export and retained approved prose");
+    }
+
+    private static void VerifyIllustratedEpub(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
+    {
+        byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+        var picture = new OriginBookEpub.Illustration(chapter.ChapterId, Digest(book.ChapterText(chapter)),
+            "A quiet forest scene <not markup> & a spiral of stones", png);
+        var copy = AndroidSurfaceStrings.Resolve(book.Locale);
+        byte[] exported = OriginBookEpub.Create(book, copy, [picture]);
+        using var archive = new ZipArchive(new MemoryStream(exported), ZipArchiveMode.Read);
+        using var imageStream = archive.GetEntry("EPUB/images/scene-1.png")!.Open();
+        using var image = new MemoryStream(); imageStream.CopyTo(image);
+        Require(image.ToArray().SequenceEqual(png), "EPUB did not retain the exact offline image bytes.");
+        using var chapterStream = archive.GetEntry("EPUB/chapter-1.xhtml")!.Open();
+        var page = XDocument.Load(chapterStream);
+        XNamespace html = "http://www.w3.org/1999/xhtml";
+        var element = page.Descendants(html + "img").Single();
+        Require(element.Attribute("src")?.Value == "images/scene-1.png"
+            && element.Attribute("alt")?.Value == picture.AltText
+            && string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == book.ChapterText(chapter),
+            "An illustration used a remote URL, lost its accessible description or changed prose.");
+        using var packageStream = archive.GetEntry("EPUB/package.opf")!.Open();
+        XNamespace opf = "http://www.idpf.org/2007/opf";
+        Require(XDocument.Load(packageStream).Descendants(opf + "item").Any(item =>
+                item.Attribute("href")?.Value == "images/scene-1.png" && item.Attribute("media-type")?.Value == "image/png"),
+            "The offline image is not declared in the EPUB manifest.");
+        void Reject(OriginBookEpub.Illustration invalid)
+        {
+            bool rejected = false;
+            try { OriginBookEpub.Create(book, copy, [invalid]); }
+            catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "An invalid, oversized or wrong-chapter illustration was exported.");
+        }
+        Reject(picture with { TextDigest = Digest("unselected or stale story") });
+        Reject(picture with { ChapterId = "another-book-chapter" });
+        Reject(picture with { Bytes = Encoding.UTF8.GetBytes("<svg onload='bad()'/>") });
+        Reject(picture with { Bytes = new byte[4 * 1024 * 1024 + 1] });
+        Reject(picture with { AltText = "" });
+        byte[] oversizedDimensions = png.ToArray();
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(oversizedDimensions.AsSpan(16), 50000);
+        Reject(picture with { Bytes = oversizedDimensions });
+        bool tooManyRejected = false;
+        try { OriginBookEpub.Create(book, copy, Enumerable.Repeat(picture, 9).ToArray()); }
+        catch (InvalidDataException) { tooManyRejected = true; }
+        Require(tooManyRejected, "The EPUB illustration-count bound was ignored.");
+        VerifySceneStore(book, chapter, png);
+        Console.WriteLine("PASS Origin EPUB: exact embedded raster, alt text, selected-chapter binding and unsafe/oversized image rejection");
+    }
+
+    private static void VerifySceneStore(RetainedOriginBook book, OriginNarrativeChapterProjection chapter, byte[] png)
+    {
+        string directory = Directory.CreateTempSubdirectory("chummer-origin-scenes-").FullName;
+        try
+        {
+            var store = new OriginBookSceneStore(directory);
+            var empty = store.Load("owner-a", "workspace");
+            byte[] input = png.ToArray();
+            var scene = OriginBookScene.ForChapter(book, chapter, "Forest & stones <scene>", input);
+            input[0] = 0;
+            var next = new OriginBookScenes(empty.Owner, empty.Workspace, [scene]);
+            Require(scene.Export().Bytes.SequenceEqual(png), "Scene custody shares mutable input bytes.");
+            byte[] exportedCopy = scene.Export().Bytes; exportedCopy[0] = 0;
+            Require(scene.Export().Bytes.SequenceEqual(png), "An export mutated the retained scene.");
+            using (var cancellation = new CancellationTokenSource())
+            {
+                cancellation.Cancel();
+                bool rejected = false;
+                try { store.Save(empty, next, () => true, cancellation.Token); }
+                catch (OperationCanceledException) { rejected = true; }
+                Require(rejected && store.Load(empty.Owner, empty.Workspace).Scenes.Count == 0,
+                    "Cancellation committed a scene.");
+            }
+            bool stale = false;
+            int checks = 0;
+            try { store.Save(empty, next, () => ++checks == 1, default); }
+            catch (OperationCanceledException) { stale = true; }
+            Require(stale && store.Load(empty.Owner, empty.Workspace).Scenes.Count == 0
+                && !Directory.EnumerateFiles(directory, "*.tmp", SearchOption.AllDirectories).Any(),
+                "A changed context committed a scene or left temporary private bytes.");
+            store.Save(empty, next, () => true, default);
+            var reopened = new OriginBookSceneStore(directory).Load(empty.Owner, empty.Workspace);
+            Require(reopened.Digest == next.Digest && reopened.Scenes.Single().Export().Bytes.SequenceEqual(png)
+                && store.Load("owner-b", "workspace").Scenes.Count == 0
+                && store.Load("owner-a", "other-workspace").Scenes.Count == 0,
+                "Cold scene read lost exact bytes or crossed owner/workspace boundaries.");
+            var illustrated = new RetainedOriginBook(book.Projection, book.Readings, reopened);
+            Require(illustrated.Scene(chapter) is not null && illustrated.ToHtml(AndroidSurfaceStrings.Resolve("en"))
+                    .Contains("data:image/png;base64,", StringComparison.Ordinal),
+                "Saved scenes were omitted from the offline reader/HTML.");
+            using (var epub = new ZipArchive(new MemoryStream(OriginBookEpub.Create(illustrated, AndroidSurfaceStrings.Resolve("en"))), ZipArchiveMode.Read))
+                Require(epub.GetEntry("EPUB/images/scene-1.png") is not null,
+                    "Normal EPUB export did not include the retained book scene.");
+            var changed = new RetainedOriginBook(book.Projection, null, reopened);
+            Require(changed.Scene(chapter) is null && changed.SceneExports().Count == 0,
+                "An illustration survived a change of selected prose.");
+            var changedChapter = chapter with { ChapterDigest = Digest("different canonical chapter") };
+            Require(!scene.Matches(new RetainedOriginBook(book.Projection with { VisibleChapters = [changedChapter] }, book.Readings, reopened), changedChapter),
+                "Scene binding ignored canonical chapter identity.");
+            bool conflict = false;
+            try { store.Save(empty, next, () => true, default); }
+            catch (InvalidOperationException) { conflict = true; }
+            Require(conflict, "A stale scene collection silently overwrote a newer edition.");
+            string archive = Directory.EnumerateFiles(Path.Combine(directory, "origin-book-scenes"), "*.zip").Single();
+            using (var zip = new ZipArchive(File.Open(archive, FileMode.Open, FileAccess.ReadWrite), ZipArchiveMode.Update))
+            {
+                var entry = zip.GetEntry("scene-0")!;
+                using var bytes = entry.Open(); bytes.Position = 0; bytes.WriteByte(0);
+            }
+            bool corruption = false;
+            try { store.Load(empty.Owner, empty.Workspace); }
+            catch (InvalidDataException) { corruption = true; }
+            Require(corruption, "Tampered scene bytes passed cold readback.");
+            Console.WriteLine("PASS Origin scenes: offline restart, exact PNG, text/canon binding, owner isolation, canceled/stale writes and corruption rejection");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    // Optional, operator-selected example inputs for visual review, never part
+    // of normal tests or a Hub/provider handoff. This does not select app prose.
+    private static void WriteIllustratedPreview(OriginStoryArcSeed projection, OriginNarrativeChapterProjection original)
+    {
+        string? directory = Environment.GetEnvironmentVariable("CHUMMER_ORIGIN_EPUB_PREVIEW_DIRECTORY");
+        if (string.IsNullOrEmpty(directory)) return;
+        string markdown = File.ReadAllText(Path.Combine(directory, "chapter.md"));
+        int newline = markdown.IndexOf('\n');
+        var chapter = original with { Title = markdown[..newline].TrimStart('#', ' ').Trim() };
+        string prose = markdown[(newline + 1)..].Trim();
+        var selected = OriginBookProseDraft.Create(chapter, "en-US", "illustrated-layout-test", new string('e', 64), prose);
+        var book = new RetainedOriginBook(projection with
+        {
+            CurrentTurn = projection.CurrentTurn with { Locale = "en-US", RunnerDisplayName = "Grounding — illustrated test excerpt" },
+            VisibleChapters = [chapter]
+        }, new("synthetic-test-owner", "synthetic-test-workspace", [new(chapter.ChapterId, selected, null)]));
+        var picture = new OriginBookEpub.Illustration(chapter.ChapterId, Digest(prose),
+            "A spiral of pale and dark stones on damp evergreen forest soil, beside a small rainwater channel.",
+            File.ReadAllBytes(Path.Combine(directory, "scene.png")));
+        string output = Path.Combine(directory, "origin-illustrated-preview.epub");
+        using var file = new FileStream(output, FileMode.CreateNew);
+        file.Write(OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve("en-US"), [picture]));
+        Console.WriteLine("PASS Origin EPUB: wrote explicitly labeled synthetic illustrated test excerpt, not a production book");
+    }
+
+    private static void VerifyLongEpub(OriginStoryArcSeed projection, OriginNarrativeChapterProjection chapter)
+    {
+        string prose = string.Join("\n\n", Enumerable.Range(1, 180).Select(i =>
+            $"Absatz {i}: Über den Dächern lag warmer Regen. 🌧️ Sie erinnerte sich an ihre Kindheit – an Türen, "
+            + "die offen blieben, und an Menschen, die ihr zuhörten. <Bilder & Erinnerungen> blieben ihre eigenen."));
+        var second = chapter with { ChapterId = chapter.ChapterId + "-second", Sequence = chapter.Sequence + 1,
+            Title = "Eine neue Straße – 🌆", VisibleMarkdown = "Unselected fallback must not replace the chosen story." };
+        var selected = OriginBookProseDraft.Create(second, "de-DE", "long-story-fixture", new string('d', 64), prose);
+        var book = new RetainedOriginBook(projection with { VisibleChapters = [chapter, second] },
+            new("local-single-user", "workspace-1", [new(second.ChapterId, selected, null)]));
+        using var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read);
+        XDocument Read(string name) { using var stream = archive.GetEntry("EPUB/" + name)!.Open(); return XDocument.Load(stream); }
+        XNamespace html = "http://www.w3.org/1999/xhtml";
+        XNamespace opf = "http://www.idpf.org/2007/opf";
+        var exported = Read("chapter-2.xhtml");
+        Require(string.Join("\n\n", exported.Descendants(html + "p").Select(p => p.Value)) == prose
+            && exported.Descendants(html + "p").Count() == 180,
+            "A long Unicode chapter was truncated, lost paragraph breaks, or interpreted prose as markup.");
+        Require(exported.Descendants(html + "h1").Single().Value == second.Title,
+            "The EPUB lost Unicode in the chapter title.");
+        Require(Read("package.opf").Descendants(opf + "itemref").Select(i => i.Attribute("idref")!.Value)
+                .SequenceEqual(new[] { "title", "chapter-1", "chapter-2" })
+            && Read("nav.xhtml").Descendants(html + "a").Select(a => a.Attribute("href")!.Value)
+                .SequenceEqual(new[] { "chapter-1.xhtml", "chapter-2.xhtml" }),
+            "The long book's reading order and contents disagree.");
+        Console.WriteLine("PASS Origin EPUB: long story, full Unicode, escaped prose, paragraph breaks and ordered chapters");
+    }
+
+    private static void VerifyEpub(RetainedOriginBook book, string expectedText, string locale)
+    {
+        string original = JsonSerializer.Serialize(book.Projection);
+        byte[] bytes = OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve(locale));
+        // Local ZIP header: compression method 0, name "mimetype", no extra.
+        Require(BitConverter.ToUInt16(bytes, 8) == 0 && BitConverter.ToUInt16(bytes, 28) == 0,
+            "EPUB mimetype is compressed or has a ZIP extra field.");
+        using var archive = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+        string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
+        Require(archive.Entries.First().FullName == "mimetype" && Read("mimetype") == "application/epub+zip",
+            "Not a real EPUB container.");
+        XNamespace html = "http://www.w3.org/1999/xhtml";
+        XNamespace opf = "http://www.idpf.org/2007/opf";
+        XNamespace dc = "http://purl.org/dc/elements/1.1/";
+        var package = XDocument.Parse(Read("EPUB/package.opf"));
+        Require(package.Root!.Attribute("version")?.Value == "3.0"
+            && package.Descendants(dc + "language").Single().Value == locale,
+            "EPUB metadata lost its version or reading language.");
+        foreach (var item in package.Descendants(opf + "item"))
+            Require(archive.GetEntry("EPUB/" + item.Attribute("href")!.Value) is not null, "EPUB has a broken manifest item.");
+        var navigation = XDocument.Parse(Read("EPUB/nav.xhtml"));
+        Require(navigation.Descendants(html + "a").Count() == book.Chapters.Count, "EPUB omitted a TOC chapter.");
+        foreach (var link in navigation.Descendants(html + "a"))
+            Require(archive.GetEntry("EPUB/" + link.Attribute("href")!.Value) is not null, "EPUB has a broken TOC link.");
+        var chapter = XDocument.Parse(Read("EPUB/chapter-1.xhtml"));
+        Require(string.Join("\n\n", chapter.Descendants(html + "p").Select(p => p.Value)) == expectedText,
+            "EPUB differs from the displayed reader-selected edition.");
+        Require(!chapter.Descendants(html + "script").Any() && !chapter.Descendants(html + "img").Any(),
+            "Prose became executable markup or a remote image.");
+        Require(!Read("EPUB/package.opf").Contains("workspace-1", StringComparison.Ordinal)
+            && !Read("EPUB/package.opf").Contains("local-single-user", StringComparison.Ordinal),
+            "EPUB exposed private workspace or owner identity.");
+        Require(!Read("EPUB/style.css").Contains("color:", StringComparison.Ordinal),
+            "EPUB defeats the user's reading theme.");
+        Require(JsonSerializer.Serialize(book.Projection) == original, "EPUB export mutated canonical history.");
+        Console.WriteLine("PASS Origin EPUB: readable offline, localized, safe selected prose and complete TOC " + locale);
     }
 
     public static void RunAuthoringSource()

@@ -59,6 +59,17 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _body.Add(opening);
         }
         long appearance = CaptureAppearanceGeneration();
+        var epub = NativeTheme.ReadingButton(_copy["Origin.ExportEpub"]);
+        epub.AutomationId = "origin-book-export-epub";
+        epub.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                && Coordinator.IsRetainedOriginBookCurrent(book);
+            if (!Current()) return;
+            bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None, epub: true);
+            if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
+        });
+        _body.Add(epub);
         var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
         export.AutomationId = "origin-book-export";
         export.Clicked += async (_, _) => await RunAsync(async () =>
@@ -88,13 +99,33 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _body.Add(account);
         }
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
+        if (book.ScenesUnavailable) _body.Add(NativeTheme.Body(_copy["Origin.ScenesUnavailable"]));
         foreach (var chapter in book.Chapters)
         {
             _body.Add(NativeTheme.Title(book.IsOpeningSetup(chapter)
                 ? _copy["Origin.OpeningSetupTitle"] : chapter.Title, 21));
+            if (book.Scene(chapter) is { } scene)
+            {
+                _body.Add(OriginBookScenePage.SceneImage(scene, $"origin-book-scene-{chapter.Sequence}",
+                    () => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                        && Coordinator.IsRetainedOriginBookCurrent(book)));
+                _body.Add(NativeTheme.Body(scene.Identity.AltText, NativeTheme.Muted));
+            }
             var text = NativeTheme.BookProse(book.ChapterText(chapter));
             text.AutomationId = $"origin-retained-chapter-{chapter.Sequence}";
             _body.Add(text);
+            if (Coordinator.CanSelectOriginBookScene(book))
+            {
+                var illustration = NativeTheme.ReadingButton(_copy["Origin.SceneTitle"]);
+                illustration.AutomationId = $"origin-scene-chapter-{chapter.Sequence}";
+                illustration.Clicked += async (_, _) => await RunAsync(async () =>
+                {
+                    if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                        && Coordinator.CanSelectOriginBookScene(book))
+                        await Navigation.PushAsync(new OriginBookScenePage(Coordinator, book, chapter, _copy));
+                });
+                _body.Add(illustration);
+            }
             if (Coordinator.PrepareOriginChapterSource(book, chapter) is not null)
             {
                 var author = NativeTheme.ReadingButton(_copy["Origin.AuthorChapter"]);

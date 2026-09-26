@@ -12,10 +12,17 @@ using Chummer.Run.Contracts.Community;
 
 namespace Chummer.Android.Native;
 
-internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null)
+internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null,
+    OriginBookScenes? scenes = null, bool scenesUnavailable = false)
 {
     internal OriginStoryArcSeed Projection { get; } = projection;
     internal OriginBookReadingState? Readings { get; } = readings;
+    internal OriginBookScenes? Scenes { get; } = scenes;
+    internal bool ScenesUnavailable { get; } = scenesUnavailable;
+    internal OriginBookScene? Scene(OriginNarrativeChapterProjection chapter)
+        => Scenes?.Scenes.SingleOrDefault(s => s.Matches(this, chapter));
+    internal IReadOnlyList<OriginBookEpub.Illustration> SceneExports()
+        => Chapters.Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
     public string RunnerName { get; } = projection.CurrentTurn.RunnerDisplayName;
     public string Locale { get; } = projection.CurrentTurn.Locale;
     public string Digest { get; } = projection.SeedDigest;
@@ -133,12 +140,23 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         var html = new StringBuilder("<!doctype html><html lang=\"").Append(E(Locale))
             .Append("\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
             .Append("<meta name=\"author\" content=\"chummer.run\"><title>").Append(E(RunnerName))
-            .Append("</title><style>body{color:#192c35;background:#fff;max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}footer{margin-top:3rem}</style></head><body><h1>")
+            .Append("</title><style>body{color:#192c35;background:#fff;max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}img{max-width:100%;height:auto}figure{margin:1em 0}footer{margin-top:3rem}</style></head><body><h1>")
             .Append(E(RunnerName)).Append("</h1><p>").Append(E(copy["Origin.BookSavedChapters"]))
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
         foreach (var chapter in Chapters)
-            html.Append("<section><h2>").Append(E(chapter.Title)).Append("</h2><div class=\"prose\">")
+        {
+            html.Append("<section><h2>").Append(E(chapter.Title)).Append("</h2>");
+            if (Scene(chapter) is { } scene)
+            {
+                using var image = scene.Open();
+                using var bytes = new MemoryStream(); image.CopyTo(bytes);
+                html.Append("<figure><img src=\"data:").Append(scene.Identity.MediaType).Append(";base64,")
+                    .Append(Convert.ToBase64String(bytes.ToArray())).Append("\" alt=\"")
+                    .Append(E(scene.Identity.AltText)).Append("\"></figure>");
+            }
+            html.Append("<div class=\"prose\">")
                 .Append(E(ChapterText(chapter))).Append("</div></section>");
+        }
         return html.Append("<footer>").Append(E(copy.Format("Origin.BookMetadata", OriginTechnicalPublicationMetadata.ChummerRunId)))
             .Append("</footer></body></html>").ToString();
     }
@@ -148,6 +166,8 @@ public sealed partial class RunnerSessionCoordinator
 {
     private readonly IOwnerBoundLifeModuleBookService? _lifeModuleBookService;
     private readonly OriginBookReadingStore? _originBookReadings;
+    private readonly OriginBookSceneStore? _originBookScenes;
+    private readonly IAndroidImageDocumentService? _originSceneDocuments;
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
 
     internal bool CanReadRetainedOriginBook(CharacterOverviewState? original = null)
@@ -270,10 +290,28 @@ public sealed partial class RunnerSessionCoordinator
                         return readingStore.Load(owner.Owner.Value, id.Value);
                     }
                 }, ct);
+            OriginBookScenes? scenes = null;
+            bool scenesUnavailable = false;
+            if (_originBookScenes is { } sceneStore)
+            {
+                try
+                {
+                    scenes = await ReadOriginBookAsync(owner, () =>
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
+                            || !TryAcquireDamageJournalOwner(owner, id, out var lease))
+                            throw new OperationCanceledException("The book context changed.");
+                        using (lease) return sceneStore.Load(owner.Owner.Value, id.Value);
+                    }, ct);
+                }
+                catch (Exception error) when (error is IOException or InvalidDataException or System.Text.Json.JsonException or UnauthorizedAccessException)
+                { scenesUnavailable = true; } // Damaged optional artwork must not make prose unreadable.
+            }
             ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
-            RetireDifferentBookEditions(original, readings?.Digest);
-            var book = new RetainedOriginBook(projection, readings);
+            RetireDifferentBookEditions(original, readings?.Digest, scenes?.Digest);
+            var book = new RetainedOriginBook(projection, readings, scenes, scenesUnavailable);
             _retainedBooks.Add(book, original);
             return book;
         }, ct);
@@ -328,34 +366,97 @@ public sealed partial class RunnerSessionCoordinator
             // immediately after commit. Old open readers/export callbacks must
             // not keep treating their previous edition as current.
             bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
-            RetireDifferentBookEditions(original, saved.Digest);
+            RetireDifferentBookEditions(original, saved.Digest, book.Scenes?.Digest);
             if (!current) return null;
-            var updated = new RetainedOriginBook(book.Projection, saved);
+            var updated = new RetainedOriginBook(book.Projection, saved, book.Scenes, book.ScenesUnavailable);
             _retainedBooks.Add(updated, original);
             return updated;
         }, ct);
 
-    private void RetireDifferentBookEditions(CharacterOverviewState original, string? readingDigest)
+    private void RetireDifferentBookEditions(CharacterOverviewState original, string? readingDigest, string? sceneDigest)
     {
         foreach (var entry in _retainedBooks)
             if (entry.Value.WorkspaceId == original.WorkspaceId
                 && entry.Value.DisplayOwnerContext == original.DisplayOwnerContext
-                && entry.Key.Readings?.Digest != readingDigest)
+                && (entry.Key.Readings?.Digest != readingDigest || entry.Key.Scenes?.Digest != sceneDigest))
                 _retainedBooks.Remove(entry.Key);
     }
 
-    internal async Task<bool> ExportRetainedOriginBookAsync(RetainedOriginBook book, AndroidSurfaceCopy copy,
+    internal bool CanSelectOriginBookScene(RetainedOriginBook book)
+        => _originSceneDocuments is not null && _originBookScenes is not null && book.Scenes is not null
+            && !book.ScenesUnavailable && IsRetainedOriginBookCurrent(book);
+
+    internal async Task<OriginBookScene?> PickOriginBookSceneAsync(RetainedOriginBook book,
+        OriginNarrativeChapterProjection chapter, string description, Func<bool> isCurrentPage, CancellationToken ct)
+    {
+        bool Current() => isCurrentPage() && CanSelectOriginBookScene(book);
+        if (!Current() || !book.Chapters.Contains(chapter)) return null;
+        var candidate = await _originSceneDocuments!.OpenValidatedAsync(ct);
+        if (candidate is null || !Current()) return null;
+        return await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!Current()) return null;
+            if (candidate.EncodedLength is < 1 or > 4 * 1024 * 1024
+                || candidate.EncodedBase64.Length > 4 * ((4 * 1024 * 1024 + 2) / 3)
+                || candidate.DecodedMediaType is not ("image/png" or "image/jpeg")
+                || candidate.PixelWidth is < 1 or > 4096 || candidate.PixelHeight is < 1 or > 4096)
+                throw new InvalidDataException("The book scene must be a PNG/JPEG up to 4 MB and 4096 pixels per side.");
+            byte[] bytes = Convert.FromBase64String(candidate.EncodedBase64);
+            try
+            {
+                if (bytes.Length != candidate.EncodedLength || OriginBookScene.Hash(bytes) != candidate.EncodedSha256)
+                    throw new InvalidDataException("The selected scene changed identity.");
+                var scene = OriginBookScene.ForChapter(book, chapter, description, bytes);
+                return Current() ? scene : null;
+            }
+            finally { CryptographicOperations.ZeroMemory(bytes); }
+        }, ct);
+    }
+
+    internal Task<RetainedOriginBook?> SaveOriginBookSceneAsync(RetainedOriginBook book,
+        OriginNarrativeChapterProjection chapter, OriginBookScene? scene, bool explicitlyConfirmed,
         Func<bool> isCurrentPage, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!explicitlyConfirmed || !isCurrentPage() || !CanSelectOriginBookScene(book)
+                || !book.Chapters.Contains(chapter) || scene is not null && !scene.Matches(book, chapter)
+                || !_retainedBooks.TryGetValue(book, out var original)
+                || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id) return null;
+            var expected = book.Scenes!;
+            var next = new OriginBookScenes(expected.Owner, expected.Workspace,
+                expected.Scenes.Where(s => s.Identity.ChapterId != chapter.ChapterId)
+                    .Concat(scene is null ? [] : new[] { scene }).OrderBy(s => s.Identity.ChapterId, StringComparer.Ordinal));
+            var saved = await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!isCurrentPage() || !IsRetainedOriginBookCurrent(book)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease))
+                    throw new OperationCanceledException("The book context changed.");
+                using (lease) return _originBookScenes!.Save(expected, next,
+                    () => isCurrentPage() && IsRetainedOriginBookCurrent(book), ct);
+            }, ct);
+            bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
+            RetireDifferentBookEditions(original, book.Readings?.Digest, saved.Digest);
+            if (!current) return null;
+            var updated = new RetainedOriginBook(book.Projection, book.Readings, saved);
+            _retainedBooks.Add(updated, original);
+            return updated;
+        }, ct);
+
+    internal async Task<bool> ExportRetainedOriginBookAsync(RetainedOriginBook book, AndroidSurfaceCopy copy,
+        Func<bool> isCurrentPage, CancellationToken ct, bool epub = false)
     {
         bool Current() => isCurrentPage() && IsRetainedOriginBookCurrent(book);
         if (!Current()) throw new OperationCanceledException("The book context changed.");
-        byte[] bytes = await Task.Run(() => Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
+        byte[] bytes = await Task.Run(() => epub ? OriginBookEpub.Create(book, copy) : Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
         try
         {
             ct.ThrowIfCancellationRequested();
             if (!Current()) throw new OperationCanceledException("The book context changed.");
             await using var stream = new MemoryStream(bytes, writable: false);
-            return await _documents.SaveAsAsync("origin-dossier.html", "text/html", stream, Current, ct);
+            return await _documents.SaveAsAsync(epub ? "origin-dossier.epub" : "origin-dossier.html",
+                epub ? "application/epub+zip" : "text/html", stream, Current, ct);
         }
         finally { CryptographicOperations.ZeroMemory(bytes); }
     }

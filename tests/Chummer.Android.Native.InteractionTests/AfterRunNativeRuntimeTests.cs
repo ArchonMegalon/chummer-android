@@ -565,7 +565,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
             Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null,
-            Action? beforeShellWorkspaceList = null)
+            Action? beforeShellWorkspaceList = null,
+            IAndroidImageDocumentService? originSceneDocuments = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -705,7 +706,9 @@ internal static partial class AfterRunAuthorityHarness
                     originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
                         _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
                         new FileOriginDossierDraftTimelineStore(StateDirectory)),
-                    originBookReadings: new OriginBookReadingStore(StateDirectory));
+                    originBookReadings: new OriginBookReadingStore(StateDirectory),
+                    originBookScenes: new OriginBookSceneStore(StateDirectory),
+                    originSceneDocuments: originSceneDocuments);
             }
             catch
             {

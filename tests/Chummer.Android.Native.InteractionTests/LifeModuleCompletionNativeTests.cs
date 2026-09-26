@@ -100,12 +100,14 @@ internal static partial class AfterRunAuthorityHarness
         {
             var owners = new ControlledLinkedOwner();
             var bookOutput = new LifeBookOutputProbe();
+            var sceneInput = new LifeSceneInputProbe();
             var authoringAccount = System.Reflection.DispatchProxy.Create<IAndroidAccountLinkService, OriginAuthoringPageAccount>();
             var authoringProbe = (OriginAuthoringPageAccount)authoringAccount;
             LifeCompletionNativeProbe? probe = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                 productionCreationOverview: true, linkedOwners: owners, outputDocuments: bookOutput,
                 accountService: authoringAccount,
+                originSceneDocuments: sceneInput,
                 lifeCompletionDecorator: actual => probe = new(actual));
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
@@ -675,6 +677,41 @@ internal static partial class AfterRunAuthorityHarness
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text == "Synthetic transport chapter for explicit review."),
                     "The accepted transport draft did not return to the reader.");
                 Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, explicit adoption, offline acceptance recovery and book return");
+                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                Require(Current() is OriginBookScenePage && !Element<Button>("origin-scene-save").IsEnabled,
+                    "Scene selection did not require a reviewed image.");
+                Element<Editor>("origin-scene-description").Text = "Forest clearing and a spiral of stones";
+                await Click("origin-scene-choose");
+                Require(sceneInput.Reads == 1 && Element<Image>("origin-scene-preview").Source is StreamImageSource
+                    && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
+                    "Selecting a scene fetched a URL or committed it before confirmation.");
+                var scenePage = Current();
+                await Click("origin-scene-save");
+                // Headless navigation has no Android handler to send disappearance on PopAsync.
+                IssuedPageLifecycle(scenePage, "OnDisappearing");
+                Require(Current() is RetainedOriginBookPage
+                    && Element<Image>($"origin-book-scene-{chapter.Sequence}").Source is StreamImageSource,
+                    "Confirmed scene did not return to the readable book.");
+                await Click("origin-book-export-epub");
+                Require(bookOutput.EpubDeliveries == 1, "The scene reader did not deliver an EPUB through Save As.");
+                using (var epub = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
+                {
+                    using var picture = epub.GetEntry("EPUB/images/scene-1.png")!.Open();
+                    using var captured = new MemoryStream(); picture.CopyTo(captured);
+                    Require(captured.ToArray().SequenceEqual(LifeSceneInputProbe.Png), "The actual Save As EPUB lost the chosen scene bytes.");
+                }
+                var retainedScene = new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value);
+                Require(retainedScene.Scenes.Count == 1 && new OriginBookSceneStore(runtime.StateDirectory)
+                    .Load(ContactsOwnerB.Value, id.Value).Scenes.Count == 0, "Scene restart crossed owner storage boundaries.");
+                string scenePath = Directory.EnumerateFiles(Path.Combine(runtime.StateDirectory, "origin-book-scenes"), "*.zip").Single();
+                byte[] sceneArchive = File.ReadAllBytes(scenePath);
+                File.WriteAllBytes(scenePath, [1, 2, 3]);
+                var damagedArtBook = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+                Require(damagedArtBook is { ScenesUnavailable: true } && damagedArtBook.ChapterText(chapter) ==
+                    "Synthetic transport chapter for explicit review." && !runtime.Coordinator.CanSelectOriginBookScene(damagedArtBook),
+                    "Corrupt optional art made the story unreadable or allowed overwriting the damaged archive.");
+                File.WriteAllBytes(scenePath, sceneArchive);
+                Console.WriteLine("PASS actual MAUI scene preview, explicit adoption, reader return, offline EPUB Save As and cold image read");
                 book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 bookOutput.BeforeRead = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
                 bool canceled = false;
@@ -682,6 +719,8 @@ internal static partial class AfterRunAuthorityHarness
                 catch (OperationCanceledException) { canceled = true; }
                 Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
                     "Owner A→B→A during the document picker exported the old book.");
+                Require(await runtime.Coordinator.SaveOriginBookSceneAsync(book!, chapter, retainedScene.Scenes.Single(),
+                    true, () => true, default) is null, "A retired owner stamp saved a scene.");
                 bool rejectedOwner = false;
                 try { rejectedOwner = await runtime.Coordinator.StageOriginBookProseDraftAsync(book!, proposal, () => true, default) is null; }
                 catch (OperationCanceledException) { rejectedOwner = true; }
@@ -1131,18 +1170,39 @@ internal static partial class AfterRunAuthorityHarness
         public Action? BeforeRead { get; set; }
         public int Deliveries { get; private set; }
         public string Html { get; private set; } = string.Empty;
+        public int EpubDeliveries { get; private set; }
+        public byte[] Epub { get; private set; } = [];
         public Task<AndroidDocument?> OpenAsync(CancellationToken ct) => throw new InvalidOperationException("No import expected.");
         public Task<bool> SaveAsAsync(string name, string mediaType, Stream content, CancellationToken ct)
             => throw new InvalidOperationException("Book export must be context-bound.");
         public async Task<bool> SaveAsAsync(string name, string mediaType, Stream content, Func<bool> isCurrent, CancellationToken ct)
         {
-            Require(name == "origin-dossier.html" && mediaType == "text/html", "Unexpected book output format.");
+            Require(name == "origin-dossier.html" && mediaType == "text/html"
+                || name == "origin-dossier.epub" && mediaType == "application/epub+zip", "Unexpected book output format.");
             BeforeRead?.Invoke();
             if (!isCurrent()) throw new OperationCanceledException();
+            if (mediaType == "application/epub+zip")
+            {
+                using var saved = new MemoryStream(); await content.CopyToAsync(saved, ct);
+                Epub = saved.ToArray(); EpubDeliveries++; return true;
+            }
             using var reader = new StreamReader(content, leaveOpen: true);
             Html = await reader.ReadToEndAsync(ct);
             Deliveries++;
             return true;
+        }
+    }
+
+    private sealed class LifeSceneInputProbe : IAndroidImageDocumentService
+    {
+        internal static readonly byte[] Png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+        internal int Reads { get; private set; }
+        public Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested(); Reads++;
+            Require(AndroidImageDocumentValidation.TryCreateCandidate("scene.png", "content://test/scene",
+                "image/png", "image/png", 1, 1, Png, out var candidate), "Scene test candidate invalid.");
+            return Task.FromResult<AndroidImageDocumentCandidate?>(candidate);
         }
     }
 }
