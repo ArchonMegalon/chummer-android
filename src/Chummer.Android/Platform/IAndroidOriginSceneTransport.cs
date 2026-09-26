@@ -10,7 +10,7 @@ public enum AndroidOriginSceneOutcome { Available, NotFound, Unauthorized, Confl
 public sealed record AndroidOriginSceneImage(string AltText, string ImageHash, string Provider,
     string ProviderReceiptDigest, byte[] Bytes);
 public sealed record AndroidOriginSceneResult(AndroidOriginSceneOutcome Outcome, string? State = null,
-    AndroidOriginSceneImage? Image = null, bool UnknownRemoteOutcome = false);
+    AndroidOriginSceneImage? Image = null, bool UnknownRemoteOutcome = false, bool RetryableReadFailure = false);
 
 public interface IAndroidOriginSceneTransport
 {
