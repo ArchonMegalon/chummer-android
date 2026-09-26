@@ -13,7 +13,28 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 43 — September 26, 2026
+## Current observed Internal release: Preview 44 — September 27, 2026
+
+Scoped authenticated Console readback at `2026-09-26T22:23:06Z` shows
+`44 (0.1.0-preview.44)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview44-internal-observation.md).
+
+The illustration page retains its reviewed excerpt together with the description
+when returning from another tab. Fresh consent, exact book/owner binding and
+stale-control checks remain. Focused managed MAUI tests and native API36 tab-return
+and new-process reopen checks pass. The version-only candidate passed local ARM64
+Release build, bundle/content/proof checks, separate existing-key signing and
+independent payload/certificate verification. PR149/150 merged normally; UI/Core
+inputs are unchanged. No provider request, scene adoption or quota change.
+
+Physical Play installation remains deferred. FirstBook's interrupted successor
+write stays fenced; full Life Modules/Career and whole-book completion remain
+unverified. Store drafts/icon review were untouched. This is bounded Internal
+availability, not complete phone beta. Code44 is consumed; use45 or higher unused
+code next. Prior artifacts/evidence remain immutable.
+
+## Historical observed Internal release: Preview 43 — September 26, 2026
 
 Scoped authenticated Console readback at `2026-09-26T21:40:45Z` shows
 `43 (0.1.0-preview.43)` as **Available to internal testers**.
