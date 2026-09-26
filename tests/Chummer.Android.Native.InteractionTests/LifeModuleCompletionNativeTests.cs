@@ -421,13 +421,28 @@ internal static partial class AfterRunAuthorityHarness
                 "Inspecting calculation details recomputed, modified, confirmed or acknowledged the runner.");
             Element<Switch>("life-completion-confirmed").IsToggled = true;
             var oldConfirm = Element<Button>("life-confirm-completion");
+            var oldAcknowledgement = Element<Switch>("life-completion-confirmed");
+            Require(oldConfirm.IsEnabled, "The exact acknowledged review should be confirmable before an edit.");
             Element<Entry>("life-starting-dice").Text = "5";
+            Require(!oldConfirm.IsEnabled && !oldAcknowledgement.IsToggled && !oldAcknowledgement.IsEnabled,
+                "Editing the dice leaves an enabled but inert confirmation and an acknowledgement of the retired review.");
+            foreach (string changed in new[] { "", "not-a-roll", "6" })
+            {
+                Element<Entry>("life-starting-dice").Text = changed;
+                oldAcknowledgement.IsToggled = true;
+                Require(!oldConfirm.IsEnabled && !oldAcknowledgement.IsEnabled && !Session().CanConfirm,
+                    "Invalid input or restoring the old total rearmed the retired review without a fresh preview.");
+            }
             ((IButtonController)detailToggle).SendClicked();
             Require(!details.IsVisible, "Changed inputs reopened the retired calculation details.");
-            await ui.BeginAsyncVoid(() => ((IButtonController)oldConfirm).SendClicked());
+            ((IButtonController)oldConfirm).SendClicked();
             Require(probe!.ConfirmCalls == 0, "Changed visible dice accepted the previous final review.");
             Element<Entry>("life-starting-dice").Text = "6";
             await Click("life-review-completion");
+            Require(!Element<Switch>("life-completion-confirmed").IsToggled
+                && Element<Switch>("life-completion-confirmed").IsEnabled
+                && !Element<Button>("life-confirm-completion").IsEnabled,
+                "A fresh review reused the retired acknowledgement.");
             Element<Switch>("life-completion-confirmed").IsToggled = true;
             var finalConfirm = Element<Button>("life-confirm-completion");
             var finalAcknowledgement = Element<Switch>("life-completion-confirmed");
