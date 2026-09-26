@@ -450,7 +450,17 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             }
         });
         acknowledgement.Toggled += (_, args) =>
-        { if (!saving && Current(render, currentAppearance)) { confirmed = args.Value; confirmButton.IsEnabled = confirmed && _session.CanConfirm; } };
+        { if (!saving && acknowledgement.IsEnabled && Current(render, currentAppearance)) { confirmed = args.Value; confirmButton.IsEnabled = confirmed && _session.CanConfirm; } };
+        dice.TextChanged += (_, _) =>
+        {
+            if (saving || !Current(render, currentAppearance)) return;
+            // Change has retired the quote. Retire its visible consent as well;
+            // restoring the old total still requires a fresh review and acknowledgement.
+            confirmed = false;
+            acknowledgement.IsToggled = false;
+            acknowledgement.IsEnabled = false;
+            confirmButton.IsEnabled = false;
+        };
     }
 
     private void CompletionChanges(CharacterCreationFoundationFinalizationPreview quote)
