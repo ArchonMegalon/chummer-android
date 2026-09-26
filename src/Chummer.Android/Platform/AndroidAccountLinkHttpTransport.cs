@@ -85,10 +85,21 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             AndroidAccountLinkAuthorizationHandler.SetBearerToken(request, authority.AccessToken);
         }
 
-        HttpResponseMessage response = await _httpClient.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's own deadline is a transport failure, not caller
+            // cancellation or broken SecureStorage. Do not retain exception
+            // details from the HTTP handler, which may contain credentials.
+            throw new HttpRequestException("Chummer account request timed out.");
+        }
         if (!IsRedirect(response.StatusCode))
         {
             CaptureResponseAuthorization(response);
@@ -125,9 +136,9 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             throw OversizedResponse();
         }
 
+        using CancellationTokenSource? timeoutSource = CreateResponseReadTimeoutSource(cancellationToken);
         try
         {
-            using CancellationTokenSource? timeoutSource = CreateResponseReadTimeoutSource(cancellationToken);
             CancellationToken readToken = timeoutSource?.Token ?? cancellationToken;
             await using Stream responseStream = await response.Content.ReadAsStreamAsync(readToken);
             await using var cappedStream = new CappedReadStream(
@@ -140,6 +151,13 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
                 readToken);
             return payload
                 ?? throw new InvalidDataException("Chummer returned an empty account response.");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+            && timeoutSource?.IsCancellationRequested == true)
+        {
+            // ResponseHeadersRead requires a separate body-read deadline. Use
+            // the same recoverable transport contract as a headers timeout.
+            throw new HttpRequestException("Chummer account response timed out.");
         }
         catch (ResponseBodyTooLargeException)
         {
