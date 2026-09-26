@@ -32,6 +32,12 @@ and whole-book completion are not claimed. This is a bounded Internal update,
 not hosted qualification, package-only assembly or complete phone beta.
 Code41 is consumed; use42 or a higher unused code next. Prior evidence is historical.
 
+Separate store-artwork follow-up: the exact supplied Troll PNG was saved and
+[submitted for icon-only review](../play/evidence/troll-store-icon-review-20260926.md)
+on September 26. Preliminary checks were still running; live artwork is not yet
+verified. No AAB or release identity changed. The actual older listing copy
+also still needs reconciliation with the current bounded release claims.
+
 ## Historical observed Internal release: Preview 31 — September 25, 2026
 
 Scoped authenticated Console readback at `2026-09-25T00:50:35Z` shows
