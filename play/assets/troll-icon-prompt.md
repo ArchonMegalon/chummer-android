@@ -16,8 +16,11 @@ near-white highlights. The splash SVG is identical to the launcher foreground.
 Current master SHA-256:
 `1258f544b17111d1424dc42ea7dacba04dd9515cd4156d98236ee046a63cabb9`.
 The 512×512 Play export was regenerated with librsvg/Cairo; launcher-scale
-48×48 and 96×96 renders were visually checked. This brightness revision has
-not itself been uploaded to Play or verified in an installed app.
+48×48 and 96×96 renders were visually checked. The brighter launcher and splash
+are included in [Preview 48, observed available on Play Internal](../evidence/preview48-internal-observation.md).
+The actual Release-generated launcher image was inspected; physical installation
+remains unverified. The brighter store PNG was not uploaded in that transaction;
+the earlier store-artwork review remains separate.
 
 MAUI consumes the SVG directly, retaining the full figure and transparent
 surroundings. Keep the separate opaque `#102426` background and foreground
