@@ -1,5 +1,9 @@
 # Life Modules digest package intake — 27 September 2026
 
+Historical intake record below. Subsequent Core/UI seals and the exact local
+[Preview46 Internal delivery](../play/evidence/preview46-internal-observation.md)
+supersede its current-version pointers, not its original test scope.
+
 Android now pins the Core allocation correction through the verified UI package
 graph. This is source/package integration, not a new Play release or a native
 performance claim.
