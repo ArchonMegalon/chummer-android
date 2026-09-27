@@ -4,30 +4,30 @@
   "authorityState": "current_graph_verified",
   "publicationAuthorized": false,
   "presentationSource": {
-    "commit": "ab881cb10af9551f53b1866ba41e25c75ed64d76",
-    "tree": "8263d3a8be7aacc3950664ca831d48acb31a6046",
+    "commit": "c38a37d33c07da0f49355a428b52fdd2d0fb3127",
+    "tree": "564ae859a99fcb54cbe8ceec7b03f582f46a2226",
     "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
   "packagePlaneLock": {
     "path": "config/package-plane.lock.json",
     "contractName": "chummer6-ui.fresh-package-plane-lock",
     "contractVersion": 11,
-    "sha256": "932da76f8dfc52653fd0ea3885490115af0c710061cc638f60e6ba454ea64f7d",
-    "sizeBytes": 68066,
-    "gitBlob": "3795db20f8bfdf3aebd7f84eadb41a1fcfd9de5a"
+    "sha256": "eec915dff5b3a8361846d634a807b0987499b8c2ac5b2e4a9b339f794e42eebe",
+    "sizeBytes": 68354,
+    "gitBlob": "38825c56dd2cec78f7de95ae643cf5953c5ff657"
   },
   "verificationReceipt": {
     "contractName": "chummer6-ui.fresh-package-plane-verification",
     "contractVersion": 11,
-    "sha256": "614078f704c805435cafd487963abdccffde683b42b3ffe6e27c02de5d2a18cc",
-    "sizeBytes": 80661,
+    "sha256": "eefd493416e93b78228058befc8be95207da83a980dbea5e320851d1af0e15f7",
+    "sizeBytes": 81071,
     "status": "passed"
   },
   "artifactCache": {
     "contractName": "chummer6-ui.owner-package-artifact-cache/v1",
-    "cacheKey": "cf580b24d27331897a09bbf90700b4b8f147f8c3e199605daeac8a3e58ee68d2",
+    "cacheKey": "195c122f72c4058e9d6aa0b4107cd2ba879b5b0244132adb9d19a4a702867e6a",
     "manifestFileName": "owner-package-cache.json",
-    "manifestSha256": "2b781422ead89e64f2a792f6f1f6ebb26a15bc7d71ffaa91fc2e32b5bf1f7b39",
+    "manifestSha256": "510c543cbd4de672763a76f20a0218202b1c8505e7a9836bb727b45676164ff4",
     "manifestSizeBytes": 13789,
     "packageCount": 18
   },

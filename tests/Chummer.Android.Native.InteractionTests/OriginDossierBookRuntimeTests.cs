@@ -45,6 +45,7 @@ internal static class OriginDossierBookRuntimeTests
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
         await RunTextOnlyDecisionDisplayAsync();
+        await RunStoryChoiceCopyAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
@@ -1074,7 +1075,8 @@ internal static class OriginDossierBookRuntimeTests
                         || element.AutomationId?.StartsWith("origin-life-effect-", StringComparison.Ordinal) == true
                         || element.AutomationId?.StartsWith("origin-life-choice-source-", StringComparison.Ordinal) == true
                         || element.AutomationId?.StartsWith("origin-life-choice-anchors-", StringComparison.Ordinal) == true)
-                    && Elements(page).OfType<Button>().Single(b => b.AutomationId == "origin-life-choice-0").Text == authority.Current.LegalChoices[0].Label,
+                    && Elements(page).OfType<Button>().Single(b => b.AutomationId == "origin-life-choice-0").Text
+                        == OriginStoryDecisionText.Choice(Display(checkpoint).State!, "choice-1"),
                     "Origin exposed mechanics or a mode toggle, or lost its text-only choice.");
                 Require(!Elements(page).OfType<Label>().Any(label => label.Text == copy.Format("Origin.EffectSourceContext", "History"))
                     && !Elements(page).OfType<Label>().Any(label => label.Text == copy["Origin.ContributionScope"])
@@ -1098,6 +1100,61 @@ internal static class OriginDossierBookRuntimeTests
             }
         });
         Console.WriteLine("PASS Origin book: always text-only DE/EN/ES choices, no mode toggle, exact compiler authority retained and legacy previews blocked");
+    }
+
+    private static async Task RunStoryChoiceCopyAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                var authority = new DecisionAuthority(1);
+                authority.Current = authority.Current with { Locale = locale };
+                var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+                var checkpoint = interaction.Start("workspace-1").Value!;
+                var state = OriginDossierLifeModuleInteractionProjector.Project(checkpoint);
+                var original = state.Choices.Single();
+                // Display fixtures only; Core acceptance/affordability remain
+                // covered by the real-source Life Modules route tests.
+                var school = original with { ChoiceId = "school", Label = "Military School", KarmaCost = 50,
+                    SourceAnchorIds = ["lifemodules.xml#module:15bd4283-f287-4be7-b174-9e5ab97bda1a"] };
+                var street = original with { ChoiceId = "street", Label = "Street Kid", KarmaCost = 40,
+                    SourceAnchorIds = ["lifemodules.xml#module:21c3cb79-e0d9-49b8-9ad3-9232bab4f12b"] };
+                state = state with { StageOrder = LifeModuleJourneyStageOrders.TeenYears, Choices = [school, street],
+                    VisibleStoryMarkdown = "DO NOT DISPLAY raw wizard $DICE or Karma values", DecisionPrompt = "RAW prompt" };
+                string before = JsonSerializer.Serialize(state);
+                string? selected = null;
+                OriginDossierLifeModulePhoneResult Display(decimal remaining) => new(
+                    LifeModuleOriginDossierOutcomes.Success, state, [],
+                    LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 750 - remaining, remaining, true, [], "karma"),
+                    FoundationSnapshotDigest: "sha256:" + Digest("foundation"), BoundContentDigest: checkpoint.BoundContentDigest,
+                    BoundSourceDigest: checkpoint.BoundSourceDigest, BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                    StoryCheckpoint: checkpoint);
+                OriginDossierLifeModuleDecisionPage Page(decimal remaining) => new(Display(remaining), locale,
+                    (id, _) => { selected = id; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
+                    (_, _) => throw new InvalidOperationException("Copy must not confirm a choice."));
+                var page = Page(50);
+                var button = Elements(page).OfType<Button>().Single(b => b.AutomationId == "origin-life-choice-0");
+                Require(button.Text == OriginStoryDecisionText.Choice(state, "school") && button.Text != school.Label
+                    && button.LineBreakMode == LineBreakMode.WordWrap,
+                    "The native school control lost its shared narrative caption or text wrapping.");
+                Require(Elements(page).OfType<Label>().Single(l => l.AutomationId == "origin-life-prompt").Text
+                        == OriginStoryDecisionText.Prompt(state)
+                    && !Elements(page).OfType<Label>().Any(l => l.Text?.Contains("RAW", StringComparison.Ordinal) == true
+                        || l.Text?.Contains("DO NOT DISPLAY", StringComparison.Ordinal) == true),
+                    "The old mechanics/template lead-in leaked back into the story decision.");
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Require(selected == "school" && authority.MutationCount == 0 && JsonSerializer.Serialize(state) == before,
+                    "Narrative copy selected a different ID, changed authority or committed a module.");
+                var filtered = Elements(Page(49)).OfType<Button>().Where(b => b.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true).ToArray();
+                Require(filtered.Length == 1 && filtered[0].AutomationId == "origin-life-choice-1"
+                    && filtered[0].Text == OriginStoryDecisionText.Choice(state, "street"),
+                    "Story copy revealed an unaffordable option or renumbered the remaining exact choice.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS narrative choice captions DE/EN/ES: exact dispatch IDs, affordability, no source-template prose or mutation");
     }
 
     private static void RunOpeningStoryDetailsStorage()

@@ -56,7 +56,7 @@ EXPECTED_DEPENDENCY_COMMITS = {
     "core-runtime": "1f3dceb812cb7fe27371f42fccbd4fa354dc1f9d",
     "hub": "42d0bfbb117ab6250e8b0512dd92585916c6469f",
     "media": "f3c955488210c69abdf96689dd3b3d67afba80d2",
-    "presentation": "ab881cb10af9551f53b1866ba41e25c75ed64d76",
+    "presentation": "c38a37d33c07da0f49355a428b52fdd2d0fb3127",
     "registry": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ui-kit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }
