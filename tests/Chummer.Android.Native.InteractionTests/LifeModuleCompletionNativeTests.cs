@@ -98,24 +98,53 @@ internal static partial class AfterRunAuthorityHarness
         }
         remote.AfterAcceptance = null;
         remote.ResetCounts();
+        var unrelated = OriginBookProseDraft.Create(next, book.Locale, "legacy-other-request",
+            new string('e', 64), "Synthetic legacy proposal with a different authoring identity.");
+        book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, unrelated, () => true, default))!;
+        string unrelatedEdition = book.Readings!.Digest;
+        var identityConflict = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
+        Require(identityConflict.Result.Outcome == AndroidOriginChapterOutcome.Conflict && remote.Requests == 0
+            && new OriginBookReadingStore(runtime.StateDirectory).Load(OwnerScope.LocalSingleUser.Value, id.Value).Digest == unrelatedEdition,
+            "A different legacy job was rebound, discarded or dispatched instead of returning a conflict.");
+        book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, unrelated, false, false, () => true, default))!;
+        remote.ResetCounts();
+        remote.BeforeRequest = source =>
+        {
+            var savedSource = new OriginBookReadingStore(runtime.StateDirectory).Load(OwnerScope.LocalSingleUser.Value, id.Value)
+                .Chapters.Single(c => c.ChapterId == next.ChapterId).AuthoringSource;
+            Require(savedSource is not null
+                && Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.Digest(savedSource)
+                    == Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.Digest(source),
+                "HTTP dispatch began before the exact approved source was durable.");
+        };
+        remote.LoseRequestResponse = true;
         var recovered = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
-        Require(recovered.Result.Outcome == AndroidOriginChapterOutcome.Available && remote.Requests == 1 && remote.Acceptances == 0,
-            "An already acknowledged predecessor was resent or did not admit exactly one successor.");
-        await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
-        Require(remote.Requests == 1 && remote.Acceptances == 0, "Existing successor was generated twice.");
+        Require(recovered.Result.UnknownRemoteOutcome && recovered.Book is not null && remote.Requests == 1 && remote.Acceptances == 0,
+            "Unknown dispatch lost its frozen edition, resent the predecessor, or repeated the successor.");
+        Require(!runtime.Coordinator.IsRetainedOriginBookCurrent(book), "The pre-dispatch reading edition remained admitted.");
+        book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        remote.LoseRequestResponse = false;
+        var readBack = await runtime.Coordinator.SyncOriginChapterAsync(book, next, book.AuthoringSource(next), true, () => true, default);
+        Require(readBack.Result.Outcome == AndroidOriginChapterOutcome.Available && remote.Requests == 1 && remote.Acceptances == 0,
+            "Cold status recovery generated the existing successor twice.");
+        book = readBack.Book!;
         remote.RemoveSuccessor();
         remote.Seed(firstSource, draft); // Simulate an independently lost server acknowledgement again.
         remote.ResetCounts();
         var restored = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
         Require(restored.Result.Outcome == AndroidOriginChapterOutcome.Available && remote.Acceptances == 1 && remote.Requests == 1,
             "Cold saved acceptance did not recover then generate exactly one successor in order.");
+        book = restored.Book!;
         remote.RemoveSuccessor(); remote.Seed(firstSource, draft); remote.ResetCounts();
         remote.AfterAcceptance = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
         var aba = await runtime.Coordinator.SyncOriginChapterAsync(book, next, nextSource, true, () => true, default);
         Require(aba.Book is null && remote.Acceptances == 1 && remote.Requests == 0,
             "Owner A-to-B-to-A dispatched after predecessor acknowledgement.");
-        Require(new OriginBookReadingStore(runtime.StateDirectory).Load(OwnerScope.LocalSingleUser.Value, id.Value).Digest == readingDigest,
-            "Acknowledgement recovery changed local selected prose or its pending edition.");
+        var finalReading = new OriginBookReadingStore(runtime.StateDirectory).Load(OwnerScope.LocalSingleUser.Value, id.Value);
+        Require(finalReading.Chapters.Single(c => c.ChapterId == first.ChapterId).Selected?.DraftDigest == draft.DraftDigest
+            && finalReading.Chapters.Single(c => c.ChapterId == next.ChapterId) is { Pending: null, Selected: null, AuthoringSource: not null }
+            && finalReading.Digest != readingDigest,
+            "Dispatch did not retain its source separately from immutable accepted prose.");
         RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
         Console.WriteLine("PASS successor: cold explicit acceptance recovery, read-only/no-replay boundaries, failed/mismatched reads, cancellation and owner ABA");
     }
@@ -192,6 +221,10 @@ internal static partial class AfterRunAuthorityHarness
             && await runtime.Coordinator.LoadOpeningStoryDetailsAsync(confirmed.StoryCheckpoint!, () => true) is null
             && await runtime.Coordinator.SaveOpeningStoryDetailsAsync(savedDetails!, profile with { Tone = "dark" }, () => true) is null,
             "The opening brief was lost, or an old editor could rewrite the story after the first accepted decision.");
+        Require(retainedOpening.Opportunities is { Opportunities.Count: > 0 } hints
+            && hints.DecisionDigest == confirmed.StoryCheckpoint!.Projection.CurrentTurn.DecisionDigest
+            && hints.Opportunities.All(h => confirmed.StoryCheckpoint!.Projection.AllowedChoiceIds.Contains(h.ChoiceId)),
+            "Real Core continuation did not supply exact current source-bound story opportunities.");
         var stored = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
         Require(await stored.LoadAsync(OwnerScope.LocalSingleUser.NormalizedValue, id.Value) is null,
             "Linked Origin checkpoint leaked into the local timeline namespace.");
@@ -640,7 +673,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(book.TryGetAuthoringPredecessor(chapter, out var openingPrevious) && openingPrevious is null,
                     "The first story chapter required a nonexistent pre-childhood story.");
                 string canonicalText = book.ChapterText(chapter);
-                var proposal = OriginBookProseDraft.Create(chapter, book.Locale, "synthetic-review-job",
+                var proposal = OriginBookProseDraft.Create(chapter, book.Locale,
+                    Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)),
                     new string('a', 64), "Synthetic proposed chapter. <script>not executable</script>");
                 Require(await runtime.Coordinator.StageOriginBookProseDraftAsync(book,
                         proposal with { Text = "changed after sealing" }, () => true, default) is null,
@@ -1083,7 +1117,12 @@ internal static partial class AfterRunAuthorityHarness
             {
                 var previous = Current(); var button = Element<Button>(key);
                 Require(button.IsEnabled, "Disabled Life Modules action: " + key);
-                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                using (var actionAlerts = new IssuedPageAlerts(previous, window))
+                {
+                    await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked())
+                        .WaitAsync(TimeSpan.FromSeconds(45));
+                    Require(actionAlerts.Titles.Count == 0, "Unexpected Life Modules action alert: " + key);
+                }
                 if (!ReferenceEquals(previous, Current()) && IssuedPageField<int>(previous, "_subscribed") != 0) IssuedPageLifecycle(previous, "OnDisappearing");
                 await Appear();
             }

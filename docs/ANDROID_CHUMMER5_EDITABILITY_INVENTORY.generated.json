@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "d55ac350c87972d17ac9212b841031ee160ef75433eddb26d484448f06f3a2a1"
+        "sha256": "3ce365f65c05fa1c8c37dd6b705c71afbaea8c7bdf1132ba55e65e339b803d02"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "e567716e8e428a0d9fc09f5f6d6a999b66c9cfbbb311c444a87579fbf59ab6d8"
+        "sha256": "b800d05d89924033b3f757bf77256354243de47c54a031e3dabfd9a710d88153"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "ce05be65a3bca3a7ce633a234f84e5f154a0cb1511664266d379eb22c2f554d8"
+        "sha256": "a8f238a702ec3f14e7fe9e8bcf7176f5f96077418375d016bd7a61e7be8192e6"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "5f5174a0af55c56609f9f813e8f6be7e0fddd3cd2d0deba4c8909977d898c3af"
+        "sha256": "0e93704ad23792f9e206b69388490a029604fa7fb207fc5b717f9b4385e6d737"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "676ce009eb2cb471bcec0e12bc9ea62adb1d58c23e09acf8acff205e081b126f"
+        "sha256": "d90f1c30e2baf59172147607eb44a0cc6dece58f6062ea0fdce813d53ac99e02"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",

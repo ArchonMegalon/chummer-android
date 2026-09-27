@@ -75,13 +75,25 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         }
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-            && Coordinator.CanRequestOriginChapter(book);
+            && Coordinator.State.WorkspaceId == _original.WorkspaceId
+            && Coordinator.State.DisplayOwnerContext == _original.DisplayOwnerContext;
         _body.Add(NativeTheme.Title(_chapter.Title));
         AddStatus(book, Current);
         _body.Add(NativeTheme.Body(_copy["Origin.AuthoringExplanation"]));
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookLanguage", source.Locale)));
         _body.Add(NativeTheme.Title(source.RunnerName, 21));
         foreach (var fact in source.Facts) _body.Add(NativeTheme.Body(fact.Text));
+        if (source.NarrativeContext is { } hints)
+        {
+            var possibilities = new VerticalStackLayout { Spacing = 8, AutomationId = "origin-authoring-possibilities" };
+            possibilities.Add(NativeTheme.Title(_copy["Origin.AuthoringPossibilities"], 21));
+            possibilities.Add(NativeTheme.Body(_copy["Origin.AuthoringPossibilitiesExplanation"]));
+            foreach (var hint in hints.Opportunities)
+                possibilities.Add(NativeTheme.Body(_copy.Format(
+                    hint.Availability == OriginChapterOpportunityAvailability.Available
+                        ? "Origin.AuthoringPossiblePath" : "Origin.AuthoringClosedPath", hint.Caption)));
+            _body.Add(NativeTheme.Card(possibilities));
+        }
         bool canCreate = book.TryGetAuthoringPredecessor(_chapter, out _);
         if (canCreate) _body.Add(NativeTheme.Body(_copy["Origin.AuthoringConsent"]));
         var consent = new Switch { IsToggled = _consent, IsEnabled = !_busy && canCreate,
@@ -177,6 +189,9 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (!ReferenceEquals(_book, book) || updated is null || ct.IsCancellationRequested
             || !Coordinator.IsRetainedOriginBookCurrent(updated)) return false;
         _book = updated;
+        _source = Coordinator.PrepareOriginChapterSource(updated, _chapter);
+        if (_source is null || OriginChapterSourceIdentity.Digest(_source) != OriginChapterSourceIdentity.Digest(source))
+            _consent = false;
         // Request/resume first performs a read. A failure of that read is still
         // read-only: preserve the stage and never infer absence or create a job.
         if (result.Outcome == AndroidOriginChapterOutcome.Unavailable

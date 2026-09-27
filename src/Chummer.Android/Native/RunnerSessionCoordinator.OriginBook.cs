@@ -13,16 +13,29 @@ using Chummer.Run.Contracts.Community;
 namespace Chummer.Android.Native;
 
 internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null,
-    OriginBookScenes? scenes = null, bool scenesUnavailable = false)
+    OriginBookScenes? scenes = null, bool scenesUnavailable = false,
+    OriginChapterNarrativeContext? opportunities = null)
 {
     internal OriginStoryArcSeed Projection { get; } = projection;
     internal OriginBookReadingState? Readings { get; } = readings;
     internal OriginBookScenes? Scenes { get; } = scenes;
     internal bool ScenesUnavailable { get; } = scenesUnavailable;
+    internal OriginChapterNarrativeContext? Opportunities { get; } = opportunities;
     internal OriginChapterSource AuthoringSource(OriginNarrativeChapterProjection chapter)
     {
         var source = OriginBookAuthoringSource.Create(Projection, chapter);
-        return Readings?.StoryProfile?.Apply(source) ?? source;
+        source = Readings?.StoryProfile?.Apply(source) ?? source;
+        if (Reading(chapter)?.AuthoringSource is not { } retained)
+        {
+            // Only the new, latest passage may foreshadow this exact turn.
+            // Historical/legacy drafts never acquire today's future choices.
+            return Opportunities is not null && !HasRetainedAuthoring(chapter)
+                && chapter.ThroughAcceptedDecisionId == Projection.CanonicalLayer.AcceptedDecisionIds.LastOrDefault()
+                ? OriginChapterSourceIdentity.Capture(source with { NarrativeContext = Opportunities }) : source;
+        }
+        if (OriginChapterSourceIdentity.RequestId(retained) != OriginChapterSourceIdentity.RequestId(source))
+            throw new InvalidOperationException("The retained authoring source no longer matches this chapter.");
+        return OriginChapterSourceIdentity.Capture(retained);
     }
     internal OriginBookScene? Scene(OriginNarrativeChapterProjection chapter)
         => Scenes?.Scenes.SingleOrDefault(s => s.Matches(this, chapter));
@@ -168,6 +181,59 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     }
 }
 
+internal static class OriginBookOpportunityContext
+{
+    internal static OriginChapterNarrativeContext? Create(OriginStoryArcSeed projection,
+        LifeModuleDecisionAvailabilitySnapshot availability, long savedRevision)
+    {
+        var turn = projection.CurrentTurn;
+        if (turn.IsTerminal || savedRevision < 0
+            || !LifeModuleDecisionAcceptanceIntegrity.IsDigest(turn.DecisionDigest)
+            || availability.Binding != new LifeModuleDecisionAvailabilityRequest(
+                turn.WorkspaceId, turn.WorkspaceRevision, savedRevision, turn.TurnId, turn.DecisionDigest)
+            || availability.ContentDigest != turn.ContentDigest || availability.SourceDigest != turn.SourceDigest
+            || availability.RulesDigest != turn.RulesDigest || availability.RuntimeDigest != turn.RuntimeDigest
+            || availability.Options is null) return null;
+        // Core evaluates affordability. Excluded options are intentionally absent
+        // from LegalChoices; inspecting only that list would lose every setback.
+        // This adapter never turns an excluded option into a decision command.
+        var candidates = new List<OriginChapterStoryOpportunity>();
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var option in availability.Options)
+        {
+            if (option is null || string.IsNullOrWhiteSpace(option.ChoiceId)
+                || option.ChoiceId.Length > 256 || option.ChoiceId.Any(char.IsControl)
+                || option.ChoiceId != option.ChoiceId.Trim() || !identities.Add(option.ChoiceId)
+                || string.IsNullOrWhiteSpace(option.Label) || option.SourceAnchorIds is null
+                || !option.SourceAnchorIds.Any(anchor => anchor is not null
+                    && anchor.StartsWith("lifemodules.xml#module:", StringComparison.Ordinal))) return null;
+            string caption = string.Join(" ", option.Label.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            if (caption.Length > 1024 || caption.Any(char.IsControl)) return null;
+            var choices = turn.LegalChoices.Where(choice => choice.ChoiceId == option.ChoiceId).ToArray();
+            string state;
+            if (option.Availability == LifeModuleOptionAvailabilityStates.Available)
+            {
+                if (!projection.AllowedChoiceIds.Contains(option.ChoiceId) || choices.Length != 1
+                    || !choices[0].IsLegal || choices[0].Blockers.Count != 0
+                    || choices[0].Label != option.Label
+                    || !choices[0].SourceAnchorIds.SequenceEqual(option.SourceAnchorIds)) return null;
+                state = OriginChapterOpportunityAvailability.Available;
+            }
+            else if (option.Availability == LifeModuleOptionAvailabilityStates.BudgetExcluded)
+            {
+                if (projection.AllowedChoiceIds.Contains(option.ChoiceId) || choices.Length != 0) return null;
+                state = OriginChapterOpportunityAvailability.Unavailable;
+            }
+            else return null; // Unknown/other blockers are not fictional refusal reasons.
+            candidates.Add(new(option.ChoiceId, caption, state));
+        }
+        var sample = new[] { OriginChapterOpportunityAvailability.Available, OriginChapterOpportunityAvailability.Unavailable }
+            .SelectMany(availability => candidates.Where(c => c.Availability == availability)
+                .OrderBy(c => c.ChoiceId, StringComparer.Ordinal).DistinctBy(c => c.Caption).Take(2)).ToArray();
+        return sample.Length == 0 ? null : new(turn.TurnId, turn.DecisionDigest, Array.AsReadOnly(sample));
+    }
+}
+
 public sealed partial class RunnerSessionCoordinator
 {
     private readonly IOwnerBoundLifeModuleBookService? _lifeModuleBookService;
@@ -275,6 +341,17 @@ public sealed partial class RunnerSessionCoordinator
         // a new paid task. Explicit consent is only used for a confirmed absence.
         var result = await transport.ReadChapterAsync(owner, source, ct);
         if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
+        if (result.Outcome == AndroidOriginChapterOutcome.Available && result.Job is { } recovered)
+        {
+            // A second device may already have admitted this chapter with its
+            // own optional hints. Adopt only authenticated readback of the same
+            // history; never overwrite a local draft/acceptance or reissue it.
+            var retained = await RetainOriginChapterSourceAsync(book, chapter, recovered.Source,
+                recoveredFromHub: true, isCurrentPage, ct);
+            if (retained is null) return (new(AndroidOriginChapterOutcome.Conflict), null);
+            book = retained;
+            source = book.AuthoringSource(chapter);
+        }
         if (result.Outcome == AndroidOriginChapterOutcome.NotFound && consentToCreate)
         {
             if (!book.TryGetAuthoringPredecessor(chapter, out var previous))
@@ -290,6 +367,10 @@ public sealed partial class RunnerSessionCoordinator
                     return (new(AndroidOriginChapterOutcome.Unauthorized), null);
                 if (recovery is not null) return (recovery, book);
             }
+            var retained = await RetainOriginChapterSourceAsync(book, chapter, source,
+                recoveredFromHub: false, isCurrentPage, ct);
+            if (retained is null) return (new(AndroidOriginChapterOutcome.Conflict), null);
+            book = retained;
             result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
         }
         if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);
@@ -402,8 +483,21 @@ public sealed partial class RunnerSessionCoordinator
             }
             ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+            OriginChapterNarrativeContext? opportunities = null;
+            // Read the exact owner/turn from Core; no display-budget inference
+            // and no timeline Open/Restore merely to obtain optional hints.
+            if (!projection.CurrentTurn.IsTerminal && _originLifeModuleRuntime is { } originRuntime)
+            {
+                var request = new LifeModuleDecisionAvailabilityRequest(id.Value, original.ContentRevision,
+                    original.SavedRevision, projection.CurrentTurn.TurnId, projection.CurrentTurn.DecisionDigest);
+                var loaded = await ReadOriginBookAsync(owner, () => originRuntime.LoadAvailability(owner, request), ct);
+                if (loaded.Outcome == LifeModuleOriginDossierOutcomes.Success && loaded.Value is { } availability)
+                    opportunities = OriginBookOpportunityContext.Create(projection, availability, original.SavedRevision);
+            }
+            ct.ThrowIfCancellationRequested();
+            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
             RetireDifferentBookEditions(original, readings?.Digest, scenes?.Digest);
-            var book = new RetainedOriginBook(projection, readings, scenes, scenesUnavailable);
+            var book = new RetainedOriginBook(projection, readings, scenes, scenesUnavailable, opportunities);
             _retainedBooks.Add(book, original);
             return book;
         }, ct);
@@ -413,6 +507,47 @@ public sealed partial class RunnerSessionCoordinator
         Func<T> read, CancellationToken ct)
         => _damageJournalOwnerAccessor is AndroidAccountOwnerContextAccessor androidOwner
             ? androidOwner.RunReadAsync(owner, read, ct) : Task.Run(read, ct);
+
+    private Task<RetainedOriginBook?> RetainOriginChapterSourceAsync(RetainedOriginBook book,
+        OriginNarrativeChapterProjection chapter, OriginChapterSource source, bool recoveredFromHub,
+        Func<bool> isCurrentPage, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (_originBookReadings is not { } store || book.Readings is not { } expected
+                || !_retainedBooks.TryGetValue(book, out var original)
+                || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id
+                || !isCurrentPage() || !IsRetainedOriginBookCurrent(book) || !book.Chapters.Contains(chapter)) return null;
+            var captured = OriginChapterSourceIdentity.Capture(source);
+            var currentSource = book.AuthoringSource(chapter);
+            string requestId = OriginChapterSourceIdentity.RequestId(captured);
+            if (requestId != OriginChapterSourceIdentity.RequestId(currentSource)) return null;
+            var existing = book.Reading(chapter) ?? new(chapter.ChapterId, null, null);
+            // Legacy editions have no frozen source. A different retained job
+            // is a conflict, not permission to rebind its prose or dispatch.
+            if (existing.Selected is { } selected && selected.JobId != requestId
+                || existing.Pending is { } pending && pending.JobId != requestId) return null;
+            string digest = OriginChapterSourceIdentity.Digest(captured);
+            if (existing.AuthoringSource is { } frozen && OriginChapterSourceIdentity.Digest(frozen) == digest) return book;
+            if (OriginChapterSourceIdentity.Digest(currentSource) != digest
+                && (!recoveredFromHub || existing.Pending is not null || existing.Selected is not null)) return null;
+            var next = expected with { Chapters = expected.Chapters.Where(c => c.ChapterId != chapter.ChapterId)
+                .Append(existing with { AuthoringSource = captured }).OrderBy(c => c.ChapterId, StringComparer.Ordinal).ToArray() };
+            var saved = await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!isCurrentPage() || !IsRetainedOriginBookCurrent(book)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease))
+                    throw new OperationCanceledException("The book context changed.");
+                using (lease) return store.Save(expected, next,
+                    () => isCurrentPage() && IsRetainedOriginBookCurrent(book), ct);
+            }, ct);
+            bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
+            RetireDifferentBookEditions(original, saved.Digest, book.Scenes?.Digest);
+            if (!current) return null;
+            var updated = new RetainedOriginBook(book.Projection, saved, book.Scenes, book.ScenesUnavailable, book.Opportunities);
+            _retainedBooks.Add(updated, original);
+            return updated;
+        }, ct);
 
     // The authenticated Hub job adapter will call this only after validating its
     // response provenance. It stages prose, never invokes a provider or adopts it.
@@ -460,7 +595,7 @@ public sealed partial class RunnerSessionCoordinator
             bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
             RetireDifferentBookEditions(original, saved.Digest, book.Scenes?.Digest);
             if (!current) return null;
-            var updated = new RetainedOriginBook(book.Projection, saved, book.Scenes, book.ScenesUnavailable);
+            var updated = new RetainedOriginBook(book.Projection, saved, book.Scenes, book.ScenesUnavailable, book.Opportunities);
             _retainedBooks.Add(updated, original);
             return updated;
         }, ct);
@@ -531,7 +666,7 @@ public sealed partial class RunnerSessionCoordinator
             bool current = isCurrentPage() && IsRetainedOriginBookCurrent(book);
             RetireDifferentBookEditions(original, book.Readings?.Digest, saved.Digest);
             if (!current) return null;
-            var updated = new RetainedOriginBook(book.Projection, book.Readings, saved);
+            var updated = new RetainedOriginBook(book.Projection, book.Readings, saved, opportunities: book.Opportunities);
             _retainedBooks.Add(updated, original);
             return updated;
         }, ct);

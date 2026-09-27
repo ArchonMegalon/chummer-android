@@ -40,7 +40,13 @@ internal sealed record OriginStoryProfile(string? Gender = null, string? Pronoun
     }
 }
 
-internal sealed record OriginBookReadingChapter(string ChapterId, OriginBookProseDraft? Selected, OriginBookProseDraft? Pending);
+internal sealed record OriginBookReadingChapter(string ChapterId, OriginBookProseDraft? Selected, OriginBookProseDraft? Pending)
+{
+    // Freeze exactly what was approved, before HTTP dispatch. Optional so old
+    // editions retain their bytes/digests until an actual source is retained.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OriginChapterSource? AuthoringSource { get; init; }
+}
 internal sealed record OriginBookReadingState(string Owner, string Workspace, IReadOnlyList<OriginBookReadingChapter> Chapters)
 {
     // Omission preserves historical file digests and old request identities.
@@ -115,7 +121,21 @@ public sealed class OriginBookReadingStore(string stateDirectory)
             && state.Chapters.Select(c => c.ChapterId).Distinct(StringComparer.Ordinal).Count() == state.Chapters.Count
             && state.Chapters.All(c => !string.IsNullOrWhiteSpace(c.ChapterId)
                 && (c.Selected is null || c.Selected.IsValid() && c.Selected.ChapterId == c.ChapterId)
-                && (c.Pending is null || c.Pending.IsValid() && c.Pending.ChapterId == c.ChapterId));
+                && (c.Pending is null || c.Pending.IsValid() && c.Pending.ChapterId == c.ChapterId)
+                && ValidSource(state, c));
+
+    private static bool ValidSource(OriginBookReadingState state, OriginBookReadingChapter chapter)
+    {
+        if (chapter.AuthoringSource is not { } source) return true;
+        try
+        {
+            string request = OriginChapterSourceIdentity.RequestId(source);
+            return source.WorkspaceId == state.Workspace && source.ChapterId == chapter.ChapterId
+                && (chapter.Selected is null || chapter.Selected.JobId == request)
+                && (chapter.Pending is null || chapter.Pending.JobId == request);
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
+    }
 
     private string PathFor(string owner, string workspace)
     {
