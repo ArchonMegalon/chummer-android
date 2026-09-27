@@ -19,6 +19,11 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal OriginBookReadingState? Readings { get; } = readings;
     internal OriginBookScenes? Scenes { get; } = scenes;
     internal bool ScenesUnavailable { get; } = scenesUnavailable;
+    internal OriginChapterSource AuthoringSource(OriginNarrativeChapterProjection chapter)
+    {
+        var source = OriginBookAuthoringSource.Create(Projection, chapter);
+        return Readings?.StoryProfile?.Apply(source) ?? source;
+    }
     internal OriginBookScene? Scene(OriginNarrativeChapterProjection chapter)
         => Scenes?.Scenes.SingleOrDefault(s => s.Matches(this, chapter));
     internal IReadOnlyList<OriginBookEpub.Illustration> SceneExports()
@@ -90,7 +95,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
                 return narrative.All(chapter => Reading(chapter)?.Selected is { } selected
                     && selected.IsValid() && selected.Matches(chapter, Locale)
                     && selected.JobId == OriginChapterSourceIdentity.RequestId(
-                        OriginBookAuthoringSource.Create(Projection, chapter)));
+                        AuthoringSource(chapter)));
             }
             catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
         }
@@ -122,7 +127,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
             || !selected.Matches(preceding, Locale)) return false;
         try
         {
-            var source = OriginBookAuthoringSource.Create(Projection, preceding);
+            var source = AuthoringSource(preceding);
             if (selected.JobId != OriginChapterSourceIdentity.RequestId(source)) return false;
             previous = new(selected.JobId, OriginChapterSourceIdentity.Digest(source), selected.ProviderReceiptDigest,
                 Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(selected.Text))).ToLowerInvariant());
@@ -170,6 +175,58 @@ public sealed partial class RunnerSessionCoordinator
     private readonly OriginBookSceneStore? _originBookScenes;
     private readonly IAndroidImageDocumentService? _originSceneDocuments;
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
+    private readonly ConditionalWeakTable<OriginBookReadingState, CharacterOverviewState> _openingStoryDetails = new();
+
+    internal async Task<OriginBookReadingState?> LoadOpeningStoryDetailsAsync(
+        LifeModuleOriginDossierDraftCheckpoint checkpoint, Func<bool> isCurrentPage)
+    {
+        var original = State;
+        if (checkpoint.Projection.CurrentTurn.JourneyId != "sr5-life-modules-foundation"
+            || checkpoint.Projection.CanonicalLayer.AcceptedDecisionIds.Count != 0
+            || checkpoint.Projection.CurrentTurn.WorkspaceId != original.WorkspaceId?.Value
+            || checkpoint.Projection.CurrentTurn.WorkspaceRevision != original.ContentRevision)
+            return null;
+        return await WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!isCurrentPage() || !CanReadRetainedOriginBook(original)
+                || !IsNativeEditDisplayCurrent(original) || _originBookReadings is not { } store
+                || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id) return null;
+            var saved = await ReadOriginBookAsync(owner, () =>
+            {
+                if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease)) return null;
+                using (lease) return store.Load(owner.Owner.Value, id.Value);
+            }, CancellationToken.None);
+            if (saved is null || saved.Chapters.Count != 0 || !isCurrentPage()
+                || !IsNativeEditDisplayCurrent(original)) return null;
+            _openingStoryDetails.Add(saved, original);
+            return saved;
+        }, CancellationToken.None);
+    }
+
+    internal Task<OriginBookReadingState?> SaveOpeningStoryDetailsAsync(OriginBookReadingState expected,
+        OriginStoryProfile? profile, Func<bool> isCurrentPage)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!_openingStoryDetails.TryGetValue(expected, out var original)
+                || !isCurrentPage() || !IsNativeEditDisplayCurrent(original)
+                || _originBookReadings is not { } store || expected.Chapters.Count != 0
+                || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id)
+                return null;
+            if (profile is { IsEmpty: true }) profile = null;
+            var next = expected with { StoryProfile = profile };
+            var saved = await Task.Run(() =>
+            {
+                if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease)) return null;
+                using (lease) return store.Save(expected, next,
+                    () => isCurrentPage() && IsNativeEditDisplayCurrent(original), CancellationToken.None);
+            });
+            _openingStoryDetails.Remove(expected);
+            if (saved is null || !isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+            _openingStoryDetails.Add(saved, original);
+            return saved;
+        }, CancellationToken.None);
 
     internal bool CanReadRetainedOriginBook(CharacterOverviewState? original = null)
     {
@@ -198,7 +255,7 @@ public sealed partial class RunnerSessionCoordinator
     internal OriginChapterSource? PrepareOriginChapterSource(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
     {
         if (!CanRequestOriginChapter(book) || !book.CanOpenAuthoring(chapter)) return null;
-        try { return OriginBookAuthoringSource.Create(book.Projection, chapter); }
+        try { return book.AuthoringSource(chapter); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return null; }
     }
 
@@ -211,7 +268,7 @@ public sealed partial class RunnerSessionCoordinator
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
             || original.DisplayOwnerContext is not { } owner || _account is not IAndroidOriginChapterTransport transport)
             return (new(AndroidOriginChapterOutcome.Unauthorized), null);
-        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        var source = book.AuthoringSource(chapter);
         if (OriginChapterSourceIdentity.Digest(source) != OriginChapterSourceIdentity.Digest(approvedSource))
             return (new(AndroidOriginChapterOutcome.Conflict), null);
         // Read first; neither opening this page nor refreshing a job can create
@@ -260,7 +317,7 @@ public sealed partial class RunnerSessionCoordinator
         var chapter = book.Chapters.SingleOrDefault(c => book.Reading(c)?.Selected?.JobId == previous.RequestId);
         if (chapter is null || book.Reading(chapter)?.Selected is not { } selected)
             return new(AndroidOriginChapterOutcome.Conflict);
-        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        var source = book.AuthoringSource(chapter);
         var read = await transport.ReadChapterAsync(owner, source, ct);
         if (!current() || ct.IsCancellationRequested) return new(AndroidOriginChapterOutcome.Unauthorized);
         if (read.Outcome != AndroidOriginChapterOutcome.Available)
@@ -288,7 +345,7 @@ public sealed partial class RunnerSessionCoordinator
         var chapter = book.Chapters.SingleOrDefault(c => c.ChapterId == draft.ChapterId);
         if (chapter is null || !draft.Matches(chapter, book.Locale)
             || book.Reading(chapter)?.Selected?.DraftDigest != draft.DraftDigest) return false;
-        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        var source = book.AuthoringSource(chapter);
         if (draft.JobId != OriginChapterSourceIdentity.RequestId(source)) return false;
         var result = await transport.AcceptChapterAsync(owner, source, draft.ProviderReceiptDigest,
             draft.Text, explicitlyConfirmed: true, ct);

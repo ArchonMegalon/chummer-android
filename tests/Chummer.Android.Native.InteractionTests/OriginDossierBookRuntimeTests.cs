@@ -41,8 +41,10 @@ internal static class OriginDossierBookRuntimeTests
         RunOpeningSetupDisplay();
         RunFinishedSelectionDisplay();
         RunAuthoringSource();
+        RunOpeningStoryDetailsStorage();
+        await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
-        await RunEffectContributionDisplayAsync();
+        await RunTextOnlyDecisionDisplayAsync();
         await RunMetatypePageAsync();
         await RunConfirmOffUiContextAsync();
         await RunLiveContinuationPageAsync();
@@ -889,9 +891,10 @@ internal static class OriginDossierBookRuntimeTests
                 string selectedIndex = chapter == 1 ? "1" : "0";
                 await Click(Button("origin-life-choice-" + selectedIndex));
                 var oldConfirm = Button("origin-life-confirm");
-                Require(Visible("origin-life-effect-" + selectedIndex + "-0")
-                    && Visible("origin-life-choice-anchors-" + selectedIndex),
-                    "Selection did not expand the exact effects and source anchors for review.");
+                Require(!Visible("origin-life-effect-" + selectedIndex + "-0")
+                    && !Visible("origin-life-choice-anchors-" + selectedIndex)
+                    && oldConfirm.IsEnabled,
+                    "A text-only selection exposed mechanics or lost its exact reviewed confirmation.");
                 if (chapter == 1)
                 {
                     var controls = Elements(page).ToArray();
@@ -1026,7 +1029,7 @@ internal static class OriginDossierBookRuntimeTests
             => throw new InvalidOperationException("The book must be retained.");
     }
 
-    private static async Task RunEffectContributionDisplayAsync()
+    private static async Task RunTextOnlyDecisionDisplayAsync()
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -1065,19 +1068,20 @@ internal static class OriginDossierBookRuntimeTests
                 var page = Page(checkpoint);
                 string before = JsonSerializer.Serialize(checkpoint);
                 var copy = AndroidSurfaceStrings.Resolve(locale);
-                string Effect(int index) => Elements(page).OfType<Label>().Single(label =>
-                    label.AutomationId == "origin-life-effect-0-" + index).Text;
-                Require(Effect(0) == copy.Format("Origin.AttributeContribution", "LOG", "+1")
-                    && Effect(1) == copy.Format("Origin.SkillContribution", "Survival", "+1")
-                    && Effect(2) == copy.Format("Origin.KnowledgePoolContribution", "+1")
-                    && Effect(3) == copy.Format("Origin.QualityLevelContribution", "SINner (National)", "1")
-                    && Effect(4) == copy.Format("Origin.SelectionContribution", "Salish-Shidhe")
-                    && Effect(5) == copy.Format("Origin.EffectPending", "Unresolved effect"),
-                    "The native review lost exact Core contributions, quality identity, or pool/selection semantics.");
-                Require(Elements(page).OfType<Label>().Any(label => label.Text == copy.Format("Origin.EffectSourceContext", "History"))
-                    && Elements(page).OfType<Label>().Any(label => label.Text == copy["Origin.ContributionScope"])
+                Require(!Elements(page).Any(element => element is Switch ||
+                        element.AutomationId == "origin-life-budget"
+                        || element.AutomationId == "origin-life-ltd-provenance"
+                        || element.AutomationId?.StartsWith("origin-life-effect-", StringComparison.Ordinal) == true
+                        || element.AutomationId?.StartsWith("origin-life-choice-source-", StringComparison.Ordinal) == true
+                        || element.AutomationId?.StartsWith("origin-life-choice-anchors-", StringComparison.Ordinal) == true)
+                    && Elements(page).OfType<Button>().Single(b => b.AutomationId == "origin-life-choice-0").Text == authority.Current.LegalChoices[0].Label,
+                    "Origin exposed mechanics or a mode toggle, or lost its text-only choice.");
+                Require(!Elements(page).OfType<Label>().Any(label => label.Text == copy.Format("Origin.EffectSourceContext", "History"))
+                    && !Elements(page).OfType<Label>().Any(label => label.Text == copy["Origin.ContributionScope"])
                     && Elements(page).OfType<Button>().Single(button => button.AutomationId == "origin-life-confirm").IsEnabled,
-                    "The reviewed page confused descriptive metadata with grants or lost confirmation.");
+                    "Text-only review exposed compiler metadata or lost confirmation.");
+                Require(!Elements(Page(checkpoint)).Any(element => element is Switch || element.AutomationId == "origin-life-budget"),
+                    "Reopening Origin restored a mechanics setting.");
                 Require(JsonSerializer.Serialize(checkpoint) == before && authority.MutationCount == 0,
                     "Rendering rewrote the reviewed checkpoint or applied mechanics.");
 
@@ -1085,7 +1089,7 @@ internal static class OriginDossierBookRuntimeTests
                 // re-prepare admission are exercised against real Core storage.
                 var legacy = Page(checkpoint with { PendingPreview = checkpoint.PendingPreview! with { EffectReview = null } });
                 var oldConfirm = Elements(legacy).OfType<Button>().Single(button => button.AutomationId == "origin-life-confirm");
-                Require(!oldConfirm.IsEnabled && Elements(legacy).OfType<Label>().Any(label => label.Text == copy["Origin.EffectReviewRequired"])
+                Require(!oldConfirm.IsEnabled && Elements(legacy).OfType<Label>().Any(label => label.Text == copy["Origin.StoryChoiceReviewRequired"])
                     && !Elements(legacy).Any(element => element.AutomationId?.StartsWith("origin-life-effect-", StringComparison.Ordinal) == true),
                     "A legacy raw preview was shown as compiler-reviewed or remained confirmable.");
                 ((IButtonController)oldConfirm).SendClicked();
@@ -1093,7 +1097,118 @@ internal static class OriginDossierBookRuntimeTests
                 Require(confirmations == 0, "A stale preview dispatched confirmation through a disabled control.");
             }
         });
-        Console.WriteLine("PASS Origin book: exact contribution display in DE/EN/ES; legacy preview requires review, no rendering mutation");
+        Console.WriteLine("PASS Origin book: always text-only DE/EN/ES choices, no mode toggle, exact compiler authority retained and legacy previews blocked");
+    }
+
+    private static void RunOpeningStoryDetailsStorage()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "chummer-story-details-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var store = new OriginBookReadingStore(directory);
+            var empty = store.Load("owner-a", "workspace-1");
+            Require(!JsonSerializer.Serialize(empty).Contains("StoryProfile", StringComparison.Ordinal),
+                "The optional field changed legacy reading-file digests.");
+            var source = new OriginChapterSource("workspace-1", "chapter-1", Digest("chapter"), "decision-1",
+                "en-US", "Example", [new("metatype", "decision-1", "Elf")]);
+            var profile = new OriginStoryProfile("other", "they/them", "epic", "Find a home", "Mara, an old friend");
+            var saved = store.Save(empty, empty with { StoryProfile = profile }, () => true, default);
+            var reopened = new OriginBookReadingStore(directory).Load("owner-a", "workspace-1");
+            Require(reopened.StoryProfile == profile && reopened.Digest == saved.Digest
+                && store.Load("owner-b", "workspace-1").StoryProfile is null,
+                "Opening details did not survive cold read or crossed owners.");
+            Require(OriginChapterSourceIdentity.Digest(new OriginStoryProfile().Apply(source)) == OriginChapterSourceIdentity.Digest(source),
+                "Skipping optional details changed historical request identity.");
+            var composed = reopened.StoryProfile!.Apply(source);
+            Require(composed.Facts.Count == 2 && composed.Facts[0] == source.Facts[0]
+                && composed.Facts[1].DecisionId.StartsWith("player-story-brief-", StringComparison.Ordinal)
+                && composed.Facts[1].Text.Contains("they/them", StringComparison.Ordinal)
+                && composed.Facts[1].Text.Contains("Epic", StringComparison.Ordinal)
+                && OriginChapterSourceIdentity.RequestId(composed) == OriginChapterSourceIdentity.RequestId(profile.Apply(source))
+                && OriginChapterSourceIdentity.RequestId(composed) != OriginChapterSourceIdentity.RequestId(source),
+                "The story brief impersonated rules authority, lost values or changed identity on reopen.");
+            foreach (var bad in new[] { profile with { Gender = "guessed" }, profile with { Tone = "unknown" },
+                profile with { Pronouns = "\ninvalid" }, profile with { Motivation = new string('x', 513) } })
+            {
+                bool rejected = false;
+                try { store.Save(saved, saved with { StoryProfile = bad }, () => true, default); }
+                catch (InvalidDataException) { rejected = true; }
+                Require(rejected && store.Load("owner-a", "workspace-1").Digest == saved.Digest,
+                    "Invalid story details overwrote the saved brief.");
+            }
+            bool stale = false, canceled = false;
+            try { store.Save(empty, empty with { StoryProfile = profile }, () => true, default); }
+            catch (InvalidOperationException) { stale = true; }
+            try { store.Save(saved, saved with { StoryProfile = profile with { Tone = "dark" } }, () => false, default); }
+            catch (OperationCanceledException) { canceled = true; }
+            Require(stale && canceled && store.Load("owner-a", "workspace-1").Digest == saved.Digest,
+                "A stale or retired story editor overwrote the saved brief.");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+        Console.WriteLine("PASS optional opening brief: cold persistence, owner isolation, stable source identity, legacy omission and rejected stale/invalid writes");
+    }
+
+    private static async Task RunOptionalOpeningDetailsAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var authority = new DecisionAuthority(1);
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var prepared = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            prepared = prepared with { Projection = prepared.Projection with {
+                CurrentTurn = prepared.Projection.CurrentTurn with { JourneyId = "sr5-life-modules-foundation" } } };
+            var display = new OriginDossierLifeModulePhoneResult(LifeModuleOriginDossierOutcomes.Success,
+                OriginDossierLifeModuleInteractionProjector.Project(prepared), [],
+                LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest: "sha256:" + Digest("foundation"), BoundContentDigest: prepared.BoundContentDigest,
+                BoundSourceDigest: prepared.BoundSourceDigest, BoundMechanicsSnapshotDigest: prepared.BoundMechanicsSnapshotDigest,
+                StoryCheckpoint: prepared);
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                int saves = 0, confirmations = 0;
+                OriginBookReadingState saved = new("owner-a", "workspace-1", []);
+                var localized = display with { State = display.State! with { Locale = locale } };
+                OriginDossierLifeModuleDecisionPage Page() => new(localized, locale,
+                    (_, _) => throw new InvalidOperationException("Details cannot prepare a module."),
+                    (_, _) => { confirmations++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
+                    openingDetails: saved, saveOpeningDetails: (expected, profile, current) =>
+                    {
+                        Require(current() && expected == saved, "A stale opening editor saved.");
+                        saves++; saved = expected with { StoryProfile = profile };
+                        return Task.FromResult<OriginBookReadingState?>(saved);
+                    });
+                var page = Page();
+                T Find<T>(string id) where T : Element => Elements(page).OfType<T>().Single(e => e.AutomationId == id);
+                Task Click(string id) => ui.BeginAsyncVoid(() => ((IButtonController)Find<Button>(id)).SendClicked());
+                Require(!Find<VerticalStackLayout>("origin-story-details").IsVisible && saves == 0,
+                    "Optional story details started expanded or wrote on render.");
+                await Click("origin-life-confirm");
+                Require(saves == 0 && confirmations == 1 && saved.StoryProfile is null,
+                    "Skipping details blocked a decision or invented identity details.");
+                ((IButtonController)Find<Button>("origin-story-details-expand")).SendClicked();
+                Find<Picker>("origin-story-gender").SelectedIndex = 3;
+                Find<Entry>("origin-story-pronouns").Text = "they/them";
+                Find<Picker>("origin-story-tone").SelectedIndex = 4;
+                Find<Entry>("origin-story-motivation").Text = "Find a home";
+                Require(saves == 0 && confirmations == 1, "Editing sent or saved unconfirmed details.");
+                ((IButtonController)Find<Button>("origin-story-details-expand")).SendClicked();
+                await Click("origin-life-confirm");
+                Require(saves == 1 && confirmations == 2 && saved.StoryProfile is
+                    { Gender: "other", Pronouns: "they/them", Tone: "epic", Motivation: "Find a home" },
+                    "Collapsed details were lost or failed to save before the explicit decision.");
+                page = Page();
+                Require(!Find<VerticalStackLayout>("origin-story-details").IsVisible
+                    && Find<Entry>("origin-story-pronouns").Text == "they/them"
+                    && Find<Picker>("origin-story-gender").SelectedIndex == 3 && saves == 1,
+                    "Reopen lost saved details, changed defaults or saved automatically.");
+                Require(!Elements(page).Any(e => e is Switch || e.AutomationId?.Contains("avoid", StringComparison.Ordinal) == true),
+                    "Opening details introduced a mechanics toggle or avoidance setting.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS optional opening UI: collapsed, skippable, other/pronouns and tone, explicit save and reopen in DE/EN/ES");
     }
 
     private static async Task RunMetatypePageAsync()

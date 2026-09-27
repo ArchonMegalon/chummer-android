@@ -93,7 +93,7 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("IsNativePersistenceViewCurrent(original, original.ContentRevision)", confirmation)
         self.assertIn("IsNativePersistenceOwnerCurrent(owner)", confirmation)
 
-    def test_phone_renders_exact_core_budget_and_source_anchors(self):
+    def test_phone_keeps_exact_core_authority_under_text_only_choices(self):
         page = (NATIVE / "OriginDossierLifeModuleDecisionPage.cs").read_text(encoding="utf-8")
         copy = (NATIVE / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")
 
@@ -101,22 +101,22 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
             "CharacterCreationBudgetIds.LifeModules",
             "result.LifeModuleBudget.IsExact",
             "result.LifeModuleBudget.Blockers.Count == 0",
-            'budgetCard.AutomationId = "origin-life-budget"',
-            '"origin-life-budget-total"',
-            '"origin-life-budget-used"',
-            '"origin-life-budget-remaining"',
-            "choice.SourceAnchorIds",
-            'anchors.AutomationId = $"origin-life-choice-anchors-{choiceIndex}"',
             "prepared.BoundMechanicsSnapshotDigest",
+            "choice.KarmaCost <= _budget.Remaining",
+            "PendingPreview?.EffectReview is not null",
         ):
             self.assertIn(marker, page)
+        for marker in (
+            '"origin-life-budget"', '"origin-life-budget-total"',
+            '"origin-life-budget-used"', '"origin-life-budget-remaining"',
+            "origin-life-choice-anchors-", "origin-life-choice-source-",
+            "origin-life-effect-", "origin-life-ltd-provenance",
+            "new Switch", "OriginStoryPreferences",
+        ):
+            self.assertNotIn(marker, page)
         for key in (
-            "Origin.Budget",
-            "Origin.BudgetTotal",
-            "Origin.BudgetUsed",
-            "Origin.BudgetRemaining",
-            "Origin.BudgetSemantic",
-            "Origin.SourceAnchors",
+            "Origin.NoStoryChoices", "Origin.MetatypeStoryDetail",
+            "Origin.StoryChoiceReview", "Origin.StoryChoiceReviewRequired",
         ):
             self.assertEqual(3, copy.count(f'("{key}",'))
 

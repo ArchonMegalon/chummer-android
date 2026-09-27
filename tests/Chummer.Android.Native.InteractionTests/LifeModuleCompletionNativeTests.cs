@@ -146,6 +146,14 @@ internal static partial class AfterRunAuthorityHarness
         var id = created.WorkspaceId!.Value;
         Require(opened.State!.OwnerId == ContactsOwnerA.NormalizedValue,
             "The linked Origin decision is still labeled as local-single-user.");
+        var openingDetails = await runtime.Coordinator.LoadOpeningStoryDetailsAsync(opened.StoryCheckpoint!, () => true);
+        Require(openingDetails is { StoryProfile: null, Chapters.Count: 0 }
+            && await runtime.Coordinator.LoadOpeningStoryDetailsAsync(opened.StoryCheckpoint!, () => false) is null,
+            "The opening editor was unavailable before the first choice, or loaded for a departed page.");
+        var profile = new OriginStoryProfile("other", "they/them", "hopeful", "Find a home", "Mara");
+        Require(await runtime.Coordinator.SaveOpeningStoryDetailsAsync(openingDetails! with { }, profile, () => true) is null
+            && await runtime.Coordinator.SaveOpeningStoryDetailsAsync(openingDetails!, profile, () => false) is null,
+            "An unissued or departed opening editor wrote story details.");
         var choice = opened.StoryCheckpoint!.Projection.CurrentTurn.LegalChoices.First(row =>
             row.Label.StartsWith("Elf ·", StringComparison.Ordinal)
             && row.SourceAnchorIds.Any(anchor => anchor.Contains("604831d9-0fdc-4579-aa7e-bc5d99bcee5d", StringComparison.Ordinal)));
@@ -154,6 +162,11 @@ internal static partial class AfterRunAuthorityHarness
         var prepared = await runtime.Coordinator.PrepareSr5LifeModuleOriginAsync(choice.ChoiceId, followUpValues: answers);
         Require(prepared.IsSuccess && prepared.State?.PendingPreviewDigest is not null,
             "Linked choice review failed: " + string.Join(",", prepared.Blockers));
+        var savedDetails = await runtime.Coordinator.SaveOpeningStoryDetailsAsync(openingDetails!, profile, () => true);
+        Require(savedDetails?.StoryProfile == profile
+            && new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerA.Value, id.Value).Digest == savedDetails.Digest
+            && new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerB.Value, id.Value).StoryProfile is null,
+            "Preparing the real Core choice lost the issued opening editor, persistence or owner isolation.");
         var confirmed = await runtime.Coordinator.ConfirmSr5LifeModuleOriginAsync(
             choice.ChoiceId, prepared.State!.PendingPreviewDigest!);
         Require(confirmed.IsSuccess && confirmed.State?.Timeline.Count == 1,
@@ -175,6 +188,10 @@ internal static partial class AfterRunAuthorityHarness
             && !retainedOpening.OpeningSetupComplete
             && !await runtime.Coordinator.HasReadCurrentLifeModuleStoryAsync(confirmed.StoryCheckpoint!, () => true),
             "The retained Core book and live checkpoint disagree, or birth alone became a completed first story.");
+        Require(retainedOpening!.Readings?.StoryProfile == profile
+            && await runtime.Coordinator.LoadOpeningStoryDetailsAsync(confirmed.StoryCheckpoint!, () => true) is null
+            && await runtime.Coordinator.SaveOpeningStoryDetailsAsync(savedDetails!, profile with { Tone = "dark" }, () => true) is null,
+            "The opening brief was lost, or an old editor could rewrite the story after the first accepted decision.");
         var stored = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
         Require(await stored.LoadAsync(OwnerScope.LocalSingleUser.NormalizedValue, id.Value) is null,
             "Linked Origin checkpoint leaked into the local timeline namespace.");
@@ -232,6 +249,12 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Coordinator.SaveAsync();
             Require(ReferenceEquals(alreadySaved, runtime.Coordinator.State.CreationFoundation),
                 "Saving an unchanged Life Modules runner needlessly rebuilt its current projection.");
+            var opening = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+            var openingBrief = await runtime.Coordinator.LoadOpeningStoryDetailsAsync(opening.StoryCheckpoint!, () => true);
+            var storyProfile = new OriginStoryProfile("other", "they/them", "epic", "Find a home", "Mara");
+            Require(openingBrief is not null && (await runtime.Coordinator.SaveOpeningStoryDetailsAsync(
+                openingBrief, storyProfile, () => true))?.StoryProfile == storyProfile,
+                "The full book fixture could not save its optional opening brief.");
             await Task.Run(() => SeedNativeLifeStory(runtime, id));
             await runtime.Presenter.LoadAsync(id, default);
             var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
@@ -609,6 +632,11 @@ internal static partial class AfterRunAuthorityHarness
                     && runtime.Coordinator.PrepareOriginChapterSource(book, book.Chapters[0]) is null,
                     "The birth-background decision was offered as an independent generated chapter.");
                 var chapter = book.Chapters[1];
+                Require(book.Readings?.StoryProfile == storyProfile
+                    && runtime.Coordinator.PrepareOriginChapterSource(book, chapter)?.Facts.Any(f =>
+                        f.DecisionId.StartsWith("player-story-brief-", StringComparison.Ordinal)
+                        && f.Text.Contains("they/them", StringComparison.Ordinal)) == true,
+                    "The retained book did not carry the optional brief into the approved chapter source.");
                 Require(book.TryGetAuthoringPredecessor(chapter, out var openingPrevious) && openingPrevious is null,
                     "The first story chapter required a nonexistent pre-childhood story.");
                 string canonicalText = book.ChapterText(chapter);
@@ -679,26 +707,30 @@ internal static partial class AfterRunAuthorityHarness
                 await Back();
                 // Actual consent -> request -> refresh -> stage -> review UI.
                 await Click($"origin-author-chapter-{chapter.Sequence}");
-                Require(Current() is OriginBookAuthoringPage && authoringProbe.Requests == 0 && authoringProbe.Reads == 0
+                Require(Current() is OriginBookAuthoringPage && authoringProbe.Requests == 0 && authoringProbe.Reads == 1
+                    && authoringProbe.Acceptances == 0
                     && !Element<Button>("origin-authoring-request").IsEnabled,
-                    "Opening authoring sent private facts or enabled generation without consent.");
+                    "Opening authoring must read existing status without generation, acknowledgement or consent.");
+                var authoringBody = (VerticalStackLayout)((ScrollView)Current().Content!).Content;
+                Require(authoringBody.Children[1] is Border { Content: VerticalStackLayout { AutomationId: "origin-authoring-status" } },
+                    "Progress and ETA were buried beneath the chapter facts.");
                 var authoringPage = (OriginBookAuthoringPage)Current();
                 long authoringAppearance = IssuedPageField<long>(authoringPage, "_appearanceGeneration");
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
-                Require(authoringProbe.Reads == 0 && authoringProbe.Requests == 0,
-                    "Automatic observation started before an explicit authoring/status action.");
+                Require(authoringProbe.Reads == 1 && authoringProbe.Requests == 0,
+                    "A confirmed absent job started automatic observation or generation.");
                 await Click("origin-authoring-refresh");
-                Require(authoringProbe.Reads == 1 && authoringProbe.Requests == 0, "Read-only status created a job.");
+                Require(authoringProbe.Reads == 2 && authoringProbe.Requests == 0, "Read-only status created a job.");
                 Element<Switch>("origin-authoring-consent").IsToggled = true;
                 await Click("origin-authoring-request");
-                Require(authoringProbe.Requests == 1 && authoringProbe.Reads == 2,
+                Require(authoringProbe.Requests == 1 && authoringProbe.Reads == 3,
                     "Consented chapter request did not read before creating.");
                 Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d
                     && Element<Label>("origin-authoring-eta").Text == AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringEtaUnknown"],
                     "A queued request needs confirmed-stage progress and an honest unknown ETA.");
                 var waitingConsent = Element<Switch>("origin-authoring-consent");
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
-                Require(authoringProbe.Reads == 3 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0
+                Require(authoringProbe.Reads == 4 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0
                     && ReferenceEquals(waitingConsent, Element<Switch>("origin-authoring-consent")),
                     "Unchanged automatic status rebuilt controls, generated prose or accepted a draft.");
                 using (var canceledPoll = new CancellationTokenSource())
@@ -707,21 +739,21 @@ internal static partial class AfterRunAuthorityHarness
                     await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, canceledPoll.Token);
                 }
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance - 1, default);
-                Require(authoringProbe.Reads == 3, "Canceled or retired appearance polled private chapter status.");
+                Require(authoringProbe.Reads == 4, "Canceled or retired appearance polled private chapter status.");
                 authoringProbe.TransientReadFailure = true;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d / 3d,
                     "A transient status read erased the last confirmed authoring stage.");
                 authoringProbe.TransientReadFailure = false;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
-                Require(authoringProbe.Reads == 5 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                Require(authoringProbe.Reads == 6 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
                     "A classified transient read did not recover the same job without another generation or acceptance.");
                 authoringProbe.TransientReadFailure = true;
                 for (int failedRead = 0; failedRead < 3; failedRead++)
                     await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 authoringProbe.TransientReadFailure = false;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
-                Require(authoringProbe.Reads == 8 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                Require(authoringProbe.Reads == 9 && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
                     "The consecutive transient-read limit failed to stop automatic observation.");
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text ==
                     AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusPaused"]),
@@ -766,7 +798,21 @@ internal static partial class AfterRunAuthorityHarness
                         AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)["Origin.AuthoringStatusPaused"]),
                     "Paused status reads hid the unconfirmed outcome, restarted writing or accepted prose.");
                 authoringProbe.TransientReadFailure = false;
-                await Click("origin-authoring-refresh");
+                // Leave and reopen while the remote outcome is uncertain. The
+                // first read restores progress without a button press or replay.
+                long departedAuthoringAppearance = authoringAppearance;
+                IssuedPageLifecycle(authoringPage, "OnDisappearing");
+                await Appear();
+                authoringAppearance = IssuedPageField<long>(authoringPage, "_appearanceGeneration");
+                Require(authoringProbe.Reads == pausedUnconfirmedReads + 1
+                    && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0
+                    && Element<ProgressBar>("origin-authoring-progress").Progress == 2d / 3d
+                    && !Element<Switch>("origin-authoring-consent").IsToggled
+                    && IssuedElements(Current()).Any(e => e.AutomationId == "origin-authoring-eta"),
+                    "Reopening lost existing progress, granted consent or repeated paid work.");
+                await authoringPage.PollPendingChapterOnceAsync(departedAuthoringAppearance, default);
+                Require(authoringProbe.Reads == pausedUnconfirmedReads + 1,
+                    "A retired appearance continued observing after reopen.");
                 authoringProbe.Ready = true;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
                 Require(Element<ProgressBar>("origin-authoring-progress").Progress == 1d

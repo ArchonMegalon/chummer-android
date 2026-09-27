@@ -35,18 +35,34 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnAppearing()
+    {
+        _body.Clear();
+        _body.Add(NativeTheme.Title(_chapter.Title));
+        _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "origin-authoring-busy" });
+        _body.Add(NativeTheme.Body(_copy["Origin.AuthoringBusy"]));
+        base.OnAppearing();
+    }
+
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
     {
-        if (_book is not null) return;
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance)
             && Coordinator.State.WorkspaceId == _original.WorkspaceId
             && Coordinator.State.DisplayOwnerContext == _original.DisplayOwnerContext;
         if (!Current()) return;
-        var book = await Coordinator.LoadRetainedOriginBookAsync(ct, Current);
-        if (!Current() || book is null || !book.Chapters.Contains(_chapter)) return;
-        _source = Coordinator.PrepareOriginChapterSource(book, _chapter);
-        _book = book;
+        if (_book is null)
+        {
+            var book = await Coordinator.LoadRetainedOriginBookAsync(ct, Current);
+            if (!Current() || book is null || !book.Chapters.Contains(_chapter)) return;
+            _source = Coordinator.PrepareOriginChapterSource(book, _chapter);
+            _book = book;
+        }
+        // Read by the existing deterministic request identity only. Reopening
+        // never sends facts, grants consent, acknowledges prose or starts a job.
+        await SyncAsync(create: false, Current, automatic: true, ct);
+        if (Current() && !ct.IsCancellationRequested && _watchPending)
+            StartPendingStatusWatch();
     }
 
     protected override void Refresh()
@@ -61,12 +77,8 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
             && Coordinator.CanRequestOriginChapter(book);
         _body.Add(NativeTheme.Title(_chapter.Title));
+        AddStatus(book, Current);
         _body.Add(NativeTheme.Body(_copy["Origin.AuthoringExplanation"]));
-        if (_busy)
-        {
-            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "origin-authoring-busy" });
-            _body.Add(NativeTheme.Body(_copy["Origin.AuthoringBusy"]));
-        }
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookLanguage", source.Locale)));
         _body.Add(NativeTheme.Title(source.RunnerName, 21));
         foreach (var fact in source.Facts) _body.Add(NativeTheme.Body(fact.Text));
@@ -80,12 +92,21 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         submit.AutomationId = "origin-authoring-request";
         consent.Toggled += (_, args) => { if (Current() && !_busy && canCreate) { _consent = args.Value; submit.IsEnabled = _consent; } };
         submit.Clicked += async (_, _) => await RunAsync(() => SyncAsync(create: true, Current));
-        var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
-        refresh.IsEnabled = !_busy; refresh.AutomationId = "origin-authoring-refresh";
-        refresh.Clicked += async (_, _) => await RunAsync(() => SyncAsync(create: false, Current));
         _body.Add(consent);
         _body.Add(submit);
-        _body.Add(refresh);
+    }
+
+    private void AddStatus(RetainedOriginBook book, Func<bool> current)
+    {
+        // Keep progress, ETA and review within reach, above the potentially long
+        // list of source facts. A dispatched job is not a live worker heartbeat.
+        var status = new VerticalStackLayout { Spacing = 8, AutomationId = "origin-authoring-status" };
+        status.Add(NativeTheme.Title(_copy["Origin.AuthoringStatusTitle"], 21));
+        if (_busy)
+        {
+            status.Add(new ActivityIndicator { IsRunning = true, AutomationId = "origin-authoring-busy" });
+            status.Add(NativeTheme.Body(_copy["Origin.AuthoringBusy"]));
+        }
         if (_jobState == OriginChapterAuthoringStates.ReconciliationRequired)
         {
             // Dispatch is not a worker heartbeat or a completed draft. Keep
@@ -93,9 +114,9 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
             // observer replaces the ordinary status notice.
             var uncertain = NativeTheme.Body(_copy["Origin.AuthoringOutcomeUnconfirmed"]);
             uncertain.AutomationId = "origin-authoring-outcome-unconfirmed";
-            _body.Add(uncertain);
+            status.Add(uncertain);
         }
-        if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
+        if (_notice is not null) status.Add(NativeTheme.Body(_notice));
         int? stage = _jobState switch
         {
             OriginChapterAuthoringStates.AwaitingAuthoring => 1,
@@ -108,25 +129,30 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
             var progress = new ProgressBar { Progress = stage.Value / 3d,
                 ProgressColor = NativeTheme.Ink, AutomationId = "origin-authoring-progress" };
             SemanticProperties.SetDescription(progress, _copy.Format("Origin.AuthoringStage", stage.Value));
-            _body.Add(progress);
-            _body.Add(NativeTheme.Body(_copy.Format("Origin.AuthoringStage", stage.Value), NativeTheme.Muted));
+            status.Add(progress);
+            status.Add(NativeTheme.Body(_copy.Format("Origin.AuthoringStage", stage.Value), NativeTheme.Muted));
             if (stage < 3)
             {
                 var eta = NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted);
                 eta.AutomationId = "origin-authoring-eta";
-                _body.Add(eta);
+                status.Add(eta);
             }
         }
+        var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
+        refresh.IsEnabled = !_busy; refresh.AutomationId = "origin-authoring-refresh";
+        refresh.Clicked += async (_, _) => await RunAsync(() => SyncAsync(create: false, current));
+        status.Add(refresh);
         if (book.Pending(_chapter) is { } draft)
         {
             var review = NativeTheme.ReadingButton(_copy["Origin.ReviewProse"]);
             review.AutomationId = "origin-authoring-review";
             review.Clicked += async (_, _) => await RunAsync(async () =>
             {
-                if (Current()) await Navigation.PushAsync(new OriginBookProseReviewPage(Coordinator, book, _chapter, draft));
+                if (current()) await Navigation.PushAsync(new OriginBookProseReviewPage(Coordinator, book, _chapter, draft));
             });
-            _body.Add(review);
+            status.Add(review);
         }
+        _body.Add(NativeTheme.Card(status));
     }
 
     private async Task<bool> SyncAsync(bool create, Func<bool> current,
