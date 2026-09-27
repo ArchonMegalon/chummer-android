@@ -197,13 +197,10 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             return body;
         }
 
-        Label story = NativeTheme.BookProse(_state.VisibleStoryMarkdown);
-        story.AutomationId = "origin-life-story";
-        SemanticProperties.SetDescription(
-            story,
-            _copy.Format("Origin.StorySemantic", _state.Locale));
-        body.Add(NativeTheme.Card(story));
-        Label prompt = NativeTheme.Title(_state.DecisionPrompt, 21);
+        // The canonical wizard lead-in is not an authored chapter. Once the
+        // reader returns from the full chapter, ask the next story question
+        // without reintroducing the source template or its mechanics prompt.
+        Label prompt = NativeTheme.Title(OriginStoryDecisionText.Prompt(_state), 21);
         prompt.AutomationId = "origin-life-prompt";
         body.Add(prompt);
         if (!_state.Choices.Any(IsAffordable))
@@ -254,9 +251,10 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             if (metatypes.Length > 0 && MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId)
                 continue;
             var card = new VerticalStackLayout { Spacing = 8 };
+            string storyChoice = OriginStoryDecisionText.Choice(_state, choice.ChoiceId);
             Button select = choice.IsSelected
-                ? NativeTheme.PrimaryButton(choice.Label)
-                : NativeTheme.SecondaryButton(choice.Label);
+                ? NativeTheme.PrimaryButton(storyChoice)
+                : NativeTheme.SecondaryButton(storyChoice);
             select.HeightRequest = -1;
             select.MinimumHeightRequest = 50;
             select.LineBreakMode = LineBreakMode.WordWrap;
