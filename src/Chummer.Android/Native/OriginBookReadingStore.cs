@@ -52,7 +52,20 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
     // Omission preserves historical file digests and old request identities.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public OriginStoryProfile? StoryProfile { get; init; }
-    internal string Digest => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(this))).ToLowerInvariant();
+    internal string Digest
+    {
+        get
+        {
+            // Preserve the v1 JSON bytes/digest without allocating another
+            // complete UTF-8 copy of every selected and pending chapter.
+            using var hash = SHA256.Create();
+            using var hashing = new CryptoStream(Stream.Null, hash, CryptoStreamMode.Write);
+            using var bounded = new OriginBookReadingStore.BoundedEditionStream(hashing);
+            JsonSerializer.Serialize(bounded, this);
+            hashing.FlushFinalBlock();
+            return Convert.ToHexString(hash.Hash!).ToLowerInvariant();
+        }
+    }
 }
 
 /// <summary>
@@ -61,7 +74,10 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
 /// </summary>
 public sealed class OriginBookReadingStore(string stateDirectory)
 {
-    private const int MaximumBytes = 2 * 1024 * 1024;
+    // 128 chapters x selected/pending x 64 KiB text x up to 6 JSON-escape
+    // bytes = 96 MiB, plus frozen (<=32 KiB each) inputs and metadata. This
+    // envelope admits the existing per-chapter contract, not unbounded books.
+    private const int MaximumBytes = 128 * 1024 * 1024;
     private const string Schema = "chummer.android.origin-reading-edition/v1";
     private sealed record FileState(string Schema, OriginBookReadingState State, string Digest);
     private readonly string _root = Path.Combine(stateDirectory, "origin-reading-editions");
@@ -73,11 +89,8 @@ public sealed class OriginBookReadingStore(string stateDirectory)
         if (!File.Exists(path)) return new(owner, workspace, []);
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         if (file.Length > MaximumBytes) throw new InvalidDataException("The reading edition is oversized.");
-        byte[] bytes = new byte[MaximumBytes + 1];
-        int used = 0, read;
-        while (used < bytes.Length && (read = file.Read(bytes, used, bytes.Length - used)) != 0) used += read;
-        if (used > MaximumBytes) throw new InvalidDataException("The reading edition is oversized.");
-        var saved = JsonSerializer.Deserialize<FileState>(bytes.AsSpan(0, used));
+        using var bounded = new BoundedEditionStream(file);
+        var saved = JsonSerializer.Deserialize<FileState>(bounded);
         if (saved?.Schema != Schema || saved.State is not { } state || state.Owner != owner || state.Workspace != workspace
             || !Valid(state) || saved.Digest != state.Digest)
             throw new InvalidDataException("The reading edition has an invalid identity or content binding.");
@@ -87,10 +100,10 @@ public sealed class OriginBookReadingStore(string stateDirectory)
     internal OriginBookReadingState Save(OriginBookReadingState expected, OriginBookReadingState next,
         Func<bool> stillCurrent, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         if (next.Owner != expected.Owner || next.Workspace != expected.Workspace || !Valid(next))
             throw new InvalidDataException("The reading edition changed identity.");
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new FileState(Schema, next, next.Digest));
-        if (bytes.Length > MaximumBytes) throw new InvalidDataException("The reading edition is oversized.");
+        var saved = new FileState(Schema, next, next.Digest);
         lock (_gate)
         {
             Directory.CreateDirectory(_root);
@@ -102,7 +115,11 @@ public sealed class OriginBookReadingStore(string stateDirectory)
             try
             {
                 using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                { output.Write(bytes); output.Flush(flushToDisk: true); }
+                {
+                    using var bounded = new BoundedEditionStream(output, cancellationToken: ct);
+                    JsonSerializer.Serialize(bounded, saved);
+                    output.Flush(flushToDisk: true);
+                }
                 ct.ThrowIfCancellationRequested();
                 if (!stillCurrent()) throw new OperationCanceledException("The book context changed.");
                 File.Move(temporary, path, overwrite: true);
@@ -111,6 +128,40 @@ public sealed class OriginBookReadingStore(string stateDirectory)
                 return next;
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+    }
+
+    // Sequential JSON I/O only; the caller owns/disposes the underlying stream.
+    // Check the bytes actually read as well as FileStream.Length so even a
+    // growing input cannot evade the cap. Oversized writes never commit.
+    internal sealed class BoundedEditionStream(Stream inner, long maximumBytes = MaximumBytes,
+        CancellationToken cancellationToken = default) : Stream
+    {
+        private long _used;
+        public override bool CanRead => inner.CanRead;
+        public override bool CanWrite => inner.CanWrite;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+        public override int Read(Span<byte> buffer)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int read = inner.Read(buffer[..(int)Math.Min(buffer.Length, maximumBytes - _used + 1)]);
+            _used += read;
+            if (_used > maximumBytes) throw new InvalidDataException("The reading edition is oversized.");
+            return read;
+        }
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (buffer.Length > maximumBytes - _used) throw new InvalidDataException("The reading edition is oversized.");
+            inner.Write(buffer);
+            _used += buffer.Length;
         }
     }
 

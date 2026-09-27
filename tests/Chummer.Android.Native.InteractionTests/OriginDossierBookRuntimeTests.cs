@@ -43,6 +43,8 @@ internal static class OriginDossierBookRuntimeTests
         RunAuthoringSource();
         RunOpportunityContext();
         RunOpeningStoryDetailsStorage();
+        RunReadingStreamBounds();
+        RunLongBookStorage();
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
         await RunTextOnlyDecisionDisplayAsync();
@@ -1292,6 +1294,14 @@ internal static class OriginDossierBookRuntimeTests
                 [new("school", "Military school", OriginChapterOpportunityAvailability.Unavailable)]) };
             var retainedChapter = new OriginBookReadingChapter(source.ChapterId, null, null) { AuthoringSource = approved };
             var retained = store.Save(saved, saved with { Chapters = [retainedChapter] }, () => true, default);
+            string legacyDigest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(retained))).ToLowerInvariant();
+            byte[] legacyFile = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                Schema = "chummer.android.origin-reading-edition/v1", State = retained, Digest = legacyDigest
+            });
+            string savedPath = Directory.GetFiles(Path.Combine(directory, "origin-reading-editions"), "*.json").Single();
+            Require(legacyDigest == retained.Digest && File.ReadAllBytes(savedPath).SequenceEqual(legacyFile),
+                "Streaming changed the existing v1 file bytes or digest and would invalidate installed reading editions.");
             var cold = new OriginBookReadingStore(directory).Load("owner-a", "workspace-1");
             Require(cold.Digest == retained.Digest
                 && OriginChapterSourceIdentity.Digest(cold.Chapters.Single().AuthoringSource!) == OriginChapterSourceIdentity.Digest(approved)
@@ -1313,6 +1323,182 @@ internal static class OriginDossierBookRuntimeTests
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine("PASS optional opening brief: cold persistence, owner isolation, stable source identity, legacy omission and rejected stale/invalid writes");
+    }
+
+    private static void RunReadingStreamBounds()
+    {
+        using var output = new MemoryStream();
+        using var bounded = new OriginBookReadingStore.BoundedEditionStream(output, 8);
+        bounded.Write("1234"u8);
+        bounded.Write("5678"u8);
+        bool writeRejected = false;
+        try { bounded.Write("9"u8); }
+        catch (InvalidDataException) { writeRejected = true; }
+        Require(writeRejected && output.ToArray().SequenceEqual("12345678"u8.ToArray()),
+            "The streaming limit wrote bytes beyond the cap.");
+        foreach (bool oversized in new[] { false, true })
+        {
+            using var input = new MemoryStream(Encoding.UTF8.GetBytes(oversized ? "123456789" : "12345678"));
+            using var reader = new OriginBookReadingStore.BoundedEditionStream(input, 8);
+            byte[] chunk = new byte[4];
+            Require(reader.Read(chunk, 0, chunk.Length) == 4 && reader.Read(chunk) == 4,
+                "A bounded stream truncated input before the exact cap.");
+            bool readRejected = false;
+            try { Require(reader.Read(chunk) == 0, "Exact-size input did not reach EOF."); }
+            catch (InvalidDataException) { readRejected = true; }
+            Require(readRejected == oversized, "The read cap depended on a length precheck or rejected valid exact-size input.");
+        }
+        using var cancellation = new CancellationTokenSource();
+        using var canceled = new OriginBookReadingStore.BoundedEditionStream(output, 8, cancellation.Token);
+        cancellation.Cancel();
+        bool canceledWrite = false;
+        try { canceled.Write("x"u8); }
+        catch (OperationCanceledException) { canceledWrite = true; }
+        Require(canceledWrite && output.Length == 8, "A canceled stream still wrote to disk.");
+        Console.WriteLine("PASS reading stream: exact cap, chunked overflow, no partial oversized write and cancellation");
+    }
+
+    private static void RunLongBookStorage()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "chummer-long-book-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+            var prepared = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            var projection = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest,
+                "long-book-fixture", true).Value!.Checkpoint.Projection;
+            var seed = projection.VisibleChapters.Single();
+            var chapters = Enumerable.Range(1, 128).Select(i => seed with
+            {
+                ChapterId = "long-chapter-" + i, ChapterDigest = Digest("long-chapter-" + i),
+                ThroughAcceptedDecisionId = "decision-" + i, Sequence = i,
+                Title = "Straße " + i + " — 🌧️", VisibleMarkdown = "Not the selected prose."
+            }).ToArray();
+            string Prose(int i, bool pending)
+            {
+                string first = (pending ? "PRIVATE PENDING " : "Selected ") + i + ": Über den Dächern 🌧️\n\n";
+                string last = "\n\nEnde — " + i;
+                // '<' exercises the JSON encoder's sixfold expansion without
+                // increasing the existing 64 KiB UTF-8 per-chapter contract.
+                return first + new string('<', OriginBookProseDraft.MaximumTextBytes
+                    - Encoding.UTF8.GetByteCount(first + last)) + last;
+            }
+            var retained = chapters.Select((chapter, index) =>
+            {
+                var source = OriginChapterSourceIdentity.Capture(new OriginChapterSource("workspace-1",
+                    chapter.ChapterId, chapter.ChapterDigest, chapter.ThroughAcceptedDecisionId,
+                    "de-DE", "Synthetic long-book fixture", [new("fact-" + index,
+                        chapter.ThroughAcceptedDecisionId, "A confirmed synthetic memory.")]));
+                string request = OriginChapterSourceIdentity.RequestId(source);
+                return new OriginBookReadingChapter(chapter.ChapterId,
+                    OriginBookProseDraft.Create(chapter, "de-DE", request, Digest("selected"), Prose(index, false)),
+                    OriginBookProseDraft.Create(chapter, "de-DE", request, Digest("pending"), Prose(index, true)))
+                    { AuthoringSource = source };
+            }).ToArray();
+            var store = new OriginBookReadingStore(directory);
+            var empty = store.Load("owner-a", "workspace-1");
+            Require(empty.Digest == Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(empty))).ToLowerInvariant(),
+                "Streaming changed the historical reading-state digest.");
+            var saved = store.Save(empty, empty with { Chapters = retained }, () => true, default);
+            string path = Directory.GetFiles(Path.Combine(directory, "origin-reading-editions"), "*.json").Single();
+            long size = new FileInfo(path).Length;
+            Require(size > 2 * 1024 * 1024, "The book fixture did not cross the previous aggregate limit.");
+            var cold = new OriginBookReadingStore(directory).Load(empty.Owner, empty.Workspace);
+            Require(cold.Digest == saved.Digest && cold.Chapters.Count == 128
+                && store.Load("owner-b", empty.Workspace).Chapters.Count == 0,
+                "The full book did not survive cold read or crossed owners.");
+            for (int i = 0; i < chapters.Length; i++)
+                Require(cold.Chapters[i].Selected == retained[i].Selected && cold.Chapters[i].Pending == retained[i].Pending
+                    && OriginChapterSourceIdentity.Digest(cold.Chapters[i].AuthoringSource!)
+                        == OriginChapterSourceIdentity.Digest(retained[i].AuthoringSource!),
+                    "Cold read changed full prose, pending review or the frozen authoring input.");
+            WriteLongBookDeviceFixture(chapters);
+            var book = new RetainedOriginBook(projection with
+            {
+                CurrentTurn = projection.CurrentTurn with { Locale = "de-DE" }, VisibleChapters = chapters,
+                CanonicalLayer = projection.CanonicalLayer with
+                    { AcceptedDecisionIds = chapters.Select(c => c.ThroughAcceptedDecisionId).ToArray() }
+            }, cold);
+            using (var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(book,
+                AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read))
+            {
+                XNamespace html = "http://www.w3.org/1999/xhtml";
+                for (int i = 0; i < chapters.Length; i++)
+                {
+                    using var stream = archive.GetEntry($"EPUB/chapter-{i + 1}.xhtml")!.Open();
+                    var page = XDocument.Load(stream);
+                    Require(string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == Prose(i, false),
+                        "The persisted full book EPUB truncated prose, substituted a summary or exported pending text.");
+                }
+            }
+            bool stale = false, retired = false, canceled = false;
+            try { store.Save(empty, saved, () => true, default); }
+            catch (InvalidOperationException) { stale = true; }
+            try { store.Save(saved, saved with { Chapters = [] }, () => false, default); }
+            catch (OperationCanceledException) { retired = true; }
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            try { store.Save(saved, saved with { Chapters = [] }, () => true, cancellation.Token); }
+            catch (OperationCanceledException) { canceled = true; }
+            Require(stale && retired && canceled && store.Load(empty.Owner, empty.Workspace).Digest == saved.Digest
+                && Directory.GetFiles(Path.GetDirectoryName(path)!, "*.tmp").Length == 0,
+                "A stale/canceled write damaged the full book or left a temporary edition.");
+            bool overflow = false;
+            try { store.Save(saved, saved with { Chapters = retained.Append(new("extra", null, null)).ToArray() }, () => true, default); }
+            catch (InvalidDataException) { overflow = true; }
+            Require(overflow && new FileInfo(path).Length == size, "The chapter-count boundary was removed.");
+            bool oversizedChapter = false;
+            try { store.Save(saved, saved with { Chapters = [retained[0] with
+                { Selected = retained[0].Selected! with { Text = retained[0].Selected!.Text + "x" } }] }, () => true, default); }
+            catch (InvalidDataException) { oversizedChapter = true; }
+            Require(oversizedChapter && new FileInfo(path).Length == size, "The per-chapter text/digest boundary was removed.");
+            // Sparse hostile input: the length precheck must reject it before
+            // materializing JSON. This is our disposable fixture, not user data.
+            using (var file = new FileStream(path, FileMode.Open, FileAccess.Write)) file.SetLength(128L * 1024 * 1024 + 1);
+            bool oversized = false;
+            try { store.Load(empty.Owner, empty.Workspace); }
+            catch (InvalidDataException) { oversized = true; }
+            Require(oversized, "The bounded book file accepted oversized input.");
+            using (var file = new FileStream(path, FileMode.Open, FileAccess.Write)) file.SetLength(100);
+            bool truncated = false;
+            try { store.Load(empty.Owner, empty.Workspace); }
+            catch (JsonException) { truncated = true; }
+            Require(truncated, "A truncated book silently became an empty or partial edition.");
+            Console.WriteLine($"PASS long book: 128 full UTF-8 chapters, selected/pending/frozen input, {size} JSON bytes, cold read, complete EPUB and write/size guards");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    // Opt-in synthetic app-private fixture for the isolated Debug emulator.
+    // Never touch the canonical checkpoint or imply provider/book completion.
+    private static void WriteLongBookDeviceFixture(OriginNarrativeChapterProjection[] chapters)
+    {
+        string? directory = Environment.GetEnvironmentVariable("CHUMMER_ORIGIN_CAPACITY_DEVICE_FIXTURE");
+        if (string.IsNullOrEmpty(directory)) return;
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "checkpoint.json")));
+        Require(document.RootElement.GetProperty("ownerId").GetString() == "local-single-user",
+            "Capacity fixtures are restricted to a synthetic local owner.");
+        var projection = document.RootElement.GetProperty("projection").Deserialize<OriginStoryArcSeed>(
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var chapter = projection.VisibleChapters.Single();
+        var entries = chapters.Skip(1).Take(31).Select(c => new OriginBookReadingChapter(c.ChapterId,
+            OriginBookProseDraft.Create(c, projection.CurrentTurn.Locale, "synthetic-capacity-fixture", Digest("synthetic"),
+                "SYNTHETIC STORAGE ONLY — not provider prose. " + new string('x', 64000)),
+            OriginBookProseDraft.Create(c, projection.CurrentTurn.Locale, "synthetic-capacity-fixture", Digest("synthetic-pending"),
+                "SYNTHETIC PENDING STORAGE ONLY. " + new string('y', 64000)))).ToList();
+        entries.Add(new(chapter.ChapterId,
+            OriginBookProseDraft.Create(chapter, projection.CurrentTurn.Locale, "synthetic-capacity-fixture", Digest("before"),
+                "Synthetic capacity test: previous reading edition. Not an AI chapter."),
+            OriginBookProseDraft.Create(chapter, projection.CurrentTurn.Locale, "synthetic-capacity-fixture", Digest("after"),
+                "Synthetic capacity test: this revised reading edition must survive Save, Back and process restart.\n\n"
+                + "Über den Dächern lag Regen. 🌧️ The other stored entries exercise a book larger than two MiB; "
+                + "they are not additional accepted modules or provider chapters.\n\nEND OF SYNTHETIC CAPACITY TEST.")));
+        var store = new OriginBookReadingStore(directory);
+        var empty = store.Load("local-single-user", projection.CurrentTurn.WorkspaceId);
+        Require(empty.Chapters.Count == 0, "Do not overwrite an existing capacity fixture.");
+        store.Save(empty, empty with { Chapters = entries }, () => true, default);
+        Console.WriteLine("PASS wrote opt-in synthetic >2 MiB device fixture, no canonical or provider changes");
     }
 
     private static async Task RunOptionalOpeningDetailsAsync()
