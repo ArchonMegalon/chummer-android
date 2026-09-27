@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "ef0f6c1f8fe52c95a036647b063d374cc5f233fd5be76196c8865e89763a4201"
+        "sha256": "a432bf226f94ccc53a54a8294a93779b92c3ac4ffbc9e5d0129e05328b5bc47d"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "85bbb095bac1ceb0094016a96ffcedb0b24d017894f057e9afdc59166b449316"
+        "sha256": "a1fc0de1b9414894d6ea69a0bdd4da14257ff112f4e63142c81890da9895ef5b"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "ba646b978d0f9b54b485e4a501acc38e20f6e2e19ea1f2665a20d3c50dc6128a"
+        "sha256": "a437d168d71285572823423a8747e9279f58edbe9523a770dd6fb7896383b54f"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "1babeb5aa8b9e33e537da9a0ca07ae2c8d04de3d593c4842ef2fc15c2c9ea274"
+        "sha256": "3ec3b3458f8ce3e598d7e3bef29fe2089880daa18fc49fc89f417d6051e187b6"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "cd4b57e2d85d27cf46bb07393ce315c217d64cc87d1b232ad00cd09c47cf9045"
+        "sha256": "6ddc863fe15d03e0774c6844945efdec642320ef0b11537e34a42e6d31d7ff41"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "bc1adfb391e3b2281a784843518449898c6e4d744eb414403556b8d2e97dac6b"
+        "sha256": "03bd488a6781a8e93e2a238a61c6d9c876381611006c56f5b2c4dfeca2185ea8"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",
