@@ -1259,6 +1259,12 @@ internal static class OriginDossierBookRuntimeTests
             var source = new OriginChapterSource("workspace-1", "chapter-1", Digest("chapter"), "decision-1",
                 "en-US", "Example", [new("metatype", "decision-1", "Elf")]);
             var profile = new OriginStoryProfile("other", "they/them", "epic", "Find a home", "Mara, an old friend");
+            byte[] oldProfile = JsonSerializer.SerializeToUtf8Bytes(new {
+                Gender = "other", Pronouns = "they/them", Tone = "epic", Motivation = "Find a home", ImportantPerson = "Mara, an old friend"
+            });
+            Require(JsonSerializer.SerializeToUtf8Bytes(profile).SequenceEqual(oldProfile),
+                "New background fields changed the exact legacy profile bytes.");
+            string oldId = "player-story-brief-" + Convert.ToHexString(SHA256.HashData(oldProfile)).ToLowerInvariant();
             var saved = store.Save(empty, empty with { StoryProfile = profile }, () => true, default);
             var reopened = new OriginBookReadingStore(directory).Load("owner-a", "workspace-1");
             Require(reopened.StoryProfile == profile && reopened.Digest == saved.Digest
@@ -1268,7 +1274,7 @@ internal static class OriginDossierBookRuntimeTests
                 "Skipping optional details changed historical request identity.");
             var composed = reopened.StoryProfile!.Apply(source);
             Require(composed.Facts.Count == 2 && composed.Facts[0] == source.Facts[0]
-                && composed.Facts[1].DecisionId.StartsWith("player-story-brief-", StringComparison.Ordinal)
+                && composed.Facts[1].DecisionId == oldId
                 && composed.Facts[1].Text.Contains("they/them", StringComparison.Ordinal)
                 && composed.Facts[1].Text.Contains("Epic", StringComparison.Ordinal)
                 && OriginChapterSourceIdentity.RequestId(composed) == OriginChapterSourceIdentity.RequestId(profile.Apply(source))
@@ -1319,6 +1325,58 @@ internal static class OriginDossierBookRuntimeTests
                 catch (InvalidDataException) { rejected = true; }
                 Require(rejected && store.Load("owner-a", "workspace-1").Digest == retained.Digest,
                     "An invalid frozen source replaced the approved chapter input.");
+            }
+            var background = new OriginStoryBackground("Seattle, raised by an aunt", "Betrayal after leaving school",
+                "Gambling", "recovery", "A broken promise", "Mara's dry humour", "adult", "Recovery begins at 24, not in childhood");
+            bool frozen = false;
+            try { store.Save(retained, retained with { StoryProfile = profile with { Background = background } }, () => true, default); }
+            catch (InvalidOperationException) { frozen = true; }
+            Require(frozen && store.Load("owner-a", "workspace-1").Digest == retained.Digest,
+                "New background details rewrote a previously retained authoring input.");
+            var other = store.Load("owner-a", "workspace-2");
+            var detailed = profile with { Background = background };
+            var detailSaved = store.Save(other, other with { StoryProfile = detailed }, () => true, default);
+            var detailCold = new OriginBookReadingStore(directory).Load("owner-a", "workspace-2");
+            Require(detailCold.StoryProfile == detailed && detailCold.Digest == detailSaved.Digest,
+                "Optional personal background did not survive a cold read.");
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                var localizedSource = source with { Locale = locale };
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                var input = detailCold.StoryProfile!.Apply(localizedSource);
+                Require(input.Facts.Count == 8 && input.Facts[0] == localizedSource.Facts[0]
+                    && input.Facts[1] == profile.Apply(localizedSource).Facts[1]
+                    && input.Facts.Skip(2).All(f => f.DecisionId.StartsWith("player-background-", StringComparison.Ordinal)
+                        && f.Text.Contains(copy["Origin.BackgroundBrief"], StringComparison.Ordinal))
+                    && input.Facts.Single(f => f.FactId.EndsWith("-addiction", StringComparison.Ordinal)).Text
+                        .Contains(copy["Origin.Addiction.recovery"], StringComparison.Ordinal)
+                    && input.Facts.Single(f => f.FactId.EndsWith("-experiences", StringComparison.Ordinal)).Text
+                        .Contains(copy["Origin.Period.adult"], StringComparison.Ordinal)
+                    && input.Facts.Single(f => f.FactId.EndsWith("-chronology", StringComparison.Ordinal)).Text
+                        .Contains(background.Chronology!, StringComparison.Ordinal)
+                    && OriginChapterSourceIdentity.RequestId(input) == OriginChapterSourceIdentity.RequestId(detailed.Apply(localizedSource)),
+                    "Background lost its chronology, status, player-only boundary or stable source identity.");
+                var undated = new OriginStoryProfile { Background = new(Experiences: "A remembered event") }.Apply(localizedSource);
+                Require(undated.Facts.Count == 2 && undated.Facts[1].Text.Contains(copy["Origin.Period.unspecified"], StringComparison.Ordinal)
+                    && !undated.Facts[1].Text.Contains(copy["Origin.Addiction.current"], StringComparison.Ordinal),
+                    "An undated detail invented a life period or addiction status.");
+                string full = new('\u754c', 256);
+                var maximum = new OriginStoryProfile("other", new('\u754c', 120), "mixed", new('\u754c', 512), new('\u754c', 512))
+                    { Background = new(full, full, full, "current", full, full, "adult", full) };
+                var bounded = maximum.Apply(localizedSource);
+                Require(bounded.Facts.All(f => f.Text.Length <= 2048)
+                    && JsonSerializer.SerializeToUtf8Bytes(bounded, new JsonSerializerOptions(JsonSerializerDefaults.Web)).Length <= 32768,
+                    "A fully filled Unicode background exceeded the existing provider input bounds.");
+            }
+            foreach (var bad in new[] { background with { Period = "guessed" }, background with { AddictionStatus = "diagnosed" },
+                background with { Experiences = new string('x', 257) }, background with { Chronology = "age\nunknown" },
+                background with { BirthplaceFamily = " padded " }, new OriginStoryBackground() })
+            {
+                bool rejected = false;
+                try { store.Save(detailSaved, detailSaved with { StoryProfile = detailed with { Background = bad } }, () => true, default); }
+                catch (InvalidDataException) { rejected = true; }
+                Require(rejected && store.Load("owner-a", "workspace-2").Digest == detailSaved.Digest,
+                    "Invalid background data overwrote the saved profile.");
             }
         }
         finally { Directory.Delete(directory, recursive: true); }
@@ -1536,6 +1594,10 @@ internal static class OriginDossierBookRuntimeTests
                 Task Click(string id) => ui.BeginAsyncVoid(() => ((IButtonController)Find<Button>(id)).SendClicked());
                 Require(!Find<VerticalStackLayout>("origin-story-details").IsVisible && saves == 0,
                     "Optional story details started expanded or wrote on render.");
+                Require(Find<Picker>("origin-story-period").SelectedIndex == 0
+                    && Find<Picker>("origin-story-addiction-status").SelectedIndex == 0
+                    && string.IsNullOrEmpty(Find<Entry>("origin-story-experiences").Text),
+                    "An example or suggested status became preselected character history.");
                 await Click("origin-life-confirm");
                 Require(saves == 0 && confirmations == 1 && saved.StoryProfile is null,
                     "Skipping details blocked a decision or invented identity details.");
@@ -1544,23 +1606,44 @@ internal static class OriginDossierBookRuntimeTests
                 Find<Entry>("origin-story-pronouns").Text = "they/them";
                 Find<Picker>("origin-story-tone").SelectedIndex = 4;
                 Find<Entry>("origin-story-motivation").Text = "Find a home";
+                Find<Entry>("origin-story-family").Text = "Seattle, an aunt";
+                Find<Entry>("origin-story-experiences").Text = "A betrayal";
+                Find<Entry>("origin-story-addiction").Text = "Gambling";
+                Find<Picker>("origin-story-addiction-status").SelectedIndex = 3;
+                Find<Picker>("origin-story-period").SelectedIndex = 3;
+                Find<Entry>("origin-story-chronology").Text = "Only after leaving school";
+                Find<Entry>("origin-story-turning-points").Text = "A broken promise";
+                Find<Entry>("origin-story-anchors").Text = "A loyal friend";
                 Require(saves == 0 && confirmations == 1, "Editing sent or saved unconfirmed details.");
                 ((IButtonController)Find<Button>("origin-story-details-expand")).SendClicked();
                 await Click("origin-life-confirm");
                 Require(saves == 1 && confirmations == 2 && saved.StoryProfile is
-                    { Gender: "other", Pronouns: "they/them", Tone: "epic", Motivation: "Find a home" },
+                    { Gender: "other", Pronouns: "they/them", Tone: "epic", Motivation: "Find a home",
+                      Background: { BirthplaceFamily: "Seattle, an aunt", Experiences: "A betrayal", AddictionHistory: "Gambling",
+                          AddictionStatus: "recovery", Period: "adult", Chronology: "Only after leaving school",
+                          TurningPoints: "A broken promise", PositiveAnchors: "A loyal friend" } },
                     "Collapsed details were lost or failed to save before the explicit decision.");
                 page = Page();
                 Require(!Find<VerticalStackLayout>("origin-story-details").IsVisible
                     && Find<Entry>("origin-story-pronouns").Text == "they/them"
-                    && Find<Picker>("origin-story-gender").SelectedIndex == 3 && saves == 1,
+                    && Find<Picker>("origin-story-gender").SelectedIndex == 3 && saves == 1
+                    && Find<Entry>("origin-story-experiences").Text == "A betrayal"
+                    && Find<Picker>("origin-story-addiction-status").SelectedIndex == 3
+                    && Find<Picker>("origin-story-period").SelectedIndex == 3,
                     "Reopen lost saved details, changed defaults or saved automatically.");
                 Require(!Elements(page).Any(e => e is Switch || e.AutomationId?.Contains("avoid", StringComparison.Ordinal) == true),
                     "Opening details introduced a mechanics toggle or avoidance setting.");
+                foreach (string id in new[] { "family", "experiences", "addiction", "chronology", "turning-points", "anchors" })
+                    Find<Entry>("origin-story-" + id).Text = "";
+                Find<Picker>("origin-story-period").SelectedIndex = 0;
+                Find<Picker>("origin-story-addiction-status").SelectedIndex = 0;
+                await Click("origin-life-confirm");
+                Require(saves == 2 && confirmations == 3 && saved.StoryProfile is { Background: null, Pronouns: "they/them" },
+                    "Clearing optional background left an invalid empty object or erased unrelated opening details.");
             }
             ui.AssertHealthy();
         });
-        Console.WriteLine("PASS optional opening UI: collapsed, skippable, other/pronouns and tone, explicit save and reopen in DE/EN/ES");
+        Console.WriteLine("PASS optional opening UI: collapsed, skippable background/status/chronology, no preselected examples, explicit save/reopen/clear in DE/EN/ES");
     }
 
     private static async Task RunMetatypePageAsync()

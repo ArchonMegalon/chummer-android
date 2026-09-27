@@ -344,9 +344,10 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             { if (Current()) changed(picker.SelectedIndex > 0 ? values[picker.SelectedIndex - 1] : null); };
             section.Add(picker);
         }
-        void Text(string id, string key, string? value, int max, Action<string?> changed)
+        void Text(string id, string key, string? value, int max, Action<string?> changed, string? hint = null)
         {
             section.Add(NativeTheme.Body(_copy[key]));
+            if (hint is not null) section.Add(NativeTheme.Body(_copy[hint], NativeTheme.Muted));
             var entry = new Entry { Text = value, MaxLength = max, TextColor = NativeTheme.Ink,
                 BackgroundColor = NativeTheme.Paper, AutomationId = id };
             entry.TextChanged += (_, args) =>
@@ -363,6 +364,30 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             value => _storyProfile = _storyProfile with { Motivation = value });
         Text("origin-story-person", "Origin.SetupPerson", _storyProfile.ImportantPerson, 512,
             value => _storyProfile = _storyProfile with { ImportantPerson = value });
+        section.Add(NativeTheme.Body(_copy["Origin.BackgroundDetail"], NativeTheme.Muted));
+        var background = _storyProfile.Background ?? new OriginStoryBackground();
+        void Background(Func<OriginStoryBackground, OriginStoryBackground> change)
+        {
+            var next = change(_storyProfile.Background ?? new OriginStoryBackground());
+            _storyProfile = _storyProfile with { Background = next.IsEmpty ? null : next };
+        }
+        Text("origin-story-family", "Origin.BackgroundFamily", background.BirthplaceFamily, 256,
+            value => Background(b => b with { BirthplaceFamily = value }), "Origin.BackgroundFamilyHint");
+        Select("origin-story-period", "Origin.BackgroundWhen", "Origin.Period.", ["childhood", "teen", "adult"],
+            background.Period, value => Background(b => b with { Period = value }));
+        Text("origin-story-chronology", "Origin.BackgroundChronology", background.Chronology, 256,
+            value => Background(b => b with { Chronology = value }), "Origin.BackgroundChronologyHint");
+        Text("origin-story-experiences", "Origin.BackgroundExperiences", background.Experiences, 256,
+            value => Background(b => b with { Experiences = value }), "Origin.BackgroundExperiencesHint");
+        Text("origin-story-addiction", "Origin.BackgroundAddiction", background.AddictionHistory, 256,
+            value => Background(b => b with { AddictionHistory = value }), "Origin.BackgroundAddictionHint");
+        Select("origin-story-addiction-status", "Origin.BackgroundStatus", "Origin.Addiction.",
+            ["current", "abstinent", "recovery"], background.AddictionStatus,
+            value => Background(b => b with { AddictionStatus = value }));
+        Text("origin-story-turning-points", "Origin.BackgroundTurningPoints", background.TurningPoints, 256,
+            value => Background(b => b with { TurningPoints = value }), "Origin.BackgroundTurningPointsHint");
+        Text("origin-story-anchors", "Origin.BackgroundAnchors", background.PositiveAnchors, 256,
+            value => Background(b => b with { PositiveAnchors = value }), "Origin.BackgroundAnchorsHint");
         body.Add(section);
     }
 

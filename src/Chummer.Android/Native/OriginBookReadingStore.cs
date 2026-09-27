@@ -11,12 +11,17 @@ namespace Chummer.Android.Native;
 internal sealed record OriginStoryProfile(string? Gender = null, string? Pronouns = null,
     string? Tone = null, string? Motivation = null, string? ImportantPerson = null)
 {
+    // Omit new data on old profiles: their serialized bytes and paid request
+    // identities must not change merely because the app was updated.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OriginStoryBackground? Background { get; init; }
     internal bool IsEmpty => Gender is null && Pronouns is null && Tone is null
-        && Motivation is null && ImportantPerson is null;
+        && Motivation is null && ImportantPerson is null && (Background is null || Background.IsEmpty);
     internal bool IsValid => (Gender is null or "male" or "female" or "other")
         && (Tone is null or "dark" or "cheerful" or "hopeful" or "epic" or "mixed")
-        && Text(Pronouns, 120) && Text(Motivation, 512) && Text(ImportantPerson, 512);
-    private static bool Text(string? value, int maximum) => value is null
+        && Text(Pronouns, 120) && Text(Motivation, 512) && Text(ImportantPerson, 512)
+        && (Background is null || Background.IsValid && !Background.IsEmpty);
+    internal static bool Text(string? value, int maximum) => value is null
         || !string.IsNullOrWhiteSpace(value) && value == value.Trim()
             && value.Length <= maximum && !value.Any(char.IsControl);
 
@@ -26,7 +31,8 @@ internal sealed record OriginStoryProfile(string? Gender = null, string? Pronoun
         if (IsEmpty) return source;
         // Distinct player-brief identity: never impersonate a Core accepted
         // decision or add these preferences to the canonical rules timeline.
-        string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(this))).ToLowerInvariant();
+        var opening = this with { Background = null };
+        string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(opening))).ToLowerInvariant();
         string identity = "player-story-brief-" + digest;
         var copy = AndroidSurfaceStrings.Resolve(source.Locale);
         var lines = new List<string> { copy["Origin.SetupBrief"] };
@@ -35,9 +41,52 @@ internal sealed record OriginStoryProfile(string? Gender = null, string? Pronoun
         if (Tone is not null) lines.Add(copy["Origin.SetupTone"] + ": " + copy["Origin.Tone." + Tone]);
         if (Motivation is not null) lines.Add(copy["Origin.SetupMotivation"] + ": " + Motivation);
         if (ImportantPerson is not null) lines.Add(copy["Origin.SetupPerson"] + ": " + ImportantPerson);
-        return OriginChapterSourceIdentity.Capture(source with { Facts = source.Facts
-            .Append(new OriginChapterSourceFact(identity, identity, string.Join("\n", lines))).ToArray() });
+        var facts = source.Facts.ToList();
+        if (!opening.IsEmpty) facts.Add(new(identity, identity, string.Join("\n", lines)));
+        if (Background is { } background)
+        {
+            string backgroundId = "player-background-" + Convert.ToHexString(
+                SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(background))).ToLowerInvariant();
+            // Separate bounded narrative facts, never Core decision IDs. The
+            // explicit chronology is part of the approved, frozen input. Do not
+            // infer an age, diagnosis, abstinence or completed module from it.
+            void Add(string suffix, string key, string? value, bool dated = false)
+            {
+                if (value is null) return;
+                string text = copy["Origin.BackgroundBrief"] + "\n" + copy[key] + ": " + value;
+                if (dated) text += "\n" + copy["Origin.BackgroundWhen"] + ": "
+                    + copy["Origin.Period." + (background.Period ?? "unspecified")];
+                facts.Add(new(backgroundId + "-" + suffix, backgroundId, text));
+            }
+            Add("family", "Origin.BackgroundFamily", background.BirthplaceFamily);
+            Add("experiences", "Origin.BackgroundExperiences", background.Experiences, true);
+            string? addiction = background.AddictionHistory;
+            if (background.AddictionStatus is { } status)
+                addiction = (addiction is null ? "" : addiction + "\n")
+                    + copy["Origin.BackgroundStatus"] + ": " + copy["Origin.Addiction." + status];
+            Add("addiction", "Origin.BackgroundAddiction", addiction, true);
+            Add("turning-points", "Origin.BackgroundTurningPoints", background.TurningPoints, true);
+            Add("anchors", "Origin.BackgroundAnchors", background.PositiveAnchors, true);
+            // A chronology-only brief is meaningful too; don't silently drop it.
+            if (background.Period is not null || background.Chronology is not null)
+                Add("chronology", "Origin.BackgroundChronology", background.Chronology ?? copy["Origin.SetupUnspecified"], true);
+        }
+        return OriginChapterSourceIdentity.Capture(source with { Facts = facts.ToArray() });
     }
+}
+
+internal sealed record OriginStoryBackground(string? BirthplaceFamily = null, string? Experiences = null,
+    string? AddictionHistory = null, string? AddictionStatus = null, string? TurningPoints = null,
+    string? PositiveAnchors = null, string? Period = null, string? Chronology = null)
+{
+    internal bool IsEmpty => BirthplaceFamily is null && Experiences is null && AddictionHistory is null
+        && AddictionStatus is null && TurningPoints is null && PositiveAnchors is null && Period is null && Chronology is null;
+    internal bool IsValid => OriginStoryProfile.Text(BirthplaceFamily, 256)
+        && OriginStoryProfile.Text(Experiences, 256) && OriginStoryProfile.Text(AddictionHistory, 256)
+        && OriginStoryProfile.Text(TurningPoints, 256) && OriginStoryProfile.Text(PositiveAnchors, 256)
+        && OriginStoryProfile.Text(Chronology, 256)
+        && (AddictionStatus is null or "current" or "abstinent" or "recovery")
+        && (Period is null or "childhood" or "teen" or "adult");
 }
 
 internal sealed record OriginBookReadingChapter(string ChapterId, OriginBookProseDraft? Selected, OriginBookProseDraft? Pending)
@@ -103,6 +152,8 @@ public sealed class OriginBookReadingStore(string stateDirectory)
         ct.ThrowIfCancellationRequested();
         if (next.Owner != expected.Owner || next.Workspace != expected.Workspace || !Valid(next))
             throw new InvalidDataException("The reading edition changed identity.");
+        if (expected.Chapters.Count != 0 && next.StoryProfile != expected.StoryProfile)
+            throw new InvalidOperationException("The story brief is frozen once a chapter is retained.");
         var saved = new FileState(Schema, next, next.Digest);
         lock (_gate)
         {
