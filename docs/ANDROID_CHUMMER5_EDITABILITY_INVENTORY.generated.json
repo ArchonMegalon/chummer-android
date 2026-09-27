@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "a432bf226f94ccc53a54a8294a93779b92c3ac4ffbc9e5d0129e05328b5bc47d"
+        "sha256": "a52f183dc80323f6434f21eca29d4fc1fbe32fc3fc54fca1967bf7085ca1280f"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "a1fc0de1b9414894d6ea69a0bdd4da14257ff112f4e63142c81890da9895ef5b"
+        "sha256": "b2bdb8e31501e2ff0b4e2126c65751578cd5f07604a59e381b1d7042e4696d15"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "a437d168d71285572823423a8747e9279f58edbe9523a770dd6fb7896383b54f"
+        "sha256": "7fd64b37905fe216baddc3a2bf2687dbedcf244afbd886b130d7afad944e73de"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "3ec3b3458f8ce3e598d7e3bef29fe2089880daa18fc49fc89f417d6051e187b6"
+        "sha256": "e7c874a4fbe758cdbb8689caa659bffa2c53490b670cd5a3bd0a992b8ebf54fe"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "6ddc863fe15d03e0774c6844945efdec642320ef0b11537e34a42e6d31d7ff41"
+        "sha256": "343964a5bb64b8dc3921787bde507829f6ca822cdc079fafd76da02d017e7588"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "03bd488a6781a8e93e2a238a61c6d9c876381611006c56f5b2c4dfeca2185ea8"
+        "sha256": "130148e9f2fedbcdcc8d947a710ffe64cf3d4a89eec518d198a79654fff54fbd"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",
@@ -2517,7 +2517,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "6f7770fa3acc5ab0c19bc3c130b524a2a33e446cf5f78f6c2965755255e7ae8c"
+        "sha256": "0c0d241b450f97585b1dcf4107fd200dbd4bc79ee8bae6582f489467933924b6"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
