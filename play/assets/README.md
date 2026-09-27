@@ -2,7 +2,9 @@
 
 - `app-icon-512x512.png` is the square, opaque user-supplied full-body Troll icon.
   Its current transparent source is `src/Chummer.Android/Resources/AppIcon/appiconfg.svg`
-  (relative to the repository root), copied from the user's supplied artwork.
+  (relative to the repository root), based on the user's supplied artwork with
+  the requested modest shadow/midtone brightness lift on 2026-09-27. Geometry
+  and transparency are unchanged; the matching splash uses the same SVG.
   The older generated `appiconfg.png` is historical, not the active foreground.
   The launcher uses that same foreground over a solid dark-green background,
   scaled to preserve horns and tusks inside adaptive masks. Play applies its own
@@ -26,7 +28,8 @@ The graphic dimensions follow the current official Play asset contract:
 https://support.google.com/googleplay/android-developer/answer/9866151.
 
 Updating source assets does not change an already-installed app or itself
-constitute a Play listing upload. The exact Troll PNG has a separate
+constitute a Play listing upload. The previous, darker Troll PNG has a separate
 [2026-09-26 icon-only review submission](../evidence/troll-store-icon-review-20260926.md);
-approval and live artwork are not yet verified. Historical screenshots do not
+approval and live artwork are not yet verified. The brighter 2026-09-27 revision
+has not been uploaded as part of this source change. Historical screenshots do not
 establish current whole-app or tablet readiness.

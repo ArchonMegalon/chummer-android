@@ -3,10 +3,21 @@
 The user replaced the generated head below with an exact, full-body SVG.
 The current launcher foreground is
 `src/Chummer.Android/Resources/AppIcon/appiconfg.svg` (208 paths, 14 gradients).
-Its artwork is copied unchanged from the user's message, with only a final
-newline added. SHA-256:
+The original artwork was copied unchanged from the user's message, with only a
+final newline added. Original SHA-256:
 `404d590668e91f9330463a799e8bd34dc9619fdaa4f42a158b5c751f39ba64d0`.
 There are no external resources, scripts or embedded raster images.
+
+On 2026-09-27 the user requested a slightly brighter SVG. Only RGB fill and
+gradient-stop channels were lifted using `round(255 * (channel / 255)^0.82)`;
+geometry, transparency, gradient positions and layer order are unchanged.
+This lifts shadows and midtones while retaining the green/teal palette and
+near-white highlights. The splash SVG is identical to the launcher foreground.
+Current master SHA-256:
+`1258f544b17111d1424dc42ea7dacba04dd9515cd4156d98236ee046a63cabb9`.
+The 512×512 Play export was regenerated with librsvg/Cairo; launcher-scale
+48×48 and 96×96 renders were visually checked. This brightness revision has
+not itself been uploaded to Play or verified in an installed app.
 
 MAUI consumes the SVG directly, retaining the full figure and transparent
 surroundings. Keep the separate opaque `#102426` background and foreground
@@ -28,7 +39,7 @@ some of the supplied gradients black. MAUI Resizetizer 10.0.20 successfully
 generated all five Android density sets and adaptive XML from the exact SVG.
 The prior unsigned Preview 29 AAB did not contain this change; that is a
 historical build observation, not an instruction to rebuild a consumed release.
-On 2026-09-26 the exact tracked 512x512 PNG was uploaded to the Chummer default
+On 2026-09-26 the then-current 512x512 PNG was uploaded to the Chummer default
 Play listing and its icon-only change was saved and submitted for review.
 Preliminary checks were still running; a live store icon or physical installed
 icon is not yet proved. See the [store-artwork observation](../evidence/troll-store-icon-review-20260926.md).
