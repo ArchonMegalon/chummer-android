@@ -13,7 +13,28 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 45 — September 27, 2026
+## Current observed Internal release: Preview 46 — September 27, 2026
+
+Scoped authenticated Console readback at `2026-09-27T04:47:17Z` shows
+`46 (0.1.0-preview.46)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview46-internal-observation.md).
+
+Finalization dice edits now retire old consent. Canonical scalar, auxiliary and
+Origin hashing use fewer temporary allocations without changing rules, digests,
+ownership or persistence guards. The new package graph passed affected native/
+MAUI builds and managed interaction tests. A separate synthetic API36 one-time
+completion/save/cold Career reopen passed; its older Presentation graph and slow
+77.108-second result do not prove full Release performance. Local ARM64 build,
+content/proof/hygiene checks, isolated old-key signing and independent verification
+passed. Android #158/#159, Core #84 and UI #232 merged normally.
+
+Physical Play installation is deferred. Finalization latency and interrupted
+FirstBook recovery remain open; whole-book and full Life Modules/Career completion
+are not claimed. No provider replay or store-draft change. Code46 is consumed;
+use47 or higher unused code next. Prior evidence remains immutable.
+
+## Historical observed Internal release: Preview 45 — September 27, 2026
 
 Scoped authenticated Console readback at `2026-09-26T23:08:54Z` shows
 `45 (0.1.0-preview.45)` as **Available to internal testers**.
