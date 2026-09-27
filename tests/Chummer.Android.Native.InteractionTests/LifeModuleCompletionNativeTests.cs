@@ -295,8 +295,7 @@ internal static partial class AfterRunAuthorityHarness
             var root = new BuildPage(runtime.Coordinator);
             // Headless MAUI supplies scroll geometry only, never route or budget authority.
             ((ScrollView)root.Content!).ScrollToRequested += (_, _) => ((ScrollView)root.Content!).SendScrollFinished();
-            var navigation = new NavigationPage(new ContentPage());
-            await navigation.PushAsync(root, false);
+            var navigation = new NavigationPage(root);
             var window = new Window(navigation);
             using var alerts = new IssuedPageAlerts(root, window);
             await alerts.PreflightAsync();
@@ -549,6 +548,12 @@ internal static partial class AfterRunAuthorityHarness
             }
             Require(Element<Label>("life-completion-saved").Text == CreationKarmaCopy.CareerReady && probe!.ConfirmCalls == 1,
                 "Phone confirmation did not reopen the exact Career runner.");
+            await Click("life-completion-open-career");
+            Require(ReferenceEquals(Current(), root)
+                && Element<Label>("phone-runner-sheet").Text == "CAREER RUNNER"
+                && !IssuedElements(root).Any(e => e.AutomationId is "phone-runner-create" or "creation-life-module-continue" or "phone-runner-loading")
+                && probe.ConfirmCalls == 1,
+                "Warm Career navigation retained Creation, its loading state, or replayed finalization.");
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
             var finalQualities = System.Xml.Linq.XDocument.Parse(cold.Document.Content).Root!
                 .Element("qualities")!.Elements("quality").ToArray();
@@ -1149,6 +1154,14 @@ internal static partial class AfterRunAuthorityHarness
                 var page = Current();
                 if (IssuedPageField<int>(page, "_subscribed") != 0) return;
                 Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                if (page is BuildPage && runtime.Coordinator.State.Profile?.Created == true)
+                {
+                    Require(Element<ActivityIndicator>("phone-runner-loading").IsRunning
+                        && !string.IsNullOrWhiteSpace(Element<Label>("phone-runner-loading-message").Text)
+                        && !page.ToolbarItems.Any(item => item.IsEnabled)
+                        && !IssuedElements(page).Any(e => e is Button || e.AutomationId is "phone-runner-create" or "phone-runner-sheet"),
+                        "Career reappearance exposes the old Creation surface while its current receipt is loading.");
+                }
                 if (page is RetainedOriginBookPage)
                 {
                     Require(Element<ActivityIndicator>("origin-book-loading").IsRunning
