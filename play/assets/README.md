@@ -30,6 +30,8 @@ https://support.google.com/googleplay/android-developer/answer/9866151.
 Updating source assets does not change an already-installed app or itself
 constitute a Play listing upload. The previous, darker Troll PNG has a separate
 [2026-09-26 icon-only review submission](../evidence/troll-store-icon-review-20260926.md);
-approval and live artwork are not yet verified. The brighter 2026-09-27 revision
-has not been uploaded as part of this source change. Historical screenshots do not
-establish current whole-app or tablet readiness.
+approval and live artwork are not yet verified. The brighter launcher and splash
+are included in [Preview 48, observed available on Play Internal](../evidence/preview48-internal-observation.md).
+Its physical installed icon remains unverified. The brighter store PNG has not
+been uploaded to the listing. Historical screenshots do not establish current
+whole-app or tablet readiness.
