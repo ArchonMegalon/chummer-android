@@ -1,7 +1,7 @@
 {
   "schema": "chummer.android.content-bundle/v1",
-  "coreRevision": "1f0e6e940fd18737d8479fbd9ea899f55034fb09",
-  "bundleDigest": "e2a8d1dfad81ac03484b2c276b907246ac81a9bde6489bc740f7b53db816a0bb",
+  "coreRevision": "1271bd9b0f2f0689bb61d626358673037a297f3f",
+  "bundleDigest": "d34feac21fe4ed893bcb724ddc81d586bcd71982167d9e1a641259c40b7f29fb",
   "files": [
     {
       "path": "customdata/4e Critters Conversion/custom_books.xml",
