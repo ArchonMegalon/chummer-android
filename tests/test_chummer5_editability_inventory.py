@@ -27,6 +27,51 @@ CORE_ROOT = _sibling_repo("chummer-core-engine", "core")
 
 
 class Chummer5EditabilityInventoryTests(unittest.TestCase):
+    def test_relationship_mapping_uses_explicit_core_root_without_sibling_fallback(self) -> None:
+        import inspect
+
+        explicit_core = Path("/isolated/selected-core")
+        core_files = {
+            "CharacterContactEditSemantics.cs": "Chummer.Contracts/Characters",
+            "CharacterPetEditSemantics.cs": "Chummer.Contracts/Characters",
+            "Chummer5LinkedDocumentCodec.cs": "Chummer.Infrastructure/Xml",
+            "CharacterSectionModels.cs": "Chummer.Contracts/Characters",
+            "CharacterSectionService.cs": "Chummer.Infrastructure/Xml",
+        }
+        arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in list(inspect.signature(inventory._known_phone_mapping).parameters)[4:]
+        }
+        controls = [
+            ("ContactControl", next(iter(inventory.CONTACT_TEXT_FIELDS))), ("ContactControl", "cmdDelete"),
+            ("PetControl", next(iter(inventory.PET_TEXT_FIELDS))), ("PetControl", "cmdDelete"),
+            ("ContactControl", "tsAttachCharacter"), ("PetControl", "tsRemoveCharacter"),
+            *[("SpiritControl", control) for control in inventory.SPIRIT_LINKED_RUNNER_CONTROLS],
+        ]
+        for available in (True, False):
+            for class_name, control in controls:
+                observed = []
+
+                def contains(path, *markers):
+                    if path.name not in core_files:
+                        return True  # Isolate root selection from unrelated marker checks.
+                    observed.append(path)
+                    selected = explicit_core / core_files[path.name] / path.name
+                    # A complete ambient sibling must never satisfy a missing selected input.
+                    return available if path == selected else True
+
+                with self.subTest(available=available, control=(class_name, control)), \
+                        patch.object(inventory, "WORKSPACE_ROOT", Path("/unrelated/ambient")), \
+                        patch.object(inventory, "_contains", side_effect=contains):
+                    mapping = inventory._known_phone_mapping(
+                        {"legacy": {"formOrControl": class_name, "controlName": control}},
+                        inventory.DEFAULT_CHUMMER5_ROOT, PRESENTATION_ROOT, explicit_core, **arguments)
+                    self.assertTrue(observed)
+                    self.assertTrue(all(path.is_relative_to(explicit_core) for path in observed), observed)
+                    self.assertEqual("implemented_pending_emulator" if available else "missing", mapping["status"])
+                    self.assertFalse(mapping.get("completionProven", False))
+                    self.assertNotEqual("implemented_verified_api36", mapping.get("tablet", {}).get("status"))
+
     def test_csharp_member_selector_distinguishes_overloads_without_adjacent_guards(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "Example.cs"

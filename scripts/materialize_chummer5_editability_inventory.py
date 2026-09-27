@@ -9047,8 +9047,8 @@ def _known_phone_mapping(
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
-        core_models = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
-        core_parser = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         action = SPIRIT_LINKED_RUNNER_CONTROLS[control]
         shared = (
             _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move",
@@ -9158,8 +9158,7 @@ def _known_phone_mapping(
         e2e_driver = REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py"
         tablet_e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         codec = (
-            WORKSPACE_ROOT
-            / "chummer-core-engine"
+            character_notes_core_root
             / "Chummer.Infrastructure"
             / "Xml"
             / "Chummer5LinkedDocumentCodec.cs"
@@ -19816,8 +19815,7 @@ def _known_phone_mapping(
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         pet_semantics = (
-            WORKSPACE_ROOT
-            / "chummer-core-engine"
+            character_notes_core_root
             / "Chummer.Contracts"
             / "Characters"
             / "CharacterPetEditSemantics.cs"
@@ -19957,8 +19955,7 @@ def _known_phone_mapping(
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         contact_semantics = (
-            WORKSPACE_ROOT
-            / "chummer-core-engine"
+            character_notes_core_root
             / "Chummer.Contracts"
             / "Characters"
             / "CharacterContactEditSemantics.cs"
