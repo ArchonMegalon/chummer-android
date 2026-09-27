@@ -2839,6 +2839,17 @@ public sealed class BuildPage : NativePageBase
         }
 
         var decisionOwner = Coordinator.State.DisplayOwnerContext;
+        long decisionAppearance = CaptureAppearanceGeneration();
+        bool CurrentDecisionEntry() => IsCurrentAppearanceGeneration(decisionAppearance)
+            && Coordinator.State.DisplayOwnerContext == decisionOwner;
+        OriginBookReadingState? openingDetails = null;
+        if (opened.StoryCheckpoint is { } opening)
+        {
+            try { openingDetails = await Coordinator.LoadOpeningStoryDetailsAsync(opening, CurrentDecisionEntry); }
+            catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
+                or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+        }
+        if (!CurrentDecisionEntry()) return;
         var page = new OriginDossierLifeModuleDecisionPage(
             opened,
             CultureInfo.CurrentUICulture.Name,
@@ -2868,6 +2879,9 @@ public sealed class BuildPage : NativePageBase
             },
             () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator)),
             (checkpoint, current) => Coordinator.HasReadCurrentLifeModuleStoryAsync(checkpoint,
+                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner),
+            openingDetails,
+            (expected, profile, current) => Coordinator.SaveOpeningStoryDetailsAsync(expected, profile,
                 () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner));
         await Navigation.PushAsync(page);
     }

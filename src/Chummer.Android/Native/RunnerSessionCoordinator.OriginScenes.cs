@@ -14,7 +14,7 @@ public sealed partial class RunnerSessionCoordinator
         if (!CanSelectOriginBookScene(book) || !CanRequestOriginChapter(book)
             || _account is not IAndroidOriginSceneTransport || !book.Chapters.Contains(chapter)
             || book.Reading(chapter)?.Selected is not { } selected) return false;
-        try { return selected.JobId == OriginChapterSourceIdentity.RequestId(OriginBookAuthoringSource.Create(book.Projection, chapter)); }
+        try { return selected.JobId == OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException) { return false; }
     }
 
@@ -31,7 +31,7 @@ public sealed partial class RunnerSessionCoordinator
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
             || original.DisplayOwnerContext is not { } owner || _account is not IAndroidOriginSceneTransport transport)
             return (new(AndroidOriginSceneOutcome.Unauthorized), null);
-        var source = OriginBookAuthoringSource.Create(book.Projection, chapter);
+        var source = book.AuthoringSource(chapter);
         string text = book.ChapterText(chapter);
         if (consentToCreate && !ValidOriginSceneExcerpt(text, excerpt, altText))
             return (new(AndroidOriginSceneOutcome.Conflict), null);
@@ -74,7 +74,7 @@ public sealed partial class RunnerSessionCoordinator
         if (!explicitlyConfirmed || !Current() || !scene.Matches(book, chapter)
             || !_retainedBooks.TryGetValue(book, out var original) || original.DisplayOwnerContext is not { } owner
             || _account is not IAndroidOriginSceneTransport transport) return new(AndroidOriginSceneOutcome.Unauthorized);
-        var result = await transport.DecideSceneAsync(owner, OriginBookAuthoringSource.Create(book.Projection, chapter),
+        var result = await transport.DecideSceneAsync(owner, book.AuthoringSource(chapter),
             book.ChapterText(chapter), scene.Identity.ImageDigest, approve, true, ct);
         if (result.Image is { } unexpected) CryptographicOperations.ZeroMemory(unexpected.Bytes);
         return Current() && !ct.IsCancellationRequested ? result with { Image = null } : new(AndroidOriginSceneOutcome.Unauthorized);

@@ -401,9 +401,16 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     private string? _sceneState;
     private string _sceneAlt = "";
 
+    private void RequireChapterSource(OriginChapterSource source)
+    {
+        if (_job?.SourceDigest != OriginChapterSourceIdentity.Digest(source))
+            throw new InvalidOperationException("The scene lost the accepted chapter's exact story source.");
+    }
+
     public Task<AndroidOriginSceneResult> ReadSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
         string acceptedText, CancellationToken ct = default)
     {
+        RequireChapterSource(source);
         SceneReads++;
         if (SceneReadOverride is { } result) return Task.FromResult(result);
         if (FailSceneRead) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
@@ -416,6 +423,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public Task<AndroidOriginSceneResult> RequestSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
         string acceptedText, string sceneExcerpt, string altText, bool externalProcessingConsent, CancellationToken ct = default)
     {
+        RequireChapterSource(source);
         if (!externalProcessingConsent || !acceptedText.Contains(sceneExcerpt, StringComparison.Ordinal)
             || _job?.ReaderAcceptedTextDigest != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(acceptedText))))
             throw new InvalidOperationException("No scene or acknowledged prose consent.");
@@ -426,6 +434,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public Task<AndroidOriginSceneResult> DecideSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
         string acceptedText, string expectedImageHash, bool approve, bool explicitlyConfirmed, CancellationToken ct = default)
     {
+        RequireChapterSource(source);
         if (!explicitlyConfirmed || expectedImageHash != Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(SceneBytes)))
             throw new InvalidOperationException("No exact scene confirmation.");
         SceneDecisions++;

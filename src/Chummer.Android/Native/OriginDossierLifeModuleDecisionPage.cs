@@ -1,4 +1,3 @@
-using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
@@ -32,6 +31,10 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private bool _actionInFlight;
     private string? _editingChoiceId;
     private readonly Dictionary<string, string> _answers = new(StringComparer.Ordinal);
+    private OriginBookReadingState? _openingDetails;
+    private OriginStoryProfile _storyProfile = new();
+    private bool _detailsExpanded;
+    private readonly Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? _saveOpeningDetails;
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModulePhoneResult opened,
@@ -39,7 +42,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Func<string, IReadOnlyDictionary<string, string>?, Task<OriginDossierLifeModulePhoneResult?>> prepareChoice,
         Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> confirmChoice,
         Func<Task>? openBook = null,
-        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? readStoryReady = null)
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? readStoryReady = null,
+        OriginBookReadingState? openingDetails = null,
+        Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? saveOpeningDetails = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -71,6 +76,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
         _openBook = openBook;
         _readStoryReady = readStoryReady;
+        _openingDetails = openingDetails;
+        _storyProfile = openingDetails?.StoryProfile ?? new();
+        _saveOpeningDetails = saveOpeningDetails;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
@@ -131,7 +139,6 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow(_copy.Format("Origin.StageTurn", _state.StageOrder, _state.TurnSequence)));
         body.Add(NativeTheme.Title(_state.RunnerDisplayName));
         string localeCopy = _locale.UsesEnglishFallback
             ? _copy.Format("Origin.LocaleFallback", _locale.FormattingLocale)
@@ -153,6 +160,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             setup.AutomationId = "origin-life-opening-setup";
             body.Add(setup);
         }
+        AddOpeningDetails(body, generation);
 
         if (_storyCheckpoint?.Projection.VisibleChapters.Count > 0)
         {
@@ -166,36 +174,6 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             };
             body.Add(readBook);
         }
-
-        var budget = new VerticalStackLayout { Spacing = 6 };
-        budget.Add(NativeTheme.Eyebrow(_copy["Origin.Budget"]));
-        CultureInfo formattingCulture = CultureInfo.GetCultureInfo(_locale.FormattingLocale);
-        budget.Add(BudgetMetric(
-            "origin-life-budget-total",
-            _copy["Origin.BudgetTotal"],
-            _budget.Total,
-            formattingCulture));
-        budget.Add(BudgetMetric(
-            "origin-life-budget-used",
-            _copy["Origin.BudgetUsed"],
-            _budget.Used,
-            formattingCulture));
-        budget.Add(BudgetMetric(
-            "origin-life-budget-remaining",
-            _copy["Origin.BudgetRemaining"],
-            _budget.Remaining,
-            formattingCulture));
-        Border budgetCard = NativeTheme.Card(budget);
-        budgetCard.AutomationId = "origin-life-budget";
-        SemanticProperties.SetDescription(
-            budgetCard,
-            _copy.Format(
-                "Origin.BudgetSemantic",
-                _budget.Total.ToString("0.##", formattingCulture),
-                _budget.Used.ToString("0.##", formattingCulture),
-                _budget.Remaining.ToString("0.##", formattingCulture),
-                _budget.Unit));
-        body.Add(budgetCard);
 
         if (NeedsStoryBeforeChoices && !_storyReady)
         {
@@ -228,10 +206,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Label prompt = NativeTheme.Title(_state.DecisionPrompt, 21);
         prompt.AutomationId = "origin-life-prompt";
         body.Add(prompt);
-        if (_state.Choices.Any(choice => !IsAffordable(choice)))
-            body.Add(NativeTheme.Body(_copy["Origin.AffordableChoicesOnly"], NativeTheme.Muted));
         if (!_state.Choices.Any(IsAffordable))
-            body.Add(NativeTheme.Body(_copy["Origin.NoAffordableChoices"], NativeTheme.Danger));
+            body.Add(NativeTheme.Body(_copy["Origin.NoStoryChoices"], NativeTheme.Danger));
 
         // This is a view filter over Core's exact composite Foundation choices,
         // not a metatype mutation. Only the subsequent explicit confirmation
@@ -245,7 +221,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         if (metatypes.Length > 0)
         {
             body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseMetatype"]));
-            body.Add(NativeTheme.Body(_copy["Origin.MetatypeReviewDetail"], NativeTheme.Muted));
+            body.Add(NativeTheme.Body(_copy["Origin.MetatypeStoryDetail"], NativeTheme.Muted));
             foreach (OriginDossierLifeModuleEffectState metatype in metatypes)
             {
                 Button selectMetatype = _selectedMetatypeOptionId == metatype.TargetId
@@ -309,14 +285,6 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             };
             card.Add(select);
 
-            Label source = NativeTheme.Body(
-                string.IsNullOrWhiteSpace(choice.PageReference)
-                    ? choice.Source
-                    : $"{choice.Source} · {choice.PageReference}",
-                NativeTheme.Muted);
-            source.AutomationId = $"origin-life-choice-source-{choiceIndex}";
-            card.Add(source);
-            card.Add(NativeTheme.Metric(_copy["Origin.Karma"], choice.KarmaRaw));
             if (choiceId == _editingChoiceId)
             {
                 AddInputForm(card, choiceId, generation);
@@ -328,69 +296,76 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 body.Add(NativeTheme.Card(card));
                 continue;
             }
-            Label anchors = NativeTheme.Body(
-                _copy.Format(
-                    "Origin.SourceAnchors",
-                    string.Join(", ", choice.SourceAnchorIds)),
-                NativeTheme.Muted);
-            anchors.AutomationId = $"origin-life-choice-anchors-{choiceIndex}";
-            card.Add(anchors);
             if (_storyCheckpoint?.PendingPreview?.InputResolution is { } answers)
                 foreach (var question in FollowUps(choiceId))
                     if (answers.Values.TryGetValue(question.PromptId, out string? answer))
                         card.Add(NativeTheme.Body((question.DisplayLabel ?? question.Label) + ": " + answer));
 
-            // Historic mechanics rows are raw source projections, not ratings.
-            // Only display the fresh compiler review. Do not repair old digests
-            // or infer numeric defaults/quality identities in the Android host.
+            // Text-only is the Origin product surface, not a preference. Keep
+            // the exact compiler review as confirmation authority underneath;
+            // never render its costs, ratings or source anchors as story prose.
             var review = _storyCheckpoint?.PendingPreview?.EffectReview;
-            card.Add(NativeTheme.Body(_copy[review is null
-                ? "Origin.EffectReviewRequired" : "Origin.ContributionScope"], NativeTheme.Muted));
-            for (int effectIndex = 0; effectIndex < (review?.Contributions.Count ?? 0); effectIndex++)
-            {
-                var effect = review!.Contributions[effectIndex];
-                Label effectLabel = NativeTheme.Body(ContributionText(effect));
-                effectLabel.AutomationId = $"origin-life-effect-{choiceIndex}-{effectIndex}";
-                card.Add(effectLabel);
-                if (effect.DescriptiveMetadata.Count > 0)
-                    card.Add(NativeTheme.Body(_copy.Format("Origin.EffectSourceContext",
-                        string.Join(" · ", effect.DescriptiveMetadata.OrderBy(item => item.Key, StringComparer.Ordinal)
-                            .Select(item => item.Value))), NativeTheme.Muted));
-            }
+            if (review is null)
+                card.Add(NativeTheme.Body(_copy["Origin.StoryChoiceReviewRequired"], NativeTheme.Muted));
             body.Add(NativeTheme.Card(card));
             AddConfirmation(body, generation);
         }
 
-        Label provenance = NativeTheme.Body(
-            _copy.Format("Origin.NarrativeOnly", _state.LtdProviderDisplay),
-            NativeTheme.Muted);
-        provenance.AutomationId = "origin-life-ltd-provenance";
-        body.Add(provenance);
-
         return body;
     }
 
-    private string ContributionText(LifeModuleEffectContribution effect)
+    private bool IsOpeningDecision => _storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
+        && _storyCheckpoint.Projection.CanonicalLayer.AcceptedDecisionIds.Count == 0;
+
+    private void AddOpeningDetails(VerticalStackLayout body, int generation)
     {
-        if (effect.Kind == "pushtext" && !string.IsNullOrEmpty(effect.SelectionText))
-            return _copy.Format("Origin.SelectionContribution", effect.SelectionText);
-        if (effect.CompilationStatus != CharacterCreationFoundationEffectCompilationStatuses.Supported)
-            return _copy.Format("Origin.EffectPending", effect.TargetName);
-        string amount = effect.Amount?.ToString("+0.################;-0.################;0",
-            CultureInfo.GetCultureInfo(_locale.FormattingLocale)) ?? string.Empty;
-        return effect.Kind switch
+        if (!IsOpeningDecision || _openingDetails is null || _saveOpeningDetails is null) return;
+        var section = new VerticalStackLayout { Spacing = 10, IsVisible = _detailsExpanded,
+            AutomationId = "origin-story-details" };
+        var toggle = NativeTheme.SecondaryButton(_copy[_detailsExpanded ? "Origin.SetupCollapse" : "Origin.SetupExpand"]);
+        toggle.AutomationId = "origin-story-details-expand";
+        bool Current() => generation == _renderGeneration && !_actionInFlight;
+        toggle.Clicked += (_, _) =>
         {
-            "attributelevel" => _copy.Format("Origin.AttributeContribution", effect.TargetName, amount),
-            "skilllevel" => _copy.Format("Origin.SkillContribution", effect.TargetName, amount),
-            "skillgrouplevel" => _copy.Format("Origin.GroupContribution", effect.TargetName, amount),
-            "knowledgeskilllevel" => _copy.Format("Origin.KnowledgePoolContribution", amount),
-            "freepositivequalities" => _copy.Format("Origin.PositivePoolContribution", amount),
-            "freenegativequalities" => _copy.Format("Origin.NegativePoolContribution", amount),
-            "qualitylevel" => _copy.Format("Origin.QualityLevelContribution", effect.TargetName,
-                effect.Amount?.ToString(CultureInfo.GetCultureInfo(_locale.FormattingLocale)) ?? string.Empty),
-            "addqualities" => _copy.Format("Origin.QualityContribution", effect.TargetName, effect.SelectionText),
-            _ => _copy.Format("Origin.EffectPending", effect.TargetName)
+            if (!Current()) return;
+            _detailsExpanded = !_detailsExpanded;
+            section.IsVisible = _detailsExpanded;
+            toggle.Text = _copy[_detailsExpanded ? "Origin.SetupCollapse" : "Origin.SetupExpand"];
         };
+        body.Add(toggle);
+        section.Add(NativeTheme.Body(_copy["Origin.SetupDetail"], NativeTheme.Muted));
+        void Select(string id, string key, string prefix, string[] values, string? selected, Action<string?> changed)
+        {
+            section.Add(NativeTheme.Body(_copy[key]));
+            var picker = new Picker { Title = _copy[key], TextColor = NativeTheme.Ink,
+                TitleColor = NativeTheme.Muted, BackgroundColor = NativeTheme.Paper, AutomationId = id };
+            picker.Items.Add(_copy["Origin.SetupUnspecified"]);
+            foreach (var value in values) picker.Items.Add(_copy[prefix + value]);
+            picker.SelectedIndex = Array.IndexOf(values, selected!) + 1;
+            picker.SelectedIndexChanged += (_, _) =>
+            { if (Current()) changed(picker.SelectedIndex > 0 ? values[picker.SelectedIndex - 1] : null); };
+            section.Add(picker);
+        }
+        void Text(string id, string key, string? value, int max, Action<string?> changed)
+        {
+            section.Add(NativeTheme.Body(_copy[key]));
+            var entry = new Entry { Text = value, MaxLength = max, TextColor = NativeTheme.Ink,
+                BackgroundColor = NativeTheme.Paper, AutomationId = id };
+            entry.TextChanged += (_, args) =>
+            { if (Current()) changed(string.IsNullOrWhiteSpace(args.NewTextValue) ? null : args.NewTextValue.Trim()); };
+            section.Add(entry);
+        }
+        Select("origin-story-gender", "Origin.SetupGender", "Origin.Gender.", ["male", "female", "other"],
+            _storyProfile.Gender, value => _storyProfile = _storyProfile with { Gender = value });
+        Text("origin-story-pronouns", "Origin.SetupPronouns", _storyProfile.Pronouns, 120,
+            value => _storyProfile = _storyProfile with { Pronouns = value });
+        Select("origin-story-tone", "Origin.SetupTone", "Origin.Tone.", ["dark", "cheerful", "hopeful", "epic", "mixed"],
+            _storyProfile.Tone, value => _storyProfile = _storyProfile with { Tone = value });
+        Text("origin-story-motivation", "Origin.SetupMotivation", _storyProfile.Motivation, 512,
+            value => _storyProfile = _storyProfile with { Motivation = value });
+        Text("origin-story-person", "Origin.SetupPerson", _storyProfile.ImportantPerson, 512,
+            value => _storyProfile = _storyProfile with { ImportantPerson = value });
+        body.Add(section);
     }
 
     private IReadOnlyList<LifeModuleFollowUpPromptDto> FollowUps(string choiceId)
@@ -491,7 +466,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             && _state.PendingPreviewDigest is { } previewDigest)
         {
             Label preview = NativeTheme.Body(
-                _copy["Origin.Review"],
+                _copy["Origin.StoryChoiceReview"],
                 NativeTheme.Ink);
             preview.AutomationId = "origin-life-preview";
             body.Add(preview);
@@ -523,6 +498,26 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 progress.IsVisible = progress.IsRunning = true;
                 try
                 {
+                    if (IsOpeningDecision && _openingDetails is { } expected
+                        && _storyProfile != (expected.StoryProfile ?? new OriginStoryProfile()))
+                    {
+                        OriginBookReadingState? saved = null;
+                        try
+                        {
+                            if (_storyProfile.IsValid && _saveOpeningDetails is not null)
+                                saved = await _saveOpeningDetails(expected, _storyProfile.IsEmpty ? null : _storyProfile,
+                                    () => generation == _renderGeneration);
+                        }
+                        catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
+                            or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+                        if (generation != _renderGeneration) return;
+                        if (saved is null)
+                        {
+                            await DisplayAlertAsync(_copy["Origin.PageTitle"], _copy["Origin.SetupSaveFailed"], _copy["Common.Ok"]);
+                            return;
+                        }
+                        _openingDetails = saved;
+                    }
                     var confirmed = await _confirmChoice(selectedChoiceId, previewDigest);
                     if (generation != _renderGeneration || confirmed?.IsSuccess != true)
                         return;
@@ -561,19 +556,6 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         => choice.Effects.Any(effect => effect.Domain == "creation-stage"
             && effect.TargetId == CharacterCreationLifeModuleStageIds.SelectionFinished
             && effect.AfterValue == "true");
-
-    private Grid BudgetMetric(
-        string automationId,
-        string label,
-        decimal value,
-        CultureInfo formattingCulture)
-    {
-        Grid metric = NativeTheme.Metric(
-            label,
-            $"{value.ToString("0.##", formattingCulture)} {_budget.Unit}");
-        metric.AutomationId = automationId;
-        return metric;
-    }
 
     private bool TryAdoptPrepared(OriginDossierLifeModulePhoneResult prepared)
     {
