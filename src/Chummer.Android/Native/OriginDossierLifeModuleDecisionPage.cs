@@ -24,6 +24,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private readonly Func<string, string, Task<OriginDossierLifeModulePhoneResult?>> _confirmChoice;
     private readonly Func<Task>? _openBook;
     private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? _readStoryReady;
+    private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? _openStoryProgress;
     private bool _storyReady;
     private bool _checkingStory;
     private string? _selectedMetatypeOptionId;
@@ -44,7 +45,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Func<Task>? openBook = null,
         Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? readStoryReady = null,
         OriginBookReadingState? openingDetails = null,
-        Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? saveOpeningDetails = null)
+        Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? saveOpeningDetails = null,
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? openStoryProgress = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -76,6 +78,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
         _openBook = openBook;
         _readStoryReady = readStoryReady;
+        _openStoryProgress = openStoryProgress;
         _openingDetails = openingDetails;
         _storyProfile = openingDetails?.StoryProfile ?? new();
         _saveOpeningDetails = saveOpeningDetails;
@@ -105,7 +108,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private bool NeedsStoryBeforeChoices => _storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
         && _state.StageOrder > LifeModuleJourneyStageOrders.FormativeYears;
 
-    private async Task RefreshStoryReadinessAsync()
+    private async Task<bool> RefreshStoryReadinessAsync()
     {
         _storyReady = false;
         _checkingStory = NeedsStoryBeforeChoices;
@@ -113,7 +116,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         int generation = _renderGeneration;
         var checkpoint = _storyCheckpoint;
         bool Current() => generation == _renderGeneration && ReferenceEquals(_storyCheckpoint, checkpoint);
-        if (!_checkingStory) return;
+        if (!_checkingStory) return false;
         bool ready = false;
         try
         {
@@ -125,10 +128,11 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             // No reading proof is no permission to advance. Keep the book and
             // explicit refresh available; never manufacture a read acceptance.
         }
-        if (!Current()) return;
+        if (!Current()) return false;
         _checkingStory = false;
         _storyReady = ready;
         Content = new ScrollView { Content = BuildBody() };
+        return true;
     }
 
     private VerticalStackLayout BuildBody()
@@ -189,8 +193,28 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 refresh.AutomationId = "origin-life-story-refresh";
                 refresh.Clicked += async (_, _) =>
                 {
-                    if (!_actionInFlight && generation == _renderGeneration)
-                        await RefreshStoryReadinessAsync();
+                    if (_actionInFlight || generation != _renderGeneration) return;
+                    _actionInFlight = true;
+                    try
+                    {
+                        if (!await RefreshStoryReadinessAsync() || _storyReady
+                            || _storyCheckpoint is not { } checkpoint || _openStoryProgress is null) return;
+                        int readingGeneration = _renderGeneration;
+                        bool Current() => readingGeneration == _renderGeneration
+                            && ReferenceEquals(_storyCheckpoint, checkpoint);
+                        // A local Selected flag is not live provider status.
+                        // Open the existing read-only request/status view; this
+                        // never consents, requests generation or accepts prose.
+                        await _openStoryProgress(checkpoint, Current);
+                    }
+                    catch (Exception error) when (error is IOException or InvalidOperationException
+                        or OperationCanceledException or UnauthorizedAccessException)
+                    {
+                        if (!_checkingStory && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this))
+                            await DisplayAlertAsync(_copy["Origin.PageTitle"],
+                                _copy["Origin.AuthoringStatusInterrupted"], _copy["Common.Ok"]);
+                    }
+                    finally { _actionInFlight = false; }
                 };
                 body.Add(refresh);
             }

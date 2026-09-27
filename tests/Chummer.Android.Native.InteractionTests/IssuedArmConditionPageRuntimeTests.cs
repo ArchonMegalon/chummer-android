@@ -444,6 +444,7 @@ internal static partial class AfterRunAuthorityHarness
         private readonly FieldInfo _subscription;
         private readonly object? _priorSubscription;
         public List<string> Titles { get; } = [];
+        public List<string> Messages { get; } = [];
         public IssuedPageAlerts(Page page, Window window)
         {
             _page = page;
@@ -464,6 +465,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(string.IsNullOrEmpty(args.Accept) && args.Cancel == "OK",
                     "Headless adapter cannot answer confirmation or a non-informational dialog.");
                 Titles.Add(args.Title ?? "");
+                Messages.Add(args.Message ?? "");
                 args.SetResult(false); // Informational OK dismissal only, never confirmation/receipt.
             };
             try

@@ -793,13 +793,18 @@ internal static class OriginDossierBookRuntimeTests
             foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
             {
                 bool ready = false;
-                int reads = 0, prepares = 0;
+                int reads = 0, prepares = 0, progressOpens = 0;
                 TaskCompletionSource<bool>? pending = null;
                 var copy = AndroidSurfaceStrings.Resolve(locale);
                 OriginDossierLifeModuleDecisionPage Page(int stage) => new(Display(stage, locale), locale,
                     (_, _) => { prepares++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
                     (_, _) => throw new InvalidOperationException("A reading check may not mutate."),
-                    readStoryReady: async (_, current) => { reads++; return (pending is null ? ready : await pending.Task) && current(); });
+                    readStoryReady: async (_, current) => { reads++; return (pending is null ? ready : await pending.Task) && current(); },
+                    openStoryProgress: (_, current) =>
+                    {
+                        Require(current(), "A retired reading check opened progress.");
+                        progressOpens++; return Task.CompletedTask;
+                    });
                 Task Appear(OriginDossierLifeModuleDecisionPage page) => ui.BeginAsyncVoid(() =>
                     typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
                         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
@@ -817,10 +822,15 @@ internal static class OriginDossierBookRuntimeTests
                 Require(!Choices(next) && Elements(next).OfType<Label>().Any(label =>
                     label.AutomationId == "origin-life-story-wait" && label.Text == copy["Origin.StoryReadRequired"]),
                     "Unread story did not explain the next-step gate in the selected language.");
-                ready = true;
                 var refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
                 await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
-                Require(Choices(next) && prepares == 0, "Reading confirmation failed to unlock choices or prepared a mutation automatically.");
+                Require(progressOpens == 1 && !Choices(next) && prepares == 0,
+                    "Unread status returned silently instead of opening the existing chapter status.");
+                ready = true;
+                refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
+                await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
+                Require(Choices(next) && prepares == 0 && progressOpens == 1,
+                    "Reading confirmation failed to unlock choices or opened unnecessary progress.");
                 var retiredChoice = Elements(next).OfType<Button>().First(b => b.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
                 pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
                 var checking = Appear(next);
@@ -835,6 +845,15 @@ internal static class OriginDossierBookRuntimeTests
                 pending = null; ready = false;
                 await Appear(next);
                 Require(!Choices(next), "Reopening cached an obsolete read permission.");
+                pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
+                var lateStatus = ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
+                typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnDisappearing",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(next, null);
+                pending.SetResult(false); await lateStatus;
+                Require(progressOpens == 1 && !Choices(next),
+                    "A departed status check opened a chapter view after leaving the wizard.");
             }
             ui.AssertHealthy();
         });
