@@ -152,7 +152,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "36c2593b368def556ec2f813528b1c83a37af6457a367c4116f892d600b18eed"
+        "sha256": "d130025db5c39c435e4949f6cac911bef91865f14bf67d869f2b10fd9694b6e6"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -657,7 +657,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "5a57989028f0806f6f240ae5d6a0817b39ac8832f406df0d48f19e93aebefa43"
+        "sha256": "b36b39a2c28a51563a91fe0193e7ed852030190985e999980a127596b532af97"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "e7466607256022881c82c643ef2321241c46206bfdde6d0aa518d3b28b19b03d"
+        "sha256": "ed9d98f6e2285b7a2d0f7d50b87fd34f949664b489cd5d620a3418ed57462df5"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "74b68d4b1bcf5fddc6977c6056a23f4104b89c151d400f175ff776784f5e38b1"
+        "sha256": "d8e38841a8ef4f533e18322649b5d7b2d12b37c58897eb904181508980cc713b"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "46e1d3027c9bb91d5f746731d25824526544ffe57fd29dc9594b83dac5ba2d93"
+        "sha256": "00cdebc635a9fe8fcc77989a8e367d5e687a3cd56a2be0a97b340cc51735a8eb"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -922,12 +922,12 @@
       {
         "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "exists": true,
-        "sha256": "851f7e81e4ffc7c5e3e51642cccbe1b434cc3b9908e9c9095948f801358ea746"
+        "sha256": "a47331a0e6684e4708cc1c1f7eef549e5e2f2999dc71e65ce21800909d8577cd"
       },
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "ca1237f9eabf4bb117d6e8e809c9be8e6407ed943ee47ccfff9ee60b44cbaaa1"
+        "sha256": "7147838679a6d465407568153d5ea25e031ddfe5d204d10debdd59ef6eba3fff"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "ce2ce40a57ccfae2295e47748f0cdceb9128f3d9655dd528c334459be418a78d"
+        "sha256": "6cca672d9f817ab139021fcc40351a821088373041276ef88bb7a8efb95bb728"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "d175cd3d9eaff5c78b2316d42c53fcef21eeb6026791fdc7e746a680631a485b"
+        "sha256": "91087dd4fd96fac5900aeb395291e2aca3c878eddbed0e2629c3da424ed410d6"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",
@@ -1032,7 +1032,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "51385d28c3095857a5b015cb0d6fe67bba176f72faa33606e8a2beaca6b10361"
+        "sha256": "cf61647a3c6b90457112cd37b0a9996df1ff2026ee406dc3ad69a21ffab88202"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -3043,7 +3043,7 @@
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ff7960a99b2af047f6dbd73f249574949bc761c3272b03c1bb038aced1604129"
+      "sha256": "041e30547086d3980cca31997328014b30b1b2032eec5c470ff7701f8cb22bf6"
     }
   },
   "coverageByFamily": {
