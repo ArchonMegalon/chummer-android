@@ -13,7 +13,27 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 46 — September 27, 2026
+## Current observed Internal release: Preview 47 — September 27, 2026
+
+Scoped authenticated Console readback at `2026-09-27T14:44:18Z` shows
+`47 (0.1.0-preview.47)` as **Available to internal testers**.
+[Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
+See the [exact local artifact and availability](../play/evidence/preview47-internal-observation.md).
+
+Origin has story-first choices, optional opening/background details, larger
+full-chapter storage and corrected image selection and chapter-status navigation.
+Explicit consent and owner/book guards remain. Focused managed and API36 Debug
+route/save/new-process checks passed; the candidate differs only by version.
+Local ARM64 Release build, content/proof/hygiene checks, separate old-key signing
+and independent certificate/unchanged-payload verification passed. PR168 merged
+normally; actual Play upload and availability were subsequently observed.
+
+Physical Play installation, full live linked FirstBook successor/book completion
+and finalization performance remain unverified or open. No paid-operation replay,
+tester/audience expansion or store-draft change occurred. Version47 is consumed;
+use48 or a higher unused code next. Prior artifacts and evidence remain immutable.
+
+## Historical observed Internal release: Preview 46 — September 27, 2026
 
 Scoped authenticated Console readback at `2026-09-27T04:47:17Z` shows
 `46 (0.1.0-preview.46)` as **Available to internal testers**.
