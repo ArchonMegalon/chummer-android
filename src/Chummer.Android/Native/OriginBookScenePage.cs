@@ -16,6 +16,7 @@ internal sealed class OriginBookScenePage : NativePageBase
     private string _excerpt = "";
     private bool _remoteSelection;
     private long _renderGeneration;
+    private long _navigationGeneration;
 
     internal OriginBookScenePage(RunnerSessionCoordinator coordinator, RetainedOriginBook book,
         OriginNarrativeChapterProjection chapter, AndroidSurfaceCopy copy) : base(coordinator)
@@ -68,23 +69,43 @@ internal sealed class OriginBookScenePage : NativePageBase
             AutomationId = "origin-scene-description" };
         SemanticProperties.SetDescription(description, _copy["Origin.SceneDescription"]);
         _body.Add(description);
+        var descriptionRequired = NativeTheme.Body(_copy["Origin.SceneDescriptionRequired"]);
+        descriptionRequired.AutomationId = "origin-scene-description-required";
+        descriptionRequired.IsVisible = string.IsNullOrWhiteSpace(_description);
+        _body.Add(descriptionRequired);
         var choose = NativeTheme.ReadingButton(_copy["Origin.SceneChoose"]);
         choose.AutomationId = "origin-scene-choose";
-        choose.IsEnabled = !string.IsNullOrWhiteSpace(_description);
         choose.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            if (!Current() || string.IsNullOrWhiteSpace(_description)) return;
+            if (!Current()) return;
+            long navigation = _navigationGeneration;
+            // Retain exact book/owner and navigation-entry checks, not controls
+            // invalidated by an external Activity stopping this appearance.
+            bool PickerCurrent() => navigation == _navigationGeneration
+                && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                && Navigation.ModalStack.Count == 0 && ReferenceEquals(_book, book)
+                && Coordinator.CanSelectOriginBookScene(book);
             try
             {
-                var selected = await Coordinator.PickOriginBookSceneAsync(book, _chapter, _description, Current, default);
-                if (Current())
+                // Only a temporary preview: Save requires the user's own
+                // description and cannot persist this placeholder.
+                var selected = await Coordinator.PickOriginBookSceneAsync(book, _chapter,
+                    string.IsNullOrWhiteSpace(_description) ? _copy["Origin.SceneTitle"] : _description,
+                    PickerCurrent, default);
+                if (PickerCurrent())
                 {
                     if (selected is not null) { _selection = selected; _remoteSelection = false; }
                     _notice = null;
                 }
             }
             catch (Exception error) when (error is InvalidDataException or FormatException)
-            { if (Current()) _notice = _copy["Origin.SceneInvalid"]; }
+            { if (PickerCurrent()) _notice = _copy["Origin.SceneInvalid"]; }
+            finally
+            {
+                // RunAsync refreshes only its original appearance. The picker
+                // may return after the new appearance has already rendered.
+                if (PickerCurrent() && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())) Refresh();
+            }
         });
         _body.Add(choose);
         if (Coordinator.CanRequestOriginBookScene(book, _chapter))
@@ -148,7 +169,7 @@ internal sealed class OriginBookScenePage : NativePageBase
         {
             if (!Current()) return;
             _description = description.Text ?? "";
-            choose.IsEnabled = !string.IsNullOrWhiteSpace(_description);
+            descriptionRequired.IsVisible = string.IsNullOrWhiteSpace(_description);
             save.IsEnabled = preview is not null && !string.IsNullOrWhiteSpace(_description);
         };
         save.Clicked += async (_, _) => await RunAsync(async () =>
@@ -225,6 +246,14 @@ internal sealed class OriginBookScenePage : NativePageBase
             HeightRequest = 240, AutomationId = automationId };
         SemanticProperties.SetDescription(image, scene.Identity.AltText);
         return image;
+    }
+
+    protected override void OnNavigatingFrom(NavigatingFromEventArgs args)
+    {
+        // External Android pickers may stop/restart the Activity without
+        // navigating away. Actual in-app navigation retires the round trip.
+        ++_navigationGeneration;
+        base.OnNavigatingFrom(args);
     }
 
     protected override void OnDisappearing()

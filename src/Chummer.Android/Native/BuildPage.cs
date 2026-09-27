@@ -2882,7 +2882,23 @@ public sealed class BuildPage : NativePageBase
                 () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner),
             openingDetails,
             (expected, profile, current) => Coordinator.SaveOpeningStoryDetailsAsync(expected, profile,
-                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner));
+                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner),
+            async (checkpoint, current) =>
+            {
+                bool Current() => current() && Coordinator.State.DisplayOwnerContext == decisionOwner;
+                var book = await Coordinator.LoadRetainedOriginBookAsync(default, Current);
+                if (!Current()) return;
+                if (book is null || !Coordinator.IsRetainedOriginBookCurrent(book)
+                    || book.Digest != checkpoint.Projection.SeedDigest)
+                    throw new InvalidOperationException("The saved story changed while checking chapter progress.");
+                var chapter = book.Chapters.LastOrDefault(book.CanOpenAuthoring);
+                if (chapter is not null && Coordinator.CanRequestOriginChapter(book))
+                    await Navigation.PushAsync(new OriginBookAuthoringPage(Coordinator, book, chapter));
+                else
+                    // Offline/unlinked readers still get their saved book and
+                    // its account explanation, never an automatic sign-in.
+                    await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+            });
         await Navigation.PushAsync(page);
     }
 

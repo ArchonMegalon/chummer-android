@@ -1016,11 +1016,53 @@ internal static partial class AfterRunAuthorityHarness
                 await Click($"origin-scene-chapter-{chapter.Sequence}");
                 Require(Current() is OriginBookScenePage && !Element<Button>("origin-scene-save").IsEnabled,
                     "Scene selection did not require a reviewed image.");
-                Element<Editor>("origin-scene-description").Text = "Forest clearing and a spiral of stones";
+                Require(Element<Button>("origin-scene-choose").IsEnabled
+                    && Element<Label>("origin-scene-description-required").IsVisible,
+                    "Choosing an image was silently blocked until a description was entered.");
+                sceneInput.Canceled = true;
                 await Click("origin-scene-choose");
-                Require(sceneInput.Reads == 1 && Element<Image>("origin-scene-preview").Source is StreamImageSource
+                Require(!IssuedElements(Current()).Any(e => e.AutomationId == "origin-scene-preview")
+                    && !Element<Button>("origin-scene-save").IsEnabled,
+                    "Canceling the picker fabricated an image or admitted a save.");
+                sceneInput.Canceled = false;
+                sceneInput.BeforeReturnAsync = async () =>
+                {
+                    var departed = Current();
+                    IssuedPageLifecycle(departed, "OnDisappearing");
+                    var destination = new ContentPage();
+                    await navigation.PushAsync(destination, false);
+                    // As with appearance, headless navigation needs the
+                    // Android handler's real navigation lifecycle callback.
+                    typeof(OriginBookScenePage).GetMethod("OnNavigatingFrom",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                        .Invoke(departed, [Activator.CreateInstance(typeof(NavigatingFromEventArgs),
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                            binder: null, args: [destination, NavigationType.Push], culture: null)]);
+                    await navigation.PopAsync(false);
+                    // The outer Click tracks all nested async-void lifecycle
+                    // callbacks; BeginAsyncVoid must not be reentered.
+                    IssuedPageLifecycle(Current(), "OnAppearing");
+                    await Task.Yield();
+                };
+                await Click("origin-scene-choose");
+                Require(!IssuedElements(Current()).Any(e => e.AutomationId == "origin-scene-preview"),
+                    "Leaving and reentering the page admitted a retired picker result.");
+                sceneInput.BeforeReturnAsync = async () =>
+                {
+                    IssuedPageLifecycle(Current(), "OnDisappearing");
+                    IssuedPageLifecycle(Current(), "OnAppearing");
+                    await Task.Yield();
+                };
+                await Click("origin-scene-choose");
+                sceneInput.BeforeReturnAsync = null;
+                Require(sceneInput.Reads == 3 && Element<Image>("origin-scene-preview").Source is StreamImageSource
+                    && !Element<Button>("origin-scene-save").IsEnabled
                     && new OriginBookSceneStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).Scenes.Count == 0,
                     "Selecting a scene fetched a URL or committed it before confirmation.");
+                Element<Editor>("origin-scene-description").Text = "Forest clearing and a spiral of stones";
+                Require(Element<Button>("origin-scene-save").IsEnabled
+                    && !Element<Label>("origin-scene-description-required").IsVisible,
+                    "Describing the reviewed image did not enable explicit saving.");
                 var scenePage = Current();
                 await Click("origin-scene-save");
                 // Headless navigation has no Android handler to send disappearance on PopAsync.
@@ -1055,6 +1097,12 @@ internal static partial class AfterRunAuthorityHarness
                 catch (OperationCanceledException) { canceled = true; }
                 Require(canceled && bookOutput.Deliveries == 1 && !runtime.Coordinator.IsRetainedOriginBookCurrent(book!),
                     "Owner A→B→A during the document picker exported the old book.");
+                int sceneReadsBeforeRetiredPicker = sceneInput.Reads;
+                Require(await runtime.Coordinator.PickOriginBookSceneAsync(book!, chapter,
+                    "Retired picker", () => true, default) is null
+                    && sceneInput.Reads == sceneReadsBeforeRetiredPicker
+                    && File.ReadAllBytes(scenePath).SequenceEqual(sceneArchive),
+                    "Owner A→B→A admitted a retired scene picker or changed the stored image.");
                 typeof(OriginBookScenePage).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                     .Invoke(returningScenePage, null);
                 Require(!IssuedElements(returningScenePage).Any(element => element is Microsoft.Maui.Controls.Editor
@@ -1121,7 +1169,8 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked())
                         .WaitAsync(TimeSpan.FromSeconds(45));
-                    Require(actionAlerts.Titles.Count == 0, "Unexpected Life Modules action alert: " + key);
+                    Require(actionAlerts.Titles.Count == 0, "Unexpected Life Modules action alert: " + key
+                        + ": " + string.Join("; ", actionAlerts.Messages));
                 }
                 if (!ReferenceEquals(previous, Current()) && IssuedPageField<int>(previous, "_subscribed") != 0) IssuedPageLifecycle(previous, "OnDisappearing");
                 await Appear();
@@ -1543,12 +1592,16 @@ internal static partial class AfterRunAuthorityHarness
     {
         internal static readonly byte[] Png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
         internal int Reads { get; private set; }
-        public Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(CancellationToken ct = default)
+        internal Func<Task>? BeforeReturnAsync { get; set; }
+        internal bool Canceled { get; set; }
+        public async Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested(); Reads++;
+            if (BeforeReturnAsync is { } beforeReturn) await beforeReturn();
+            if (Canceled) return null;
             Require(AndroidImageDocumentValidation.TryCreateCandidate("scene.png", "content://test/scene",
                 "image/png", "image/png", 1, 1, Png, out var candidate), "Scene test candidate invalid.");
-            return Task.FromResult<AndroidImageDocumentCandidate?>(candidate);
+            return candidate;
         }
     }
 }
