@@ -887,6 +887,17 @@ public sealed class BuildPage : NativePageBase
         _creationDashboardRouteReadyLifetime?.Dispose();
         _creationDashboardRouteReadyLifetime = new CancellationTokenSource();
         _creationDashboardAppearanceGeneration++;
+        // This page is retained beneath creation children. A finalization can
+        // change the runner while we are unsubscribed; never expose the old
+        // Creation controls while the current Career receipt is being read.
+        _dossierRenderGeneration++;
+        _body.Clear();
+        Title = "Runner";
+        _save.IsEnabled = false;
+        _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "phone-runner-loading" });
+        var loading = NativeTheme.Body(AndroidSurfaceStrings.Resolve()["Runner.Loading"], NativeTheme.Muted);
+        loading.AutomationId = "phone-runner-loading-message";
+        _body.Add(loading);
         base.OnAppearing();
     }
 
