@@ -70,6 +70,42 @@ internal static partial class AfterRunAuthorityHarness
         JsonObject Wire(OriginChapterAuthoringJob job) => JsonNode.Parse(JsonSerializer.Serialize(job, json))!.AsObject();
         using (var fixture = new ContinuationAccountFixture())
         {
+            await fixture.LinkAsync("subject", "chapter-opportunities");
+            IAndroidOriginChapterTransport transport = fixture.Account;
+            var owner = fixture.Owner.Capture();
+            var approved = source with { NarrativeContext = new("turn", new string('c', 64),
+                [new("school", "Military school", OriginChapterOpportunityAvailability.Unavailable)]) };
+            var admitted = queued with { Source = approved, SourceDigest = OriginChapterSourceIdentity.Digest(approved) };
+            Require(OriginChapterSourceIdentity.RequestId(approved) == id && admitted.SourceDigest != digest,
+                "Optional hints created another lookup key or escaped the full consent digest.");
+            fixture.ChapterResponse = (path, body) =>
+            {
+                Require(path.EndsWith("/read", StringComparison.Ordinal) && body["requestId"]!.GetValue<string>() == id
+                    && !body.ContainsKey("authoring") && !body.ContainsKey("source"),
+                    "Discovering an existing chapter sent facts or granted consent.");
+                return ContinuationJsonResponse(Wire(admitted));
+            };
+            var recovered = await transport.ReadChapterAsync(owner, source);
+            Require(recovered.Job is { } job && job.SourceDigest == admitted.SourceDigest
+                && OriginChapterSourceIdentity.Digest(job.Source) == admitted.SourceDigest
+                && job.Source.NarrativeContext?.Opportunities.Single().Availability == "unavailable",
+                "Read-only recovery substituted new opportunities for the server-approved input.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(admitted));
+            Require((await transport.RequestChapterAsync(owner, source, true)).Job is null,
+                "A source-changing creation response bypassed exact consent.");
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(admitted with {
+                State = ready.State, DraftText = ready.DraftText, ProviderReceiptDigest = ready.ProviderReceiptDigest,
+                ReaderAcceptedTextDigest = textDigest }));
+            Require((await transport.AcceptChapterAsync(owner, source, ready.ProviderReceiptDigest!, ready.DraftText!, true)).Job is null,
+                "Reader acceptance ignored the full approved context digest.");
+            var changedHistory = approved with { RunnerName = "Different runner" };
+            fixture.ChapterResponse = (_, _) => ContinuationJsonResponse(Wire(admitted with {
+                Source = changedHistory, SourceDigest = OriginChapterSourceIdentity.Digest(changedHistory) }));
+            Require((await transport.ReadChapterAsync(owner, source)).Job is null,
+                "Context recovery admitted a different history with a self-consistent source digest.");
+        }
+        using (var fixture = new ContinuationAccountFixture())
+        {
             await fixture.LinkAsync("subject", "chapter-grant");
             IAndroidOriginChapterTransport transport = fixture.Account;
             var owner = fixture.Owner.Capture();
@@ -326,8 +362,10 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     private OriginChapterAuthoringJob? _previous, _next;
     public int Requests, Acceptances;
     public bool FailAcceptance, CorruptPredecessor;
+    public bool LoseRequestResponse;
     public AndroidOriginChapterOutcome? PredecessorReadFailure;
     public Action? AfterPredecessorRead, AfterAcceptance;
+    public Action<OriginChapterSource>? BeforeRequest;
     public void ResetCounts() { Requests = Acceptances = 0; }
     public void RemoveSuccessor() => _next = null;
     public void Seed(OriginChapterSource source, Chummer.Presentation.OriginBooks.OriginBookProseDraft draft)
@@ -369,11 +407,14 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
         bool externalProcessingConsent, CancellationToken ct = default, OriginChapterPredecessor? previous = null)
     {
         Requests++;
+        BeforeRequest?.Invoke(source);
         if (!externalProcessingConsent || previous is null || previous.RequestId != _previous?.RequestId
             || previous.TextDigest != _previous.ReaderAcceptedTextDigest)
             return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Conflict));
         _next ??= new(OriginChapterSourceIdentity.RequestId(source), OriginChapterSourceIdentity.Digest(source), source,
             OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null) { Previous = previous };
+        if (LoseRequestResponse)
+            return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
         return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _next));
     }
 }
@@ -478,6 +519,10 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
         string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)
     {
+        // The local-reading part of the page test predates any remote job.
+        // Match transport's confirmed-absence result, not an exception/dialog.
+        if (explicitlyConfirmed && _job is null)
+            return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound));
         if (!explicitlyConfirmed || _job?.SourceDigest != OriginChapterSourceIdentity.Digest(source)
             || _job.DraftText != draftText || _job.ProviderReceiptDigest != providerReceiptDigest)
             throw new InvalidOperationException("Wrong reader acceptance.");

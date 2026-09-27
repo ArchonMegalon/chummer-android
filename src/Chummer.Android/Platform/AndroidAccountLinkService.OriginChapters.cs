@@ -110,10 +110,15 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
                 || body.GetProperty("affectsMechanics").GetBoolean()
                 || body.GetProperty("publicationAuthorized").GetBoolean()) throw new JsonException();
             var job = body.Deserialize<OriginChapterAuthoringJob>(ChapterWireJson) ?? throw new JsonException();
+            var returnedSource = OriginChapterSourceIdentity.Capture(job.Source);
             OriginChapterSourceIdentity.CapturePredecessor(job.Previous);
             if (job.Previous?.RequestId == requestId || create && job.Previous != previous) throw new JsonException();
-            if (job.RequestId != requestId || job.SourceDigest != digest
-                || OriginChapterSourceIdentity.Digest(job.Source) != digest || job.Provider != "first_book_ai"
+            // Read-only discovery can recover the already consented optional
+            // context from another device. The history/lookup key must match;
+            // all mutations still bind the entire exact approved input digest.
+            if (job.RequestId != requestId || OriginChapterSourceIdentity.RequestId(returnedSource) != requestId
+                || changesRemote && job.SourceDigest != digest
+                || OriginChapterSourceIdentity.Digest(returnedSource) != job.SourceDigest || job.Provider != "first_book_ai"
                 || job.State is not (OriginChapterAuthoringStates.AwaitingAuthoring
                     or OriginChapterAuthoringStates.ReconciliationRequired or OriginChapterAuthoringStates.ReviewRequired))
                 throw new JsonException();
@@ -130,7 +135,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             if (acceptance is not null && (job.ReaderAcceptedTextDigest != acceptance.TextDigest
                 || job.ProviderReceiptDigest != acceptance.ProviderReceiptDigest)) throw new JsonException();
             RequireContinuationOwnerCurrent(expected);
-            return new(AndroidOriginChapterOutcome.Available, job with { Source = captured });
+            return new(AndroidOriginChapterOutcome.Available, job with { Source = returnedSource });
         }
         catch (UnauthorizedAccessException)
         { return new(AndroidOriginChapterOutcome.Unauthorized, UnknownRemoteOutcome: changesRemote && proofReleased && !knownRejected); }

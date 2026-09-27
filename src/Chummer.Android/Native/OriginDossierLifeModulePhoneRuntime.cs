@@ -52,6 +52,14 @@ public sealed class OriginDossierLifeModulePhoneRuntime
         _store = store ?? throw new ArgumentNullException(nameof(store));
     }
 
+    // Read-only Core capability: do not open, restore or save the timeline just
+    // to obtain optional story context. Older implementations supply no hints.
+    internal LifeModuleOriginDossierResult<LifeModuleDecisionAvailabilitySnapshot> LoadAvailability(
+        OwnerContextStamp owner, LifeModuleDecisionAvailabilityRequest request)
+        => _interaction is IOwnerBoundLifeModuleAvailabilityService availability
+            ? availability.LoadAvailability(owner, request)
+            : new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.AuthorityInvalid]);
+
     public async Task<OriginDossierLifeModulePhoneResult> OpenAsync(
         OwnerContextStamp owner,
         string workspaceId,

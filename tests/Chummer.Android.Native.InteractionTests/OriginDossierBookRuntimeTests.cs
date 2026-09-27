@@ -41,6 +41,7 @@ internal static class OriginDossierBookRuntimeTests
         RunOpeningSetupDisplay();
         RunFinishedSelectionDisplay();
         RunAuthoringSource();
+        RunOpportunityContext();
         RunOpeningStoryDetailsStorage();
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
@@ -609,6 +610,92 @@ internal static class OriginDossierBookRuntimeTests
             .TryGetAuthoringPredecessor(chapter, out _), "Ambiguous Core chapter boundaries were guessed.");
         RunOpeningChapterBoundary(chronological, chapter, nextChapter);
         Console.WriteLine("PASS Origin authoring projection: confirmed facts only, no future choices, source prose, anchors or mutation");
+    }
+
+    private static void RunOpportunityContext()
+    {
+        var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(3)));
+        var opened = service.Start("workspace-1").Value!;
+        var prepared = service.Prepare(opened, "choice-1").Value!;
+        var projection = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "opportunity-fixture", true).Value!.Checkpoint.Projection;
+        var candidate = projection.CurrentTurn.LegalChoices[0];
+        LifeModuleNarrativeChoiceSeed Choice(string id, decimal cost) => candidate with
+        {
+            ChoiceId = id, Label = "Path " + id,
+            SourceAnchorIds = ["lifemodules.xml#module:" + id],
+            MechanicsPreview = candidate.MechanicsPreview with { KarmaCost = cost, KarmaIsExact = true }
+        };
+        var choices = new[] { Choice("street", 20), Choice("corps", 20) };
+        projection = projection with { AllowedChoiceIds = choices.Select(c => c.ChoiceId).ToArray(),
+            CurrentTurn = projection.CurrentTurn with { LegalChoices = choices, IsTerminal = false } };
+        const long savedRevision = 2;
+        LifeModuleDecisionAvailabilitySnapshot Availability(OriginStoryArcSeed seed, params LifeModuleNarrativeChoiceSeed[] excluded)
+            => new(new(seed.CurrentTurn.WorkspaceId, seed.CurrentTurn.WorkspaceRevision, savedRevision,
+                    seed.CurrentTurn.TurnId, seed.CurrentTurn.DecisionDigest),
+                seed.CurrentTurn.ContentDigest, seed.CurrentTurn.SourceDigest, seed.CurrentTurn.RulesDigest, seed.CurrentTurn.RuntimeDigest,
+                seed.CurrentTurn.LegalChoices.Select(c => new LifeModuleOptionAvailability(c.ChoiceId, c.Label,
+                    LifeModuleOptionAvailabilityStates.Available, c.SourceAnchorIds))
+                .Concat(excluded.Select(c => new LifeModuleOptionAvailability(c.ChoiceId, c.Label,
+                    LifeModuleOptionAvailabilityStates.BudgetExcluded, c.SourceAnchorIds))).ToArray());
+        var availability = Availability(projection, Choice("school", 40));
+        string before = JsonSerializer.Serialize(projection);
+        var hints = OriginBookOpportunityContext.Create(projection, availability, savedRevision)!;
+        Require(hints.Opportunities.Count == 3
+            && hints.Opportunities.Single(c => c.ChoiceId == "school").Availability == OriginChapterOpportunityAvailability.Unavailable
+            && hints.Opportunities.Where(c => c.ChoiceId != "school").All(c => c.Availability == OriginChapterOpportunityAvailability.Available)
+            && hints.DecisionDigest == projection.CurrentTurn.DecisionDigest && hints.TurnId == projection.CurrentTurn.TurnId
+            && !projection.AllowedChoiceIds.Contains("school") && choices.All(c => c.ChoiceId != "school")
+            && before == JsonSerializer.Serialize(projection), "Hints guessed legal choices/costs, changed mechanics or lost the exact turn.");
+        foreach (var invalid in new[] {
+            availability with { Binding = availability.Binding with { WorkspaceId = "other" } },
+            availability with { Binding = availability.Binding with { WorkspaceRevision = availability.Binding.WorkspaceRevision + 1 } },
+            availability with { Binding = availability.Binding with { SavedRevision = savedRevision + 1 } },
+            availability with { Binding = availability.Binding with { TurnId = "other" } },
+            availability with { Binding = availability.Binding with { DecisionDigest = Digest("other") } },
+            availability with { ContentDigest = Digest("other") }, availability with { SourceDigest = Digest("other") },
+            availability with { RulesDigest = Digest("other") }, availability with { RuntimeDigest = Digest("other") },
+            availability with { Options = [availability.Options[0], availability.Options[0]] },
+            availability with { Options = [availability.Options[0] with { Availability = LifeModuleOptionAvailabilityStates.BudgetExcluded }] },
+            availability with { Options = [availability.Options[^1] with { Availability = LifeModuleOptionAvailabilityStates.Available }] },
+            availability with { Options = [availability.Options[^1] with { Availability = "other-blocker" }] },
+            availability with { Options = [availability.Options[0] with { Label = "Substituted" }] },
+            availability with { Options = [availability.Options[^1] with { SourceAnchorIds = [] }] } })
+            Require(OriginBookOpportunityContext.Create(projection, invalid, savedRevision) is null,
+                "Unbound or contradictory Core availability supplied story opportunities.");
+        Require(OriginBookOpportunityContext.Create(projection with { CurrentTurn = projection.CurrentTurn with { IsTerminal = true } }, availability, savedRevision) is null,
+            "A completed journey acquired future options.");
+        var many = Enumerable.Range(0, 24).Select(i => Choice("path-" + i, i % 2 == 0 ? 10 : 40)).ToArray();
+        var affordable = many.Where(c => c.MechanicsPreview.KarmaCost == 10).ToArray();
+        var manyProjection = projection with { AllowedChoiceIds = affordable.Select(c => c.ChoiceId).ToArray(),
+            CurrentTurn = projection.CurrentTurn with { LegalChoices = affordable } };
+        var bounded = OriginBookOpportunityContext.Create(manyProjection,
+            Availability(manyProjection, many.Where(c => c.MechanicsPreview.KarmaCost == 40).ToArray()), savedRevision)!;
+        Require(bounded.Opportunities.Count == 4 && bounded.Opportunities.GroupBy(c => c.Availability).All(g => g.Count() == 2),
+            "Hints exported an entire choice catalogue.");
+        var chapter = projection.VisibleChapters.Single();
+        var book = new RetainedOriginBook(projection, opportunities: hints);
+        var frozen = book.AuthoringSource(chapter);
+        var legacy = OriginBookAuthoringSource.Create(projection, chapter);
+        Require(JsonSerializer.Serialize(frozen.NarrativeContext) == JsonSerializer.Serialize(hints)
+            && OriginChapterSourceIdentity.RequestId(frozen) == OriginChapterSourceIdentity.RequestId(legacy)
+            && OriginChapterSourceIdentity.Digest(frozen) != OriginChapterSourceIdentity.Digest(legacy),
+            "Optional context changed the chapter lookup or was not bound to the approved source.");
+        var approved = new OriginBookReadingState("local-single-user", "workspace-1",
+            [new(chapter.ChapterId, null, null) { AuthoringSource = frozen }]);
+        var later = hints with { TurnId = "later-turn", DecisionDigest = Digest("later"),
+            Opportunities = [new("other", "Other path", OriginChapterOpportunityAvailability.Available)] };
+        var cold = new RetainedOriginBook(projection, JsonSerializer.Deserialize<OriginBookReadingState>(JsonSerializer.Serialize(approved)), opportunities: later);
+        Require(OriginChapterSourceIdentity.Digest(cold.AuthoringSource(chapter)) == OriginChapterSourceIdentity.Digest(frozen),
+            "Cold reopen rewrote the approved source using new hints.");
+        var pending = OriginBookProseDraft.Create(chapter, book.Locale, OriginChapterSourceIdentity.RequestId(legacy), Digest("provider"), "Existing legacy prose.");
+        var legacyBook = new RetainedOriginBook(projection, approved with { Chapters = [new(chapter.ChapterId, null, pending)] }, opportunities: hints);
+        Require(OriginChapterSourceIdentity.Digest(legacyBook.AuthoringSource(chapter)) == OriginChapterSourceIdentity.Digest(legacy),
+            "An old draft acquired new story opportunities.");
+        var advanced = projection with { CanonicalLayer = projection.CanonicalLayer with
+            { AcceptedDecisionIds = [.. projection.CanonicalLayer.AcceptedDecisionIds, "future"] } };
+        Require(new RetainedOriginBook(advanced, opportunities: later).AuthoringSource(chapter).NarrativeContext is null,
+            "Historical chapter acquired the current turn's hints.");
+        Console.WriteLine("PASS story opportunities: separate Core budget exclusions, exact owner-turn binding, bounded sampling, immutable consent, legacy identity and no history rewrite");
     }
 
     private static void RunOpeningChapterBoundary(OriginStoryArcSeed seed,
@@ -1201,6 +1288,28 @@ internal static class OriginDossierBookRuntimeTests
             catch (OperationCanceledException) { canceled = true; }
             Require(stale && canceled && store.Load("owner-a", "workspace-1").Digest == saved.Digest,
                 "A stale or retired story editor overwrote the saved brief.");
+            var approved = composed with { NarrativeContext = new("next-turn", Digest("decision"),
+                [new("school", "Military school", OriginChapterOpportunityAvailability.Unavailable)]) };
+            var retainedChapter = new OriginBookReadingChapter(source.ChapterId, null, null) { AuthoringSource = approved };
+            var retained = store.Save(saved, saved with { Chapters = [retainedChapter] }, () => true, default);
+            var cold = new OriginBookReadingStore(directory).Load("owner-a", "workspace-1");
+            Require(cold.Digest == retained.Digest
+                && OriginChapterSourceIdentity.Digest(cold.Chapters.Single().AuthoringSource!) == OriginChapterSourceIdentity.Digest(approved)
+                && store.Load("owner-b", "workspace-1").Chapters.Count == 0,
+                "Cold read lost the exact approved source or crossed owners.");
+            Require(!JsonSerializer.Serialize(new OriginBookReadingChapter(source.ChapterId, null, null))
+                    .Contains("AuthoringSource", StringComparison.Ordinal),
+                "The optional frozen source changed legacy chapter bytes.");
+            foreach (var badSource in new[] { approved with { WorkspaceId = "wrong" },
+                approved with { ChapterId = "wrong" }, approved with { NarrativeContext = approved.NarrativeContext! with
+                    { Opportunities = [new("school", "Military school", "completed")] } } })
+            {
+                bool rejected = false;
+                try { store.Save(retained, retained with { Chapters = [retainedChapter with { AuthoringSource = badSource }] }, () => true, default); }
+                catch (InvalidDataException) { rejected = true; }
+                Require(rejected && store.Load("owner-a", "workspace-1").Digest == retained.Digest,
+                    "An invalid frozen source replaced the approved chapter input.");
+            }
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine("PASS optional opening brief: cold persistence, owner isolation, stable source identity, legacy omission and rejected stale/invalid writes");
