@@ -78,6 +78,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                               && string.Equals(selected.Rank, projection.Rank, StringComparison.Ordinal);
             string detail = JoinDetails(
                 isSelected ? WizardStrings.Get("Priority.CategoryPage.CurrentSelection", "Current draft selection") : null,
+                RankDisableReason(option.DisableReason),
                 projection.Label,
                 WizardStrings.Format(
                     "Priority.CategoryPage.SumValue",
@@ -96,8 +97,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", projection.SourceAnchorIds))
-                    : null,
-                option.DisableReason);
+                    : null);
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.Format("Common.Rank", "Rank {0}", projection.Rank),
                 detail,
@@ -118,6 +118,18 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
         }
         await Navigation.PopAsync(animated: false);
     }
+
+    internal static string? RankDisableReason(string? reason)
+        => reason switch
+        {
+            CreationPrerequisitePhoneDraft.PriorityRankExhausted => WizardStrings.Get(
+                "Priority.CategoryPage.RankAlreadyUsed",
+                "This rank is already used in another category. Choose a different rank or change that assignment first."),
+            CreationPrerequisitePhoneDraft.SumToTenTargetUnreachable => WizardStrings.Get(
+                "Priority.CategoryPage.TotalUnreachable",
+                "With this rank, the remaining categories cannot reach the required total. Choose a different rank or adjust another category."),
+            _ => reason
+        };
 
     private void AddBlockers(IReadOnlyList<string> blockers)
     {

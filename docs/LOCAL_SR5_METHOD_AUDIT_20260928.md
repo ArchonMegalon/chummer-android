@@ -14,6 +14,9 @@ API-36 qualification, a new signed release or a Play upload. Preview 52 is uncha
   display their existing blockers. No disabled choice is admitted by this change.
 - A missing native language now produces an actionable instruction instead of
   the raw `creation-skills-native-language-required` code.
+- Priority's already-used rank and Sum-to-Ten's unreachable-total hints now
+  explain the remedy in plain language, before the technical source details.
+  The underlying blockers and disabled choices are unchanged.
 - Copy is supplied in English, German and Spanish. No rule, budget, owner,
   persistence or finalization policy changed.
 
@@ -55,6 +58,14 @@ and errors. SHA-256:
 It uses an isolated synthetic application ID and the SDK debug key, not the
 Play upload key. No proof instrumentation is enabled.
 
+The subsequent rank-hint change is based on merge `1f6fb354` (Karma PR193).
+A fresh managed build completed with zero warnings/errors; focused EN/DE/ES
+copy and real Core duplicate-rank rejection tests passed. Sum-to-Ten's native
+managed finalization was executed again and passed, revision 7/7 → 8/8.
+The new Debug x64 APK built offline in 59.81s with zero warnings/errors:
+`c189a2f4341dad3921165034cf7d9b52049a20220e3e104a198c59220f8acf60`.
+Earlier APK observations are not relabelled as tests of this changed binary.
+
 ## Actual emulator observations
 
 API 36 x64, 720×1600, 150% font. Before the hint update, the retained APK (same
@@ -78,6 +89,21 @@ The Agility editor showed purchased levels 0 → 1 without clipping at 150% font
 XML snapshots and screenshots are retained in the local audit packet.
 The full Career walkthrough above preceded that update; it is not relabelled
 as a second full run on the changed APK.
+
+The subsequent native Priority probe retained the selected method and opened
+the exact rank editor. Heritage C correctly disabled Talent C; the original
+reason was a raw technical code, motivating the rank-hint correction. Initial
+runner creation took approximately a minute on this emulator but then completed;
+the app stayed alive and no application crash was observed. It was not called
+a timeout or replayed as another creation. This delay remains a responsiveness
+finding, not a fixed problem or proof of a permanent hang.
+
+The rank-hint APK installed without clearing data and reopened the saved
+Priority bootstrap. Selecting Heritage C then opening Talent showed the new
+explanation at the beginning of disabled Rank C. A tap on that disabled row
+remained inert. The API-36 screenshot and hierarchy retain the readable wrapped
+copy at 150% font. This verifies the changed hint on Android, not a complete
+Priority character or all build methods.
 
 ## Remaining limits
 

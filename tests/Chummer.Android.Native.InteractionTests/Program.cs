@@ -13,6 +13,13 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--priority-rank-reasons")
+        {
+            await PriorityRankReasonsAreReadableAsync();
+            await CanonicalPriorityAuthorityIsPhoneReadyAsync();
+            Console.WriteLine("Priority rank reasons and admission regression passed.");
+            return;
+        }
         if (args.Length == 1 && args[0] == "--linked-character-journal")
         {
             await LinkedCharacterIntentJournalTests.RunAsync();
@@ -338,6 +345,7 @@ internal static class Program
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
             (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
+            (nameof(PriorityRankReasonsAreReadableAsync), PriorityRankReasonsAreReadableAsync),
             (nameof(TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync), TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync),
             (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
@@ -3232,6 +3240,39 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task PriorityRankReasonsAreReadableAsync()
+    {
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach ((string culture, string used, string total) in new[]
+                     {
+                         ("en", "already used", "required total"),
+                         ("de", "bereits", "benötigte Summe"),
+                         ("es", "ya está asignado", "total requerido")
+                     })
+            {
+                System.Globalization.CultureInfo.CurrentUICulture =
+                    System.Globalization.CultureInfo.GetCultureInfo(culture);
+                Require(CreationPriorityCategoryPage.RankDisableReason(
+                        CreationPrerequisitePhoneDraft.PriorityRankExhausted)!.Contains(used, StringComparison.Ordinal),
+                    $"{culture}: duplicate rank must explain how to resolve the blocked choice.");
+                Require(CreationPriorityCategoryPage.RankDisableReason(
+                        CreationPrerequisitePhoneDraft.SumToTenTargetUnreachable)!.Contains(total, StringComparison.Ordinal),
+                    $"{culture}: unreachable total must explain the blocked choice.");
+                Require(CreationPriorityCategoryPage.RankDisableReason(null) is null,
+                    "An enabled rank must not acquire a disabled hint.");
+                Require(CreationPriorityCategoryPage.RankDisableReason("unknown-blocker") == "unknown-blocker",
+                    "An unknown blocker must remain visible rather than silently disappearing.");
+            }
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
+        return Task.CompletedTask;
+    }
+
     private static Task CanonicalPriorityAuthorityIsPhoneReadyAsync()
     {
         const string settingsId = "223a11ff-80e0-428b-89a9-6ef1c243b8b6";
@@ -3369,6 +3410,16 @@ internal static class Program
             Require(
                 CreationPrerequisitePhoneAuthority.IsReady(state, overview),
                 "A canonical blocker-free Core Priority authority must be accepted by the phone gate.");
+            var draft = new CreationPrerequisitePhoneDraft();
+            draft.Bind(state, overview);
+            Require(draft.TrySelect(state, overview, CharacterCreationPriorityCategoryIds.Heritage, "C"),
+                "An unused rank must remain selectable.");
+            CreationPrerequisitePhoneRankOption duplicate = draft.OptionsForCategory(
+                state, overview, CharacterCreationPriorityCategoryIds.Talent).Single(option => option.Projection.Rank == "C");
+            Require(!duplicate.IsEnabled && duplicate.DisableReason == CreationPrerequisitePhoneDraft.PriorityRankExhausted,
+                "The duplicate rank must remain disabled with the precise admission reason.");
+            Require(!draft.TrySelect(state, overview, CharacterCreationPriorityCategoryIds.Talent, "C"),
+                "Readable copy must never admit a duplicate rank.");
             return Task.CompletedTask;
         }
         finally
