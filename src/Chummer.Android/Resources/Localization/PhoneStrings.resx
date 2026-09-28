@@ -240,6 +240,7 @@ No change has been saved yet.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>Recovery is unavailable or damaged. No link was changed; keep local recovery files.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>These are local intents and state observations, not Core transaction receipts. Unresolved changes must not be retried.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>Context changed. Refresh recovery history.</value></data>
+  <data name="LinkedRecoveryEmpty" xml:space="preserve"><value>No local recovery entries for this account.</value></data>
   <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Still unresolved. No change was replayed and no file was removed.</value></data>
   <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Requested state observed at the next revision; no historical commit attribution.</value></data>
   <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Stopped before dispatch. The runner was not changed by this attempt.</value></data>

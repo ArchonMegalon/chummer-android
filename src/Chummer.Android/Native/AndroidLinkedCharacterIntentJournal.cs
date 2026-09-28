@@ -58,6 +58,35 @@ public sealed class AndroidLinkedCharacterIntentJournal
     public AndroidLinkedCharacterIntentJournal(string stateDirectory)
         : this(stateDirectory, AndroidPrivateFileDurability.SyncDirectory) { }
 
+    public static AndroidLinkedCharacterIntentJournal CreateForCurrentApplication(string stateDirectory)
+    {
+#if ANDROID
+        // Android's app mount namespace may expose /data/user/0 as a system
+        // symlink. Resolve only the OS-owned application root, not files/state
+        // or any journal entry: those retain the strict no-link checks below.
+        string applicationRoot = global::Android.App.Application.Context.ApplicationInfo?.DataDir
+            ?? throw new IOException("The private application data root is unavailable.");
+        using var root = new Java.IO.File(applicationRoot);
+        return new(RebasePrivateStateDirectory(stateDirectory, applicationRoot, root.CanonicalPath));
+#else
+        return new(stateDirectory);
+#endif
+    }
+
+    internal static string RebasePrivateStateDirectory(string stateDirectory,
+        string platformApplicationRoot, string canonicalApplicationRoot)
+    {
+        if (!Path.IsPathFullyQualified(stateDirectory)
+            || !Path.IsPathFullyQualified(platformApplicationRoot)
+            || !Path.IsPathFullyQualified(canonicalApplicationRoot))
+            throw new IOException("Recovery requires absolute private application paths.");
+        string relative = Path.GetRelativePath(platformApplicationRoot, stateDirectory);
+        if (Path.IsPathRooted(relative) || relative is "." or ".."
+            || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new IOException("Recovery state must remain inside this application's data root.");
+        return Path.Combine(Path.GetFullPath(canonicalApplicationRoot), relative);
+    }
+
     internal AndroidLinkedCharacterIntentJournal(string stateDirectory,
         Action<string> syncDirectory, Action<FileStream>? flushFile = null)
     {

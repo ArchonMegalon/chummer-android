@@ -13,6 +13,12 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--linked-character-journal")
+        {
+            await LinkedCharacterIntentJournalTests.RunAsync();
+            await LinkedCharacterBindingTests.RunRecoveryHistoryReadCasesAsync();
+            return;
+        }
         if (args.Length == 1 && args[0] == "--linked-recovery-readability")
         {
             LinkedCharacterBindingTests.RunRecoveryReadabilityCases();

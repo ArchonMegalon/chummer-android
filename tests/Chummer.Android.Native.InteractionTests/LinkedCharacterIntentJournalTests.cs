@@ -19,6 +19,8 @@ internal static class LinkedCharacterIntentJournalTests
     {
         await Task.Run(() =>
         {
+            EmptyHistoryDoesNotCreateJournal();
+            PlatformAliasRebasesOnlyTheTrustedApplicationRoot();
             ReopeningRetainsTheTypedRequestAndExactSuccessor();
             ExpectedSuccessorDigestIsRequiredAndExact();
             ExpectedSuccessorEnvelopeTamperingFailsClosed();
@@ -34,6 +36,56 @@ internal static class LinkedCharacterIntentJournalTests
         }).WaitAsync(TimeSpan.FromSeconds(20));
         await ConcurrentInstancesAdmitOnlyOneUnresolvedIntentAsync();
         Console.WriteLine("PASS linked-character host intent journal (real tempfile/fsync, append-only uncertainty and exact current-effect observation; no Core receipt/device/power-cut proof)");
+    }
+
+    private static void EmptyHistoryDoesNotCreateJournal()
+    {
+        using var fixture = new Fixture();
+        Require(fixture.Journal().ReadAll(Owner, false).Count == 0
+            && !Directory.Exists(fixture.Directory),
+            "Reading fresh recovery history failed or created journal storage.");
+        Directory.CreateDirectory(fixture.Directory);
+        Require(fixture.Journal().ReadAll(Owner, false).Count == 0
+            && !Directory.EnumerateFileSystemEntries(fixture.Directory).Any(),
+            "Reading an empty journal failed or wrote recovery entries.");
+    }
+
+    private static void PlatformAliasRebasesOnlyTheTrustedApplicationRoot()
+    {
+        using var fixture = new Fixture();
+        using var aliases = new Fixture();
+        string alias = Path.Combine(aliases.Root, "platform-app-root");
+        Directory.CreateSymbolicLink(alias, fixture.Root);
+        string state = AndroidLinkedCharacterIntentJournal.RebasePrivateStateDirectory(
+            Path.Combine(alias, "files", "state"), alias, fixture.Root);
+        Require(state == Path.Combine(fixture.Root, "files", "state"),
+            "The platform alias changed the private state suffix.");
+        var journal = new AndroidLinkedCharacterIntentJournal(state);
+        Require(journal.ReadAll(Owner, false).Count == 0 && !Directory.Exists(state),
+            "Fresh recovery under the canonical platform root created files or failed.");
+        // Existing history stays in place and is readable through the same
+        // rebased root after recreation; canonicalization is not a migration.
+        journal.Begin(Intent(fixture));
+        string intentPath = Path.Combine(state, "linked-character-intents-v1",
+            journal.ReadAll(Owner, false).Single().Intent.OperationId.ToString("N") + ".intent.json");
+        byte[] before = File.ReadAllBytes(intentPath);
+        Require(new AndroidLinkedCharacterIntentJournal(state).ReadAll(Owner, false).Count == 1
+            && File.ReadAllBytes(intentPath).SequenceEqual(before),
+            "Rebasing lost or rewrote retained history.");
+
+        using var redirected = new Fixture();
+        string child = Path.Combine(fixture.Root, "redirected-files");
+        Directory.CreateSymbolicLink(child, redirected.Root);
+        string unsafeState = AndroidLinkedCharacterIntentJournal.RebasePrivateStateDirectory(
+            Path.Combine(alias, "redirected-files", "state"), alias, fixture.Root);
+        Reject(() => new AndroidLinkedCharacterIntentJournal(unsafeState).ReadAll(Owner, false));
+        Require(!Directory.EnumerateFileSystemEntries(redirected.Root).Any(),
+            "A redirected private child was followed or modified.");
+
+        foreach (string outside in new[] { alias, aliases.Root, Path.Combine(aliases.Root, "platform-app-root-other", "state") })
+            Reject(() => AndroidLinkedCharacterIntentJournal.RebasePrivateStateDirectory(outside, alias, fixture.Root));
+        Reject(() => AndroidLinkedCharacterIntentJournal.RebasePrivateStateDirectory("relative", alias, fixture.Root));
+        Reject(() => AndroidLinkedCharacterIntentJournal.RebasePrivateStateDirectory(state, alias, "relative"));
     }
 
     private static void ReopeningRetainsTheTypedRequestAndExactSuccessor()

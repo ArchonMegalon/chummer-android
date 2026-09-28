@@ -240,6 +240,7 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>Wiederherstellung nicht verfügbar oder beschädigt. Keine Verknüpfung wurde geändert; lokale Wiederherstellungsdateien behalten.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Dies sind lokale Absichten und Zustandsbeobachtungen, keine Core-Transaktionsbelege. Ungeklärte Änderungen dürfen nicht wiederholt werden.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>Kontext geändert. Wiederherstellungsverlauf aktualisieren.</value></data>
+  <data name="LinkedRecoveryEmpty" xml:space="preserve"><value>Keine lokalen Wiederherstellungseinträge für dieses Konto.</value></data>
   <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Weiterhin ungeklärt. Keine Änderung wurde wiederholt und keine Datei entfernt.</value></data>
   <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Gewünschter Zustand bei der nächsten Revision beobachtet; keine historische Zuordnung einer Transaktion.</value></data>
   <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Vor der Übergabe gestoppt. Dieser Versuch hat den Runner nicht geändert.</value></data>

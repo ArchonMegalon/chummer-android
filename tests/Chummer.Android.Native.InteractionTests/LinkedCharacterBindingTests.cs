@@ -26,6 +26,7 @@ internal static class LinkedCharacterBindingTests
         await RealStagingOwnsUniqueFilesAndPreservesCollisionAsync();
         await LinkedCharacterDurabilityTests.RunAsync();
         await LinkedCharacterIntentJournalTests.RunAsync();
+        await RunRecoveryHistoryReadCasesAsync();
         RecoveryEntryDoesNotRequireTheOriginalRunner();
         RecoveryKeepsReadableSurfaceAndScalableControls();
         SuccessfulDocumentReplaceIsNotACheckpoint();
@@ -316,6 +317,36 @@ internal static class LinkedCharacterBindingTests
         RecoveryEntryDoesNotRequireTheOriginalRunner();
         RecoveryKeepsReadableSurfaceAndScalableControls();
         Console.WriteLine("PASS linked recovery contrast, wrapped controls and independent read-only entry");
+    }
+
+    public static async Task RunRecoveryHistoryReadCasesAsync()
+    {
+        foreach (bool corrupt in new[] { false, true })
+        {
+            using var fixture = new Fixture();
+            string journalDirectory = Path.Combine(fixture.LinkedJournalDirectory, "linked-character-intents-v1");
+            string unknownFile = Path.Combine(journalDirectory, "retained-unknown-entry");
+            if (corrupt)
+            {
+                Directory.CreateDirectory(journalDirectory);
+                File.WriteAllText(unknownFile, "Keep uncertain recovery bytes.");
+            }
+            var recovery = new LinkedCharacterRecoveryPage(fixture.Coordinator);
+            using var appearance = new CancellationTokenSource();
+            typeof(LinkedCharacterRecoveryPage).GetField("_appearance", Private)!.SetValue(recovery, appearance);
+            await ((Task)typeof(LinkedCharacterRecoveryPage).GetMethod("ReadAsync", Private)!
+                .Invoke(recovery, new object?[] { null })!).WaitAsync(TimeSpan.FromSeconds(5));
+            string expected = corrupt
+                ? PhoneStrings.Get("LinkedRecoveryUnavailable", "Recovery is unavailable or damaged. No link was changed; keep local recovery files.")
+                : PhoneStrings.Get("LinkedRecoveryEmpty", "No local recovery entries for this account.");
+            Require(Elements(recovery).OfType<Label>().Any(label => label.Text == expected),
+                "Recovery did not distinguish a successfully read empty history from damaged data.");
+            Require(fixture.Requests.Count == 0 && (corrupt
+                ? File.ReadAllText(unknownFile) == "Keep uncertain recovery bytes."
+                : !Directory.Exists(journalDirectory)),
+                "Reading recovery mutated a runner, created history or removed uncertain bytes.");
+        }
+        Console.WriteLine("PASS recovery empty/error native page read paths preserve all files and dispatch no mutation");
     }
 
     private static void RecoveryKeepsReadableSurfaceAndScalableControls()
