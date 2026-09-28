@@ -105,6 +105,43 @@ remained inert. The API-36 screenshot and hierarchy retain the readable wrapped
 copy at 150% font. This verifies the changed hint on Android, not a complete
 Priority character or all build methods.
 
+## Confirmed prerequisite return — additional functional correction
+
+On the rank-hint APK, Sum-to-Ten E/E/A/A/C, Human/Mundane confirmed once
+and saved revision 2/2. Android toolbar Up then stranded the parent page on
+`creation-prerequisite-stale-workspace-revision`: it still revalidated the
+pre-commit revision. The save itself had succeeded.
+
+The parent now accepts only its child's successful, current, receipt-bound
+post-confirmation state as its next revalidation input. Appearance still
+rereads Core under the issued owner. Ambient cache replacement, old controls,
+failed postcommit reloads and owner A→B→A remain rejected.
+
+Based on `289cf91a` (PR194), the local managed build passed with zero warnings
+and errors. All 16 parent-readiness cases passed, including new real managed
+page/Core confirmation-and-return cases for Priority and Sum-to-Ten, owner ABA,
+postcommit reload failure and retained-callback rejection. An initial test
+harness assertion incorrectly classified these newly committing cases as
+read-only; its failed log is retained. It is not claimed as a clean product-red
+regression result. The corrected harness and production fix passed together.
+
+The affected local Debug x64 APK built in 59.43s with zero warnings/errors:
+`1f42857258ea0074f747dc4a31a0aab7a76f64f8733d76e255c41830c3b5296b`.
+On API36 at 150% font, Priority D/E/A/B/C with Human/Mundane confirmed once.
+Toolbar Up returned to a usable parent with saved revision 2/2 and restored
+assignments; no stale-revision error appeared. Returning to Create and a
+verified force-stop/cold launch (PID4850 → absent → PID6738) retained the same
+Priority workspace, saved draft and revision. Workspace bytes remained:
+`7213d1b0c28b4027d8e3e50295c1fe5f73a01ec9c8ebce25df799b9646571569`.
+This is prerequisite/return/restart evidence, not a complete Priority Career
+walkthrough. No new Play release, signing-key access or provider write occurred.
+
+The next native finding is separate: after the confirmed Sum-to-Ten draft,
+the Create dashboard still disabled Attributes and showed an unavailable
+exact budget after its loaders settled. The underlying cause has not yet
+been established. Do not weaken admission or claim a completed Sum-to-Ten
+Creation route from the passing managed finalization fixture.
+
 ## Remaining limits
 
 - Priority and Sum-to-Ten complete fresh device walkthroughs are separate from

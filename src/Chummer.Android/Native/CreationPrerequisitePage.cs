@@ -23,7 +23,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         HeightRequest = 24
     };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
-    private readonly CharacterCreationPrerequisiteState _originalAuthority;
+    private CharacterCreationPrerequisiteState _revalidationAuthority;
     private CharacterCreationPrerequisiteState? _dashboardAuthority;
     private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? _appearanceFailure;
     private long _renderGeneration;
@@ -38,7 +38,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         RunnerSessionCoordinator coordinator,
         CharacterCreationPrerequisiteState dashboardAuthority) : base(coordinator)
     {
-        _originalAuthority = _dashboardAuthority = dashboardAuthority
+        _revalidationAuthority = _dashboardAuthority = dashboardAuthority
             ?? throw new ArgumentNullException(nameof(dashboardAuthority));
         Title = WizardStrings.Get("Priority.PageTitle", "Priorities");
         AutomationId = "creation-prerequisite-page";
@@ -102,7 +102,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         try
         {
-            var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_originalAuthority, cancellationToken,
+            var loaded = await Coordinator.RevalidateCreationPrerequisiteAsync(_revalidationAuthority, cancellationToken,
                 () => IsCurrentAppearanceGeneration(appearance));
             if (!IsCurrentAppearanceGeneration(appearance))
                 return;
@@ -781,7 +781,21 @@ public sealed class CreationPrerequisitePage : NativePageBase
             prepared,
             assignments,
             selections,
-            state.BuildMethod));
+            state.BuildMethod,
+            AcceptConfirmedReturn));
+    }
+
+    private void AcceptConfirmedReturn(CreationPrerequisitePhoneConfirmResult confirmation)
+    {
+        // Only this page's explicitly confirmed child may advance its return
+        // binding. Never replace it with the ambient dashboard/cache: an owner
+        // switch, unrelated mutation or failed reload must still fail closed.
+        if (confirmation is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, RefreshedState: { } state, Blockers.Count: 0 }
+            && Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, state))
+            _revalidationAuthority = state;
+        // OnAppearing still re-reads Core under the issued owner and renders a
+        // fresh draft. No old control/preview is made current here.
     }
 
     private void AddBlockers(
