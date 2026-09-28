@@ -9,6 +9,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
     private readonly AndroidSurfaceCopy _copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
     private RetainedOriginBook? _book;
+    private OriginBookReaderLoad? _load;
     private string? _notice;
     private readonly Dictionary<string, AndroidOriginChapterResult> _chapterStatus = new(StringComparer.Ordinal);
     private CancellationTokenSource? _pollLifetime;
@@ -45,8 +46,12 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     {
         long appearance = CaptureAppearanceGeneration();
         _book = null;
+        _load = null;
         _notice = null;
-        _book = await Coordinator.LoadRetainedOriginBookAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
+        var loaded = await Coordinator.LoadOriginBookReaderAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
+        if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return;
+        _load = loaded;
+        _book = loaded.Book;
         await ReadMissingChapterAsync(appearance, ct);
         if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
     }
@@ -57,7 +62,16 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (_book is not { } book || !Coordinator.IsRetainedOriginBookCurrent(book))
         {
             _book = null;
-            _body.Add(NativeTheme.Body(_copy["Origin.BookUnavailable"]));
+            if (_load is { OpeningNotStarted: true } load && Coordinator.CanReadRetainedOriginBook(load.Display))
+            {
+                _body.Add(NativeTheme.Title(_copy["Origin.BookNotStarted"]));
+                var setup = NativeTheme.Body(_copy["Origin.OpeningSetupRequired"]);
+                setup.AutomationId = "origin-book-opening-setup";
+                _body.Add(setup);
+                _body.Add(NativeTheme.Body(_copy["Origin.BookNotStartedDetail"], NativeTheme.Muted));
+                AddReturnToRunner();
+            }
+            else _body.Add(NativeTheme.Body(_copy["Origin.BookUnavailable"]));
             return;
         }
         _body.Add(NativeTheme.Title(book.RunnerName));
@@ -69,6 +83,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 ? "Origin.OpeningSetupReady" : "Origin.OpeningSetupRequired"], NativeTheme.Muted);
             opening.AutomationId = "origin-book-opening-setup";
             _body.Add(opening);
+            if (!book.OpeningSetupComplete) AddReturnToRunner();
         }
         long appearance = CaptureAppearanceGeneration();
         var epub = NativeTheme.ReadingButton(_copy["Origin.ExportEpub"]);
@@ -242,6 +257,18 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         StartSceneWatch(appearance);
     }
 
+    private void AddReturnToRunner()
+    {
+        long appearance = CaptureAppearanceGeneration();
+        var back = NativeTheme.ReadingButton(_copy["Origin.BookReturnToRunner"]);
+        back.AutomationId = "origin-book-return-to-runner";
+        back.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (IsCurrentAppearanceGeneration(appearance)) await Navigation.PopAsync();
+        });
+        _body.Add(back);
+    }
+
     private void StartSceneWatch(long appearance)
     {
         if (_sceneLifetime is not null || _sceneObservationPaused || _book is not { } book
@@ -403,6 +430,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _sceneObservationPaused = false;
         _watchPending = false; _readFailures = 0; _chapterStatus.Clear();
         _book = null;
+        _load = null;
         _body.Clear();
     }
 }
