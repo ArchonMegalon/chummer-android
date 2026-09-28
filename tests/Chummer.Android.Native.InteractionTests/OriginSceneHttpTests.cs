@@ -10,6 +10,11 @@ internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunOriginSceneHttpCasesAsync()
     {
+        var legacy = new OriginBookReadingState("owner", "workspace", []);
+        string legacyJson = System.Text.Json.JsonSerializer.Serialize(legacy);
+        Require(legacyJson == "{\"Owner\":\"owner\",\"Workspace\":\"workspace\",\"Chapters\":[]}"
+            && legacy.Digest == Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(legacyJson))),
+            "An old reading edition gained image consent or changed digest on upgrade.");
         foreach (string chapter in new[] { "First paragraph.\n\nNext paragraph.", "First paragraph.\r\n\r\nNext paragraph.",
             string.Concat(Enumerable.Repeat("🌲Ä", 1025)) })
         {
@@ -56,6 +61,7 @@ internal static partial class AfterRunAuthorityHarness
             var owner = fixture.Owner.Capture();
             await transport.RequestSceneAsync(owner, source, prose, excerpt, alt, false);
             await transport.RequestSceneAsync(owner, source, prose, "invented scene", alt, true);
+            await transport.RequestAutomaticSceneAsync(owner, source, prose, false);
             await transport.DecideSceneAsync(owner, source, prose, imageHash, true, false);
             Require(fixture.SceneRequests == 0, "Missing scene consent or invented text reached Hub.");
             Require((await transport.ReadSceneAsync(owner, source, prose)).Outcome == AndroidOriginSceneOutcome.NotFound,
@@ -119,6 +125,31 @@ internal static partial class AfterRunAuthorityHarness
                 fixture.SceneResponse = (_, _) => ContinuationJsonResponse(ContinuityWire(original));
                 Require((await transport.ReadSceneAsync(owner, source, prose)).Image?.ImageHash == imageHash,
                     "An exact original or growing-protagonist illustration was rejected.");
+            }
+            fixture.SceneResponse = (path, body) =>
+            {
+                Require(path.EndsWith("/request", StringComparison.Ordinal) && body["automaticInsertion"]!.GetValue<bool>()
+                    && body["externalProcessingConsent"]!.GetValue<bool>() && body["sceneExcerpt"]!.GetValue<string>() == ""
+                    && body["altText"]!.GetValue<string>() == "", "Automatic artwork sent a local scene override or omitted consent.");
+                var wire = ContinuityWire(); wire.Remove("imageBase64");
+                wire["manifest"]!["insertionPolicy"] = "automatic-private-book/v1";
+                return ContinuationJsonResponse(wire);
+            };
+            Require((await transport.RequestAutomaticSceneAsync(owner, source, prose, true)).State == "persisted",
+                "Automatic private retention was not admitted.");
+            var autoWire = ContinuityWire(); autoWire["manifest"]!["insertionPolicy"] = "automatic-private-book/v1";
+            fixture.SceneResponse = (_, _) => ContinuationJsonResponse(autoWire);
+            Require((await transport.ReadSceneAsync(owner, source, prose)).Image?.InsertionPolicy == "automatic-private-book/v1",
+                "Authenticated automatic insertion policy was lost.");
+            foreach (var attack in new Action<JsonObject>[] {
+                w => w["state"] = "review", w => w["manifest"]!["insertionPolicy"] = "public-auto/v1",
+                w => { w["manifest"]!.AsObject().Remove("protagonistId"); w["manifest"]!.AsObject().Remove("referenceSceneId");
+                    w["manifest"]!.AsObject().Remove("referenceImageHash"); } })
+            {
+                var wire = (JsonObject)autoWire.DeepClone(); attack(wire);
+                fixture.SceneResponse = (_, _) => ContinuationJsonResponse(wire);
+                Require((await transport.ReadSceneAsync(owner, source, prose)).Image is null,
+                    "Manual review, unknown policy or missing character reference became an automatic insertion.");
             }
             var continuityAttacks = new Action<JsonObject>[]
             {
@@ -202,7 +233,7 @@ internal static partial class AfterRunAuthorityHarness
                 && fixture.SceneRequests == before + 1, "Pre-canceled scene read reached the network.");
         }
         foreach (bool signing in new[] { true, false })
-        foreach (int operation in new[] { 0, 1, 2 })
+        foreach (int operation in new[] { 0, 1, 2, 3 })
         {
             using var fixture = new ContinuationAccountFixture();
             await fixture.LinkAsync("subject", "scene-A");
@@ -218,6 +249,7 @@ internal static partial class AfterRunAuthorityHarness
             {
                 0 => transport.ReadSceneAsync(owner, source, prose),
                 1 => transport.RequestSceneAsync(owner, source, prose, excerpt, alt, true),
+                3 => transport.RequestAutomaticSceneAsync(owner, source, prose, true),
                 _ => transport.DecideSceneAsync(owner, source, prose, imageHash, true, true)
             };
             await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -228,7 +260,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(result.Outcome == AndroidOriginSceneOutcome.Unauthorized && result.Image is null && !result.RetryableReadFailure
                 && fixture.SceneRequests == (signing ? 0 : 1), "Owner A→B→A accepted a retired private illustration.");
         }
-        Console.WriteLine("PASS signed scene consent, exact image admission/review, original/growing protagonist references, 29 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");
+        Console.WriteLine("PASS signed scene consent, automatic private insertion, original/growing protagonist references, 32 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");
     }
 
     private sealed class SceneChunkStream(byte[] bytes) : MemoryStream(bytes, writable: false)

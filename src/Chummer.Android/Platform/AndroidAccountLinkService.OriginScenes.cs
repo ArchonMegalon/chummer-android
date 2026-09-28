@@ -14,10 +14,11 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
         string ChapterId, string ChapterDigest, string TextDigest, string AltText, string ContentType,
         int ContentLengthBytes, string ContentHash, int Width, int Height, string Provider,
         string ProviderReceiptDigest, string AdmissionDigest, bool PublicationAuthorized,
-        string? ProtagonistId = null, string? ReferenceSceneId = null, string? ReferenceImageHash = null);
+        string? ProtagonistId = null, string? ReferenceSceneId = null, string? ReferenceImageHash = null,
+        string? InsertionPolicy = null);
     private sealed record SceneWire(string AssetId, string State, bool PublicationAuthorized,
         SceneManifest? Manifest = null, string? ImageBase64 = null);
-    private sealed record SceneConsent(string Excerpt, string AltText);
+    private sealed record SceneConsent(string Excerpt, string AltText, bool AutomaticInsertion = false);
     private sealed record SceneDecision(string ImageHash, bool Approve);
 
     public Task<AndroidOriginSceneResult> ReadSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
@@ -34,6 +35,12 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
         string acceptedText, string expectedImageHash, bool approve, bool explicitlyConfirmed, CancellationToken ct = default)
         => explicitlyConfirmed && ChapterHex(expectedImageHash)
             ? SceneRequestAsync(owner, source, acceptedText, ct, decision: new(expectedImageHash, approve))
+            : Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
+
+    public Task<AndroidOriginSceneResult> RequestAutomaticSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string acceptedText, bool externalProcessingConsent, CancellationToken ct = default)
+        => externalProcessingConsent
+            ? SceneRequestAsync(owner, source, acceptedText, ct, new("", "", true))
             : Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
 
     private static bool SceneText(string? value, int maximumBytes) => !string.IsNullOrWhiteSpace(value)
@@ -71,7 +78,8 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
             StoredGrant grant = await ReadContinuationGrantAsync(expected, ct);
             object body = consent is not null
                 ? new { installationId = grant.InstallationId, chapterRequestId, textDigest,
-                    sceneExcerpt = consent.Excerpt, altText = consent.AltText, externalProcessingConsent = true }
+                    sceneExcerpt = consent.Excerpt, altText = consent.AltText, externalProcessingConsent = true,
+                    automaticInsertion = consent.AutomaticInsertion }
                 : decision is not null
                     ? new { installationId = grant.InstallationId, chapterRequestId, textDigest,
                         expectedImageHash = decision.ImageHash, approve = decision.Approve, explicitlyConfirmed = true }
@@ -120,6 +128,8 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
                     if (m.ProtagonistId != protagonist || !ChapterHex(m.ReferenceSceneId) || !ChapterHex(m.ReferenceImageHash)
                         || (m.ReferenceSceneId == assetId && m.ReferenceImageHash != m.ContentHash)) throw new JsonException();
                 }
+                if (m.InsertionPolicy is not null && (m.InsertionPolicy != "automatic-private-book/v1"
+                    || wire.State != "persisted" || m.ProtagonistId is null)) throw new JsonException();
                 if (!mutation)
                 {
                     if (wire.ImageBase64 is null || wire.ImageBase64.Length > 4 * ((4 * 1024 * 1024 + 2) / 3)) throw new JsonException();
@@ -134,7 +144,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
                     ct.ThrowIfCancellationRequested();
                     RequireContinuationOwnerCurrent(expected);
                     var result = new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, wire.State,
-                        new(m.AltText, m.ContentHash, m.Provider, m.ProviderReceiptDigest, image));
+                        new(m.AltText, m.ContentHash, m.Provider, m.ProviderReceiptDigest, image, m.InsertionPolicy));
                     image = null; // caller takes custody; coordinator clears after copying into its retained preview
                     return result;
                 }

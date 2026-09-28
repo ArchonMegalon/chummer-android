@@ -101,6 +101,11 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
     // Omission preserves historical file digests and old request identities.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public OriginStoryProfile? StoryProfile { get; init; }
+    // Only the updated illustrated-book consent grants this scope. Old saved
+    // editions omit it and keep their exact bytes/digests and provider consent.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IllustrationPolicy { get; init; }
+    internal const string AutomaticIllustrations = "automatic-private-book/v1";
     internal string Digest
     {
         get
@@ -218,6 +223,7 @@ public sealed class OriginBookReadingStore(string stateDirectory)
 
     private static bool Valid(OriginBookReadingState state)
         => (state.StoryProfile is null || state.StoryProfile.IsValid && !state.StoryProfile.IsEmpty)
+            && (state.IllustrationPolicy is null or OriginBookReadingState.AutomaticIllustrations)
             && state.Chapters is { Count: <= 128 }
             && state.Chapters.All(c => c is not null)
             && state.Chapters.Select(c => c.ChapterId).Distinct(StringComparer.Ordinal).Count() == state.Chapters.Count

@@ -928,12 +928,55 @@ internal static partial class AfterRunAuthorityHarness
                     "Refreshing the saved reading edition failed to reconcile acceptance or recreated a paid job.");
                 await Click("origin-authoring-refresh");
                 Require(authoringProbe.Acceptances == 2, "A confirmed reader acknowledgement was resent unnecessarily.");
+                var imageStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var imageRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                authoringProbe.SceneBytes = LifeSceneInputProbe.Png.ToArray();
+                authoringProbe.BeforeAutomaticSceneReturn = async () => { imageStarted.SetResult(); await imageRelease.Task; };
                 await Back();
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text == "Synthetic transport chapter for explicit review."),
                     "The accepted transport draft did not return to the reader.");
                 Console.WriteLine("PASS actual MAUI chapter consent, read-before-create, explicit adoption, offline acceptance recovery and book return");
-                authoringProbe.SceneBytes = LifeSceneInputProbe.Png.ToArray();
-                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                await imageStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(!IssuedElements(Current()).Any(e => e.AutomationId == $"origin-scene-chapter-{chapter.Sequence}")
+                    && Element<Button>("origin-book-export-epub").IsEnabled && authoringProbe.SceneDecisions == 0
+                    && authoringProbe.SceneRequests == 0, "Automatic artwork still required an image picker or human image decision.");
+                await Click("origin-book-export-epub");
+                Require(bookOutput.Epub.Length > 0, "Pending artwork blocked full-book export.");
+                imageRelease.SetResult();
+                var imageWait = System.Diagnostics.Stopwatch.StartNew();
+                while (!IssuedElements(Current()).Any(e => e.AutomationId == $"origin-book-scene-{chapter.Sequence}")
+                    && imageWait.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(10);
+                Require(Element<Image>($"origin-book-scene-{chapter.Sequence}").Source is StreamImageSource
+                    && authoringProbe.AutomaticSceneRequests == 1 && authoringProbe.SceneDecisions == 0,
+                    "Automatically retained image did not appear with the full chapter.");
+                await Click("origin-book-export-epub");
+                using (var epubWithAutoArt = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
+                {
+                    using var picture = epubWithAutoArt.GetEntry("EPUB/images/scene-1.png")!.Open();
+                    using var captured = new MemoryStream(); picture.CopyTo(captured);
+                    Require(captured.ToArray().SequenceEqual(LifeSceneInputProbe.Png), "Automatic image was absent from the downloadable EPUB.");
+                }
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await Appear();
+                Require(Element<Image>($"origin-book-scene-{chapter.Sequence}").Source is StreamImageSource
+                    && authoringProbe.AutomaticSceneRequests == 1
+                    && new OriginBookReadingStore(runtime.StateDirectory).Load(owner.Owner.Value, id.Value).IllustrationPolicy
+                        == OriginBookReadingState.AutomaticIllustrations,
+                    "Reader reopen lost book consent or replayed the retained illustration.");
+                Console.WriteLine("PASS automatic private illustration without picker/review, responsive full-text export, exact image EPUB and cold reopen without replay");
+
+                // Preserve coverage of historical manual admissions and local
+                // artwork without re-exposing their picker in the new reader.
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                var legacyReadingStore = new OriginBookReadingStore(runtime.StateDirectory);
+                var modernReading = legacyReadingStore.Load(owner.Owner.Value, id.Value);
+                legacyReadingStore.Save(modernReading, modernReading with { IllustrationPolicy = null }, () => true, default);
+                var legacySceneStore = new OriginBookSceneStore(runtime.StateDirectory);
+                var modernScenes = legacySceneStore.Load(owner.Owner.Value, id.Value);
+                legacySceneStore.Save(modernScenes, new(modernScenes.Owner, modernScenes.Workspace, []), () => true, default);
+                authoringProbe.ResetSyntheticScenes();
+                await Appear();
+                await OpenLegacyScene();
                 Require(!Element<Switch>("origin-scene-consent").IsToggled && authoringProbe.SceneReads == 0
                     && authoringProbe.SceneRequests == 0, "Opening illustrations granted consent or contacted a provider.");
                 Element<Editor>("origin-scene-description").Text = "Synthetic chapter scene";
@@ -1031,14 +1074,14 @@ internal static partial class AfterRunAuthorityHarness
                     using var captured = new MemoryStream(); picture.CopyTo(captured);
                     Require(captured.ToArray().SequenceEqual(LifeSceneInputProbe.Png), "The generated scene did not reach the offline EPUB.");
                 }
-                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                await OpenLegacyScene();
                 var removeScenePage = Current();
                 await Click("origin-scene-remove");
                 IssuedPageLifecycle(removeScenePage, "OnDisappearing");
                 Require(authoringProbe.SceneDecisions == 2 && authoringProbe.SceneRequests == 1,
                     "Removing the local copy changed private remote approval or started another render.");
                 Console.WriteLine("PASS actual MAUI exact scene consent, read-before-create, unknown approval recovery, explicit adoption, cold storage and offline EPUB");
-                await Click($"origin-scene-chapter-{chapter.Sequence}");
+                await OpenLegacyScene();
                 Require(Current() is OriginBookScenePage && !Element<Button>("origin-scene-save").IsEnabled,
                     "Scene selection did not require a reviewed image.");
                 Require(Element<Button>("origin-scene-choose").IsEnabled
@@ -1095,8 +1138,9 @@ internal static partial class AfterRunAuthorityHarness
                 Require(Current() is RetainedOriginBookPage
                     && Element<Image>($"origin-book-scene-{chapter.Sequence}").Source is StreamImageSource,
                     "Confirmed scene did not return to the readable book.");
+                int beforeSceneExport = bookOutput.EpubDeliveries;
                 await Click("origin-book-export-epub");
-                Require(bookOutput.EpubDeliveries == 2, "The scene reader did not deliver an EPUB through Save As.");
+                Require(bookOutput.EpubDeliveries == beforeSceneExport + 1, "The scene reader did not deliver an EPUB through Save As.");
                 using (var epub = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
                 {
                     using var picture = epub.GetEntry("EPUB/images/scene-1.png")!.Open();
@@ -1210,6 +1254,17 @@ internal static partial class AfterRunAuthorityHarness
             }
             async Task Back()
             { IssuedPageLifecycle(Current(), "OnDisappearing"); await navigation.PopAsync(false); await Appear(); }
+            async Task OpenLegacyScene()
+            {
+                var retained = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
+                Require(retained is not null && retained.Readings?.IllustrationPolicy is null,
+                    "Legacy artwork test unexpectedly gained automatic book consent.");
+                var legacyChapter = retained!.Chapters.Single(c => retained.Reading(c)?.Selected is not null);
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await navigation.PushAsync(new OriginBookScenePage(runtime.Coordinator, retained, legacyChapter,
+                    AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name)), false);
+                await Appear();
+            }
         });
         await ui.RunAsync(async () =>
         {

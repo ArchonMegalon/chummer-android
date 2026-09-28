@@ -14,6 +14,10 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private CancellationTokenSource? _pollLifetime;
     private bool _watchPending;
     private int _readFailures;
+    private CancellationTokenSource? _sceneLifetime;
+    private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AndroidOriginSceneResult> _sceneStatus = new(StringComparer.Ordinal);
+    private bool _sceneObservationPaused;
 
     public RetainedOriginBookPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
@@ -194,17 +198,20 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 eta.AutomationId = $"origin-reader-eta-{chapter.Sequence}";
                 _body.Add(eta);
             }
-            if (Coordinator.CanSelectOriginBookScene(book))
+            if (book.Scene(chapter) is null && Coordinator.CanAutomaticallyIllustrateOriginBook(book)
+                && Coordinator.CanRequestOriginBookScene(book, chapter))
             {
-                var illustration = NativeTheme.ReadingButton(_copy["Origin.SceneTitle"]);
-                illustration.AutomationId = $"origin-scene-chapter-{chapter.Sequence}";
-                illustration.Clicked += async (_, _) => await RunAsync(async () =>
+                _sceneStatus.TryGetValue(chapter.ChapterId, out var imageStatus);
+                bool pending = !_sceneObservationPaused && (imageStatus is null || imageStatus.State == "dispatching");
+                var status = NativeTheme.Body(_copy[pending ? "Origin.SceneAutomatic" : "Origin.SceneAutomaticPaused"], NativeTheme.Muted);
+                status.AutomationId = $"origin-scene-status-{chapter.Sequence}";
+                _body.Add(status);
+                if (pending)
                 {
-                    if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                        && Coordinator.CanSelectOriginBookScene(book))
-                        await Navigation.PushAsync(new OriginBookScenePage(Coordinator, book, chapter, _copy));
-                });
-                _body.Add(illustration);
+                    _body.Add(new ProgressBar { Progress = imageStatus?.State == "dispatching" ? 0.5 : 0,
+                        ProgressColor = NativeTheme.Ink, AutomationId = $"origin-scene-progress-{chapter.Sequence}" });
+                    _body.Add(NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted));
+                }
             }
             if (Coordinator.PrepareOriginChapterSource(book, chapter) is not null)
             {
@@ -232,6 +239,84 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             }
         }
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookMetadata", "chummer.run"), NativeTheme.Muted));
+        StartSceneWatch(appearance);
+    }
+
+    private void StartSceneWatch(long appearance)
+    {
+        if (_sceneLifetime is not null || _sceneObservationPaused || _book is not { } book
+            || !Coordinator.CanAutomaticallyIllustrateOriginBook(book)) return;
+        var lifetime = new CancellationTokenSource(); _sceneLifetime = lifetime;
+        _ = WatchScenesAsync(appearance, lifetime);
+    }
+
+    private async Task WatchScenesAsync(long appearance, CancellationTokenSource lifetime)
+    {
+        // Never hold the page action gate across provider I/O: the complete
+        // chapter, navigation and export stay usable while an image is pending.
+        await Task.Yield();
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        int failures = 0;
+        RetainedOriginBook? observedBook = null;
+        try
+        {
+            while (!lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+                && elapsed.Elapsed < TimeSpan.FromMinutes(10) && _book is { } book
+                && Coordinator.CanAutomaticallyIllustrateOriginBook(book))
+            {
+                observedBook = book;
+                var chapter = book.Chapters.OrderBy(c => c.Sequence).FirstOrDefault(c => book.Scene(c) is null
+                    && Coordinator.CanRequestOriginBookScene(book, c) && (!_sceneChecked.Contains(c.ChapterId)
+                        || !_sceneStatus.TryGetValue(c.ChapterId, out var status) || status.State is "dispatching" or "uncertain"
+                            || status.UnknownRemoteOutcome || status.RetryableReadFailure));
+                if (chapter is null) break;
+                bool create = _sceneChecked.Add(chapter.ChapterId);
+                bool Current() => !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+                    && ReferenceEquals(_book, book);
+                var (result, updated) = await Coordinator.SyncAutomaticOriginBookSceneAsync(book, chapter,
+                    create, Current, lifetime.Token);
+                if (!Current() || updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated)) break;
+                _sceneStatus.TryGetValue(chapter.ChapterId, out var previous);
+                _book = updated;
+                _sceneStatus[chapter.ChapterId] = result;
+                if (!ReferenceEquals(book, updated) || result != previous)
+                    await RunWithConditionalRefreshAsync(() => Task.FromResult(!lifetime.IsCancellationRequested
+                        && IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, updated)));
+                if (result.RetryableReadFailure && ++failures >= 3) { _sceneObservationPaused = true; break; }
+                if (!result.RetryableReadFailure) failures = 0;
+                if (result.State is "dispatching" or "uncertain" || result.UnknownRemoteOutcome || result.RetryableReadFailure)
+                    await Task.Delay(TimeSpan.FromSeconds(15), lifetime.Token);
+                else if (updated.Scene(chapter) is null)
+                {
+                    // Do not charge later scenes when their original character
+                    // reference is still absent, rejected or awaiting review.
+                    _sceneObservationPaused = true;
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) when (error is IOException or InvalidOperationException or ArgumentException)
+        {
+            // Do not retry a failed durable insertion or expose private provider
+            // errors. The authenticated existing image is recoverable by read.
+            if (IsCurrentAppearanceGeneration(appearance)) _sceneObservationPaused = true;
+        }
+        finally
+        {
+            if (elapsed.Elapsed >= TimeSpan.FromMinutes(10) && IsCurrentAppearanceGeneration(appearance))
+                _sceneObservationPaused = true;
+            if (ReferenceEquals(_sceneLifetime, lifetime)) _sceneLifetime = null;
+            if (_sceneObservationPaused && !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance))
+                await RunWithConditionalRefreshAsync(() => Task.FromResult(!lifetime.IsCancellationRequested
+                    && IsCurrentAppearanceGeneration(appearance)));
+            // A simultaneous full-text read can issue a newer retained edition.
+            // Reacquire that handle; _sceneChecked still forbids another write
+            // for the image whose response belonged to the retired edition.
+            if (!lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+                && observedBook is not null && !ReferenceEquals(_book, observedBook)) StartSceneWatch(appearance);
+            lifetime.Dispose();
+        }
     }
 
     private async Task<bool> ReadMissingChapterAsync(long appearance, CancellationToken ct)
@@ -313,6 +398,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     {
         base.OnDisappearing();
         _pollLifetime?.Cancel(); _pollLifetime = null;
+        _sceneLifetime?.Cancel(); _sceneLifetime = null;
+        _sceneChecked.Clear(); _sceneStatus.Clear();
+        _sceneObservationPaused = false;
         _watchPending = false; _readFailures = 0; _chapterStatus.Clear();
         _book = null;
         _body.Clear();

@@ -181,7 +181,7 @@ internal sealed class OriginBookAuthoringPage : NativePageBase
         if (!automatic) Refresh();
         (AndroidOriginChapterResult result, RetainedOriginBook? updated) response;
         try { response = await Coordinator.SyncOriginChapterAsync(book, _chapter, source, create, current, ct,
-            reconcileReaderAcceptance: !automatic); }
+            reconcileReaderAcceptance: !automatic, consentToAutomaticIllustrations: create && _consent); }
         finally { _busy = false; }
         var (result, updated) = response;
         // Staging may retire book, so test the issued updated edition rather than

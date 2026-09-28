@@ -435,12 +435,22 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
     public int SceneRequests { get; private set; }
     public int SceneReads { get; private set; }
     public int SceneDecisions { get; private set; }
+    public int AutomaticSceneRequests { get; private set; }
+    public Func<Task>? BeforeAutomaticSceneReturn { get; set; }
     public bool FailSceneDecision { get; set; }
     public bool FailSceneRead { get; set; }
     public AndroidOriginSceneResult? SceneReadOverride { get; set; }
     public byte[] SceneBytes { get; set; } = [];
     private string? _sceneState;
     private string _sceneAlt = "";
+    private string? _insertionPolicy;
+
+    public void ResetSyntheticScenes()
+    {
+        SceneRequests = SceneReads = SceneDecisions = AutomaticSceneRequests = 0;
+        _sceneState = _insertionPolicy = null; _sceneAlt = "";
+        BeforeAutomaticSceneReturn = null;
+    }
 
     private void RequireChapterSource(OriginChapterSource source)
     {
@@ -457,7 +467,7 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
         if (FailSceneRead) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable));
         if (_sceneState is null) return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.NotFound));
         var image = _sceneState is "review" or "persisted" ? new AndroidOriginSceneImage(_sceneAlt,
-            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(SceneBytes)), "onemin", new string('e', 64), SceneBytes.ToArray()) : null;
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(SceneBytes)), "onemin", new string('e', 64), SceneBytes.ToArray(), _insertionPolicy) : null;
         return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, _sceneState, image));
     }
 
@@ -470,6 +480,20 @@ public class OriginAuthoringPageAccount : StrictPageProxy, IAndroidOriginChapter
             throw new InvalidOperationException("No scene or acknowledged prose consent.");
         SceneRequests++; _sceneState ??= "review"; _sceneAlt = altText;
         return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, _sceneState));
+    }
+
+    public async Task<AndroidOriginSceneResult> RequestAutomaticSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
+        string acceptedText, bool externalProcessingConsent, CancellationToken ct = default)
+    {
+        RequireChapterSource(source);
+        if (!externalProcessingConsent || _job?.ReaderAcceptedTextDigest != Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(acceptedText))))
+            throw new InvalidOperationException("Missing illustrated-book consent or exact accepted prose.");
+        AutomaticSceneRequests++;
+        if (BeforeAutomaticSceneReturn is { } pause) await pause();
+        _sceneState = "persisted"; _sceneAlt = "The same growing character";
+        _insertionPolicy = "automatic-private-book/v1";
+        return new(AndroidOriginSceneOutcome.Available, _sceneState);
     }
 
     public Task<AndroidOriginSceneResult> DecideSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
