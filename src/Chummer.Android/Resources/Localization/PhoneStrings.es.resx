@@ -239,6 +239,7 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>La recuperación no está disponible o está dañada. No se cambió ningún vínculo; conserva los archivos locales de recuperación.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Son intenciones locales y observaciones del estado, no recibos de transacción de Core. No se deben repetir cambios sin resolver.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>El contexto cambió. Actualiza el historial de recuperación.</value></data>
+  <data name="LinkedRecoveryEmpty" xml:space="preserve"><value>No hay entradas locales de recuperación para esta cuenta.</value></data>
   <data name="LinkedRecoveryUnresolved" xml:space="preserve"><value>Sigue sin resolverse. No se repitió ningún cambio ni se eliminó ningún archivo.</value></data>
   <data name="LinkedRecoveryObserved" xml:space="preserve"><value>Estado solicitado observado en la revisión siguiente; sin atribuir una transacción histórica.</value></data>
   <data name="LinkedRecoveryNotDispatched" xml:space="preserve"><value>Detenido antes del envío. Este intento no cambió el runner.</value></data>

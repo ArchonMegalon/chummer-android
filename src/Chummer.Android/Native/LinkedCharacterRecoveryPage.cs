@@ -84,7 +84,9 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
             }
             var history = await _coordinator.ReadLinkedCharacterHistoryAsync(token);
             if (token.IsCancellationRequested || _appearance != appearance) return;
-            _status = status;
+            _status = status ?? (history.Count == 0
+                ? PhoneStrings.Get("LinkedRecoveryEmpty", "No local recovery entries for this account.")
+                : null);
             _records = history;
             _offset = Math.Min(_offset, Math.Max(0, ((_records.Count - 1) / PageSize) * PageSize));
         }

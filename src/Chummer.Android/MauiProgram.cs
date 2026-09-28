@@ -134,7 +134,7 @@ public static class MauiProgram
             provider.GetRequiredService<AndroidWorkspaceContinuationRoamingSync>());
         builder.Services.AddSingleton<IOwnerBoundDesktopWorkspaceRoamingSync>(provider =>
             provider.GetRequiredService<AndroidWorkspaceContinuationRoamingSync>());
-        builder.Services.AddSingleton(new AndroidLinkedCharacterIntentJournal(statePath));
+        builder.Services.AddSingleton(AndroidLinkedCharacterIntentJournal.CreateForCurrentApplication(statePath));
         builder.Services.AddSingleton<IAndroidLinkedWorkspaceReader>(provider => new AndroidLinkedWorkspaceReader(
             provider.GetRequiredService<Chummer.Presentation.IChummerClient>(),
             provider.GetRequiredService<IWorkspaceStore>(),
