@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--linked-recovery-readability")
+        {
+            LinkedCharacterBindingTests.RunRecoveryReadabilityCases();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--origin-successor-acceptance-content-root")
         {
             await AfterRunAuthorityHarness.RunOriginSuccessorAcceptanceAsync(args[1]);
@@ -177,6 +182,11 @@ internal static class Program
         if (args.Length == 1 && args[0] == "--native-dialog-busy")
         {
             await AfterRunAuthorityHarness.RunNativeDialogBusyCaseAsync();
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--android-catalog-sequencing-content-root")
+        {
+            await AfterRunAuthorityHarness.RunAndroidCatalogSequencingCasesAsync(args[1]);
             return;
         }
         if (args.Length == 2 && args[0] == "--android-continuation-native-content-root")

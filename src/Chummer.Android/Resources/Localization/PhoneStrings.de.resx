@@ -34,6 +34,7 @@
   <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Öffne Runner, die in deinem Chummer-Konto gespeichert sind.</value></data>
   <data name="LinkAccount" xml:space="preserve"><value>Konto verknüpfen</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Online-Runner laden</value></data>
+  <data name="LoadingAccountData" xml:space="preserve"><value>Kontodaten werden geladen…</value></data>
   <data name="Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="MoreRunnerFile" xml:space="preserve"><value>Runner-Datei</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>

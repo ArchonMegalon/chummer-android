@@ -16,6 +16,9 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
     public LinkedCharacterRecoveryPage(RunnerSessionCoordinator coordinator)
     {
         _coordinator = coordinator;
+        // Recovery deliberately bypasses NativePageBase initialization, but its
+        // dark text still needs the same explicit light surface in dark mode.
+        BackgroundColor = NativeTheme.Paper;
         Title = PhoneStrings.Get("LinkedRecoveryTitle", "Linked-runner recovery");
         AutomationId = "linked-runner-recovery-page";
         Content = new ScrollView { Content = _body };
@@ -114,7 +117,7 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
         _body.Add(NativeTheme.Body(PhoneStrings.Get("LinkedRecoveryBoundary",
             "These are local intents and state observations, not Core transaction receipts. Unresolved changes must not be retried.")));
         if (_status is not null) _body.Add(NativeTheme.Body(_status));
-        var refresh = NativeTheme.SecondaryButton(PhoneStrings.Get("Refresh", "Refresh"));
+        var refresh = NativeTheme.ReadingButton(PhoneStrings.Get("Refresh", "Refresh"));
         refresh.AutomationId = "linked-recovery-refresh";
         refresh.IsEnabled = !_loading;
         refresh.Clicked += async (_, _) => await ReadAsync(null);
@@ -131,7 +134,7 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
                     : PhoneStrings.Get("LinkedRecoveryPending", "Outcome unknown — retain files and do not retry.")));
             if (!entry.EffectObserved && !entry.NotDispatched)
             {
-                var check = NativeTheme.SecondaryButton(PhoneStrings.Get("LinkedRecoveryCheck", "Check current saved state"));
+                var check = NativeTheme.ReadingButton(PhoneStrings.Get("LinkedRecoveryCheck", "Check current saved state"));
                 check.AutomationId = $"linked-recovery-check-{entry.Intent.OperationId:N}";
                 check.IsEnabled = !_loading;
                 check.Clicked += async (_, _) => await ReadAsync(entry.Intent.OperationId);
@@ -145,7 +148,7 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
 
     private void AddPageButton(string key, string fallback, int delta)
     {
-        var button = NativeTheme.SecondaryButton(PhoneStrings.Get(key, fallback));
+        var button = NativeTheme.ReadingButton(PhoneStrings.Get(key, fallback));
         button.IsEnabled = !_loading;
         button.Clicked += (_, _) => { _offset += delta; Render(); };
         _body.Add(button);

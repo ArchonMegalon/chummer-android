@@ -145,6 +145,20 @@ public abstract class NativePageBase : ContentPage
         }
     }
 
+    protected Task RunLinkedDataRefreshAsync(Button button)
+        => RunAsync(async () =>
+        {
+            string label = button.Text;
+            button.IsEnabled = false;
+            button.Text = PhoneStrings.Get("LoadingAccountData", "Loading account data…");
+            try { await Coordinator.RefreshLinkedDataAsync(); }
+            finally
+            {
+                button.Text = label;
+                button.IsEnabled = true;
+            }
+        });
+
     protected async Task RunAsync(Func<Task> action)
     {
         if (!_actionGate.TryClaim())

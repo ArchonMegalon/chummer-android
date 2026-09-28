@@ -27,6 +27,7 @@ internal static class LinkedCharacterBindingTests
         await LinkedCharacterDurabilityTests.RunAsync();
         await LinkedCharacterIntentJournalTests.RunAsync();
         RecoveryEntryDoesNotRequireTheOriginalRunner();
+        RecoveryKeepsReadableSurfaceAndScalableControls();
         SuccessfulDocumentReplaceIsNotACheckpoint();
         Console.WriteLine("PASS linked-character binding (managed native controls, canonical codec and real temporary files; no device/Core mutation receipt)");
     }
@@ -308,6 +309,37 @@ internal static class LinkedCharacterBindingTests
             "Recovery cannot be refreshed independently of normal runner initialization.");
         Require(!Elements(recovery).OfType<Button>().Any(button => button.Text is "Apply" or "Retry" or "Delete")
             && fixture.Requests.Count == 0, "Recovery introduced an unreviewed mutation or replay control.");
+    }
+
+    public static void RunRecoveryReadabilityCases()
+    {
+        RecoveryEntryDoesNotRequireTheOriginalRunner();
+        RecoveryKeepsReadableSurfaceAndScalableControls();
+        Console.WriteLine("PASS linked recovery contrast, wrapped controls and independent read-only entry");
+    }
+
+    private static void RecoveryKeepsReadableSurfaceAndScalableControls()
+    {
+        using var fixture = new Fixture(account: DispatchProxy.Create<IAndroidAccountLinkService, LinkedRecoveryUnlinkedAccountProxy>());
+        var recovery = new LinkedCharacterRecoveryPage(fixture.Coordinator);
+        foreach (string? status in new string?[] { null, "Recovery is unavailable. Keep local recovery files." })
+        {
+            typeof(LinkedCharacterRecoveryPage).GetField("_status", Private)!.SetValue(recovery, status);
+            typeof(LinkedCharacterRecoveryPage).GetMethod("Render", Private)!.Invoke(recovery, null);
+            typeof(LinkedCharacterRecoveryPage).GetMethod("AddPageButton", Private)!
+                .Invoke(recovery, ["LinkedRecoveryNext", "Next", 25]);
+            Require(recovery.BackgroundColor == NativeTheme.Paper,
+                "Recovery dark text inherited the system's dark page surface.");
+            Require(Elements(recovery).OfType<Label>().All(label =>
+                label.TextColor == NativeTheme.Text && label.LineBreakMode == LineBreakMode.WordWrap),
+                "Recovery title, explanation or status lost its readable wrapped text style.");
+            Require(Elements(recovery).OfType<Button>().All(button =>
+                button.TextColor == NativeTheme.Ink && button.HeightRequest == -1
+                && button.MinimumHeightRequest >= 50 && button.LineBreakMode == LineBreakMode.WordWrap),
+                "Recovery controls clip enlarged or translated captions at a fixed height.");
+        }
+        Require(fixture.Requests.Count == 0 && fixture.LinkedJournal.ReadAll("local-single-user", true).Count == 0,
+            "Rendering recovery changed a runner or wrote recovery history.");
     }
 
     private static async Task NativeControlsRejectStaleDialogsAndPickersAsync()
