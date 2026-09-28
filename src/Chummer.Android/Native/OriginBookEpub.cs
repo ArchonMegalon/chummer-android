@@ -26,7 +26,7 @@ internal static class OriginBookEpub
     {
         // Use the same selected edition as the visible reader. Pending prose,
         // owner IDs, workspace IDs, provider receipts and raw canon stay private.
-        var chapters = book.Chapters.Select((chapter, index) => new
+        var chapters = book.Chapters.Where(book.IsExportableChapter).Select((chapter, index) => new
         {
             ChapterId = chapter.ChapterId,
             Id = $"chapter-{index + 1}",

@@ -184,10 +184,10 @@ internal static class OriginDossierBookRuntimeTests
                 && !retained.HasReadCurrentStory, "A setup summary grants authoring or story-reading authority.");
             var copy = AndroidSurfaceStrings.Resolve(locale);
             string html = retained.ToHtml(copy);
-            Require(html.Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal)
-                && html.Contains("<h2>" + System.Net.WebUtility.HtmlEncode(copy["Origin.OpeningSetupTitle"]) + "</h2>", StringComparison.Ordinal)
-                && !html.Contains("<script>", StringComparison.Ordinal), "HTML lost setup title/text or escaped markup.");
-            VerifyEpub(retained, text, locale);
+            Require(!html.Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal)
+                && retained.ReadableChapter(foundation) is null && !retained.HasExportableChapters,
+                "A setup summary was passed off as a full book chapter.");
+            VerifyNoProseExport(retained, locale);
             var page = new OriginDossierBookPage(opened with { Projection = localized }, "en-US");
             Require(Elements(page).OfType<Label>().Single(l => l.AutomationId == "origin-life-book-chapter-1").Text == text,
                 "Creation and retained readers disagree about the setup.");
@@ -248,14 +248,15 @@ internal static class OriginDossierBookRuntimeTests
                 "Creation reader did not retain the story language or shared display text.");
             var retained = new RetainedOriginBook(localized);
             Require(retained.ChapterText(retained.Chapters.Single()) == text
-                && retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
-                "Career reader and private export disagree about the legacy chapter.");
+                && retained.ReadableChapter(legacy) is null
+                && !retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
+                "A legacy decision summary leaked into full-book reading/export.");
         }
         var dollarAnswer = fixture with { CanonicalLayer = fixture.CanonicalLayer with { Facts = [
             new("literal", "accepted-life-module-answer", "Nickname: $real <script>", original.ThroughAcceptedDecisionId, [], "")
         ] } };
         Require(OriginBookChapterText.Render(dollarAnswer, legacy).Contains("Nickname: $real <script>", StringComparison.Ordinal)
-            && new RetainedOriginBook(dollarAnswer).ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains("&lt;script&gt;", StringComparison.Ordinal),
+            && !new RetainedOriginBook(dollarAnswer).ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains("<script>", StringComparison.Ordinal),
             "Literal player text was recursively interpreted as a macro or escaped unsafely.");
         bool denied = false;
         try { OriginBookChapterText.Render(book, legacy); }
@@ -296,8 +297,9 @@ internal static class OriginDossierBookRuntimeTests
                 "The Creation book did not use the story language's saved-selection display.");
             var retained = new RetainedOriginBook(localized);
             Require(retained.ChapterText(chapter) == text
-                && retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
-                "Career reading and HTML export disagree about completed selection.");
+                && retained.ReadableChapter(chapter) is null
+                && !retained.ToHtml(AndroidSurfaceStrings.Resolve("en")).Contains(System.Net.WebUtility.HtmlEncode(text), StringComparison.Ordinal),
+                "Finishing module selection was confused with a complete generated chapter.");
             Require(JsonSerializer.Serialize(localized) == original, "Rendering rewrote the archived chapter, fact or digest.");
 
             var prose = OriginBookProseDraft.Create(chapter, locale, "reviewed-finish", new string('b', 64),
@@ -309,7 +311,13 @@ internal static class OriginDossierBookRuntimeTests
             VerifyEpub(selected, prose.Text, locale);
             var pending = new RetainedOriginBook(localized, new("local-single-user", "workspace-1", [new(chapter.ChapterId, null, prose)]));
             Require(pending.ChapterText(chapter) == text, "Unconfirmed narration replaced the completed-selection display.");
-            VerifyEpub(pending, text, locale);
+            Require(pending.ReadableChapter(chapter)?.Text == prose.Text && !pending.HasReadCurrentStory,
+                "The full returned chapter is not directly readable, or reading availability silently acknowledged it.");
+            VerifyNoProseExport(pending, locale);
+            var damaged = new RetainedOriginBook(localized, new("local-single-user", "workspace-1",
+                [new(chapter.ChapterId, prose with { Text = "tampered" }, null)]));
+            Require(damaged.ReadableChapter(chapter) is null && !damaged.HasExportableChapters,
+                "Damaged full text became reader/export authority.");
             if (locale == "de-DE")
             {
                 VerifyLongEpub(localized, chapter);
@@ -481,8 +489,10 @@ internal static class OriginDossierBookRuntimeTests
         var second = chapter with { ChapterId = chapter.ChapterId + "-second", Sequence = chapter.Sequence + 1,
             Title = "Eine neue Straße – 🌆", VisibleMarkdown = "Unselected fallback must not replace the chosen story." };
         var selected = OriginBookProseDraft.Create(second, "de-DE", "long-story-fixture", new string('d', 64), prose);
+        var first = OriginBookProseDraft.Create(chapter, "de-DE", "first-story-fixture", new string('c', 64),
+            "The complete opening, not its decision summary.");
         var book = new RetainedOriginBook(projection with { VisibleChapters = [chapter, second] },
-            new("local-single-user", "workspace-1", [new(second.ChapterId, selected, null)]));
+            new("local-single-user", "workspace-1", [new(chapter.ChapterId, first, null), new(second.ChapterId, selected, null)]));
         using var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read);
         XDocument Read(string name) { using var stream = archive.GetEntry("EPUB/" + name)!.Open(); return XDocument.Load(stream); }
         XNamespace html = "http://www.w3.org/1999/xhtml";
@@ -499,6 +509,15 @@ internal static class OriginDossierBookRuntimeTests
                 .SequenceEqual(new[] { "chapter-1.xhtml", "chapter-2.xhtml" }),
             "The long book's reading order and contents disagree.");
         Console.WriteLine("PASS Origin EPUB: long story, full Unicode, escaped prose, paragraph breaks and ordered chapters");
+    }
+
+    private static void VerifyNoProseExport(RetainedOriginBook book, string locale)
+    {
+        Require(!book.HasExportableChapters, "An unfinished book enabled export.");
+        using var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(book,
+            AndroidSurfaceStrings.Resolve(locale))), ZipArchiveMode.Read);
+        Require(!archive.Entries.Any(e => e.FullName.StartsWith("EPUB/chapter-", StringComparison.Ordinal)),
+            "EPUB silently substituted decision drafts for missing full prose.");
     }
 
     private static void VerifyEpub(RetainedOriginBook book, string expectedText, string locale)

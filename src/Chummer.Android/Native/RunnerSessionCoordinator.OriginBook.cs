@@ -40,7 +40,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal OriginBookScene? Scene(OriginNarrativeChapterProjection chapter)
         => Scenes?.Scenes.SingleOrDefault(s => s.Matches(this, chapter));
     internal IReadOnlyList<OriginBookEpub.Illustration> SceneExports()
-        => Chapters.Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
+        => Chapters.Where(IsExportableChapter).Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
     public string RunnerName { get; } = projection.CurrentTurn.RunnerDisplayName;
     public string Locale { get; } = projection.CurrentTurn.Locale;
     public string Digest { get; } = projection.SeedDigest;
@@ -52,6 +52,21 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     public string ChapterText(OriginNarrativeChapterProjection chapter)
         => Reading(chapter)?.Selected is { } selected && selected.Matches(chapter, Locale)
             ? selected.Text : _chapterText[chapter.ChapterId];
+
+    // Decision prose is useful to the rules review, but is never a substitute
+    // for a generated chapter in the book reader. A complete returned chapter
+    // can be read before the reader acknowledges it; that does not select it,
+    // advance the story, acknowledge it to Hub or authorize another paid job.
+    internal OriginBookProseDraft? ReadableChapter(OriginNarrativeChapterProjection chapter)
+    {
+        if (!Chapters.Contains(chapter)) return null;
+        return new[] { Reading(chapter)?.Selected, Pending(chapter) }.FirstOrDefault(prose =>
+            prose is not null && prose.IsValid() && prose.Matches(chapter, Locale));
+    }
+
+    internal bool HasExportableChapters => Chapters.Any(IsExportableChapter);
+    internal bool IsExportableChapter(OriginNarrativeChapterProjection chapter)
+        => ReadableChapter(chapter) is { } prose && Reading(chapter)?.Selected?.DraftDigest == prose.DraftDigest;
 
     internal OriginBookReadingChapter? Reading(OriginNarrativeChapterProjection chapter)
         => Chapters.Contains(chapter) ? Readings?.Chapters.SingleOrDefault(c => c.ChapterId == chapter.ChapterId) : null;
@@ -161,7 +176,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
             .Append("</title><style>body{color:#192c35;background:#fff;max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}img{max-width:100%;height:auto}figure{margin:1em 0}footer{margin-top:3rem}</style></head><body><h1>")
             .Append(E(RunnerName)).Append("</h1><p>").Append(E(copy["Origin.BookSavedChapters"]))
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
-        foreach (var chapter in Chapters)
+        foreach (var chapter in Chapters.Where(IsExportableChapter))
         {
             html.Append("<section><h2>").Append(E(IsOpeningSetup(chapter)
                 ? copy["Origin.OpeningSetupTitle"] : chapter.Title)).Append("</h2>");
@@ -676,6 +691,7 @@ public sealed partial class RunnerSessionCoordinator
     {
         bool Current() => isCurrentPage() && IsRetainedOriginBookCurrent(book);
         if (!Current()) throw new OperationCanceledException("The book context changed.");
+        if (!book.HasExportableChapters) return false;
         byte[] bytes = await Task.Run(() => epub ? OriginBookEpub.Create(book, copy) : Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
         try
         {
