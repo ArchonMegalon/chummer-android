@@ -210,6 +210,8 @@ internal static partial class AfterRunAuthorityHarness
                 "page-same", "page-departure", "page-old-render", "page-queued-departure", "page-load-fault",
                 "page-back-departure", "page-back-old-render", "page-back-owner-b", "page-back-owner-aba",
                 "parent-return", "parent-return-fault", "parent-return-departure", "parent-return-owner-b", "parent-return-owner-aba",
+                "parent-return-confirmed", "parent-return-confirmed-sum", "parent-return-confirmed-owner-aba",
+                "parent-return-confirmed-load-fault",
                 "parent-return-core-blocked", "parent-return-core-invalid", "parent-return-core-empty",
                 "parent-return-core-copy", "parent-return-core-recovery", "parent-return-core-fault-recovery",
                 "parent-return-core-currentness"];
@@ -248,7 +250,8 @@ internal static partial class AfterRunAuthorityHarness
             });
         await runtime.Coordinator.InitializeAsync();
         await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
-        WorkspaceStoredDocument seed = PreparePrerequisiteOwnerFixture(runtime);
+        WorkspaceStoredDocument seed = PreparePrerequisiteOwnerFixture(runtime,
+            scenario == "parent-return-confirmed-sum" ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority);
         CloneFinalizationRecordFixture(runtime, ContactsOwnerA, seed);
         CloneFinalizationRecordFixture(runtime, ContactsOwnerB, seed);
         if (scenario != "local") owners.Set(ContactsOwnerA);
@@ -306,6 +309,11 @@ internal static partial class AfterRunAuthorityHarness
                     && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
                 "SETUP: actual Bootstrap/Load did not issue an actionable Priority prerequisite: " + JsonSerializer.Serialize(loaded));
             var state = loaded.Value!;
+            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
+            {
+                await RunPrerequisiteConfirmedParentReturnAsync(runtime, owners, ui, probe!, state, scenario);
+                return;
+            }
             if (scenario.StartsWith("parent-return-core-", StringComparison.Ordinal))
             {
                 await RunPrerequisiteAppearanceFailureAsync(runtime, owners, ui, probe!, state, scenario);
@@ -488,8 +496,15 @@ internal static partial class AfterRunAuthorityHarness
                 after = after.ToDictionary(pair => pair.Key, pair => new { pair.Value.Content, pair.Value.Saved, pair.Value.Digest })
             }));
             if (scenario is "queued-load-b" or "queued-preview-b" or "missing-service"
-                || scenario.StartsWith("parent-return", StringComparison.Ordinal))
+                || scenario.StartsWith("parent-return", StringComparison.Ordinal)
+                   && !scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
                 Require(after.All(pair => pair.Value.Digest == before[pair.Key].Digest), "Rejected read changed a cold partition.");
+            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
+                Require(after["account-a"].Content == before["account-a"].Content + 1
+                    && after["account-a"].Saved == after["account-a"].Content
+                    && after["account-a"].Draft is not null
+                    && after.Where(pair => pair.Key != "account-a").All(pair => pair.Value.Digest == before[pair.Key].Digest),
+                    "Confirmed return did not preserve exactly one saved owner-A mutation and untouched other partitions.");
         }
 
         async Task ReplaceOwnerAsync()
@@ -513,13 +528,14 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private static WorkspaceStoredDocument PreparePrerequisiteOwnerFixture(NativeRewardRuntime runtime)
+    private static WorkspaceStoredDocument PreparePrerequisiteOwnerFixture(NativeRewardRuntime runtime,
+        string buildMethod = CharacterCreationBuildMethods.Priority)
     {
-        Require(CharacterCreationBootstrapProfiles.TryResolveCanonicalSettingsProfileId(CharacterCreationBuildMethods.Priority, out string profile),
-            "SETUP: canonical Priority profile missing.");
+        Require(CharacterCreationBootstrapProfiles.TryResolveCanonicalSettingsProfileId(buildMethod, out string profile),
+            "SETUP: canonical creation profile missing.");
         var created = runtime.Services.GetRequiredService<ICharacterCreationBootstrapService>().Create(new(
             CharacterCreationBootstrapSchemas.RequestV1, CharacterCreationBootstrapStages.AwaitingFoundationSelection,
-            "sr5", "Prerequisite owner fixture", "Prerequisite", CharacterCreationBuildMethods.Priority, profile));
+            "sr5", "Prerequisite owner fixture", "Prerequisite", buildMethod, profile));
         Require(created is { Outcome: CharacterCreationBootstrapOutcomes.Success, Value: not null },
             "SETUP: real Bootstrap failed: " + JsonSerializer.Serialize(created));
         runtime.Id = created.Value!.WorkspaceId;
@@ -539,12 +555,106 @@ internal static partial class AfterRunAuthorityHarness
             [CharacterCreationPriorityCategoryIds.Attributes] = "B", [CharacterCreationPriorityCategoryIds.Skills] = "C",
             [CharacterCreationPriorityCategoryIds.Resources] = "D"
         };
-        var human = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage && item.Rank == "A")
+        if (state.BuildMethod == CharacterCreationBuildMethods.SumToTen)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
+            ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "C";
+        }
+        var human = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage])
             .HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null && item.MetatypeName == "Human");
         var mundane = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent && item.Rank == "E")
             .TalentOptions.First(item => item.IsEnabled && item.Value.Equals(CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
                 && item.Magic is null && item.Resonance is null && item.Depth is null && item.ActiveSkillGrant is null && item.SkillGroupGrant is null);
         return (ranks, new(human.SelectionId, mundane.SelectionId, [], []));
+    }
+
+    private static async Task RunPrerequisiteConfirmedParentReturnAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, IssuedPageUiContext ui, PrerequisiteCoreProbe probe,
+        CharacterCreationPrerequisiteState state, string scenario)
+    {
+        var page = new CreationPrerequisitePage(runtime.Coordinator, state);
+        var navigation = new NavigationPage(new ContentPage());
+        await navigation.PushAsync(page, animated: false);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        CreationPrerequisitePreviewPage? review = null;
+        try
+        {
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            state = (CharacterCreationPrerequisiteState)typeof(CreationPrerequisitePage)
+                .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            var draft = (CreationPrerequisitePhoneDraft)typeof(CreationPrerequisitePage)
+                .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            var (assignments, selections) = PrerequisiteSelections(state);
+            foreach (var pair in assignments)
+                Require(draft.TrySelect(state, runtime.Coordinator.State, pair.Key, pair.Value), "SETUP: rank unavailable.");
+            Require(draft.TrySelectHeritage(state, runtime.Coordinator.State, selections.HeritageSelectionId)
+                && draft.TrySelectTalent(state, runtime.Coordinator.State, selections.TalentSelectionId),
+                "SETUP: exact Human/Mundane selections unavailable.");
+            typeof(CreationPrerequisitePage).GetMethod("Refresh",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(page, null);
+            Button oldPreview = IssuedElements(page).OfType<Button>()
+                .Single(item => item.AutomationId == "creation-prerequisite-prepare-preview");
+            Require(oldPreview.IsEnabled, "SETUP: complete assignments cannot be reviewed.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)oldPreview).SendClicked()));
+            review = navigation.Navigation.NavigationStack.Last() as CreationPrerequisitePreviewPage;
+            Require(review is not null, "SETUP: real parent action did not open review.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(review!, "OnAppearing")));
+            Button confirm = IssuedElements(review!).OfType<Button>()
+                .Single(item => item.AutomationId == "creation-prerequisite-confirm");
+            Require(confirm.IsEnabled, "SETUP: real review not confirmable.");
+            probe.FailPostCommitLoad = scenario == "parent-return-confirmed-load-fault";
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+            Require(probe.SuccessfulConfirms == 1, "SETUP: confirmation did not commit exactly once.");
+            var result = (CreationPrerequisitePhoneConfirmResult)typeof(CreationPrerequisitePreviewPage)
+                .GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(review)!;
+            Require(result.Receipt is not null, "SETUP: committed receipt missing.");
+            if (scenario == "parent-return-confirmed-owner-aba")
+            {
+                owners.Set(ContactsOwnerB);
+                owners.Set(ContactsOwnerA);
+                var row = new FileWorkspaceStore(runtime.StateDirectory).Get(owners.Current, runtime.Id).Value!;
+                await HydrateFinalizationOwnerAsync(runtime, owners, row);
+            }
+            IssuedPageLifecycle(review!, "OnDisappearing");
+            await navigation.PopAsync(animated: false);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            bool success = scenario is "parent-return-confirmed" or "parent-return-confirmed-sum";
+            if (success)
+            {
+                var current = (CharacterCreationPrerequisiteState?)typeof(CreationPrerequisitePage)
+                    .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                Require(body.IsEnabled && current is { PendingDraft: not null, CanEnterAttributes: true }
+                    && runtime.Coordinator.IsCreationPrerequisiteReceiptCurrent(result.Receipt!, current),
+                    "Returning from a successful confirmation stranded the parent on its pre-commit revision.");
+                Require(draft.Assignments(current!, runtime.Coordinator.State).OrderBy(pair => pair.Key)
+                        .SequenceEqual(assignments.OrderBy(pair => pair.Key)),
+                    "Confirmed assignments were not restored from the exact current Core state.");
+            }
+            else Require(!body.IsEnabled, "Failed reload or owner ABA revived a stale parent.");
+            int calls = probe.Calls.Count;
+            var stack = navigation.Navigation.NavigationStack.ToArray();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)oldPreview).SendClicked()));
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+            Require(probe.Calls.Count == calls && probe.ConfirmCalls == 1
+                && navigation.Navigation.NavigationStack.SequenceEqual(stack) && alerts.Titles.Count == 0,
+                "Returning revived an old preview/confirmation callback or changed navigation.");
+            Console.WriteLine("PREREQUISITE_CONFIRMED_RETURN " + JsonSerializer.Serialize(new
+                { scenario, buildMethod = state.BuildMethod, ready = body.IsEnabled, probe.ConfirmCalls,
+                    scope = "actual managed page navigation and Core persistence; device smoke is separate" }));
+        }
+        finally
+        {
+            if (review is not null) IssuedPageLifecycle(review, "OnDisappearing");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await JoinIssuedPageAsync(ui.RunAsync(() => Task.CompletedTask));
+        }
     }
 
     private sealed record PrerequisiteColdRow(long Content, long Saved, string Digest, string RawXml,

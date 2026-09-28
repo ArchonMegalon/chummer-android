@@ -13,6 +13,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
     private readonly IReadOnlyDictionary<string, string> _assignments;
     private readonly CreationPrerequisitePhoneSelections _selections;
     private readonly string _buildMethod;
+    private readonly Action<CreationPrerequisitePhoneConfirmResult>? _onConfirmed;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -27,9 +28,11 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         CharacterCreationPrerequisitePreview preview,
         IReadOnlyDictionary<string, string> assignments,
         CreationPrerequisitePhoneSelections selections,
-        string buildMethod) : base(coordinator)
+        string buildMethod,
+        Action<CreationPrerequisitePhoneConfirmResult>? onConfirmed = null) : base(coordinator)
     {
         _preview = preview ?? throw new ArgumentNullException(nameof(preview));
+        _onConfirmed = onConfirmed;
         _assignments = new Dictionary<string, string>(
             assignments ?? throw new ArgumentNullException(nameof(assignments)),
             StringComparer.Ordinal);
@@ -414,6 +417,8 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 _assignments,
                 _selections,
                 isCurrentPreview: () => IsCurrentPreview(render, appearance));
+            if (IsCurrentAppearanceGeneration(appearance))
+                _onConfirmed?.Invoke(_confirmation);
         });
         _body.Add(confirm);
 
