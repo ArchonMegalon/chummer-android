@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "58ae529bba4000395faac8b718040fab50c926bab16d376605bf76a2b1861cbf"
+        "sha256": "bb67e95b49c10697ab05391fe2fa98a3f3fbc3a870f897d9cdf28108b493c9cc"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "8345b974056054af66575f994030f6d2c75d9ed9125b7b603af02c040de734f7"
+        "sha256": "81ac6da739a8e524a0ab3dbc7eaebecd664ffdcce67a46ae2f2df929c977bb20"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "191be23f671c4a8e3c8a8bdc9e21000d125c5bac8d78f4f4bd95e4193c098a95"
+        "sha256": "e092aaea80d50c17352718b30e4d4792f1a7d640d1b4fb6690af0a3a6310cc7e"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "b506d9db48f2690a5a1a762d2ef94a79199644c2b82235835991497a762af56e"
+        "sha256": "364185918cbedb3720751610302461b74821c7d0e07392146bbb5b41ded6579f"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "92ca45ab5eefa4d4810ba0c3b722ef1c7f7787e95d14f14137856a2bca00cb98"
+        "sha256": "7629c231935d3124c77283969ced84aac565c041eedd7494c8098bd23a1da815"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",
@@ -2517,7 +2517,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "c8bf67960b2523b8df056e9be5420600ab3f8e5295b36949e705786c9b54f794"
+        "sha256": "441b34a8bfe08081b9a5b55d752d742bd00c515aee2f3d770e7a38ecea44eca1"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
