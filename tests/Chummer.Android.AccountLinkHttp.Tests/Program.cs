@@ -31,6 +31,9 @@ internal static class Program
         await RequestDeadlinesPreserveLinkedAccountAsync();
         await RequestDeadlineRetainsRedactedInterruptionTypeAsync();
         await CallerCancellationRemainsCancellationAsync();
+        await NativeIoFailuresPreserveLinkedAccountAsync();
+        await NativeIoFailuresAreRedactedAndDoNotGrantRetriesAsync();
+        await NativeIoCallerCancellationRemainsCancellationAsync();
         await GrantStatusCannotInventOrReplaceOwnerAsync();
         await LegacyOwnerCommitIsRestartableAndFencedAsync();
         await InFlightStatusCannotResurrectRevokedOwnerAsync();
@@ -77,7 +80,7 @@ internal static class Program
         await StoredOwnerBindingsFailClosedAcrossRestartAsync();
         await LegacyStagedGrantCannotInheritAnOwnerAsync();
         await BoundOwnerErasureAndUnlinkCleanupAsync();
-        Console.WriteLine("Account-link HTTP hardening tests passed: 51");
+        Console.WriteLine("Account-link HTTP hardening tests passed (including native I/O regressions).");
     }
 
     private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()
@@ -234,6 +237,109 @@ internal static class Program
             Require(cancellation.IsCancellationRequested && terminal.Requests.Count == 1);
             Console.WriteLine($"PASS caller cancellation is not converted to offline: headers={beforeHeaders}");
         }
+    }
+
+    private static IEnumerable<Func<Exception>> NativeIoFailures()
+    {
+        yield return () => new WebException(AccessToken, new IOException(RotatedAccessToken));
+        yield return () => new IOException(AccessToken, new IOException(RotatedAccessToken));
+        yield return () => new WebException(AccessToken, null, WebExceptionStatus.TrustFailure, null);
+        yield return () => new WebException(AccessToken, null, WebExceptionStatus.SecureChannelFailure, null);
+    }
+
+    private static RecordingHandler FailingTransportHandler(bool beforeHeaders, Func<Exception> failure)
+        => new((_, _) => beforeHeaders
+            ? Task.FromException<HttpResponseMessage>(failure())
+            : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new FailingReadStream(failure))
+            }));
+
+    private static async Task NativeIoFailuresPreserveLinkedAccountAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        foreach (Func<Exception> failure in NativeIoFailures())
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            string? ownerBinding = fixture.Metadata.GetRaw(OwnerBindingKey);
+            string? expiry = fixture.Metadata.GetRaw(StoredGrantExpiryKey);
+            var terminal = FailingTransportHandler(beforeHeaders, failure);
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            await service.InitializeOwnerContextAsync();
+            var owner = service.OwnerAuthority.Capture();
+            await service.InitializeAsync();
+            Require(service.Snapshot.IsLinked && service.Snapshot.Detail == "Available offline.");
+            Require(owner is not null && service.OwnerAuthority.Capture() == owner);
+            Require(fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken
+                && fixture.Metadata.GetRaw(OwnerBindingKey) == ownerBinding
+                && fixture.Metadata.GetRaw(StoredGrantExpiryKey) == expiry
+                && !fixture.Metadata.Contains(RefreshAttemptKey));
+            Require(terminal.Requests.Count == 1);
+            Require(!service.Snapshot.ToString().Contains(AccessToken, StringComparison.Ordinal));
+        }
+        Console.WriteLine("PASS native socket/I/O failures preserve exact linked identity without replay");
+    }
+
+    private static async Task NativeIoFailuresAreRedactedAndDoNotGrantRetriesAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        foreach (Func<Exception> failure in NativeIoFailures())
+        {
+            var terminal = FailingTransportHandler(beforeHeaders, failure);
+            using var transport = CreateTransport(terminal);
+            HttpRequestException error;
+            if (beforeHeaders)
+                error = await RequireThrowsAsync<HttpRequestException>(() => transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), CancellationToken.None));
+            else
+            {
+                using var response = await transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), CancellationToken.None);
+                error = await RequireThrowsAsync<HttpRequestException>(() =>
+                    transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None));
+            }
+            Require(error is not AndroidAccountLinkHttpTransport.InterruptedException
+                && error.HttpRequestError == HttpRequestError.Unknown && error.InnerException is null
+                && terminal.Requests.Count == 1);
+            Require(!error.ToString().Contains(AccessToken, StringComparison.Ordinal)
+                && !error.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+        }
+        Console.WriteLine("PASS native I/O and TLS failures are redacted, not classified as retryable timeouts");
+    }
+
+    private static async Task NativeIoCallerCancellationRemainsCancellationAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        foreach (Func<Exception> failure in NativeIoFailures())
+        {
+            using var cancellation = new CancellationTokenSource();
+            var terminal = FailingTransportHandler(beforeHeaders, () =>
+            {
+                cancellation.Cancel();
+                return failure();
+            });
+            using var transport = CreateTransport(terminal);
+            OperationCanceledException error;
+            if (beforeHeaders)
+                error = await RequireThrowsAsync<OperationCanceledException>(() => transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), cancellation.Token));
+            else
+            {
+                using var response = await transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), cancellation.Token);
+                error = await RequireThrowsAsync<OperationCanceledException>(() =>
+                    transport.ReadJsonAsync<CollectionEnvelope>(response, cancellation.Token));
+            }
+            Require(cancellation.IsCancellationRequested && error.CancellationToken == cancellation.Token
+                && error.InnerException is null && terminal.Requests.Count == 1);
+            Require(!error.ToString().Contains(AccessToken, StringComparison.Ordinal));
+        }
+        Console.WriteLine("PASS native I/O cancellation retains caller token without leaking handler details");
     }
 
     private static async Task GrantStatusCannotInventOrReplaceOwnerAsync()
@@ -3403,6 +3509,17 @@ internal static class Program
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private sealed class FailingReadStream(Func<Exception> failure) : MemoryStream
+    {
+        public override bool CanSeek => false;
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => ValueTask.FromException<int>(failure());
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count,
+            CancellationToken cancellationToken)
+            => Task.FromException<int>(failure());
     }
 
     private sealed class NeverCompletingReadStream : Stream
