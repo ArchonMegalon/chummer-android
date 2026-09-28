@@ -843,4 +843,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creation → Career</value></data>
   <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
   <data name="Karma.DiceTotalHelp" xml:space="preserve"><value>For starting cash, roll the displayed number of six-sided dice and add all face values, not hits. For example, 2 and 5 make 7. Enter only that sum; Chummer applies the displayed ¥ multiplier. This money becomes available in Career, not for creation purchases.</value></data>
+  <data name="Karma.AttributePurchases" xml:space="preserve"><value>{0} · purchased levels: {1} (not the final rating)</value></data>
+  <data name="Karma.TalentSourceDisabled" xml:space="preserve"><value>This talent's sourcebook is not enabled for this runner.</value></data>
+  <data name="Karma.TalentUnsupported" xml:space="preserve"><value>This talent's rules are not supported by the Karma wizard yet. Choose another enabled talent.</value></data>
+  <data name="Karma.NativeLanguageRequired" xml:space="preserve"><value>Choose a language under Skills, mark it as your native language, then use that selection in the draft.</value></data>
 </root>

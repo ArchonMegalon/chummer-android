@@ -843,4 +843,8 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="LifeCompletion.EnterCareer" xml:space="preserve"><value>Creación → Carrera</value></data>
   <data name="LifeCompletion.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
   <data name="Karma.DiceTotalHelp" xml:space="preserve"><value>Para el dinero inicial, tira la cantidad indicada de dados de seis caras y suma sus valores, no los éxitos. Por ejemplo, 2 y 5 suman 7. Introduce solo esa suma; Chummer aplica el multiplicador de ¥ indicado. Este dinero estará disponible en Carrera, no para compras durante la creación.</value></data>
+  <data name="Karma.AttributePurchases" xml:space="preserve"><value>{0} · niveles comprados: {1} (no es el valor final)</value></data>
+  <data name="Karma.TalentSourceDisabled" xml:space="preserve"><value>El libro de origen de este talento no está activado para este runner.</value></data>
+  <data name="Karma.TalentUnsupported" xml:space="preserve"><value>El asistente de Karma todavía no admite las reglas de este talento. Elige otro talento disponible.</value></data>
+  <data name="Karma.NativeLanguageRequired" xml:space="preserve"><value>Elige un idioma en Habilidades, márcalo como lengua materna y aplica la selección al borrador.</value></data>
 </root>

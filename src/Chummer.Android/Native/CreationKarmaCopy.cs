@@ -13,6 +13,9 @@ internal static class CreationKarmaCopy
     {
         CharacterCreationMagicResonanceBlockers.TraditionRequired => TraditionRequired,
         CharacterCreationMagicResonanceBlockers.StreamRequired => StreamRequired,
+        CharacterCreationKarmaTalentCatalog.SourceDisabled => CreationAllocationStrings.Get("Karma.TalentSourceDisabled", "This talent's sourcebook is not enabled for this runner."),
+        CharacterCreationKarmaTalentCatalog.UnsupportedSource => CreationAllocationStrings.Get("Karma.TalentUnsupported", "This talent's rules are not supported by the Karma wizard yet. Choose another enabled talent."),
+        "creation-skills-native-language-required" => CreationAllocationStrings.Get("Karma.NativeLanguageRequired", "Choose a language under Skills, mark it as your native language, then use that selection in the draft."),
         _ => code
     };
     public static string Powers => CreationAllocationStrings.Get("Karma.Powers", "Adept powers");
@@ -131,6 +134,7 @@ internal static class CreationKarmaCopy
     public static string Budget(decimal spent, decimal total, decimal remaining) => CreationAllocationStrings.Format("Karma.Budget", "Karma: {0} / {1} · remaining {2}", spent, total, remaining);
     public static string Cost(string name, decimal cost) => CreationAllocationStrings.Format("Karma.Cost", "{0} · {1} Karma", name, cost);
     public static string Levels(string name, int levels) => CreationAllocationStrings.Format("Karma.Levels", "{0}: {1}", name, levels);
+    public static string AttributePurchases(string name, int levels) => CreationAllocationStrings.Format("Karma.AttributePurchases", "{0} · purchased levels: {1} (not the final rating)", name, levels);
     public static string KnowledgeBudget(decimal used, decimal total) => CreationAllocationStrings.Format("Karma.KnowledgeBudget", "Knowledge points: {0} / {1}", used, total);
     public static string ValueCost(string name, object rating, decimal cost) => CreationAllocationStrings.Format("Karma.ValueCost", "{0}: {1} · {2} Karma", name, rating, cost);
 }
