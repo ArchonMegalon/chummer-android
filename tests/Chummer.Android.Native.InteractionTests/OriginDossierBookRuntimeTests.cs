@@ -934,6 +934,10 @@ internal static class OriginDossierBookRuntimeTests
             async Task Click(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
             await Click(Button("origin-life-choice-0"));
             var review = Button("origin-life-review-answers");
+            var editingElements = Elements(page).ToArray();
+            Require(Array.IndexOf(editingElements, review) < Array.FindIndex(editingElements,
+                    element => element.AutomationId == "origin-life-locale"),
+                "Selected follow-up questions remain below the setup header after the scroll content resets.");
             Require(!review.IsEnabled && requests == 0 && authority.MutationCount == 0,
                 "Opening the form invented required answers or a mutation.");
             Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology *")
@@ -958,6 +962,10 @@ internal static class OriginDossierBookRuntimeTests
                 && Elements(page).OfType<Label>().Any(label => label.Text == "Language: English"),
                 "The review lost the question context or changed the answer.");
             var oldConfirm = Button("origin-life-confirm");
+            var reviewedElements = Elements(page).ToArray();
+            Require(Array.IndexOf(reviewedElements, oldConfirm) < Array.FindIndex(reviewedElements,
+                    element => element.AutomationId == "origin-life-locale"),
+                "The reviewed answers and confirmation remain below the setup header.");
             var reopened = await runtime.OpenAsync(TestOwner, "workspace-1");
             Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
                 "Reviewed answers did not survive reopen.");
@@ -1019,6 +1027,10 @@ internal static class OriginDossierBookRuntimeTests
                 string selectedIndex = chapter == 1 ? "1" : "0";
                 await Click(Button("origin-life-choice-" + selectedIndex));
                 var oldConfirm = Button("origin-life-confirm");
+                var focusedElements = Elements(page).ToArray();
+                Require(Array.IndexOf(focusedElements, oldConfirm) < Array.FindIndex(focusedElements,
+                        element => element.AutomationId == "origin-life-locale"),
+                    "A choice without follow-up questions hid its confirmation beneath the setup header.");
                 Require(!Visible("origin-life-effect-" + selectedIndex + "-0")
                     && !Visible("origin-life-choice-anchors-" + selectedIndex)
                     && oldConfirm.IsEnabled,

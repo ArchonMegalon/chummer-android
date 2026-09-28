@@ -2644,7 +2644,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         if (_lifeModuleFinalizationService is not { } service || original.DisplayOwnerContext is not { } owner
             || original.WorkspaceId is not { } id)
             return new(LifeModuleOriginDossierOutcomes.Blocked, null, [LifeModuleOriginDossierBlockers.AuthorityInvalid]);
-        var loaded = await Task.Run(() => service.Load(owner, id));
+        var loaded = await ReadOriginBookAsync(owner, () => service.Load(owner, id), default);
         if (!string.Equals(
                 loaded.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
