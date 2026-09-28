@@ -5,6 +5,7 @@ using Chummer.Application.Characters;
 using Chummer.Application.Owners;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
@@ -1561,6 +1562,90 @@ internal static partial class AfterRunAuthorityHarness
             && runtime.Coordinator.State.SavedRevision == original.SavedRevision && account.Requests == 0,
             "Waiting for local book access changed the runner or contacted Hub.");
         Console.WriteLine("PASS saved Origin book waits for actual local credential hydration without provider calls or mutations");
+        await RunOriginDecisionReadContentionAsync(runtime, account);
+    }
+
+    private static async Task RunOriginDecisionReadContentionAsync(NativeRewardRuntime runtime, ActualAccountFixture account)
+    {
+        var service = runtime.Services.GetRequiredService<IOwnerBoundLifeModuleOriginService>();
+        var store = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
+        var id = runtime.Coordinator.State.WorkspaceId!.Value;
+        var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService).GetField("_credentialCommitGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(account.Account)!;
+        foreach (string phase in new[] { "before", "after", "cancel", "aba" })
+        {
+            var owner = account.Owner.Capture();
+            var before = await store.LoadAsync(owner.Owner.NormalizedValue, id.Value);
+            Require(before is not null, "The decision-read fixture has no retained checkpoint.");
+            using var cancellation = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            bool held = false;
+            void ExcludeReader()
+            {
+                Require(gate.Wait(0), "The diagnostic writer could not acquire the released Core lease.");
+                held = true;
+                entered.TrySetResult();
+            }
+            var observed = new RestoreReadProbe(service, () => { if (phase != "before") ExcludeReader(); });
+            var phone = new OriginDossierLifeModulePhoneRuntime(observed, store, account.Owner);
+            Task<OriginDossierLifeModulePhoneResult>? opening = null;
+            try
+            {
+                if (phase == "before") ExcludeReader();
+                opening = phone.OpenAsync(owner, id.Value, cancellation.Token);
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                await Task.WhenAny(opening, Task.Delay(150));
+                Require(!opening.IsCompleted && account.Owner.Capture() == owner,
+                    "A current Life Modules read was rejected solely because credential access was busy.");
+                if (phase == "cancel")
+                {
+                    cancellation.Cancel();
+                    try
+                    {
+                        await opening.WaitAsync(TimeSpan.FromSeconds(5));
+                        throw new InvalidOperationException("Canceled Life Modules read gained admission.");
+                    }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                }
+                if (phase == "aba")
+                {
+                    account.Account.OwnerAuthority.Invalidate();
+                    account.Account.OwnerAuthority.PublishLocal();
+                }
+            }
+            finally { if (held) gate.Release(); }
+            if (phase != "cancel")
+            {
+                var result = await opening!.WaitAsync(TimeSpan.FromSeconds(30));
+                Require(result.IsSuccess == (phase != "aba"),
+                    "Life Modules read confused credential contention with a retired owner transition.");
+            }
+            var after = await store.LoadAsync(owner.Owner.NormalizedValue, id.Value);
+            Require(after?.CheckpointDigest == before!.CheckpointDigest && account.Requests == 0,
+                "Decision read rewrote its checkpoint or contacted a provider.");
+        }
+        Console.WriteLine("PASS Life Modules read: busy-before, busy-after-restore, cancellation and owner ABA without provider calls");
+    }
+
+    private sealed class RestoreReadProbe(IOwnerBoundLifeModuleOriginService inner, Action afterRestore)
+        : IOwnerBoundLifeModuleOriginService
+    {
+        public bool IsCurrent(OwnerContextStamp owner) => inner.IsCurrent(owner);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Start(OwnerContextStamp owner, string workspaceId)
+            => inner.Start(owner, workspaceId);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Restore(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint)
+        {
+            var result = inner.Restore(owner, checkpoint);
+            Require(result.Outcome == LifeModuleOriginDossierOutcomes.Success, "The real Core restore failed before contention.");
+            afterRestore();
+            return result;
+        }
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Prepare(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint,
+            string choiceId, IReadOnlyDictionary<string, string>? followUpValues = null)
+            => inner.Prepare(owner, checkpoint, choiceId, followUpValues);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierInteractionAdvance> Confirm(OwnerContextStamp owner, LifeModuleOriginDossierDraftCheckpoint checkpoint,
+            string previewDigest, string idempotencyKey, bool explicitlyConfirmed)
+            => inner.Confirm(owner, checkpoint, previewDigest, idempotencyKey, explicitlyConfirmed);
     }
 
     private static async Task RunOriginBookReadLeaseBoundariesAsync()

@@ -262,9 +262,10 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseNationality"]));
         }
 
-        // Keep stable automation identities while moving the selected review
-        // ahead of compact alternatives. Confirmation must not require
-        // scrolling through every other module's effects.
+        // A selection replaces the scroll content. Put its questions/review
+        // immediately below the runner name, ahead of the long setup header as
+        // well as alternatives, so the new top viewport exposes the next action.
+        // Keep the stable choice identities and the whole-body save guard.
         foreach (int choiceIndex in Enumerable.Range(0, _state.Choices.Count)
                      .Where(index => IsAffordable(_state.Choices[index]))
                      .OrderByDescending(index => _state.Choices[index].ChoiceId == _editingChoiceId)
@@ -310,7 +311,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             if (choiceId == _editingChoiceId)
             {
                 AddInputForm(card, choiceId, generation);
-                body.Add(NativeTheme.Card(card));
+                body.Insert(1, NativeTheme.Card(card));
                 continue;
             }
             if (!choice.IsSelected || _editingChoiceId is not null)
@@ -329,7 +330,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             var review = _storyCheckpoint?.PendingPreview?.EffectReview;
             if (review is null)
                 card.Add(NativeTheme.Body(_copy["Origin.StoryChoiceReviewRequired"], NativeTheme.Muted));
-            body.Add(NativeTheme.Card(card));
+            body.Insert(1, NativeTheme.Card(card));
             AddConfirmation(body, generation);
         }
 
@@ -516,7 +517,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _copy["Origin.StoryChoiceReview"],
                 NativeTheme.Ink);
             preview.AutomationId = "origin-life-preview";
-            body.Add(preview);
+            body.Insert(2, preview);
             Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = CanConfirmReviewed;
@@ -582,7 +583,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     confirm.IsEnabled = generation == _renderGeneration && CanConfirmReviewed;
                 }
             };
-            body.Add(confirmationRow);
+            body.Insert(3, confirmationRow);
         }
 
     }

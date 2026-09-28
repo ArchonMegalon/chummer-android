@@ -34,6 +34,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
 {
     private readonly IOwnerBoundLifeModuleOriginService _interaction;
     private readonly IOriginDossierDraftTimelineStore _store;
+    private readonly AndroidAccountOwnerContextAccessor? _ownerReads;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     // Foundation's digest format is prefixed; Origin's is raw lowercase hex.
@@ -46,11 +47,20 @@ public sealed class OriginDossierLifeModulePhoneRuntime
 
     public OriginDossierLifeModulePhoneRuntime(
         IOwnerBoundLifeModuleOriginService interaction,
-        IOriginDossierDraftTimelineStore store)
+        IOriginDossierDraftTimelineStore store,
+        AndroidAccountOwnerContextAccessor? ownerReads = null)
     {
         _interaction = interaction ?? throw new ArgumentNullException(nameof(interaction));
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _ownerReads = ownerReads;
     }
+
+    // A short credential writer can exclude a lease without changing its
+    // owner. Only these synchronous reads wait off the UI thread; Core still
+    // verifies the exact transition after admission. No lease crosses await,
+    // and Confirm retains its existing non-blocking mutation admission.
+    private Task<T> ReadAsync<T>(OwnerContextStamp owner, Func<T> read, CancellationToken ct)
+        => _ownerReads is { } reads ? reads.RunReadAsync(owner, read, ct) : Task.Run(read, ct);
 
     // Read-only Core capability: do not open, restore or save the timeline just
     // to obtain optional story context. Older implementations supply no hints.
@@ -68,26 +78,27 @@ public sealed class OriginDossierLifeModulePhoneRuntime
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (!_interaction.IsCurrent(owner)) return StaleOwner();
+            if (!await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false))
+                return StaleOwner();
             LifeModuleOriginDossierDraftCheckpoint? persisted =
                 await _store.LoadAsync(owner.Owner.NormalizedValue, workspaceId, cancellationToken)
                     .ConfigureAwait(false);
             LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> result;
             if (persisted is null)
             {
-                result = await Task.Run(() => _interaction.Start(owner, workspaceId), cancellationToken)
+                result = await ReadAsync(owner, () => _interaction.Start(owner, workspaceId), cancellationToken)
                     .ConfigureAwait(false);
             }
             else
             {
-                result = await Task.Run(() => _interaction.Restore(owner, persisted), cancellationToken)
+                result = await ReadAsync(owner, () => _interaction.Restore(owner, persisted), cancellationToken)
                     .ConfigureAwait(false);
                 // A crash after the atomic mechanics commit but before saving
                 // the next chapter leaves a valid pending preview. Keep it available for
                 // the idempotent Confirm retry instead of guessing completion.
-                if (_interaction.IsCurrent(owner)
-                    && result.Outcome == LifeModuleOriginDossierOutcomes.Conflict
-                    && persisted.PendingPreview is not null)
+                if (result.Outcome == LifeModuleOriginDossierOutcomes.Conflict
+                    && persisted.PendingPreview is not null
+                    && await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false))
                 {
                     return Project(
                         LifeModuleOriginDossierOutcomes.Success,
@@ -97,9 +108,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             }
             if (!IsSuccess(result) || result.Value is not { } checkpoint)
                 return Failed(result.Outcome, result.Blockers);
-            if (!_interaction.IsCurrent(owner)) return StaleOwner();
+            if (!await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false))
+                return StaleOwner();
             await _store.SaveAsync(checkpoint, cancellationToken).ConfigureAwait(false);
-            return _interaction.IsCurrent(owner) ? Project(result.Outcome, checkpoint, result.Blockers) : StaleOwner();
+            return await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false)
+                ? Project(result.Outcome, checkpoint, result.Blockers) : StaleOwner();
         }
         finally
         {
