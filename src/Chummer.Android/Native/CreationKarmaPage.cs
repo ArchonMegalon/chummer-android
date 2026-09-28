@@ -263,7 +263,10 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             {
                 Change((_session.Selection ?? new(option.OptionId)) with { MetatypeOptionId = option.OptionId });
                 await Navigation.PopAsync();
-            }, option.IsEnabled && option.Blockers.Count == 0);
+            }, option.IsEnabled && option.Blockers.Count == 0,
+                option.Blockers.Count > 0
+                    ? string.Join(" · ", option.Blockers.Select(CreationKarmaCopy.Blocker))
+                    : CreationKarmaCopy.UnavailableInCurrentRules(CreationKarmaCopy.Metatype));
         }
     }
 
@@ -288,14 +291,19 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             {
                 Change(selection with { TalentOptionId = option.OptionId });
                 await Navigation.PopAsync();
-            }, option.IsEnabled && option.Blockers.Count == 0);
+            }, option.IsEnabled && option.Blockers.Count == 0,
+                option.Blockers.Count > 0
+                    ? string.Join(" · ", option.Blockers.Select(CreationKarmaCopy.Blocker))
+                    : CreationKarmaCopy.UnavailableInCurrentRules(CreationKarmaCopy.Talent));
         }
     }
 
-    private void AddLevels(string name, string id, int value, int max, Action<int> changed, bool enabled = true)
+    private void AddLevels(string name, string id, int value, int max, Action<int> changed, bool enabled = true,
+        Func<int, string>? caption = null)
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
-        var label = NativeTheme.Body(CreationKarmaCopy.Levels(name, value));
+        string Caption(int levels) => caption?.Invoke(levels) ?? CreationKarmaCopy.Levels(name, levels);
+        var label = NativeTheme.Body(Caption(value));
         label.AutomationId = id + "-value";
         var stepper = new Stepper { Minimum = 0, Maximum = Math.Max(1, Math.Max(value, max)), Increment = 1,
             Value = value, AutomationId = id, IsEnabled = enabled && (max > 0 || value > 0) };
@@ -304,7 +312,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             if (!Current(render, appearance) || !stepper.IsEnabled) return;
             int next = checked((int)args.NewValue);
             changed(next);
-            label.Text = CreationKarmaCopy.Levels(name, next);
+            label.Text = Caption(next);
         };
         _body.Add(NativeTheme.Card(new VerticalStackLayout { Children = { label, stepper } }));
     }
@@ -322,7 +330,8 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                 {
                     Attributes = _session.Selection!.Attributes!.Where(a => a.AttributeId != attribute.AttributeId)
                         .Concat(next > 0 ? [new CharacterCreationKarmaAttributeAllocation(attribute.AttributeId, next)] : []).ToArray()
-                }));
+                }), caption: levels => CreationKarmaCopy.AttributePurchases(
+                    CreationAllocationStrings.AttributeName(attribute.AttributeId), levels));
         }
         AddButton(CreationKarmaCopy.Preview, "karma-preview-attributes", Preview);
     }

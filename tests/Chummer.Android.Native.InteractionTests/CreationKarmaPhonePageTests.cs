@@ -47,11 +47,27 @@ internal static partial class AfterRunAuthorityHarness
             await Click(human.AutomationId);
             AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent));
             await Click("karma-open-talent");
+            var unavailableTalents = IssuedElements(Current()).OfType<Button>()
+                .Where(button => button.AutomationId?.StartsWith("karma-talent-", StringComparison.Ordinal) == true && !button.IsEnabled).ToArray();
+            Require(unavailableTalents.Length > 0, "The source fixture must exercise an unavailable talent.");
+            foreach (var unavailable in unavailableTalents)
+            {
+                Require(!string.IsNullOrWhiteSpace(Element<Label>(unavailable.AutomationId + "-prerequisite").Text),
+                    "A disabled talent must explain why it cannot be selected.");
+                var talentPage = Current();
+                ((IButtonController)unavailable).SendClicked();
+                Require(ReferenceEquals(talentPage, Current()) && Session().Selection!.TalentOptionId is null,
+                    "Explaining a disabled talent must not admit its callback.");
+            }
             await Click(magic ? "karma-talent-0e741331-d776-4be8-abc5-4101228abdef" : "karma-talent-mundane");
             AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes));
             await Click("karma-open-attributes");
             Stepper oldAgility = Element<Stepper>("karma-attribute-AGI");
+            Require(Element<Label>("karma-attribute-AGI-value").Text == CreationKarmaCopy.AttributePurchases("Agility", 0),
+                "An attribute editor must distinguish purchased levels from the final rating.");
             oldAgility.Value = 1;
+            Require(Element<Label>("karma-attribute-AGI-value").Text == CreationKarmaCopy.AttributePurchases("Agility", 1),
+                "Changing an attribute must retain the purchased-level caption.");
             if (magic) Element<Stepper>("karma-attribute-MAG").Value = 2;
             Require(Element<Label>("creation-karma-budget").Text == CreationKarmaCopy.Pending,
                 "Attribute editing displayed stale budget totals as current.");
@@ -517,12 +533,18 @@ internal static partial class AfterRunAuthorityHarness
             {
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
                 Require(CreationKarmaCopy.Title == "Karma-Grunddaten", "German regional resources are missing.");
+                Require(CreationKarmaCopy.AttributePurchases("Konstitution", 0).Contains("zugekaufte Stufen: 0", StringComparison.Ordinal)
+                    && CreationKarmaCopy.Blocker(CharacterCreationKarmaTalentCatalog.UnsupportedSource).Contains("noch nicht unterstützt", StringComparison.Ordinal),
+                    "German attribute/talent explanations are missing.");
                 Require(CreationKarmaCopy.Qualities == "Vor- und Nachteile", "German quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Ausrüstung", "German equipment resources are missing.");
                 Require(CreationKarmaCopy.Lifestyles == "Lebensstile", "German lifestyle resources are missing.");
                 Require(CreationKarmaCopy.Finish == "Karma-Erstellung abschließen", "German completion resources are missing.");
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
                 Require(CreationKarmaCopy.Confirm == "Confirmar y guardar borrador", "Spanish regional resources are missing.");
+                Require(CreationKarmaCopy.AttributePurchases("Agilidad", 1).Contains("niveles comprados: 1", StringComparison.Ordinal)
+                    && CreationKarmaCopy.Blocker(CharacterCreationKarmaTalentCatalog.SourceDisabled).Contains("no está activado", StringComparison.Ordinal),
+                    "Spanish attribute/talent explanations are missing.");
                 Require(CreationKarmaCopy.Qualities == "Cualidades", "Spanish quality resources are missing.");
                 Require(CreationKarmaCopy.Gear == "Equipo", "Spanish equipment resources are missing.");
                 Require(CreationKarmaCopy.Lifestyles == "Estilos de vida", "Spanish lifestyle resources are missing.");
