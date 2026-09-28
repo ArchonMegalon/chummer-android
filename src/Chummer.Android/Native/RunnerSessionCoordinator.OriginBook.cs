@@ -12,6 +12,9 @@ using Chummer.Run.Contracts.Community;
 
 namespace Chummer.Android.Native;
 
+internal sealed record OriginBookReaderLoad(
+    CharacterOverviewState Display, RetainedOriginBook? Book, bool OpeningNotStarted = false);
+
 internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null,
     OriginBookScenes? scenes = null, bool scenesUnavailable = false,
     OriginChapterNarrativeContext? opportunities = null)
@@ -449,20 +452,30 @@ public sealed partial class RunnerSessionCoordinator
             && result.Job?.ReaderAcceptedTextDigest == Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(draft.Text))).ToLowerInvariant();
     }
 
-    internal Task<RetainedOriginBook?> LoadRetainedOriginBookAsync(CancellationToken ct, Func<bool> isCurrentPage)
+    internal async Task<RetainedOriginBook?> LoadRetainedOriginBookAsync(CancellationToken ct, Func<bool> isCurrentPage)
+        => (await LoadOriginBookReaderAsync(ct, isCurrentPage)).Book;
+
+    internal Task<OriginBookReaderLoad> LoadOriginBookReaderAsync(CancellationToken ct, Func<bool> isCurrentPage)
     {
         var original = State;
+        var unavailable = new OriginBookReaderLoad(original, null);
         return WithWorkspaceActivationGateAsync(async () =>
         {
             if (!isCurrentPage() || !CanReadRetainedOriginBook() || !IsNativeEditDisplayCurrent(original)
                 || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id
-                || _lifeModuleBookService is not { } service) return null;
+                || _lifeModuleBookService is not { } service) return unavailable;
             var result = await ReadOriginBookAsync(owner,
                 () => service.Load(owner, id, original.ContentRevision, original.SavedRevision), ct);
             ct.ThrowIfCancellationRequested();
-            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)
-                || result.Outcome != LifeModuleOriginDossierOutcomes.Success || result.Value is not { } projection
-                || projection.CurrentTurn.WorkspaceId != id.Value || projection.VisibleChapters.Count == 0) return null;
+            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return unavailable;
+            // Core has verified the owner and revisions before reporting an
+            // absent decision ledger. This is a new story, not a lost book or
+            // an account error. Never infer this from corruption/stale reads.
+            if (original.Profile?.Created == false && result.Outcome == LifeModuleOriginDossierOutcomes.Missing
+                && result.Blockers.SequenceEqual(["life-module-origin-history-unavailable"]))
+                return unavailable with { OpeningNotStarted = true };
+            if (result.Outcome != LifeModuleOriginDossierOutcomes.Success || result.Value is not { } projection
+                || projection.CurrentTurn.WorkspaceId != id.Value || projection.VisibleChapters.Count == 0) return unavailable;
             OriginBookReadingState? readings = null;
             if (_originBookReadings is { } readingStore)
                 readings = await ReadOriginBookAsync(owner, () =>
@@ -497,7 +510,7 @@ public sealed partial class RunnerSessionCoordinator
                 { scenesUnavailable = true; } // Damaged optional artwork must not make prose unreadable.
             }
             ct.ThrowIfCancellationRequested();
-            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return unavailable;
             OriginChapterNarrativeContext? opportunities = null;
             // Read the exact owner/turn from Core; no display-budget inference
             // and no timeline Open/Restore merely to obtain optional hints.
@@ -510,11 +523,11 @@ public sealed partial class RunnerSessionCoordinator
                     opportunities = OriginBookOpportunityContext.Create(projection, availability, original.SavedRevision);
             }
             ct.ThrowIfCancellationRequested();
-            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
+            if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return unavailable;
             RetireDifferentBookEditions(original, readings?.Digest, scenes?.Digest);
             var book = new RetainedOriginBook(projection, readings, scenes, scenesUnavailable, opportunities);
             _retainedBooks.Add(book, original);
-            return book;
+            return new OriginBookReaderLoad(original, book);
         }, ct);
     }
 

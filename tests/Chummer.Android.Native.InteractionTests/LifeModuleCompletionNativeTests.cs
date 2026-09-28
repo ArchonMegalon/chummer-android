@@ -282,6 +282,55 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Coordinator.SaveAsync();
             Require(ReferenceEquals(alreadySaved, runtime.Coordinator.State.CreationFoundation),
                 "Saving an unchanged Life Modules runner needlessly rebuilt its current projection.");
+            var beforeOpening = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var emptyLoad = await runtime.Coordinator.LoadOriginBookReaderAsync(default, () => true);
+            Require(emptyLoad is { OpeningNotStarted: true, Book: null }
+                && runtime.Coordinator.CanReadRetainedOriginBook(emptyLoad.Display)
+                && await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true) is null,
+                "A verified empty decision history must explain the opening, not invent a book.");
+            Require((await runtime.Coordinator.LoadOriginBookReaderAsync(default, () => false))
+                    is { OpeningNotStarted: false, Book: null },
+                "A departed reader was mistaken for a verified empty story.");
+            foreach (string locale in new[] { "de-DE", "en-US", "es-ES" })
+            {
+                var priorCulture = CultureInfo.CurrentUICulture;
+                RetainedOriginBookPage emptyReader;
+                try { CultureInfo.CurrentUICulture = new(locale); emptyReader = new(runtime.Coordinator); }
+                finally { CultureInfo.CurrentUICulture = priorCulture; }
+                var emptyRoot = new BuildPage(runtime.Coordinator);
+                ((ScrollView)emptyRoot.Content!).ScrollToRequested += (_, _) => ((ScrollView)emptyRoot.Content!).SendScrollFinished();
+                var emptyNavigation = new NavigationPage(emptyRoot);
+                var emptyWindow = new Window(emptyNavigation);
+                await emptyNavigation.PushAsync(emptyReader, false);
+                using var emptyAlerts = new IssuedPageAlerts(emptyReader, emptyWindow);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(emptyReader, "OnAppearing"));
+                var labels = IssuedElements(emptyReader).OfType<Label>().Select(label => label.Text).ToArray();
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                Require(labels.Contains(copy["Origin.BookNotStarted"])
+                    && labels.Contains(copy["Origin.OpeningSetupRequired"])
+                    && labels.Contains(copy["Origin.BookNotStartedDetail"])
+                    && !labels.Contains(copy["Origin.BookUnavailable"])
+                    && !IssuedElements(emptyReader).Any(e => e is ProgressBar
+                        || e.AutomationId is "origin-book-export" or "origin-book-export-epub"),
+                    "A new story needs localized next steps, not a missing-account error, fake progress or empty export.");
+                var backToRunner = IssuedElements(emptyReader).OfType<Button>()
+                    .Single(button => button.AutomationId == "origin-book-return-to-runner");
+                Require(backToRunner.Text == copy["Origin.BookReturnToRunner"], "The return action lost its localized label.");
+                await ui.BeginAsyncVoid(() => ((IButtonController)backToRunner).SendClicked());
+                Require(ReferenceEquals(emptyNavigation.Navigation.NavigationStack.Last(), emptyRoot),
+                    "The reader's next-step action did not return to the runner.");
+                IssuedPageLifecycle(emptyReader, "OnDisappearing");
+                await ui.BeginAsyncVoid(() => ((IButtonController)backToRunner).SendClicked());
+                Require(emptyNavigation.Navigation.NavigationStack.Count == 1 && emptyAlerts.Titles.Count == 0,
+                    "A retired reading action navigated again or raised an alert.");
+                IssuedPageLifecycle(emptyRoot, "OnDisappearing");
+            }
+            Require(authoringProbe.Reads == 0 && authoringProbe.Requests == 0 && authoringProbe.Acceptances == 0
+                && bookOutput.Deliveries == 0
+                && JsonSerializer.Serialize(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!)
+                    == JsonSerializer.Serialize(beforeOpening),
+                "The empty reader changed the runner, sent character facts, generated or exported a book.");
+            Console.WriteLine("PASS empty Origin reader: verified opening state, DE/EN/ES next step, no fake progress, mutations or provider requests");
             var opening = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
             var openingBrief = await runtime.Coordinator.LoadOpeningStoryDetailsAsync(opening.StoryCheckpoint!, () => true);
             var storyProfile = new OriginStoryProfile("other", "they/them", "epic", "Find a home", "Mara");
