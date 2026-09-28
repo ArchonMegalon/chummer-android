@@ -52,7 +52,7 @@ public sealed class CampaignPage : NativePageBase
             ColumnSpacing = 10
         };
         Button refresh = NativeTheme.SecondaryButton(Coordinator.Groups.Count == 0 ? "Load groups" : "Refresh");
-        refresh.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
+        refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
         Button create = NativeTheme.PrimaryButton("Create group");
         create.Clicked += async (_, _) => await Navigation.PushModalAsync(
             new NavigationPage(new GroupEditorPage(Coordinator)));

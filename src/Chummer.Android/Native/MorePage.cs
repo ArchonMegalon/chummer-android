@@ -94,7 +94,7 @@ public class MorePage : NativePageBase, IPlayReviewSafeSurface
         {
             Button refresh = NativeTheme.SecondaryButton(
                 PhoneStrings.Get("RefreshAccount", "Refresh account data"));
-            refresh.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
+            refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
             account.Add(refresh);
         }
         else

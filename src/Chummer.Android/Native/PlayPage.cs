@@ -70,7 +70,7 @@ public sealed class PlayPage : NativePageBase
         else if (Coordinator.Account.IsLinked)
         {
             Button load = NativeTheme.SecondaryButton("Load campaigns");
-            load.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
+            load.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(load);
             context.Add(load);
         }
 

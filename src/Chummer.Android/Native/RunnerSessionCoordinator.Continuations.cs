@@ -87,13 +87,16 @@ public sealed partial class RunnerSessionCoordinator
         }
         // Core carrier validation may cover many bounded snapshots. Keep JSON,
         // history and digest work off the Android synchronization context.
-        var charactersTask = Task.Run(() => transport.ListContinuationsAsync(original, ct), ct);
-        var groupsTask = _account.ListGroupsAsync(ct);
         string selectedGroupId = Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty);
-        await Task.WhenAll(charactersTask, groupsTask);
+        // Both signed reads durably admit an anti-replay packet at Hub. Parallel
+        // requests compete for that store's commit gate and consume each other's
+        // HTTP deadlines. Sequence them; this never retries a failed request.
+        var characters = await Task.Run(() => transport.ListContinuationsAsync(original, ct), ct);
         if (!IsContinuationOwnerCurrent(original) || Volatile.Read(ref _continuationCatalogGeneration) != generation) return;
-        var catalog = new ContinuationCatalog(original, (await charactersTask).ToArray());
-        var groups = await groupsTask;
+        ct.ThrowIfCancellationRequested();
+        var groups = await _account.ListGroupsAsync(ct);
+        if (!IsContinuationOwnerCurrent(original) || Volatile.Read(ref _continuationCatalogGeneration) != generation) return;
+        var catalog = new ContinuationCatalog(original, characters.ToArray());
         var selected = groups.FirstOrDefault(group => group.GroupId == selectedGroupId) ?? groups.FirstOrDefault();
         IReadOnlyList<AndroidChronicleProject> chronicles = selected is not null
             ? await _account.ListChroniclesAsync(selected.GroupId, ct) : [];

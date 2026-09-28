@@ -257,4 +257,5 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="NewRunnerTitle" xml:space="preserve"><value>Nuevo runner</value></data>
   <data name="NewRunnerSelectedBuildMethod" xml:space="preserve"><value>Método de creación: {0}. Pulsa Crear runner para continuar.</value></data>
   <data name="NewRunnerCreate" xml:space="preserve"><value>Crear runner</value></data>
+  <data name="LoadingAccountData" xml:space="preserve"><value>Cargando datos de la cuenta…</value></data>
 </root>

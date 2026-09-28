@@ -25,7 +25,61 @@ internal static partial class AfterRunAuthorityHarness
         foreach (bool cancel in new[] { false, true })
             await RunNativeContinuationPostcommitAsync(contentRoot, cancel);
         await RunNativeContinuationActivationOwnerAsync(contentRoot);
-        Console.WriteLine("PASS 8 actual native/Core continuation review, restore, receipt and owner cases");
+        await RunAndroidCatalogSequencingCasesAsync(contentRoot);
+        Console.WriteLine("PASS 13 actual native/Core continuation review, restore, receipt, sequencing and owner cases");
+    }
+
+    public static async Task RunAndroidCatalogSequencingCasesAsync(string contentRoot)
+    {
+        foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
+            await RunNativeCatalogSequencingAsync(contentRoot, ending);
+        Console.WriteLine("PASS 5 native catalog sequencing cases");
+    }
+
+    private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending)
+    {
+        await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+        using var cancellation = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Account.ListEntered = entered;
+        fixture.Account.ReleaseList = release;
+        fixture.Account.FailList = ending == "failure";
+        int groupsBefore = fixture.Account.SignedGroupLists;
+        Task refresh = fixture.Runtime.Coordinator.RefreshLinkedDataAsync(cancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Require(fixture.Account.SignedGroupLists == groupsBefore,
+                "Group admission overlapped the in-flight continuation read.");
+            if (ending == "cancel") cancellation.Cancel();
+            if (ending.StartsWith("owner-", StringComparison.Ordinal))
+            {
+                await fixture.Account.LinkAsync("sequence-B", "sequence-B");
+                if (ending == "owner-aba") await fixture.Account.LinkAsync("subject", "sequence-A2");
+            }
+        }
+        finally { release.TrySetResult(); }
+
+        Exception? failure = null;
+        try { await refresh.WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (Exception error) { failure = error; }
+        Require(ending switch
+        {
+            "cancel" => failure is OperationCanceledException,
+            "failure" => failure is HttpRequestException,
+            "owner-b" or "owner-aba" => failure is UnauthorizedAccessException,
+            _ => failure is null
+        }, "Catalog sequencing lost the expected failure/cancellation contract: " + failure?.GetType().Name);
+        Require(fixture.Account.SignedGroupLists == groupsBefore + (ending == "complete" ? 1 : 0),
+            "A failed, cancelled or retired-owner continuation dispatched a follow-on signed group request.");
+        if (ending == "complete")
+            Require(fixture.Runtime.Coordinator.OnlineCharacters.Count == 2,
+                "Successful sequential reads did not publish the complete native catalog.");
+        if (ending.StartsWith("owner-", StringComparison.Ordinal))
+            Require(!fixture.Runtime.Coordinator.HasCompleteOnlineContinuation(fixture.Character),
+                "Old-owner catalog survived a credential transition during the sequential read.");
+        Console.WriteLine("PASS native catalog sequencing: " + ending);
     }
 
     private static async Task RunNativeContinuationCanceledAsync(string contentRoot)
@@ -278,6 +332,10 @@ internal static partial class AfterRunAuthorityHarness
         internal AndroidAccountOwnerContextAccessor Owner { get; }
         internal JsonArray Rows = new();
         internal int SignedLists;
+        internal int SignedGroupLists;
+        internal TaskCompletionSource? ListEntered;
+        internal TaskCompletionSource? ReleaseList;
+        internal bool FailList;
 
         internal NativeContinuationAccount()
         {
@@ -322,10 +380,21 @@ internal static partial class AfterRunAuthorityHarness
                     && !document.RootElement.TryGetProperty("accessToken", out _),
                     "The native catalog bypassed the actual signed credential-free-body transport.");
                 Interlocked.Increment(ref SignedLists);
+                if (ListEntered is not null && ReleaseList is not null)
+                {
+                    ListEntered.TrySetResult();
+                    await ReleaseList.Task.WaitAsync(ct);
+                    if (FailList) throw new IOException("Synthetic continuation network failure.");
+                }
                 return ContinuationJsonResponse(new JsonObject { ["snapshots"] = Rows.DeepClone() });
             }
             if (path.EndsWith("/linked/groups", StringComparison.Ordinal))
+            {
+                Require(ReleaseList is null || ReleaseList.Task.IsCompleted,
+                    "Signed catalog reads overlapped before the first response completed.");
+                Interlocked.Increment(ref SignedGroupLists);
                 return ContinuationJsonResponse(new JsonObject { ["groups"] = new JsonArray() });
+            }
             if (path.EndsWith("/revoke", StringComparison.Ordinal)) return ContinuationJsonResponse(new JsonObject());
             string operation = document.RootElement.GetProperty("operationId").GetString()!;
             var response = ContinuationJsonResponse(JsonSerializer.SerializeToNode(new
