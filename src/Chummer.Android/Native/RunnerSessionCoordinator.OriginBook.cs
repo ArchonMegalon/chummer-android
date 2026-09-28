@@ -40,7 +40,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal OriginBookScene? Scene(OriginNarrativeChapterProjection chapter)
         => Scenes?.Scenes.SingleOrDefault(s => s.Matches(this, chapter));
     internal IReadOnlyList<OriginBookEpub.Illustration> SceneExports()
-        => Chapters.Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
+        => Chapters.Where(IsExportableChapter).Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
     public string RunnerName { get; } = projection.CurrentTurn.RunnerDisplayName;
     public string Locale { get; } = projection.CurrentTurn.Locale;
     public string Digest { get; } = projection.SeedDigest;
@@ -52,6 +52,21 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     public string ChapterText(OriginNarrativeChapterProjection chapter)
         => Reading(chapter)?.Selected is { } selected && selected.Matches(chapter, Locale)
             ? selected.Text : _chapterText[chapter.ChapterId];
+
+    // Decision prose is useful to the rules review, but is never a substitute
+    // for a generated chapter in the book reader. A complete returned chapter
+    // can be read before the reader acknowledges it; that does not select it,
+    // advance the story, acknowledge it to Hub or authorize another paid job.
+    internal OriginBookProseDraft? ReadableChapter(OriginNarrativeChapterProjection chapter)
+    {
+        if (!Chapters.Contains(chapter)) return null;
+        return new[] { Reading(chapter)?.Selected, Pending(chapter) }.FirstOrDefault(prose =>
+            prose is not null && prose.IsValid() && prose.Matches(chapter, Locale));
+    }
+
+    internal bool HasExportableChapters => Chapters.Any(IsExportableChapter);
+    internal bool IsExportableChapter(OriginNarrativeChapterProjection chapter)
+        => ReadableChapter(chapter) is { } prose && Reading(chapter)?.Selected?.DraftDigest == prose.DraftDigest;
 
     internal OriginBookReadingChapter? Reading(OriginNarrativeChapterProjection chapter)
         => Chapters.Contains(chapter) ? Readings?.Chapters.SingleOrDefault(c => c.ChapterId == chapter.ChapterId) : null;
@@ -161,7 +176,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
             .Append("</title><style>body{color:#192c35;background:#fff;max-width:48rem;margin:2rem auto;padding:0 1rem;font:1.15rem/1.65 serif}h1,h2{line-height:1.2}.prose{white-space:pre-wrap;overflow-wrap:anywhere}section{break-before:page}img{max-width:100%;height:auto}figure{margin:1em 0}footer{margin-top:3rem}</style></head><body><h1>")
             .Append(E(RunnerName)).Append("</h1><p>").Append(E(copy["Origin.BookSavedChapters"]))
             .Append("</p><p>").Append(E(copy.Format("Origin.BookLanguage", Locale))).Append("</p>");
-        foreach (var chapter in Chapters)
+        foreach (var chapter in Chapters.Where(IsExportableChapter))
         {
             html.Append("<section><h2>").Append(E(IsOpeningSetup(chapter)
                 ? copy["Origin.OpeningSetupTitle"] : chapter.Title)).Append("</h2>");
@@ -328,7 +343,7 @@ public sealed partial class RunnerSessionCoordinator
     internal async Task<(AndroidOriginChapterResult Result, RetainedOriginBook? Book)> SyncOriginChapterAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, OriginChapterSource approvedSource,
         bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct,
-        bool reconcileReaderAcceptance = true)
+        bool reconcileReaderAcceptance = true, bool consentToAutomaticIllustrations = false)
     {
         bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -347,7 +362,7 @@ public sealed partial class RunnerSessionCoordinator
             // own optional hints. Adopt only authenticated readback of the same
             // history; never overwrite a local draft/acceptance or reissue it.
             var retained = await RetainOriginChapterSourceAsync(book, chapter, recovered.Source,
-                recoveredFromHub: true, isCurrentPage, ct);
+                recoveredFromHub: true, isCurrentPage, ct, consentToCreate && consentToAutomaticIllustrations);
             if (retained is null) return (new(AndroidOriginChapterOutcome.Conflict), null);
             book = retained;
             source = book.AuthoringSource(chapter);
@@ -368,7 +383,7 @@ public sealed partial class RunnerSessionCoordinator
                 if (recovery is not null) return (recovery, book);
             }
             var retained = await RetainOriginChapterSourceAsync(book, chapter, source,
-                recoveredFromHub: false, isCurrentPage, ct);
+                recoveredFromHub: false, isCurrentPage, ct, consentToAutomaticIllustrations);
             if (retained is null) return (new(AndroidOriginChapterOutcome.Conflict), null);
             book = retained;
             result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
@@ -510,7 +525,7 @@ public sealed partial class RunnerSessionCoordinator
 
     private Task<RetainedOriginBook?> RetainOriginChapterSourceAsync(RetainedOriginBook book,
         OriginNarrativeChapterProjection chapter, OriginChapterSource source, bool recoveredFromHub,
-        Func<bool> isCurrentPage, CancellationToken ct)
+        Func<bool> isCurrentPage, CancellationToken ct, bool consentToAutomaticIllustrations = false)
         => WithWorkspaceActivationGateAsync(async () =>
         {
             if (_originBookReadings is not { } store || book.Readings is not { } expected
@@ -527,10 +542,13 @@ public sealed partial class RunnerSessionCoordinator
             if (existing.Selected is { } selected && selected.JobId != requestId
                 || existing.Pending is { } pending && pending.JobId != requestId) return null;
             string digest = OriginChapterSourceIdentity.Digest(captured);
-            if (existing.AuthoringSource is { } frozen && OriginChapterSourceIdentity.Digest(frozen) == digest) return book;
+            if (existing.AuthoringSource is { } frozen && OriginChapterSourceIdentity.Digest(frozen) == digest
+                && (!consentToAutomaticIllustrations || expected.IllustrationPolicy == OriginBookReadingState.AutomaticIllustrations)) return book;
             if (OriginChapterSourceIdentity.Digest(currentSource) != digest
                 && (!recoveredFromHub || existing.Pending is not null || existing.Selected is not null)) return null;
-            var next = expected with { Chapters = expected.Chapters.Where(c => c.ChapterId != chapter.ChapterId)
+            var next = expected with { IllustrationPolicy = consentToAutomaticIllustrations
+                ? OriginBookReadingState.AutomaticIllustrations : expected.IllustrationPolicy,
+                Chapters = expected.Chapters.Where(c => c.ChapterId != chapter.ChapterId)
                 .Append(existing with { AuthoringSource = captured }).OrderBy(c => c.ChapterId, StringComparer.Ordinal).ToArray() };
             var saved = await Task.Run(() =>
             {
@@ -610,7 +628,10 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     internal bool CanSelectOriginBookScene(RetainedOriginBook book)
-        => _originSceneDocuments is not null && _originBookScenes is not null && book.Scenes is not null
+        => _originSceneDocuments is not null && CanRetainOriginBookScene(book);
+
+    private bool CanRetainOriginBookScene(RetainedOriginBook book)
+        => _originBookScenes is not null && book.Scenes is not null
             && !book.ScenesUnavailable && IsRetainedOriginBookCurrent(book);
 
     internal async Task<OriginBookScene?> PickOriginBookSceneAsync(RetainedOriginBook book,
@@ -644,9 +665,16 @@ public sealed partial class RunnerSessionCoordinator
     internal Task<RetainedOriginBook?> SaveOriginBookSceneAsync(RetainedOriginBook book,
         OriginNarrativeChapterProjection chapter, OriginBookScene? scene, bool explicitlyConfirmed,
         Func<bool> isCurrentPage, CancellationToken ct)
+        => explicitlyConfirmed && CanSelectOriginBookScene(book)
+            ? PersistOriginBookSceneAsync(book, chapter, scene, isCurrentPage, ct)
+            : Task.FromResult<RetainedOriginBook?>(null);
+
+    private Task<RetainedOriginBook?> PersistOriginBookSceneAsync(RetainedOriginBook book,
+        OriginNarrativeChapterProjection chapter, OriginBookScene? scene,
+        Func<bool> isCurrentPage, CancellationToken ct)
         => WithWorkspaceActivationGateAsync(async () =>
         {
-            if (!explicitlyConfirmed || !isCurrentPage() || !CanSelectOriginBookScene(book)
+            if (!isCurrentPage() || !CanRetainOriginBookScene(book)
                 || !book.Chapters.Contains(chapter) || scene is not null && !scene.Matches(book, chapter)
                 || !_retainedBooks.TryGetValue(book, out var original)
                 || original.DisplayOwnerContext is not { } owner || original.WorkspaceId is not { } id) return null;
@@ -676,6 +704,7 @@ public sealed partial class RunnerSessionCoordinator
     {
         bool Current() => isCurrentPage() && IsRetainedOriginBookCurrent(book);
         if (!Current()) throw new OperationCanceledException("The book context changed.");
+        if (!book.HasExportableChapters) return false;
         byte[] bytes = await Task.Run(() => epub ? OriginBookEpub.Create(book, copy) : Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
         try
         {

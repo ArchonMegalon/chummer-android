@@ -11,7 +11,7 @@ public sealed partial class RunnerSessionCoordinator
 {
     internal bool CanRequestOriginBookScene(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
     {
-        if (!CanSelectOriginBookScene(book) || !CanRequestOriginChapter(book)
+        if (!CanRetainOriginBookScene(book) || !CanRequestOriginChapter(book)
             || _account is not IAndroidOriginSceneTransport || !book.Chapters.Contains(chapter)
             || book.Reading(chapter)?.Selected is not { } selected) return false;
         try { return selected.JobId == OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)); }
@@ -25,7 +25,7 @@ public sealed partial class RunnerSessionCoordinator
 
     internal async Task<(AndroidOriginSceneResult Result, OriginBookScene? Scene)> SyncOriginBookSceneAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, string excerpt, string altText,
-        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct)
+        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct, bool automatic = false)
     {
         bool Current() => isCurrentPage() && CanRequestOriginBookScene(book, chapter);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -33,7 +33,8 @@ public sealed partial class RunnerSessionCoordinator
             return (new(AndroidOriginSceneOutcome.Unauthorized), null);
         var source = book.AuthoringSource(chapter);
         string text = book.ChapterText(chapter);
-        if (consentToCreate && !ValidOriginSceneExcerpt(text, excerpt, altText))
+        if (automatic && book.Readings?.IllustrationPolicy != OriginBookReadingState.AutomaticIllustrations
+            || consentToCreate && !automatic && !ValidOriginSceneExcerpt(text, excerpt, altText))
             return (new(AndroidOriginSceneOutcome.Conflict), null);
         AndroidOriginSceneResult? result = null;
         try
@@ -44,7 +45,9 @@ public sealed partial class RunnerSessionCoordinator
             // explicit excerpt consent may enter the governed render lane.
             if (result.Outcome == AndroidOriginSceneOutcome.NotFound && consentToCreate)
             {
-                result = await transport.RequestSceneAsync(owner, source, text, excerpt, altText, true, ct);
+                result = automatic
+                    ? await transport.RequestAutomaticSceneAsync(owner, source, text, true, ct)
+                    : await transport.RequestSceneAsync(owner, source, text, excerpt, altText, true, ct);
                 if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginSceneOutcome.Unauthorized), null);
                 if (result.Outcome == AndroidOriginSceneOutcome.Available && result.State is "review" or "persisted")
                     result = await transport.ReadSceneAsync(owner, source, text, ct);
@@ -53,6 +56,11 @@ public sealed partial class RunnerSessionCoordinator
             OriginBookScene? scene = null;
             if (result.Outcome == AndroidOriginSceneOutcome.Available && result.Image is { } image)
             {
+                // A historical/manual preview never becomes an automatic
+                // adoption merely because the reader was opened after update.
+                if (automatic && (result.State != "persisted"
+                    || image.InsertionPolicy != OriginBookReadingState.AutomaticIllustrations))
+                    return (new(AndroidOriginSceneOutcome.Conflict), null);
                 // Decode/copy/hash the bounded raster off the Android UI thread.
                 scene = await Task.Run(() =>
                 {
@@ -64,6 +72,29 @@ public sealed partial class RunnerSessionCoordinator
                 ? (result with { Image = null }, scene) : (new(AndroidOriginSceneOutcome.Unauthorized), null);
         }
         finally { if (result?.Image is { } image) CryptographicOperations.ZeroMemory(image.Bytes); }
+    }
+
+    internal bool CanAutomaticallyIllustrateOriginBook(RetainedOriginBook book)
+        => book.Readings?.IllustrationPolicy == OriginBookReadingState.AutomaticIllustrations
+            && CanRetainOriginBookScene(book) && CanRequestOriginChapter(book)
+            && _account is IAndroidOriginSceneTransport;
+
+    internal async Task<(AndroidOriginSceneResult Result, RetainedOriginBook? Book)> SyncAutomaticOriginBookSceneAsync(
+        RetainedOriginBook book, OriginNarrativeChapterProjection chapter, bool allowCreate,
+        Func<bool> isCurrentPage, CancellationToken ct)
+    {
+        if (!CanAutomaticallyIllustrateOriginBook(book) || !isCurrentPage())
+            return (new(AndroidOriginSceneOutcome.Unauthorized), null);
+        if (book.Scene(chapter) is not null) return (new(AndroidOriginSceneOutcome.Available, "persisted"), book);
+        var (result, scene) = await SyncOriginBookSceneAsync(book, chapter, "", "", allowCreate,
+            isCurrentPage, ct, automatic: true);
+        if (!isCurrentPage() || ct.IsCancellationRequested || !IsRetainedOriginBookCurrent(book))
+            return (new(AndroidOriginSceneOutcome.Unauthorized), null);
+        // No local picker, pretend human approval or separate image decision.
+        // Only authenticated exact private-auto retention is inserted offline.
+        if (scene is null) return (result, book);
+        var updated = await PersistOriginBookSceneAsync(book, chapter, scene, isCurrentPage, ct);
+        return (result, updated);
     }
 
     internal async Task<AndroidOriginSceneResult> DecideOriginBookSceneAsync(RetainedOriginBook book,
