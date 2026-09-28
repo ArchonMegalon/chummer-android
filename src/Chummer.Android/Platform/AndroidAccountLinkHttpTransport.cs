@@ -110,6 +110,11 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             // details from the HTTP handler, which may contain credentials.
             throw new InterruptedException(readingBody: false);
         }
+        catch (Exception error) when ((error is WebException or IOException)
+            && error is not InvalidDataException)
+        {
+            throw RedactedTransportFailure(cancellationToken);
+        }
         if (!IsRedirect(response.StatusCode))
         {
             CaptureResponseAuthorization(response);
@@ -182,6 +187,26 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         {
             throw new InvalidDataException("Chummer returned an invalid account response.");
         }
+        catch (Exception error) when ((error is WebException or IOException)
+            && error is not InvalidDataException)
+        {
+            throw RedactedTransportFailure(cancellationToken);
+        }
+    }
+
+    private static Exception RedactedTransportFailure(CancellationToken cancellationToken)
+    {
+        // AndroidMessageHandler can surface a closed Java socket as WebException
+        // instead of HttpRequestException, including after its own deadline.
+        // This is not a SecureStorage failure. Never retain the native message,
+        // inner exception or URI: they may carry private request details.
+        if (cancellationToken.IsCancellationRequested)
+            return new OperationCanceledException("Chummer account request was cancelled.", cancellationToken);
+
+        // Unknown deliberately grants no transient-read retry reserve. A socket
+        // failure alone proves neither a deadline nor safe replay; TLS failures
+        // and uncertain writes must remain fail-closed at their callers.
+        return new HttpRequestException("The connection to Chummer was interrupted.");
     }
 
     public void Dispose()
