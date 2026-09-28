@@ -39,6 +39,15 @@ internal static partial class AfterRunAuthorityHarness
             }
             return wire;
         }
+        JsonObject ContinuityWire(bool original = true)
+        {
+            var wire = Wire("persisted");
+            var manifest = wire["manifest"]!;
+            manifest["protagonistId"] = Hash(string.Join('\0', Hash("subject"), source.WorkspaceId, "origin-protagonist/v1"));
+            manifest["referenceSceneId"] = original ? assetId : new string('d', 64);
+            manifest["referenceImageHash"] = original ? imageHash : new string('e', 64);
+            return wire;
+        }
         using (var fixture = new ContinuationAccountFixture())
         using (var ui = new IssuedPageUiContext())
         {
@@ -104,6 +113,31 @@ internal static partial class AfterRunAuthorityHarness
                 var result = await transport.ReadSceneAsync(owner, source, prose);
                 Require(result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.Image is null && !result.RetryableReadFailure,
                     "Hostile scene readback reached the reader.");
+            }
+            foreach (bool original in new[] { true, false })
+            {
+                fixture.SceneResponse = (_, _) => ContinuationJsonResponse(ContinuityWire(original));
+                Require((await transport.ReadSceneAsync(owner, source, prose)).Image?.ImageHash == imageHash,
+                    "An exact original or growing-protagonist illustration was rejected.");
+            }
+            var continuityAttacks = new Action<JsonObject>[]
+            {
+                w => w["manifest"]!.AsObject().Remove("protagonistId"),
+                w => w["manifest"]!.AsObject().Remove("referenceSceneId"),
+                w => w["manifest"]!.AsObject().Remove("referenceImageHash"),
+                w => w["manifest"]!["protagonistId"] = Hash("foreign owner or book"),
+                w => w["manifest"]!["referenceSceneId"] = "https://provider.invalid/reference.png",
+                w => w["manifest"]!["referenceImageHash"] = "invalid",
+                w => w["manifest"]!["referenceImageHash"] = new string('e', 64),
+                w => w["manifest"]!["referenceImageUrl"] = "https://provider.invalid/reference.png"
+            };
+            foreach (var attack in continuityAttacks)
+            {
+                var wire = ContinuityWire(); attack(wire);
+                fixture.SceneResponse = (_, _) => ContinuationJsonResponse(wire);
+                var result = await transport.ReadSceneAsync(owner, source, prose);
+                Require(result.Outcome == AndroidOriginSceneOutcome.Unavailable && result.Image is null && !result.RetryableReadFailure,
+                    "Partial, foreign or corrupt protagonist reference metadata reached the reader.");
             }
             // Valid JSON with leading whitespace: rejection must be the byte
             // cap, not an early syntax error or later scene-schema rejection.
@@ -194,7 +228,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(result.Outcome == AndroidOriginSceneOutcome.Unauthorized && result.Image is null && !result.RetryableReadFailure
                 && fixture.SceneRequests == (signing ? 0 : 1), "Owner A→B→A accepted a retired private illustration.");
         }
-        Console.WriteLine("PASS signed scene consent, exact image admission/review, 21 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");
+        Console.WriteLine("PASS signed scene consent, exact image admission/review, original/growing protagonist references, 29 hostile readbacks, chunked bounds, no mutation retry, off-UI I/O and owner ABA");
     }
 
     private sealed class SceneChunkStream(byte[] bytes) : MemoryStream(bytes, writable: false)

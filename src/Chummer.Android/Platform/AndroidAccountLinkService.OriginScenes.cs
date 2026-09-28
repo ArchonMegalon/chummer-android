@@ -13,7 +13,8 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
     private sealed record SceneManifest(string Schema, string AssetId, string OwnerDigest, string WorkspaceId,
         string ChapterId, string ChapterDigest, string TextDigest, string AltText, string ContentType,
         int ContentLengthBytes, string ContentHash, int Width, int Height, string Provider,
-        string ProviderReceiptDigest, string AdmissionDigest, bool PublicationAuthorized);
+        string ProviderReceiptDigest, string AdmissionDigest, bool PublicationAuthorized,
+        string? ProtagonistId = null, string? ReferenceSceneId = null, string? ReferenceImageHash = null);
     private sealed record SceneWire(string AssetId, string State, bool PublicationAuthorized,
         SceneManifest? Manifest = null, string? ImageBase64 = null);
     private sealed record SceneConsent(string Excerpt, string AltText);
@@ -109,6 +110,16 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginSceneTrans
                     || m.ContentLengthBytes is < 45 or > 4 * 1024 * 1024 || m.Width is < 1 or > 4096 || m.Height is < 1 or > 4096
                     || !ChapterHex(m.ContentHash) || !ChapterHex(m.ProviderReceiptDigest) || !ChapterHex(m.AdmissionDigest)
                     || m.Provider is not ("onemin" or "phygital")) throw new JsonException();
+                // Legacy retained scenes remain readable. New continuity metadata
+                // must be complete and bound to this owner/book, never partially
+                // accepted or treated as permission to fetch an external image.
+                if (m.ProtagonistId is not null || m.ReferenceSceneId is not null || m.ReferenceImageHash is not null)
+                {
+                    string protagonist = ChapterTextDigest(string.Join('\0', ownerDigest, source.WorkspaceId,
+                        "origin-protagonist/v1"));
+                    if (m.ProtagonistId != protagonist || !ChapterHex(m.ReferenceSceneId) || !ChapterHex(m.ReferenceImageHash)
+                        || (m.ReferenceSceneId == assetId && m.ReferenceImageHash != m.ContentHash)) throw new JsonException();
+                }
                 if (!mutation)
                 {
                     if (wire.ImageBase64 is null || wire.ImageBase64.Length > 4 * ((4 * 1024 * 1024 + 2) / 3)) throw new JsonException();
