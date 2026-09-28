@@ -23,8 +23,34 @@ Life Modules revision and linked account without a stale waiting notice.
 Earlier unchanged-input Origin tests verified first-reopen answers and one
 confirmation. The release delta after those checks is version metadata only.
 
-Physical Preview 52 Play installation and the changed-route check are pending.
-Physical Preview 51 did not reproduce the permanent wait at observation time.
+Physical Preview 52 updated normally from Preview 51 through Play at
+`2026-09-28T16:00:36Z` on an API-36 ARM64 phone. Package/version and installer
+`com.android.vending` were read back. First launch and a verified force-stop/new
+process retained the existing runner's displayed revision, snapshot prefix and
+module budget. Home, More and Account & privacy settled without the waiting
+notice; the pre-existing unlinked state and enabled Link action remained intact.
+No account link, credential reset, character mutation or debug sideload was used.
+This verifies the observed unlinked route, not a new end-to-end account login or
+a reproduction of the original permanent wait on the phone. Linked recovery and
+late-callback behavior retain the separate focused/local Debug evidence above.
+
+The empty-origin Read entry now explains the missing opening decisions and its
+Back to your runner action works. It does not present a setup summary as prose.
+Linked-runner recovery remains readable and displays the correct empty-history
+state after process restart. The physical font scale remained 1.3; no phone
+security setting was changed.
+
+The pulled installed base APK SHA-256 is
+`5c82582b897438d9b046999fe9b9f46cb02d16e49d8f87d2338416962bf552f3`.
+Offline verification passed APK v2/v3 and Source Stamp verification. Its single
+signer certificate SHA-256 is
+`035df37b31c599d3221aabfda7d9e3cdfe65752bd6e60e70c640780c51dd908f`,
+matching the installed Preview 50/51 certificate. This Play signing certificate
+is distinct from the upload certificate below and was not independently compared
+with Play Console. The verifier reported two unknown additional v3 attributes;
+signature verification still succeeded. No claim about every installed split is
+made from the base-APK check alone.
+
 There is no full-book reading, EPUB, hosted seven-journey, full beta, public,
 tablet or desktop completion claim. The paid FirstBook operations remain
 separate, unresolved provider work; this hotfix did not retry them.
@@ -63,7 +89,10 @@ not package-only native assembly or hosted qualification.
 Private packet `origin-release52-20260928.XmbDot5m` retains the bytes and logs.
 `PLAY_PUBLICATION.json` SHA-256
 `3eb7328f49a3ad91ade195ab1a7d2e4f108d769cba693b85486d7ea5c7d78547`
-records availability with physical installation pending.
+records availability with physical installation pending at that earlier time.
+The later private `PHONE_INSTALL.json` and phone screenshots/hierarchies retain
+the physical update and affected-route result; earlier pending observations
+remain unchanged rather than being rewritten as successful installs.
 
 Play reported the existing missing mapping/native-symbol warnings and no lost
 supported devices. Production, audience, billing, account security and listing
