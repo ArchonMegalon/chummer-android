@@ -373,6 +373,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<WorkspaceOutputBinding, object> _handledOutputs = new();
     private int _outputRequested;
     private (WorkspaceOutputBinding Binding, object Receipt, string Notice)? _outputNotice;
+    private const string AccountRecoveryPendingNotice = "Account recovery is still finishing.";
     private string? _notice;
     private NativeDurableSaveNotice? _durableSaveNotice;
     private string _persistedCharacterSettingsCatalogJson = string.Empty;
@@ -699,7 +700,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 ? _groupNotes
                 : State.Profile?.GroupNotes ?? string.Empty;
 
-    public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
+    // Recovery is transient, not a durable action result. A retained Link event
+    // may race the terminal account callback; derive visibility from the current
+    // snapshot so either event order retires this notice without erasing another
+    // action's notice or changing account/runner authority.
+    public string? Notice => (_notice == AccountRecoveryPendingNotice && !_account.Snapshot.IsLoading
+        ? null : _notice) ?? State.Notice ?? Surface.Notice;
 
     public bool HasDurableSaveNotice
         => string.Equals(_notice, "Saved.", StringComparison.Ordinal)
@@ -6744,7 +6750,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     {
         if (_account.Snapshot.IsLoading)
         {
-            _notice = "Account recovery is still finishing.";
+            _notice = AccountRecoveryPendingNotice;
             NotifyChanged();
             return;
         }

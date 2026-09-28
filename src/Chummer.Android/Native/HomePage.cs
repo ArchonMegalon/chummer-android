@@ -219,22 +219,35 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
 
     private void AddOnlineSection()
     {
+        AndroidAccountLinkSnapshot account = Coordinator.Account;
         VerticalStackLayout online = new() { Spacing = 10 };
         online.Add(NativeTheme.Eyebrow("Chummer.run"));
         online.Add(NativeTheme.Title(
-            Coordinator.Account.IsLinked
+            account.IsLinked
                 ? PhoneStrings.Get("HomeOnlineRunners", "Online runners")
                 : PhoneStrings.Get("HomeLinkAccount", "Link your account"),
             21));
 
-        if (!Coordinator.Account.IsLinked)
+        if (!account.IsLinked)
         {
             online.Add(NativeTheme.Body(
                 PhoneStrings.Get(
                     "HomeOpenAccountRunners",
                     "Open runners saved to your Chummer account."),
                 NativeTheme.Muted));
+            if (account.IsLoading)
+            {
+                online.Add(NativeTheme.Body(account.Label, NativeTheme.Muted));
+                online.Add(new ActivityIndicator
+                {
+                    AutomationId = "home-account-recovery",
+                    IsRunning = true,
+                    Color = NativeTheme.Ink
+                });
+            }
             Button link = NativeTheme.PrimaryButton(PhoneStrings.Get("LinkAccount", "Link account"));
+            link.AutomationId = "home-account-link";
+            link.IsEnabled = !account.IsLoading;
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             online.Add(link);
         }

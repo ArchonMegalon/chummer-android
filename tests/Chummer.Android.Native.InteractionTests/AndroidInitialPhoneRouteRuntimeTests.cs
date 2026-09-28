@@ -7,6 +7,7 @@ using Chummer.Application.Owners;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
@@ -17,6 +18,58 @@ internal static partial class AfterRunAuthorityHarness
         await RunDelayedInitialPhoneRouteCaseAsync(contentRoot, navigateAway: true);
         await RunUnknownRecoveringInitialPhoneRouteCaseAsync(contentRoot);
         await RunEmptyAndUnknownInitialPhoneRouteCasesAsync(contentRoot);
+    }
+
+    private static HomePage RenderAccountHome(NativeRewardRuntime runtime)
+    {
+        var page = new HomePage(runtime.Coordinator);
+        typeof(HomePage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(page, null);
+        return page;
+    }
+
+    private static async Task AssertAccountLinkWaitingAsync(NativeRewardRuntime runtime)
+    {
+        Require(runtime.Coordinator.Account.IsLoading, "Recovery test missed the actual Loading state.");
+        var page = RenderAccountHome(runtime);
+        var link = IssuedElements(page).OfType<Button>().Single(button => button.Text ==
+            PhoneStrings.Get("LinkAccount", "Link account"));
+        Require(!link.IsEnabled, "Home offers account linking while actual startup recovery is still active.");
+        Require(IssuedElements(page).OfType<ActivityIndicator>().Any(indicator => indicator.IsRunning),
+            "Home gives no visible account-recovery progress while linking is disabled.");
+        // A retained control can still deliver an old event. It must not begin
+        // another link or overwrite credentials while the real gate is held.
+        await runtime.Coordinator.BeginAccountLinkAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Require(runtime.Coordinator.Notice == "Account recovery is still finishing.",
+            "The stale link event did not report the actual pending recovery.");
+    }
+
+    private static void AssertAccountLinkSettled(NativeRewardRuntime runtime, bool linked)
+    {
+        Require(!runtime.Coordinator.Account.IsLoading && runtime.Coordinator.Account.IsLinked == linked
+            && runtime.Coordinator.Notice != "Account recovery is still finishing.",
+            "Finished account recovery left a permanent waiting notice.");
+        var notice = typeof(RunnerSessionCoordinator).GetField("_notice", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        object? previousNotice = notice.GetValue(runtime.Coordinator);
+        try
+        {
+            // Simulate completion between the old handler's Loading check and
+            // its notice assignment. No account transition or relink is needed.
+            notice.SetValue(runtime.Coordinator, "Account recovery is still finishing.");
+            Require(runtime.Coordinator.Notice != "Account recovery is still finishing.",
+                "A late stale-control notice resurrected completed account recovery.");
+            notice.SetValue(runtime.Coordinator, "Unrelated saved action.");
+            Require(runtime.Coordinator.Notice == "Unrelated saved action.",
+                "Account completion hid an unrelated action notice.");
+        }
+        finally { notice.SetValue(runtime.Coordinator, previousNotice); }
+        var page = RenderAccountHome(runtime);
+        Require(!IssuedElements(page).OfType<ActivityIndicator>().Any(indicator => indicator.IsRunning),
+            "Home retained account recovery progress after the real operation finished.");
+        var links = IssuedElements(page).OfType<Button>().Where(button => button.Text ==
+            PhoneStrings.Get("LinkAccount", "Link account")).ToArray();
+        Require(linked ? links.Length == 0 : links is [{ IsEnabled: true }],
+            "Home did not replace pending recovery with the actual linked/unlinked action.");
+        Console.WriteLine("PASS account recovery UI settles without relinking, lost readiness or stale waiting notice");
     }
 
     private static void RunInitialPhoneRoutePolicyCases()
@@ -143,6 +196,7 @@ internal static partial class AfterRunAuthorityHarness
                 "The denied admission did not exercise real pending owner initialization.");
             while (callbacks.TryDequeue(out Action? early)) early();
             Require(routeCount == 0 && !policy.IsRetired, "Pending actual startup chose the empty Home terminal state.");
+            await AssertAccountLinkWaitingAsync(runtime);
 
             var activationGate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
                 BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
@@ -152,6 +206,7 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Deny = false;
                 if (Interlocked.Exchange(ref heldAccountGate, 0) == 1) accountGate.Release();
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                AssertAccountLinkSettled(runtime, linked: false);
                 Require(runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Pending
                     && !ready.Task.IsCompleted && routeCount == 0,
                     "Account callback re-entered the gated native initialization or routed inline.");
@@ -232,6 +287,7 @@ internal static partial class AfterRunAuthorityHarness
                 && !policy.TryResolve(pending) && !policy.IsRetired && !ready.Task.IsCompleted
                 && runtime.Presenter.State.Profile is null && !runtime.Coordinator.IsBusy,
                 "In-flight legacy owner recovery consumed initial navigation, exposed data, or blocked Home.");
+            await AssertAccountLinkWaitingAsync(runtime);
             var activationGate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
                 BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
             await activationGate.WaitAsync();
@@ -239,6 +295,7 @@ internal static partial class AfterRunAuthorityHarness
             {
                 releaseStatus.TrySetResult();
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                AssertAccountLinkSettled(runtime, linked: true);
                 Require(restart.Owner.Capture().IsValid && restart.Owner.Capture().Owner == beforeOwner.Owner
                     && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Pending
                     && !policy.IsRetired && !ready.Task.IsCompleted,
