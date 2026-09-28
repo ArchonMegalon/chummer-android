@@ -110,3 +110,37 @@ and reference identity, but not provider-rendered visual similarity. A real
 original/later-age pair, live automatic workflow, deployment and release remain
 open. No provider call, quota reset, upload-key signing, AAB or Play upload was
 performed. Preview 49 and the uncertain FirstBook job 5435 fence are unchanged.
+
+## Current-package native completion and cold Career reopen
+
+The **same** `cf92bfe4…` APK above was reused on 28 September; no rebuild,
+installation, account credentials or data reset was needed. Actual installed
+APK bytes were checked equal before this route. In the separate synthetic
+package, the restored revision-7 runner opened Complete Life Modules → Review
+draft. Its retained dice total was 6, giving 120 ¥ for the Street lifestyle.
+
+The confirmation checkbox was observed unchecked and the action disabled.
+After explicit acknowledgement, one native button tap started finalization.
+While it was saving, repeat confirmation was disabled and the first stored
+workspace observation remained revision 7 with its original hash. The next
+stored observation was revision 8/8, `created=True`, 120 ¥ and exactly one
+finalization receipt. The UI subsequently confirmed saved/reopened Career;
+Open Career runner then displayed `CAREER RUNNER`.
+
+Process 2114 was force-stopped and verified absent. A successful cold launch
+created process 4147; after the loading view, `CAREER RUNNER` appeared again.
+Exact saved bytes matched after confirmation, after restart and after the cold
+UI had loaded, SHA-256:
+`9392ac58a5d5aeb8d3eb227afa6c3597d125022064fd0b3888621255958d60ab`.
+
+The bounded local verifier passed all these observations. `updated-device/` in
+the retained packet contains the complete screenshots/hierarchies, input/tap
+journal, exact workspace observations and restart record. Early blank/loading
+views and the saving view after the durable commit are preserved, not treated
+as completed UI states. A duplicate-label helper selector refused without a tap.
+No Android speedup is claimed from this non-benchmark route. The owned emulator
+and isolated ADB were stopped normally; the AVD and recovery artifacts remain.
+
+This closes the native completion/restart check for the current package inputs,
+not real multi-age image continuity, full live-book delivery, physical ARM64 or
+Play publication. No AAB or upload-key signing occurred.
