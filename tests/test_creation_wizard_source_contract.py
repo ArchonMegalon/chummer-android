@@ -37,10 +37,11 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         self.assertEqual(1, source.count("new CreationDashboardRenderReadiness("))
         self.assertIn("var readiness = new CreationDashboardRenderReadiness(", source)
-        self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness)", source)
+        self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex)", source)
         self.assertEqual(2, source.count("creationResources, readiness);"))
         for method in ("AddBudgetRibbon", "AddWizardStages", "AddLegalNextSteps"):
-            section = source.split(f"private void {method}(", 1)[1].split(f"private ", 1)[0]
+            return_type = "IReadOnlyDictionary<string, CreationBudgetRoute>" if method == "AddWizardStages" else "void"
+            section = source.split(f"private {return_type} {method}(", 1)[1].split("private ", 1)[0]
             self.assertNotRegex(section, r"HasAuthoritative(?:Attributes|Skills|Qualities|MagicResonance|CreationContacts|Resources)\(", method)
 
     def test_synchronous_creation_completions_drain_and_render_current_progress(self) -> None:

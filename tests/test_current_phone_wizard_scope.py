@@ -71,7 +71,7 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
 
     def test_every_visible_uncovered_creation_route_is_marked_without_being_hidden(self) -> None:
         source = BUILD.read_text(encoding="utf-8")
-        stages = source[source.index("private void AddWizardStages(") : source.index("private void AddCompletionBlockers(")]
+        stages = source[source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(") : source.index("private void AddCompletionBlockers(")]
         next_steps = source[source.index("private void AddLegalNextSteps(") : source.index("private static string? ProjectionStageBlocker(")]
         method = source[source.index("private void AddCreationMethodRoute(") : source.index("private void AddFinalizationReviewAction(")]
         finalization = source[source.index("private void AddFinalizationReviewAction(") : source.index("private void AddCreationFinalizationStatus(")]
