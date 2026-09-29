@@ -104,8 +104,13 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 52 is the latest [observed Internal availability](../play/evidence/preview52-internal-observation.md).
-Its normal physical Play update from 51, first launch and saved-runner process
+Preview 53 is the latest [observed Internal availability](../play/evidence/preview53-internal-observation.md).
+It is available on Play Internal; physical Play installation of 53 is not yet
+verified. Its readable review and consolidated runner-entry changes have focused
+local managed and diagnostic API-36 save/reopen/process-restart evidence.
+
+[Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
+physically verified version. Its normal Play update from 51, first launch and saved-runner process
 restart passed. The observed unlinked account route settled without a stale
 waiting notice; this is not a new account-login or full-book reader pass. The
 installed base-APK certificate matched Preview 50/51 but was not independently
