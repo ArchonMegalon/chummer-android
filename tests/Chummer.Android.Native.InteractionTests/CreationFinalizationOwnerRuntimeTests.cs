@@ -15,6 +15,129 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+
+    internal static async Task RunCreationBudgetRibbonAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, creationSkills: true,
+            productionCreationOverview: true);
+        var saved = PrepareActualFinalizationReadyContext(runtime);
+        await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+        var attributes = runtime.Coordinator.LoadCreationAttributes();
+        var skills = runtime.Coordinator.LoadCreationSkills();
+        Require(attributes.Value is { } attributeState
+            && CreationAttributesPhoneAuthority.IsReady(attributeState, runtime.Coordinator.State)
+            && skills.Value is { } skillState
+            && CreationSkillsPhoneAuthority.IsReady(skillState, runtime.Coordinator.State),
+            "SETUP: saved runner lacks current typed Attributes/Skills authority.");
+        CharacterCreationBudgetState[] attributeBudgets =
+            [attributes.Value!.NormalPointBudget, attributes.Value.SpecialPointBudget,
+                attributes.Value.CreationKarmaBudget];
+        CharacterCreationBudgetState[] skillBudgets =
+            [skills.Value!.ActiveSkillPointBudget, skills.Value.SkillGroupPointBudget,
+                skills.Value.KnowledgeSkillPointBudget];
+        // The wizard's budget IDs differ from the typed allocation budget IDs.
+        // Keep the real overview rows as input; only mark their fallback pending.
+        string[] ids = [CharacterCreationBudgetIds.NormalAttributes, CharacterCreationBudgetIds.SpecialAttributes,
+            CharacterCreationBudgetIds.Karma, CharacterCreationBudgetIds.ActiveSkills,
+            CharacterCreationBudgetIds.SkillGroups, CharacterCreationBudgetIds.KnowledgeSkills];
+        var unavailable = ids.Select(id => runtime.Coordinator.State.CreationWizard!.Budgets
+            .Single(budget => budget.BudgetId == id) with
+            { IsExact = false, Blockers = ["budget-authority-pending"] }).ToArray();
+        var snapshot = runtime.Coordinator.State.CreationWizard! with { Budgets = unavailable };
+        var render = typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        foreach (bool attributesReady in new[] { false, true })
+        foreach (bool skillsReady in new[] { false, true })
+        {
+            var page = new BuildPage(runtime.Coordinator);
+            var readiness = new CreationDashboardRenderReadiness(
+                () => attributesReady, () => skillsReady, () => false,
+                () => false, () => false, () => false);
+            render.Invoke(page, [snapshot, attributes, skills, readiness]);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
+            Require(cards.Length == 6, "A saved budget disappeared from the ribbon.");
+            for (int index = 0; index < cards.Length; index++)
+            {
+                bool ready = index < attributeBudgets.Length ? attributesReady : skillsReady;
+                var expected = index < attributeBudgets.Length
+                    ? attributeBudgets[index] : skillBudgets[index - attributeBudgets.Length];
+                var labels = ((VerticalStackLayout)cards[index].Content!).Children.OfType<Label>()
+                    .Select(label => label.Text).ToArray();
+                Require(labels[1] == (ready
+                        ? expected.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
+                        : "Not exact"),
+                    $"Budget {expected.BudgetId} lost its own readiness: attributes={attributesReady}, skills={skillsReady}.");
+                Require(ready || labels.Contains("budget-authority-pending"),
+                    "An unavailable domain borrowed another domain's authority.");
+            }
+        }
+        var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
+            "Rendering mixed budget families changed the saved runner.");
+        Console.WriteLine("PASS budget ribbon: both typed families, either family loading, unavailable fallback, saved bytes unchanged");
+    }
+
+    internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot);
+        var blockersField = typeof(CreationSkillsPage).GetField("_blockers",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var addReview = typeof(CreationSkillsPage).GetMethod("AddReview",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        foreach (bool blocked in new[] { true, false })
+        {
+            var page = new CreationSkillsPage(runtime.Coordinator);
+            blockersField.SetValue(page, blocked
+                ? new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired }
+                : Array.Empty<string>());
+            // Rendering does not invoke the captured review callback or need a
+            // newly granted mutation authority.
+            addReview.Invoke(page, new object?[] { null });
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            Require(body.Children.Count == (blocked ? 2 : 1)
+                && body.Children.Last() is Button { AutomationId: "creation-skills-review" },
+                "The review action lost its immediately adjacent validation feedback.");
+            if (blocked)
+            {
+                Require(body.Children[0] is Border { AutomationId: "creation-skills-review-blockers",
+                    Content: VerticalStackLayout }, "Missing Skills validation notice beside Review.");
+                var content = (VerticalStackLayout)((Border)body.Children[0]).Content!;
+                Require(content.Children.OfType<Label>().Any(label =>
+                    label.Text.Contains("Choose a native language", StringComparison.Ordinal)
+                    && label.Text.Contains("not saved yet", StringComparison.Ordinal)),
+                    "Review did not explain the missing native language and unsaved draft.");
+            }
+        }
+        Console.WriteLine("PASS Skills review: missing-language explanation beside action, absent when unblocked");
+    }
+
+    internal static async Task RunCreationFinalReviewNamesAsync(string contentRoot)
+    {
+        var legacy = new CharacterCreationFinalizationDelta(1, "skill:active:exact-id",
+            CharacterCreationFinalizationDeltaKinds.Skill, "exact-id", null, "2", 0, 0, []);
+        Require(CreationFinalizationPage.TargetLabel(legacy) == "exact-id",
+            "Historical review without a name must retain its exact identity, not guess a catalog match.");
+        Require(CreationFinalizationPage.TargetLabel(legacy with { TargetName = "  " }) == "exact-id",
+            "An empty display name hid the exact fallback identity.");
+        var named = legacy with { TargetName = "Pistols (Semi-Automatics)" };
+        string before = JsonSerializer.Serialize(named);
+        Require(CreationFinalizationPage.TargetLabel(named) == "Pistols (Semi-Automatics)"
+            && JsonSerializer.Serialize(named) == before,
+            "Display must preserve the admitted name, specialization and immutable delta bytes.");
+        // The named path needs no client catalog lookup, including Life Modules.
+        Require(LifeModuleCompletionPage.ReviewChange(null!, named) == "Pistols (Semi-Automatics): 2",
+            "Life Modules ignored the canonical name or tried to reconstruct it from another catalog.");
+        var language = named with { TargetName = "Salish", AfterValue = "native" };
+        string nativeLanguage = LifeModuleCompletionPage.ReviewChange(null!, language);
+        Require(nativeLanguage.StartsWith("Salish: ", StringComparison.Ordinal)
+            && !nativeLanguage.EndsWith(": native", StringComparison.Ordinal),
+            "Named language lost its readable native-language value.");
+        await RunCreationFinalizationLocalBaselineAsync(contentRoot);
+        Console.WriteLine("PASS final-review names: canonical label, historical fallback, Life Modules, real Core/MAUI render and cold receipt");
+    }
+
     public static async Task RunCreationMagicBackgroundAsync(string contentRoot, string sourceDirectory,
         CharacterWorkspaceId id, CharacterCreationMagicResonanceDesktopDraft draft)
     {
@@ -1171,6 +1294,7 @@ internal static partial class AfterRunAuthorityHarness
             () => runtime.Coordinator.ReviewCreationFinalizationAsync(loaded.Value!.Binding, FinalizationFixtureCash(loaded.Value)));
         Require(review.Value is { CanConfirm: true, Plan: not null },
             "Local native finalization Review failed: " + JsonSerializer.Serialize(review));
+        AssertFinalReviewNames(runtime.Coordinator, review.Value!);
         var store = new FileWorkspaceStore(runtime.StateDirectory);
         Require(FinalizationDocumentDigest(store.Get(runtime.Id).Value!) == FinalizationDocumentDigest(before),
             "Finalization Load/Review mutated the local ready fixture.");
@@ -1242,6 +1366,42 @@ internal static partial class AfterRunAuthorityHarness
             beforeDigest = FinalizationDocumentDigest(before), afterDigest = FinalizationDocumentDigest(cold)
         }));
         Console.WriteLine("PASS actual local native/Core finalization baseline");
+    }
+
+    private static void AssertFinalReviewNames(RunnerSessionCoordinator coordinator, CharacterCreationFinalizationReview review)
+    {
+        string original = JsonSerializer.Serialize(review);
+        Require(review.OrderedDeltas.Any(delta => delta.Kind == CharacterCreationFinalizationDeltaKinds.Skill
+            && !string.IsNullOrWhiteSpace(delta.TargetName)), "Actual Core review has no canonical skill names.");
+        var page = new CreationFinalizationPage(coordinator, review);
+        typeof(CreationFinalizationPage).GetField("_visible", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(page, true);
+        var refresh = typeof(CreationFinalizationPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        refresh.Invoke(page, null);
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var labels = body.Children.OfType<Border>().Select(border => border.Content)
+            .OfType<VerticalStackLayout>().SelectMany(card => card.Children.OfType<Label>()).ToArray();
+        foreach (var delta in review.OrderedDeltas)
+        {
+            var target = labels.Single(label => label.AutomationId == "creation-finalization-target-" + delta.Order);
+            Require(target.Text == CreationFinalizationPage.TargetLabel(delta) && target.IsVisible,
+                "Final review hid or replaced a reviewed target name.");
+            if (!string.IsNullOrWhiteSpace(delta.TargetName))
+                Require(target.Text == delta.TargetName, "Final review did not display the exact admitted name.");
+            if (target.Text != delta.TargetId)
+                Require(labels.Any(label => label.AutomationId == "creation-finalization-source-" + delta.Order
+                    && !label.IsVisible && label.Text.Split('\n')[0] == delta.TargetId),
+                    "A readable name removed its exact typed identity from diagnostics.");
+        }
+        var toggle = body.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-technical-details-toggle");
+        ((IButtonController)toggle).SendClicked();
+        Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
+            .All(label => label.IsVisible), "Technical detail toggle did not reveal source identities.");
+        ((IButtonController)toggle).SendClicked();
+        Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
+            .All(label => !label.IsVisible), "Technical detail toggle did not collapse source identities.");
+        Require(JsonSerializer.Serialize(review) == original && coordinator.IsCreationFinalizationReviewCurrent(review),
+            "Display names or technical disclosure changed the admitted review authority.");
     }
 
     private static async Task RunCreationFinalizationLinkedAsync(string contentRoot, string scenario)

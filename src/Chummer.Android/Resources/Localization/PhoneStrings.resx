@@ -235,8 +235,9 @@ No change has been saved yet.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Discard this draft</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Discard unapplied changes?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Only this item's retained input will be removed. The saved runner and other drafts will not change.</value></data>
-  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>The link outcome could not be confirmed. Open Linked-runner recovery from Runners; do not retry. Local files were retained.</value></data>
-  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Linked-runner recovery</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>The link outcome could not be confirmed. Open More → Linked file diagnostics; do not retry. Local files were retained.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Linked file diagnostics</value></data>
+  <data name="LinkedRecoveryEntryDetail" xml:space="preserve"><value>Trouble attaching a character file? Inspect local linking history here. To load runners from your account, use the Runners tab.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>Recovery is unavailable or damaged. No link was changed; keep local recovery files.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>These are local intents and state observations, not Core transaction receipts. Unresolved changes must not be retried.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>Context changed. Refresh recovery history.</value></data>

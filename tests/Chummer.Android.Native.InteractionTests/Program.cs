@@ -13,6 +13,26 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-budget-ribbon-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationBudgetRibbonAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-skills-review-feedback-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationSkillsReviewFeedbackAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--life-module-completion-review-names-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleCompletionAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-final-review-names-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationFinalReviewNamesAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--priority-rank-reasons")
         {
             await PriorityRankReasonsAreReadableAsync();

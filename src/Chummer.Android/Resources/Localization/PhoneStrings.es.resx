@@ -234,8 +234,9 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Descartar este borrador</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>¿Descartar los cambios sin aplicar?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Solo se descartarán los datos de este elemento. El runner guardado y los demás borradores no cambiarán.</value></data>
-  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>No se pudo confirmar el resultado del vínculo. Abre la recuperación de vínculos en Runners; no lo intentes de nuevo. Se conservaron los archivos locales.</value></data>
-  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Recuperación de vínculos</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>No se pudo confirmar el resultado del vínculo. Abre Más → Diagnóstico de archivos vinculados; no lo intentes de nuevo. Se conservaron los archivos locales.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Diagnóstico de archivos vinculados</value></data>
+  <data name="LinkedRecoveryEntryDetail" xml:space="preserve"><value>¿Problemas al vincular un archivo de personaje? Consulta aquí el historial local de vínculos. Para cargar los runners de tu cuenta, usa la pestaña Runners.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>La recuperación no está disponible o está dañada. No se cambió ningún vínculo; conserva los archivos locales de recuperación.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Son intenciones locales y observaciones del estado, no recibos de transacción de Core. No se deben repetir cambios sin resolver.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>El contexto cambió. Actualiza el historial de recuperación.</value></data>

@@ -35,6 +35,13 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertEqual("Geschichten", catalogs["de"]["ShellStories"])
         self.assertEqual("Historias", catalogs["es"]["ShellStories"])
 
+    def test_link_diagnostics_guidance_names_the_actual_destination_in_each_locale(self) -> None:
+        for name in ("PhoneStrings.resx", "PhoneStrings.de.resx", "PhoneStrings.es.resx"):
+            catalog = load_resx(name)
+            destination = f"{catalog['ShellMore']} → {catalog['LinkedRecoveryTitle']}"
+            self.assertIn(destination, catalog["LinkedRunnerOutcomeUnconfirmed"], name)
+            self.assertIn(catalog["ShellRunners"], catalog["LinkedRecoveryEntryDetail"], name)
+
     def test_locale_policy_supports_regional_de_en_es_and_explicit_english_fallback(self) -> None:
         policy = (PROJECT / "Native" / "PhoneLocalePolicy.cs").read_text(encoding="utf-8")
         for language in ('"de"', '"en"', '"es"'):

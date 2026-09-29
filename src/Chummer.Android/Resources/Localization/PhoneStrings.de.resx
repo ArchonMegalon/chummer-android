@@ -235,8 +235,9 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="TabletDraftDiscard" xml:space="preserve"><value>Diesen Entwurf verwerfen</value></data>
   <data name="TabletDraftDiscardTitle" xml:space="preserve"><value>Nicht übernommene Eingaben verwerfen?</value></data>
   <data name="TabletDraftDiscardPrompt" xml:space="preserve"><value>Nur die Eingaben dieses Eintrags werden verworfen. Der gespeicherte Runner und andere Entwürfe bleiben unverändert.</value></data>
-  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>Das Ergebnis der Verknüpfung konnte nicht bestätigt werden. Öffne unter Runners die Verknüpfungs-Wiederherstellung; nicht erneut versuchen. Lokale Dateien bleiben erhalten.</value></data>
-  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Verknüpfungs-Wiederherstellung</value></data>
+  <data name="LinkedRunnerOutcomeUnconfirmed" xml:space="preserve"><value>Das Ergebnis der Verknüpfung konnte nicht bestätigt werden. Öffne Mehr → Diagnose verknüpfter Dateien; nicht erneut versuchen. Lokale Dateien bleiben erhalten.</value></data>
+  <data name="LinkedRecoveryTitle" xml:space="preserve"><value>Diagnose verknüpfter Dateien</value></data>
+  <data name="LinkedRecoveryEntryDetail" xml:space="preserve"><value>Probleme beim Verknüpfen einer Charakterdatei? Hier kannst du den lokalen Verlauf prüfen. Deine im Konto gespeicherten Runner lädst du im Tab „Runner“.</value></data>
   <data name="LinkedRecoveryUnavailable" xml:space="preserve"><value>Wiederherstellung nicht verfügbar oder beschädigt. Keine Verknüpfung wurde geändert; lokale Wiederherstellungsdateien behalten.</value></data>
   <data name="LinkedRecoveryBoundary" xml:space="preserve"><value>Dies sind lokale Absichten und Zustandsbeobachtungen, keine Core-Transaktionsbelege. Ungeklärte Änderungen dürfen nicht wiederholt werden.</value></data>
   <data name="LinkedRecoveryReload" xml:space="preserve"><value>Kontext geändert. Wiederherstellungsverlauf aktualisieren.</value></data>

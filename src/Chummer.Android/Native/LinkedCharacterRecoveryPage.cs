@@ -19,7 +19,7 @@ public sealed class LinkedCharacterRecoveryPage : ContentPage
         // Recovery deliberately bypasses NativePageBase initialization, but its
         // dark text still needs the same explicit light surface in dark mode.
         BackgroundColor = NativeTheme.Paper;
-        Title = PhoneStrings.Get("LinkedRecoveryTitle", "Linked-runner recovery");
+        Title = PhoneStrings.Get("LinkedRecoveryTitle", "Linked file diagnostics");
         AutomationId = "linked-runner-recovery-page";
         Content = new ScrollView { Content = _body };
         Render();

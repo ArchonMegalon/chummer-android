@@ -502,7 +502,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
 
     internal static string ReviewChange(CharacterCreationFoundationFinalizationPreview quote, CharacterCreationFinalizationDelta delta)
     {
-        string label = delta.Kind switch
+        string label = !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName : delta.Kind switch
         {
             CharacterCreationFinalizationDeltaKinds.Attribute => CreationAllocationStrings.AttributeName(delta.TargetId),
             CharacterCreationFinalizationDeltaKinds.Metatype => CreationKarmaCopy.Metatype,

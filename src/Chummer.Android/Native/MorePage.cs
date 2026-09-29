@@ -70,6 +70,18 @@ public class MorePage : NativePageBase, IPlayReviewSafeSurface
         files.Add(save);
         files.Add(export);
         files.Add(print);
+        // Local linked-file history is not account recovery or another online
+        // runner loader. Keep diagnostics available without a selected runner,
+        // including on the phone where unrestricted editor actions are hidden.
+        files.Add(NativeTheme.Body(PhoneStrings.Get("LinkedRecoveryEntryDetail",
+            "Trouble attaching a character file? Inspect local linking history here. To load runners from your account, use the Runners tab."),
+            NativeTheme.Muted));
+        Button linkedRecovery = NativeTheme.ReadingButton(
+            PhoneStrings.Get("LinkedRecoveryTitle", "Linked file diagnostics"));
+        linkedRecovery.AutomationId = "more-linked-runner-recovery";
+        linkedRecovery.Clicked += async (_, _) =>
+            await Navigation.PushAsync(new LinkedCharacterRecoveryPage(Coordinator));
+        files.Add(linkedRecovery);
         if (_showUnrestrictedActions)
         {
             Button allActions = NativeTheme.PrimaryButton(PhoneStrings.Get("AllActions", "All actions"));
