@@ -331,10 +331,53 @@ internal static class CreationMagicNativeRuntimeTests
             var preview = service.Preview(new(state.Binding, skills, groups));
             Require(phone.TryAdopt(state, overview, preview, skills, groups), "Native rejected legal Core Skills preview: " + string.Join(",", preview.Blockers));
         }
-        Adopt(phone.WithSkill(language, 0, native: true), phone.Groups);
+        int expectedRating = (phone.Skills.SingleOrDefault(item => item.SourceSkillId == allowed.SourceSkillId)?.Rating ?? 0) + 1;
         Adopt(phone.WithSkill(allowed, 1), phone.Groups);
         if (aspect is not null)
             Adopt(phone.Skills, phone.WithGroup(state.Authority.SkillGroups.Single(item => item.Name == aspect), 1));
+        var incomplete = phone.Preview!;
+        Require(!incomplete.CanConfirm
+            && incomplete.Blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired })
+            && phone.Skills.Any(item => item.SourceSkillId == allowed.SourceSkillId && item.Rating == expectedRating),
+            "A valid skill/group edit disappeared while the native-language choice was incomplete.");
+        var incompleteResult = service.Preview(new(state.Binding, phone.Skills, phone.Groups));
+        Require(!CreationSkillsPhoneAuthority.CanAdoptPreview(state, overview, incompleteResult, phone.Skills, phone.Groups)
+            && !CreationSkillsPhoneAuthority.CanConfirmPreview(state, overview, incomplete, phone.Skills, phone.Groups),
+            "An incomplete local selection became review/save authority.");
+        long beforeIncomplete = store.Get(id).Value!.ContentRevision;
+        Require(service.Confirm(new(incomplete.Binding, phone.Skills, phone.Groups, incomplete.PreviewDigest,
+                "incomplete-native-language", ExplicitlyConfirmed: true)).Value is null
+            && store.Get(id).Value!.ContentRevision == beforeIncomplete,
+            "Incomplete Skills confirmation wrote a workspace mutation.");
+        var preservedSkills = phone.Skills.ToArray();
+        var preservedGroups = phone.Groups.ToArray();
+        var stale = incomplete with { Binding = incomplete.Binding with { ContentRevision = incomplete.Binding.ContentRevision + 1 } };
+        stale = stale with { PreviewDigest = CharacterCreationSkillsDigest.Compute(stale with { PreviewDigest = string.Empty }) };
+        foreach (var invalid in new[]
+        {
+            incompleteResult with { Outcome = CharacterCreationFoundationOutcomes.Conflict },
+            incompleteResult with { Blockers = [] },
+            incompleteResult with { Value = incomplete with { CanConfirm = true } },
+            incompleteResult with { Value = incomplete with { PreviewDigest = new string('0', 64) } },
+            incompleteResult with { Value = stale }
+        })
+            Require(!phone.TryAdopt(state, overview, invalid, phone.Skills, phone.Groups),
+                "Local staging accepted stale, tampered, over-budget or unauthorized Skills evidence.");
+        foreach (var badSkills in new[] { phone.WithSkill(allowed, 100),
+                     illegal.Where(item => !item.IsNativeLanguage).ToArray() })
+            Require(!phone.TryAdopt(state, overview, service.Preview(new(state.Binding, badSkills, phone.Groups)),
+                    badSkills, phone.Groups), "Local staging accepted Core-rejected costs or talent access.");
+        Require(!phone.TryAdopt(state, overview, incompleteResult, [], phone.Groups)
+            && !phone.TryAdopt(state, Program.NewCreationOverview(id, overview.ContentRevision + 1, overview.SavedRevision),
+                incompleteResult, phone.Skills, phone.Groups)
+            && phone.Skills.SequenceEqual(preservedSkills) && phone.Groups.SequenceEqual(preservedGroups),
+            "A rejected selection or changed workspace modified the local draft.");
+        Adopt(phone.WithSkill(language, 0, native: true), phone.Groups);
+        Require(phone.Preview!.CanConfirm, "Native language did not complete the retained selections.");
+        Adopt(phone.Skills.Where(item => !item.IsNativeLanguage).ToArray(), phone.Groups);
+        Require(!phone.Preview!.CanConfirm && phone.Skills.SequenceEqual(preservedSkills),
+            "Removing the native language lost other local selections or permitted saving.");
+        Adopt(phone.WithSkill(language, 0, native: true), phone.Groups);
         var review = phone.Preview!;
         var command = new CharacterCreationSkillsConfirmRequest(review.Binding, phone.Skills, phone.Groups,
             review.PreviewDigest, "native-talent-skill-access", ExplicitlyConfirmed: true);

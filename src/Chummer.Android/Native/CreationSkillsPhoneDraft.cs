@@ -120,7 +120,7 @@ internal sealed class CreationSkillsPhoneDraft
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
     {
         if (!Matches(state, overview)
-            || !CreationSkillsPhoneAuthority.CanAdoptPreview(state, overview, result, skills, groups)
+            || !CreationSkillsPhoneAuthority.CanStagePreview(state, overview, result, skills, groups)
             || result.Value is not { } preview) return false;
         _skills.Clear(); _groups.Clear();
         foreach (CharacterCreationSkillProjection item in preview.Skills)

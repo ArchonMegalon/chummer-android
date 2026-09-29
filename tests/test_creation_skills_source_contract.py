@@ -139,6 +139,16 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertNotIn("ActivePointTotal =", page)
         self.assertNotIn("KnowledgePointTotal =", page)
 
+    def test_incomplete_selection_is_local_only_and_explained_before_catalogs(self) -> None:
+        page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        draft = (NATIVE / "CreationSkillsPhoneDraft.cs").read_text(encoding="utf-8")
+        self.assertIn("CreationSkillsPhoneAuthority.CanStagePreview(", draft)
+        self.assertIn("CreationSkillsPhoneAuthority.CanAdoptPreview(", page)
+        self.assertIn("CreationSkillsPhoneAuthority.CanConfirmPreview(", page)
+        self.assertLess(page.index("if (_blockers.Count > 0) AddBlockers(_blockers)"),
+                        page.index("        AddCatalog("))
+        self.assertIn('"Skills.NativeLanguageRequired"', page)
+
     def test_confirmation_reprojects_then_validates_receipt_before_activation(self) -> None:
         coordinator = (NATIVE / "RunnerSessionCoordinator.CreationSkills.cs").read_text(
             encoding="utf-8"

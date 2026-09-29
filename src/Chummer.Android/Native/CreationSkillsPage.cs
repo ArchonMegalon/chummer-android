@@ -78,6 +78,7 @@ public sealed class CreationSkillsPage : NativePageBase
             AddBlockers(state.Blockers);
             return;
         }
+        if (_blockers.Count > 0) AddBlockers(_blockers);
         AddCatalog(
             state,
             CreationSkillsPhoneAuthority.AvailableActiveSkills(state),
@@ -89,7 +90,6 @@ public sealed class CreationSkillsPage : NativePageBase
             state.Authority.KnowledgeSkills,
             CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"),
             "knowledge");
-        if (_blockers.Count > 0) AddBlockers(_blockers);
         AddReview(state);
     }
 
@@ -393,7 +393,11 @@ public sealed class CreationSkillsPage : NativePageBase
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CoreBlockers",
             "Core blockers")));
-        foreach (string blocker in blockers) card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+        foreach (string blocker in blockers)
+            card.Add(NativeTheme.Body(blocker == CharacterCreationSkillsBlockers.NativeLanguageRequired
+                ? CreationAllocationStrings.Get("Skills.NativeLanguageRequired",
+                    "Your skill choices are not saved yet. Choose a native language under Knowledge & languages before reviewing and saving.")
+                : $"• {blocker}", NativeTheme.Danger));
         _body.Add(NativeTheme.Card(card));
     }
 
