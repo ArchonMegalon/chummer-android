@@ -18,6 +18,10 @@ public sealed class CreationResourcesPage : NativePageBase
     private readonly ICharacterCreationGearInteractionPresenter? _gear;
     private readonly AndroidSurfaceCopy _copy;
     private CharacterCreationResourcesInteractionState? _authority;
+    private CharacterOverviewState? _loadedDisplay;
+    private bool _ready;
+    private bool _loading = true;
+    private IReadOnlyList<string> _loadBlockers = [];
     private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 10 };
     private readonly VerticalStackLayout _body = new()
     {
@@ -49,6 +53,33 @@ public sealed class CreationResourcesPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
+    {
+        _loading = true;
+        _ready = false;
+        _loadedDisplay = null;
+        Refresh();
+        CharacterOverviewState original = Coordinator.State;
+        try
+        {
+            var candidate = _authority;
+            var prepared = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
+            {
+                var load = candidate is not null && CreationResourcesPhoneAuthority.IsReady(candidate, original)
+                    ? new CharacterCreationResourcesInteractionLoadResult(
+                        CharacterCreationResourcesOutcomes.Available, candidate, [])
+                    : _resources.Load(original);
+                return (Load: load, Ready: load.State is { } state && CreationResourcesPhoneAuthority.IsReady(state, original));
+            }, ct), ct);
+            ct.ThrowIfCancellationRequested();
+            _loadedDisplay = original;
+            _authority = prepared.Load.State;
+            _loadBlockers = prepared.Load.Blockers;
+            _ready = prepared.Ready;
+        }
+        finally { if (!ct.IsCancellationRequested) _loading = false; }
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
@@ -58,35 +89,23 @@ public sealed class CreationResourcesPage : NativePageBase
         _body.Add(NativeTheme.Title(_copy["Resources.Title"]));
         _body.Add(NativeTheme.Body(_copy["Resources.Intro"], NativeTheme.Muted));
 
-        CharacterCreationResourcesInteractionLoadResult? load = null;
-        CharacterCreationResourcesInteractionState? state = CreationPageAuthorityCache.Resolve(
-            _authority,
-            candidate => CreationResourcesPhoneAuthority.IsReady(candidate, Coordinator.State),
-            () =>
-            {
-                load = _resources.Load(Coordinator.State);
-                return string.Equals(
-                        load.Outcome,
-                        CharacterCreationResourcesOutcomes.Available,
-                        StringComparison.Ordinal)
-                    ? load.State
-                    : null;
-            });
-        _authority = state;
-        if (state is null)
+        if (_loading)
         {
-            AddBlockers(
-                _copy["Resources.AuthorityUnavailable"],
-                load is null
-                    ? [CharacterCreationResourcesBlockers.AuthorityUnavailable]
-                    : load.Blockers.DefaultIfEmpty(load.Outcome).ToArray(),
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-resources-loading" });
+            return;
+        }
+        if (_loadedDisplay is not { } original || !Coordinator.IsCreationCatalogDisplayCurrent(original)
+            || _authority is not { } state)
+        {
+            AddBlockers(_copy["Resources.AuthorityUnavailable"],
+                _loadBlockers.DefaultIfEmpty(CharacterCreationResourcesBlockers.AuthorityUnavailable).ToArray(),
                 "creation-resources-unavailable");
             return;
         }
 
         AddBudget(state.Budget, _copy["Resources.CurrentBudget"], "creation-resources-budget");
         AddBinding(state);
-        if (!CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State))
+        if (!_ready)
         {
             AddBlockers(
                 _copy["Resources.AuthorityBlocked"],
@@ -163,7 +182,8 @@ public sealed class CreationResourcesPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             _copy["Resources.ChooseGear"],
             detail,
-            () => enabled
+            () => enabled && _loadedDisplay is { } original && ReferenceEquals(state, _authority)
+                && Coordinator.IsCreationCatalogDisplayCurrent(original)
                 ? Navigation.PushAsync(new CreationGearPage(Coordinator, _gear!, _overview))
                 : Task.CompletedTask,
             enabled,
@@ -174,12 +194,18 @@ public sealed class CreationResourcesPage : NativePageBase
         CharacterCreationResourcesInteractionState state,
         string optionId)
     {
-        CharacterCreationResourcesInteractionPrepareResult result = _resources.Prepare(
-            Coordinator.State,
-            optionId);
+        if (_loadedDisplay is not { } original || !ReferenceEquals(state, _authority)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+        var review = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
+        {
+            var candidate = _resources.Prepare(original, optionId);
+            return (Result: candidate, Exact: candidate.PreparedPreview is { } preview
+                && CreationResourcesPhoneAuthority.PreparedMatches(preview, state, original));
+        }, CancellationToken.None));
+        var result = review.Result;
         if (result.PreparedPreview is not { } prepared
             || !string.Equals(result.Outcome, CharacterCreationResourcesOutcomes.Available, StringComparison.Ordinal)
-            || !CreationResourcesPhoneAuthority.PreparedMatches(prepared, state, Coordinator.State))
+            || !review.Exact || !Coordinator.IsCreationCatalogDisplayCurrent(original))
         {
             string blocker = result.Blockers.FirstOrDefault()
                              ?? CharacterCreationResourcesInteractionBlockers.PreparedPreviewMismatch;
@@ -196,7 +222,8 @@ public sealed class CreationResourcesPage : NativePageBase
             _resources,
             _overview,
             prepared,
-            _copy));
+            _copy,
+            original));
     }
 
     private void AddBinding(CharacterCreationResourcesInteractionState state)
@@ -351,6 +378,10 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private readonly ICharacterCreationResourcesInteractionPresenter _resources;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly CharacterCreationResourcesPreparedPreview _prepared;
+    private readonly CharacterOverviewState _original;
+    private bool _ready;
+    private bool _loading = true;
+    private bool _submitted;
     private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
@@ -365,15 +396,34 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         ICharacterCreationResourcesInteractionPresenter resources,
         ICharacterOverviewPresenter overview,
         CharacterCreationResourcesPreparedPreview prepared,
-        AndroidSurfaceCopy copy) : base(coordinator)
+        AndroidSurfaceCopy copy, CharacterOverviewState? original = null) : base(coordinator)
     {
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
+        _original = original ?? coordinator.State;
         _copy = copy ?? throw new ArgumentNullException(nameof(copy));
         Title = _copy["ResourcesPreview.PageTitle"];
         AutomationId = "creation-resources-preview-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
+    {
+        _ready = false;
+        _loading = true;
+        Refresh();
+        try
+        {
+            if (_submitted || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            _ready = await Task.Run(() => Coordinator.ReadCreationAuthority(_original, () =>
+            {
+                var load = _resources.Load(_original);
+                return load.State is { } current
+                    && CreationResourcesPhoneAuthority.PreparedMatches(_prepared, current, _original);
+            }, ct), ct);
+        }
+        finally { if (!ct.IsCancellationRequested) _loading = false; }
     }
 
     protected override void Refresh()
@@ -381,6 +431,16 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["ResourcesPreview.Title"]));
+        if (!Coordinator.CanDisplayCreationPurchase(_original))
+        {
+            _body.Add(NativeTheme.Body(_copy["ResourcesPreview.ConfirmStale"], NativeTheme.Danger));
+            return;
+        }
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-resources-preview-loading" });
+            return;
+        }
         AddBudgetComparison();
         AddContribution();
 
@@ -388,6 +448,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         {
             VerticalStackLayout applied = new() { Spacing = 6 };
             applied.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Saved"]));
+            if (_failure is not null) applied.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
             applied.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
             applied.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
             applied.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
@@ -426,12 +487,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             _body.Add(NativeTheme.Card(failure));
         }
 
-        CharacterCreationResourcesInteractionLoadResult load = _resources.Load(Coordinator.State);
-        bool exact = load.State is { } current
-                     && CreationResourcesPhoneAuthority.PreparedMatches(
-                         _prepared,
-                         current,
-                         Coordinator.State);
+        bool exact = !_submitted && _ready && Coordinator.IsCreationCatalogDisplayCurrent(_original);
         Button confirm = NativeTheme.PrimaryButton(_copy["ResourcesPreview.Confirm"]);
         confirm.AutomationId = "creation-resources-confirm";
         confirm.IsEnabled = exact;
@@ -448,40 +504,31 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
 
     private async Task ConfirmAsync()
     {
+        if (_submitted || !_ready || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+        _submitted = true;
+        _ready = false;
         _failure = null;
-        CharacterCreationResourcesInteractionConfirmResult result = _resources.Confirm(
-            Coordinator.State,
-            new CharacterCreationResourcesConfirmation(
-                _prepared,
-                _prepared.PreviewDigest,
-                _prepared.IdempotencyKey,
-                ExplicitlyConfirmed: true));
+        Refresh();
+        var result = await Coordinator.ConfirmCreationResourcesPurchaseAsync(_resources, _original, _prepared);
         if (result.Receipt is not { } receipt
-            || result.RefreshedState is not { } refreshed
-            || result.Outcome is not (CharacterCreationResourcesOutcomes.Applied
-                or CharacterCreationResourcesOutcomes.Replayed)
-            || !CreationResourcesPhoneAuthority.ReceiptMatches(_prepared, receipt)
-            || !CreationResourcesPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed))
+            || result.Outcome is not (CharacterCreationResourcesOutcomes.Applied or CharacterCreationResourcesOutcomes.Replayed)
+            || !CreationResourcesPhoneAuthority.ReceiptMatches(_prepared, receipt))
         {
-            _failure = result.Blockers.FirstOrDefault()
-                       ?? CharacterCreationResourcesInteractionBlockers.ReceiptMismatch;
+            _failure = result.Outcome == "outcome-unknown"
+                ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
+                : result.Blockers.FirstOrDefault() ?? CharacterCreationResourcesInteractionBlockers.ReceiptMismatch;
             return;
         }
-
-        await _overview.LoadAsync(receipt.WorkspaceId, CancellationToken.None);
-        CharacterCreationResourcesInteractionLoadResult reopened = _resources.Load(_overview.State);
-        if (reopened.State is not { } reopenedState
-            || !CreationResourcesPhoneAuthority.RefreshedStateMatches(
-                _prepared,
-                receipt,
-                reopenedState)
-            || _overview.State.ContentRevision != receipt.WorkspaceRevision
-            || _overview.State.SavedRevision != receipt.SavedRevision)
+        // Retain the durable receipt before refreshing. Refresh failure is not
+        // mutation failure and must not permit a second submission.
+        _receipt = receipt;
+        if (result.RefreshedState is not { } refreshed
+            || !CreationResourcesPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
+            || !Coordinator.CanDisplayCreationPurchase(_original))
         {
-            _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
+            _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
             return;
         }
-
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         if (AndroidE2EAuthority.Enabled)
         {
@@ -506,8 +553,6 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             }
         }
 #endif
-
-        _receipt = receipt;
     }
 
     private void AddBudgetComparison()

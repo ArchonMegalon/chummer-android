@@ -178,7 +178,8 @@ public static class MauiProgram
                 ownerBoundCreationContactsService: provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                 ownerBoundCreationFinalizationService: provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>(),
                 ownerBoundCreationLifestylesReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
-                ownerBoundFoundationReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()));
+                ownerBoundFoundationReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
+                ownerBoundCreationQualitiesService: provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));
@@ -191,10 +192,12 @@ public static class MauiProgram
                 provider.GetRequiredService<ICharacterCreationLifestylesService>()));
         builder.Services.AddSingleton<ICharacterCreationResourcesInteractionPresenter>(provider =>
             new CharacterCreationResourcesInteractionPresenter(
-                provider.GetRequiredService<ICharacterCreationResourcesService>()));
+                provider.GetRequiredService<ICharacterCreationResourcesService>(),
+                provider.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()));
         builder.Services.AddSingleton<ICharacterCreationGearInteractionPresenter>(provider =>
             new CharacterCreationGearInteractionPresenter(
-                provider.GetRequiredService<ICharacterCreationGearService>()));
+                provider.GetRequiredService<ICharacterCreationGearService>(),
+                provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()));
         builder.Services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
         builder.Services.AddChummerWorkspaceRecovery();
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();

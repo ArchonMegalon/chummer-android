@@ -47,7 +47,14 @@ internal sealed class CreationStartingCashPage : NativePageBase
         _body.Add(terms);
         _body.Add(NativeTheme.Body(source.SourceBook + " · " + source.Page, NativeTheme.Muted));
         _body.Add(NativeTheme.Body(CreationKarmaCopy.DiceTotal));
-        var input = new Entry { Text = _roll, Keyboard = Keyboard.Numeric, AutomationId = "creation-starting-cash-roll" };
+        var input = new Entry
+        {
+            Text = _roll,
+            Keyboard = Keyboard.Numeric,
+            TextColor = NativeTheme.Text,
+            BackgroundColor = NativeTheme.Surface,
+            AutomationId = "creation-starting-cash-roll"
+        };
         var preview = NativeTheme.PrimaryButton(CreationKarmaCopy.PreviewCompletion);
         preview.AutomationId = "creation-starting-cash-preview";
         preview.IsEnabled = TryRoll(out _);

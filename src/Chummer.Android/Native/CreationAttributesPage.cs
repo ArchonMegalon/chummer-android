@@ -16,12 +16,14 @@ public sealed class CreationAttributesPage : NativePageBase
     };
     private IReadOnlyList<string> _previewBlockers = [];
     private CharacterCreationAttributesState? _authority;
+    private CharacterCreationAttributesState? _revalidationAuthority;
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationAttributesState? authority = null) : base(coordinator)
     {
         _authority = authority;
+        _revalidationAuthority = authority;
         Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
         Content = new ScrollView { Content = _body };
@@ -45,10 +47,13 @@ public sealed class CreationAttributesPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
         CharacterCreationAttributesState? state = CreationPageAuthorityCache.Resolve(
             _authority,
-            candidate => CreationAttributesPhoneAuthority.IsReady(candidate, Coordinator.State),
+            candidate => Coordinator.IsCreationAttributesStateCurrent(candidate)
+                         && CreationAttributesPhoneAuthority.IsReady(candidate, Coordinator.State),
             () =>
             {
-                load = Coordinator.LoadCreationAttributes();
+                load = _revalidationAuthority is { } original
+                    ? Coordinator.RevalidateCreationAttributes(original)
+                    : Coordinator.LoadCreationAttributes();
                 return string.Equals(
                         load.Outcome,
                         CharacterCreationFoundationOutcomes.Success,
@@ -57,6 +62,7 @@ public sealed class CreationAttributesPage : NativePageBase
                     : null;
             });
         _authority = state;
+        _revalidationAuthority ??= state;
         if (state is null)
         {
             AddBlockers(
@@ -210,10 +216,12 @@ public sealed class CreationAttributesPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 AttributeLabel(attribute.AttributeId),
                 detail,
-                () => Navigation.PushAsync(new CreationAttributeAllocationPage(
+                () => !Coordinator.IsCreationAttributesStateCurrent(state) ? Task.CompletedTask
+                    : Navigation.PushAsync(new CreationAttributeAllocationPage(
                     Coordinator,
                     _draft,
-                    attribute.AttributeId)),
+                    attribute.AttributeId,
+                    state)),
                 enabled: attribute.IsEnabled,
                 automationId: $"creation-attributes-open-{Token(attribute.AttributeId)}"));
         }
@@ -225,7 +233,7 @@ public sealed class CreationAttributesPage : NativePageBase
             "Attributes.ReviewExact",
             "Review exact allocation"));
         review.AutomationId = "creation-attributes-prepare-preview";
-        review.IsEnabled = _draft.Matches(state, Coordinator.State);
+        review.IsEnabled = Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State);
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
             IReadOnlyList<CharacterCreationAttributeAllocation> allocations = _draft.Allocations(state);
@@ -242,7 +250,15 @@ public sealed class CreationAttributesPage : NativePageBase
                 await Navigation.PushAsync(new CreationAttributesPreviewPage(
                     Coordinator,
                     preview,
-                    allocations));
+                    allocations,
+                    confirmed =>
+                    {
+                        if (confirmed is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                                Receipt: { } receipt, RefreshedState: { } fresh, Blockers.Count: 0 }
+                            && Coordinator.IsCreationAttributesReceiptCurrent(receipt)
+                            && Coordinator.IsCreationAttributesStateCurrent(fresh))
+                            _authority = _revalidationAuthority = fresh;
+                    }));
                 return;
             }
 
@@ -335,6 +351,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 {
     private readonly CreationAttributesPhoneDraft _draft;
     private readonly string _attributeId;
+    private readonly CharacterCreationAttributesState? _originalAuthority;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -344,9 +361,11 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     internal CreationAttributeAllocationPage(
         RunnerSessionCoordinator coordinator,
         CreationAttributesPhoneDraft draft,
-        string attributeId) : base(coordinator)
+        string attributeId,
+        CharacterCreationAttributesState? originalAuthority = null) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
+        _originalAuthority = originalAuthority;
         _attributeId = string.IsNullOrWhiteSpace(attributeId)
             ? throw new ArgumentException("A typed Attribute ID is required.", nameof(attributeId))
             : attributeId;
@@ -364,7 +383,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _body.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(_attributeId)));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState> load =
-            Coordinator.LoadCreationAttributes();
+            _originalAuthority is { } original ? Coordinator.RevalidateCreationAttributes(original)
+                : new(CharacterCreationFoundationOutcomes.Blocked, null, [CharacterCreationAttributesBlockers.WorkspaceUnavailable]);
         if (load.Value is not { } state
             || !_draft.Matches(state, Coordinator.State)
             || _draft.Attribute(state, _attributeId) is not { } attribute)
@@ -483,7 +503,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         {
             button.Clicked += async (_, _) => await RunAsync(() =>
             {
-                _draft.TryAdopt(state, Coordinator.State, result!, allocations!);
+                if (Coordinator.IsCreationAttributesStateCurrent(state))
+                    _draft.TryAdopt(state, Coordinator.State, result!, allocations!);
                 return Task.CompletedTask;
             });
         }
@@ -529,15 +550,18 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         Spacing = 14
     };
     private CreationAttributesPhoneConfirmResult? _confirmation;
+    private readonly Action<CreationAttributesPhoneConfirmResult>? _onConfirmed;
 
     internal CreationAttributesPreviewPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationAttributesPreview preview,
-        IReadOnlyList<CharacterCreationAttributeAllocation> allocations) : base(coordinator)
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        Action<CreationAttributesPhoneConfirmResult>? onConfirmed = null) : base(coordinator)
     {
         _preview = preview ?? throw new ArgumentNullException(nameof(preview));
         _allocations = allocations?.ToArray()
             ?? throw new ArgumentNullException(nameof(allocations));
+        _onConfirmed = onConfirmed;
         Title = CreationAllocationStrings.Get("AttributesPreview.PageTitle", "Review Attributes");
         AutomationId = "creation-attributes-preview-page";
         Content = new ScrollView { Content = _body };
@@ -552,6 +576,11 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
             "AttributeAllocation.Eyebrow",
             "Attribute allocation")));
+        if (!Coordinator.CanDisplayCreationAttributesPreview(_preview))
+        {
+            _body.Add(NativeTheme.Body(CharacterCreationAttributesBlockers.StaleWorkspaceRevision, NativeTheme.Danger));
+            return;
+        }
         Label binding = NativeTheme.Body(
             CreationAllocationStrings.Format(
                 "Common.PreviewBinding",
@@ -653,9 +682,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         if (_confirmation is
             {
                 Outcome: CharacterCreationFoundationOutcomes.Success,
-                Receipt: not null,
+                Receipt: { } savedReceipt,
                 RefreshedState: not null
-            })
+            } && Coordinator.IsCreationAttributesReceiptCurrent(savedReceipt))
         {
             Label complete = NativeTheme.Body(CreationAllocationStrings.Get(
                 "AttributesPreview.Confirmed",
@@ -667,7 +696,8 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState> live =
             Coordinator.LoadCreationAttributes();
-        bool canConfirm = live.Value is { } state
+        bool canConfirm = Coordinator.IsCreationAttributesPreviewCurrent(_preview)
+                          && live.Value is { } state
                           && CreationAttributesPhoneAuthority.CanConfirmPreview(
                               state,
                               Coordinator.State,
@@ -683,6 +713,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             _confirmation = await Coordinator.ConfirmCreationAttributesAsync(
                 _preview,
                 _allocations);
+            _onConfirmed?.Invoke(_confirmation);
         });
         _body.Add(confirm);
 
@@ -702,7 +733,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                 Outcome: CharacterCreationFoundationOutcomes.Success,
                 Receipt: { } receipt,
                 RefreshedState: { } refreshed
-            })
+            } || !Coordinator.IsCreationAttributesReceiptCurrent(receipt))
         {
             return;
         }

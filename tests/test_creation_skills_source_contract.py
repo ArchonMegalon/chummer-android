@@ -7,6 +7,20 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationSkillsSourceContractTests(unittest.TestCase):
+    def test_dashboard_reads_wait_for_original_owner_only_on_background_worker(self) -> None:
+        page = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        start = page.index("private void ResolveCreationPhase<TResult>")
+        phase = page[start:page.index("private void ScheduleCreationPhaseAcceptance", start)]
+        self.assertLess(phase.index("CharacterOverviewState original = Coordinator.State"), phase.index("queue.TryRequest("))
+        self.assertIn("Coordinator.ReadCreationAuthority(original, loader, cancellationToken)", phase)
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationAttributes.cs").read_text(encoding="utf-8")
+        self.assertIn("androidOwner.RunScheduledRead(owner, read, ct)", coordinator)
+        self.assertIn("if (!AttributesDisplayCurrent(original))", coordinator)
+        accessor = (NATIVE / "AndroidAccountOwnerContextAccessor.cs").read_text(encoding="utf-8")
+        self.assertIn("finally { _readAdmission = previous; }", accessor)
+        self.assertIn("read!.Expected != expected", accessor)
+        self.assertIn("IsActiveOnCurrentThread: true", accessor)
+
     def test_phone_stage_consumes_only_core_skills_projections(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         draft = (NATIVE / "CreationSkillsPhoneDraft.cs").read_text(encoding="utf-8")
@@ -15,7 +29,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         )
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(
             encoding="utf-8"
-        )
+        ) + (NATIVE / "RunnerSessionCoordinator.CreationSkills.cs").read_text(encoding="utf-8")
 
         for marker in (
             'AutomationId = "creation-skills-page"',
@@ -77,17 +91,19 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             self.assertIn(marker, authority)
 
         for marker in (
-            "ICharacterCreationSkillsService? _creationSkillsService",
+            "IOwnerBoundCharacterCreationSkillsService? _ownerBoundSkillsService",
             "LoadCreationSkills()",
             "PreviewCreationSkills(",
             "ConfirmCreationSkillsAsync(",
-            "new(canonical.Binding, allocations.ToArray(), groups.ToArray(),",
+            "service.Confirm(owner, new(canonical.Binding, allocations, groups,",
             "canonical.PreviewDigest, idempotencyKey, true",
-            "_creationSkillsService.Load(new(receipt.WorkspaceId))",
-            "_presenter.LoadAsync(receipt.WorkspaceId",
+            "service.Load(owner, new(receipt.WorkspaceId))",
+            "issued.Load.Display.DisplayOwnerContext is not { } owner",
+            "IOwnerBoundWorkspaceRefreshPresenter bound",
+            "bound.LoadAsync(owner, receipt.WorkspaceId",
             "CreationSkillsPhoneAuthority.ReceiptMatches(",
-            "CommittedSkillsRefreshRequired(",
-            "CreationSkillsPhoneAuthority.CommittedRefreshRequired(",
+            "CreationSkillsPhoneConfirmResult NeedsReopen()",
+            "CharacterCreationSkillsBlockers.PostCommitRefreshRequired",
         ):
             self.assertIn(marker, coordinator)
 
@@ -124,25 +140,24 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertNotIn("KnowledgePointTotal =", page)
 
     def test_confirmation_reprojects_then_validates_receipt_before_activation(self) -> None:
-        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationSkills.cs").read_text(
             encoding="utf-8"
         )
         confirmation = coordinator[
-            coordinator.index("ConfirmCreationSkillsCoreAsync(") :
+            coordinator.index("private async Task<CreationSkillsPhoneConfirmResult> ConfirmIssuedSkillsAsync(") :
         ]
-        confirmation = confirmation[: confirmation.index("LoadCreationFoundation()")]
 
-        preview_index = confirmation.index("_creationSkillsService.Preview(")
+        preview_index = confirmation.index("service.Preview(owner,")
         equality_index = confirmation.index("CreationSkillsPhoneAuthority.CanonicallyEquals(")
-        confirm_index = confirmation.index("_creationSkillsService.Confirm(")
+        confirm_index = confirmation.index("service.Confirm(owner,")
         direct_load_index = confirmation.index(
-            "_creationSkillsService.Load(new(receipt.WorkspaceId))"
+            "service.Load(owner, new(receipt.WorkspaceId))"
         )
         receipt_index = confirmation.index(
             "CreationSkillsPhoneAuthority.ReceiptMatchesBeforeActivation("
         )
-        presenter_load_index = confirmation.index("_presenter.LoadAsync(receipt.WorkspaceId")
-        shell_index = confirmation.index("SyncShellAsync(cancellationToken)")
+        presenter_load_index = confirmation.index("bound.LoadAsync(owner, receipt.WorkspaceId")
+        shell_index = confirmation.index("SyncShellAsync(ct)")
 
         self.assertLess(preview_index, equality_index)
         self.assertLess(equality_index, confirm_index)
@@ -150,10 +165,11 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertLess(direct_load_index, receipt_index)
         self.assertLess(receipt_index, presenter_load_index)
         self.assertLess(presenter_load_index, shell_index)
-        self.assertIn(
-            "return CommittedSkillsRefreshRequired(receipt, committedState, refreshed.Blockers)",
-            confirmation,
-        )
+        self.assertIn("CharacterCreationSkillsBlockers.PostCommitRefreshRequired", confirmation)
+        self.assertIn("issued.ConfirmationStarted = true", confirmation)
+        self.assertIn("IsCreationSkillsPreviewCurrent(preview)", confirmation)
+        self.assertIn("IsNativePersistenceOwnerCurrent(owner)", confirmation)
+        self.assertNotIn("_creationSkillsService", coordinator)
 
     def test_dashboard_uses_core_ledgers_and_never_post_create_editor(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")

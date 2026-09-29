@@ -328,9 +328,12 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
     private readonly ICharacterCreationLifestylesInteractionPresenter _creationLifestylesPresenter;
     private readonly IOwnerBoundCharacterCreationPrerequisiteService? _ownerBoundPrerequisiteService;
-    private readonly ICharacterCreationAttributesService? _creationAttributesService;
+    private readonly IOwnerBoundCharacterCreationAttributesService? _ownerBoundAttributesService;
+    private readonly IOwnerBoundCharacterCreationSkillsService? _ownerBoundSkillsService;
+    // Retained only by the separate historical Skills re-review route.
+    // Ordinary allocation must never fall back to this unscoped service.
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
-    private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
+    private readonly IOwnerBoundCharacterCreationQualitiesService? _ownerBoundQualitiesService;
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly IOwnerBoundCharacterCreationFinalizationService? _ownerBoundFinalizationService;
@@ -441,7 +444,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService? lifeModuleBookService = null,
         OriginBookReadingStore? originBookReadings = null,
         OriginBookSceneStore? originBookScenes = null,
-        IAndroidImageDocumentService? originSceneDocuments = null)
+        IAndroidImageDocumentService? originSceneDocuments = null,
+        IOwnerBoundCharacterCreationAttributesService? ownerBoundCreationAttributesService = null,
+        IOwnerBoundCharacterCreationSkillsService? ownerBoundCreationSkillsService = null,
+        IOwnerBoundCharacterCreationQualitiesService? ownerBoundCreationQualitiesService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -463,9 +469,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _originBookReadings = originBookReadings;
         _originBookScenes = originBookScenes;
         _originSceneDocuments = originSceneDocuments;
-        _creationAttributesService = creationAttributesService;
+        _ownerBoundAttributesService = ownerBoundCreationAttributesService;
+        _ownerBoundSkillsService = ownerBoundCreationSkillsService;
         _creationSkillsService = creationSkillsService;
-        _creationQualitiesService = creationQualitiesService;
+        _ownerBoundQualitiesService = ownerBoundCreationQualitiesService;
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
         _ownerBoundFinalizationService = ownerBoundCreationFinalizationService;
@@ -1778,319 +1785,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         => ConfirmIssuedCreationPrerequisiteAsync(
             preview, assignments, selections, cancellationToken, isCurrentPreview);
 
-    public CharacterCreationFoundationResult<CharacterCreationAttributesState>
-        LoadCreationAttributes()
-    {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationAttributesState>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                [CharacterCreationAttributesBlockers.WorkspaceUnavailable]);
-        }
-        if (_creationAttributesService is null)
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationAttributesState>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                [CharacterCreationAttributesBlockers.AuthorityUnavailable]);
-        }
 
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> result =
-            _creationAttributesService.Load(new CharacterCreationAttributesLoadRequest(workspaceId));
-        if (result.Value is { } state
-            && !CreationAttributesPhoneAuthority.MatchesOverview(state, State))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationAttributesState>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationAttributesBlockers.StaleWorkspaceRevision]);
-        }
-        return result;
-    }
-
-    internal CharacterCreationFoundationResult<CharacterCreationAttributesPreview>
-        PreviewCreationAttributes(
-            CharacterCreationAttributesBinding binding,
-            IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        ArgumentNullException.ThrowIfNull(allocations);
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> live =
-            LoadCreationAttributes();
-        if (live.Value is not { } state
-            || !CreationAttributesPhoneAuthority.IsReady(state, State)
-            || !CreationAttributesPhoneAuthority.BindingEquals(binding, state.Binding))
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationAttributesPreview>(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                [CharacterCreationAttributesBlockers.StaleWorkspaceRevision]);
-        }
-        if (_creationAttributesService is null)
-        {
-            return new CharacterCreationFoundationResult<CharacterCreationAttributesPreview>(
-                CharacterCreationFoundationOutcomes.Blocked,
-                null,
-                [CharacterCreationAttributesBlockers.AuthorityUnavailable]);
-        }
-
-        return _creationAttributesService.Preview(
-            new CharacterCreationAttributesPreviewRequest(binding, allocations.ToArray()));
-    }
-
-    internal async Task<CreationAttributesPhoneConfirmResult>
-        ConfirmCreationAttributesAsync(
-            CharacterCreationAttributesPreview preview,
-            IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
-            CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationAttributesCoreAsync(
-                preview,
-                allocations,
-                cancellationToken),
-            cancellationToken);
-
-    private async Task<CreationAttributesPhoneConfirmResult>
-        ConfirmCreationAttributesCoreAsync(
-            CharacterCreationAttributesPreview preview,
-            IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
-            CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(preview);
-        ArgumentNullException.ThrowIfNull(allocations);
-        CharacterOverviewState beforeActivation = State;
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> live =
-            LoadCreationAttributes();
-        if (_creationAttributesService is null
-            || live.Value is not { } state
-            || !CreationAttributesPhoneAuthority.CanConfirmPreview(
-                state,
-                State,
-                preview,
-                allocations))
-        {
-            return new CreationAttributesPhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationAttributesBlockers.PreviewDigestMismatch]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> authoritativePreview =
-            _creationAttributesService.Preview(
-                new CharacterCreationAttributesPreviewRequest(
-                    preview.Binding,
-                    allocations.ToArray()));
-        if (!CreationAttributesPhoneAuthority.CanAdoptPreview(
-                state,
-                beforeActivation,
-                authoritativePreview,
-                allocations)
-            || authoritativePreview.Value is not { } canonicalPreview
-            || !CreationAttributesPhoneAuthority.CanonicallyEquals(
-                preview,
-                canonicalPreview))
-        {
-            return new CreationAttributesPhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                null,
-                null,
-                [CharacterCreationAttributesBlockers.PreviewDigestMismatch]);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationAttributesReceipt> result =
-            _creationAttributesService.Confirm(
-                new CharacterCreationAttributesConfirmRequest(
-                    canonicalPreview.Binding,
-                    allocations.ToArray(),
-                    canonicalPreview.PreviewDigest,
-                    ExplicitlyConfirmed: true));
-        if (!string.Equals(
-                result.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || result.Value is not { } receipt)
-        {
-            return new CreationAttributesPhoneConfirmResult(
-                result.Outcome,
-                result.Value,
-                null,
-                result.Blockers);
-        }
-
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> committed =
-            _creationAttributesService.Load(
-                new CharacterCreationAttributesLoadRequest(receipt.WorkspaceId));
-        if (!string.Equals(
-                committed.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || committed.Value is not { } committedState
-            || !CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
-                receipt,
-                canonicalPreview,
-                allocations,
-                committedState,
-                beforeActivation))
-        {
-            _notice = null;
-            NotifyChanged();
-            return new CreationAttributesPhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                receipt,
-                null,
-                committed.Blockers
-                    .Append(CharacterCreationAttributesBlockers.DraftConflict)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(blocker => blocker, StringComparer.Ordinal)
-                    .ToArray());
-        }
-
-        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> refreshed =
-            LoadCreationAttributes();
-        if (refreshed.Value is not { } refreshedState
-            || !CreationAttributesPhoneAuthority.ReceiptMatches(
-                receipt,
-                canonicalPreview,
-                allocations,
-                refreshedState,
-                State))
-        {
-            _notice = null;
-            NotifyChanged();
-            return new CreationAttributesPhoneConfirmResult(
-                CharacterCreationFoundationOutcomes.Conflict,
-                receipt,
-                null,
-                refreshed.Blockers
-                    .Append(CharacterCreationAttributesBlockers.DraftConflict)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(blocker => blocker, StringComparer.Ordinal)
-                    .ToArray());
-        }
-
-        _notice = "Attributes draft saved. Character effects remain pending finalization.";
-        NotifyChanged();
-        return new CreationAttributesPhoneConfirmResult(
-            CharacterCreationFoundationOutcomes.Success,
-            receipt,
-            refreshedState,
-            []);
-    }
-
-    public CharacterCreationFoundationResult<CharacterCreationSkillsState> LoadCreationSkills()
-    {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
-            return new(CharacterCreationFoundationOutcomes.Blocked, null,
-                [CharacterCreationSkillsBlockers.WorkspaceUnavailable]);
-        if (_creationSkillsService is null)
-            return new(CharacterCreationFoundationOutcomes.Blocked, null,
-                [CharacterCreationSkillsBlockers.AuthorityUnavailable]);
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> result =
-            _creationSkillsService.Load(new(workspaceId));
-        return result.Value is { } state && !CreationSkillsPhoneAuthority.MatchesOverview(state, State)
-            ? new(CharacterCreationFoundationOutcomes.Conflict, null,
-                [CharacterCreationSkillsBlockers.StaleWorkspaceRevision])
-            : result;
-    }
-
-    internal CharacterCreationFoundationResult<CharacterCreationSkillsPreview> PreviewCreationSkills(
-        CharacterCreationSkillsBinding binding,
-        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
-        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
-    {
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> live = LoadCreationSkills();
-        if (_creationSkillsService is null || live.Value is not { } state
-            || !CreationSkillsPhoneAuthority.IsReady(state, State)
-            || !CreationSkillsPhoneAuthority.BindingEquals(binding, state.Binding))
-            return new(CharacterCreationFoundationOutcomes.Conflict, null,
-                [CharacterCreationSkillsBlockers.StaleWorkspaceRevision]);
-        return _creationSkillsService.Preview(new(binding, allocations.ToArray(), groups.ToArray()));
-    }
-
-    internal async Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsAsync(
-        CharacterCreationSkillsPreview preview,
-        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
-        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
-        string idempotencyKey,
-        CancellationToken cancellationToken = default) =>
-        await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationSkillsCoreAsync(preview, allocations, groups, idempotencyKey, cancellationToken),
-            cancellationToken);
-
-    private async Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsCoreAsync(
-        CharacterCreationSkillsPreview preview,
-        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
-        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
-        string idempotencyKey,
-        CancellationToken cancellationToken)
-    {
-        CharacterOverviewState beforeActivation = State;
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> live = LoadCreationSkills();
-        if (_creationSkillsService is null || live.Value is not { } state
-            || !CreationSkillsPhoneAuthority.CanConfirmPreview(state, beforeActivation, preview, allocations, groups))
-            return new(CharacterCreationFoundationOutcomes.Conflict, null, null,
-                [CharacterCreationSkillsBlockers.PreviewDigestMismatch]);
-        CharacterCreationFoundationResult<CharacterCreationSkillsPreview> reprojection =
-            _creationSkillsService.Preview(new(preview.Binding, allocations.ToArray(), groups.ToArray()));
-        if (!CreationSkillsPhoneAuthority.CanAdoptPreview(state, beforeActivation, reprojection, allocations, groups)
-            || reprojection.Value is not { } canonical
-            || !CreationSkillsPhoneAuthority.CanonicallyEquals(preview, canonical))
-            return new(CharacterCreationFoundationOutcomes.Conflict, null, null,
-                [CharacterCreationSkillsBlockers.PreviewDigestMismatch]);
-        CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> confirmed =
-            _creationSkillsService.Confirm(new(canonical.Binding, allocations.ToArray(), groups.ToArray(),
-                canonical.PreviewDigest, idempotencyKey, true));
-        if (confirmed.Value is not { } receipt
-            || !string.Equals(confirmed.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal))
-            return new(confirmed.Outcome, confirmed.Value, null, confirmed.Blockers);
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> committed =
-            _creationSkillsService.Load(new(receipt.WorkspaceId));
-        if (committed.Value is not { } committedState
-            || !CreationSkillsPhoneAuthority.ReceiptMatchesBeforeActivation(
-                receipt, canonical, committedState, beforeActivation, idempotencyKey))
-            return new(CharacterCreationFoundationOutcomes.Conflict, receipt, null,
-                committed.Blockers.Append(CharacterCreationSkillsBlockers.DraftConflict).Distinct().ToArray());
-        try
-        {
-            await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-            await SyncShellAsync(cancellationToken);
-        }
-        catch (Exception)
-        {
-            return CommittedSkillsRefreshRequired(receipt, committedState, []);
-        }
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> refreshed = LoadCreationSkills();
-        if (refreshed.Value is not { } refreshedState
-            || !CreationSkillsPhoneAuthority.ReceiptMatches(
-                receipt, canonical, refreshedState, State, idempotencyKey))
-            return CommittedSkillsRefreshRequired(receipt, committedState, refreshed.Blockers);
-        _notice = "Skills draft saved. Character effects remain pending finalization.";
-        NotifyChanged();
-        return new(CharacterCreationFoundationOutcomes.Success, receipt, refreshedState, []);
-    }
-
-    private CreationSkillsPhoneConfirmResult CommittedSkillsRefreshRequired(
-        CharacterCreationSkillsReceipt receipt,
-        CharacterCreationSkillsState committedState,
-        IEnumerable<string> blockers)
-    {
-        _notice = "Skills draft saved. Reopen the character to refresh the phone view.";
-        NotifyChanged();
-        return CreationSkillsPhoneAuthority.CommittedRefreshRequired(
-            receipt,
-            committedState,
-            blockers);
-    }
 
     internal bool IsCreationCatalogDisplayCurrent(CharacterOverviewState original)
         => original.Profile?.Created == false
            && original.DisplayOwnerContext is { IsValid: true }
            && original.Session.OwnerContext == original.DisplayOwnerContext
            && IsNativeEditDisplayCurrent(original);
+
+    internal bool IsCreationQualitiesOwnerCurrent(OwnerContextStamp? original)
+        => original is { IsValid: true } && IsNativePersistenceOwnerCurrent(original)
+           && State.DisplayOwnerContext == original && State.Session.OwnerContext == original;
 
     internal Task<CharacterCreationFoundationResult<CharacterCreationQualitiesState>>
         LoadCreationQualitiesForDisplayAsync(
@@ -2099,31 +1804,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             () => Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (_creationQualitiesService is null
-                    || !IsCreationCatalogDisplayCurrent(original)
-                    || original.WorkspaceId is not { } workspaceId
-                    || original.DisplayOwnerContext is not { IsValid: true } owner
-                    || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
+                if (!IsCreationCatalogDisplayCurrent(original))
                     return QualitiesDisplayUnavailable();
-
-                // The Core store reads the ambient owner. Acquire the captured
-                // display owner on this worker and retain it only for this
-                // synchronous read, never across await or page rendering.
-                bool admitted = owners.TryAcquire(owner, out var lease);
-                using (lease)
-                {
-                    if (!admitted || lease is null || lease.Stamp != original.DisplayOwnerContext
-                        || !IsCreationCatalogDisplayCurrent(original))
-                        return QualitiesDisplayUnavailable();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var result = _creationQualitiesService.Load(new(workspaceId));
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return IsCreationCatalogDisplayCurrent(original)
-                           && (result.Value is null
-                               || CreationQualitiesPhoneAuthority.MatchesOverview(result.Value, original))
-                        ? result
-                        : QualitiesDisplayUnavailable();
-                }
+                return ReadCreationAuthority(original,
+                    () => LoadCreationQualities(original), cancellationToken);
             }, cancellationToken), cancellationToken);
 
     private static CharacterCreationFoundationResult<CharacterCreationQualitiesState> QualitiesDisplayUnavailable()
@@ -2136,28 +1820,19 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         => WithWorkspaceActivationGateAsync(
             () => Task.Run(() =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!IsCreationCatalogDisplayCurrent(original)
-                    || original.DisplayOwnerContext is not { IsValid: true } owner
-                    || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
-                    return GearDisplayUnavailable();
-
-                bool admitted = owners.TryAcquire(owner, out var lease);
-                using (lease)
+                if (!IsCreationCatalogDisplayCurrent(original)) return GearDisplayUnavailable();
+                try
                 {
-                    if (!admitted || lease is null || lease.Stamp != owner
-                        || !IsCreationCatalogDisplayCurrent(original))
-                        return GearDisplayUnavailable();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var load = gear.Load(original);
-                    // Full catalog/digest validation is part of preparation,
-                    // never a UI render, search, paging or quantity callback.
-                    bool ready = load.State is { } state
-                        && CreationGearPhoneAuthority.IsReady(state, original);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return IsCreationCatalogDisplayCurrent(original)
-                        ? (load, ready) : GearDisplayUnavailable();
+                    return ReadCreationAuthority(original, () =>
+                    {
+                        var load = gear.Load(original);
+                        // Catalog validation stays off UI; Core alone owns its lease.
+                        bool ready = load.State is { } state && CreationGearPhoneAuthority.IsReady(state, original);
+                        return (load, ready);
+                    }, cancellationToken);
                 }
+                catch (InvalidOperationException) when (!IsCreationCatalogDisplayCurrent(original))
+                { return GearDisplayUnavailable(); }
             }, cancellationToken), cancellationToken);
 
     private static (CharacterCreationGearInteractionLoadResult Load, bool Ready) GearDisplayUnavailable()
@@ -2165,16 +1840,19 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             [CharacterCreationGearInteractionBlockers.BindingMismatch]), false);
 
     public CharacterCreationFoundationResult<CharacterCreationQualitiesState>
-        LoadCreationQualities()
+        LoadCreationQualities(CharacterOverviewState? display = null)
     {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+        CharacterOverviewState original = display ?? State;
+        if (!IsCreationCatalogDisplayCurrent(original)
+            || original.WorkspaceId is not { } workspaceId
+            || original.DisplayOwnerContext is not { } owner)
         {
             return new(
                 CharacterCreationFoundationOutcomes.Blocked,
                 null,
                 [CharacterCreationQualitiesBlockers.RevisionConflict]);
         }
-        if (_creationQualitiesService is null)
+        if (_ownerBoundQualitiesService is null)
         {
             return new(
                 CharacterCreationFoundationOutcomes.Blocked,
@@ -2182,9 +1860,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationQualitiesBlockers.AuthorityUnavailable]);
         }
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> result =
-            _creationQualitiesService.Load(new(workspaceId));
-        return result.Value is { } state
-               && !CreationQualitiesPhoneAuthority.MatchesOverview(state, State)
+            _ownerBoundQualitiesService.Load(owner, new(workspaceId));
+        return !IsCreationCatalogDisplayCurrent(original) || result.Value is { } state
+               && !CreationQualitiesPhoneAuthority.MatchesOverview(state, original)
             ? new(
                 CharacterCreationFoundationOutcomes.Conflict,
                 null,
@@ -2195,13 +1873,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     internal CharacterCreationFoundationResult<CharacterCreationQualitiesPreview>
         PreviewCreationQualities(
             CharacterCreationQualitiesBinding binding,
-            IReadOnlyList<string> selectedOptionIds)
+            IReadOnlyList<string> selectedOptionIds,
+            CharacterOverviewState? display = null)
     {
+        CharacterOverviewState original = display ?? State;
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> live =
-            LoadCreationQualities();
-        if (_creationQualitiesService is null
+            LoadCreationQualities(original);
+        if (_ownerBoundQualitiesService is null
+            || !IsCreationCatalogDisplayCurrent(original)
+            || original.DisplayOwnerContext is not { } owner
             || live.Value is not { } state
-            || !CreationQualitiesPhoneAuthority.IsReady(state, State)
+            || !CreationQualitiesPhoneAuthority.IsReady(state, original)
             || !CreationQualitiesPhoneAuthority.BindingEquals(binding, state.Binding))
         {
             return new(
@@ -2209,27 +1891,37 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 null,
                 [CharacterCreationQualitiesBlockers.RevisionConflict]);
         }
-        return _creationQualitiesService.Preview(new(
+        var result = _ownerBoundQualitiesService.Preview(owner, new(
             binding,
             selectedOptionIds.OrderBy(static item => item, StringComparer.Ordinal).ToArray()));
+        return IsCreationCatalogDisplayCurrent(original) ? result
+            : new(CharacterCreationFoundationOutcomes.Conflict, null, [CharacterCreationQualitiesBlockers.RevisionConflict]);
     }
 
-    internal async Task<CreationQualitiesPhoneConfirmResult>
+    internal Task<CreationQualitiesPhoneConfirmResult>
         ConfirmCreationQualitiesAsync(
             CharacterCreationQualitiesCheckpoint checkpoint,
-            CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationQualitiesCoreAsync(checkpoint, cancellationToken),
+            CancellationToken cancellationToken = default,
+            CharacterOverviewState? display = null)
+    {
+        // Capture before waiting for the activation gate; a queued command may
+        // never borrow the owner displayed after an A -> B -> A transition.
+        CharacterOverviewState original = display ?? State;
+        return WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationQualitiesCoreAsync(checkpoint, original, cancellationToken),
             cancellationToken);
+    }
 
     private async Task<CreationQualitiesPhoneConfirmResult>
         ConfirmCreationQualitiesCoreAsync(
             CharacterCreationQualitiesCheckpoint checkpoint,
+            CharacterOverviewState beforeActivation,
             CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
-        CharacterOverviewState beforeActivation = State;
-        if (_creationQualitiesService is null
+        if (_ownerBoundQualitiesService is not { } service
+            || !IsCreationCatalogDisplayCurrent(beforeActivation)
+            || beforeActivation.DisplayOwnerContext is not { } owner
             || checkpoint.Phase != CharacterCreationQualitiesCheckpointPhase.Applying
             || !checkpoint.IsStructurallyValid()
             || !checkpoint.OwnsRecoveryRevision(beforeActivation))
@@ -2243,21 +1935,26 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> confirmed;
+        int entered = 0;
         try
         {
-            confirmed = _creationQualitiesService.Confirm(new(
+            confirmed = await Task.Run(() =>
+            {
+                Interlocked.Exchange(ref entered, 1);
+                return service.Confirm(owner, new(
                 checkpoint.Preview.Binding,
                 checkpoint.SelectedOptionIds,
                 checkpoint.Preview.PreviewDigest,
                 checkpoint.IdempotencyKey,
                 checkpoint.TransactionId,
                 ExplicitlyConfirmed: true));
+            }, cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)
         {
             throw;
         }
-        catch
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
             return UnknownQualitiesOutcome();
         }
@@ -2269,7 +1966,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             || confirmed.Value is not { } receipt)
         {
             CharacterCreationFoundationResult<CharacterCreationQualitiesState> observed =
-                _creationQualitiesService.Load(new(checkpoint.Preview.Binding.WorkspaceId));
+                await Task.Run(() => service.Load(owner, new(checkpoint.Preview.Binding.WorkspaceId)));
             if (observed.Value is { } unchanged
                 && CreationQualitiesPhoneAuthority.BindingEquals(
                     unchanged.Binding,
@@ -2288,7 +1985,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> committed =
-            _creationQualitiesService.Load(new(receipt.WorkspaceId));
+            await Task.Run(() => service.Load(owner, new(receipt.WorkspaceId)));
         if (committed.Value is not { } committedState
             || !CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(
                 checkpoint,
@@ -2301,10 +1998,15 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
         try
         {
-            await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+            if (!IsNativePersistenceOwnerCurrent(owner)
+                || _presenter is not IOwnerBoundWorkspaceRefreshPresenter bound)
+                throw new InvalidOperationException("The original Qualities owner is no longer current.");
+            await bound.LoadAsync(owner, receipt.WorkspaceId, cancellationToken);
+            if (!IsNativePersistenceOwnerCurrent(owner))
+                throw new InvalidOperationException("The Qualities owner changed during refresh.");
             await SyncShellAsync(cancellationToken);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
             _notice = "Qualities draft saved. Reopen the character to refresh the phone view.";
             NotifyChanged();
@@ -2318,7 +2020,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> refreshed =
             LoadCreationQualities();
-        if (refreshed.Value is not { } refreshedState
+        if (!IsNativePersistenceOwnerCurrent(owner)
+            || State.DisplayOwnerContext != owner || State.Session.OwnerContext != owner
+            || refreshed.Value is not { } refreshedState
             || !CreationQualitiesPhoneAuthority.ReceiptMatches(
                 checkpoint,
                 receipt,

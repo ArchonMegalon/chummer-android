@@ -334,7 +334,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 771,
+            "minimumExpectedTests": 774,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -351,7 +351,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
             ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
             ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
-            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 24),
+            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 27),
         )
         rows = [{
             "coreProjectionContent": copy.deepcopy(content),
@@ -716,8 +716,8 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(771, receipt["testExecutions"][0]["minimumExpectedTests"])
-        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1, 24],
+        self.assertEqual(774, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1, 27],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
         # The producer can validate the content checkout at either exact commit.
@@ -735,13 +735,13 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         self.assertEqual(8, len(rows))
         self.assertEqual(8, len(self.module.EXISTING_OWNER_TEST_EXECUTIONS))
         self.assertEqual(
-            ("WorkspaceOverviewFinalizationOwnerTests", source, 24),
+            ("WorkspaceOverviewFinalizationOwnerTests", source, 27),
             self.module.EXISTING_OWNER_TEST_EXECUTIONS[-1],
         )
         self.assertEqual({
             "coreProjectionContent": full["coreProjectionContent"],
             "filter": "FullyQualifiedName~WorkspaceOverviewFinalizationOwnerTests",
-            "minimumExpectedTests": 24,
+            "minimumExpectedTests": 27,
             "project": full["project"],
             "reuseFullSuiteBuild": True,
             "runner": "direct-exact-assembly",
@@ -754,10 +754,12 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
 
     def test_previous_floor_or_missing_finalization_authority_is_rejected(self) -> None:
         source = "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs"
-        for change in ("previous-floor", "previous-seven-rows", "missing-source"):
+        for change in ("previous-floor", "previous-finalization-floor", "previous-seven-rows", "missing-source"):
             receipt = self.current_main_receipt_fixture()
             if change == "previous-floor":
-                receipt["testExecutions"][0]["minimumExpectedTests"] = 747
+                receipt["testExecutions"][0]["minimumExpectedTests"] = 771
+            elif change == "previous-finalization-floor":
+                receipt["focusedExistingOwnerRegressionTestExecutions"][-1]["minimumExpectedTests"] = 24
             elif change == "previous-seven-rows":
                 receipt["focusedExistingOwnerRegressionTestExecutions"].pop()
                 self.assertEqual(7, len(receipt["focusedExistingOwnerRegressionTestExecutions"]))

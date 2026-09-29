@@ -72,11 +72,16 @@ class CreationGearSourceContractTests(unittest.TestCase):
         self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(original)", render)
         self.assertIn('AutomationId = "creation-gear-loading"', render)
 
+    def test_search_submission_releases_keyboard_before_filter_rebuild(self) -> None:
+        page = source(PAGE)
+        submit = page.split("search.SearchButtonPressed +=", 1)[1].split("};", 1)[0]
+        self.assertLess(submit.index("search.Unfocus()"), submit.index("ApplyFilter(search.Text)"))
+
     def test_phone_consumes_typed_renderer_neutral_presenter(self) -> None:
         page = source(PAGE)
         presenter = source(PRESENTER)
         self.assertIn("interface ICharacterCreationGearInteractionPresenter", presenter)
-        for call in ("_gear.Load(", "_gear.Prepare(", "_gear.Confirm("):
+        for call in ("_gear.Load(", "_gear.Prepare(", "ConfirmCreationGearPurchaseAsync(_gear, _original, _prepared)"):
             self.assertIn(call, page)
         self.assertNotIn("XDocument", page)
         self.assertNotIn("XElement", page)
@@ -133,11 +138,13 @@ class CreationGearSourceContractTests(unittest.TestCase):
             "creation-gear-reopen",
         ):
             self.assertIn(automation_id, page)
-        self.assertIn("ExplicitlyConfirmed: true", page)
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        self.assertIn("ExplicitlyConfirmed: true", coordinator)
         self.assertIn("CreationGearPhoneAuthority.PreparedMatches", page)
         self.assertIn("CreationGearPhoneAuthority.ReceiptMatches", page)
         self.assertIn("CreationGearPhoneAuthority.RefreshedStateMatches", page)
-        self.assertIn("await _overview.LoadAsync(receipt.WorkspaceId", page)
+        self.assertIn("await bound.LoadAsync(owner, workspaceId, ct)", coordinator)
+        self.assertNotIn("await _overview.LoadAsync(", page)
         self.assertIn("CharacterDocumentChanged", page)
 
     def test_physical_evidence_exposes_full_revision_and_digest_values(self) -> None:
@@ -173,6 +180,7 @@ class CreationGearSourceContractTests(unittest.TestCase):
         text = source(MAUI_PROGRAM)
         self.assertIn("AddSingleton<ICharacterCreationGearInteractionPresenter>", text)
         self.assertIn("provider.GetRequiredService<ICharacterCreationGearService>()", text)
+        self.assertIn("provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()", text)
         self.assertNotIn("UnavailableCharacterCreationGear", text)
 
     def test_build_page_injects_gear_without_owning_another_navigation_stage(self) -> None:
@@ -185,6 +193,24 @@ class CreationGearSourceContractTests(unittest.TestCase):
             r"\s*_overviewPresenter,\s*_gearPresenter,\s*authority\)",
         )
         self.assertNotIn("CreationDashboardAuthorityPhase.Gear", text)
+
+    def test_original_owner_background_read_and_known_commit_are_retained(self) -> None:
+        page = source(PAGE)
+        presenter = source(PRESENTER)
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        preview = page.split("public sealed class CreationGearPreviewPage", 1)[1]
+        self.assertIn("Task.Run(() => Coordinator.ReadCreationAuthority(_original", preview)
+        render = preview.split("protected override void Refresh()", 1)[1].split("private async Task ConfirmAsync()", 1)[0]
+        self.assertNotIn("_gear.Load(", render)
+        self.assertIn("!_submitted && _ready", render)
+        self.assertIn("Coordinator.CanDisplayCreationPurchase(_original)", render)
+        self.assertLess(preview.index("_receipt = receipt"), preview.index("result.RefreshedState is not"))
+        self.assertIn("_preparedOwners.TryGetValue(prepared", presenter)
+        self.assertIn("overview.DisplayOwnerContext != admitted.Stamp", presenter)
+        self.assertIn("result.Outcome, prepared, receipt, null", presenter)
+        self.assertIn("ConditionalWeakTable<object, CreationPurchaseAttempt>", coordinator)
+        self.assertIn("Interlocked.CompareExchange(ref attempt.Started, 1, 0)", coordinator)
+        self.assertIn("return NeedsReopen()", coordinator)
 
 
 if __name__ == "__main__":

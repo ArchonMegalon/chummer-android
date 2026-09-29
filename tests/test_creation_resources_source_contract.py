@@ -44,10 +44,10 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
     def test_confirmation_reloads_and_repreviews_before_commit(self) -> None:
         text = source(PRESENTER)
         confirm = text[text.index("public CharacterCreationResourcesInteractionConfirmResult Confirm(") :]
-        self.assertLess(confirm.index("ExactLoad load = LoadExact(overview)"), confirm.index("_service.Confirm(request)"))
-        self.assertLess(confirm.index("CharacterCreationResourcesResult<CharacterCreationResourcesPreview> repreview"), confirm.index("_service.Confirm(request)"))
+        self.assertLess(confirm.index("ExactLoad load = LoadExact(overview)"), confirm.index("ServiceFor(overview).Confirm(request)"))
+        self.assertLess(confirm.index("CharacterCreationResourcesResult<CharacterCreationResourcesPreview> repreview"), confirm.index("ServiceFor(overview).Confirm(request)"))
         self.assertIn("PreparedMatchesPreview(prepared, currentPreview)", confirm)
-        self.assertIn("_service.Load(new CharacterCreationResourcesLoadRequest(receipt.WorkspaceId))", confirm)
+        self.assertIn("ServiceFor(overview).Load(new CharacterCreationResourcesLoadRequest(receipt.WorkspaceId))", confirm)
 
     def test_confirmation_and_receipts_are_digest_bound_and_fail_closed(self) -> None:
         text = source(PRESENTER)
@@ -90,9 +90,12 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(automation_id, text)
         self.assertIn("_resources.Prepare(", text)
-        self.assertIn("ExplicitlyConfirmed: true", text)
-        self.assertIn("await _overview.LoadAsync(receipt.WorkspaceId", text)
-        self.assertIn("CharacterCreationResourcesInteractionLoadResult reopened = _resources.Load(_overview.State)", text)
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        self.assertIn("ExplicitlyConfirmed: true", coordinator)
+        self.assertIn("ConfirmCreationResourcesPurchaseAsync(_resources, _original, _prepared)", text)
+        self.assertIn("await bound.LoadAsync(owner, workspaceId, ct)", coordinator)
+        self.assertNotIn("await _overview.LoadAsync(", text)
+        self.assertIn("presenter.Load(refreshedDisplay)", coordinator)
 
     def test_blocked_resources_keeps_full_diagnostics_after_budget_and_blockers(self) -> None:
         text = source(PAGE)
@@ -100,10 +103,10 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
             "private void AddGearRoute", 1
         )[0]
         blocked = refresh.split(
-            "if (!CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State))", 1
+            "if (!_ready)", 1
         )[1].split("return;", 1)[0]
         self.assertLess(refresh.index("AddBudget("), refresh.index("AddBinding(state)"))
-        self.assertLess(refresh.index("AddBinding(state)"), refresh.index("if (!CreationResourcesPhoneAuthority.IsReady"))
+        self.assertLess(refresh.index("AddBinding(state)"), refresh.index("if (!_ready)"))
         self.assertLess(blocked.index("AddBlockers("), blocked.index("AddTechnicalDetailsDisclosure()"))
         self.assertIn("_technicalDetails.IsVisible = false", refresh)
         self.assertIn("_body.Add(_technicalDetails)", text)
@@ -191,7 +194,8 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
         registration = re.compile(
             r"AddSingleton<ICharacterCreationResourcesInteractionPresenter>\(provider\s*=>\s*"
             r"new CharacterCreationResourcesInteractionPresenter\(\s*"
-            r"provider\.GetRequiredService<ICharacterCreationResourcesService>\(\)\)\)",
+            r"provider\.GetRequiredService<ICharacterCreationResourcesService>\(\),\s*"
+            r"provider\.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>\(\)\)\)",
             re.MULTILINE,
         )
         self.assertRegex(text, registration)
@@ -208,6 +212,33 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
         )
         for token in forbidden:
             self.assertNotIn(token, combined)
+
+    def test_starting_cash_input_keeps_theme_contrast_and_explicit_numeric_choice(self) -> None:
+        text = source(ROOT / "src/Chummer.Android/Native/CreationFinalizationPage.cs")
+        entry = text.split("var input = new Entry", 1)[1].split("};", 1)[0]
+        self.assertIn("TextColor = NativeTheme.Text", entry)
+        self.assertIn("BackgroundColor = NativeTheme.Surface", entry)
+        self.assertIn("Keyboard = Keyboard.Numeric", entry)
+        self.assertIn("Text = _roll", entry)
+        self.assertIn('AutomationId = "creation-starting-cash-roll"', entry)
+
+    def test_original_owner_background_read_and_known_commit_are_retained(self) -> None:
+        page = source(PAGE)
+        presenter = source(PRESENTER)
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        preview = page.split("public sealed class CreationResourcesPreviewPage", 1)[1]
+        self.assertIn("Task.Run(() => Coordinator.ReadCreationAuthority(_original", preview)
+        render = preview.split("protected override void Refresh()", 1)[1].split("private async Task ConfirmAsync()", 1)[0]
+        self.assertNotIn("_resources.Load(", render)
+        self.assertIn("!_submitted && _ready", render)
+        self.assertIn("Coordinator.CanDisplayCreationPurchase(_original)", render)
+        self.assertLess(preview.index("_receipt = receipt"), preview.index("result.RefreshedState is not"))
+        self.assertIn("_preparedOwners.TryGetValue(prepared", presenter)
+        self.assertIn("overview.DisplayOwnerContext != admitted.Stamp", presenter)
+        self.assertIn("result.Outcome, prepared, receipt, null", presenter)
+        self.assertIn("ConditionalWeakTable<object, CreationPurchaseAttempt>", coordinator)
+        self.assertIn("Interlocked.CompareExchange(ref attempt.Started, 1, 0)", coordinator)
+        self.assertIn("return NeedsReopen()", coordinator)
 
 
 if __name__ == "__main__":

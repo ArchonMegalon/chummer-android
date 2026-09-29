@@ -27,7 +27,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         )
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(
             encoding="utf-8"
-        )
+        ) + (NATIVE / "RunnerSessionCoordinator.CreationAttributes.cs").read_text(encoding="utf-8")
 
         for marker in (
             'AutomationId = "creation-attributes-page"',
@@ -80,14 +80,14 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             self.assertIn(marker, authority)
 
         for marker in (
-            "ICharacterCreationAttributesService? _creationAttributesService",
+            "IOwnerBoundCharacterCreationAttributesService? _ownerBoundAttributesService",
             "LoadCreationAttributes()",
             "PreviewCreationAttributes(",
             "ConfirmCreationAttributesAsync(",
-            "new CharacterCreationAttributesConfirmRequest(",
-            "canonicalPreview.PreviewDigest",
-            "ExplicitlyConfirmed: true",
-            "_presenter.LoadAsync(receipt.WorkspaceId",
+            "service.Confirm(owner, new(canonical.Binding, allocations, canonical.PreviewDigest, true))",
+            "issued.Load.Display.DisplayOwnerContext is not { } owner",
+            "IOwnerBoundWorkspaceRefreshPresenter bound",
+            "bound.LoadAsync(owner, receipt.WorkspaceId",
             "CreationAttributesPhoneAuthority.ReceiptMatches(",
         ):
             self.assertIn(marker, coordinator)
@@ -131,27 +131,26 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertIn("The post-create AttributeEditRequest path must never serve", dashboard)
 
     def test_confirmation_reprojects_and_validates_committed_state_before_activation(self) -> None:
-        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationAttributes.cs").read_text(
             encoding="utf-8"
         )
         confirmation = coordinator[
-            coordinator.index("ConfirmCreationAttributesCoreAsync(") :
+            coordinator.index("private async Task<CreationAttributesPhoneConfirmResult> ConfirmIssuedAttributesAsync(") :
         ]
-        confirmation = confirmation[: confirmation.index("LoadCreationFoundation()")]
 
-        preview_index = confirmation.index("_creationAttributesService.Preview(")
+        preview_index = confirmation.index("service.Preview(owner,")
         equality_index = confirmation.index(
             "CreationAttributesPhoneAuthority.CanonicallyEquals("
         )
-        confirm_index = confirmation.index("_creationAttributesService.Confirm(")
-        direct_load_index = confirmation.index("_creationAttributesService.Load(")
+        confirm_index = confirmation.index("service.Confirm(owner,")
+        direct_load_index = confirmation.index("service.Load(owner, new(receipt.WorkspaceId))")
         receipt_index = confirmation.index(
             "CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation("
         )
         presenter_load_index = confirmation.index(
-            "_presenter.LoadAsync(receipt.WorkspaceId"
+            "bound.LoadAsync(owner, receipt.WorkspaceId"
         )
-        shell_index = confirmation.index("SyncShellAsync(cancellationToken)")
+        shell_index = confirmation.index("SyncShellAsync(ct)")
 
         self.assertLess(preview_index, equality_index)
         self.assertLess(equality_index, confirm_index)
@@ -159,6 +158,11 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertLess(direct_load_index, receipt_index)
         self.assertLess(receipt_index, presenter_load_index)
         self.assertLess(presenter_load_index, shell_index)
+        self.assertIn("issued.ConfirmationStarted = true", confirmation)
+        self.assertIn("IsCreationAttributesPreviewCurrent(preview)", confirmation)
+        self.assertIn("IsNativePersistenceOwnerCurrent(owner)", confirmation)
+        self.assertIn("creation-attributes-post-commit-refresh-required", confirmation)
+        self.assertNotIn("_creationAttributesService", coordinator)
 
 
 if __name__ == "__main__":

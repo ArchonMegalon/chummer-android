@@ -17,13 +17,24 @@ public sealed class AndroidAccountOwnerContextAccessor(AndroidAccountLinkService
     // The scope does not flow into async work and holds no lease itself: Core
     // and the reading store each acquire/release their own exact owner lease.
     internal Task<T> RunReadAsync<T>(OwnerContextStamp expected, Func<T> read, CancellationToken ct)
-        => Task.Run(() =>
+        => Task.Run(() => RunScheduledRead(expected, read, ct), ct);
+
+    // For a caller already dispatched by the background projection queue.
+    // Never use this on the UI thread or around a mutation. No lease is held
+    // here, and no asynchronous continuation inherits this admission.
+    internal T RunScheduledRead<T>(OwnerContextStamp expected, Func<T> read, CancellationToken ct)
+    {
+        ReadAdmission? previous = _readAdmission;
+        _readAdmission = new(this, expected, ct);
+        try
         {
-            ReadAdmission? previous = _readAdmission;
-            _readAdmission = new(this, expected, ct);
-            try { ct.ThrowIfCancellationRequested(); return read(); }
-            finally { _readAdmission = previous; }
-        }, ct);
+            ct.ThrowIfCancellationRequested();
+            T result = read();
+            ct.ThrowIfCancellationRequested();
+            return result;
+        }
+        finally { _readAdmission = previous; }
+    }
 
     private sealed record ReadAdmission(AndroidAccountOwnerContextAccessor Accessor,
         OwnerContextStamp Expected, CancellationToken CancellationToken);

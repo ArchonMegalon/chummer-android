@@ -267,7 +267,11 @@ public sealed class CreationGearPage : NativePageBase
             TextColor = NativeTheme.Text,
             PlaceholderColor = NativeTheme.Muted
         };
-        search.SearchButtonPressed += (_, _) => ApplyFilter(search.Text);
+        search.SearchButtonPressed += (_, _) =>
+        {
+            search.Unfocus();
+            ApplyFilter(search.Text);
+        };
         search.TextChanged += (_, args) =>
         {
             if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
@@ -401,10 +405,18 @@ public sealed class CreationGearPage : NativePageBase
             return;
         }
 
-        CharacterCreationGearInteractionPrepareResult result = _gear.Prepare(Coordinator.State, basket);
+        if (_loadedDisplay is not { } original || !ReferenceEquals(state, _loaded?.State)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+        var review = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
+        {
+            var candidate = _gear.Prepare(original, basket);
+            return (Result: candidate, Exact: candidate.PreparedPreview is { } preview
+                && CreationGearPhoneAuthority.PreparedMatches(preview, state, original));
+        }, CancellationToken.None));
+        var result = review.Result;
         if (result.PreparedPreview is not { } prepared
             || !string.Equals(result.Outcome, CharacterCreationGearOutcomes.Available, StringComparison.Ordinal)
-            || !CreationGearPhoneAuthority.PreparedMatches(prepared, state, Coordinator.State))
+            || !review.Exact || !Coordinator.IsCreationCatalogDisplayCurrent(original))
         {
             string blocker = result.Blockers.FirstOrDefault()
                              ?? CharacterCreationGearInteractionBlockers.PreparedPreviewMismatch;
@@ -412,7 +424,7 @@ public sealed class CreationGearPage : NativePageBase
             Refresh();
             return;
         }
-        await Navigation.PushAsync(new CreationGearPreviewPage(Coordinator, _gear, _overview, prepared, _copy));
+        await Navigation.PushAsync(new CreationGearPreviewPage(Coordinator, _gear, _overview, prepared, _copy, original));
     }
 
     private void AddAuthority(CharacterCreationGearInteractionState state)
@@ -463,6 +475,10 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly CharacterCreationGearPreparedPreview _prepared;
+    private readonly CharacterOverviewState _original;
+    private bool _ready;
+    private bool _loading = true;
+    private bool _submitted;
     private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
@@ -477,15 +493,34 @@ public sealed class CreationGearPreviewPage : NativePageBase
         ICharacterCreationGearInteractionPresenter gear,
         ICharacterOverviewPresenter overview,
         CharacterCreationGearPreparedPreview prepared,
-        AndroidSurfaceCopy copy) : base(coordinator)
+        AndroidSurfaceCopy copy, CharacterOverviewState? original = null) : base(coordinator)
     {
         _gear = gear ?? throw new ArgumentNullException(nameof(gear));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
+        _original = original ?? coordinator.State;
         _copy = copy ?? throw new ArgumentNullException(nameof(copy));
         Title = _copy["GearPreview.PageTitle"];
         AutomationId = "creation-gear-preview-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
+    {
+        _ready = false;
+        _loading = true;
+        Refresh();
+        try
+        {
+            if (_submitted || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            _ready = await Task.Run(() => Coordinator.ReadCreationAuthority(_original, () =>
+            {
+                var load = _gear.Load(_original);
+                return load.State is { } current
+                    && CreationGearPhoneAuthority.PreparedMatches(_prepared, current, _original);
+            }, ct), ct);
+        }
+        finally { if (!ct.IsCancellationRequested) _loading = false; }
     }
 
     protected override void Refresh()
@@ -493,6 +528,16 @@ public sealed class CreationGearPreviewPage : NativePageBase
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(_copy["GearPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["GearPreview.Title"]));
+        if (!Coordinator.CanDisplayCreationPurchase(_original))
+        {
+            _body.Add(NativeTheme.Body(_copy["GearPreview.ConfirmStale"], NativeTheme.Danger));
+            return;
+        }
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-gear-preview-loading" });
+            return;
+        }
         AddExactPreview();
 
         if (_receipt is { } receipt)
@@ -513,9 +558,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
             _body.Add(NativeTheme.Card(failure));
         }
 
-        CharacterCreationGearInteractionLoadResult load = _gear.Load(Coordinator.State);
-        bool exact = load.State is { } current
-                     && CreationGearPhoneAuthority.PreparedMatches(_prepared, current, Coordinator.State);
+        bool exact = !_submitted && _ready && Coordinator.IsCreationCatalogDisplayCurrent(_original);
         Button confirm = NativeTheme.PrimaryButton(_copy["GearPreview.Confirm"]);
         confirm.AutomationId = "creation-gear-confirm";
         confirm.IsEnabled = exact;
@@ -570,42 +613,39 @@ public sealed class CreationGearPreviewPage : NativePageBase
 
     private async Task ConfirmAsync()
     {
+        if (_submitted || !_ready || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+        _submitted = true;
+        _ready = false;
         _failure = null;
-        CharacterCreationGearInteractionConfirmResult result = _gear.Confirm(
-            Coordinator.State,
-            new CharacterCreationGearConfirmation(
-                _prepared,
-                _prepared.Preview.PreviewDigest,
-                _prepared.IdempotencyKey,
-                ExplicitlyConfirmed: true));
+        Refresh();
+        var result = await Coordinator.ConfirmCreationGearPurchaseAsync(_gear, _original, _prepared);
         if (result.Receipt is not { } receipt
-            || result.RefreshedState is not { } refreshed
             || result.Outcome is not (CharacterCreationGearOutcomes.Applied or CharacterCreationGearOutcomes.Replayed)
-            || !CreationGearPhoneAuthority.ReceiptMatches(_prepared, receipt)
-            || !CreationGearPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed))
+            || !CreationGearPhoneAuthority.ReceiptMatches(_prepared, receipt))
         {
-            _failure = result.Blockers.FirstOrDefault()
-                       ?? CharacterCreationGearInteractionBlockers.ReceiptMismatch;
+            _failure = result.Outcome == "outcome-unknown"
+                ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
+                : result.Blockers.FirstOrDefault() ?? CharacterCreationGearInteractionBlockers.ReceiptMismatch;
+            return;
+        }
+        // Retain the durable receipt before refreshing. Refresh failure is not
+        // mutation failure and must not permit a second submission.
+        _receipt = receipt;
+        if (result.RefreshedState is not { } refreshed
+            || !CreationGearPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
+            || !Coordinator.CanDisplayCreationPurchase(_original))
+        {
+            _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
             return;
         }
 
-        await _overview.LoadAsync(receipt.WorkspaceId, CancellationToken.None);
-        CharacterCreationGearInteractionLoadResult reopened = _gear.Load(_overview.State);
-        if (reopened.State is not { } reopenedState
-            || !CreationGearPhoneAuthority.RefreshedStateMatches(_prepared, receipt, reopenedState)
-            || _overview.State.ContentRevision != receipt.WorkspaceRevision
-            || _overview.State.SavedRevision != receipt.SavedRevision)
-        {
-            _failure = CharacterCreationGearInteractionBlockers.RefreshAuthorityRequired;
-            return;
-        }
-        _receipt = receipt;
     }
 
     private void AddReceipt(CharacterCreationGearReceipt receipt)
     {
         VerticalStackLayout content = new() { Spacing = 6 };
         content.Add(NativeTheme.Eyebrow(_copy["GearPreview.Persisted"]));
+        if (_failure is not null) content.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
         content.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
         content.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
         content.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
