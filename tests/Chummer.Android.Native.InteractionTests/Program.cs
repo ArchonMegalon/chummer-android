@@ -92,6 +92,16 @@ internal static class Program
             await AfterRunAuthorityHarness.RunSr6FoundationAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--origin-illustrated-book-reopen")
+        {
+            OriginDossierBookRuntimeTests.ReopenIllustratedBook(args[1]);
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--origin-illustrated-book")
+        {
+            OriginDossierBookRuntimeTests.RunIllustratedBookStorage();
+            return;
+        }
         if (args.Length == 1 && args[0] == "--origin-book-continuity")
         {
             await OriginDossierBookRuntimeTests.RunAsync();

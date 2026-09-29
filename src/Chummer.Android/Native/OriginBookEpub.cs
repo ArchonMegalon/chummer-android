@@ -106,8 +106,9 @@ internal static class OriginBookEpub
     private static CapturedIllustration[] CaptureIllustrations(RetainedOriginBook book, IReadOnlyList<Illustration>? source)
     {
         if (source is null) return [];
-        if (source.Count > 8) throw new InvalidDataException("Too many book illustrations.");
+        if (source.Count > OriginBookSceneStore.MaximumScenes) throw new InvalidDataException("Too many book illustrations.");
         var result = new List<CapturedIllustration>();
+        var illustratedChapters = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
         foreach (var picture in source)
         {
@@ -116,7 +117,9 @@ internal static class OriginBookEpub
                 || string.IsNullOrWhiteSpace(picture.AltText) || picture.AltText.Length > 1024)
                 throw new InvalidDataException("The book illustration is invalid or oversized.");
             var chapter = book.Chapters.SingleOrDefault(c => c.ChapterId == picture.ChapterId);
-            if (chapter is null || picture.TextDigest != Hash(Encoding.UTF8.GetBytes(book.ChapterText(chapter))))
+            if (chapter is null || !book.IsExportableChapter(chapter)
+                || !illustratedChapters.Add(chapter.ChapterId)
+                || picture.TextDigest != Hash(Encoding.UTF8.GetBytes(book.ChapterText(chapter))))
                 throw new InvalidDataException("The illustration does not match the selected chapter text.");
             byte[] captured = picture.Bytes.ToArray();
             string mime = ImageType(captured);
