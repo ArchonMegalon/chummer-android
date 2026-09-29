@@ -104,11 +104,14 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 54 is the latest [observed Internal availability](../play/evidence/preview54-internal-observation.md).
-It is available on Play Internal; physical Play installation of 54 is not yet
-verified. Its illustrated-book capacity correction has focused local managed
-export/reopen and diagnostic API-36 reading, SAF export and process-restart
-evidence. Synthetic book checks do not approve real AI-story quality.
+Preview 55 is the latest [observed Internal availability](../play/evidence/preview55-internal-observation.md).
+It is available on Play Internal; physical Play installation of 55 is not yet
+verified. It delivers actionable Priority budget warnings and native request
+deadline handling, with focused local tests and affected-route restart evidence.
+The separately deployed Hub correction also enabled automatic illustration of
+one complete accepted chapter, native reading and SAF EPUB export across process
+restart. That chapter was editorial-assisted; this is not unattended full-book
+quality or cross-chapter likeness approval. Preview 54 evidence stays immutable.
 
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
 physically verified version. Its normal Play update from 51, first launch and saved-runner process
