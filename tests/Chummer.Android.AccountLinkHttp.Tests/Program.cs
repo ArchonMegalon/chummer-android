@@ -34,6 +34,7 @@ internal static class Program
         await NativeIoFailuresPreserveLinkedAccountAsync();
         await NativeIoFailuresAreRedactedAndDoNotGrantRetriesAsync();
         await NativeIoCallerCancellationRemainsCancellationAsync();
+        await NativeDeadlineCancellationIsDistinguishedFromCallerAndTlsAsync();
         await GrantStatusCannotInventOrReplaceOwnerAsync();
         await LegacyOwnerCommitIsRestartableAndFencedAsync();
         await InFlightStatusCannotResurrectRevokedOwnerAsync();
@@ -245,6 +246,58 @@ internal static class Program
         yield return () => new IOException(AccessToken, new IOException(RotatedAccessToken));
         yield return () => new WebException(AccessToken, null, WebExceptionStatus.TrustFailure, null);
         yield return () => new WebException(AccessToken, null, WebExceptionStatus.SecureChannelFailure, null);
+        yield return () => new WebException(AccessToken, null, WebExceptionStatus.ProtocolError, null);
+        yield return () => new IOException(AccessToken,
+            new System.Security.Authentication.AuthenticationException(RotatedAccessToken));
+    }
+
+    private static async Task NativeDeadlineCancellationIsDistinguishedFromCallerAndTlsAsync()
+    {
+        foreach (bool beforeHeaders in new[] { true, false })
+        foreach (bool callerCancels in new[] { false, true })
+        foreach (Func<Exception> failure in NativeIoFailures())
+        {
+            using var caller = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            async Task FailAfterNativeCancellation(CancellationToken token)
+            {
+                entered.TrySetResult();
+                try { await Task.Delay(Timeout.InfiniteTimeSpan, token); }
+                catch (OperationCanceledException) { throw failure(); }
+            }
+            var terminal = new RecordingHandler(async (_, token) =>
+            {
+                if (beforeHeaders) await FailAfterNativeCancellation(token);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(new NativeCancellationReadStream(FailAfterNativeCancellation))
+                };
+            });
+            using var transport = CreateTransport(terminal,
+                callerCancels ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(100));
+            async Task Observe()
+            {
+                using var response = await transport.PostJsonAsync(
+                    "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+                    CreateAuthority(), caller.Token);
+                await transport.ReadJsonAsync<CollectionEnvelope>(response, caller.Token);
+            }
+            Task observation = Observe();
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (callerCancels) caller.Cancel();
+            Exception error = await RequireThrowsAsync<Exception>(() => observation);
+            bool tls = failure() is WebException { Status: WebExceptionStatus.TrustFailure
+                or WebExceptionStatus.SecureChannelFailure or WebExceptionStatus.ProtocolError }
+                or IOException { InnerException: System.Security.Authentication.AuthenticationException };
+            Require(callerCancels ? error is OperationCanceledException
+                : tls ? error is HttpRequestException { HttpRequestError: HttpRequestError.Unknown }
+                    && error is not AndroidAccountLinkHttpTransport.InterruptedException
+                : error is AndroidAccountLinkHttpTransport.InterruptedException);
+            Require(error.InnerException is null && terminal.Requests.Count == 1
+                && !error.ToString().Contains(AccessToken, StringComparison.Ordinal)
+                && !error.ToString().Contains(RotatedAccessToken, StringComparison.Ordinal));
+        }
+        Console.WriteLine("PASS native cancellation after owned deadline is redacted; caller/TLS stay distinct; one dispatch only");
     }
 
     private static RecordingHandler FailingTransportHandler(bool beforeHeaders, Func<Exception> failure)
@@ -3520,6 +3573,23 @@ internal static class Program
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count,
             CancellationToken cancellationToken)
             => Task.FromException<int>(failure());
+    }
+
+    private sealed class NativeCancellationReadStream(Func<CancellationToken, Task> fail) : MemoryStream
+    {
+        public override bool CanSeek => false;
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            await fail(cancellationToken);
+            return 0;
+        }
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count,
+            CancellationToken cancellationToken)
+        {
+            await fail(cancellationToken);
+            return 0;
+        }
     }
 
     private sealed class NeverCompletingReadStream : Stream

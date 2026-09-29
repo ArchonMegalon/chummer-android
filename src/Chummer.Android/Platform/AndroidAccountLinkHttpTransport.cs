@@ -53,7 +53,10 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             disposeHandler: true)
         {
             BaseAddress = TrustedOrigin,
-            Timeout = timeout
+            // Own the deadline so a native handler that throws WebException
+            // when cancellation closes its socket cannot hide its cause. The
+            // duration is unchanged; there is still only one request attempt.
+            Timeout = Timeout.InfiniteTimeSpan
         };
         _responseReadTimeout = timeout;
     }
@@ -96,16 +99,17 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         }
 
         HttpResponseMessage response;
+        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken);
         try
         {
             response = await _httpClient.SendAsync(
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
+                timeoutSource?.Token ?? cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // HttpClient's own deadline is a transport failure, not caller
+            // The request deadline is a transport failure, not caller
             // cancellation or broken SecureStorage. Do not retain exception
             // details from the HTTP handler, which may contain credentials.
             throw new InterruptedException(readingBody: false);
@@ -113,7 +117,8 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         catch (Exception error) when ((error is WebException or IOException)
             && error is not InvalidDataException)
         {
-            throw RedactedTransportFailure(cancellationToken);
+            throw RedactedTransportFailure(error, cancellationToken,
+                timeoutSource?.IsCancellationRequested == true, readingBody: false);
         }
         if (!IsRedirect(response.StatusCode))
         {
@@ -151,7 +156,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             throw OversizedResponse();
         }
 
-        using CancellationTokenSource? timeoutSource = CreateResponseReadTimeoutSource(cancellationToken);
+        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken);
         try
         {
             CancellationToken readToken = timeoutSource?.Token ?? cancellationToken;
@@ -190,11 +195,13 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         catch (Exception error) when ((error is WebException or IOException)
             && error is not InvalidDataException)
         {
-            throw RedactedTransportFailure(cancellationToken);
+            throw RedactedTransportFailure(error, cancellationToken,
+                timeoutSource?.IsCancellationRequested == true, readingBody: true);
         }
     }
 
-    private static Exception RedactedTransportFailure(CancellationToken cancellationToken)
+    private static Exception RedactedTransportFailure(Exception error, CancellationToken cancellationToken,
+        bool deadlineReached, bool readingBody)
     {
         // AndroidMessageHandler can surface a closed Java socket as WebException
         // instead of HttpRequestException, including after its own deadline.
@@ -203,10 +210,31 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         if (cancellationToken.IsCancellationRequested)
             return new OperationCanceledException("Chummer account request was cancelled.", cancellationToken);
 
+        // This is the transport's actual cancellation signal, not elapsed-time
+        // inference or matching native exception text. Never convert a typed
+        // TLS/protocol failure into a retryable timeout, even at the deadline.
+        if (deadlineReached && !HasSecurityOrProtocolFailure(error))
+            return new InterruptedException(readingBody);
+
         // Unknown deliberately grants no transient-read retry reserve. A socket
         // failure alone proves neither a deadline nor safe replay; TLS failures
         // and uncertain writes must remain fail-closed at their callers.
         return new HttpRequestException("The connection to Chummer was interrupted.");
+    }
+
+    private static bool HasSecurityOrProtocolFailure(Exception error)
+    {
+        for (Exception? current = error; current is not null; current = current.InnerException)
+        {
+            if (current is System.Security.Authentication.AuthenticationException
+                or WebException { Status: WebExceptionStatus.TrustFailure
+                    or WebExceptionStatus.SecureChannelFailure or WebExceptionStatus.ProtocolError })
+                return true;
+#if ANDROID
+            if (current is global::Javax.Net.Ssl.SSLException) return true;
+#endif
+        }
+        return false;
     }
 
     public void Dispose()
@@ -463,7 +491,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         return false;
     }
 
-    private CancellationTokenSource? CreateResponseReadTimeoutSource(
+    private CancellationTokenSource? CreateTransportTimeoutSource(
         CancellationToken cancellationToken)
     {
         if (_responseReadTimeout == Timeout.InfiniteTimeSpan)
