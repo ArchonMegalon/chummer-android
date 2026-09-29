@@ -302,9 +302,22 @@ internal static class LinkedCharacterBindingTests
             ActiveCollectionEditor = null, ActiveSectionId = null };
         var home = new HomePage(fixture.Coordinator);
         Refresh(home);
-        Require(Elements(home).OfType<Button>().Single(button => button.AutomationId == "home-linked-runner-recovery").IsEnabled,
-            "Recovery disappeared after its workspace or target was removed.");
+        Require(!Elements(home).OfType<Button>().Any(button => button.AutomationId == "home-linked-runner-recovery"),
+            "Local file diagnostics still competes with the ordinary account runner loader.");
+        foreach (MorePage more in new MorePage[] { new(fixture.Coordinator), new PhoneMorePage(fixture.Coordinator) })
+        {
+            typeof(MorePage).GetMethod("AddFiles", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(more, null);
+            Require(Elements(more).OfType<Button>().Single(button => button.AutomationId == "more-linked-runner-recovery").IsEnabled,
+                "Recovery disappeared after its workspace or target was removed.");
+            Require(Elements(more).OfType<Label>().Any(label => label.Text.Contains("Runners tab", StringComparison.Ordinal)),
+                "File diagnostics does not explain where to load account runners.");
+        }
         var recovery = new LinkedCharacterRecoveryPage(fixture.Coordinator);
+        string guidance = (string)typeof(RunnerSessionCoordinator)
+            .GetMethod("UnconfirmedLinkedOutcome", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
+        Require(guidance.Contains("More → Linked file diagnostics", StringComparison.Ordinal)
+            && guidance.Contains("do not retry", StringComparison.Ordinal),
+            "Uncertain link guidance points to a removed entry or permits a retry.");
         Require(recovery.AutomationId == "linked-runner-recovery-page"
             && Elements(recovery).OfType<Button>().Single(button => button.AutomationId == "linked-recovery-refresh").IsEnabled,
             "Recovery cannot be refreshed independently of normal runner initialization.");

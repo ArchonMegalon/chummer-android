@@ -334,5 +334,5 @@ public sealed partial class RunnerSessionCoordinator
         })));
 
     private static string UnconfirmedLinkedOutcome() => PhoneStrings.Get("LinkedRunnerOutcomeUnconfirmed",
-        "The link outcome could not be confirmed. Open Linked-runner recovery from Runners; do not retry. Local files were retained.");
+        "The link outcome could not be confirmed. Open More → Linked file diagnostics; do not retry. Local files were retained.");
 }
