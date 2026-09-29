@@ -3609,11 +3609,14 @@ public sealed class BuildPage : NativePageBase
             !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name).ToArray();
         Picker picker = new()
         {
+            AutomationId = "build-workspace-picker",
             Title = "Runner",
             ItemsSource = labels,
             SelectedIndex = Math.Max(0, workspaces.ToList().FindIndex(workspace =>
                 workspace.Id == Coordinator.State.WorkspaceId)),
-            BackgroundColor = NativeTheme.Surface
+            BackgroundColor = NativeTheme.Surface,
+            TextColor = NativeTheme.Ink,
+            TitleColor = NativeTheme.Muted
         };
         picker.SelectedIndexChanged += async (_, _) =>
         {
