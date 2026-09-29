@@ -15,6 +15,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private string _filter = string.Empty;
     private CreationQualitiesPhoneDraft _draft = new();
     private readonly CharacterCreationQualitiesCheckpointStore _store;
+    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 8 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -96,12 +97,14 @@ public sealed class CreationQualitiesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails.Clear();
+        _technicalDetails.IsVisible = false;
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step1", "SR5 · 1 of 4")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Qualities.Choose", "Choose qualities")));
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Qualities.Intro",
-                "Every row is a fixed-cost, source-anchored Core option. Unsupported requirements, variable costs and unresolved custom overlays stay disabled."),
+                "Choose qualities within your Karma budget. Open an unavailable quality to see why it cannot be selected."),
             NativeTheme.Muted));
 
         if (_loading)
@@ -134,6 +137,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         bool checkpointOwnsLane = checkpoint is not null || HasMalformedCheckpoint();
         AddReview(state, checkpointOwnsLane);
         AddBlockers(_localBlockers);
+        AddTechnicalDetailsDisclosure();
         AddGranted(state);
         AddOptions(state, editor, checkpointOwnsLane);
     }
@@ -149,14 +153,14 @@ public sealed class CreationQualitiesPage : NativePageBase
                 state.Binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-qualities-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigest("creation-qualities-authority-digest", state.Binding.AuthorityDigest);
         AddDigest("creation-qualities-runtime-digest", state.Binding.RuntimeDigest);
     }
 
     private void AddBudgets(CharacterCreationQualitiesPreview preview)
     {
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.CoreLedgers", "Core ledgers")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.CoreLedgers", "Quality budgets")));
         FlexLayout ribbon = new()
         {
             Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap,
@@ -436,7 +440,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                     Signed(option.KarmaCost),
                     followUp);
                 if (!exact)
-                    detail += $" · {option.DisableReasonKey ?? CharacterCreationQualitiesBlockers.EligibilityUnresolved}";
+                    detail += $" · {UnavailableReason(option.DisableReasonKey)}";
                 Border row = NativeTheme.NavigationRow(
                     option.Name,
                     detail,
@@ -477,7 +481,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         Label finalization = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Qualities.FinalizationBoundary",
-                "Confirmation stores only a typed Creation draft. Quality effects are applied later by the all-steps finalization authority."),
+                "Confirm your choices to save them. Their effects are applied when you finish creating your runner."),
             NativeTheme.Muted);
         finalization.AutomationId = "creation-qualities-finalization-boundary";
         _body.Add(finalization);
@@ -666,8 +670,32 @@ public sealed class CreationQualitiesPage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
+
+    private void AddTechnicalDetailsDisclosure()
+    {
+        Button toggle = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+            "Qualities.ShowDetails", "Show technical details"));
+        toggle.AutomationId = "creation-qualities-technical-details-toggle";
+        toggle.Clicked += (_, _) =>
+        {
+            // A queued click from a replaced page must not toggle its successor.
+            if (!ReferenceEquals(toggle.Parent, _body))
+                return;
+            _technicalDetails.IsVisible = !_technicalDetails.IsVisible;
+            toggle.Text = _technicalDetails.IsVisible
+                ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
+                : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+        };
+        _body.Add(toggle);
+        _body.Add(_technicalDetails);
+    }
+
+    internal static string UnavailableReason(string? reason)
+        => reason == "creation-qualities-source-disabled"
+            ? CreationFlowStrings.Get("Qualities.SourceDisabled", "The required source is not enabled for this runner.")
+            : CreationFlowStrings.Get("Qualities.Unavailable", "This quality is currently unavailable for this runner.");
 
     internal static string Signed(int value)
         => value > 0
@@ -773,8 +801,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         if (!exact)
         {
             Label disabled = NativeTheme.Body(
-                _option.DisableReasonKey
-                ?? CharacterCreationQualitiesBlockers.EligibilityUnresolved,
+                CreationQualitiesPage.UnavailableReason(_option.DisableReasonKey),
                 NativeTheme.Danger);
             disabled.AutomationId = "creation-quality-configure-disabled-reason";
             _body.Add(disabled);

@@ -189,15 +189,15 @@
   <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Configure quality</value></data>
   <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Core preview: +{0} positive · -{1} negative · {2} Karma remaining</value></data>
   <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Remove from draft</value></data>
-  <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Core ledgers</value></data>
+  <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Quality budgets</value></data>
   <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Exact follow-up</value></data>
   <data name="Qualities.FinalLedgers" xml:space="preserve"><value>Final Core ledgers</value></data>
-  <data name="Qualities.FinalizationBoundary" xml:space="preserve"><value>Confirmation stores only a typed Creation draft. Quality effects are applied later by the all-steps finalization authority.</value></data>
+  <data name="Qualities.FinalizationBoundary" xml:space="preserve"><value>Confirm your choices to save them. Their effects are applied when you finish creating your runner.</value></data>
   <data name="Qualities.FollowUp" xml:space="preserve"><value>Follow-up</value></data>
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>Follow-up id</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Granted by earlier choices</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · rating {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Every row is a fixed-cost, source-anchored Core option. Unsupported requirements, variable costs and unresolved custom overlays stay disabled.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Choose qualities within your Karma budget. Open an unavailable quality to see why it cannot be selected.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} remaining</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} left</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagenic: +{0} / -{1}</value></data>
@@ -255,4 +255,8 @@
   <data name="Contacts.Presence" xml:space="preserve"><value>Contact entry</value></data>
   <data name="Contacts.AddDelta" xml:space="preserve"><value>Not present → added</value></data>
   <data name="Contacts.RemoveDelta" xml:space="preserve"><value>Present → removed</value></data>
+  <data name="Qualities.ShowDetails" xml:space="preserve"><value>Show technical details</value></data>
+  <data name="Qualities.HideDetails" xml:space="preserve"><value>Hide technical details</value></data>
+  <data name="Qualities.SourceDisabled" xml:space="preserve"><value>The required source is not enabled for this runner.</value></data>
+  <data name="Qualities.Unavailable" xml:space="preserve"><value>This quality is currently unavailable for this runner.</value></data>
 </root>

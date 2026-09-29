@@ -189,15 +189,15 @@
   <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Configurar cualidad</value></data>
   <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Vista previa de Core: +{0} positivas · -{1} negativas · {2} Karma restante</value></data>
   <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Quitar del borrador</value></data>
-  <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Registros de Core</value></data>
+  <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Presupuesto de cualidades</value></data>
   <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Selección posterior exacta</value></data>
   <data name="Qualities.FinalLedgers" xml:space="preserve"><value>Registros finales de Core</value></data>
-  <data name="Qualities.FinalizationBoundary" xml:space="preserve"><value>La confirmación solo guarda un borrador tipado de creación. Los efectos de las cualidades se aplican después mediante la autoridad de finalización completa.</value></data>
+  <data name="Qualities.FinalizationBoundary" xml:space="preserve"><value>Confirma tus elecciones para guardarlas. Sus efectos se aplican cuando termines de crear tu personaje.</value></data>
   <data name="Qualities.FollowUp" xml:space="preserve"><value>Selección posterior</value></data>
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>ID de selección posterior</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Concedidas por selecciones anteriores</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · nivel {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Cada fila es una opción de Core con costo fijo y anclaje de fuente. Los requisitos incompatibles, los costos variables y las capas personalizadas sin resolver permanecen desactivados.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Elige cualidades dentro de tu presupuesto de Karma. Abre una cualidad no disponible para ver por qué no se puede elegir.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} restante</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} restantes</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagénicas: +{0} / -{1}</value></data>
@@ -255,4 +255,8 @@
   <data name="Contacts.Presence" xml:space="preserve"><value>Entrada de contacto</value></data>
   <data name="Contacts.AddDelta" xml:space="preserve"><value>No existe → añadido</value></data>
   <data name="Contacts.RemoveDelta" xml:space="preserve"><value>Existe → eliminado</value></data>
+  <data name="Qualities.ShowDetails" xml:space="preserve"><value>Mostrar detalles técnicos</value></data>
+  <data name="Qualities.HideDetails" xml:space="preserve"><value>Ocultar detalles técnicos</value></data>
+  <data name="Qualities.SourceDisabled" xml:space="preserve"><value>La fuente requerida no está activada para este personaje.</value></data>
+  <data name="Qualities.Unavailable" xml:space="preserve"><value>Esta cualidad no está disponible actualmente para este personaje.</value></data>
 </root>
