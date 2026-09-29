@@ -95,12 +95,37 @@ internal static class CreationSkillsPhoneAuthority
         CharacterCreationSkillsPreview preview,
         IReadOnlyList<CharacterCreationSkillAllocation> allocations,
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups) =>
+        preview.CanConfirm
+        && preview.Blockers.Count == 0
+        && HasValidSelectionProjection(state, overview, preview, allocations, groups);
+
+    // An incomplete native-language choice may block saving, not other legal
+    // local edits. Never use this admission predicate at the commit boundary.
+    public static bool CanStagePreview(
+        CharacterCreationSkillsState state,
+        CharacterOverviewState overview,
+        CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result,
+        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups) =>
+        CanAdoptPreview(state, overview, result, allocations, groups)
+        || (result.Outcome == CharacterCreationFoundationOutcomes.Blocked
+            && result.Blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired })
+            && result.Value is { CanConfirm: false } preview
+            && preview.Blockers.SequenceEqual(result.Blockers)
+            && Equal(preview.PreviewDigest,
+                CharacterCreationSkillsDigest.Compute(preview with { PreviewDigest = string.Empty }))
+            && HasValidSelectionProjection(state, overview, preview, allocations, groups));
+
+    private static bool HasValidSelectionProjection(
+        CharacterCreationSkillsState state,
+        CharacterOverviewState overview,
+        CharacterCreationSkillsPreview preview,
+        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups) =>
         IsReady(state, overview)
         && string.Equals(preview.Schema, CharacterCreationSkillsSchemas.PreviewV1, StringComparison.Ordinal)
         && BindingEquals(state.Binding, preview.Binding)
         && preview.RequiresExplicitConfirmation
-        && preview.CanConfirm
-        && preview.Blockers.Count == 0
         && preview.Skills.All(item => item.IsEnabled && item.Blockers.Count == 0
             && (item.Kind != CharacterCreationSkillKinds.Active
                 || CharacterCreationSkillsAccessRules.IsSkillAvailable(state.Authority, item.SourceSkillId)))

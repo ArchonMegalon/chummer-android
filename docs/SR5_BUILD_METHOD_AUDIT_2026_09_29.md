@@ -194,6 +194,46 @@ remained disabled. Workspace bytes stayed unchanged at SHA-256
 `d30910710817b92a14879648dd4ccd11d1c8cb3a40f1bf8eeffa85e07e021090`.
 This is a display-only follow-up, not a rerun of every method or a Play release.
 
+## Follow-up: Skills before choosing a native language
+
+A native Human/Magician Priority route exposed another interaction defect:
+Sorcery's plus button did not retain a legal increment before the native
+language was chosen. Core returned a valid but incomplete projection; Android
+incorrectly required save eligibility merely to stage that local selection.
+
+Local staging now accepts an exact Core projection whose **only** blocker is
+the missing native language. Binding, snapshot, digest, projection, access and
+budget checks remain enforced. Review and persistence still require a complete
+confirmable preview. This does not persist incomplete edits or relax Core's
+rules. The actionable language hint is translated into English, German and
+Spanish and appears before the catalogs.
+
+Focused verification:
+
+- Six source-contract tests passed. Managed compile and Android Debug build
+  both passed with zero warnings/errors.
+- Actual Core/native-draft tests cover Priority Sorcery and Sum-to-Ten Adept,
+  Technomancer, Mystic Adept and Sorcery, including pre-language increments,
+  native-language removal/reselection, blocked incomplete confirmation,
+  stale/tampered packets, budget/access rejection, cold save/reopen and replay.
+  These are managed tests, not device coverage for every talent.
+- Debug APK SHA-256:
+  `c167413ad3d515784dfd73f5d5d1c1900ccc1889fa2bdeb9591a7bba48b40f7e`.
+  On the owned API 36 x64 emulator at 150% font scale, the Priority Magician
+  selected Alchemy 1 and Sorcery 1 **before** selecting Arabic as native.
+  Both increments remained visible. One explicit confirmation saved revision
+  3 → 4, spending one active point and one group point, with no knowledge cost.
+  Verified process death/cold launch reopened the saved Skills draft and
+  displayed Alchemy 1. Workspace bytes remained identical:
+  `9e2ec1f1bdcb06042b0bba020eb9eb205999a59b83f979fe3620a3d95cffb625`.
+  Receipt: `137cce158ac55287e26e72e36cea721dc9bc1b12d832b71e5921bcf17adede67`.
+
+The preceding unchanged APK had a separate first-launch no-focused-window ANR
+on emulator boot 14; its failure packet is retained. The corrected APK's boot
+15 route/restart produced no ANR event, but this Skills fix does not establish
+the cause or resolution of that earlier startup failure. This Magician route
+has reached Skills, not yet a new native Career/finalization proof.
+
 ## Remaining limitations
 
 - Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded
