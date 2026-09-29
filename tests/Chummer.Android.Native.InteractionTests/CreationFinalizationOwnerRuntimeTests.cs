@@ -66,6 +66,15 @@ internal static partial class AfterRunAuthorityHarness
             refresh.Invoke(page, null);
             refresh.Invoke(page, null);
             Require(probe.Loads == 1, "Rendering reloaded the entire Magic catalog.");
+            var retainedEditor = (CharacterCreationMagicResonanceEditorState)typeof(CreationMagicResonancePage)
+                .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
+                .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
+                retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
+            await (Task)typeof(CreationMagicResonanceOptionPage)
+                .GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(option, [CancellationToken.None])!;
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             Require(body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review" && button.IsEnabled),
                 "Background catalog did not expose the actual Core-ready editor.");
@@ -116,6 +125,9 @@ internal static partial class AfterRunAuthorityHarness
 
             await HydrateFinalizationOwnerAsync(runtime, owners, before);
             var fresh = runtime.Coordinator.State;
+            Require(!retainedDraft.Matches(retainedEditor, fresh)
+                && !retainedDraft.Copy().Matches(retainedEditor, fresh),
+                "Old Magic selections survived an owner epoch change as current authority.");
             var freshJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
                 fresh.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent);
             Require(freshJournal.TryRead(out var recovered, out _)
@@ -123,6 +135,30 @@ internal static partial class AfterRunAuthorityHarness
                 "Fresh same-account authority lost its durable review.");
             Require(freshJournal.TryBeginConfirm(CharacterCreationMagicResonanceCheckpointCas.From(recovered),
                 out var confirming, out _), "Magic confirmation was not journaled.");
+            // A detached button from A before A→B→A must not rebind its command to fresh A.
+            int beforeRecoveryReads = probe.Loads;
+            var resolve = typeof(CreationMagicResonancePage).GetMethod("ResolveConfirmingAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            await (Task)resolve.Invoke(page, [confirming, original])!;
+            Require(probe.Confirms == 0 && probe.Loads == beforeRecoveryReads
+                && freshJournal.TryRead(out var unchangedConfirming, out _)
+                && unchangedConfirming.CheckpointDigest == confirming.CheckpointDigest
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!.ContentRevision == before.ContentRevision,
+                "Stale rendered recovery rebound to a fresh owner epoch or changed its durable command.");
+            var stalePreview = typeof(CreationMagicResonancePage).GetMethod("PreviewDraftAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            try
+            {
+                await (Task)stalePreview.Invoke(page, [retainedEditor, draft])!;
+                throw new Exception("Stale rendered selection rebound to current owner authority.");
+            }
+            catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
+            try
+            {
+                await (Task)typeof(CreationMagicResonanceOptionPage)
+                    .GetMethod("AdoptAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(option, [draft])!;
+                throw new Exception("Stale rendered option rebound to current owner authority.");
+            }
+            catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
+            Require(probe.Loads == beforeRecoveryReads, "Stale rendered selection entered Core.");
             probe.AllowConfirm = true;
             var confirmed = await runtime.Coordinator.ConfirmCreationMagicResonanceAsync(confirming, display: fresh);
             Require(confirmed.MutationOutcomeKnown && confirmed.Outcome == CreationMagicResonancePhoneOutcomes.Applied

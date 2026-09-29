@@ -251,6 +251,15 @@ compatible. A known durable receipt survives postcommit refresh failure rather
 than being reported as an unapplied operation. Unknown outcomes retain the
 identical command for original-owner recovery.
 
+Rendered recovery callbacks retain their original display instead of capturing
+the current account when tapped. Local selections also retain the exact owner
+stamp, so opening an old selection after A→B→A cannot rebind it to fresh A even
+when the workspace id and revisions happen to match. These callback changes
+follow the native APK evidence below; that APK is not evidence of the later
+callback patch. The focused managed regression passed with zero build warnings
+and errors, including detached selection/recovery callbacks and retained-draft
+owner ABA rejection. The final package smoke remains pending.
+
 Focused local verification:
 
 - Core linked/local partition isolation, default/foreign/ABA stamp rejection,

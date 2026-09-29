@@ -208,6 +208,15 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
         self.assertIn("coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent", page)
         self.assertIn("CharacterOverviewState original = _display", page)
         self.assertIn("ConfirmCreationMagicResonanceAsync(confirming, display: original)", page)
+        self.assertIn("ResolveConfirmingAsync(checkpoint, original)", page)
+        self.assertIn("ConfirmCreationMagicResonanceAsync(checkpoint, display: original)", page)
+        preview = page[page.index("private async Task<CharacterCreationMagicResonanceReview> PreviewDraftAsync(") : page.index("private void AddBinding(")]
+        self.assertIn("_loadedDisplay is not { } original", preview)
+        self.assertIn("ReferenceEquals(editor, _editor)", preview)
+        self.assertNotIn("original = Coordinator.State", preview)
+        option = page[page.index("private async Task AdoptAsync(") : page.index("public sealed class CreationMagicResonanceReviewPage")]
+        self.assertIn("_display is not { } original", option)
+        self.assertNotIn("original = Coordinator.State", option)
 
     def test_dashboard_and_state_factory_preserve_existing_routes(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")

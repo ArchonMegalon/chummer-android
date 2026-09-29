@@ -120,7 +120,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddTalent(editor.Talent);
         CharacterCreationMagicResonanceReview? review = _draft.Review;
         AddBudgets(review?.Preview, editor.Budgets);
-        CharacterCreationMagicResonanceCheckpoint? checkpoint = AddRecovery(editor);
+        CharacterCreationMagicResonanceCheckpoint? checkpoint = AddRecovery(editor, original);
         bool laneLocked = checkpoint is not null || HasMalformedCheckpoint();
         AddMysticPowerPoints(editor, laneLocked);
         AddCatalogRoutes(editor, laneLocked);
@@ -181,7 +181,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonanceEditorState editor, CharacterCreationMagicResonanceDesktopDraft candidate)
     {
         long generation = CaptureAppearanceGeneration();
-        CharacterOverviewState original = Coordinator.State;
+        if (_loadedDisplay is not { } original || !ReferenceEquals(editor, _editor)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+            throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
         var before = _draft.Copy();
         var prepared = before.Copy();
         var review = await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, candidate);
@@ -286,7 +288,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
     }
 
     private CharacterCreationMagicResonanceCheckpoint? AddRecovery(
-        CharacterCreationMagicResonanceEditorState editor)
+        CharacterCreationMagicResonanceEditorState editor, CharacterOverviewState original)
     {
         if (!_store.TryRead(
                 out CharacterCreationMagicResonanceCheckpoint checkpoint,
@@ -324,14 +326,14 @@ public sealed class CreationMagicResonancePage : NativePageBase
 
         if (checkpoint.Phase ==
                 CharacterCreationMagicResonanceCheckpointPhase.Reviewed
-            && checkpoint.OwnsExactReview(editor, Coordinator.State))
+            && checkpoint.OwnsExactReview(editor, original))
         {
             Button resume = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
                 "Common.ResumeReviewedDraft",
                 "Resume reviewed draft"));
             resume.AutomationId = "creation-magic-resonance-resume-reviewed";
             resume.Clicked += async (_, _) => await RunAsync(
-                () => ResumeReviewAsync(editor, checkpoint));
+                () => ResumeReviewAsync(editor, checkpoint, original));
             recovery.Add(resume);
             Button abandon = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
                 "Common.AbandonReviewedDraft",
@@ -343,19 +345,19 @@ public sealed class CreationMagicResonancePage : NativePageBase
         }
         else if (checkpoint.Phase ==
                      CharacterCreationMagicResonanceCheckpointPhase.Confirming
-                 && checkpoint.OwnsRecoveryRevision(Coordinator.State))
+                 && checkpoint.OwnsRecoveryRevision(original))
         {
             Button resolve = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
                 "Common.ResolveInterruptedCommit",
                 "Resolve interrupted commit"));
             resolve.AutomationId = "creation-magic-resonance-resolve-confirming";
             resolve.Clicked += async (_, _) => await RunAsync(
-                () => ResolveConfirmingAsync(checkpoint));
+                () => ResolveConfirmingAsync(checkpoint, original));
             recovery.Add(resolve);
         }
         else if (checkpoint.Phase ==
                      CharacterCreationMagicResonanceCheckpointPhase.Confirmed
-                 && checkpoint.OwnsRecoveryRevision(Coordinator.State)
+                 && checkpoint.OwnsRecoveryRevision(original)
                  && checkpoint.Confirmation is { } confirmation)
         {
             Button receipt = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
@@ -579,18 +581,18 @@ public sealed class CreationMagicResonancePage : NativePageBase
 
     private async Task ResumeReviewAsync(
         CharacterCreationMagicResonanceEditorState editor,
-        CharacterCreationMagicResonanceCheckpoint checkpoint)
+        CharacterCreationMagicResonanceCheckpoint checkpoint,
+        CharacterOverviewState original)
     {
         try
         {
             long generation = CaptureAppearanceGeneration();
-            CharacterOverviewState original = Coordinator.State;
             CharacterCreationMagicResonanceReview refreshed =
                 await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, checkpoint.Review.Draft);
             if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
             if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
                 throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
-            if (!checkpoint.OwnsExactReview(editor, Coordinator.State)
+            if (!checkpoint.OwnsExactReview(editor, original)
                 || !CreationMagicResonancePhoneAuthority.ReviewsEqual(
                     checkpoint.Review,
                     refreshed))
@@ -641,10 +643,17 @@ public sealed class CreationMagicResonancePage : NativePageBase
     }
 
     private async Task ResolveConfirmingAsync(
-        CharacterCreationMagicResonanceCheckpoint checkpoint)
+        CharacterCreationMagicResonanceCheckpoint checkpoint,
+        CharacterOverviewState original)
     {
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
+        {
+            _localBlockers = [CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision];
+            Refresh();
+            return;
+        }
         CreationMagicResonancePhoneConfirmResult result =
-            await Coordinator.ConfirmCreationMagicResonanceAsync(checkpoint);
+            await Coordinator.ConfirmCreationMagicResonanceAsync(checkpoint, display: original);
         if (result.MutationOutcomeKnown
             && string.Equals(
                 result.Outcome,
@@ -1041,7 +1050,9 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
     private async Task AdoptAsync(CharacterCreationMagicResonanceDesktopDraft candidate)
     {
         long generation = CaptureAppearanceGeneration();
-        CharacterOverviewState original = Coordinator.State;
+        if (!_ready || _display is not { } original
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+            throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
         var before = _draft.Copy();
         var prepared = before.Copy();
         CharacterCreationMagicResonanceReview review =
