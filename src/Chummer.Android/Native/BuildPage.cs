@@ -333,7 +333,7 @@ public static class BuildPageUiProjection
     /// <summary>
     /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
     /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
-    /// placeholder is not a competing domain authority: Attributes, Skills, Qualities, Contacts, and
+    /// placeholder is not a competing domain authority: Attributes, Skills, Qualities, Magic, Contacts, and
     /// Resources are opened only by their dedicated typed projections, whose domain
     /// must match the destination step. A finalization
     /// requirement for this same stage's not-yet-authored draft is likewise not an editor
@@ -353,6 +353,7 @@ public static class BuildPageUiProjection
             || stage.StepId is not (CharacterCreationWizardStepIds.Attributes
                 or CharacterCreationWizardStepIds.Skills
                 or CharacterCreationWizardStepIds.Qualities
+                or CharacterCreationWizardStepIds.MagicResonance
                 or CharacterCreationWizardStepIds.ContactsLifestyles
                 or CharacterCreationWizardStepIds.Resources))
         {
@@ -364,11 +365,13 @@ public static class BuildPageUiProjection
         if (stage.IsComplete || hasCompleteStatus)
             return stage.IsComplete && hasCompleteStatus && stage.Blockers.Count == 0;
 
-        // Core can expose the Qualities editor as available while finalization
+        // Core can expose an editor as available while finalization
         // still requires its first draft. This is not an editor prerequisite.
-        if (stage.StepId == CharacterCreationWizardStepIds.Qualities
-            && stage.Blockers.Count == 1
-            && stage.Blockers[0] == CharacterCreationFinalizationBlockers.QualitiesDraftRequired)
+        if (stage.Blockers.Count == 1
+            && (stage.StepId == CharacterCreationWizardStepIds.Qualities
+                && stage.Blockers[0] == CharacterCreationFinalizationBlockers.QualitiesDraftRequired
+                || stage.StepId == CharacterCreationWizardStepIds.MagicResonance
+                && stage.Blockers[0] == CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired))
             return true;
 
         // The shared stage also reports Lifestyle readiness. It must not prevent
@@ -397,6 +400,7 @@ public static class BuildPageUiProjection
             CharacterCreationWizardStepIds.Attributes => CharacterCreationFinalizationBlockers.AttributesDraftRequired,
             CharacterCreationWizardStepIds.Skills => CharacterCreationFinalizationBlockers.SkillsDraftRequired,
             CharacterCreationWizardStepIds.Qualities => CharacterCreationFinalizationBlockers.QualitiesDraftRequired,
+            CharacterCreationWizardStepIds.MagicResonance => CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired,
             CharacterCreationWizardStepIds.Resources => CharacterCreationFinalizationBlockers.ResourcesDraftRequired,
             _ => null
         };
@@ -2352,9 +2356,8 @@ public sealed class BuildPage : NativePageBase
                 stage.StepId,
                 CharacterCreationWizardStepIds.MagicResonance,
                 StringComparison.Ordinal);
-            bool canOpenMagicResonance = magicResonanceStage
-                                         && stage.IsAvailable
-                                         && readiness.MagicResonance;
+            bool canOpenMagicResonance = magicResonanceStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance);
             bool contactsStage = IsContactsStage(stage.StepId);
             bool canOpenContacts = contactsStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
@@ -2572,9 +2575,8 @@ public sealed class BuildPage : NativePageBase
                 stepId,
                 CharacterCreationWizardStepIds.MagicResonance,
                 StringComparison.Ordinal);
-            bool canOpenMagicResonance = magicResonanceStep
-                                         && stage.IsAvailable
-                                         && readiness.MagicResonance;
+            bool canOpenMagicResonance = magicResonanceStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance);
             bool contactsStep = IsContactsStage(stepId);
             bool canOpenContacts = contactsStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,

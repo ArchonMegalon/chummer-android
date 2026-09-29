@@ -26,7 +26,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
     public CreationMagicResonancePage(RunnerSessionCoordinator coordinator)
         : this(
             coordinator,
-            CharacterCreationMagicResonanceCheckpointStore.CreateDefault())
+            CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
+                coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent))
     {
     }
 
@@ -1060,6 +1061,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 /// <summary>Immutable typed Review followed by one durable explicit Confirm transition.</summary>
 public sealed class CreationMagicResonanceReviewPage : NativePageBase
 {
+    private readonly CharacterOverviewState _display;
     private CharacterCreationMagicResonanceCheckpoint _checkpoint;
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
@@ -1076,6 +1078,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         CharacterCreationMagicResonanceCheckpointStore store) : base(coordinator)
     {
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
+        _display = coordinator.State;
         _store = store ?? throw new ArgumentNullException(nameof(store));
         if (!_checkpoint.IsStructurallyValid()
             || _checkpoint.Phase !=
@@ -1092,6 +1095,11 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (!Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext))
+        {
+            _body.Add(NativeTheme.Body("Reopen Magic / Resonance for the current account.", NativeTheme.Muted));
+            return;
+        }
         CharacterCreationMagicResonanceReview review = _checkpoint.Review;
         CharacterCreationMagicResonancePreview preview = review.Preview;
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.Eyebrow", "SR5 · Review")));
@@ -1153,7 +1161,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         try
         {
             long generation = CaptureAppearanceGeneration();
-            CharacterOverviewState original = Coordinator.State;
+            CharacterOverviewState original = _display;
             CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
                 await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, CancellationToken.None);
             if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
@@ -1194,7 +1202,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             }
             _checkpoint = confirming;
             CreationMagicResonancePhoneConfirmResult result =
-                await Coordinator.ConfirmCreationMagicResonanceAsync(confirming);
+                await Coordinator.ConfirmCreationMagicResonanceAsync(confirming, display: original);
             _blockers = result.Blockers;
             if (result.MutationOutcomeKnown
                 && string.Equals(

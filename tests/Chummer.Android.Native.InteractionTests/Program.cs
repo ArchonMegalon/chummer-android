@@ -1054,13 +1054,13 @@ internal static class Program
         [
             CharacterCreationWizardStepIds.Attributes,
             CharacterCreationWizardStepIds.Skills,
+            CharacterCreationWizardStepIds.Qualities,
+            CharacterCreationWizardStepIds.MagicResonance,
             CharacterCreationWizardStepIds.ContactsLifestyles,
             CharacterCreationWizardStepIds.Resources
         ];
         string[] rejected =
         [
-            CharacterCreationWizardStepIds.Qualities,
-            CharacterCreationWizardStepIds.MagicResonance,
             CharacterCreationWizardStepIds.IdentityStory,
             CharacterCreationWizardStepIds.Review,
             "unknown-created-stage"
@@ -1239,6 +1239,7 @@ internal static class Program
             (CharacterCreationWizardStepIds.Attributes, "creation-finalization-attributes-draft-required"),
             (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
             (CharacterCreationWizardStepIds.Qualities, "creation-finalization-qualities-draft-required"),
+            (CharacterCreationWizardStepIds.MagicResonance, "creation-finalization-magic-resonance-draft-required"),
             (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
         ];
         foreach ((string stepId, string ownDraftRequired) in mappings)
@@ -1289,12 +1290,12 @@ internal static class Program
                 BuildPageUiProjection.CanOpenExactTypedCreationStage(
                     own with { IsAvailable = true },
                     stepId,
-                    exactTypedAuthorityReady: true) == (stepId == CharacterCreationWizardStepIds.Qualities),
+                    exactTypedAuthorityReady: true) == (stepId is CharacterCreationWizardStepIds.Qualities
+                        or CharacterCreationWizardStepIds.MagicResonance),
                 $"The {stepId} entry mapping did not preserve the domain's available/missing-draft contract.");
             foreach (string unownedStepId in new[]
             {
                 CharacterCreationWizardStepIds.ContactsLifestyles,
-                CharacterCreationWizardStepIds.MagicResonance,
                 CharacterCreationWizardStepIds.Review,
                 "unknown-created-stage"
             })
@@ -1468,6 +1469,7 @@ internal static class Program
             CharacterCreationWizardStepIds.Skills,
             CharacterCreationWizardStepIds.ContactsLifestyles,
             CharacterCreationWizardStepIds.Qualities,
+            CharacterCreationWizardStepIds.MagicResonance,
             CharacterCreationWizardStepIds.Resources
         })
         {
@@ -1497,6 +1499,7 @@ internal static class Program
                     completed with { Blockers = ["creation-finalization-attributes-draft-required"] },
                     completed with { Blockers = ["creation-finalization-skills-draft-required"] },
                     completed with { Blockers = ["creation-finalization-qualities-draft-required"] },
+                    completed with { Blockers = ["creation-finalization-magic-resonance-draft-required"] },
                     completed with { Blockers = ["creation-finalization-resources-draft-required"] },
                     completed with { Blockers = ["creation-stage-prerequisite-incomplete"] }
                 ];
@@ -1522,6 +1525,7 @@ internal static class Program
             (CharacterCreationWizardStepIds.Skills, "creation-finalization-skills-draft-required"),
             (CharacterCreationWizardStepIds.ContactsLifestyles, null),
             (CharacterCreationWizardStepIds.Qualities, "creation-finalization-qualities-draft-required"),
+            (CharacterCreationWizardStepIds.MagicResonance, "creation-finalization-magic-resonance-draft-required"),
             (CharacterCreationWizardStepIds.Resources, "creation-finalization-resources-draft-required")
         ];
         foreach ((string stageId, string? draftRequired) in domains)

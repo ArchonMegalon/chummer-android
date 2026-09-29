@@ -174,6 +174,7 @@ internal static class CreationMagicNativeRuntimeTests
                 "Magic must retain the exact Core creation method rather than relabel Sum-to-Ten as Priority.");
             Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out _),
                 $"Actual {buildMethod} Core state rejected by Presentation: " + ProjectionDiagnostics(state));
+            VerifyMissingDraftEntry(state);
             if (seedDirectory is not null)
             {
                 foreach (string source in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
@@ -282,6 +283,52 @@ internal static class CreationMagicNativeRuntimeTests
             RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static void VerifyMissingDraftEntry(CharacterCreationMagicResonanceState state)
+    {
+        var editor = CharacterCreationMagicResonanceWorkflow.Project(state);
+        var overview = Program.NewCreationOverview(state.Binding.WorkspaceId,
+            state.Binding.ContentRevision, state.Binding.SavedRevision) with
+        { CreationMagicResonance = state, CreationMagicResonanceEditor = editor };
+        var stage = new CharacterCreationWizardStageState(
+            CharacterCreationWizardStepIds.MagicResonance, "Magic", CharacterCreationWizardStepStatuses.Blocked,
+            IsRequired: true, IsAvailable: false, IsComplete: false, [],
+            [CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired], [], []);
+        bool ready = CreationMagicResonancePhoneAuthority.IsReady(state, editor, overview);
+        Require(ready && BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            stage, CharacterCreationWizardStepIds.MagicResonance, ready),
+            "The real source-bound Magic editor could not author its own required draft.");
+        var available = stage with { IsAvailable = true, Status = CharacterCreationWizardStepStatuses.InProgress };
+        Require(BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            available, CharacterCreationWizardStepIds.MagicResonance, ready),
+            "An available Magic editor was blocked by its own missing finalization draft.");
+        Require(!BuildPageUiProjection.CanOpenExactTypedCreationStage(
+            available with { Blockers = [CharacterCreationFinalizationBlockers.SkillsDraftRequired] },
+            CharacterCreationWizardStepIds.MagicResonance, ready)
+            && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                available with { Blockers = [CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired,
+                    CharacterCreationFinalizationBlockers.SkillsDraftRequired] },
+                CharacterCreationWizardStepIds.MagicResonance, ready),
+            "Available Magic entry ignored a different or additional prerequisite.");
+        foreach (var stale in new[]
+        {
+            overview with { CreationMagicResonance = null },
+            overview with { CreationMagicResonanceEditor = null },
+            Program.NewCreationOverview(state.Binding.WorkspaceId,
+                state.Binding.ContentRevision + 1, state.Binding.SavedRevision + 1) with
+            { CreationMagicResonance = state, CreationMagicResonanceEditor = editor },
+            overview with { Error = "source-unavailable" }
+        })
+        {
+            bool staleReady = CreationMagicResonancePhoneAuthority.IsReady(state, editor, stale);
+            Require(!staleReady && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
+                stage, CharacterCreationWizardStepIds.MagicResonance, staleReady),
+                "Missing-draft entry admitted stale or absent Magic authority.");
+        }
+        Require(!stage.IsAvailable && !stage.IsComplete
+            && stage.Blockers.SequenceEqual([CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired]),
+            "Editor entry changed finalization evidence.");
     }
 
     private static CharacterCreationSkillsConfirmRequest RunSkillAccess(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,

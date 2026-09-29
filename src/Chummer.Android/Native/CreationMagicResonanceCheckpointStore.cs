@@ -239,15 +239,29 @@ internal interface ICharacterCreationMagicResonanceCheckpointBackend
     void Remove();
 }
 
-internal sealed class PreferencesCharacterCreationMagicResonanceCheckpointBackend :
+internal sealed class PreferencesCharacterCreationMagicResonanceCheckpointBackend(
+    Chummer.Application.Owners.OwnerContextStamp? original = null,
+    Func<Chummer.Application.Owners.OwnerContextStamp?, bool>? isCurrent = null) :
     ICharacterCreationMagicResonanceCheckpointBackend
 {
     private const string StorageKey =
         "sr5.priority.creation.magic-resonance.checkpoint.v1";
 
-    public string Read() => Preferences.Default.Get(StorageKey, string.Empty);
-    public void Write(string payload) => Preferences.Default.Set(StorageKey, payload);
-    public void Remove() => Preferences.Default.Remove(StorageKey);
+    private string Key()
+    {
+        // No-argument composition is retained for legacy tests only. Production
+        // retains its issuing stamp and never falls back to another partition.
+        if (isCurrent is null && original is null) return StorageKey;
+        if (original is not { IsValid: true } owner || isCurrent?.Invoke(original) != true)
+            throw new InvalidOperationException("The Magic/Resonance checkpoint owner is no longer current.");
+        return owner.Owner == Chummer.Contracts.Owners.OwnerScope.LocalSingleUser ? StorageKey
+            : StorageKey + ".owner." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(owner.Owner.Value))).ToLowerInvariant();
+    }
+
+    public string Read() => Preferences.Default.Get(Key(), string.Empty);
+    public void Write(string payload) => Preferences.Default.Set(Key(), payload);
+    public void Remove() => Preferences.Default.Remove(Key());
 }
 
 /// <summary>
@@ -270,6 +284,11 @@ public sealed class CharacterCreationMagicResonanceCheckpointStore
 
     internal static CharacterCreationMagicResonanceCheckpointStore CreateDefault()
         => new(new PreferencesCharacterCreationMagicResonanceCheckpointBackend());
+
+    internal static CharacterCreationMagicResonanceCheckpointStore CreateDefault(
+        Chummer.Application.Owners.OwnerContextStamp? original,
+        Func<Chummer.Application.Owners.OwnerContextStamp?, bool> isCurrent)
+        => new(new PreferencesCharacterCreationMagicResonanceCheckpointBackend(original, isCurrent));
 
     public bool TryRead(
         out CharacterCreationMagicResonanceCheckpoint checkpoint,

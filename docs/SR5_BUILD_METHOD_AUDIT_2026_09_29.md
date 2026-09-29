@@ -234,6 +234,51 @@ on emulator boot 14; its failure packet is retained. The corrected APK's boot
 the cause or resolution of that earlier startup failure. This Magician route
 has reached Skills, not yet a new native Career/finalization proof.
 
+## Follow-up: owner-bound Magic / Resonance
+
+The native Human/Magician route exposed two additional blockers after Skills:
+the shared overview and native service read the legacy workspace partition,
+and the dashboard treated the missing Magic draft as a prerequisite for entering
+the editor that creates that draft. An owner lease alone did not redirect the
+legacy store. Core now supplies an explicit original-owner companion; UI and
+Android use it for load, preview and confirmation. Only the exact step's own
+missing-draft blocker is admitted with a matching, ready typed projection.
+Foreign blockers, stale revisions and invalid projections remain rejected.
+
+Confirmation runs off the UI thread. Account checkpoints are owner-partitioned,
+retain their issuing stamp and reject owner ABA; trusted-local keys remain
+compatible. A known durable receipt survives postcommit refresh failure rather
+than being reported as an unapplied operation. Unknown outcomes retain the
+identical command for original-owner recovery.
+
+Focused local verification:
+
+- Core linked/local partition isolation, default/foreign/ABA stamp rejection,
+  unchanged character XML, exactly-once confirmation and cold receipt replay.
+- Actual Core/native dashboard, catalog, preview, confirmation, UI heartbeat,
+  cancellation, journal isolation and Skills/Magic save/revisit/replay tests.
+  The managed slice also covers Sum-to-Ten Adept, Technomancer, Mystic Adept and
+  Aspected Sorcery; this is not physical-device coverage of each talent.
+- Eleven Magic source-contract tests passed. Affected managed and native Debug
+  builds passed with zero warnings/errors.
+- Native Debug APK SHA-256
+  `72fe4a04fe1bb1afaf550b77e478c4afc33b954becadda47122e6a665b96e2d6`
+  used a local development feed, not a release package seal. At 150% font scale,
+  the real UI selected Hermetic plus Acid Stream, Agony, Analyze Device, Analyze
+  Magic and Analyze Truth. One confirmation saved revision 4/4 to 5/5, with five
+  spells and zero remaining spell choices. No character XML changed.
+- Verified force-stop (PID 3908 gone) and relaunch (PID 5461) reopened Create,
+  the saved Magician draft and its exact receipt
+  `6fa5d6972eb2175f8c61389d267bee7e1d177342cf4eb7cdc30ed4dd9adfdc17`.
+  Workspace bytes were identical before/after restart, SHA-256
+  `60e7e6d3162fc0e03e05f408622b07f14d52d5eb35517ecffabfcee7d4036d31`.
+  No Chummer ANR was observed in this boot; an unrelated Dialer ANR was present.
+
+This awakened route has reached persisted Magic, not a new native Career proof.
+The earlier minimal-method Career results remain separately scoped. Exact Core
+and UI package convergence follows the successful local route; no Play release
+or exhaustive catalog claim is made by this Debug evidence.
+
 ## Remaining limitations
 
 - Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded
