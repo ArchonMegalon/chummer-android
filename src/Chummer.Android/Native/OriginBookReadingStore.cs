@@ -128,6 +128,7 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
 /// </summary>
 public sealed class OriginBookReadingStore(string stateDirectory)
 {
+    internal const int MaximumChapters = 128;
     // 128 chapters x selected/pending x 64 KiB text x up to 6 JSON-escape
     // bytes = 96 MiB, plus frozen (<=32 KiB each) inputs and metadata. This
     // envelope admits the existing per-chapter contract, not unbounded books.
@@ -224,7 +225,7 @@ public sealed class OriginBookReadingStore(string stateDirectory)
     private static bool Valid(OriginBookReadingState state)
         => (state.StoryProfile is null || state.StoryProfile.IsValid && !state.StoryProfile.IsEmpty)
             && (state.IllustrationPolicy is null or OriginBookReadingState.AutomaticIllustrations)
-            && state.Chapters is { Count: <= 128 }
+            && state.Chapters is { Count: <= MaximumChapters }
             && state.Chapters.All(c => c is not null)
             && state.Chapters.Select(c => c.ChapterId).Distinct(StringComparer.Ordinal).Count() == state.Chapters.Count
             && state.Chapters.All(c => !string.IsNullOrWhiteSpace(c.ChapterId)

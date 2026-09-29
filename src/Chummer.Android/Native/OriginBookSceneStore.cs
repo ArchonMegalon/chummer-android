@@ -65,7 +65,13 @@ internal sealed class OriginBookScenes(string owner, string workspace, IEnumerab
 public sealed class OriginBookSceneStore(string stateDirectory)
 {
     private const string Schema = "chummer.android.origin-book-scenes/v1";
-    private const int MaximumBytes = 17 * 1024 * 1024;
+    internal const int MaximumScenes = OriginBookReadingStore.MaximumChapters;
+    // One illustration per supported chapter, still within the existing total
+    // image-byte budget. Allow bounded JSON escaping of 1024-char descriptions
+    // and 256-char chapter IDs, plus identity fields, for every entry.
+    private const int MaximumMetadataBytes = MaximumScenes * 10 * 1024;
+    private const int MaximumImageBytes = 16 * 1024 * 1024;
+    private const int MaximumBytes = MaximumImageBytes + MaximumMetadataBytes + MaximumScenes * 256 + 4096;
     private sealed record Manifest(string Schema, string Owner, string Workspace,
         OriginBookScene.Metadata[] Scenes, string Digest);
     private readonly string _root = Path.Combine(stateDirectory, "origin-book-scenes");
@@ -78,18 +84,18 @@ public sealed class OriginBookSceneStore(string stateDirectory)
         using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         if (input.Length > MaximumBytes) throw new InvalidDataException("The scene archive is oversized.");
         using var zip = new ZipArchive(input, ZipArchiveMode.Read);
-        if (zip.Entries.Count is < 1 or > 9 || zip.Entries[0].FullName != "manifest.json")
+        if (zip.Entries.Count is < 1 or > MaximumScenes + 1 || zip.Entries[0].FullName != "manifest.json")
             throw new InvalidDataException("The scene archive has an invalid inventory.");
-        var manifest = JsonSerializer.Deserialize<Manifest>(Read(zip.Entries[0], 64 * 1024));
+        var manifest = JsonSerializer.Deserialize<Manifest>(Read(zip.Entries[0], MaximumMetadataBytes));
         if (manifest?.Schema != Schema || manifest.Owner != owner || manifest.Workspace != workspace
-            || manifest.Scenes is not { Length: <= 8 } || zip.Entries.Count != manifest.Scenes.Length + 1)
+            || manifest.Scenes is not { Length: <= MaximumScenes } || zip.Entries.Count != manifest.Scenes.Length + 1)
             throw new InvalidDataException("The scene archive belongs to another book or has invalid metadata.");
         var scenes = new List<OriginBookScene>();
         long total = 0;
         for (int i = 0; i < manifest.Scenes.Length; i++)
         {
             var entry = zip.Entries[i + 1];
-            if (entry.FullName != $"scene-{i}" || (total += entry.Length) > 16 * 1024 * 1024
+            if (entry.FullName != $"scene-{i}" || (total += entry.Length) > MaximumImageBytes
                 || manifest.Scenes[i] is not { } identity)
                 throw new InvalidDataException("The scene archive has invalid or oversized images.");
             scenes.Add(OriginBookScene.Create(identity, Read(entry, 4 * 1024 * 1024)));
@@ -107,7 +113,7 @@ public sealed class OriginBookSceneStore(string stateDirectory)
             throw new InvalidDataException("The scene collection changed identity or exceeds its limits.");
         byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new Manifest(Schema, next.Owner, next.Workspace,
             next.Scenes.Select(s => s.Identity).ToArray(), next.Digest));
-        if (manifestBytes.Length > 64 * 1024) throw new InvalidDataException("The scene metadata is oversized.");
+        if (manifestBytes.Length > MaximumMetadataBytes) throw new InvalidDataException("The scene metadata is oversized.");
         lock (_gate)
         {
             ct.ThrowIfCancellationRequested();
@@ -144,8 +150,8 @@ public sealed class OriginBookSceneStore(string stateDirectory)
         }
     }
 
-    private static bool Valid(OriginBookScenes state) => state.Scenes.Count <= 8
-        && state.Scenes.Sum(s => (long)s.Identity.Length) <= 16 * 1024 * 1024
+    private static bool Valid(OriginBookScenes state) => state.Scenes.Count <= MaximumScenes
+        && state.Scenes.Sum(s => (long)s.Identity.Length) <= MaximumImageBytes
         && state.Scenes.Select(s => s.Identity.ChapterId).Distinct(StringComparer.Ordinal).Count() == state.Scenes.Count;
 
     private static byte[] Read(ZipArchiveEntry entry, int maximum)

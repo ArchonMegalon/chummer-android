@@ -45,6 +45,7 @@ internal static class OriginDossierBookRuntimeTests
         RunOpeningStoryDetailsStorage();
         RunReadingStreamBounds();
         RunLongBookStorage();
+        RunIllustratedBookStorage();
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
         await RunTextOnlyDecisionDisplayAsync();
@@ -381,11 +382,198 @@ internal static class OriginDossierBookRuntimeTests
         System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(oversizedDimensions.AsSpan(16), 50000);
         Reject(picture with { Bytes = oversizedDimensions });
         bool tooManyRejected = false;
-        try { OriginBookEpub.Create(book, copy, Enumerable.Repeat(picture, 9).ToArray()); }
+        try { OriginBookEpub.Create(book, copy, Enumerable.Repeat(picture, 129).ToArray()); }
         catch (InvalidDataException) { tooManyRejected = true; }
         Require(tooManyRejected, "The EPUB illustration-count bound was ignored.");
+        bool duplicateRejected = false;
+        try { OriginBookEpub.Create(book, copy, [picture, picture]); }
+        catch (InvalidDataException) { duplicateRejected = true; }
+        Require(duplicateRejected, "Duplicate illustrations for one chapter were exported.");
         VerifySceneStore(book, chapter, png);
         Console.WriteLine("PASS Origin EPUB: exact embedded raster, alt text, selected-chapter binding and unsafe/oversized image rejection");
+    }
+
+    public static void RunIllustratedBookStorage()
+    {
+        string directory = Directory.CreateTempSubdirectory("chummer-illustrated-book-").FullName;
+        try
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+            var prepared = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            var projection = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest,
+                "illustrated-book-fixture", true).Value!.Checkpoint.Projection;
+            var seed = projection.VisibleChapters.Single();
+            byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+            foreach (int count in new[] { 8, 9, 128 })
+            {
+                var chapters = Enumerable.Range(1, count).Select(i => seed with
+                {
+                    ChapterId = "illustrated-chapter-" + i, ChapterDigest = Digest("illustrated-chapter-" + i),
+                    ThroughAcceptedDecisionId = "decision-" + i, Sequence = i,
+                    Title = "Straße " + i + " — 🌧️", VisibleMarkdown = "Never export this decision summary."
+                }).ToArray();
+                string Prose(int i) => string.Join("\n\n", Enumerable.Range(1, 30).Select(p =>
+                    $"Kapitel {i}, Absatz {p}: Über den Dächern 🌧️ – <Bilder & Erinnerungen> blieben ihre eigenen."));
+                var readingStore = new OriginBookReadingStore(directory);
+                var emptyReadings = readingStore.Load("owner-a", "book-" + count);
+                var readings = readingStore.Save(emptyReadings, emptyReadings with
+                {
+                    Chapters = chapters.Select((c, i) => new OriginBookReadingChapter(c.ChapterId,
+                        OriginBookProseDraft.Create(c, "de-DE", "selected-" + i, Digest("selected"), Prose(i)),
+                        OriginBookProseDraft.Create(c, "de-DE", "pending-" + i, Digest("pending"), "PRIVATE PENDING TEXT"))).ToArray()
+                }, () => true, default);
+                var projected = projection with { VisibleChapters = chapters,
+                    CurrentTurn = projection.CurrentTurn with { Locale = "de-DE" },
+                    CanonicalLayer = projection.CanonicalLayer with
+                        { AcceptedDecisionIds = chapters.Select(c => c.ThroughAcceptedDecisionId).ToArray() } };
+                var book = new RetainedOriginBook(projected, readings);
+                var sceneStore = new OriginBookSceneStore(directory);
+                var emptyScenes = sceneStore.Load(readings.Owner, readings.Workspace);
+                // Exercise JSON escaping well beyond the former 64 KiB manifest cap.
+                var scenes = new OriginBookScenes(readings.Owner, readings.Workspace,
+                    chapters.Select(c => OriginBookScene.ForChapter(book, c, new string('Ü', 1024), png)));
+                sceneStore.Save(emptyScenes, scenes, () => true, default);
+                var coldScenes = new OriginBookSceneStore(directory).Load(readings.Owner, readings.Workspace);
+                var coldReadings = new OriginBookReadingStore(directory).Load(readings.Owner, readings.Workspace);
+                var coldBook = new RetainedOriginBook(projected, coldReadings, coldScenes);
+                Require(coldScenes.Digest == scenes.Digest && coldScenes.Scenes.Count == count
+                    && coldReadings.Digest == readings.Digest
+                    && sceneStore.Load("owner-b", readings.Workspace).Scenes.Count == 0,
+                    "Cold illustrated-book read lost data or crossed owners.");
+                using var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(coldBook,
+                    AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read);
+                XNamespace html = "http://www.w3.org/1999/xhtml";
+                XNamespace opf = "http://www.idpf.org/2007/opf";
+                XDocument Read(string name) { using var s = archive.GetEntry("EPUB/" + name)!.Open(); return XDocument.Load(s); }
+                Require(Read("nav.xhtml").Descendants(html + "a").Count() == count
+                    && Read("package.opf").Descendants(opf + "itemref").Count() == count + 1
+                    && archive.Entries.Count(e => e.FullName.StartsWith("EPUB/images/", StringComparison.Ordinal)) == count,
+                    "The full illustrated book lost chapters, images or reading order.");
+                for (int i = 0; i < count; i++)
+                {
+                    var page = Read($"chapter-{i + 1}.xhtml");
+                    Require(string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == Prose(i)
+                        && page.Descendants(html + "img").Single().Attribute("alt")?.Value == new string('Ü', 1024),
+                        "A chapter was truncated, substituted or lost its image description.");
+                    using var input = archive.GetEntry($"EPUB/images/scene-{i + 1}.png")!.Open();
+                    using var output = new MemoryStream(); input.CopyTo(output);
+                    Require(output.ToArray().SequenceEqual(png), "The retained image bytes changed during export.");
+                }
+                if (count == 128)
+                {
+                    File.WriteAllText(Path.Combine(directory, "restart-fixture.json"),
+                        JsonSerializer.Serialize(new IllustratedRestartFixture(projected, readings.Digest, scenes.Digest)));
+                    var start = new System.Diagnostics.ProcessStartInfo("dotnet") { UseShellExecute = false };
+                    start.ArgumentList.Add(typeof(OriginDossierBookRuntimeTests).Assembly.Location);
+                    start.ArgumentList.Add("--origin-illustrated-book-reopen");
+                    start.ArgumentList.Add(directory);
+                    using var process = System.Diagnostics.Process.Start(start)!;
+                    if (!process.WaitForExit(30000))
+                    {
+                        process.Kill(entireProcessTree: true);
+                        process.WaitForExit();
+                        throw new InvalidOperationException("Separate-process illustrated book reopen did not finish.");
+                    }
+                    Require(process.ExitCode == 0, "A separate process could not reopen and export the illustrated book.");
+                    var extra = chapters[0] with { ChapterId = "chapter-129", ChapterDigest = Digest("129") };
+                    var extraBook = new RetainedOriginBook(projected with { VisibleChapters = [extra] });
+                    var extraScene = OriginBookScene.ForChapter(extraBook, extra, "Extra", png);
+                    bool rejected = false;
+                    try { sceneStore.Save(coldScenes, new(readings.Owner, readings.Workspace,
+                        coldScenes.Scenes.Append(extraScene)), () => true, default); }
+                    catch (InvalidDataException) { rejected = true; }
+                    Require(rejected && sceneStore.Load(readings.Owner, readings.Workspace).Digest == scenes.Digest,
+                        "An excessive scene count replaced a valid full book.");
+                }
+                if (count == 9)
+                {
+                    VerifyIllustratedEpub(new RetainedOriginBook(
+                        projected with { VisibleChapters = [chapters[0]] }, readings), chapters[0]);
+                    // A bounded raster-envelope fixture exercises aggregate byte
+                    // admission, not a claim that a decoder accepts padded PNGs.
+                    byte[] large = new byte[4 * 1024 * 1024];
+                    png.CopyTo(large, 0); png.AsSpan(png.Length - 12).CopyTo(large.AsSpan(large.Length - 12));
+                    var oversized = new OriginBookScenes(readings.Owner, readings.Workspace,
+                        chapters.Take(5).Select(c => OriginBookScene.ForChapter(book, c, "Size fixture", large)));
+                    bool storageRejected = false, exportRejected = false;
+                    try { sceneStore.Save(coldScenes, oversized, () => true, default); }
+                    catch (InvalidDataException) { storageRejected = true; }
+                    try { OriginBookEpub.Create(book, AndroidSurfaceStrings.Resolve("de-DE"),
+                        oversized.Scenes.Select(s => s.Export()).ToArray()); }
+                    catch (InvalidDataException) { exportRejected = true; }
+                    Require(storageRejected && exportRejected
+                        && sceneStore.Load(readings.Owner, readings.Workspace).Digest == scenes.Digest,
+                        "The unchanged 16 MiB aggregate image limit was bypassed or damaged a saved book.");
+                    var unselected = new RetainedOriginBook(projected,
+                        readings with { Chapters = readings.Chapters.Select(r => r with { Selected = null }).ToArray() });
+                    bool pendingRejected = false;
+                    try { OriginBookEpub.Create(unselected, AndroidSurfaceStrings.Resolve("de-DE"),
+                        [OriginBookScene.ForChapter(unselected, chapters[0], "Unselected fixture", png).Export()]); }
+                    catch (InvalidDataException) { pendingRejected = true; }
+                    Require(pendingRejected, "An illustration for an unselected chapter bypassed export admission.");
+                }
+                Console.WriteLine($"PASS Origin illustrated book: {count} complete chapters/images, escaped metadata, cold read, owner isolation and EPUB");
+            }
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+        WriteIllustratedDeviceFixture();
+    }
+
+    private sealed record IllustratedRestartFixture(OriginStoryArcSeed Projection, string ReadingDigest, string SceneDigest);
+
+    private static void WriteIllustratedDeviceFixture()
+    {
+        string? directory = Environment.GetEnvironmentVariable("CHUMMER_ILLUSTRATED_DEVICE_FIXTURE");
+        if (string.IsNullOrEmpty(directory)) return;
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "checkpoint.json")));
+        Require(document.RootElement.GetProperty("ownerId").GetString() == "local-single-user",
+            "The illustrated device fixture must be a synthetic local owner, never an account copy.");
+        var projection = document.RootElement.GetProperty("projection").Deserialize<OriginStoryArcSeed>(
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var chapter = projection.VisibleChapters.Single();
+        var readings = new OriginBookReadingStore(directory);
+        var empty = readings.Load("local-single-user", projection.CurrentTurn.WorkspaceId);
+        Require(empty.Chapters.Count == 0, "Do not overwrite a retained illustrated fixture.");
+        var selected = OriginBookProseDraft.Create(chapter, projection.CurrentTurn.Locale,
+            "synthetic-illustrated-capacity-fixture", Digest("synthetic"),
+            "SYNTHETIC ILLUSTRATED STORAGE TEST — not an AI chapter.\n\n"
+            + "The ninth stored illustration must not prevent reading this complete passage or exporting it.\n\n"
+            + "Über den Dächern lag Regen. 🌧️\n\nEND OF SYNTHETIC ILLUSTRATED STORAGE TEST.");
+        var saved = readings.Save(empty, empty with { Chapters = [new(chapter.ChapterId, selected, null)] }, () => true, default);
+        var book = new RetainedOriginBook(projection, saved);
+        byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+        var scene = OriginBookScene.ForChapter(book, chapter, "Synthetic storage pixel, not a rendered scene", png);
+        var scenes = new OriginBookSceneStore(directory);
+        var old = scenes.Load(empty.Owner, empty.Workspace);
+        Require(old.Scenes.Count == 0, "Do not replace an existing scene fixture.");
+        // Extra entries exercise storage only, never invent accepted modules.
+        var retained = Enumerable.Range(1, 8).Select(i => OriginBookScene.Create(
+            scene.Identity with { ChapterId = "synthetic-storage-only-" + i }, png)).Append(scene);
+        scenes.Save(old, new(empty.Owner, empty.Workspace, retained), () => true, default);
+        Console.WriteLine("PASS wrote opt-in local device fixture: nine stored scenes, one real chapter, no provider/canonical mutation");
+    }
+
+    public static void ReopenIllustratedBook(string directory)
+    {
+        var fixture = JsonSerializer.Deserialize<IllustratedRestartFixture>(
+            File.ReadAllText(Path.Combine(directory, "restart-fixture.json")))!;
+        var readings = new OriginBookReadingStore(directory).Load("owner-a", "book-128");
+        var scenes = new OriginBookSceneStore(directory).Load("owner-a", "book-128");
+        Require(readings.Digest == fixture.ReadingDigest && scenes.Digest == fixture.SceneDigest,
+            "A new process did not restore the exact reading/image identities.");
+        var book = new RetainedOriginBook(fixture.Projection, readings, scenes);
+        using var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(book,
+            AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read);
+        XNamespace html = "http://www.w3.org/1999/xhtml";
+        for (int i = 0; i < 128; i++)
+        {
+            using var chapter = archive.GetEntry($"EPUB/chapter-{i + 1}.xhtml")!.Open();
+            var page = XDocument.Load(chapter);
+            Require(string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == readings.Chapters[i].Selected!.Text
+                && page.Descendants(html + "img").Single().Attribute("src")?.Value == $"images/scene-{i + 1}.png",
+                "A new process lost the selected full text or its illustration in EPUB.");
+        }
+        Console.WriteLine("PASS Origin illustrated book: separate-process reopen and full 128-chapter EPUB");
     }
 
     private static void VerifySceneStore(RetainedOriginBook book, OriginNarrativeChapterProjection chapter, byte[] png)
