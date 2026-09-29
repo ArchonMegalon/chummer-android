@@ -109,6 +109,36 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         self.assertIn("explicit, atomic confirmation", finalization)
         self.assertNotIn("CharacterCreationWizardSnapshot snapshot", projection)
 
+    def test_final_review_collapses_only_source_diagnostics(self) -> None:
+        source = FINALIZATION_PAGE.read_text(encoding="utf-8")
+        review = source.split("public sealed class CreationFinalizationPage", 1)[1]
+        review = review.split("public sealed class CreationFinalizationReceiptPage", 1)[0]
+        for marker in (
+            "List<Label> sourceDetails = [];",
+            "bool showDetails = false;",
+            '"creation-finalization-technical-details-toggle"',
+            "!_visible || _confirming || !ReferenceEquals(details.Parent, _body)",
+            "!Coordinator.IsCreationFinalizationReviewCurrent(_review)",
+            "source.IsVisible = false;",
+            "sourceDetails.Add(source);",
+            "source.IsVisible = showDetails;",
+            'string.Join(" · ", delta.SourceAnchorIds)',
+            '"Qualities.ShowDetails"',
+            '"Qualities.HideDetails"',
+        ):
+            self.assertIn(marker, review)
+        # Costs, before/after values and the complete ordered delta list remain
+        # unconditional. Disclosure must never become a mutation/review action.
+        self.assertIn("_review.OrderedDeltas", review)
+        self.assertIn("delta.BeforeValue", review)
+        self.assertIn("delta.AfterValue", review)
+        self.assertIn("Number(delta.KarmaCost)", review)
+        self.assertIn("Number(delta.NuyenCost)", review)
+        toggle = review.split("details.Clicked +=", 1)[1].split("_body.Add(details);", 1)[0]
+        self.assertNotIn("ConfirmCreationFinalizationAsync", toggle)
+        self.assertNotIn("Refresh()", toggle)
+        self.assertIn("Coordinator.ConfirmCreationFinalizationAsync(_review, _idempotencyKey)", review)
+
     def test_driver_is_physical_source_bound_and_does_not_seed_rule_state(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
