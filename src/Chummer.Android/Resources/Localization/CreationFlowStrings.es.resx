@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Purchases.SavedReopen" xml:space="preserve"><value>Guardado. Vuelve a abrir el personaje para actualizar esta vista.</value></data>
+  <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Vuelve a abrir el personaje antes de realizar otra compra.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Cargando ventajas y desventajas…</value></data>
   <data name="Gear.Loading" xml:space="preserve"><value>Cargando equipo…</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>

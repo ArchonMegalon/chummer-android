@@ -1970,7 +1970,8 @@ public sealed class BuildPage : NativePageBase
                             projection.Progress.Resources,
                             phase,
                             _creationResourcesQueue,
-                            () => _resourcesPresenter.Load(resourcesOverview),
+                            () => Coordinator.ReadCreationAuthority(resourcesOverview,
+                                () => _resourcesPresenter.Load(resourcesOverview), CancellationToken.None),
                             AcceptCreationResources);
                         break;
                     case CreationDashboardAuthorityPhase.Resources:
@@ -1995,7 +1996,7 @@ public sealed class BuildPage : NativePageBase
         return _creationProjection;
     }
 
-    private static void ResolveCreationPhase<TResult>(
+    private void ResolveCreationPhase<TResult>(
         CreationDashboardProjectionBinding binding,
         CreationDashboardAuthorityPhaseState? state,
         CreationDashboardAuthorityPhase phase,
@@ -2006,13 +2007,14 @@ public sealed class BuildPage : NativePageBase
         if (state != CreationDashboardAuthorityPhaseState.Loading)
             return;
 
+        CharacterOverviewState original = Coordinator.State;
         bool requested = queue.TryRequest(
             binding,
             (request, cancellationToken) =>
             {
                 TraceCreationPhase(phase, "loader-enter", request);
                 cancellationToken.ThrowIfCancellationRequested();
-                TResult result = loader();
+                TResult result = Coordinator.ReadCreationAuthority(original, loader, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 TraceCreationPhase(phase, "loader-terminal", request);
                 return result;
@@ -2770,11 +2772,13 @@ public sealed class BuildPage : NativePageBase
                Outcome: CharacterCreationFoundationOutcomes.Success,
                Value: { } state
            }
+           && Coordinator.IsCreationAttributesStateCurrent(state)
            && CreationAttributesPhoneAuthority.IsReady(state, Coordinator.State);
 
     private bool HasAuthoritativeSkills(
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? result)
         => result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
+           && Coordinator.IsCreationSkillsStateCurrent(state)
            && CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State);
 
     private bool HasAuthoritativeQualities()

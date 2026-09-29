@@ -38,23 +38,23 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "fde950c3a093d2d384180aa2a4baa5db4eeac934"
-EXPECTED_PRESENTATION_TREE = "1f86cc54ecedc9e78bf3ee5bff6e6a2bef22c70a"
+EXPECTED_PRESENTATION_COMMIT = "4db8d445fdd13c8c99dd50eb6d59fe2d243a6062"
+EXPECTED_PRESENTATION_TREE = "24aeb1e717d9ab99d0848721954eed440081073f"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "2e211853e2844716780335925d3f2eb578ade301b460e33dec5217d169211b0f"
+EXPECTED_LOCK_SHA256 = "559a324f1b86b97516e694f7ff590de8b249a9dd4bc66792a68931dc3afde318"
 EXPECTED_LOCK_SIZE = 68354
-EXPECTED_LOCK_BLOB = "008edd96d742b972d8be247fb1fa674ec8043151"
-EXPECTED_RECEIPT_SHA256 = "e005aed035b1c453cc5effb265634239964e85f4c3254598ef975b860d5a7a8c"
+EXPECTED_LOCK_BLOB = "5c1914b4f6b12f04607eafe42daa35e060ea2d8b"
+EXPECTED_RECEIPT_SHA256 = "258946a6461d177841ff48506ce207cbaffeb8d68cbb0748f31bf9ad48a46071"
 EXPECTED_RECEIPT_SIZE = 81071
-EXPECTED_CACHE_KEY = "12df45ffe11b98de865b8fad49fd6efec0d168e9190e0fa1cfea389db770cbaf"
-EXPECTED_CACHE_MANIFEST_SHA256 = "c977855a1b7297fbb49ea432c64819ac32d5ade6091c2da281523b73ba54d76b"
+EXPECTED_CACHE_KEY = "5b7823f93ad0bf70cdc94b97c76929240b1e3f613c212d982e3732f7a2adba54"
+EXPECTED_CACHE_MANIFEST_SHA256 = "0556a4f1dff036554961ca6c1b118266719b08a0e19eb6edb246a18d46bff116"
 EXPECTED_CACHE_MANIFEST_SIZE = 13789
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "b865101d02eb24fb89f9ca4eb5b397e1acffae83",
-    "coreRuntimeSourceCommit": "b19fc03123c43885c39859cdad0c4554ad46b7ff",
+    "corePackageRecipeCommit": "3710828effe1200517de3a618794d1674ba9579f",
+    "coreRuntimeSourceCommit": "e8d12598b4897d006f58965389a9ecac0bd5f9d2",
     "hubProducerCommit": "c77395de9f733427ef952c851f4a95b063cb5573",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
@@ -65,17 +65,17 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "8e077ba180e87e28b8cf4dac6c243a5e97bfa2d6a656ae7e9fbfd7e9cb65755e",
+        "999e8844d22591b5e9d334d845ef648315e73a6639560fdca05e4b752d248fdd",
         70707,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "9186b137fe990d0da45ed8dd1405a1d896ffc0000f0f6284ee147afea1882c08",
+        "e53d5f5dd4fa290a5a345489b57471d7a48c19bb573ebbd5dba85b0a393e6da7",
         16510,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.v20260928.2.shb19fc03123c43"
+CORE_VERSION = "0.0.0-packageplane.candidate.v20260929.1.she8d12598b4897"
 HUB_VERSION = "0.1.1-packageplane.20260927.1"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
@@ -108,7 +108,7 @@ EXISTING_OWNER_TEST_EXECUTIONS = (
     ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
     ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
     ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
-    ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 24),
+    ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 27),
 )
 
 
@@ -779,7 +779,7 @@ def validate_owner_test_executions(receipt: Mapping[str, Any]) -> None:
         or full["disableBuildServers"] is not True
         or full["useSharedCompilation"] is not False
         or type(full["maxCpuCount"]) is not int or full["maxCpuCount"] != 1
-        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 771
+        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 774
     ):
         raise ValueError("UI full Product test invocation is not exact")
     assembly = require_exact_object(full["testAssembly"], "UI Product test assembly", {"path", "sha256", "sizeBytes"})

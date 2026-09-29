@@ -5,6 +5,16 @@ namespace Chummer.Android.Native;
 
 public sealed partial class RunnerSessionCoordinator
 {
+    private CreationSkillsPhoneConfirmResult CommittedSkillsRefreshRequired(
+        CharacterCreationSkillsReceipt receipt,
+        CharacterCreationSkillsState committedState,
+        IEnumerable<string> blockers)
+    {
+        _notice = "Skills draft saved. Reopen the character to refresh the phone view.";
+        NotifyChanged();
+        return CreationSkillsPhoneAuthority.CommittedRefreshRequired(receipt, committedState, blockers);
+    }
+
     internal CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadCreationSkillsReReview()
     {
         var before = State;

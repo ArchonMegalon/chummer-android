@@ -193,14 +193,29 @@ internal interface ICharacterCreationQualitiesCheckpointBackend
     void Remove();
 }
 
-internal sealed class PreferencesCharacterCreationQualitiesCheckpointBackend :
+internal sealed class PreferencesCharacterCreationQualitiesCheckpointBackend(
+    Chummer.Application.Owners.OwnerContextStamp? original = null,
+    Func<Chummer.Application.Owners.OwnerContextStamp?, bool>? isCurrent = null) :
     ICharacterCreationQualitiesCheckpointBackend
 {
     private const string StorageKey = "sr5.priority.creation.qualities.checkpoint.v1";
 
-    public string Read() => Preferences.Default.Get(StorageKey, string.Empty);
-    public void Write(string payload) => Preferences.Default.Set(StorageKey, payload);
-    public void Remove() => Preferences.Default.Remove(StorageKey);
+    private string Key()
+    {
+        // The no-argument backend is retained for legacy test compositions only.
+        // Production captures one issuing stamp and never reads another account's
+        // durable review, even if it has the same workspace id and revision.
+        if (isCurrent is null && original is null) return StorageKey;
+        if (original is not { IsValid: true } owner || isCurrent?.Invoke(original) != true)
+            throw new InvalidOperationException("The Qualities checkpoint owner is no longer current.");
+        return owner.Owner == Chummer.Contracts.Owners.OwnerScope.LocalSingleUser ? StorageKey
+            : StorageKey + ".owner." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(owner.Owner.Value))).ToLowerInvariant();
+    }
+
+    public string Read() => Preferences.Default.Get(Key(), string.Empty);
+    public void Write(string payload) => Preferences.Default.Set(Key(), payload);
+    public void Remove() => Preferences.Default.Remove(Key());
 }
 
 /// <summary>
@@ -223,6 +238,11 @@ public sealed class CharacterCreationQualitiesCheckpointStore
 
     internal static CharacterCreationQualitiesCheckpointStore CreateDefault()
         => new(new PreferencesCharacterCreationQualitiesCheckpointBackend());
+
+    internal static CharacterCreationQualitiesCheckpointStore CreateDefault(
+        Chummer.Application.Owners.OwnerContextStamp? original,
+        Func<Chummer.Application.Owners.OwnerContextStamp?, bool> isCurrent)
+        => new(new PreferencesCharacterCreationQualitiesCheckpointBackend(original, isCurrent));
 
     public bool TryRead(
         out CharacterCreationQualitiesCheckpoint checkpoint,

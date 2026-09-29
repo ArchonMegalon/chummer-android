@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Purchases.SavedReopen" xml:space="preserve"><value>Saved. Reopen the character to refresh this view.</value></data>
+  <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>The result could not be verified. Reopen the character before making another purchase.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Loading qualities…</value></data>
   <data name="Gear.Loading" xml:space="preserve"><value>Loading gear…</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>

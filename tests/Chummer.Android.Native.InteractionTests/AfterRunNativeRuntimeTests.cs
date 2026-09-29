@@ -560,13 +560,16 @@ internal static partial class AfterRunAuthorityHarness
             bool creationPrerequisite = false,
             Func<IOwnerBoundCharacterCreationPrerequisiteService, IOwnerBoundCharacterCreationPrerequisiteService?>? prerequisiteDecorator = null,
             bool productionCreationOverview = false,
-            Func<ICharacterCreationQualitiesService, ICharacterCreationQualitiesService>? qualitiesDecorator = null,
+            Func<IOwnerBoundCharacterCreationQualitiesService, IOwnerBoundCharacterCreationQualitiesService>? qualitiesDecorator = null,
             Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
             Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
             Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null,
             Action? beforeShellWorkspaceList = null,
-            IAndroidImageDocumentService? originSceneDocuments = null)
+            IAndroidImageDocumentService? originSceneDocuments = null,
+            bool creationAttributes = false,
+            Func<IOwnerBoundCharacterCreationAttributesService, IOwnerBoundCharacterCreationAttributesService>? attributesDecorator = null,
+            bool creationSkills = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -633,7 +636,8 @@ internal static partial class AfterRunAuthorityHarness
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                         ownerBoundCreationFinalizationService: productionFinalization,
                         ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
-                        ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>())
+                        ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
+                        ownerBoundCreationQualitiesService: _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
@@ -674,14 +678,19 @@ internal static partial class AfterRunAuthorityHarness
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
                     afterRunRewardCheckpoints: checkpoints,
+                    ownerBoundCreationAttributesService: creationAttributes
+                        ? attributesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationAttributesService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationAttributesService>() : null,
                     creationSkillsService: creationSkillsSeed is null ? null : skillsDecorator is null
                         ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
                         : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
+                    ownerBoundCreationSkillsService: creationSkills || creationSkillsSeed is not null
+                        ? _provider.GetRequiredService<IOwnerBoundCharacterCreationSkillsService>() : null,
                     creationFinalizationService: creationFinalization || productionCreationOverview
                         ? _provider.GetRequiredService<ICharacterCreationFinalizationService>() : null,
-                    creationQualitiesService: productionCreationOverview
-                        ? qualitiesDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationQualitiesService>())
-                            ?? _provider.GetRequiredService<ICharacterCreationQualitiesService>() : null,
+                    ownerBoundCreationQualitiesService: productionCreationOverview
+                        ? qualitiesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>() : null,
                     creationMagicResonanceService: magicDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationMagicResonanceService>()),
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,

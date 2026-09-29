@@ -47,7 +47,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             'AutomationId = "creation-quality-configure-page"',
             'AutomationId = "creation-qualities-review-page"',
             'AutomationId = "creation-qualities-receipt-page"',
-            "Coordinator.LoadCreationQualities()",
+            "Coordinator.LoadCreationQualitiesForDisplayAsync(_original,",
             "Coordinator.PreviewCreationQualities(",
             "CharacterCreationQualitiesDesktopOption",
             "option.OptionId",
@@ -153,17 +153,17 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         for marker in (
-            "ICharacterCreationQualitiesService? _creationQualitiesService",
-            "LoadCreationQualities()",
+            "IOwnerBoundCharacterCreationQualitiesService? _ownerBoundQualitiesService",
+            "LoadCreationQualities(CharacterOverviewState? display = null)",
             "PreviewCreationQualities(",
             "ConfirmCreationQualitiesAsync(",
             "checkpoint.OwnsRecoveryRevision(beforeActivation)",
-            "_creationQualitiesService.Confirm(new(",
+            "service.Confirm(owner, new(",
             "checkpoint.IdempotencyKey",
             "checkpoint.TransactionId",
             "ExplicitlyConfirmed: true",
             "ReceiptMatchesPersistedState(",
-            "_presenter.LoadAsync(receipt.WorkspaceId",
+            "bound.LoadAsync(owner, receipt.WorkspaceId",
             "Character effects remain pending finalization",
         ):
             self.assertIn(marker, coordinator)
@@ -172,13 +172,26 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         ]
         confirmation = confirmation[: confirmation.index("LoadCreationFoundation()")]
         self.assertLess(
-            confirmation.index("_creationQualitiesService.Confirm(new("),
-            confirmation.index("_creationQualitiesService.Load(new(receipt.WorkspaceId)"),
+            confirmation.index("service.Confirm(owner, new("),
+            confirmation.index("service.Load(owner, new(receipt.WorkspaceId)"),
         )
         self.assertLess(
             confirmation.index("ReceiptMatchesPersistedState("),
-            confirmation.index("_presenter.LoadAsync(receipt.WorkspaceId"),
+            confirmation.index("bound.LoadAsync(owner, receipt.WorkspaceId"),
         )
+        self.assertNotIn("_creationQualitiesService", coordinator)
+        self.assertIn("IsCreationCatalogDisplayCurrent(beforeActivation)", confirmation)
+        self.assertIn("State.DisplayOwnerContext != owner", confirmation)
+
+    def test_checkpoint_storage_keeps_original_owner_and_no_linked_legacy_fallback(self) -> None:
+        store = (NATIVE / "CreationQualitiesCheckpointStore.cs").read_text(encoding="utf-8")
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        self.assertIn("isCurrent?.Invoke(original) != true", store)
+        self.assertIn('StorageKey + ".owner."', store)
+        self.assertIn("SHA256.HashData(", store)
+        self.assertIn("owner.Owner.Value", store)
+        self.assertIn("coordinator.State.DisplayOwnerContext, coordinator.IsCreationQualitiesOwnerCurrent", page)
+        self.assertIn("ConfirmCreationQualitiesAsync(applying, display: _original)", page)
 
     def test_build_dashboard_routes_only_the_authoritative_quality_stage(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -195,6 +208,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, dashboard)
         self.assertIn("provider.GetService<ICharacterCreationQualitiesService>()", program)
+        self.assertIn("ownerBoundCreationQualitiesService: provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>()", program)
 
     def test_physical_skeleton_cannot_emit_a_pass_without_a_fixture_run(self) -> None:
         driver = (

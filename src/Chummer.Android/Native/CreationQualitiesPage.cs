@@ -29,7 +29,8 @@ public sealed class CreationQualitiesPage : NativePageBase
     private bool _loading = true;
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
-        : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault())
+        : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
+            coordinator.State.DisplayOwnerContext, coordinator.IsCreationQualitiesOwnerCurrent))
     {
     }
 
@@ -444,7 +445,8 @@ public sealed class CreationQualitiesPage : NativePageBase
                         state,
                         editor,
                         option,
-                        _draft)),
+                        _draft,
+                        original: _loadedDisplay!)),
                     enabled: !checkpointOwnsLane,
                     automationId: $"creation-quality-option-{Token(option.OptionId)}");
                 _body.Add(row);
@@ -483,8 +485,12 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     private async Task OpenReviewAsync(CharacterCreationQualitiesState state)
     {
+        if (_loadedDisplay is not { } original || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+            return;
         CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> result =
-            Coordinator.PreviewCreationQualities(state.Binding, _draft.SelectedOptionIds);
+            await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                () => Coordinator.PreviewCreationQualities(state.Binding, _draft.SelectedOptionIds, original), CancellationToken.None));
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         if (!_draft.TryAdopt(state, Coordinator.State, result, _draft.SelectedOptionIds)
             || result.Value is not { } preview
             || !CreationQualitiesPhoneAuthority.CanConfirmPreview(
@@ -513,17 +519,20 @@ public sealed class CreationQualitiesPage : NativePageBase
             Refresh();
             return;
         }
-        await Navigation.PushAsync(new CreationQualitiesReviewPage(Coordinator, stored, _store));
+        await Navigation.PushAsync(new CreationQualitiesReviewPage(Coordinator, stored, _store, original));
     }
 
     private async Task ResumeReviewAsync(
         CharacterCreationQualitiesState state,
         CharacterCreationQualitiesCheckpoint checkpoint)
     {
+        if (_loadedDisplay is not { } original || !Coordinator.IsCreationCatalogDisplayCurrent(original))
+            return;
         CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> result =
-            Coordinator.PreviewCreationQualities(
+            await Task.Run(() => Coordinator.ReadCreationAuthority(original, () => Coordinator.PreviewCreationQualities(
                 checkpoint.Preview.Binding,
-                checkpoint.SelectedOptionIds);
+                checkpoint.SelectedOptionIds, original), CancellationToken.None));
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         if (!checkpoint.OwnsExactReview(state, Coordinator.State)
             || !CreationQualitiesPhoneAuthority.CanDisplayPreview(
                 state,
@@ -543,7 +552,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                 CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
-        await Navigation.PushAsync(new CreationQualitiesReviewPage(Coordinator, checkpoint, _store));
+        await Navigation.PushAsync(new CreationQualitiesReviewPage(Coordinator, checkpoint, _store, original));
     }
 
     private async Task AbandonReviewedAsync(CharacterCreationQualitiesCheckpoint checkpoint)
@@ -572,8 +581,9 @@ public sealed class CreationQualitiesPage : NativePageBase
     private async Task ResolveApplyingAsync(
         CharacterCreationQualitiesCheckpoint checkpoint)
     {
+        if (_loadedDisplay is not { } original || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         CreationQualitiesPhoneConfirmResult result =
-            await Coordinator.ConfirmCreationQualitiesAsync(checkpoint);
+            await Coordinator.ConfirmCreationQualitiesAsync(checkpoint, display: original);
         if (result.MutationOutcomeKnown
             && string.Equals(result.Outcome, CreationQualitiesPhoneOutcomes.Applied, StringComparison.Ordinal)
             && result.Receipt is { } receipt)
@@ -673,6 +683,7 @@ public sealed class CreationQualitiesPage : NativePageBase
 /// <summary>Phone-deep details for one immutable Core option; no label-based identity.</summary>
 public sealed class CreationQualityConfigurePage : NativePageBase
 {
+    private readonly CharacterOverviewState _original;
     private readonly CharacterCreationQualitiesState _state;
     private readonly CharacterCreationQualitiesEditorState _editor;
     private readonly CharacterCreationQualitiesDesktopOption _option;
@@ -689,8 +700,10 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         CharacterCreationQualitiesState state,
         CharacterCreationQualitiesEditorState editor,
         CharacterCreationQualitiesDesktopOption option,
-        CreationQualitiesPhoneDraft draft) : base(coordinator)
+        CreationQualitiesPhoneDraft draft,
+        CharacterOverviewState? original = null) : base(coordinator)
     {
+        _original = original ?? coordinator.State;
         _state = state ?? throw new ArgumentNullException(nameof(state));
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _option = option ?? throw new ArgumentNullException(nameof(option));
@@ -704,6 +717,11 @@ public sealed class CreationQualityConfigurePage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step2", "SR5 · 2 of 4")));
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
+        {
+            _body.Add(NativeTheme.Body("Reopen Qualities for the current runner.", NativeTheme.Muted));
+            return;
+        }
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
         details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.StableOption", "Stable option"), _option.OptionId));
@@ -738,6 +756,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
 
         bool exact = CreationQualitiesPhoneAuthority.IsOptionConfigurable(_option)
+                     && Coordinator.IsCreationCatalogDisplayCurrent(_original)
                      && _draft.Matches(_state, Coordinator.State)
                      && _editor.Options.Count(candidate => string.Equals(
                          candidate.OptionId,
@@ -768,21 +787,23 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         _body.Add(done);
     }
 
-    private Task ToggleAsync()
+    private async Task ToggleAsync()
     {
         IReadOnlyList<string> proposed = _draft.WithToggle(_option);
         CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> result =
-            Coordinator.PreviewCreationQualities(_state.Binding, proposed);
+            await Task.Run(() => Coordinator.ReadCreationAuthority(_original,
+                () => Coordinator.PreviewCreationQualities(_state.Binding, proposed, _original), CancellationToken.None));
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
         _blockers = result.Blockers;
         _draft.TryAdopt(_state, Coordinator.State, result, proposed);
         Refresh();
-        return Task.CompletedTask;
     }
 }
 
 /// <summary>Immutable Core preview followed by one explicit durable apply transition.</summary>
 public sealed class CreationQualitiesReviewPage : NativePageBase
 {
+    private readonly CharacterOverviewState _original;
     private CharacterCreationQualitiesCheckpoint _checkpoint;
     private readonly CharacterCreationQualitiesCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
@@ -796,8 +817,10 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     internal CreationQualitiesReviewPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationQualitiesCheckpoint checkpoint,
-        CharacterCreationQualitiesCheckpointStore store) : base(coordinator)
+        CharacterCreationQualitiesCheckpointStore store,
+        CharacterOverviewState? original = null) : base(coordinator)
     {
+        _original = original ?? coordinator.State;
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         if (!_checkpoint.IsStructurallyValid()
@@ -811,6 +834,11 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
+        {
+            _body.Add(NativeTheme.Body("Reopen Qualities for the current runner.", NativeTheme.Muted));
+            return;
+        }
         CharacterCreationQualitiesPreview preview = _checkpoint.Preview;
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step3", "SR5 · 3 of 4")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
@@ -866,6 +894,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
             "Confirm Creation qualities draft"));
         apply.AutomationId = "creation-qualities-confirm-draft";
         apply.IsEnabled = _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
+                          && Coordinator.IsCreationCatalogDisplayCurrent(_original)
                           && preview.CanConfirm
                           && preview.RequiresExplicitConfirmation
                           && preview.Blockers.Count == 0
@@ -887,13 +916,18 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
             return;
         try
         {
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
+            {
+                _blockers = [CharacterCreationQualitiesBlockers.RevisionConflict];
+                return;
+            }
             CharacterCreationFoundationResult<CharacterCreationQualitiesState> live =
-                Coordinator.LoadCreationQualities();
+                await Coordinator.LoadCreationQualitiesForDisplayAsync(_original, CancellationToken.None);
             CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> reprojection =
-                Coordinator.PreviewCreationQualities(
+                await Task.Run(() => Coordinator.ReadCreationAuthority(_original, () => Coordinator.PreviewCreationQualities(
                     _checkpoint.Preview.Binding,
-                    _checkpoint.SelectedOptionIds);
-            if (live.Value is not { } state
+                    _checkpoint.SelectedOptionIds, _original), CancellationToken.None));
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(_original) || live.Value is not { } state
                 || !_checkpoint.OwnsExactReview(state, Coordinator.State)
                 || !CreationQualitiesPhoneAuthority.CanDisplayPreview(
                     state,
@@ -921,7 +955,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
             }
             _checkpoint = applying;
             CreationQualitiesPhoneConfirmResult result =
-                await Coordinator.ConfirmCreationQualitiesAsync(applying);
+                await Coordinator.ConfirmCreationQualitiesAsync(applying, display: _original);
             _blockers = result.Blockers;
             if (result.MutationOutcomeKnown
                 && string.Equals(result.Outcome, CreationQualitiesPhoneOutcomes.Applied, StringComparison.Ordinal)
@@ -981,6 +1015,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
 /// <summary>Receipt acknowledgement; no direct character-apply action exists on this page.</summary>
 public sealed class CreationQualitiesReceiptPage : NativePageBase
 {
+    private readonly Chummer.Application.Owners.OwnerContextStamp? _originalOwner;
     private readonly CharacterCreationQualitiesCheckpoint _checkpoint;
     private readonly CharacterCreationQualitiesDraftReceipt _receipt;
     private readonly CharacterCreationQualitiesCheckpointStore _store;
@@ -996,6 +1031,7 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
         CharacterCreationQualitiesDraftReceipt receipt,
         CharacterCreationQualitiesCheckpointStore store) : base(coordinator)
     {
+        _originalOwner = coordinator.State.DisplayOwnerContext;
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
         _receipt = receipt ?? throw new ArgumentNullException(nameof(receipt));
         _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -1012,6 +1048,11 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step4", "SR5 · 4 of 4")));
+        if (!Coordinator.IsCreationQualitiesOwnerCurrent(_originalOwner))
+        {
+            _body.Add(NativeTheme.Body("Reopen Qualities for the current runner.", NativeTheme.Muted));
+            return;
+        }
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Transaction", "Transaction"), _receipt.TransactionId.ToString("D")));

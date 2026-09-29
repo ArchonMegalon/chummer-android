@@ -15,6 +15,7 @@ public sealed class CreationSkillsPage : NativePageBase
     };
     private IReadOnlyList<string> _blockers = [];
     private CharacterCreationSkillsState? _authority;
+    private CharacterCreationSkillsState? _revalidationAuthority;
     private string? _catalogSnapshotDigest;
     private int _activeCatalogOffset;
     private int _knowledgeCatalogOffset;
@@ -24,6 +25,7 @@ public sealed class CreationSkillsPage : NativePageBase
         CharacterCreationSkillsState? authority = null) : base(coordinator)
     {
         _authority = authority;
+        _revalidationAuthority = authority;
         Title = CreationAllocationStrings.Get("Skills.PageTitle", "Skills");
         AutomationId = "creation-skills-page";
         Content = new ScrollView { Content = _body };
@@ -46,13 +48,17 @@ public sealed class CreationSkillsPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? load = null;
         CharacterCreationSkillsState? state = CreationPageAuthorityCache.Resolve(
             _authority,
-            candidate => CreationSkillsPhoneAuthority.IsReady(candidate, Coordinator.State),
+            candidate => Coordinator.IsCreationSkillsStateCurrent(candidate)
+                         && CreationSkillsPhoneAuthority.IsReady(candidate, Coordinator.State),
             () =>
             {
-                load = Coordinator.LoadCreationSkills();
+                load = _revalidationAuthority is { } original
+                    ? Coordinator.RevalidateCreationSkills(original)
+                    : Coordinator.LoadCreationSkills();
                 return load.Value;
             });
         _authority = state;
+        _revalidationAuthority ??= state;
         if (state is null)
         {
             AddBlockers(load is { Blockers.Count: > 0 }
@@ -321,6 +327,7 @@ public sealed class CreationSkillsPage : NativePageBase
         CharacterCreationSkillGroupAllocation[] requestedGroups = groups.ToArray();
         await RunAsync(async () =>
         {
+            if (!Coordinator.IsCreationSkillsStateCurrent(state)) return;
             CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
                 await Task.Run(() => Coordinator.PreviewCreationSkills(
                     state.Binding,
@@ -344,6 +351,7 @@ public sealed class CreationSkillsPage : NativePageBase
         review.AutomationId = "creation-skills-review";
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
+            if (!Coordinator.IsCreationSkillsStateCurrent(state)) return;
             CharacterCreationSkillAllocation[] requestedSkills = _draft.Skills.ToArray();
             CharacterCreationSkillGroupAllocation[] requestedGroups = _draft.Groups.ToArray();
             CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
@@ -362,7 +370,19 @@ public sealed class CreationSkillsPage : NativePageBase
                 Coordinator,
                 preview,
                 requestedSkills,
-                requestedGroups));
+                requestedGroups,
+                result =>
+                {
+                    if (result is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                            Receipt: { } receipt, RefreshedState: { } fresh, Blockers.Count: 0 }
+                        && Coordinator.IsCreationSkillsReceiptCurrent(receipt)
+                        && Coordinator.IsCreationSkillsStateCurrent(fresh))
+                    {
+                        _authority = fresh;
+                        _revalidationAuthority = fresh;
+                        _blockers = [];
+                    }
+                }));
         });
         _body.Add(review);
     }
@@ -418,13 +438,16 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         Spacing = 14
     };
     private CreationSkillsPhoneConfirmResult? _confirmation;
+    private readonly Action<CreationSkillsPhoneConfirmResult>? _onConfirmed;
 
     internal CreationSkillsPreviewPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationSkillsPreview preview,
         IReadOnlyList<CharacterCreationSkillAllocation> allocations,
-        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups) : base(coordinator)
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
+        Action<CreationSkillsPhoneConfirmResult>? onConfirmed = null) : base(coordinator)
     {
+        _onConfirmed = onConfirmed;
         _preview = preview ?? throw new ArgumentNullException(nameof(preview));
         _allocations = allocations?.OrderBy(item => item.Kind, StringComparer.Ordinal)
             .ThenBy(item => item.SourceSkillId, StringComparer.Ordinal).ToArray()
@@ -449,6 +472,11 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
             "SkillsPreview.Heading",
             "Skills allocation")));
+        if (!Coordinator.CanDisplayCreationSkillsPreview(_preview))
+        {
+            _body.Add(NativeTheme.Body("This review is no longer current. Reopen the runner.", NativeTheme.Danger));
+            return;
+        }
         Label binding = NativeTheme.Body(
             CreationAllocationStrings.Format(
                 "Common.PreviewBinding",
@@ -556,8 +584,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         if (_confirmation is
             {
                 Outcome: CharacterCreationFoundationOutcomes.Success,
-                Receipt: not null,
-                RefreshedState: not null
+                Receipt: not null
             })
         {
             bool refreshRequired = _confirmation.Blockers.Contains(
@@ -577,7 +604,8 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         }
 
         CharacterCreationFoundationResult<CharacterCreationSkillsState> live = Coordinator.LoadCreationSkills();
-        bool canConfirm = live.Value is { } state
+        bool canConfirm = Coordinator.IsCreationSkillsPreviewCurrent(_preview)
+                          && live.Value is { } state
                           && CreationSkillsPhoneAuthority.CanConfirmPreview(
                               state, Coordinator.State, _preview, _allocations, _groups);
         Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
@@ -592,6 +620,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                 _allocations,
                 _groups,
                 _idempotencyKey);
+            _onConfirmed?.Invoke(_confirmation);
         });
         _body.Add(confirm);
         Label explicitAction = NativeTheme.Body(
@@ -614,6 +643,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         {
             return;
         }
+        if (!Coordinator.IsCreationSkillsReceiptCurrent(receipt)) return;
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.AtomicReceipt",

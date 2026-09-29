@@ -174,7 +174,8 @@ internal static partial class AfterRunAuthorityHarness
             var stored = PrepareActualFinalizationReadyContext(runtime);
             await HydrateFinalizationOwnerAsync(runtime, owners, stored);
             var overview = runtime.Coordinator.State;
-            var presenter = new CharacterCreationGearInteractionPresenter(runtime.Services.GetRequiredService<ICharacterCreationGearService>());
+            var presenter = new CharacterCreationGearInteractionPresenter(runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
             var loaded = presenter.Load(overview);
             Require(loaded.State is not null, "Actual Core Gear did not load: " + loaded.Outcome);
             var state = loaded.State!;
@@ -454,8 +455,8 @@ internal static partial class AfterRunAuthorityHarness
         public Action? BeforeLoad { get; set; }
         public CharacterCreationGearInteractionLoadResult Load(CharacterOverviewState overview)
         {
-            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
-                "Gear read must run off UI with the original owner lease.");
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 0,
+                "Gear read must run off UI without a host lease nested around the Core-owned lease.");
             LoadCalls++;
             BeforeLoad?.Invoke();
             return inner.Load(overview);
@@ -468,24 +469,25 @@ internal static partial class AfterRunAuthorityHarness
             string idempotencyKey) => inner.LookupReceipt(overview, idempotencyKey);
     }
 
-    private sealed class QualitiesReadProbe(ICharacterCreationQualitiesService inner,
-        ControlledLinkedOwner owners) : ICharacterCreationQualitiesService
+    private sealed class QualitiesReadProbe(IOwnerBoundCharacterCreationQualitiesService inner,
+        ControlledLinkedOwner owners) : IOwnerBoundCharacterCreationQualitiesService
     {
         public int UiThreadId { get; set; }
         public int LoadCalls { get; private set; }
         public Action? BeforeLoad { get; set; }
-        public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(CharacterCreationQualitiesLoadRequest request)
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(OwnerContextStamp owner, CharacterCreationQualitiesLoadRequest request)
         {
-            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
-                "Qualities Core read must run off UI with the original owner lease.");
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 0
+                    && owners.Capture() == owner,
+                "Qualities Core read must run off UI with its exact owner; Core owns the synchronous lease.");
             LoadCalls++;
             BeforeLoad?.Invoke();
-            return inner.Load(request);
+            return inner.Load(owner, request);
         }
-        public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(CharacterCreationQualitiesPreviewRequest request)
-            => inner.Preview(request);
-        public CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> Confirm(CharacterCreationQualitiesConfirmRequest request)
-            => inner.Confirm(request);
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(OwnerContextStamp owner, CharacterCreationQualitiesPreviewRequest request)
+            => inner.Preview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> Confirm(OwnerContextStamp owner, CharacterCreationQualitiesConfirmRequest request)
+            => inner.Confirm(owner, request);
     }
 
     public static async Task RunStartingCashPhonePagesAsync(string contentRoot)
@@ -592,11 +594,476 @@ internal static partial class AfterRunAuthorityHarness
         Require(failures.Count == 0, "Native finalization original-owner regressions:\n" + string.Join("\n", failures));
     }
 
-    public static Task RunSumToTenFinalizationAsync(string contentRoot)
+    public static async Task RunSumToTenFinalizationAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
             throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
-        return RunCreationFinalizationLocalBaselineAsync(contentRoot, CharacterCreationBuildMethods.SumToTen);
+        await VerifyCreationReadAdmissionAsync();
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            await RunPriorityTableAttributesEntryAsync(contentRoot, method);
+            await RunPriorityTableAttributesEntryAsync(contentRoot, method, linked: true);
+        }
+        await RunCreationFinalizationLocalBaselineAsync(contentRoot, CharacterCreationBuildMethods.SumToTen);
+    }
+
+    private static async Task VerifyCreationReadAdmissionAsync()
+    {
+        // The production Android authority uses non-blocking lease admission,
+        // unlike ControlledLinkedOwner. Exercise that exact credential gate;
+        // transport/key/storage dependencies are never invoked by this test.
+        var account = new Chummer.Android.Platform.AndroidAccountLinkService(null!, null!, null!, null!);
+        var owners = new AndroidAccountOwnerContextAccessor(account);
+        var gate = (SemaphoreSlim)typeof(Chummer.Android.Platform.AndroidAccountLinkService)
+            .GetField("_credentialCommitGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(account)!;
+        gate.Wait();
+        try { account.OwnerAuthority.PublishLocal(); }
+        finally { gate.Release(); }
+        var original = owners.Capture();
+        foreach (string scenario in new[] { "contention", "cancel", "aba" })
+        {
+            using var ct = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            gate.Wait();
+            Task<bool> read = Task.Run(() => owners.RunScheduledRead(original, () =>
+            {
+                entered.SetResult();
+                bool admitted = owners.TryAcquire(original, out var lease);
+                using (lease)
+                {
+                    if (admitted)
+                        Require(lease!.Stamp == original && !owners.TryAcquire(original, out _),
+                            "The read changed owner or admitted a nested lease.");
+                    return admitted;
+                }
+            }, ct.Token));
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(await Task.WhenAny(read, Task.Delay(80)) != read,
+                    "A concurrent dashboard read was reported unavailable instead of waiting for its exact owner.");
+                if (scenario == "cancel") ct.Cancel();
+                if (scenario == "aba")
+                {
+                    account.OwnerAuthority.PublishLinked("fixture-install", "fixture-grant", "fixture-owner", DateTimeOffset.UtcNow.AddHours(1));
+                    account.OwnerAuthority.PublishLocal();
+                }
+            }
+            finally { gate.Release(); }
+            try
+            {
+                bool admitted = await read.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(scenario != "cancel" && admitted == (scenario == "contention"),
+                    "Cancellation or an owner transition granted stale read authority: " + scenario);
+            }
+            catch (OperationCanceledException) when (scenario == "cancel" && ct.IsCancellationRequested) { }
+        }
+        // A scope must not leak its blocking behavior to ordinary admission.
+        gate.Wait();
+        try { Require(!owners.TryAcquire(owners.Capture(), out _), "Read admission leaked outside the scheduled read."); }
+        finally { gate.Release(); }
+        Console.WriteLine("PASS actual Android Creation read admission: contention, cancellation, owner ABA, no nested or leaked lease");
+    }
+
+    private static async Task RunPriorityTableAttributesEntryAsync(string contentRoot, string method, bool linked = false)
+    {
+        var owners = new ControlledLinkedOwner();
+        AttributesCommitProbe? probe = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, creationSkills: true, productionCreationOverview: true,
+            attributesDecorator: actual => probe = new(actual));
+        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeAttributes: true);
+        if (linked)
+        {
+            CloneFinalizationRecordFixture(runtime, ContactsOwnerA, before);
+            Require(new FileWorkspaceStore(runtime.StateDirectory).Delete(before.Id, before.ContentRevision).Success,
+                "SETUP: could not remove the synthetic local copy masking an unscoped read.");
+            owners.Set(ContactsOwnerA);
+        }
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        var result = runtime.Coordinator.LoadCreationAttributes();
+        Require(result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
+            && CreationAttributesPhoneAuthority.IsReady(state, runtime.Coordinator.State),
+            "Confirmed prerequisite did not admit actual phone Attributes: " + JsonSerializer.Serialize(new
+            { method, linked, result, runtime.Coordinator.State.ContentRevision, runtime.Coordinator.State.SavedRevision }));
+        var stage = runtime.Coordinator.State.CreationWizard!.Steps.Single(item =>
+            item.StepId == CharacterCreationWizardStepIds.Attributes);
+        Require(BuildPageUiProjection.CanOpenExactTypedCreationStage(stage,
+            CharacterCreationWizardStepIds.Attributes, exactTypedAuthorityReady: true),
+            "Production overview blocks the ready Attributes editor: " + JsonSerializer.Serialize(new { method, stage }));
+        var coldStore = new FileWorkspaceStore(runtime.StateDirectory);
+        var cold = linked ? coldStore.Get(owners.Current, runtime.Id) : coldStore.Get(runtime.Id);
+        Require(FinalizationDocumentDigest(cold.Value!)
+            == FinalizationDocumentDigest(before), "Read-only Attributes admission changed the saved draft.");
+        var coordinator = runtime.Coordinator;
+        var loaded = result.Value!;
+        CharacterCreationAttributeAllocation[] allocations = loaded.Attributes
+            .Select(item => new CharacterCreationAttributeAllocation(item.AttributeId, item.AttributeId == "BOD" ? 1 : 0, 0))
+            .ToArray();
+        var preview = coordinator.PreviewCreationAttributes(loaded.Binding, allocations).Value!;
+        Require(preview is { CanConfirm: true } && coordinator.IsCreationAttributesPreviewCurrent(preview),
+            "Real allocation preview was not admitted.");
+        Require((await coordinator.ConfirmCreationAttributesAsync(preview with { }, allocations)).Receipt is null,
+            "A copied, unissued preview became actionable.");
+        Require((await coordinator.ConfirmCreationAttributesAsync(preview, [new("BOD", 2, 0)])).Receipt is null,
+            "Confirmation accepted allocations different from the reviewed values.");
+        OwnerScope originalOwner = owners.Current;
+        WorkspaceStoredDocument ReadSaved()
+        {
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            return (originalOwner.IsLocalSingleUser ? store.Get(runtime.Id) : store.Get(originalOwner, runtime.Id)).Value!;
+        }
+        owners.Set(ContactsOwnerB);
+        owners.Set(originalOwner);
+        Require(!coordinator.IsCreationAttributesStateCurrent(loaded)
+            && !coordinator.CanDisplayCreationAttributesPreview(preview)
+            && coordinator.RevalidateCreationAttributes(loaded).Value is null
+            && (await coordinator.ConfirmCreationAttributesAsync(preview, allocations)).Receipt is null,
+            "Owner A→B→A revived a retained Attributes page or preview.");
+        Require(FinalizationDocumentDigest(ReadSaved())
+            == FinalizationDocumentDigest(before), "Rejected allocation attempts changed the workspace.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        loaded = coordinator.LoadCreationAttributes().Value!;
+        preview = coordinator.PreviewCreationAttributes(loaded.Binding, allocations).Value!;
+        var applied = await coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+        Require(applied.Outcome == CharacterCreationFoundationOutcomes.Success && applied.Receipt is not null
+            && applied.Blockers.Count == 0 && coordinator.IsCreationAttributesReceiptCurrent(applied.Receipt),
+            "Real owner-bound Attributes confirmation failed: " + JsonSerializer.Serialize(applied));
+        var saved = ReadSaved();
+        Require(saved.ContentRevision == before.ContentRevision + 1 && saved.ContentRevision == saved.SavedRevision
+            && saved.Document.Content == before.Document.Content,
+            "Attributes must save one pending draft, not mutate live XML or duplicate revisions.");
+        Require((await coordinator.ConfirmCreationAttributesAsync(preview, allocations)).Receipt is null,
+            "The old confirmation was replayed after a successful save.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+        var reopened = coordinator.LoadCreationAttributes().Value!;
+        Require(reopened.PendingDraft is not null && reopened.Attributes.Single(item => item.AttributeId == "BOD").Current == 2
+            && coordinator.IsCreationAttributesStateCurrent(reopened) && owners.ActiveLeases == 0,
+            "Saved allocation did not reopen under fresh owner authority.");
+        if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
+            "Owner-bound allocation created a hidden legacy-local record.");
+        using var canceled = new CancellationTokenSource();
+        probe!.AfterConfirm = canceled.Cancel;
+        var changed = reopened.Attributes.Select(item => new CharacterCreationAttributeAllocation(
+            item.AttributeId, item.AttributeId == "BOD" ? 2 : 0, 0)).ToArray();
+        var next = coordinator.PreviewCreationAttributes(reopened.Binding, changed).Value!;
+        var interrupted = await coordinator.ConfirmCreationAttributesAsync(next, changed, canceled.Token);
+        Require(interrupted is { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: not null, RefreshedState: null }
+            && interrupted.Blockers.Contains("creation-attributes-post-commit-refresh-required"),
+            "Cancellation after durable commit hid the saved receipt or claimed a refreshed page.");
+        Require((await coordinator.ConfirmCreationAttributesAsync(next, changed)).Receipt is null && probe.ConfirmCalls == 2,
+            "An interrupted post-commit refresh allowed mutation replay.");
+        var interruptedSaved = ReadSaved();
+        Require(interruptedSaved.ContentRevision == saved.ContentRevision + 1,
+            "Cancellation after commit lost or duplicated the saved allocation.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, interruptedSaved);
+        Require(coordinator.LoadCreationAttributes().Value!.Attributes.Single(item => item.AttributeId == "BOD").Current == 3,
+            "The committed allocation did not recover after canceled refresh.");
+        Console.WriteLine("PRIORITY_TABLE_ATTRIBUTES_ENTRY " + method + " linked=" + linked
+            + " load/preview/save/reopen, forged inputs, owner ABA, replay and post-commit cancellation passed");
+        await VerifyOwnerBoundSkillsAfterAttributesAsync(runtime, owners, linked, method);
+    }
+
+    private static async Task VerifyOwnerBoundSkillsAfterAttributesAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, bool linked, string method)
+    {
+        var coordinator = runtime.Coordinator;
+        var owner = owners.Current;
+        WorkspaceStoredDocument ReadSaved()
+        {
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            return (owner.IsLocalSingleUser ? store.Get(runtime.Id) : store.Get(owner, runtime.Id)).Value!;
+        }
+        var before = ReadSaved();
+        var loaded = coordinator.LoadCreationSkills();
+        Require(loaded.Value is { CanEdit: true } && CreationSkillsPhoneAuthority.IsReady(loaded.Value, coordinator.State),
+            "Actual phone Skills unavailable after confirmed Attributes: " + JsonSerializer.Serialize(loaded));
+        var state = loaded.Value!;
+        var language = state.Authority.KnowledgeSkills.First(x => x.CanBeNativeLanguage);
+        var running = CreationSkillsPhoneAuthority.AvailableActiveSkills(state).Single(x => x.Name == "Running");
+        CharacterCreationSkillAllocation[] allocations =
+        [new(language.SourceSkillId, CharacterCreationSkillKinds.Knowledge, null, null, true),
+         new(running.SourceSkillId, CharacterCreationSkillKinds.Active, 1, null, false)];
+        var preview = coordinator.PreviewCreationSkills(state.Binding, allocations, []).Value!;
+        Require(preview is { CanConfirm: true }, "Native Skills did not admit a legal real-source choice.");
+        string key = CreationSkillsPhoneAuthority.ComputeIdempotencyKey(preview, allocations, []);
+        Require((await coordinator.ConfirmCreationSkillsAsync(preview with { }, allocations, [], key)).Receipt is null,
+            "Skills accepted a copied unissued preview.");
+        Require((await coordinator.ConfirmCreationSkillsAsync(preview, allocations, [], key + "altered")).Receipt is null,
+            "Skills accepted a key different from its exact reviewed command.");
+        owners.Set(ContactsOwnerB);
+        owners.Set(owner);
+        Require(!coordinator.IsCreationSkillsStateCurrent(state)
+            && !coordinator.CanDisplayCreationSkillsPreview(preview)
+            && coordinator.RevalidateCreationSkills(state).Value is null
+            && (await coordinator.ConfirmCreationSkillsAsync(preview, allocations, [], key)).Receipt is null,
+            "Owner ABA revived an old Skills page or operation.");
+        Require(FinalizationDocumentDigest(before) == FinalizationDocumentDigest(ReadSaved()),
+            "Rejected Skills operations changed saved data.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        state = coordinator.LoadCreationSkills().Value!;
+        preview = coordinator.PreviewCreationSkills(state.Binding, allocations, []).Value!;
+        key = CreationSkillsPhoneAuthority.ComputeIdempotencyKey(preview, allocations, []);
+        var saved = await coordinator.ConfirmCreationSkillsAsync(preview, allocations, [], key);
+        Require(saved is { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: not null,
+            RefreshedState: not null, Blockers.Count: 0 }, "Skills confirmation failed: " + JsonSerializer.Serialize(saved));
+        Require(coordinator.IsCreationSkillsReceiptCurrent(saved.Receipt!)
+            && coordinator.IsCreationSkillsStateCurrent(saved.RefreshedState!), "Fresh Skills receipt lost its original owner.");
+        Require((await coordinator.ConfirmCreationSkillsAsync(preview, allocations, [], key)).Receipt is null,
+            "Old Skills confirmation was replayed.");
+        var after = ReadSaved();
+        Require(after.ContentRevision == before.ContentRevision + 1 && after.SavedRevision == after.ContentRevision
+            && after.Document.Content == before.Document.Content, "Skills lost checkpoint atomicity or changed live XML.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, after);
+        var reopened = coordinator.LoadCreationSkills().Value!;
+        Require(reopened.Skills.Single(x => x.SourceSkillId == running.SourceSkillId).Rating == 1
+            && reopened.Skills.Single(x => x.SourceSkillId == language.SourceSkillId).IsNativeLanguage
+            && coordinator.IsCreationSkillsStateCurrent(reopened) && owners.ActiveLeases == 0,
+            "Actual Skills did not survive cold-store reopen.");
+        if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
+            "Skills created a hidden local copy.");
+        Console.WriteLine("PRIORITY_TABLE_SKILLS_ENTRY " + method + " linked=" + linked
+            + " actual preview/save/cold-reopen, forged inputs, owner ABA, no hidden local copy and no replay passed");
+        await VerifyOwnerBoundQualitiesAfterSkillsAsync(runtime, owners, linked, method);
+    }
+
+    private static async Task VerifyOwnerBoundQualitiesAfterSkillsAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, bool linked, string method)
+    {
+        var coordinator = runtime.Coordinator;
+        var owner = owners.Current;
+        WorkspaceStoredDocument ReadSaved()
+        {
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            return (owner.IsLocalSingleUser ? store.Get(runtime.Id) : store.Get(owner, runtime.Id)).Value!;
+        }
+        var before = ReadSaved();
+        var original = coordinator.State;
+        Require(original.CreationQualities is { } projected && CreationQualitiesPhoneAuthority.IsReady(projected, original),
+            "Production overview did not expose owner-only Qualities.");
+        var loaded = await coordinator.LoadCreationQualitiesForDisplayAsync(original, CancellationToken.None);
+        Require(loaded.Value is { CanEdit: true }, "Owner-only Qualities unavailable: " + JsonSerializer.Serialize(loaded));
+        var preview = coordinator.PreviewCreationQualities(loaded.Value!.Binding, [], original).Value!;
+        Require(preview is { CanConfirm: true }, "An empty valid Qualities draft was blocked.");
+        var reviewed = CharacterCreationQualitiesCheckpoint.CreateReviewed(preview, [], Guid.NewGuid());
+        var checkpoints = CharacterCreationQualitiesCheckpointStore.CreateDefault(original.DisplayOwnerContext,
+            coordinator.IsCreationQualitiesOwnerCurrent);
+        Require(checkpoints.TryCreate(reviewed, out reviewed, out var blocker), blocker);
+        Require(checkpoints.TryBeginApply(CharacterCreationQualitiesCheckpointCas.From(reviewed), out var applying, out blocker), blocker);
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(coordinator)!;
+        await gate.WaitAsync();
+        Task<CreationQualitiesPhoneConfirmResult> pending;
+        try
+        {
+            pending = coordinator.ConfirmCreationQualitiesAsync(applying, display: original);
+            owners.Set(ContactsOwnerB);
+            var other = CharacterCreationQualitiesCheckpointStore.CreateDefault(owners.Capture(),
+                stamp => stamp == owners.Capture());
+            Require(!other.TryRead(out _, out blocker) && string.IsNullOrEmpty(blocker),
+                "Another account could see the original Qualities checkpoint.");
+            owners.Set(owner);
+        }
+        finally { gate.Release(); }
+        Require((await pending).Receipt is null && coordinator.LoadCreationQualities(original).Value is null
+            && coordinator.PreviewCreationQualities(preview.Binding, [], original).Value is null,
+            "Queued confirmation or preview survived owner ABA.");
+        Require(FinalizationDocumentDigest(before) == FinalizationDocumentDigest(ReadSaved()),
+            "Rejected Qualities command changed the stored runner.");
+        Require(!checkpoints.TryRead(out _, out blocker) && !string.IsNullOrEmpty(blocker),
+            "Old checkpoint accessor survived owner ABA.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        original = coordinator.State;
+        var freshStore = CharacterCreationQualitiesCheckpointStore.CreateDefault(original.DisplayOwnerContext,
+            coordinator.IsCreationQualitiesOwnerCurrent);
+        Require(freshStore.TryRead(out var recovered, out blocker) && recovered.CheckpointDigest == applying.CheckpointDigest,
+            "A new display of the same account could not recover the exact applying command.");
+        var saved = await coordinator.ConfirmCreationQualitiesAsync(recovered, display: original);
+        Require(saved is { Outcome: CreationQualitiesPhoneOutcomes.Applied, MutationOutcomeKnown: true,
+            Receipt: not null, RefreshedState: not null, Blockers.Count: 0 },
+            "Owner-bound Qualities save failed: " + JsonSerializer.Serialize(saved));
+        Require(freshStore.TryRecordApplied(CharacterCreationQualitiesCheckpointCas.From(recovered), saved.Receipt!,
+            out var applied, out blocker), blocker);
+        var after = ReadSaved();
+        Require(after.ContentRevision == before.ContentRevision + 1 && after.SavedRevision == after.ContentRevision
+            && after.Document.Content == before.Document.Content && owners.ActiveLeases == 0,
+            "Qualities did not make exactly one auxiliary checkpoint.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, after);
+        var cold = coordinator.LoadCreationQualities().Value!;
+        Require(CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(recovered, saved.Receipt!, cold),
+            "Qualities receipt did not survive cold-store reopen.");
+        var replay = await coordinator.ConfirmCreationQualitiesAsync(recovered, display: coordinator.State);
+        Require(replay.Receipt?.ReceiptDigest == saved.Receipt!.ReceiptDigest
+            && FinalizationDocumentDigest(after) == FinalizationDocumentDigest(ReadSaved()),
+            "Exact interrupted-command recovery duplicated the Qualities mutation.");
+        Require(freshStore.TryAcknowledgeApplied(CharacterCreationQualitiesCheckpointCas.From(applied), out blocker), blocker);
+        if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
+            "Qualities created a hidden legacy workspace.");
+        Console.WriteLine("PRIORITY_TABLE_QUALITIES_ENTRY " + method + " linked=" + linked
+            + " production projection, save/cold-reopen, queued ABA rejection, scoped checkpoint and idempotent recovery passed");
+        await VerifyOwnerBoundPurchasesAsync(runtime, owners, linked, method);
+    }
+
+
+    private static async Task VerifyOwnerBoundPurchasesAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, bool linked, string method)
+    {
+        var coordinator = runtime.Coordinator;
+        var owner = owners.Current;
+        WorkspaceStoredDocument ReadSaved()
+        {
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            return (owner.IsLocalSingleUser ? store.Get(runtime.Id) : store.Get(owner, runtime.Id)).Value!;
+        }
+        var before = ReadSaved();
+        var original = coordinator.State;
+        var resourceProbe = new ResourcesCommitProbe(runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+        var resources = new CharacterCreationResourcesInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(), resourceProbe);
+        var state = resources.Load(original).State!;
+        Require(state is not null && CreationResourcesPhoneAuthority.IsReady(state, original),
+            "Owner-only Resources are unavailable.");
+        Require(new CharacterCreationResourcesInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationResourcesService>()).Load(original).State is null,
+            "Scoped display silently used a legacy-only Resources presenter.");
+        var option = state!.Options.Single(item => item.KarmaInvestment == 1 && item.IsEnabled);
+        var prepared = resources.Prepare(original, option.OptionId).PreparedPreview!;
+        Require(prepared is not null && CreationResourcesPhoneAuthority.PreparedMatches(prepared, state, original),
+            "Resources did not prepare an exact affordable conversion.");
+        Require(resources.Confirm(original, new(prepared! with { }, prepared!.PreviewDigest, prepared.IdempotencyKey, true)).Receipt is null
+            && resources.Confirm(original, new(prepared, prepared.PreviewDigest, prepared.IdempotencyKey, false)).Receipt is null
+            && resources.Confirm(original, new(prepared, "sha256:" + new string('0', 64), prepared.IdempotencyKey, true)).Receipt is null,
+            "Resources accepted a copied envelope, missing consent or forged digest.");
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(coordinator)!;
+        await gate.WaitAsync();
+        Task<CharacterCreationResourcesInteractionConfirmResult> queued;
+        try
+        {
+            queued = coordinator.ConfirmCreationResourcesPurchaseAsync(resources, original, prepared);
+            owners.Set(ContactsOwnerB); owners.Set(owner);
+        }
+        finally { gate.Release(); }
+        Require((await queued).Receipt is null && !coordinator.CanDisplayCreationPurchase(original)
+            && resources.Load(original).State is null
+            && FinalizationDocumentDigest(before) == FinalizationDocumentDigest(ReadSaved()),
+            "Resources crossed a queued owner ABA or changed the saved runner.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        original = coordinator.State;
+        prepared = resources.Prepare(original, option.OptionId).PreparedPreview!;
+        using var canceled = new CancellationTokenSource();
+        resourceProbe.AfterConfirm = () => { resourceProbe.FailNextLoad = true; canceled.Cancel(); };
+        var saved = await coordinator.ConfirmCreationResourcesPurchaseAsync(resources, original, prepared, canceled.Token);
+        Require(saved is { Outcome: CharacterCreationResourcesOutcomes.Applied, Receipt: not null, RefreshedState: null }
+            && saved.Blockers.Contains(CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired),
+            "Resources postcommit cancellation hid the durable receipt: " + JsonSerializer.Serialize(saved));
+        Require((await coordinator.ConfirmCreationResourcesPurchaseAsync(resources, original, prepared)).Receipt is null
+            && resourceProbe.ConfirmCalls == 1, "Resources canceled refresh allowed another confirm.");
+        var afterResources = ReadSaved();
+        Require(afterResources.ContentRevision == before.ContentRevision + 1
+            && afterResources.Document.Content == before.Document.Content && owners.ActiveLeases == 0,
+            "Resources checkpoint was lost, duplicated or mutated live character XML.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, afterResources);
+        original = coordinator.State;
+        var coldResources = new CharacterCreationResourcesInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+        Require(coldResources.LookupReceipt(original, prepared.IdempotencyKey).Receipt?.ReceiptDigest == saved.Receipt!.ReceiptDigest
+            && CreationResourcesPhoneAuthority.RefreshedStateMatches(prepared, saved.Receipt!, coldResources.Load(original).State!),
+            "Resources receipt/draft did not survive cold-store reopen.");
+
+        var gear = new CharacterCreationGearInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
+        var gearLoad = await coordinator.LoadCreationGearForDisplayAsync(gear, original, default);
+        Require(gearLoad.Ready && gearLoad.Load.State is not null, "Owner-only Gear catalog unavailable.");
+        var gearState = gearLoad.Load.State!;
+        var flashlight = gearState.Authority.Options.First(item => item.Name == "Flashlight" && item.IsSelectable);
+        CharacterCreationGearSelection[] basket = [new(flashlight.OptionId, 1)];
+        var gearPreview = gear.Prepare(original, basket).PreparedPreview!;
+        Require(gearPreview is not null && gearPreview.Preview.BudgetAfter.BasketCost > 0
+            && CreationGearPhoneAuthority.PreparedMatches(gearPreview, gearState, original), "Actual Gear purchase unavailable.");
+        Require(gear.Confirm(original, new(gearPreview! with { }, gearPreview!.Preview.PreviewDigest, gearPreview.IdempotencyKey, true)).Receipt is null
+            && gear.Confirm(original, new(gearPreview, gearPreview.Preview.PreviewDigest, gearPreview.IdempotencyKey, false)).Receipt is null,
+            "Gear accepted an unissued envelope or missing consent.");
+        await gate.WaitAsync();
+        Task<CharacterCreationGearInteractionConfirmResult> gearQueued;
+        try
+        {
+            gearQueued = coordinator.ConfirmCreationGearPurchaseAsync(gear, original, gearPreview);
+            owners.Set(ContactsOwnerB); owners.Set(owner);
+        }
+        finally { gate.Release(); }
+        Require((await gearQueued).Receipt is null && gear.Load(original).State is null
+            && FinalizationDocumentDigest(afterResources) == FinalizationDocumentDigest(ReadSaved()), "Gear crossed an owner ABA.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, afterResources);
+        original = coordinator.State;
+        gearPreview = gear.Prepare(original, basket).PreparedPreview!;
+        var purchased = await coordinator.ConfirmCreationGearPurchaseAsync(gear, original, gearPreview);
+        Require(purchased is { Outcome: CharacterCreationGearOutcomes.Applied, Receipt: not null, RefreshedState: not null, Blockers.Count: 0 },
+            "Native Gear purchase failed: " + JsonSerializer.Serialize(purchased));
+        var after = ReadSaved();
+        Require(after.ContentRevision == afterResources.ContentRevision + 1 && after.SavedRevision == after.ContentRevision
+            && after.Document.Content == before.Document.Content && owners.ActiveLeases == 0,
+            "Gear purchase did not make exactly one auxiliary checkpoint.");
+        Require((await coordinator.ConfirmCreationGearPurchaseAsync(gear, original, gearPreview)).Receipt is null
+            && FinalizationDocumentDigest(after) == FinalizationDocumentDigest(ReadSaved()), "Gear confirmation replayed.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, after);
+        var coldGear = new CharacterCreationGearInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
+        Require(coldGear.LookupReceipt(coordinator.State, gearPreview.IdempotencyKey).Receipt?.ReceiptDigest
+                == purchased.Receipt!.ReceiptDigest
+            && CreationGearPhoneAuthority.RefreshedStateMatches(gearPreview, purchased.Receipt!, coldGear.Load(coordinator.State).State!),
+            "Purchased Gear did not cold-reopen with its exact receipt.");
+        if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
+            "Purchases created a hidden legacy runner.");
+        Console.WriteLine("PRIORITY_TABLE_PURCHASES " + method + " linked=" + linked
+            + " conversion, real purchase, queued ABA, forged preview, save/cold reopen and postcommit cancellation passed");
+    }
+
+    private sealed class ResourcesCommitProbe(IOwnerBoundCharacterCreationResourcesService inner)
+        : IOwnerBoundCharacterCreationResourcesService
+    {
+        public Action? AfterConfirm { get; set; }
+        public bool FailNextLoad { get; set; }
+        public int ConfirmCalls { get; private set; }
+        public CharacterCreationResourcesResult<CharacterCreationResourcesState> Load(OwnerContextStamp owner,
+            CharacterCreationResourcesLoadRequest request)
+        {
+            if (FailNextLoad) { FailNextLoad = false; throw new IOException("Injected postcommit read failure."); }
+            return inner.Load(owner, request);
+        }
+        public CharacterCreationResourcesResult<CharacterCreationResourcesPreview> Preview(OwnerContextStamp owner,
+            CharacterCreationResourcesPreviewRequest request) => inner.Preview(owner, request);
+        public CharacterCreationResourcesResult<CharacterCreationResourcesReceipt> Confirm(OwnerContextStamp owner,
+            CharacterCreationResourcesConfirmRequest request)
+        {
+            ConfirmCalls++;
+            var result = inner.Confirm(owner, request);
+            AfterConfirm?.Invoke();
+            return result;
+        }
+        public CharacterCreationResourcesResult<CharacterCreationResourcesReceipt> LookupReceipt(OwnerContextStamp owner,
+            CharacterCreationResourcesReceiptLookupRequest request) => inner.LookupReceipt(owner, request);
+    }
+    private sealed class AttributesCommitProbe(IOwnerBoundCharacterCreationAttributesService inner)
+        : IOwnerBoundCharacterCreationAttributesService
+    {
+        public Action? AfterConfirm { get; set; }
+        public int ConfirmCalls { get; private set; }
+        public CharacterCreationFoundationResult<CharacterCreationAttributesState> Load(OwnerContextStamp owner,
+            CharacterCreationAttributesLoadRequest request) => inner.Load(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Preview(OwnerContextStamp owner,
+            CharacterCreationAttributesPreviewRequest request) => inner.Preview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationAttributesReceipt> Confirm(OwnerContextStamp owner,
+            CharacterCreationAttributesConfirmRequest request)
+        {
+            ConfirmCalls++;
+            var result = inner.Confirm(owner, request);
+            AfterConfirm?.Invoke();
+            return result;
+        }
     }
 
     private static async Task RunCreationFinalizationLocalBaselineAsync(string contentRoot,
@@ -1005,7 +1472,8 @@ internal static partial class AfterRunAuthorityHarness
         { stored.Id, stored.Document, stored.ContentRevision, stored.SavedRevision }))).ToLowerInvariant();
 
     private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
-        bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority)
+        bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
+        bool stopBeforeAttributes = false)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -1054,6 +1522,8 @@ internal static partial class AfterRunAuthorityHarness
             { HeritageSelectionId = human.SelectionId, TalentSelectionId = mundane.SelectionId });
         Require(prerequisiteReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));
+        if (stopBeforeAttributes)
+            return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var attributes = services.GetRequiredService<ICharacterCreationAttributesService>();
         var attributePreview = attributes.Preview(new(attributes.Load(new(runtime.Id)).Value!.Binding, [])).Value!;
         var attributeReceipt = attributes.Confirm(new(attributePreview.Binding, [], attributePreview.PreviewDigest, true));
