@@ -172,6 +172,28 @@ paid-quality save/restart sequence with no ANR events observed in that boot.
 This supports a scheduling contribution, not a claim that all product latency
 is resolved or physical-device behavior is proven. Failure evidence is retained.
 
+## Follow-up: quality catalog readability
+
+The catalog no longer puts full authority/runtime hashes ahead of its budgets.
+Exact revision and digest values retain their automation IDs behind a collapsed
+technical-details disclosure. Detached buttons cannot toggle a replacement view.
+The catalog and configure page explain a disabled source in ordinary language;
+other unavailable reasons use a conservative generic message. Admission, costs,
+owner checks and persistence are unchanged. Intro, budget and save-boundary copy
+is shorter in English, German and Spanish.
+
+Local Debug APK SHA-256:
+`3790728e3df2b036944bd69d4447174310328708fad031cf1b610b11ca5dbaf7`.
+The build passed with zero warnings/errors; twelve focused source/localization
+regressions and the private-key hygiene check passed. On the owned API 36 x64
+emulator at 150% font scale, update/cold launch restored revision 6 with one
+selected quality, four Karma spent and 21 remaining. The disclosure opened and
+closed, exposing the exact digest anchors only when opened. The disabled
+360-degree Eyesight entry showed the source explanation and its Add button
+remained disabled. Workspace bytes stayed unchanged at SHA-256
+`d30910710817b92a14879648dd4ccd11d1c8cb3a40f1bf8eeffa85e07e021090`.
+This is a display-only follow-up, not a rerun of every method or a Play release.
+
 ## Remaining limitations
 
 - Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded

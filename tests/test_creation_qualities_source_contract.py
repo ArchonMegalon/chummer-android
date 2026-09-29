@@ -1,4 +1,5 @@
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -7,6 +8,42 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_catalog_hides_diagnostics_without_changing_admission(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        catalog = page[:page.index("public sealed class CreationQualityConfigurePage")]
+        refresh = catalog[catalog.index("protected override void Refresh()"):catalog.index("private void AddBinding(")]
+        self.assertIn("_technicalDetails.Clear();", refresh)
+        self.assertIn("_technicalDetails.IsVisible = false;", refresh)
+        self.assertLess(refresh.index("AddReview(state, checkpointOwnsLane);"),
+                        refresh.index("AddTechnicalDetailsDisclosure();"))
+        binding = catalog[catalog.index("private void AddBinding("):catalog.index("private void AddBudgets(")]
+        self.assertIn("_technicalDetails.Add(binding);", binding)
+        self.assertNotIn("_body.Add(", binding)
+        digest = catalog[catalog.index("private void AddDigest("):catalog.index("private void AddTechnicalDetailsDisclosure(")]
+        self.assertIn("_technicalDetails.Add(label);", digest)
+        self.assertIn("label.AutomationId = automationId;", digest)
+        self.assertIn("label.LineBreakMode = LineBreakMode.CharacterWrap;", digest)
+        self.assertIn("if (!ReferenceEquals(toggle.Parent, _body))", catalog)
+        self.assertIn("CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)", catalog)
+        self.assertIn("enabled: !checkpointOwnsLane", catalog)
+        self.assertIn("UnavailableReason(option.DisableReasonKey)", catalog)
+        self.assertIn("CreationQualitiesPage.UnavailableReason(_option.DisableReasonKey)", page)
+        self.assertIn("toggle.IsEnabled = exact;", page)
+
+    def test_catalog_readability_copy_is_translated_and_nontechnical(self) -> None:
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            rows = ET.parse(path).getroot().findall("data")
+            copy = {row.attrib["name"]: row.findtext("value") for row in rows}
+            self.assertEqual(len(rows), len(copy), "Duplicate localization key")
+            for key in ("ShowDetails", "HideDetails", "SourceDisabled", "Unavailable",
+                        "Intro", "CoreLedgers", "FinalizationBoundary"):
+                value = copy[f"Qualities.{key}"]
+                self.assertTrue(value)
+                self.assertNotIn("creation-qualities-", value)
+                self.assertNotIn("Core", value)
+                self.assertNotIn("authority", value)
+
     def test_acknowledged_receipt_returns_through_phone_shell(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         action = page[page.index("private async Task AcknowledgeAsync()") :]
