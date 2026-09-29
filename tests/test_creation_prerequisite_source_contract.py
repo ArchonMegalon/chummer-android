@@ -13510,7 +13510,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         dashboard = source[dashboard_start:route_start]
         route_end = source.index("private void AddFinalizationReviewAction(", route_start)
         route = source[route_start:route_end]
-        stages_start = source.index("private void AddWizardStages(")
+        stages_start = source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(")
         stages_end = source.index("private void AddCompletionBlockers(", stages_start)
         stages = source[stages_start:stages_end]
 
@@ -13546,7 +13546,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         dashboard_start = source.index("private void AddCreationWizardDashboard()")
         dashboard_end = source.index("private void AddCreationMethodRoute(", dashboard_start)
         dashboard = source[dashboard_start:dashboard_end]
-        stages_start = source.index("private void AddWizardStages(")
+        stages_start = source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(")
         stages_end = source.index("private void AddCompletionBlockers(", stages_start)
         stages = source[stages_start:stages_end]
 
@@ -16577,7 +16577,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("private void AddFinalizationReviewAction(")
         ]
         stages = source[
-            source.index("private void AddWizardStages(") :
+            source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(") :
             source.index("private void AddCompletionBlockers(")
         ]
         next_steps = source[

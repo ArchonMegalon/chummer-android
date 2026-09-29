@@ -12,6 +12,8 @@ public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
 
+internal sealed record CreationBudgetRoute(string Title, string Detail, bool CanOpen, Func<Task> Open);
+
 /// <summary>
 /// One synchronous dashboard render only. Full packet checks are shared by its
 /// budget cards, stage cards and Continue links, never retained across refreshes
@@ -1316,8 +1318,8 @@ public sealed class BuildPage : NativePageBase
             HasAuthoritativeQualities, HasAuthoritativeMagicResonance,
             () => HasAuthoritativeCreationContacts(creationContacts),
             () => HasAuthoritativeResources(creationResources));
-        AddBudgetRibbon(snapshot, attributes, skills, readiness);
-        AddWizardStages(
+        int budgetIndex = _body.Count;
+        var budgetRoutes = AddWizardStages(
             snapshot,
             projection,
             prerequisite,
@@ -1325,6 +1327,7 @@ public sealed class BuildPage : NativePageBase
             skills,
             creationContacts,
             creationResources, readiness);
+        AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex);
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(
             snapshot,
@@ -2223,12 +2226,17 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationWizardSnapshot snapshot,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills,
-        CreationDashboardRenderReadiness readiness)
+        CreationDashboardRenderReadiness readiness,
+        IReadOnlyDictionary<string, CreationBudgetRoute>? routes = null,
+        CreationDashboardAuthorityProjection? projection = null,
+        int? insertAt = null)
     {
-        _body.Add(NativeTheme.Eyebrow("Budgets"));
+        int index = insertAt ?? _body.Count;
+        var prerequisite = projection?.Prerequisite;
+        _body.Insert(index++, NativeTheme.Eyebrow("Budgets"));
         if (snapshot.Budgets.Count == 0)
         {
-            _body.Add(NativeTheme.Body(
+            _body.Insert(index, NativeTheme.Body(
                 "No authoritative budgets are available. Chummer will not invent a remainder.",
                 NativeTheme.Danger));
             return;
@@ -2267,35 +2275,79 @@ public sealed class BuildPage : NativePageBase
                 CharacterCreationBudgetIds.Karma
                     when readiness.Attributes && attributes!.Value is { } attributeState
                     => attributeState.CreationKarmaBudget,
+                CharacterCreationBudgetIds.Resources
+                    when readiness.Resources && projection?.Resources?.State is { } resourceState
+                    => projectedBudget with
+                    {
+                        Total = resourceState.Budget.TotalStartingNuyen,
+                        Used = resourceState.Budget.KnownPurchaseCost,
+                        Remaining = resourceState.Budget.RemainingNuyen,
+                        IsExact = resourceState.Budget.IsExact,
+                        Blockers = resourceState.Budget.Blockers
+                    },
                 _ => projectedBudget
             };
             string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
-            VerticalStackLayout card = new()
-            {
-                MinimumWidthRequest = 164,
-                Spacing = 5
-            };
-            card.Add(NativeTheme.Eyebrow(budget.Label));
-            card.Add(NativeTheme.Title(
-                budget.IsExact
-                    ? $"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left"
-                    : "Not exact",
-                20));
-            card.Add(NativeTheme.Body(
-                budget.IsExact
+            string amount = budget.IsExact
+                ? $"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left"
+                : CreationAllocationStrings.Get("Common.NotExact", "Not exact");
+            string detail = budget.IsExact
                     ? $"{budget.Used.ToString("0.##", CultureInfo.InvariantCulture)} / "
                         + $"{budget.Total.ToString("0.##", CultureInfo.InvariantCulture)} {unit}"
-                    : budget.Blockers.FirstOrDefault() ?? "Rules authority unavailable",
-                budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
-            Border budgetCard = NativeTheme.Card(card, new Thickness(14));
+                    : CreationAllocationStrings.Get("Budget.NeedsChoices",
+                        "The budget cannot be calculated from the current choices yet.");
+            // Use the SAME admitted destination as the corresponding wizard step.
+            // In particular, the generic snapshot's budget can be inexact while
+            // its typed editor is available. Never turn IsExact into edit authority.
+            string? stepId = snapshot.Steps.FirstOrDefault(stage =>
+                stage.BudgetIds.Contains(projectedBudget.BudgetId, StringComparer.Ordinal))?.StepId;
+            if (projectedBudget.BudgetId == CharacterCreationBudgetIds.SpellsFormsPrograms
+                || projectedBudget.BudgetId is CharacterCreationMagicResonancePresentationBudgetIds.Tradition
+                    or CharacterCreationMagicResonancePresentationBudgetIds.Stream
+                    or CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints
+                    or CharacterCreationMagicResonancePresentationBudgetIds.Spells
+                    or CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms)
+                stepId = CharacterCreationWizardStepIds.MagicResonance;
+            CreationBudgetRoute? route = stepId is not null && routes is not null
+                && routes.TryGetValue(stepId, out var found) ? found : null;
+            if (route?.CanOpen != true && HasAuthoritativePrerequisiteOptions(prerequisite)
+                && (!prerequisite!.Value!.CanEnterAttributes || prerequisite.Value.RequiresMetatypeAttributeAdjustment))
+                route = new CreationBudgetRoute(
+                    CreationAllocationStrings.Get("Budget.Prerequisites", "Priorities and metatype"),
+                    string.Empty, true, () => OpenCreationPrerequisiteAsync(prerequisite.Value));
+            string action = route?.CanOpen == true
+                ? CreationAllocationStrings.Format("Budget.Open", "Review {0} ›", route.Title)
+                : CreationAllocationStrings.Get("Budget.Check", "Check what is missing ›");
+            var displayed = Coordinator.State;
+            Border budgetCard = CreationNavigationRow($"{budget.Label} · {amount}",
+                $"{detail}\n{action}", async () =>
+                {
+                    if (displayed.Profile?.Created != false
+                        || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed)) return;
+                    if (route?.CanOpen == true)
+                        await route.Open();
+                    else
+                    {
+                        // Read-only recovery, not fabricated points or an automatic
+                        // allocation. Do not cancel projections already in flight.
+                        if (_creationProjection?.Progress.HasLoading == true)
+                            RequestCreationAuthorityRefresh();
+                        else RetryCreationProjection();
+                        await DisplayAlertAsync(budget.Label,
+                            CreationAllocationStrings.Get("Budget.Refreshing",
+                                "Checking this budget again. Finish priorities and metatype first; then review the matching creation step. No points or choices have been changed.")
+                            + (route is { Detail.Length: > 0 } ? $"\n\n{route.Detail}" : string.Empty), "OK");
+                    }
+                }, enabled: true, automationId: $"creation-budget-open-{Token(projectedBudget.BudgetId)}");
+            budgetCard.MinimumWidthRequest = 164;
             budgetCard.Margin = new Thickness(0, 0, 8, 10);
-            budgetCard.AutomationId = $"creation-budget-{Token(budget.BudgetId)}";
+            budgetCard.AutomationId = $"creation-budget-{Token(projectedBudget.BudgetId)}";
             ribbon.Add(budgetCard);
         }
-        _body.Add(ribbon);
+        _body.Insert(index, ribbon);
     }
 
-    private void AddWizardStages(
+    private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(
         CharacterCreationWizardSnapshot snapshot,
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
@@ -2305,6 +2357,7 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationResourcesInteractionLoadResult? creationResources,
         CreationDashboardRenderReadiness readiness)
     {
+        Dictionary<string, CreationBudgetRoute> routes = new(StringComparer.Ordinal);
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
@@ -2458,6 +2511,7 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
+            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected);
             Border row = CreationNavigationRow(
                 stage.Label,
                 detail,
@@ -2466,6 +2520,7 @@ public sealed class BuildPage : NativePageBase
                 automationId: $"creation-stage-{Token(stage.StepId)}");
             _body.Add(row);
         }
+        return routes;
     }
 
     private void AddCompletionBlockers(CharacterCreationWizardSnapshot snapshot)

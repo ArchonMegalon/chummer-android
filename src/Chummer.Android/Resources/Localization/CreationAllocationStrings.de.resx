@@ -848,4 +848,9 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Karma.TalentUnsupported" xml:space="preserve"><value>Die Regeln dieses Talents werden im Karma-Assistenten noch nicht unterstützt. Wähle ein anderes verfügbares Talent.</value></data>
   <data name="Karma.NativeLanguageRequired" xml:space="preserve"><value>Wähle unter Fertigkeiten eine Sprache, markiere sie als Muttersprache und übernimm die Auswahl in den Entwurf.</value></data>
   <data name="Skills.NativeLanguageRequired" xml:space="preserve"><value>Deine Fertigkeitsauswahl ist noch nicht gespeichert. Wähle unter Wissen &amp; Sprachen eine Muttersprache, bevor du die Auswahl prüfst und speicherst.</value></data>
+  <data name="Budget.NeedsChoices" xml:space="preserve"><value>Das Budget lässt sich mit der aktuellen Auswahl noch nicht berechnen.</value></data>
+  <data name="Budget.Prerequisites" xml:space="preserve"><value>Prioritäten und Metatyp</value></data>
+  <data name="Budget.Open" xml:space="preserve"><value>{0} prüfen ›</value></data>
+  <data name="Budget.Check" xml:space="preserve"><value>Fehlende Auswahl prüfen ›</value></data>
+  <data name="Budget.Refreshing" xml:space="preserve"><value>Das Budget wird erneut geprüft. Bestätige zuerst Prioritäten und Metatyp und prüfe dann den passenden Erstellungsschritt. Es wurden keine Punkte oder Entscheidungen geändert.</value></data>
 </root>

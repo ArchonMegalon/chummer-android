@@ -26,6 +26,13 @@ internal static partial class AfterRunAuthorityHarness
         await HydrateFinalizationOwnerAsync(runtime, owners, saved);
         var attributes = runtime.Coordinator.LoadCreationAttributes();
         var skills = runtime.Coordinator.LoadCreationSkills();
+        var resourcesPresenter = new CharacterCreationResourcesInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+        var resources = resourcesPresenter.Load(runtime.Coordinator.State);
+        Require(resources.State is { } resourceState
+            && CreationResourcesPhoneAuthority.IsReady(resourceState, runtime.Coordinator.State),
+            "SETUP: Resources must be issued from the actual current owner.");
         Require(attributes.Value is { } attributeState
             && CreationAttributesPhoneAuthority.IsReady(attributeState, runtime.Coordinator.State)
             && skills.Value is { } skillState
@@ -54,7 +61,7 @@ internal static partial class AfterRunAuthorityHarness
             var readiness = new CreationDashboardRenderReadiness(
                 () => attributesReady, () => skillsReady, () => false,
                 () => false, () => false, () => false);
-            render.Invoke(page, [snapshot, attributes, skills, readiness]);
+            render.Invoke(page, [snapshot, attributes, skills, readiness, null, null, null]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
             Require(cards.Length == 6, "A saved budget disappeared from the ribbon.");
@@ -63,20 +70,89 @@ internal static partial class AfterRunAuthorityHarness
                 bool ready = index < attributeBudgets.Length ? attributesReady : skillsReady;
                 var expected = index < attributeBudgets.Length
                     ? attributeBudgets[index] : skillBudgets[index - attributeBudgets.Length];
-                var labels = ((VerticalStackLayout)cards[index].Content!).Children.OfType<Label>()
+                var labels = ((Grid)cards[index].Content!).Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>()
                     .Select(label => label.Text).ToArray();
-                Require(labels[1] == (ready
+                Require(labels[0].EndsWith(ready
                         ? expected.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
-                        : "Not exact"),
+                        : "Not exact", StringComparison.Ordinal),
                     $"Budget {expected.BudgetId} lost its own readiness: attributes={attributesReady}, skills={skillsReady}.");
-                Require(ready || labels.Contains("budget-authority-pending"),
-                    "An unavailable domain borrowed another domain's authority.");
+                Require(ready || labels[1].Contains("cannot be calculated", StringComparison.Ordinal),
+                    "An unavailable domain lost its explanation or borrowed another domain's authority.");
+                Require(((Grid)cards[index].Content!).Children.OfType<Button>().Single() is
+                    { IsEnabled: true, AutomationId: not null }, "Budget is still a non-interactive label.");
             }
         }
+        Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State,
+            runtime.Coordinator.State.CreationWizard!, out var binding), "SETUP: no current dashboard binding.");
+        var projection = CreationDashboardAuthorityProjection.Loading(binding!) with { Resources = resources };
+        var resourceFallback = runtime.Coordinator.State.CreationWizard!.Budgets.Single(
+            row => row.BudgetId == CharacterCreationBudgetIds.Resources);
+        Require(!resourceFallback.IsExact, "SETUP: expected the conservative Resources placeholder.");
+        foreach (bool ready in new[] { false, true })
+        {
+            var page = new BuildPage(runtime.Coordinator);
+            var readiness = new CreationDashboardRenderReadiness(
+                () => false, () => false, () => false, () => false, () => false, () => ready);
+            render.Invoke(page, [snapshot with { Budgets = [resourceFallback] },
+                attributes, skills, readiness, null, projection, null]);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+            var label = ((Grid)card.Content!).Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();
+            Require(label.Text.EndsWith(ready
+                ? resources.State!.Budget.RemainingNuyen.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
+                : "Not exact", StringComparison.Ordinal),
+                "Resources must leave Not exact only when its own typed projection is ready.");
+        }
+        using (var ui = new IssuedPageUiContext())
+        await ui.RunAsync(async () =>
+        {
+            var page = new BuildPage(runtime.Coordinator, resourcesPresenter, runtime.Presenter);
+            var nav = new NavigationPage(page);
+            _ = new Window(nav);
+            var readiness = new CreationDashboardRenderReadiness(
+                () => true, () => true, () => false, () => false, () => false, () => true);
+            var stages = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
+                [snapshot, null, null, attributes, skills, null, resources, readiness])!;
+            // Feed the real shared stage routes to the budget cards. Generic
+            // budget readiness is not a grant to a different destination.
+            var pending = new CreationDashboardRenderReadiness(
+                () => false, () => false, () => false, () => false, () => false, () => false);
+            render.Invoke(page, [snapshot, attributes, skills, pending, routes, null, 0]);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var buttons = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>()
+                .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).ToArray();
+            foreach (int i in new[] { 0, 1, 3, 4, 5 })
+            {
+                await ui.BeginAsyncVoid(() => ((IButtonController)buttons[i]).SendClicked());
+                Require(i < 2 ? nav.Navigation.NavigationStack.Last() is CreationAttributesPage
+                    : nav.Navigation.NavigationStack.Last() is CreationSkillsPage,
+                    $"Budget {ids[i]} did not open its actual typed editor.");
+                await nav.PopAsync(false);
+            }
+            // Resources remains generically inexact before the typed overlay.
+            // Its budget link must still open the real Resources page.
+            render.Invoke(page, [snapshot with { Budgets = [resourceFallback] },
+                attributes, skills, pending, routes, projection, null]);
+            var resourceButton = body.Children.OfType<FlexLayout>().Last().Children.OfType<Border>()
+                .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).Single();
+            await ui.BeginAsyncVoid(() => ((IButtonController)resourceButton).SendClicked());
+            Require(nav.Navigation.NavigationStack.Last() is CreationResourcesPage,
+                "Inexact Resources did not open the admitted Resources editor.");
+            await nav.PopAsync(false);
+            // The card is retained across an A→B→A switch. Matching names must
+            // not revive the old click or navigate to another runner's editor.
+            owners.Set(ContactsOwnerB);
+            owners.Set(ContactsOwnerA);
+            await ui.BeginAsyncVoid(() => ((IButtonController)buttons[0]).SendClicked());
+            Require(nav.Navigation.NavigationStack.Count == 1,
+                "A retained budget card reopened an editor after owner transition.");
+            ui.AssertHealthy();
+        });
         var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
-        Console.WriteLine("PASS budget ribbon: both typed families, either family loading, unavailable fallback, saved bytes unchanged");
+        Console.WriteLine("PASS budget ribbon: typed family readiness, actionable inexact cards, actual editors, stale owner rejection, saved bytes unchanged");
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)
