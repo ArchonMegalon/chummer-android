@@ -129,7 +129,7 @@ internal static partial class AfterRunAuthorityHarness
                     && CreationKarmaCopy.Blocker("unknown-core-reason") == "unknown-core-reason",
                     "Required magic choices must explain the next action without hiding unknown Core blockers.");
                 await Click("karma-magic-open-tradition");
-                Element<SearchBar>("karma-magic-search").Text = "Hermetic";
+                ReadableSearch("karma-magic-search").Text = "  Hermetic  ";
                 await Click("karma-magic-search-go");
                 var tradition = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "tradition")
                     .Options.Single(option => option.Name == "Hermetic");
@@ -139,7 +139,7 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("karma-magic-open-spell");
                 var spell = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "spell")
                     .Options.First(option => option.IsEnabled);
-                Element<SearchBar>("karma-magic-search").Text = spell.Name;
+                ReadableSearch("karma-magic-search").Text = "  " + spell.Name + "  ";
                 await Click("karma-magic-search-go");
                 await Click("karma-magic-add-" + spell.Identity.SourceId);
                 Require(Session().Quote!.Magic!.Cost.TotalKarma == 5,
@@ -295,7 +295,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(Element<Label>("karma-resource-funding").Text == CreationKarmaCopy.ResourceFunding(10.5m, 21000m),
                 "An obsolete resource entry altered the selected draft: " + Element<Label>("karma-resource-funding").Text);
             await Click("karma-open-gear");
-            Element<SearchBar>("karma-gear-search").Text = "Flashlight";
+            ReadableSearch("karma-gear-search").Text = "  Flashlight  ";
             await Click("karma-gear-search-go");
             var addGear = IssuedElements(Current()).OfType<Button>().First(b => b.IsEnabled
                 && b.AutomationId?.StartsWith("karma-add-gear-", StringComparison.Ordinal) == true);
@@ -594,9 +594,17 @@ internal static partial class AfterRunAuthorityHarness
                 await Appear();
             }
             async Task Search(string term)
-            { Element<SearchBar>("karma-skill-search").Text = term; await Click("karma-search"); }
+            { ReadableSearch("karma-skill-search").Text = "  " + term + "  "; await Click("karma-search"); }
             async Task QualitySearch(string term)
-            { Element<SearchBar>("karma-quality-search").Text = term; await Click("karma-quality-search-go"); }
+            { ReadableSearch("karma-quality-search").Text = "  " + term + "  "; await Click("karma-quality-search-go"); }
+            SearchBar ReadableSearch(string id)
+            {
+                var search = Element<SearchBar>(id);
+                Require(search.TextColor == NativeTheme.Text && search.BackgroundColor == NativeTheme.Surface
+                    && search.PlaceholderColor == NativeTheme.Muted && search.CancelButtonColor == NativeTheme.Text,
+                    "Karma catalog search must explicitly pair readable text, placeholder and cancel colors with its light surface: " + id);
+                return search;
+            }
         });
     }
 
