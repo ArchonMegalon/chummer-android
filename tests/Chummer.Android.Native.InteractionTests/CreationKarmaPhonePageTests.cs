@@ -416,6 +416,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Open admitted a historical, missing or mismatched saved review.");
             }
             probe.TransformOpen = null;
+            await CheckSavedDashboardAsync();
             int opensBeforeReopen = probe.OpenCalls;
             int loadsBeforeReopen = probe.LoadCalls;
             int previewsBeforeReopen = probe.PreviewCalls;
@@ -554,6 +555,60 @@ internal static partial class AfterRunAuthorityHarness
             ui.AssertHealthy();
             Console.WriteLine($"Karma phone source work: opens={probe!.OpenCalls}, loads={probe.LoadCalls}, previews={probe.PreviewCalls}, open-ms={probe.OpenTime.TotalMilliseconds:F0}, load-ms={probe.LoadTime.TotalMilliseconds:F0}, preview-ms={probe.PreviewTime.TotalMilliseconds:F0}");
             Console.WriteLine("PASS Karma native phone deep pages: explicit choices, stale controls, draft Back, review/save, cold reopen, DE/ES resources");
+
+            async Task CheckSavedDashboardAsync()
+            {
+                var dashboard = new BuildPage(runtime.Coordinator);
+                // Complete only the headless scroll animation request, not any
+                // coordinator/read/mutation work. Native scrolling is smoked on Android.
+                var scroll = (IScrollViewController)(ScrollView)dashboard.Content!;
+                scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+                await navigation.PushAsync(dashboard, false);
+                using var dashboardAlerts = new IssuedPageAlerts(dashboard, window);
+                await dashboardAlerts.PreflightAsync();
+                int opens = probe.OpenCalls, previews = probe.PreviewCalls;
+                await JoinIssuedPageAsync(Appear());
+                Require(dashboardAlerts.Titles.Count == 0,
+                    "Dashboard appearance failed: " + string.Join("; ", dashboardAlerts.Messages));
+                string budget = CreationKarmaCopy.Budget(decision.Quote.KarmaBudget.Used,
+                    decision.Quote.KarmaBudget.Total, decision.Quote.KarmaBudget.Remaining);
+                Require(!IssuedElements(dashboard).Any(e => e.AutomationId?.StartsWith("creation-budget-", StringComparison.Ordinal) == true)
+                    && Element<Label>("creation-karma-dashboard-budget").Text == budget,
+                    "Saved Karma dashboard must show its exact Core budget, not generic Priority Not exact ledgers.");
+                Require(probe.OpenCalls == opens + 1 && probe.PreviewCalls == previews && probe.ConfirmCalls == 1,
+                    "Karma dashboard must freshly open the saved draft once without previewing or writing it.");
+                var oldRoute = Element<Button>("creation-stage-method");
+                await Click("creation-stage-method");
+                Require(Current() is CreationKarmaPage
+                    && Element<Label>("creation-karma-budget").Text == budget,
+                    "Dashboard correction link must open the exact saved Karma wizard.");
+                var openedPage = Current();
+                int navigationCount = navigation.Navigation.NavigationStack.Count;
+                await ui.BeginAsyncVoid(() => ((IButtonController)oldRoute).SendClicked());
+                Require(navigation.Navigation.NavigationStack.Count == navigationCount && ReferenceEquals(Current(), openedPage),
+                    "A departed dashboard callback opened another editor.");
+                await Back();
+                Require(Element<Label>("creation-karma-dashboard-budget").Text == budget,
+                    "Returning from the Karma wizard lost its exact saved budget.");
+                IssuedPageLifecycle(dashboard, "OnDisappearing");
+                probe.FailReads = true;
+                await Appear();
+                Require(Element<Label>("creation-karma-dashboard-budget").Text == CreationKarmaCopy.Stale,
+                    "A failed fresh read must not present the previous Karma budget as current.");
+                probe.FailReads = false;
+                await Click("creation-stage-method");
+                Require(Current() is CreationKarmaPage && Element<Label>("creation-karma-budget").Text == budget,
+                    "A source read recovery must remain reachable through the guarded Karma route.");
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await navigation.PopAsync(false);
+                await navigation.PopAsync(false);
+                var unchanged = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Require(unchanged.ContentRevision == cold.ContentRevision
+                    && unchanged.Document.AuxiliaryStateDigest == cold.Document.AuxiliaryStateDigest
+                    && probe.ConfirmCalls == 1,
+                    "Dashboard display/navigation changed the saved Karma draft.");
+                Console.WriteLine("PASS Karma dashboard: fresh exact budget, correct editor, departed callback, read failure/recovery, no writes");
+            }
 
             NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
             CreationKarmaPhoneSession Session() => (CreationKarmaPhoneSession)typeof(CreationKarmaPage)

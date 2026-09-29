@@ -806,6 +806,7 @@ public sealed class BuildPage : NativePageBase
     private bool _resetScrollOnNextRefresh;
     private CharacterOverviewState? _persistedReceiptDisplay;
     private CharacterCreationFinalizationReceipt? _persistedCreationReceipt;
+    private CreationKarmaPhoneSession? _karmaDashboardSession;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -913,7 +914,20 @@ public sealed class BuildPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
+        _karmaDashboardSession = null;
         var original = Coordinator.State;
+        if (Coordinator.CanOpenCreationKarma())
+        {
+            // Requote the saved auxiliary draft from Core on every appearance.
+            // The generic Priority projection and a historical decision's quote
+            // cannot establish the current Karma budget.
+            var karma = new CreationKarmaPhoneSession(Coordinator);
+            await karma.ReloadAsync(false, cancellationToken,
+                () => IsCurrentAppearanceGeneration(appearance));
+            if (IsCurrentAppearanceGeneration(appearance) && karma.FrameCurrent)
+                _karmaDashboardSession = karma;
+            return;
+        }
         if (original.Profile?.Created != true) return;
         var receipt = await Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(original, cancellationToken);
         if (!IsCurrentAppearanceGeneration(appearance)
@@ -926,6 +940,7 @@ public sealed class BuildPage : NativePageBase
     {
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
+        _karmaDashboardSession = null;
         _creationNavigationRefreshLease.DiscardForDeparture();
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
@@ -1230,6 +1245,14 @@ public sealed class BuildPage : NativePageBase
         binding.AutomationId = "creation-wizard-binding";
         _body.Add(binding);
 
+        if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.Karma)
+        {
+            CancelCreationProjectionQueues();
+            _creationProjection = null;
+            AddKarmaCreationDashboard(snapshot);
+            return;
+        }
+
         if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.LifeModules)
         {
             // Life Modules has its own cumulative completion authority. Generic
@@ -1339,6 +1362,41 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources, readiness);
         AddFinalizationReviewAction();
+    }
+
+    private void AddKarmaCreationDashboard(CharacterCreationWizardSnapshot snapshot)
+    {
+        var session = _karmaDashboardSession;
+        var quote = session is { QuoteCurrent: true } ? session.Quote : null;
+        var budget = quote?.KarmaBudget;
+        bool exact = budget is { IsExact: true };
+        var values = NativeTheme.Body(exact
+            ? CreationKarmaCopy.Budget(budget!.Used, budget.Total, budget.Remaining)
+            : session is { Ready: true, Selection: null } ? CreationKarmaCopy.Choose : CreationKarmaCopy.Stale,
+            exact || session is { Ready: true, Selection: null } ? NativeTheme.Text : NativeTheme.Danger);
+        values.AutomationId = "creation-karma-dashboard-budget";
+        _body.Add(NativeTheme.Card(values));
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.Scope, NativeTheme.Muted));
+
+        long render = _dossierRenderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        bool canOpen = session is { FrameCurrent: true };
+        bool Current() => canOpen && render == _dossierRenderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(session, _karmaDashboardSession) && session!.FrameCurrent;
+        _body.Add(CreationNavigationRow(CreationKarmaCopy.Title, CreationKarmaCopy.Review,
+            async () =>
+            {
+                if (!Current()) return;
+                // Opening remains available after a failed read, but the child
+                // creates its own fresh Core authority before enabling edits.
+                await Navigation.PushAsync(new CreationKarmaPage(Coordinator));
+            }, canOpen, "creation-stage-method"));
+        // Keep the existing settings-inspection route; only Priority-specific
+        // allocation/finalization placeholders are replaced by the Karma wizard.
+        if (snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Basics && stage.IsAvailable))
+            _body.Add(CreationNavigationRow(StageLabel(snapshot, CharacterCreationWizardStepIds.Basics),
+                "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract",
+                async () => { if (Current()) await OpenCreationBasicsAsync(); }, canOpen, "creation-stage-basics"));
     }
 
     private void AddLifeModuleCreationDashboard()
