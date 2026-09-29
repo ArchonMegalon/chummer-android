@@ -22,9 +22,13 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
         self.assertIn("_draft.TryAdoptPrepared(before, prepared)", page)
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         worker = coordinator[coordinator.index("private Task<T> WithCreationMagicReadAsync<T>") : coordinator.index("internal CharacterCreationMagicResonanceReview ReviewCreationMagicResonance(")]
-        for marker in ("WithWorkspaceActivationGateAsync", "Task.Run(", "owners.TryAcquire(owner", "lease.Stamp != owner", "T result = read();"):
+        for marker in ("WithWorkspaceActivationGateAsync", "Task.Run(", "T result = read();", "token.ThrowIfCancellationRequested();"):
             self.assertIn(marker, worker)
-        self.assertGreaterEqual(worker.count("IsCreationCatalogDisplayCurrent(original)"), 3)
+        self.assertGreaterEqual(worker.count("IsCreationCatalogDisplayCurrent(original)"), 2)
+        self.assertNotIn("owners.TryAcquire", worker)  # Core companion owns its synchronous lease.
+        self.assertIn("_ownerBoundMagicResonanceService.Load(owner, new(workspaceId))", coordinator)
+        self.assertIn("new DisplayBoundMagicResonanceService(_ownerBoundMagicResonanceService, owner)", coordinator)
+        self.assertNotIn("_creationMagicResonanceService.Load", coordinator)
 
     def test_receipt_acknowledgement_returns_through_attached_phone_shell(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
@@ -172,8 +176,8 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         for marker in (
-            "ICharacterCreationMagicResonanceService? _creationMagicResonanceService",
-            "LoadCreationMagicResonance()",
+            "IOwnerBoundCharacterCreationMagicResonanceService? _ownerBoundMagicResonanceService",
+            "LoadCreationMagicResonance(CharacterOverviewState? display",
             "ReviewCreationMagicResonance(",
             "CharacterCreationMagicResonanceWorkflow.Review(",
             "ConfirmCreationMagicResonanceAsync(",
@@ -194,6 +198,25 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             section.index("CharacterCreationMagicResonanceWorkflow.Confirm("),
             section.index("_presenter.LoadAsync("),
         )
+
+    def test_magic_checkpoint_and_confirmation_keep_original_owner(self) -> None:
+        checkpoint = (NATIVE / "CreationMagicResonanceCheckpointStore.cs").read_text(encoding="utf-8")
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        self.assertIn("isCurrent?.Invoke(original) != true", checkpoint)
+        self.assertIn('StorageKey + ".owner."', checkpoint)
+        self.assertIn("Preferences.Default.Get(Key()", checkpoint)
+        self.assertIn("coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent", page)
+        self.assertIn("CharacterOverviewState original = _display", page)
+        self.assertIn("ConfirmCreationMagicResonanceAsync(confirming, display: original)", page)
+        self.assertIn("ResolveConfirmingAsync(checkpoint, original)", page)
+        self.assertIn("ConfirmCreationMagicResonanceAsync(checkpoint, display: original)", page)
+        preview = page[page.index("private async Task<CharacterCreationMagicResonanceReview> PreviewDraftAsync(") : page.index("private void AddBinding(")]
+        self.assertIn("_loadedDisplay is not { } original", preview)
+        self.assertIn("ReferenceEquals(editor, _editor)", preview)
+        self.assertNotIn("original = Coordinator.State", preview)
+        option = page[page.index("private async Task AdoptAsync(") : page.index("public sealed class CreationMagicResonanceReviewPage")]
+        self.assertIn("_display is not { } original", option)
+        self.assertNotIn("original = Coordinator.State", option)
 
     def test_dashboard_and_state_factory_preserve_existing_routes(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -216,6 +239,19 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             self.assertIn(marker, dashboard)
         self.assertIn(
             "provider.GetService<ICharacterCreationMagicResonanceService>()", program
+        )
+
+    def test_dashboard_magic_entry_uses_exact_typed_missing_draft_policy(self) -> None:
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        for kind in ("Stage", "Step"):
+            self.assertIn(
+                f"canOpenMagicResonance = magicResonance{kind} && BuildPageUiProjection.CanOpenExactTypedCreationStage(\n"
+                "                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance)",
+                dashboard,
+            )
+        self.assertIn(
+            "CharacterCreationWizardStepIds.MagicResonance => CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired",
+            dashboard,
         )
 
     def test_api36_skeleton_is_syntax_valid_and_cannot_claim_a_run(self) -> None:

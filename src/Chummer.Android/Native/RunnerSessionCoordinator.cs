@@ -334,7 +334,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     // Ordinary allocation must never fall back to this unscoped service.
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly IOwnerBoundCharacterCreationQualitiesService? _ownerBoundQualitiesService;
-    private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
+    private readonly IOwnerBoundCharacterCreationMagicResonanceService? _ownerBoundMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly IOwnerBoundCharacterCreationFinalizationService? _ownerBoundFinalizationService;
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<CharacterCreationFinalizationBinding, CharacterOverviewState> _finalizationLoads = new();
@@ -447,7 +447,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IAndroidImageDocumentService? originSceneDocuments = null,
         IOwnerBoundCharacterCreationAttributesService? ownerBoundCreationAttributesService = null,
         IOwnerBoundCharacterCreationSkillsService? ownerBoundCreationSkillsService = null,
-        IOwnerBoundCharacterCreationQualitiesService? ownerBoundCreationQualitiesService = null)
+        IOwnerBoundCharacterCreationQualitiesService? ownerBoundCreationQualitiesService = null,
+        IOwnerBoundCharacterCreationMagicResonanceService? ownerBoundCreationMagicResonanceService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -473,7 +474,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _ownerBoundSkillsService = ownerBoundCreationSkillsService;
         _creationSkillsService = creationSkillsService;
         _ownerBoundQualitiesService = ownerBoundCreationQualitiesService;
-        _creationMagicResonanceService = creationMagicResonanceService;
+        _ownerBoundMagicResonanceService = ownerBoundCreationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
         _ownerBoundFinalizationService = ownerBoundCreationFinalizationService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
@@ -2066,17 +2067,36 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 .ToArray(),
             MutationOutcomeKnown: false);
 
-    public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>
-        LoadCreationMagicResonance()
+    internal bool IsCreationMagicOwnerCurrent(OwnerContextStamp? original)
+        => original is { IsValid: true } && IsNativePersistenceOwnerCurrent(original)
+           && State.DisplayOwnerContext == original && State.Session.OwnerContext == original;
+
+    private sealed class DisplayBoundMagicResonanceService(
+        IOwnerBoundCharacterCreationMagicResonanceService service,
+        OwnerContextStamp original) : ICharacterCreationMagicResonanceService
     {
-        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load(
+            CharacterCreationMagicResonanceLoadRequest request) => service.Load(original, request);
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonancePreview> Preview(
+            CharacterCreationMagicResonancePreviewRequest request) => service.Preview(original, request);
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceReceipt> Confirm(
+            CharacterCreationMagicResonanceConfirmRequest request) => service.Confirm(original, request);
+    }
+
+    public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>
+        LoadCreationMagicResonance(CharacterOverviewState? display = null)
+    {
+        CharacterOverviewState original = display ?? State;
+        if (!IsCreationCatalogDisplayCurrent(original)
+            || original.WorkspaceId is not { } workspaceId
+            || original.DisplayOwnerContext is not { } owner)
         {
             return new(
                 CharacterCreationFoundationOutcomes.Blocked,
                 null,
                 [CharacterCreationMagicResonanceBlockers.WorkspaceUnavailable]);
         }
-        if (_creationMagicResonanceService is null)
+        if (_ownerBoundMagicResonanceService is null)
         {
             return new(
                 CharacterCreationFoundationOutcomes.Blocked,
@@ -2084,9 +2104,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationMagicResonanceBlockers.AuthorityUnavailable]);
         }
         CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> result =
-            _creationMagicResonanceService.Load(new(workspaceId));
-        return result.Value is { } state
-               && !CreationMagicResonancePhoneAuthority.MatchesOverview(state, State)
+            _ownerBoundMagicResonanceService.Load(owner, new(workspaceId));
+        return !IsCreationCatalogDisplayCurrent(original) || result.Value is { } state
+               && !CreationMagicResonancePhoneAuthority.MatchesOverview(state, original)
             ? new(
                 CharacterCreationFoundationOutcomes.Conflict,
                 null,
@@ -2096,53 +2116,47 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     internal Task<CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>>
         LoadCreationMagicResonanceForDisplayAsync(CharacterOverviewState original, CancellationToken token)
-        => WithCreationMagicReadAsync(original, LoadCreationMagicResonance, token);
+        => WithCreationMagicReadAsync(original, () => LoadCreationMagicResonance(original), token);
 
     internal Task<CharacterCreationMagicResonanceReview> ReviewCreationMagicResonanceForDisplayAsync(
         CharacterOverviewState original, CharacterCreationMagicResonanceEditorState editor,
         CharacterCreationMagicResonanceDesktopDraft draft, CancellationToken token = default)
-        => WithCreationMagicReadAsync(original, () => ReviewCreationMagicResonance(editor, draft), token);
+        => WithCreationMagicReadAsync(original, () => ReviewCreationMagicResonance(editor, draft, original), token);
 
     private Task<T> WithCreationMagicReadAsync<T>(CharacterOverviewState original, Func<T> read,
         CancellationToken token)
         => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
-            if (!IsCreationCatalogDisplayCurrent(original)
-                || original.DisplayOwnerContext is not { IsValid: true } owner
-                || _damageJournalOwnerAccessor is not IOwnerContextLeaseAccessor owners)
+            if (!IsCreationCatalogDisplayCurrent(original))
                 throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
-            bool admitted = owners.TryAcquire(owner, out var lease);
-            // Core's ambient-owner read is synchronous. Never carry this lease
-            // across an await, and reject owner/revision changes before delivery.
-            using (lease)
-            {
-                if (!admitted || lease is null || lease.Stamp != owner
-                    || !IsCreationCatalogDisplayCurrent(original))
-                    throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
-                T result = read();
-                token.ThrowIfCancellationRequested();
-                if (!IsCreationCatalogDisplayCurrent(original))
-                    throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
-                return result;
-            }
+            // The explicit-owner Core companion owns its synchronous lease.
+            T result = read();
+            token.ThrowIfCancellationRequested();
+            if (!IsCreationCatalogDisplayCurrent(original))
+                throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
+            return result;
         }, token), token);
 
     internal CharacterCreationMagicResonanceReview ReviewCreationMagicResonance(
         CharacterCreationMagicResonanceEditorState expectedEditor,
-        CharacterCreationMagicResonanceDesktopDraft draft)
+        CharacterCreationMagicResonanceDesktopDraft draft,
+        CharacterOverviewState? display = null)
     {
         ArgumentNullException.ThrowIfNull(expectedEditor);
         ArgumentNullException.ThrowIfNull(draft);
+        CharacterOverviewState original = display ?? State;
         CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> live =
-            LoadCreationMagicResonance();
-        if (_creationMagicResonanceService is null
+            LoadCreationMagicResonance(original);
+        if (_ownerBoundMagicResonanceService is null
+            || !IsCreationCatalogDisplayCurrent(original)
+            || original.DisplayOwnerContext is not { } owner
             || live.Value is not { } state
             || !CharacterCreationMagicResonanceWorkflow.TryProject(
                 state,
                 out CharacterCreationMagicResonanceEditorState? editor)
             || editor is null
-            || !CreationMagicResonancePhoneAuthority.IsReady(state, editor, State)
+            || !CreationMagicResonancePhoneAuthority.IsReady(state, editor, original)
             || !CreationMagicResonancePhoneAuthority.EditorEquals(
                 expectedEditor,
                 editor))
@@ -2151,7 +2165,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
         }
         return CharacterCreationMagicResonanceWorkflow.Review(
-            _creationMagicResonanceService,
+            new DisplayBoundMagicResonanceService(_ownerBoundMagicResonanceService, owner),
             editor,
             draft);
     }
@@ -2159,21 +2173,28 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     internal async Task<CreationMagicResonancePhoneConfirmResult>
         ConfirmCreationMagicResonanceAsync(
             CharacterCreationMagicResonanceCheckpoint checkpoint,
-            CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
+            CancellationToken cancellationToken = default,
+            CharacterOverviewState? display = null)
+    {
+        CharacterOverviewState original = display ?? State;
+        return await WithWorkspaceActivationGateAsync(
             () => ConfirmCreationMagicResonanceCoreAsync(
                 checkpoint,
+                original,
                 cancellationToken),
             cancellationToken);
+    }
 
     private async Task<CreationMagicResonancePhoneConfirmResult>
         ConfirmCreationMagicResonanceCoreAsync(
             CharacterCreationMagicResonanceCheckpoint checkpoint,
+            CharacterOverviewState beforeActivation,
             CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
-        CharacterOverviewState beforeActivation = State;
-        if (_creationMagicResonanceService is null
+        if (_ownerBoundMagicResonanceService is null
+            || !IsCreationCatalogDisplayCurrent(beforeActivation)
+            || beforeActivation.DisplayOwnerContext is not { } owner
             || checkpoint.Phase !=
             CharacterCreationMagicResonanceCheckpointPhase.Confirming
             || !checkpoint.IsStructurallyValid()
@@ -2187,41 +2208,27 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CharacterCreationMagicResonanceConfirmation confirmation;
+        int entered = 0;
         try
         {
-            confirmation = CharacterCreationMagicResonanceWorkflow.Confirm(
-                _creationMagicResonanceService,
-                checkpoint.Review,
-                checkpoint.IdempotencyKey,
-                explicitlyConfirmed: true);
+            confirmation = await Task.Run(() =>
+            {
+                Interlocked.Exchange(ref entered, 1);
+                return CharacterCreationMagicResonanceWorkflow.Confirm(
+                    new DisplayBoundMagicResonanceService(_ownerBoundMagicResonanceService, owner),
+                    checkpoint.Review,
+                    checkpoint.IdempotencyKey,
+                    explicitlyConfirmed: true);
+            }, cancellationToken);
         }
-        catch (Exception exception)
+        catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)
         {
-            try
-            {
-                CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>
-                    observed = _creationMagicResonanceService.Load(new(
-                        checkpoint.Review.Draft.ExpectedBinding.WorkspaceId));
-                if (observed.Value is { } unchanged
-                    && CreationMagicResonancePhoneAuthority.BindingEquals(
-                        unchanged.Binding,
-                        checkpoint.Review.Draft.ExpectedBinding)
-                    && beforeActivation.ContentRevision ==
-                    checkpoint.Review.Draft.ExpectedBinding.ContentRevision
-                    && beforeActivation.SavedRevision ==
-                    checkpoint.Review.Draft.ExpectedBinding.SavedRevision)
-                {
-                    return new(
-                        CreationMagicResonancePhoneOutcomes.RejectedBeforeMutation,
-                        null,
-                        [exception.Message],
-                        MutationOutcomeKnown: true);
-                }
-            }
-            catch
-            {
-                // The exact mutation outcome cannot be proven; retain Confirming for replay.
-            }
+            throw;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Keep the identical command for original-owner recovery; never
+            // infer a failed mutation from a read of another partition.
             return UnknownMagicResonanceOutcome([exception.Message]);
         }
 
@@ -2234,6 +2241,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationMagicResonanceBlockers.DraftInvalid]);
         }
 
+        if (!IsCreationMagicOwnerCurrent(owner))
+            return new(CreationMagicResonancePhoneOutcomes.Applied, confirmation,
+                [CreationMagicResonancePhoneBlockers.PostCommitRefreshRequired], MutationOutcomeKnown: true);
+
         try
         {
             await _presenter.LoadAsync(
@@ -2241,10 +2252,13 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 cancellationToken);
             await SyncShellAsync(cancellationToken);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
-            NotifyChanged();
+            if (IsCreationMagicOwnerCurrent(owner))
+            {
+                _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
+                NotifyChanged();
+            }
             return new(
                 CreationMagicResonancePhoneOutcomes.Applied,
                 confirmation,
@@ -2252,12 +2266,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 MutationOutcomeKnown: true);
         }
 
-        if (!CreationMagicResonancePhoneAuthority.OverviewMatchesReceipt(
+        if (!IsCreationMagicOwnerCurrent(owner)
+            || !CreationMagicResonancePhoneAuthority.OverviewMatchesReceipt(
                 State,
                 confirmation.Receipt))
         {
-            _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
-            NotifyChanged();
+            if (IsCreationMagicOwnerCurrent(owner))
+            {
+                _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
+                NotifyChanged();
+            }
             return new(
                 CreationMagicResonancePhoneOutcomes.Applied,
                 confirmation,

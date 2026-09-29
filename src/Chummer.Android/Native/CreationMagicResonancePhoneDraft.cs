@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Application.Owners;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -10,6 +11,7 @@ namespace Chummer.Android.Native;
 internal sealed class CreationMagicResonancePhoneDraft
 {
     private CharacterCreationMagicResonanceEditorState? _editor;
+    private OwnerContextStamp? _owner;
     private CharacterCreationMagicResonanceSelections _selections = EmptySelections();
     private CharacterCreationMagicResonanceReview? _review;
 
@@ -20,17 +22,19 @@ internal sealed class CreationMagicResonancePhoneDraft
     // Publishing a prepared copy must not overwrite a newer local selection.
     public CreationMagicResonancePhoneDraft Copy() => new()
     {
-        _editor = _editor, _selections = _selections, _review = _review
+        _editor = _editor, _owner = _owner, _selections = _selections, _review = _review
     };
 
     public bool TryAdoptPrepared(CreationMagicResonancePhoneDraft original,
         CreationMagicResonancePhoneDraft prepared)
     {
         if (!ReferenceEquals(_editor, original._editor)
+            || _owner != original._owner
             || !ReferenceEquals(_selections, original._selections)
             || !ReferenceEquals(_review, original._review))
             return false;
         _editor = prepared._editor;
+        _owner = prepared._owner;
         _selections = prepared._selections;
         _review = prepared._review;
         return true;
@@ -45,6 +49,7 @@ internal sealed class CreationMagicResonancePhoneDraft
         if (Matches(editor, overview))
             return;
         _editor = null;
+        _owner = null;
         _review = null;
         _selections = EmptySelections();
         if (!CreationMagicResonancePhoneAuthority.IsReady(
@@ -55,6 +60,7 @@ internal sealed class CreationMagicResonancePhoneDraft
             return;
         }
         _editor = editor;
+        _owner = overview.DisplayOwnerContext;
         _selections = editor.Selections;
     }
 
@@ -62,6 +68,7 @@ internal sealed class CreationMagicResonancePhoneDraft
         CharacterCreationMagicResonanceEditorState editor,
         CharacterOverviewState overview)
         => _editor is not null
+           && _owner == overview.DisplayOwnerContext
            && CreationMagicResonancePhoneAuthority.IsReady(
                overview.CreationMagicResonance,
                editor,

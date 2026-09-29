@@ -33,6 +33,8 @@ internal static partial class AfterRunAuthorityHarness
         runtime.Id = id;
         var store = new FileWorkspaceStore(runtime.StateDirectory);
         var before = store.Get(id).Value!;
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerA, before);
+        owners.Set(ContactsOwnerA);
         await HydrateFinalizationOwnerAsync(runtime, owners, before);
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -64,12 +66,27 @@ internal static partial class AfterRunAuthorityHarness
             refresh.Invoke(page, null);
             refresh.Invoke(page, null);
             Require(probe.Loads == 1, "Rendering reloaded the entire Magic catalog.");
+            var retainedEditor = (CharacterCreationMagicResonanceEditorState)typeof(CreationMagicResonancePage)
+                .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
+                .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
+                retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
+            await (Task)typeof(CreationMagicResonanceOptionPage)
+                .GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(option, [CancellationToken.None])!;
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             Require(body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review" && button.IsEnabled),
                 "Background catalog did not expose the actual Core-ready editor.");
             var review = await runtime.Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, original.CreationMagicResonanceEditor!, draft);
             Require(review.Preview.CanConfirm && probe.Previews == 1 && owners.ActiveLeases == 0,
                 "Background preview lost authority or retained an owner lease.");
+            var journal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
+                original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent);
+            Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
+                out var storedReview, out _), "Scoped Magic review was not durable.");
+            Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
+                && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
 
             using var canceled = new CancellationTokenSource();
             probe.BeforeRead = canceled.Cancel;
@@ -89,7 +106,12 @@ internal static partial class AfterRunAuthorityHarness
             {
                 stale = runtime.Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, original.CreationMagicResonanceEditor!, draft);
                 owners.Set(ContactsOwnerB);
-                owners.Set(OwnerScope.LocalSingleUser);
+                var otherStamp = owners.Capture();
+                var otherJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
+                    otherStamp, stamp => stamp == owners.Capture());
+                Require(!otherJournal.TryRead(out _, out var otherBlocker) && string.IsNullOrEmpty(otherBlocker),
+                    "Another account could read the Magic review.");
+                owners.Set(ContactsOwnerA);
             }
             finally { gate.Release(); }
             try { await stale; throw new Exception("Owner ABA accepted an old Magic preview."); }
@@ -98,30 +120,89 @@ internal static partial class AfterRunAuthorityHarness
             refresh.Invoke(page, null);
             Require(!body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review"),
                 "Owner transition left the old Magic catalog actionable.");
+            Require(!journal.TryRead(out _, out var staleBlocker) && !string.IsNullOrEmpty(staleBlocker),
+                "Old owner epoch retained journal access.");
+
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var fresh = runtime.Coordinator.State;
+            Require(!retainedDraft.Matches(retainedEditor, fresh)
+                && !retainedDraft.Copy().Matches(retainedEditor, fresh),
+                "Old Magic selections survived an owner epoch change as current authority.");
+            var freshJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
+                fresh.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent);
+            Require(freshJournal.TryRead(out var recovered, out _)
+                && recovered.CheckpointDigest == storedReview.CheckpointDigest,
+                "Fresh same-account authority lost its durable review.");
+            Require(freshJournal.TryBeginConfirm(CharacterCreationMagicResonanceCheckpointCas.From(recovered),
+                out var confirming, out _), "Magic confirmation was not journaled.");
+            // A detached button from A before A→B→A must not rebind its command to fresh A.
+            int beforeRecoveryReads = probe.Loads;
+            var resolve = typeof(CreationMagicResonancePage).GetMethod("ResolveConfirmingAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            await (Task)resolve.Invoke(page, [confirming, original])!;
+            Require(probe.Confirms == 0 && probe.Loads == beforeRecoveryReads
+                && freshJournal.TryRead(out var unchangedConfirming, out _)
+                && unchangedConfirming.CheckpointDigest == confirming.CheckpointDigest
+                && new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!.ContentRevision == before.ContentRevision,
+                "Stale rendered recovery rebound to a fresh owner epoch or changed its durable command.");
+            var stalePreview = typeof(CreationMagicResonancePage).GetMethod("PreviewDraftAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            try
+            {
+                await (Task)stalePreview.Invoke(page, [retainedEditor, draft])!;
+                throw new Exception("Stale rendered selection rebound to current owner authority.");
+            }
+            catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
+            try
+            {
+                await (Task)typeof(CreationMagicResonanceOptionPage)
+                    .GetMethod("AdoptAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(option, [draft])!;
+                throw new Exception("Stale rendered option rebound to current owner authority.");
+            }
+            catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
+            Require(probe.Loads == beforeRecoveryReads, "Stale rendered selection entered Core.");
+            probe.AllowConfirm = true;
+            var confirmed = await runtime.Coordinator.ConfirmCreationMagicResonanceAsync(confirming, display: fresh);
+            Require(confirmed.MutationOutcomeKnown && confirmed.Outcome == CreationMagicResonancePhoneOutcomes.Applied
+                && confirmed.Confirmation is not null && probe.Confirms == 1, "Owner-bound native Magic confirmation failed.");
+            Require(freshJournal.TryRecordConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(confirming),
+                confirmed.Confirmation!, out _, out _), "Owner-bound Magic receipt was not journaled.");
+            var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!;
+            Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
+                && cold.Document.Content == before.Document.Content
+                && runtime.Coordinator.State.CreationMagicResonance?.PendingDraft is not null,
+                "Native confirmation did not persist and re-project exactly one scoped draft.");
         });
         RequireSameRewardDocument(before, store.Get(id).Value!);
-        Console.WriteLine("PASS Magic background catalog/preview, UI heartbeat, render without reload, cancellation, owner ABA and unchanged workspace");
+        Console.WriteLine("PASS Magic scoped catalog/preview/confirm, UI heartbeat, cancellation, owner ABA, journal isolation/recovery and unchanged local workspace");
     }
 
-    private sealed class MagicReadProbe(ICharacterCreationMagicResonanceService inner, ControlledLinkedOwner owners)
-        : ICharacterCreationMagicResonanceService
+    private sealed class MagicReadProbe(IOwnerBoundCharacterCreationMagicResonanceService inner, ControlledLinkedOwner owners)
+        : IOwnerBoundCharacterCreationMagicResonanceService
     {
         public int UiThreadId { get; set; }
         public int Loads { get; private set; }
         public int Previews { get; private set; }
+        public int Confirms { get; private set; }
+        public bool AllowConfirm { get; set; }
         public Action? BeforeRead { get; set; }
-        private void Check()
+        private void Check(OwnerContextStamp original)
         {
-            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 1,
-                "Magic read must run off UI with the original owner lease.");
+            Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 0
+                && original == owners.Capture(),
+                "Magic must run off UI with the retained stamp; Core owns its synchronous lease.");
             BeforeRead?.Invoke();
         }
-        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load(CharacterCreationMagicResonanceLoadRequest request)
-        { Check(); Loads++; return inner.Load(request); }
-        public CharacterCreationFoundationResult<CharacterCreationMagicResonancePreview> Preview(CharacterCreationMagicResonancePreviewRequest request)
-        { Check(); Previews++; return inner.Preview(request); }
-        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceReceipt> Confirm(CharacterCreationMagicResonanceConfirmRequest request)
-            => throw new InvalidOperationException("Read-only background test must not confirm.");
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load(
+            OwnerContextStamp original, CharacterCreationMagicResonanceLoadRequest request)
+        { Check(original); Loads++; return inner.Load(original, request); }
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonancePreview> Preview(
+            OwnerContextStamp original, CharacterCreationMagicResonancePreviewRequest request)
+        { Check(original); Previews++; return inner.Preview(original, request); }
+        public CharacterCreationFoundationResult<CharacterCreationMagicResonanceReceipt> Confirm(
+            OwnerContextStamp original, CharacterCreationMagicResonanceConfirmRequest request)
+        {
+            Require(AllowConfirm, "Read-only background stage must not confirm.");
+            Check(original); Confirms++; return inner.Confirm(original, request);
+        }
     }
 
     public static async Task RunCreationEntryGearCasesAsync(string contentRoot)

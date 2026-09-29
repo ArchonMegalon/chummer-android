@@ -179,7 +179,8 @@ public static class MauiProgram
                 ownerBoundCreationFinalizationService: provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>(),
                 ownerBoundCreationLifestylesReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
                 ownerBoundFoundationReader: provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
-                ownerBoundCreationQualitiesService: provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>()));
+                ownerBoundCreationQualitiesService: provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>(),
+                ownerBoundCreationMagicResonanceService: provider.GetRequiredService<IOwnerBoundCharacterCreationMagicResonanceService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));

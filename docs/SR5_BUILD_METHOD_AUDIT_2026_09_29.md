@@ -234,6 +234,105 @@ on emulator boot 14; its failure packet is retained. The corrected APK's boot
 the cause or resolution of that earlier startup failure. This Magician route
 has reached Skills, not yet a new native Career/finalization proof.
 
+## Follow-up: owner-bound Magic / Resonance
+
+The native Human/Magician route exposed two additional blockers after Skills:
+the shared overview and native service read the legacy workspace partition,
+and the dashboard treated the missing Magic draft as a prerequisite for entering
+the editor that creates that draft. An owner lease alone did not redirect the
+legacy store. Core now supplies an explicit original-owner companion; UI and
+Android use it for load, preview and confirmation. Only the exact step's own
+missing-draft blocker is admitted with a matching, ready typed projection.
+Foreign blockers, stale revisions and invalid projections remain rejected.
+
+Confirmation runs off the UI thread. Account checkpoints are owner-partitioned,
+retain their issuing stamp and reject owner ABA; trusted-local keys remain
+compatible. A known durable receipt survives postcommit refresh failure rather
+than being reported as an unapplied operation. Unknown outcomes retain the
+identical command for original-owner recovery.
+
+Rendered recovery callbacks retain their original display instead of capturing
+the current account when tapped. Local selections also retain the exact owner
+stamp, so opening an old selection after A→B→A cannot rebind it to fresh A even
+when the workspace id and revisions happen to match. These callback changes
+follow the native APK evidence below; that APK is not evidence of the later
+callback patch. The focused managed regression passed with zero build warnings
+and errors, including detached selection/recovery callbacks and retained-draft
+owner ABA rejection. The final package smoke is recorded separately below.
+
+Focused local verification:
+
+- Core linked/local partition isolation, default/foreign/ABA stamp rejection,
+  unchanged character XML, exactly-once confirmation and cold receipt replay.
+- Actual Core/native dashboard, catalog, preview, confirmation, UI heartbeat,
+  cancellation, journal isolation and Skills/Magic save/revisit/replay tests.
+  The managed slice also covers Sum-to-Ten Adept, Technomancer, Mystic Adept and
+  Aspected Sorcery; this is not physical-device coverage of each talent.
+- Eleven Magic source-contract tests passed. Affected managed and native Debug
+  builds passed with zero warnings/errors.
+- Native Debug APK SHA-256
+  `72fe4a04fe1bb1afaf550b77e478c4afc33b954becadda47122e6a665b96e2d6`
+  used a local development feed, not a release package seal. At 150% font scale,
+  the real UI selected Hermetic plus Acid Stream, Agony, Analyze Device, Analyze
+  Magic and Analyze Truth. One confirmation saved revision 4/4 to 5/5, with five
+  spells and zero remaining spell choices. No character XML changed.
+- Verified force-stop (PID 3908 gone) and relaunch (PID 5461) reopened Create,
+  the saved Magician draft and its exact receipt
+  `6fa5d6972eb2175f8c61389d267bee7e1d177342cf4eb7cdc30ed4dd9adfdc17`.
+  Workspace bytes were identical before/after restart, SHA-256
+  `60e7e6d3162fc0e03e05f408622b07f14d52d5eb35517ecffabfcee7d4036d31`.
+  No Chummer ANR was observed in this boot; an unrelated Dialer ANR was present.
+
+This awakened route has reached persisted Magic, not a new native Career proof.
+The earlier minimal-method Career results remain separately scoped. Exact Core
+and UI package convergence follows the successful local route; no Play release
+or exhaustive catalog claim is made by this Debug evidence.
+
+### Exact package follow-up
+
+The final local package producer uses Core runtime source
+`fac18e875a8b8d118136b4c3b806f365ed805dd2` and recipe
+`655677478a44d9cd8e18f21723d0792d9caf4c4a`. It passed 703 managed,
+18 owner-admission and 15 strict inventory cases, plus scoped-storage and
+no-siblings checks. Its new immutable public bundle has SHA-256
+`1393762eaf58504961e8b9c868753b171172cc2ebef4224e17b79ece4774dd8b`;
+anonymous readback matched. This is local package production, not hosted
+runtime or Play evidence.
+
+UI seal `b930829109919f9444e7207f893c8f9840f3e587` passed the exact local
+consumer replay and merged normally in PR #262 as
+`e6df90948ec5a8c53cbabae8ae5069b12413f2a3`. Five consumer builds and selected
+managed groups passed; the product-test project retains 61 existing analyzer
+warnings, with zero errors. Android's package verifier accepts the exact feed,
+receipt and both actual NuGet lock files. The content manifest and runtime
+materializer now name the same Core recipe; all 330 content payloads are unchanged.
+
+The final Android intake passed the managed/native dashboard and Sum-to-Ten
+Magic slice, including actual Core save/reopen, original-owner and ABA rejection,
+detached callbacks, cancellation, journal recovery and Skills/Magic revisits.
+Affected builds had zero warnings/errors. A further 193 selected Python
+source/package/workflow/provenance regressions and the repository private-key
+hygiene check passed. The broad ambient-sibling suite was not rerun.
+Both affected Career Quality and Skill Group runners also passed their eight
+behavior groups with the new exact runtime/content identities.
+
+Final separate Debug APK SHA-256:
+`9b9b0a1d1e547f4e775a7a57709019aa045e2b0d162fed3b91fe5e4d27dfa063`.
+Its local build passed with zero warnings/errors; all 330 APK content files and
+the embedded manifest passed verification. Tracked app source and consumer
+locks match the actual build snapshot. The update opened the saved Magician at
+revision 5 and its identical receipt, without changing workspace bytes.
+
+Verified force-stop removed process 3727; cold launch created process 4130.
+At 150% font scale, Create reopened at revision 5, then the saved Magician draft
+and receipt `6fa5d6972eb2175f8c61389d267bee7e1d177342cf4eb7cdc30ed4dd9adfdc17`
+opened again. Workspace SHA-256 remained
+`60e7e6d3162fc0e03e05f408622b07f14d52d5eb35517ecffabfcee7d4036d31`
+before update, after update and after restart. No ANR event was observed in this
+emulator boot. This verifies the final package's update/cold-reopen route; it
+does not claim a new native confirmation or awakened Career finalization on
+that APK. The owned emulator was stopped after the bounded check.
+
 ## Remaining limitations
 
 - Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded

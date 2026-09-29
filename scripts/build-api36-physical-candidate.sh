@@ -179,16 +179,16 @@ for forbidden in \
 done
 
 [[ -f "$lock" && ! -L "$lock" ]] || fail "full-project-lock-missing"
-[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "7b54e21eedcb525a4f7cad7047b36f169795cbb48d3da9b2b93879008d4ee58f" ]] \
+[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "e3ed245c2500a8f02c1dc51c5a30bb6fa5a4ea6cce75058e2689b5d0c0115627" ]] \
   || fail "full-project-lock-digest-mismatch"
 [[ "$($dotnet_command --version)" == "10.0.111" ]] || fail "dotnet-sdk-not-10.0.111"
 [[ -z "$("$git_command" -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "b6fe493e0ebd07b5eed1e91e76fd56dd7f9d67ff" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "b930829109919f9444e7207f893c8f9840f3e587" ]] \
   || fail "presentation-revision-input-mismatch"
-[[ "$CHUMMER_CORE_ENGINE_REVISION" == "633f81abaf5f18be10235d28765e9245760a8483" ]] \
+[[ "$CHUMMER_CORE_ENGINE_REVISION" == "fac18e875a8b8d118136b4c3b806f365ed805dd2" ]] \
   || fail "core-runtime-revision-input-mismatch"
 [[ "$CHUMMER_RUN_SERVICES_REVISION" == "c77395de9f733427ef952c851f4a95b063cb5573" ]] \
   || fail "hub-revision-input-mismatch"
@@ -196,15 +196,15 @@ done
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "b6fe493e0ebd07b5eed1e91e76fd56dd7f9d67ff" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "b930829109919f9444e7207f893c8f9840f3e587" ]] \
   || fail "current-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "e266330a75bf1a81694c6a60b773a19ca227e5e4" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "7e2dd409e0e572df300517e8ab73a4cd737466e1" ]] \
   || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "current-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "38d375cb2d5d62d17a6f05835804de7be4e3c188804c475cf1af9e5a6052758a" ]] \
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "4c1be66014951185384753b02adaa2c51ab66405833193219a3428da419bd60b" ]] \
   || fail "current-presentation-lock-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "fb86e9c9d6ffdc0ed2ca5e1dda87b87d624fa5c7" ]] \
+[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "655677478a44d9cd8e18f21723d0792d9caf4c4a" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
   || fail "core-content-not-clean"
@@ -298,8 +298,8 @@ package_args=(
   "-p:AndroidSdkDirectory=$android_sdk_root"
   "-p:AndroidSdkBuildToolsVersion=$android_build_tools_version"
   "-p:JavaSdkDirectory=$java_home"
-  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.v20260929.3.sh633f81abaf5f1"
-  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.v20260929.3.sh633f81abaf5f1"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.v20260929.5.shfac18e875a8b8"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.v20260929.5.shfac18e875a8b8"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
   "-p:ChummerRunContractsPackageVersion=0.1.1-packageplane.20260927.1"
   "-p:ChummerHubRegistryContractsPackageVersion=0.1.1-packageplane.20260927.1"

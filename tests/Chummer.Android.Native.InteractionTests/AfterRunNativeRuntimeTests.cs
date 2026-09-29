@@ -562,7 +562,7 @@ internal static partial class AfterRunAuthorityHarness
             bool productionCreationOverview = false,
             Func<IOwnerBoundCharacterCreationQualitiesService, IOwnerBoundCharacterCreationQualitiesService>? qualitiesDecorator = null,
             Func<IOwnerBoundCharacterCreationKarmaMetatypeService, IOwnerBoundCharacterCreationKarmaMetatypeService>? karmaDecorator = null,
-            Func<ICharacterCreationMagicResonanceService, ICharacterCreationMagicResonanceService>? magicDecorator = null,
+            Func<IOwnerBoundCharacterCreationMagicResonanceService, IOwnerBoundCharacterCreationMagicResonanceService>? magicDecorator = null,
             Func<ISr6CreationFoundationService, ISr6CreationFoundationService>? sr6Decorator = null,
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationLifeModuleFinalizationService>? lifeCompletionDecorator = null,
             Action? beforeShellWorkspaceList = null,
@@ -637,7 +637,8 @@ internal static partial class AfterRunAuthorityHarness
                         ownerBoundCreationFinalizationService: productionFinalization,
                         ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
                         ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
-                        ownerBoundCreationQualitiesService: _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>())
+                        ownerBoundCreationQualitiesService: _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>(),
+                        ownerBoundCreationMagicResonanceService: _provider.GetRequiredService<IOwnerBoundCharacterCreationMagicResonanceService>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
                         creationContactsService: _provider.GetRequiredService<ICharacterCreationContactsService>(),
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()) : null,
@@ -691,7 +692,9 @@ internal static partial class AfterRunAuthorityHarness
                     ownerBoundCreationQualitiesService: productionCreationOverview
                         ? qualitiesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>())
                             ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>() : null,
-                    creationMagicResonanceService: magicDecorator?.Invoke(_provider.GetRequiredService<ICharacterCreationMagicResonanceService>()),
+                    ownerBoundCreationMagicResonanceService: magicDecorator?.Invoke(
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationMagicResonanceService>())
+                        ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationMagicResonanceService>(),
                     careerReputationService: reputationService,
                     careerReputationJournal: reputation ? _provider.GetRequiredService<Sr5CareerReputationJournal>() : null,
                     linkedCharacterJournal: LinkedJournal,
