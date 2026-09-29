@@ -76,11 +76,11 @@ internal sealed partial class CreationKarmaPage
         _body.Add(NativeTheme.Title(MagicKindLabel(slice.Kind), 22));
         AddKarmaMagicSummary();
         long render = _render, appearance = CaptureAppearanceGeneration();
-        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-magic-search" };
+        var search = NativeTheme.SearchField("karma-magic-search", _search, CreationKarmaCopy.Search);
         search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
         _body.Add(search);
         AddButton(CreationKarmaCopy.Search, "karma-magic-search-go", () => { _page = 0; return Task.CompletedTask; });
-        var rows = slice.Options.Where(item => item.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        var rows = slice.Options.Where(item => item.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
         _page = Math.Min(_page, Math.Max(0, (rows.Length - 1) / PageSize));
         foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
         {

@@ -178,6 +178,17 @@ internal static class NativeTheme
         ClearButtonVisibility = ClearButtonVisibility.WhileEditing
     };
 
+    public static SearchBar SearchField(string automationId, string? value, string placeholder = "") => new()
+    {
+        AutomationId = automationId,
+        Text = value ?? string.Empty,
+        Placeholder = placeholder,
+        BackgroundColor = Surface,
+        TextColor = Text,
+        PlaceholderColor = Muted,
+        CancelButtonColor = Text
+    };
+
     public static Editor TextArea(string automationId, string? value, string placeholder = "") => new()
     {
         AutomationId = automationId,

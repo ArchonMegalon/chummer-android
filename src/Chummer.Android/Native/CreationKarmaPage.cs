@@ -354,12 +354,12 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                 await Preview();
             });
         }
-        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-quality-search" };
+        var search = NativeTheme.SearchField("karma-quality-search", _search, CreationKarmaCopy.Search);
         long render = _render, appearance = CaptureAppearanceGeneration();
         search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
         _body.Add(search);
         AddButton(CreationKarmaCopy.Search, "karma-quality-search-go", () => { _page = 0; return Task.CompletedTask; });
-        var rows = catalog.Options.Where(item => item.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        var rows = catalog.Options.Where(item => item.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
         _page = Math.Min(_page, Math.Max(0, (rows.Length - 1) / PageSize));
         foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
         {
@@ -418,12 +418,12 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         AddButton(CreationKarmaCopy.Active, "karma-filter-active", () => Filter(CharacterCreationSkillKinds.Active));
         AddButton(CreationKarmaCopy.KnowledgeSkills, "karma-filter-knowledge", () => Filter(CharacterCreationSkillKinds.Knowledge));
         AddButton(CreationKarmaCopy.Groups, "karma-filter-groups", () => Filter("groups"));
-        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-skill-search" };
+        var search = NativeTheme.SearchField("karma-skill-search", _search, CreationKarmaCopy.Search);
         long render = _render, appearance = CaptureAppearanceGeneration();
         search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
         _body.Add(search);
         AddButton(CreationKarmaCopy.Search, "karma-search", () => { _page = 0; return Task.CompletedTask; });
-        bool Match(string name) => name.Contains(_search, StringComparison.CurrentCultureIgnoreCase);
+        bool Match(string name) => name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase);
         var rows = _category == "groups"
             ? catalog.SkillGroups.Where(s => Match(s.Name)).Select(s => (Id: s.GroupId, s.Name, Kind: "groups",
                 Allowed: _session.Access?.AllowedSkillGroupIds.Contains(s.GroupId) == true)).ToArray()
@@ -706,12 +706,12 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             });
         }
         AddButton(CreationKarmaCopy.Preview, "karma-preview-gear", Preview);
-        var search = new SearchBar { Placeholder = CreationKarmaCopy.Search, Text = _search, AutomationId = "karma-gear-search" };
+        var search = NativeTheme.SearchField("karma-gear-search", _search, CreationKarmaCopy.Search);
         long render = _render, appearance = CaptureAppearanceGeneration();
         search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
         _body.Add(search);
         AddButton(CreationKarmaCopy.Search, "karma-gear-search-go", () => { _page = 0; return Task.CompletedTask; });
-        var rows = authority.Options.Where(item => item.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        var rows = authority.Options.Where(item => item.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToArray();
         _page = Math.Min(_page, Math.Max(0, (rows.Length - 1) / PageSize));
         foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
         {
