@@ -104,10 +104,11 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 53 is the latest [observed Internal availability](../play/evidence/preview53-internal-observation.md).
-It is available on Play Internal; physical Play installation of 53 is not yet
-verified. Its readable review and consolidated runner-entry changes have focused
-local managed and diagnostic API-36 save/reopen/process-restart evidence.
+Preview 54 is the latest [observed Internal availability](../play/evidence/preview54-internal-observation.md).
+It is available on Play Internal; physical Play installation of 54 is not yet
+verified. Its illustrated-book capacity correction has focused local managed
+export/reopen and diagnostic API-36 reading, SAF export and process-restart
+evidence. Synthetic book checks do not approve real AI-story quality.
 
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
 physically verified version. Its normal Play update from 51, first launch and saved-runner process
