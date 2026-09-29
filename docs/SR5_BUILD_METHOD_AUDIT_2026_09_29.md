@@ -333,6 +333,75 @@ emulator boot. This verifies the final package's update/cold-reopen route; it
 does not claim a new native confirmation or awakened Career finalization on
 that APK. The owned emulator was stopped after the bounded check.
 
+### Native awakened finalization and Career closeout
+
+Core PR #98 merged normally as `28684d772fa5088764f53756300bbc5d5c1eba21`
+after the required package checks passed. Android PR #200 merged normally as
+`b05ad8f88a8eda0837cc665dbccc3da962cbf2a4`; its review and main have identical
+tree `498e0e822669d19fc011c2ce485a2788e03b99e9`. No protection was changed.
+
+The unchanged final Debug APK `9b9b0a1d…` above then continued the saved
+Priority Human/Magician through empty Qualities (revision 5 → 6), zero-Karma
+Resources (6 → 7), and one Flashlight costing 25 Nuyen (7 → 8). Native review
+showed 50,000 starting Nuyen and 49,975 remaining before carryover. Street
+starting cash used an explicitly entered synthetic dice total of 3, yielding 60.
+Core applied the configured carryover limits, leaving 7 Karma and 5,060 Nuyen.
+
+One explicit confirmation finalized revision 8 → 9, with one durable receipt:
+`5f0f5c6cbde8e3447a868286c326c6f1cd5c3cefa94f28d73c9f27ea121be336`.
+Read-only inspection of the actual saved XML verified `created=True`, Human,
+Priority, Magician enabled, Magic 3, Hermetic tradition, exactly the five selected
+spells and exactly one Flashlight. The actual native Career wizard opened at 9/9.
+
+Verified force-stop removed process 2557; cold launch created process 5675.
+The sheet and Career wizard reopened at 9/9 with the identical receipt. Exact
+workspace bytes remained SHA-256
+`08f2fa93c969cdffa0eb1a7eb6138c5e0562934bde2cc5e3f381f0709fb84e00`.
+No ANR event was observed in this emulator boot. The bounded observer first
+exhausted its scroll allowance on the very long final review; an earlier
+overlapping hierarchy read also failed. Neither observation was treated as a
+pass or caused a confirmation retry. A subsequent serial observation located
+the enabled confirmation and exactly one tap was dispatched.
+
+This closes the specific native awakened Career route, not every talent,
+spell, metatype, build-method combination or physical Play installation.
+
+### Final-review readability and paid-quality closeout
+
+The native final review exposed many screens of raw source identifiers at 150%
+font scale. Those exact anchors now sit behind an initially collapsed technical
+details toggle, using the existing English/German/Spanish disclosure copy.
+Every ordered delta, before/after value and cost remains visible. The disclosure
+does not mutate or refresh the review, rejects detached/stale/account-switched
+callbacks, and resets on a fresh render. Confirmation and Core rules are unchanged.
+
+Eighteen focused source-contract cases passed. The affected local Debug build
+completed with zero warnings/errors, APK SHA-256
+`1dfa20ae5c5b09ec7b6238cd50607d60efacb08ec3fb03856bb6cb9469f3500d`.
+All 330 embedded content payloads and the exact manifest match the preceding
+package authority. This uses the same sealed Core/UI graph, not a new package
+producer or remote build.
+
+On the owned API 36 x64 emulator at 150% font scale, the existing paid-quality
+Priority runner continued from its saved zero-Karma Resources draft. One empty
+Gear confirmation advanced revision 6 → 7. The final review showed the unchanged
+plan after disclosure open/close and leaving/reentering the page; the new review
+was collapsed again. Workspace bytes remained
+`8a6f6aedffe99b86c1b96f419244156b87463f44ca02ea5562d43399ee362b70`
+until explicit confirmation.
+
+One confirmation finalized revision 7 → 8. Saved XML contains exactly one
+Ambidextrous quality, its four-Karma source cost and one enabled, quality-bound
+Ambidextrous improvement. The durable receipt is
+`7e75bb3423eccb9b04c91cc1fddb8acba23ab5a74f265d7c209f272ce97d4568`.
+Force-stop removed process 6041; new process 7249 reopened the Career sheet with
+that same receipt. Revision stayed 8/8, receipt count stayed one and workspace
+bytes stayed SHA-256
+`2b5481ccb5d4364814256f296e996383ef1cee300f2753089ed102280675ffa6`.
+No ANR event was observed in this boot. The owned emulator was then stopped.
+The Magician proof above belongs to its separately identified preceding APK;
+the display-only build is not presented as a rerun of all methods/talents.
+
 ## Remaining limitations
 
 - Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded
@@ -340,7 +409,8 @@ that APK. The owned emulator was stopped after the bounded check.
   every paid quality.
 - Complex magic/metatype options and exhaustive catalogs were not covered by
   these minimal routes. Method availability does not imply all-options parity.
-- The finalization detail remains verbose at large font sizes; only the concrete
-  starting-cash contrast and search-keyboard defects were corrected here.
+- Finalization still exposes technical target IDs in individual delta headings;
+  the long source-anchor paragraphs are now collapsed by default. Full friendly
+  naming/localization of the Core delta catalog is not claimed by this change.
 - This increment creates no new Release AAB or Play publication. Preview 52's
   existing release evidence remains unchanged. Origin/provider work is separate.

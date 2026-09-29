@@ -199,6 +199,27 @@ public sealed class CreationFinalizationPage : NativePageBase
         budgetCard.AutomationId = "creation-finalization-costs";
         _body.Add(budgetCard);
 
+        // Keep every reviewed change and cost visible. Raw source anchors are
+        // diagnostics, not extra choices; they can span many phone screens.
+        List<Label> sourceDetails = [];
+        bool showDetails = false;
+        Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+            "Qualities.ShowDetails", "Show technical details"));
+        details.AutomationId = "creation-finalization-technical-details-toggle";
+        details.Clicked += (_, _) =>
+        {
+            if (!_visible || _confirming || !ReferenceEquals(details.Parent, _body)
+                || !Coordinator.IsCreationFinalizationReviewCurrent(_review))
+                return;
+            showDetails = !showDetails;
+            foreach (Label source in sourceDetails)
+                source.IsVisible = showDetails;
+            details.Text = showDetails
+                ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
+                : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+        };
+        _body.Add(details);
+
         foreach (CharacterCreationFinalizationDelta delta in _review.OrderedDeltas
                      .OrderBy(static item => item.Order))
         {
@@ -216,9 +237,13 @@ public sealed class CreationFinalizationPage : NativePageBase
             }
             if (delta.SourceAnchorIds.Count > 0)
             {
-                card.Add(NativeTheme.Body(
+                Label source = NativeTheme.Body(
                     string.Join(" · ", delta.SourceAnchorIds),
-                    NativeTheme.Muted));
+                    NativeTheme.Muted);
+                source.AutomationId = $"creation-finalization-source-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
+                source.IsVisible = false;
+                sourceDetails.Add(source);
+                card.Add(source);
             }
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-finalization-delta-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
