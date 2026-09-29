@@ -313,6 +313,8 @@ detached callbacks, cancellation, journal recovery and Skills/Magic revisits.
 Affected builds had zero warnings/errors. A further 193 selected Python
 source/package/workflow/provenance regressions and the repository private-key
 hygiene check passed. The broad ambient-sibling suite was not rerun.
+Both affected Career Quality and Skill Group runners also passed their eight
+behavior groups with the new exact runtime/content identities.
 
 Final separate Debug APK SHA-256:
 `9b9b0a1d1e547f4e775a7a57709019aa045e2b0d162fed3b91fe5e4d27dfa063`.
