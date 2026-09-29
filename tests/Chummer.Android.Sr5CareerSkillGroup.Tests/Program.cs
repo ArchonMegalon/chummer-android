@@ -62,7 +62,7 @@ internal static class Program
         foreach ((string core, string presentation) in new[]
         {
             ("880e5df8ace981e9a60264d835329dd32f54a158", "399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d"),
-            ("655677478a44d9cd8e18f21723d0792d9caf4c4a", Sr5CareerSkillGroupRuntimeAuthority.CurrentPresentationRevision)
+            ("55b848ab27cfd2637d2c8ee69ab631d40a2b109a", Sr5CareerSkillGroupRuntimeAuthority.CurrentPresentationRevision)
         })
         {
             Sr5CareerSkillGroupRuntimeAuthority stale = draft.RuntimeAuthority with

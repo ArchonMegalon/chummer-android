@@ -41,3 +41,31 @@ ANR/crash event. The owned emulator was stopped; its saved data was retained.
 
 This change creates no Release AAB, Play upload, physical-install evidence or
 claim of complete linked-runner recovery coverage. Preview 52 truth is unchanged.
+
+## Sealed dependency intake and restart follow-up
+
+The same application changes were rebuilt against the verified UI seal
+`aa75dd1fac06fb014df3d23af6c20dd7e979e995` and Core recipe
+`55b848ab27cfd2637d2c8ee69ab631d40a2b109a` (runtime source `9a49d4fa348f41b9d462d706603b85f462ccb905`).
+Core PR 99 and UI PR 265 merged normally; no protection was changed. The local
+UI consumer receipt SHA-256 is
+`e501b33b933306a56188be86fb1f1fdea2806e85a0dfbb4289c0b285eaeb89d4`.
+Android authority validation accepted the actual 18-package cache and six owner
+pins. Native/MAUI compile and all five affected managed test modes passed.
+
+Debug x64 APK SHA-256:
+`4bf09c7ff61d73c50ef619bd287bfec72b88534c6c16454222143a6aca89c884`.
+The local APK build took 1m59.35s with zero warnings/errors. All 330 embedded
+catalog files matched the exact content manifest. APK assembly uses pinned
+Presentation source plus sealed owner packages and exact Core content, not
+ambient sibling runtime source or an entirely package-only MAUI application.
+
+The API 36 emulator update succeeded. At 150% font scale, More, diagnostics,
+Refresh and Back remained usable. Force-stop removed process 3586; new process
+3852 reopened the same Career sheet and finalization receipt
+`4be6c4846990ffc003a82a80047d74d318aa63784c47427ffac4ca4bcae650cf`.
+The complete workspace SHA-256 above was unchanged. No ANR/crash event appeared
+in this boot. `package-review-01` through `-07` in the private final-review
+packet retain observations; `-06` is initial loading, not accepted readiness.
+The owned emulator was stopped and its data retained. No cloud-load mutation,
+new finalization, Release signing, Play upload or physical installation occurred.

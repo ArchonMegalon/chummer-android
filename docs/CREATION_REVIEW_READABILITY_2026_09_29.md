@@ -75,8 +75,10 @@ involved.
 
 ## Remaining delivery boundaries
 
-Core/UI package convergence and the release build are still pending. No Release
-AAB, upload-key signing or new Play upload is asserted. Preview 52 publication
+Core/UI package convergence subsequently passed; the sealed-package native
+restart follow-up is recorded in
+[the diagnostics check](LINKED_FILE_DIAGNOSTICS_2026_09_29.md#sealed-dependency-intake-and-restart-follow-up).
+The release build remains pending. No Release AAB, upload-key signing or new Play upload is asserted. Preview 52 publication
 truth is unchanged. Resource field labels and the generic overview's duplicate
 review row remain UX debt; this check does not claim that every technical label
 or every advertised build-method option is polished or qualified.
