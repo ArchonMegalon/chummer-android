@@ -61,7 +61,8 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertIn("=> Task.Run(() => ReviewCreationFinalization(binding), cancellationToken);", source)
         self.assertIn("=> Task.Run(() => ReviewCreationFinalization(binding, startingCash), cancellationToken);", source)
         self.assertIn("StartingCash = review.Plan.StartingCash", source)
-        dispatch = source.split("result = await Task.Run(() =>", 1)[1].split("cancellationToken);", 1)[0]
+        confirm = source.split("ConfirmCreationFinalizationAsync(", 1)[1].split("\n    public ", 1)[0]
+        dispatch = confirm.split("result = await Task.Run(() =>", 1)[1].split("cancellationToken);", 1)[0]
         self.assertIn("_ownerBoundFinalizationService?.Confirm(owner, command)", dispatch)
         self.assertIn("original.DisplayOwnerContext", dispatch)
         self.assertNotIn("await", dispatch)

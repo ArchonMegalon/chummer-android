@@ -1457,6 +1457,18 @@ internal static partial class AfterRunAuthorityHarness
                 Require(reviewed.Value is { CanApply: true, FinalizationPlan: not null },
                     "Native full allocation is not confirmable: " + string.Join(", ", reviewed.Blockers));
                 var preview = reviewed.Value!;
+                var nativeDelta = preview.FinalizationPlan!.OrderedDeltas.Single(delta =>
+                    delta.Kind == CharacterCreationFinalizationDeltaKinds.Skill && delta.AfterValue == "native");
+                Require(nativeDelta.TargetName == native.Name
+                    && LifeModuleCompletionPage.ReviewChange(preview, nativeDelta)
+                        .StartsWith(native.Name + ": ", StringComparison.Ordinal),
+                    "The real Life Modules plan lost the admitted native-language name in final review.");
+                foreach (var delta in preview.FinalizationPlan.OrderedDeltas.Where(delta =>
+                    delta.Kind == CharacterCreationFinalizationDeltaKinds.Metatype
+                    || delta.DeltaId.StartsWith("module:", StringComparison.Ordinal)
+                    || delta.DeltaId == "lifestyle:default"))
+                    Require(!string.IsNullOrWhiteSpace(delta.TargetName) && delta.TargetName == delta.AfterValue,
+                        "The real Life Modules plan exposes a technical ID instead of its admitted name: " + delta.DeltaId);
                 Require((await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(preview, false)).Value is null
                     && probe!.ConfirmCalls == 0, "An unconfirmed preview dispatched a write.");
                 Require((await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(preview with { }, true)).Value is null,

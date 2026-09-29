@@ -226,7 +226,9 @@ public sealed class CreationFinalizationPage : NativePageBase
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Eyebrow(
                 $"{delta.Order.ToString(CultureInfo.InvariantCulture)} · {delta.Kind}"));
-            card.Add(NativeTheme.Title(delta.TargetId, 18));
+            Label target = NativeTheme.Title(TargetLabel(delta), 18);
+            target.AutomationId = $"creation-finalization-target-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
+            card.Add(target);
             card.Add(NativeTheme.Body(
                 $"{delta.BeforeValue ?? "—"} → {delta.AfterValue ?? "—"}"));
             if (delta.KarmaCost != 0 || delta.NuyenCost != 0)
@@ -235,10 +237,11 @@ public sealed class CreationFinalizationPage : NativePageBase
                     $"Karma {Number(delta.KarmaCost)} · Nuyen {Number(delta.NuyenCost)}",
                     NativeTheme.Muted));
             }
-            if (delta.SourceAnchorIds.Count > 0)
+            if (delta.SourceAnchorIds.Count > 0 || TargetLabel(delta) != delta.TargetId)
             {
                 Label source = NativeTheme.Body(
-                    string.Join(" · ", delta.SourceAnchorIds),
+                    delta.TargetId + (delta.SourceAnchorIds.Count > 0
+                        ? "\n" + string.Join(" · ", delta.SourceAnchorIds) : string.Empty),
                     NativeTheme.Muted);
                 source.AutomationId = $"creation-finalization-source-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
                 source.IsVisible = false;
@@ -297,6 +300,14 @@ public sealed class CreationFinalizationPage : NativePageBase
             _confirming = false;
         }
     }
+
+    // Display only: the exact Core-supplied name is already bound into the plan.
+    // Never resolve a similarly named catalog row or change the typed identity.
+    // Older receipts without this optional field retain an explicit ID fallback.
+    internal static string TargetLabel(CharacterCreationFinalizationDelta delta) =>
+        !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
+            : delta.Kind == CharacterCreationFinalizationDeltaKinds.Attribute
+                ? CreationAllocationStrings.AttributeName(delta.TargetId) : delta.TargetId;
 
     private static string Short(string value) => value.Length <= 18 ? value : value[..18] + "…";
 

@@ -2243,24 +2243,32 @@ public sealed class BuildPage : NativePageBase
         };
         foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
         {
-            CharacterCreationBudgetState budget = readiness.Skills
-                                                     && skills!.Value is { } skillState
-                ? projectedBudget.BudgetId switch
-                {
-                    CharacterCreationBudgetIds.ActiveSkills => skillState.ActiveSkillPointBudget,
-                    CharacterCreationBudgetIds.SkillGroups => skillState.SkillGroupPointBudget,
-                    CharacterCreationBudgetIds.KnowledgeSkills => skillState.KnowledgeSkillPointBudget,
-                    _ => projectedBudget
-                }
-                : readiness.Attributes && attributes!.Value is { } attributeState
-                    ? projectedBudget.BudgetId switch
-                    {
-                        CharacterCreationBudgetIds.NormalAttributes => attributeState.NormalPointBudget,
-                        CharacterCreationBudgetIds.SpecialAttributes => attributeState.SpecialPointBudget,
-                        CharacterCreationBudgetIds.Karma => attributeState.CreationKarmaBudget,
-                        _ => projectedBudget
-                    }
-                    : projectedBudget;
+            // Each typed projection owns only its own budget family.  The old
+            // skills-first conditional left normal/special attributes and Karma
+            // on the conservative generic snapshot whenever Skills was ready,
+            // making a valid restored runner look blocked after restart.
+            CharacterCreationBudgetState budget = projectedBudget.BudgetId switch
+            {
+                CharacterCreationBudgetIds.ActiveSkills
+                    when readiness.Skills && skills!.Value is { } skillState
+                    => skillState.ActiveSkillPointBudget,
+                CharacterCreationBudgetIds.SkillGroups
+                    when readiness.Skills && skills!.Value is { } skillState
+                    => skillState.SkillGroupPointBudget,
+                CharacterCreationBudgetIds.KnowledgeSkills
+                    when readiness.Skills && skills!.Value is { } skillState
+                    => skillState.KnowledgeSkillPointBudget,
+                CharacterCreationBudgetIds.NormalAttributes
+                    when readiness.Attributes && attributes!.Value is { } attributeState
+                    => attributeState.NormalPointBudget,
+                CharacterCreationBudgetIds.SpecialAttributes
+                    when readiness.Attributes && attributes!.Value is { } attributeState
+                    => attributeState.SpecialPointBudget,
+                CharacterCreationBudgetIds.Karma
+                    when readiness.Attributes && attributes!.Value is { } attributeState
+                    => attributeState.CreationKarmaBudget,
+                _ => projectedBudget
+            };
             string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
             VerticalStackLayout card = new()
             {

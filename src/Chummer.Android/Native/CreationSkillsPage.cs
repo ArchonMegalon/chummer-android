@@ -345,6 +345,10 @@ public sealed class CreationSkillsPage : NativePageBase
 
     private void AddReview(CharacterCreationSkillsState state)
     {
+        // The catalogs can span many screens. Keep the reason a review cannot
+        // proceed beside its action as well as beside the allocation ledgers.
+        if (_blockers.Count > 0)
+            AddBlockers(_blockers, "creation-skills-review-blockers");
         Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "Skills.ReviewDraft",
             "Review Skills draft"));
@@ -387,7 +391,7 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(review);
     }
 
-    private void AddBlockers(IReadOnlyList<string> blockers)
+    private void AddBlockers(IReadOnlyList<string> blockers, string? automationId = null)
     {
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
@@ -398,7 +402,9 @@ public sealed class CreationSkillsPage : NativePageBase
                 ? CreationAllocationStrings.Get("Skills.NativeLanguageRequired",
                     "Your skill choices are not saved yet. Choose a native language under Knowledge & languages before reviewing and saving.")
                 : $"• {blocker}", NativeTheme.Danger));
-        _body.Add(NativeTheme.Card(card));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = automationId;
+        _body.Add(border);
     }
 
     private static string Token(string value) => new(value.ToLowerInvariant()
