@@ -92,12 +92,91 @@ UI seal: `4db8d445fdd13c8c99dd50eb6d59fe2d243a6062`.
 Core PR #96 and UI PR #257 merged through their existing required checks.
 Workflow changes here repin inputs; they do not change triggers or protections.
 
+## Follow-up: contextual paid quality and cold recovery
+
+The original minimal routes used empty Qualities drafts. The follow-up fixes
+Ambidextrous' `{arm} - 1` limit for the exact original Priority/Sum-to-Ten
+Human/Mundane prerequisite with ordinary two-arm anatomy. Unknown variants,
+grants and active limb modifiers remain rejected; Karma anatomy support is not
+claimed. The source node and its four-Karma price are preserved, not replaced
+with a hard-coded generic rating limit.
+
+Package production exposed a second concrete defect: continuation recovery had
+captured the legacy catalog without the prerequisite-dependent quality context.
+The corrected frozen capture binds the entire prerequisite record and both
+contextual/legacy catalogs. Restore preview and confirmation recheck the full
+workspace. Substituted prerequisite choices, uncaptured live-source fallbacks,
+owner ABA and stale/replayed operations remain rejected.
+
+Verification of this correction:
+
+- 60 focused Core continuation, source-capture, restore, quality, owner/CAS and
+  historical-draft regressions passed; 106 package-control tests passed.
+- The corrected package producer passed 703 managed cases, owner-admission
+  checks and 15 strict inventory cases. The eight published package payloads
+  match the local development feed byte-for-byte.
+- Native Debug APK `3f78ac68dfc60d500565e83d5993c4ddc8e189f328bdd85d0b112256f8b92d9d`
+  selected Ambidextrous at rating 1, previewed 25 → 21 Karma and saved once,
+  revision 4 → 5. After verified process death/relaunch, Create reopened at
+  revision 5 with 21 Karma, and the saved quality receipt reopened unchanged.
+  Receipt digest:
+  `9613a337bcbeb2f13ccc68a407a7ea05f6542a6ad8e12671d3d1a6769c5c2992`.
+  Workspace SHA-256 before/after restart:
+  `13c4047ee027031b8e01f33ce8fb56b5cdd7be6b1faaa63b22248652c4f3df13`.
+- The Android package intake passed managed/native Priority/Sum-to-Ten ×
+  local/linked-owner allocation and purchase cases, including actual catalog
+  purchases, save/reopen, cancellation, ABA rejection and finalization.
+
+Core runtime: `633f81abaf5f18be10235d28765e9245760a8483`;
+recipe: `fb86e9c9d6ffdc0ed2ca5e1dda87b87d624fa5c7`.
+The new immutable local-build bundle has SHA-256
+`1c6540ac3fc46d57589cd91948cce29d50a15744509e9efe67c39d54c1b5671a`;
+anonymous public readback matched. This is package provenance, not Play evidence.
+
+Core PR #97 merged as `46acff4f83b3790c1e802aa13cd564dde9198f07`;
+UI PR #260 merged as `394e934c4cde3ecbf266a1ca0ec3d4bb6f3a0ac7`, with
+reviewed seal `b6fe493e0ebd07b5eed1e91e76fd56dd7f9d67ff`. Both merges preserve
+their reviewed source trees and passed the existing protected checks. Android
+now consumes that exact seal and the corrected Core recipe; workflow edits are
+identity repins only.
+
+The final local Debug APK has SHA-256
+`40c0c017dbf6b922f7ab5a22fb56f6c8f727406c39ed3579d646f5eae311ed57`.
+Its build passed with zero warnings/errors, and all 330 content payloads and the
+manifest passed verification. After the preceding native route also saved zero
+Karma conversion in Resources (revision 6), updating to this final APK and cold
+launching reopened Create at revision 6 with byte-identical workspace state:
+`d30910710817b92a14879648dd4ccd11d1c8cb3a40f1bf8eeffa85e07e021090`.
+The follow-up paid-quality runner has not been finalized natively; the earlier
+minimal-route Career results and focused paid-quality finalization tests remain
+separately scoped evidence.
+
+The final UI seal's local consumer replay passed five consumer builds and the
+selected managed test groups. Its product-test compile retained 61 existing
+analyzer warnings (zero errors). Android's final package verifier, selected
+package/workflow/content/security contracts and both eight-group Career Quality
+and Skill Group runners passed. The broad cross-repository Android source-contract
+suite is not claimed green: stale ambient sibling sources caused lookup failures,
+and the existing icon-scale assertion disagreed with the checked-in icon scale.
+The changed dependency-pin contract was rerun separately and passed; no assertion
+was weakened to obtain a pass.
+
+### Emulator observation boundary
+
+The first follow-up boot reported an app ANR after BOD increase/immediate Back;
+its retained trace sampled the UI thread waiting in HWUI drawing. SystemUI and
+other guest processes also had ANRs. The emulator inherited a heavily throttled
+two-CPU agent cgroup. Moving only the owned emulator into a bounded independent
+four-CPU/6-GB transient scope let the same APK pass that interaction and the
+paid-quality save/restart sequence with no ANR events observed in that boot.
+This supports a scheduling contribution, not a claim that all product latency
+is resolved or physical-device behavior is proven. Failure evidence is retained.
+
 ## Remaining limitations
 
-- Ambidextrous is still unavailable: its `{arm} - 1` rating limit requires an
-  exact anatomy-dependent projection the current quality source adapter lacks.
-  It remains visibly unavailable/fail-closed, not silently treated as rating 1.
-  Empty Qualities success is not proof of every paid quality.
+- Ambidextrous was unavailable in the earlier minimal-route APKs. The bounded
+  follow-up above is not proof of arbitrary anatomy, Karma-method support or
+  every paid quality.
 - Complex magic/metatype options and exhaustive catalogs were not covered by
   these minimal routes. Method availability does not imply all-options parity.
 - The finalization detail remains verbose at large font sizes; only the concrete
