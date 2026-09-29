@@ -12,7 +12,8 @@ public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
 
-internal sealed record CreationBudgetRoute(string Title, string Detail, bool CanOpen, Func<Task> Open);
+internal sealed record CreationBudgetRoute(string Title, string Detail, bool CanOpen, Func<Task> Open,
+    IReadOnlyList<string> Blockers);
 
 /// <summary>
 /// One synchronous dashboard render only. Full packet checks are shared by its
@@ -2310,11 +2311,20 @@ public sealed class BuildPage : NativePageBase
                 stepId = CharacterCreationWizardStepIds.MagicResonance;
             CreationBudgetRoute? route = stepId is not null && routes is not null
                 && routes.TryGetValue(stepId, out var found) ? found : null;
+            var blockers = budget.Blockers.Concat(route?.Blockers ?? [])
+                .Concat(stepId == CharacterCreationWizardStepIds.Skills ? projection?.Skills?.Blockers ?? [] : []);
+            if (route?.CanOpen != true && blockers.Any(blocker => blocker is
+                    CharacterCreationQualitiesBlockers.AttributesDraftRequired
+                    or CharacterCreationSkillsBlockers.AttributesDraftRequired
+                    or CharacterCreationMagicResonanceBlockers.AttributesDraftRequired)
+                && routes is not null && routes.TryGetValue(CharacterCreationWizardStepIds.Attributes, out var attributeRoute)
+                && attributeRoute.CanOpen)
+                route = attributeRoute;
             if (route?.CanOpen != true && HasAuthoritativePrerequisiteOptions(prerequisite)
                 && (!prerequisite!.Value!.CanEnterAttributes || prerequisite.Value.RequiresMetatypeAttributeAdjustment))
                 route = new CreationBudgetRoute(
                     CreationAllocationStrings.Get("Budget.Prerequisites", "Priorities and metatype"),
-                    string.Empty, true, () => OpenCreationPrerequisiteAsync(prerequisite.Value));
+                    string.Empty, true, () => OpenCreationPrerequisiteAsync(prerequisite.Value), []);
             string action = route?.CanOpen == true
                 ? CreationAllocationStrings.Format("Budget.Open", "Review {0} ›", route.Title)
                 : CreationAllocationStrings.Get("Budget.Check", "Check what is missing ›");
@@ -2511,7 +2521,7 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected);
+            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected, stage.Blockers);
             Border row = CreationNavigationRow(
                 stage.Label,
                 detail,

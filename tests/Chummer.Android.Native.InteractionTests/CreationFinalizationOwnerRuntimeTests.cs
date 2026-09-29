@@ -140,6 +140,16 @@ internal static partial class AfterRunAuthorityHarness
             Require(nav.Navigation.NavigationStack.Last() is CreationResourcesPage,
                 "Inexact Resources did not open the admitted Resources editor.");
             await nav.PopAsync(false);
+            var karma = snapshot.Budgets.Single(row => row.BudgetId == CharacterCreationBudgetIds.Karma)
+                with { Blockers = [CharacterCreationQualitiesBlockers.AttributesDraftRequired] };
+            render.Invoke(page, [snapshot with { Budgets = [karma] },
+                attributes, skills, pending, routes, projection, null]);
+            var dependencyButton = body.Children.OfType<FlexLayout>().Last().Children.OfType<Border>()
+                .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).Single();
+            await ui.BeginAsyncVoid(() => ((IButtonController)dependencyButton).SendClicked());
+            Require(nav.Navigation.NavigationStack.Last() is CreationAttributesPage,
+                "A blocked Qualities/Karma budget did not lead to its missing Attributes prerequisite.");
+            await nav.PopAsync(false);
             // The card is retained across an A→B→A switch. Matching names must
             // not revive the old click or navigate to another runner's editor.
             owners.Set(ContactsOwnerB);
