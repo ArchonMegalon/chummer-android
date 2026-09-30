@@ -352,6 +352,22 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private readonly CreationAttributesPhoneDraft _draft;
     private readonly string _attributeId;
     private readonly CharacterCreationAttributesState? _originalAuthority;
+    private sealed record Adjustment(string Token,
+        IReadOnlyList<CharacterCreationAttributeAllocation>? Allocations,
+        CharacterCreationFoundationResult<CharacterCreationAttributesPreview>? Result, bool Enabled);
+    private sealed record PreparedAllocation(CharacterCreationAttributesState State,
+        IReadOnlyList<CharacterCreationAttributeAllocation> Allocations,
+        IReadOnlyList<Adjustment> Adjustments);
+    private PreparedAllocation? _prepared;
+    private CancellationTokenSource? _preparation;
+    private long _preparationGeneration;
+    private bool _loading;
+    private string? _failure;
+    private readonly ActivityIndicator _progress = new()
+    {
+        IsRunning = false, IsVisible = false,
+        AutomationId = "creation-attribute-allocation-loading"
+    };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -374,23 +390,116 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+        => PrepareAsync(cancellationToken);
+
+    protected override void OnDisappearing()
+    {
+        ++_preparationGeneration;
+        _preparation?.Cancel();
+        _prepared = null;
+        _loading = false;
+        _progress.IsRunning = false;
+        _progress.IsVisible = false;
+        base.OnDisappearing();
+    }
+
+    private async Task PrepareAsync(CancellationToken cancellationToken)
+    {
+        long generation = ++_preparationGeneration;
+        _preparation?.Cancel();
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _preparation = lifetime;
+        CancellationToken ct = lifetime.Token;
+        _prepared = null;
+        _failure = null;
+        _loading = true;
+        if (_originalAuthority is null || !Coordinator.IsCreationAttributesStateCurrent(_originalAuthority))
+            _body.Clear();
+        Refresh();
+        var original = Coordinator.State;
+        var draft = _draft.Copy();
+        try
+        {
+            var prepared = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
+            {
+                ct.ThrowIfCancellationRequested();
+                var load = _originalAuthority is { } authority
+                    ? Coordinator.RevalidateCreationAttributes(authority)
+                    : new CharacterCreationFoundationResult<CharacterCreationAttributesState>(
+                        CharacterCreationFoundationOutcomes.Blocked, null,
+                        [CharacterCreationAttributesBlockers.WorkspaceUnavailable]);
+                if (load.Value is not { } state || !draft.Matches(state, original))
+                    return (Value: (PreparedAllocation?)null, Failure: load.Blockers.FirstOrDefault());
+                var choices = new List<Adjustment>();
+                foreach (var (token, priority, karma) in new[]
+                {
+                    ("priority-decrease", -1, 0), ("priority-increase", 1, 0),
+                    ("karma-decrease", 0, -1), ("karma-increase", 0, 1)
+                })
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var allocations = draft.ChangedAllocations(state, _attributeId, priority, karma);
+                    var result = allocations is null ? null
+                        : Coordinator.PreviewCreationAttributes(state.Binding, allocations);
+                    bool enabled = allocations is not null && result is not null
+                        && CreationAttributesPhoneAuthority.CanAdoptPreview(state, original, result, allocations);
+                    choices.Add(new(token, allocations, result, enabled));
+                }
+                return (Value: new PreparedAllocation(state, draft.Allocations(state), choices), Failure: (string?)null);
+            }, ct), ct);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _preparationGeneration) return;
+            _failure = prepared.Failure;
+            // Owner transition, navigation and local draft edits all invalidate a late result.
+            if (prepared.Value is { } value && IsCurrent(value)) _prepared = value;
+        }
+        finally
+        {
+            if (generation == _preparationGeneration)
+            {
+                _loading = false;
+                _progress.IsRunning = false;
+                _progress.IsVisible = false;
+            }
+            if (ReferenceEquals(_preparation, lifetime)) _preparation = null;
+        }
+    }
+
+    private bool IsCurrent(PreparedAllocation prepared)
+        => Coordinator.IsCreationAttributesStateCurrent(prepared.State)
+           && _draft.Matches(prepared.State, Coordinator.State)
+           && _draft.Allocations(prepared.State).SequenceEqual(prepared.Allocations);
+
     protected override void Refresh()
     {
+        // A plus/minus preparation must not collapse the scrolled page to a spinner.
+        // Keep the old projection visible but non-actionable until the fresh one is ready.
+        if (_loading && _body.Children.Count > 0)
+        {
+            foreach (Button button in _body.Children.OfType<Button>()) button.IsEnabled = false;
+            _progress.IsVisible = true;
+            _progress.IsRunning = true;
+            return;
+        }
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributeAllocation.Eyebrow",
             "Attribute allocation")));
         _body.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(_attributeId)));
+        _progress.IsVisible = _loading;
+        _progress.IsRunning = _loading;
+        _body.Add(_progress);
 
-        CharacterCreationFoundationResult<CharacterCreationAttributesState> load =
-            _originalAuthority is { } original ? Coordinator.RevalidateCreationAttributes(original)
-                : new(CharacterCreationFoundationOutcomes.Blocked, null, [CharacterCreationAttributesBlockers.WorkspaceUnavailable]);
-        if (load.Value is not { } state
-            || !_draft.Matches(state, Coordinator.State)
-            || _draft.Attribute(state, _attributeId) is not { } attribute)
+        if (_loading)
+        {
+            return;
+        }
+        if (_prepared is not { } prepared || !IsCurrent(prepared)
+            || _draft.Attribute(prepared.State, _attributeId) is not { } attribute)
         {
             Label stale = NativeTheme.Body(
-                load.Blockers.FirstOrDefault()
+                _failure
                 ?? CharacterCreationAttributesBlockers.StaleWorkspaceRevision,
                 NativeTheme.Danger);
             stale.AutomationId = "creation-attribute-allocation-stale";
@@ -398,31 +507,24 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             return;
         }
 
+        var state = prepared.State;
         AddProjection(attribute);
         AddBudgetSummary(state);
         AddAdjustment(
             state,
             CreationAllocationStrings.Get("AttributeAllocation.PriorityDecrease", "Priority point −"),
-            -1,
-            0,
             "priority-decrease");
         AddAdjustment(
             state,
             CreationAllocationStrings.Get("AttributeAllocation.PriorityIncrease", "Priority point +"),
-            1,
-            0,
             "priority-increase");
         AddAdjustment(
             state,
             CreationAllocationStrings.Get("AttributeAllocation.KarmaDecrease", "Karma level −"),
-            0,
-            -1,
             "karma-decrease");
         AddAdjustment(
             state,
             CreationAllocationStrings.Get("AttributeAllocation.KarmaIncrease", "Karma level +"),
-            0,
-            1,
             "karma-increase");
         AddSources(attribute);
     }
@@ -479,33 +581,23 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private void AddAdjustment(
         CharacterCreationAttributesState state,
         string label,
-        int priorityDelta,
-        int karmaDelta,
         string automationToken)
     {
-        IReadOnlyList<CharacterCreationAttributeAllocation>? allocations =
-            _draft.ChangedAllocations(state, _attributeId, priorityDelta, karmaDelta);
-        CharacterCreationFoundationResult<CharacterCreationAttributesPreview>? result =
-            allocations is null
-                ? null
-                : Coordinator.PreviewCreationAttributes(state.Binding, allocations);
-        bool enabled = allocations is not null
-                       && result is not null
-                       && CreationAttributesPhoneAuthority.CanAdoptPreview(
-                           state,
-                           Coordinator.State,
-                           result,
-                           allocations);
+        var prepared = _prepared!;
+        var choice = prepared.Adjustments.Single(item => item.Token == automationToken);
+        var allocations = choice.Allocations;
+        var result = choice.Result;
+        bool enabled = choice.Enabled;
         Button button = NativeTheme.SecondaryButton(label);
         button.AutomationId = $"creation-attribute-{automationToken}-{CreationAttributesPage.Token(_attributeId)}";
         button.IsEnabled = enabled;
         if (enabled)
         {
-            button.Clicked += async (_, _) => await RunAsync(() =>
+            button.Clicked += async (_, _) => await RunAsync(async () =>
             {
-                if (Coordinator.IsCreationAttributesStateCurrent(state))
-                    _draft.TryAdopt(state, Coordinator.State, result!, allocations!);
-                return Task.CompletedTask;
+                if (ReferenceEquals(_prepared, prepared) && IsCurrent(prepared)
+                    && _draft.TryAdopt(state, Coordinator.State, result!, allocations!))
+                    await PrepareAsync(CancellationToken.None);
             });
         }
         _body.Add(button);

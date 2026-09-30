@@ -1136,6 +1136,18 @@ internal static partial class AfterRunAuthorityHarness
         await RunCreationFinalizationLocalBaselineAsync(contentRoot, CharacterCreationBuildMethods.SumToTen);
     }
 
+    public static async Task RunCreationAttributesAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        await VerifyCreationReadAdmissionAsync();
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            await RunPriorityTableAttributesEntryAsync(contentRoot, method, attributesOnly: true);
+            await RunPriorityTableAttributesEntryAsync(contentRoot, method, linked: true, attributesOnly: true);
+        }
+    }
+
     private static async Task VerifyCreationReadAdmissionAsync()
     {
         // The production Android authority uses non-blocking lease admission,
@@ -1194,7 +1206,8 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS actual Android Creation read admission: contention, cancellation, owner ABA, no nested or leaked lease");
     }
 
-    private static async Task RunPriorityTableAttributesEntryAsync(string contentRoot, string method, bool linked = false)
+    private static async Task RunPriorityTableAttributesEntryAsync(string contentRoot, string method,
+        bool linked = false, bool attributesOnly = false)
     {
         var owners = new ControlledLinkedOwner();
         AttributesCommitProbe? probe = null;
@@ -1270,6 +1283,8 @@ internal static partial class AfterRunAuthorityHarness
             && coordinator.IsCreationAttributesStateCurrent(reopened) && owners.ActiveLeases == 0,
             "Saved allocation did not reopen under fresh owner authority.");
         VerifyAttributesLocalUndo(runtime, reopened, ReadSaved);
+        await VerifyAttributesBackgroundPreviewAsync(runtime, owners, probe!, reopened, ReadSaved);
+        reopened = coordinator.LoadCreationAttributes().Value!;
         if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
             "Owner-bound allocation created a hidden legacy-local record.");
         using var canceled = new CancellationTokenSource();
@@ -1291,7 +1306,87 @@ internal static partial class AfterRunAuthorityHarness
             "The committed allocation did not recover after canceled refresh.");
         Console.WriteLine("PRIORITY_TABLE_ATTRIBUTES_ENTRY " + method + " linked=" + linked
             + " load/preview/save/reopen, forged inputs, owner ABA, replay and post-commit cancellation passed");
-        await VerifyOwnerBoundSkillsAfterAttributesAsync(runtime, owners, linked, method);
+        if (!attributesOnly) await VerifyOwnerBoundSkillsAfterAttributesAsync(runtime, owners, linked, method);
+    }
+
+    private static async Task VerifyAttributesBackgroundPreviewAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, AttributesCommitProbe probe, CharacterCreationAttributesState state,
+        Func<WorkspaceStoredDocument> readSaved)
+    {
+        string savedDigest = FinalizationDocumentDigest(readSaved());
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string scenario in new[] { "ready", "cancel", "leave", "draft-change", "owner-aba" })
+            {
+                var draft = new CreationAttributesPhoneDraft();
+                draft.Bind(state, runtime.Coordinator.State);
+                var changed = draft.ChangedAllocations(state, "BOD", 1, 0)!;
+                var changedPreview = runtime.Coordinator.PreviewCreationAttributes(state.Binding, changed);
+                var page = new CreationAttributeAllocationPage(runtime.Coordinator, draft, "BOD", state);
+                var prepare = typeof(CreationAttributeAllocationPage).GetMethod("PrepareForAppearanceRefreshAsync",
+                    BindingFlags.NonPublic | BindingFlags.Instance)!;
+                Require(prepare.DeclaringType == typeof(CreationAttributeAllocationPage),
+                    "Attribute Core previews must be prepared asynchronously before rendering.");
+                var refresh = typeof(CreationAttributeAllocationPage).GetMethod("Refresh",
+                    BindingFlags.NonPublic | BindingFlags.Instance)!;
+                using var release = new ManualResetEventSlim();
+                using var cancellation = new CancellationTokenSource();
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                int uiThread = Environment.CurrentManagedThreadId;
+                int reads = 0;
+                probe.BeforeRead = () =>
+                {
+                    Require(Environment.CurrentManagedThreadId != uiThread && owners.ActiveLeases == 0,
+                        "Attribute reads/previews blocked the UI or carried an owner lease across await.");
+                    Interlocked.Increment(ref reads);
+                    entered.TrySetResult();
+                    Require(release.Wait(TimeSpan.FromSeconds(10)), "Attribute test read was not released.");
+                };
+                Task pending = (Task)prepare.Invoke(page, [cancellation.Token])!;
+                try
+                {
+                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(!pending.IsCompleted, "Attribute preview did not retain the delayed read.");
+                    var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                    Require(body.Children.OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                        "Attribute loading must show progress before the Core read finishes.");
+                    var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ => heartbeat.SetResult(), null);
+                    await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    if (scenario == "cancel") cancellation.Cancel();
+                    if (scenario == "leave") typeof(CreationAttributeAllocationPage)
+                        .GetMethod("OnDisappearing", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(page, null);
+                    if (scenario == "draft-change") Require(draft.TryAdopt(state,
+                        runtime.Coordinator.State, changedPreview, changed), "SETUP: draft change rejected.");
+                    if (scenario == "owner-aba")
+                    {
+                        var originalOwner = owners.Current;
+                        owners.Set(ContactsOwnerB);
+                        owners.Set(originalOwner);
+                    }
+                }
+                finally { release.Set(); }
+                try { await pending; }
+                catch (OperationCanceledException) when (scenario is "cancel" or "leave") { }
+                catch (InvalidOperationException error) when (scenario == "owner-aba"
+                    && error.Message == "The Creation owner changed during its read.") { }
+                finally { probe.BeforeRead = null; }
+                int preparedReads = reads;
+                // Rendering must not invoke Core, even without the thread probe.
+                probe.BeforeRead = () => throw new Exception("Attribute Refresh re-entered Core.");
+                try { refresh.Invoke(page, null); refresh.Invoke(page, null); }
+                finally { probe.BeforeRead = null; }
+                var rendered = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                bool enabled = rendered.Children.OfType<Button>().Any(item => item.IsEnabled);
+                Require(enabled == (scenario == "ready") && reads == preparedReads,
+                    "Canceled, disappeared or changed-draft preparation became actionable: " + scenario);
+            }
+        });
+        Require(FinalizationDocumentDigest(readSaved()) == savedDigest,
+            "Attribute preview preparation mutated the durable runner.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, readSaved());
+        Console.WriteLine("PASS Attribute background previews, UI heartbeat, pure render, cancellation, disappearance, changed-draft and owner ABA rejection");
     }
 
     private static void VerifyAttributesLocalUndo(NativeRewardRuntime runtime,
@@ -1640,11 +1735,14 @@ internal static partial class AfterRunAuthorityHarness
         : IOwnerBoundCharacterCreationAttributesService
     {
         public Action? AfterConfirm { get; set; }
+        public Action? BeforeRead { get; set; }
         public int ConfirmCalls { get; private set; }
         public CharacterCreationFoundationResult<CharacterCreationAttributesState> Load(OwnerContextStamp owner,
-            CharacterCreationAttributesLoadRequest request) => inner.Load(owner, request);
+            CharacterCreationAttributesLoadRequest request)
+        { BeforeRead?.Invoke(); return inner.Load(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Preview(OwnerContextStamp owner,
-            CharacterCreationAttributesPreviewRequest request) => inner.Preview(owner, request);
+            CharacterCreationAttributesPreviewRequest request)
+        { BeforeRead?.Invoke(); return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationAttributesReceipt> Confirm(OwnerContextStamp owner,
             CharacterCreationAttributesConfirmRequest request)
         {

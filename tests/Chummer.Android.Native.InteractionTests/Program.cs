@@ -117,6 +117,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunStartingCashPhonePagesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-attributes-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationAttributesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-sum-to-ten-content-root")
         {
             await CreationProjectionSchedulingPrioritizesWizardAllocationAsync();
