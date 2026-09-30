@@ -104,9 +104,14 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 60 is the latest [observed Internal availability](../play/evidence/preview60-internal-observation.md).
-It is available on Play Internal; physical Play installation of 60 is not yet
-verified. Creation budgets now use one shared readiness hint, shorter actions and
+Preview 61 is the latest [observed Internal availability](../play/evidence/preview61-internal-observation.md).
+It is available on Play Internal; physical Play installation of 61 is not yet
+verified. Quality configuration, review and saved receipts now use readable names,
+costs and actions, with technical IDs/digests behind disclosure. Core-backed
+EN/DE/ES checks and native quality save/new-process receipt reopen passed; 27 old
+workspace files were unchanged. Catalog latency and pending-Karma dashboard
+projection remain explicit follow-ups, not corrected or physically approved.
+Preview 60's Creation budgets retain one shared readiness hint, shorter actions and
 unchanged exact values/editor routes. Skills review guidance is translated.
 Affected managed/localization checks and a Release diagnostic native upgrade/reopen
 and prerequisite-navigation smoke passed; 27 saved workspace files were unchanged.
@@ -118,7 +123,7 @@ as defaults for new runners remain included, without changing old saved settings
 Focused managed checks cover all four defaults. Preview 56's simpler Creation,
 Gear/Resources screens and explicit Skills/Magic re-review remain included.
 This is not all-screen polish or complete build-method/Career coverage.
-Preview 59 and earlier evidence stay immutable. Preview 55's
+Preview 60 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
