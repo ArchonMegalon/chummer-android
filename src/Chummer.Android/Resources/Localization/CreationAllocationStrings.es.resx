@@ -97,7 +97,6 @@
   <data name="Common.SnapshotBinding" xml:space="preserve"><value>Revisión {0} · guardada {1} · snapshot {2}</value></data>
   <data name="Common.Source" xml:space="preserve"><value>Fuente</value></data>
   <data name="Common.SourceAnchor" xml:space="preserve"><value>Anclaje de fuente · {0}</value></data>
-  <data name="Common.SourceAuthority" xml:space="preserve"><value>Autoridad de fuentes</value></data>
   <data name="Common.SourcePage" xml:space="preserve"><value>{0} pág. {1}</value></data>
   <data name="Common.Total" xml:space="preserve"><value>Total</value></data>
   <data name="Common.TypedId" xml:space="preserve"><value>ID tipado</value></data>
@@ -848,10 +847,10 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Karma.TalentUnsupported" xml:space="preserve"><value>El asistente de Karma todavía no admite las reglas de este talento. Elige otro talento disponible.</value></data>
   <data name="Karma.NativeLanguageRequired" xml:space="preserve"><value>Elige un idioma en Habilidades, márcalo como lengua materna y aplica la selección al borrador.</value></data>
   <data name="Skills.NativeLanguageRequired" xml:space="preserve"><value>Tus elecciones de habilidades aún no están guardadas. Elige una lengua materna en Conocimientos e idiomas antes de revisar y guardar.</value></data>
-  <data name="Budget.NeedsChoices" xml:space="preserve"><value>El presupuesto aún no se puede calcular con las opciones actuales.</value></data>
+  <data name="Budget.NeedsChoices" xml:space="preserve"><value>Faltan opciones para calcular algunos presupuestos. Toca un presupuesto para continuar.</value></data>
   <data name="Budget.Prerequisites" xml:space="preserve"><value>Prioridades y metatipo</value></data>
-  <data name="Budget.Open" xml:space="preserve"><value>Revisar {0} ›</value></data>
-  <data name="Budget.Check" xml:space="preserve"><value>Ver qué falta ›</value></data>
+  <data name="Budget.Open" xml:space="preserve"><value>Revisar {0}</value></data>
+  <data name="Budget.Check" xml:space="preserve"><value>Ver qué falta</value></data>
   <data name="Budget.Refreshing" xml:space="preserve"><value>Se está comprobando el presupuesto. Confirma primero las prioridades y el metatipo y después revisa el paso correspondiente. No se han cambiado puntos ni decisiones.</value></data>
   <data name="SkillsReReview.CheckSave" xml:space="preserve"><value>Vuelve a abrir el runner y comprueba el resultado del guardado antes de intentarlo otra vez.</value></data>
   <data name="MagicReReview.Title" xml:space="preserve"><value>Revisar elecciones de magia guardadas</value></data>
@@ -870,4 +869,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="MagicReReview.Stale" xml:space="preserve"><value>El runner cambió. Vuelve a abrir esta revisión para comprobar el estado actual.</value></data>
   <data name="MagicReReview.Unavailable" xml:space="preserve"><value>Estas elecciones no pueden revisarse sin cambios. No se ha modificado nada.</value></data>
   <data name="MagicReReview.Back" xml:space="preserve"><value>Volver sin más cambios</value></data>
+  <data name="SkillsPreview.Stale" xml:space="preserve"><value>Esta revisión ya no está actualizada. Vuelve a abrir el runner.</value></data>
 </root>

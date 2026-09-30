@@ -484,7 +484,8 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             "Skills allocation")));
         if (!Coordinator.CanDisplayCreationSkillsPreview(_preview))
         {
-            _body.Add(NativeTheme.Body("This review is no longer current. Reopen the runner.", NativeTheme.Danger));
+            _body.Add(NativeTheme.Body(CreationAllocationStrings.Get("SkillsPreview.Stale",
+                "This review is no longer current. Reopen the runner."), NativeTheme.Danger));
             return;
         }
         Label binding = NativeTheme.Body(

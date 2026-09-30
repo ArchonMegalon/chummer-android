@@ -2360,6 +2360,7 @@ public sealed class BuildPage : NativePageBase
             JustifyContent = FlexJustify.SpaceBetween,
             AlignItems = FlexAlignItems.Stretch
         };
+        bool hasInexactBudget = false;
         foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
         {
             // Each typed projection owns only its own budget family.  The old
@@ -2398,6 +2399,7 @@ public sealed class BuildPage : NativePageBase
                     },
                 _ => projectedBudget
             };
+            hasInexactBudget |= !budget.IsExact;
             string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
             string amount = budget.IsExact
                 ? $"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left"
@@ -2405,8 +2407,7 @@ public sealed class BuildPage : NativePageBase
             string detail = budget.IsExact
                     ? $"{budget.Used.ToString("0.##", CultureInfo.InvariantCulture)} / "
                         + $"{budget.Total.ToString("0.##", CultureInfo.InvariantCulture)} {unit}"
-                    : CreationAllocationStrings.Get("Budget.NeedsChoices",
-                        "The budget cannot be calculated from the current choices yet.");
+                    : string.Empty;
             // Use the SAME admitted destination as the corresponding wizard step.
             // In particular, the generic snapshot's budget can be inexact while
             // its typed editor is available. Never turn IsExact into edit authority.
@@ -2436,11 +2437,11 @@ public sealed class BuildPage : NativePageBase
                     CreationAllocationStrings.Get("Budget.Prerequisites", "Priorities and metatype"),
                     string.Empty, true, () => OpenCreationPrerequisiteAsync(prerequisite.Value), []);
             string action = route?.CanOpen == true
-                ? CreationAllocationStrings.Format("Budget.Open", "Review {0} ›", route.Title)
-                : CreationAllocationStrings.Get("Budget.Check", "Check what is missing ›");
+                ? CreationAllocationStrings.Format("Budget.Open", "Review {0}", route.Title)
+                : CreationAllocationStrings.Get("Budget.Check", "Check what is missing");
             var displayed = Coordinator.State;
             Border budgetCard = CreationNavigationRow($"{budget.Label} · {amount}",
-                $"{detail}\n{action}", async () =>
+                budget.IsExact ? $"{detail}\n{action}" : action, async () =>
                 {
                     if (displayed.Profile?.Created != false
                         || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed)) return;
@@ -2463,6 +2464,14 @@ public sealed class BuildPage : NativePageBase
             budgetCard.Margin = new Thickness(0, 0, 8, 10);
             budgetCard.AutomationId = $"creation-budget-{Token(projectedBudget.BudgetId)}";
             ribbon.Add(budgetCard);
+        }
+        if (hasInexactBudget)
+        {
+            // Use effective typed values, not conservative overview placeholders.
+            Label status = NativeTheme.Body(CreationAllocationStrings.Get("Budget.NeedsChoices",
+                "Some budgets need more choices. Tap a budget to continue."));
+            status.AutomationId = "creation-budget-status";
+            _body.Insert(index++, status);
         }
         _body.Insert(index, ribbon);
     }
