@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.Maui.Controls;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
@@ -99,6 +100,26 @@ internal static partial class AfterRunAuthorityHarness
                 Require(created.Success && created.Value?.Document.AuxiliaryState
                     .CharacterCreationBootstrapBinding?.BuildMethod == canonicalMethod,
                     "The created runner did not persist the selected canonical build method: " + requestedMethod);
+                Require(CharacterCreationBootstrapProfiles.TryResolveCanonicalSettingsProfileId(
+                        canonicalMethod, out string defaultProfileId),
+                    "The selected method has no canonical new-runner source profile.");
+                string savedProfileId = XDocument.Parse(created.Value!.Document.Content)
+                    .Root!.Element("settings")!.Value;
+                Require(savedProfileId == defaultProfileId
+                    && created.Value.Document.AuxiliaryState.CharacterCreationBootstrapBinding!
+                        .SettingsProfileId == defaultProfileId,
+                    "Native New runner did not persist its exact new default source profile.");
+                XElement sourceProfile = XDocument.Load(Path.Combine(contentRoot, "data",
+                        CharacterCreationBootstrapProfiles.SettingsSourceFile(defaultProfileId)))
+                    .Descendants("setting").Single(row => row.Element("id")?.Value == savedProfileId);
+                string[] enabled = sourceProfile.Element("books")!.Elements("book")
+                    .Select(book => book.Value).Order(StringComparer.Ordinal).ToArray();
+                string[] allSources = XDocument.Load(Path.Combine(contentRoot, "data", "books.xml"))
+                    .Descendants("book").Select(book => book.Element("code")?.Value).OfType<string>()
+                    .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+                Require(allSources.Length > 2 && enabled.SequenceEqual(allSources, StringComparer.Ordinal),
+                    "Native New runner must enable every canonical SR5 source by default.");
+                Console.WriteLine("PASS native new-runner all-source profile persisted: " + requestedMethod);
                 Console.WriteLine("PASS native build-method callback unwind, stale Picker rejection and explicit create: " + requestedMethod);
                 if (requestedMethod == "Priority")
                 {

@@ -91,8 +91,8 @@ class AndroidContentBundleTests(unittest.TestCase):
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         self.assertEqual([], validate_manifest(manifest))
         self.assertEqual(CORE_REVISION, manifest["coreRevision"])
-        self.assertEqual(330, len(manifest["files"]))
-        self.assertEqual(18_852_395, sum(entry["size"] for entry in manifest["files"]))
+        self.assertEqual(331, len(manifest["files"]))
+        self.assertEqual(18_893_221, sum(entry["size"] for entry in manifest["files"]))
         custom_paths = [entry["path"] for entry in manifest["files"] if entry["path"].startswith("customdata/")]
         self.assertEqual(220, len(custom_paths))
         self.assertIn("customdata/Chrome Flesh Stealth Errata/manifest.xml", custom_paths)
