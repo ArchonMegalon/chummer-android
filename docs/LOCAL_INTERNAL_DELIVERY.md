@@ -104,14 +104,15 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 55 is the latest [observed Internal availability](../play/evidence/preview55-internal-observation.md).
-It is available on Play Internal; physical Play installation of 55 is not yet
-verified. It delivers actionable Priority budget warnings and native request
-deadline handling, with focused local tests and affected-route restart evidence.
-The separately deployed Hub correction also enabled automatic illustration of
-one complete accepted chapter, native reading and SAF EPUB export across process
-restart. That chapter was editorial-assisted; this is not unattended full-book
-quality or cross-chapter likeness approval. Preview 54 evidence stays immutable.
+Preview 56 is the latest [observed Internal availability](../play/evidence/preview56-internal-observation.md).
+It is available on Play Internal; physical Play installation of 56 is not yet
+verified. It delivers simpler Creation/Gear/Resources screens, plain localized
+guidance, collapsed technical details, clear Gear save feedback and explicit
+Skills/Magic re-review after Attributes changes. Focused local tests and native
+affected-route save/reopen/restart checks passed. This is not all-screen polish
+or complete build-method/Career coverage. Preview 55 evidence stays immutable;
+its editorial-assisted illustrated chapter does not establish unattended
+full-book quality or cross-chapter likeness approval.
 
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
 physically verified version. Its normal Play update from 51, first launch and saved-runner process
