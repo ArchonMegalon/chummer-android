@@ -558,6 +558,12 @@ internal static partial class AfterRunAuthorityHarness
 
             async Task CheckSavedDashboardAsync()
             {
+                // A second, actually loaded Career workspace exercises the
+                // retained dashboard's native Picker, not OnAppearing again.
+                await runtime.LoadRunnerAsync();
+                var careerId = runtime.Id;
+                var careerBefore = new FileWorkspaceStore(runtime.StateDirectory).Get(careerId).Value!;
+                await HydrateFinalizationOwnerAsync(runtime, owners, cold);
                 var dashboard = new BuildPage(runtime.Coordinator);
                 // Complete only the headless scroll animation request, not any
                 // coordinator/read/mutation work. Native scrolling is smoked on Android.
@@ -577,6 +583,51 @@ internal static partial class AfterRunAuthorityHarness
                     "Saved Karma dashboard must show its exact Core budget, not generic Priority Not exact ledgers.");
                 Require(probe.OpenCalls == opens + 1 && probe.PreviewCalls == previews && probe.ConfirmCalls == 1,
                     "Karma dashboard must freshly open the saved draft once without previewing or writing it.");
+                var oldPicker = Element<Picker>("build-workspace-picker");
+                int careerIndex = runtime.Coordinator.State.OpenWorkspaces.ToList().FindIndex(w => w.Id == careerId);
+                Require(careerIndex >= 0 && careerIndex != oldPicker.SelectedIndex,
+                    "SETUP: Career workspace is absent from the actual picker.");
+                await ui.BeginAsyncVoid(() => oldPicker.SelectedIndex = careerIndex);
+                await JoinIssuedPageAsync(ui.DrainDispatchedAsyncVoidAsync());
+                Require(runtime.Coordinator.State.WorkspaceId == careerId
+                    && IssuedElements(dashboard).Any(e => e.AutomationId == "phone-runner-sheet"),
+                    "The actual picker did not show the selected Career runner.");
+                int karmaIndex = runtime.Coordinator.State.OpenWorkspaces.ToList().FindIndex(w => w.Id == id);
+                var careerPicker = Element<Picker>("build-workspace-picker");
+                int warmOpens = probe.OpenCalls;
+                await ui.BeginAsyncVoid(() => careerPicker.SelectedIndex = karmaIndex);
+                await JoinIssuedPageAsync(ui.DrainDispatchedAsyncVoidAsync());
+                Require(runtime.Coordinator.State.WorkspaceId == id
+                    && Element<Label>("creation-karma-dashboard-budget").Text == budget
+                    && Element<Button>("creation-stage-method").IsEnabled
+                    && probe.OpenCalls == warmOpens + 1,
+                    "Warm Career → Karma switch must freshly load the saved quote and enable its editor without another appearance.");
+                var currentPicker = Element<Picker>("build-workspace-picker");
+                // A native event from a replaced visual tree must not switch
+                // the current runner or reload authority.
+                await ui.BeginAsyncVoid(() => oldPicker.SelectedIndex = -1);
+                await ui.BeginAsyncVoid(() => oldPicker.SelectedIndex = careerIndex);
+                Require(runtime.Coordinator.State.WorkspaceId == id
+                    && ReferenceEquals(currentPicker, Element<Picker>("build-workspace-picker"))
+                    && probe.OpenCalls == warmOpens + 1,
+                    "An obsolete picker changed the current workspace or dashboard.");
+                // Returning to the same account name is not uninterrupted
+                // ownership: the old control still carries the former stamp.
+                owners.Set(ContactsOwnerB);
+                owners.Set(Chummer.Contracts.Owners.OwnerScope.LocalSingleUser);
+                int currentCareerIndex = runtime.Coordinator.State.OpenWorkspaces.ToList().FindIndex(w => w.Id == careerId);
+                await ui.BeginAsyncVoid(() => currentPicker.SelectedIndex = currentCareerIndex);
+                Require(runtime.Coordinator.State.WorkspaceId == id
+                    && probe.OpenCalls == warmOpens + 1 && owners.ActiveLeases == 0,
+                    "An owner A→B→A picker callback switched or loaded a runner.");
+                IssuedPageLifecycle(dashboard, "OnDisappearing");
+                await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+                await Appear();
+                var careerAfter = new FileWorkspaceStore(runtime.StateDirectory).Get(careerId).Value!;
+                Require(careerAfter.ContentRevision == careerBefore.ContentRevision
+                    && careerAfter.Document.Content == careerBefore.Document.Content
+                    && careerAfter.Document.AuxiliaryStateDigest == careerBefore.Document.AuxiliaryStateDigest,
+                    "Warm workspace selection mutated the Career runner.");
                 var oldRoute = Element<Button>("creation-stage-method");
                 await Click("creation-stage-method");
                 Require(Current() is CreationKarmaPage
@@ -607,7 +658,7 @@ internal static partial class AfterRunAuthorityHarness
                     && unchanged.Document.AuxiliaryStateDigest == cold.Document.AuxiliaryStateDigest
                     && probe.ConfirmCalls == 1,
                     "Dashboard display/navigation changed the saved Karma draft.");
-                Console.WriteLine("PASS Karma dashboard: fresh exact budget, correct editor, departed callback, read failure/recovery, no writes");
+                Console.WriteLine("PASS Karma dashboard: fresh budget, warm Career/Karma switch, stale picker/owner ABA rejection, correct editor, departed callback, read failure/recovery, no writes");
             }
 
             NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();

@@ -889,15 +889,20 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnAppearing()
     {
+        BeginRunnerLoad();
+        base.OnAppearing();
+    }
+
+    private void BeginRunnerLoad()
+    {
         Interlocked.Exchange(ref _creationNavigationTraceCount, 0);
         _resetScrollOnNextRefresh = true;
         _creationDashboardRouteReadyLifetime?.Cancel();
         _creationDashboardRouteReadyLifetime?.Dispose();
         _creationDashboardRouteReadyLifetime = new CancellationTokenSource();
         _creationDashboardAppearanceGeneration++;
-        // This page is retained beneath creation children. A finalization can
-        // change the runner while we are unsubscribed; never expose the old
-        // Creation controls while the current Career receipt is being read.
+        // This page survives child navigation and workspace selection. Neither
+        // path may expose old controls while the current quote/receipt loads.
         _dossierRenderGeneration++;
         _body.Clear();
         Title = "Runner";
@@ -906,7 +911,6 @@ public sealed class BuildPage : NativePageBase
         var loading = NativeTheme.Body(AndroidSurfaceStrings.Resolve()["Runner.Loading"], NativeTheme.Muted);
         loading.AutomationId = "phone-runner-loading-message";
         _body.Add(loading);
-        base.OnAppearing();
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
@@ -918,7 +922,7 @@ public sealed class BuildPage : NativePageBase
         var original = Coordinator.State;
         if (Coordinator.CanOpenCreationKarma())
         {
-            // Requote the saved auxiliary draft from Core on every appearance.
+            // Requote the saved auxiliary draft on appearance or runner switch.
             // The generic Priority projection and a historical decision's quote
             // cannot establish the current Karma budget.
             var karma = new CreationKarmaPhoneSession(Coordinator);
@@ -3618,12 +3622,49 @@ public sealed class BuildPage : NativePageBase
             TextColor = NativeTheme.Ink,
             TitleColor = NativeTheme.Muted
         };
+        var displayed = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
+        bool Current() => render == _dossierRenderGeneration
+            && IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationFinalizationDisplayCurrent(displayed);
         picker.SelectedIndexChanged += async (_, _) =>
         {
-            if (picker.SelectedIndex >= 0)
+            int index = picker.SelectedIndex;
+            if (index < 0 || index >= workspaces.Count || !Current()) return;
+            OpenWorkspaceState selected = workspaces[index];
+            if (selected.Id == displayed.WorkspaceId) return;
+            await RunAsync(async () =>
             {
-                await RunAsync(() => Coordinator.SwitchWorkspaceAsync(workspaces[picker.SelectedIndex]));
-            }
+                if (!Current()) return;
+                // The retained page does not receive OnAppearing for a Picker
+                // switch. Retire the old controls and reload the target's same
+                // Core-bound quote/receipt before rendering its actions.
+                BeginRunnerLoad();
+                CancelCreationProjectionQueues();
+                _creationProjection = null;
+                _karmaDashboardSession = null;
+                _persistedReceiptDisplay = null;
+                _persistedCreationReceipt = null;
+                CancellationToken cancellation = _creationDashboardRouteReadyLifetime!.Token;
+                try
+                {
+                    var activated = await Coordinator.SwitchWorkspaceAsync(selected, cancellation);
+                    if (activated is null || cancellation.IsCancellationRequested
+                        || !IsCurrentAppearanceGeneration(appearance)
+                        || Coordinator.State.WorkspaceId != selected.Id
+                        || Coordinator.State.DisplayOwnerContext != displayed.DisplayOwnerContext
+                        || Coordinator.State.Session.OwnerContext != displayed.Session.OwnerContext) return;
+                    await PrepareForAppearanceRefreshAsync(cancellation);
+                }
+                catch
+                {
+                    // Leave a failed activation recoverable, not an indefinite
+                    // loading surface. RunAsync reports the existing error.
+                    if (IsCurrentAppearanceGeneration(appearance)) Refresh();
+                    throw;
+                }
+            });
         };
         _body.Add(picker);
     }
