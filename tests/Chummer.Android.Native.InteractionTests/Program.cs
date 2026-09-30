@@ -13,6 +13,16 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--minimal-ui-content-root")
+        {
+            await AfterRunAuthorityHarness.RunMinimalUiAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-gear-save-feedback-content-root")
+        {
+            await AfterRunAuthorityHarness.RunGearSaveFeedbackAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-continue-routes-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationContinueRoutesAsync(args[1]);

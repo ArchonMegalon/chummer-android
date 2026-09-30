@@ -383,6 +383,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private bool _loading = true;
     private bool _submitted;
     private readonly AndroidSurfaceCopy _copy;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -429,6 +430,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["ResourcesPreview.Title"]));
         if (!Coordinator.CanDisplayCreationPurchase(_original))
@@ -449,26 +451,26 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             VerticalStackLayout applied = new() { Spacing = 6 };
             applied.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Saved"]));
             if (_failure is not null) applied.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
-            applied.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
-            applied.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
-            applied.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
-            applied.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.ReceiptDigest", ShortDigest(receipt.ReceiptDigest)), NativeTheme.Muted));
-            applied.Add(ExactValue("creation-resources-receipt-option-id", receipt.OptionId));
-            applied.Add(ExactValue(
+            _technicalDetails.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
+            _technicalDetails.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
+            _technicalDetails.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
+            _technicalDetails.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.ReceiptDigest", ShortDigest(receipt.ReceiptDigest)), NativeTheme.Muted));
+            _technicalDetails.Add(ExactValue("creation-resources-receipt-option-id", receipt.OptionId));
+            _technicalDetails.Add(ExactValue(
                 "creation-resources-receipt-workspace-revision",
                 receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(ExactValue(
+            _technicalDetails.Add(ExactValue(
                 "creation-resources-receipt-saved-revision",
                 receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(ExactValue(
+            _technicalDetails.Add(ExactValue(
                 "creation-resources-receipt-draft-revision",
                 receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(ExactValue(
+            _technicalDetails.Add(ExactValue(
                 "creation-resources-receipt-total-starting-nuyen",
                 receipt.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(ExactValue("creation-resources-receipt-preview-digest", receipt.PreviewDigest));
-            applied.Add(ExactValue("creation-resources-receipt-draft-digest", receipt.DraftDigest));
-            applied.Add(ExactValue("creation-resources-receipt-digest", receipt.ReceiptDigest));
+            _technicalDetails.Add(ExactValue("creation-resources-receipt-preview-digest", receipt.PreviewDigest));
+            _technicalDetails.Add(ExactValue("creation-resources-receipt-draft-digest", receipt.DraftDigest));
+            _technicalDetails.Add(ExactValue("creation-resources-receipt-digest", receipt.ReceiptDigest));
             Border receiptCard = NativeTheme.Card(applied);
             receiptCard.AutomationId = "creation-resources-confirm-receipt";
             _body.Add(receiptCard);
@@ -477,6 +479,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
                 _copy["ResourcesPreview.Reopen"],
                 () => Navigation.PopAsync(),
                 automationId: "creation-resources-reopen"));
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-resources-preview-details"));
             return;
         }
 
@@ -500,6 +503,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             exact ? NativeTheme.Muted : NativeTheme.Danger);
         warning.AutomationId = "creation-resources-confirm-authority";
         _body.Add(warning);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-resources-preview-details"));
     }
 
     private async Task ConfirmAsync()
@@ -565,7 +569,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.StartingAfter"], Nuyen(_prepared.BudgetAfter.TotalStartingNuyen)));
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.RemainingAfter"], Nuyen(_prepared.BudgetAfter.RemainingNuyen)));
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.CarryoverExcess"], Nuyen(_prepared.BudgetAfter.CarryoverExcess)));
-        card.Add(ExactValue(
+        _technicalDetails.Add(ExactValue(
             "creation-resources-preview-total-starting-nuyen",
             _prepared.BudgetAfter.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
@@ -580,12 +584,12 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.PriorityRank"], _prepared.FinalizationContribution.PriorityRank));
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.PriorityGrant"], Nuyen(_prepared.FinalizationContribution.StartingNuyen)));
         card.Add(NativeTheme.Metric(_copy["ResourcesPreview.KarmaConverted"], _prepared.FinalizationContribution.NuyenKarma.ToString(_copy.DisplayCulture)));
-        card.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.Preview", ShortDigest(_prepared.PreviewDigest)), NativeTheme.Muted));
-        card.Add(ExactValue("creation-resources-preview-option-id", _prepared.SelectedOption.OptionId));
-        card.Add(ExactValue(
+        _technicalDetails.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.Preview", ShortDigest(_prepared.PreviewDigest)), NativeTheme.Muted));
+        _technicalDetails.Add(ExactValue("creation-resources-preview-option-id", _prepared.SelectedOption.OptionId));
+        _technicalDetails.Add(ExactValue(
             "creation-resources-preview-priority-grant",
             _prepared.FinalizationContribution.StartingNuyen.ToString(CultureInfo.InvariantCulture)));
-        card.Add(ExactValue("creation-resources-preview-digest", _prepared.PreviewDigest));
+        _technicalDetails.Add(ExactValue("creation-resources-preview-digest", _prepared.PreviewDigest));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-resources-preview-contribution";
         _body.Add(border);
