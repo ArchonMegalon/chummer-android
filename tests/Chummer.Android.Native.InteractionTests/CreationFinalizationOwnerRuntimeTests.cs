@@ -24,6 +24,7 @@ internal static partial class AfterRunAuthorityHarness
             productionCreationOverview: true);
         var saved = PrepareActualFinalizationReadyContext(runtime);
         await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+        AssertCreationReadinessCopy(runtime.Coordinator);
         var attributes = runtime.Coordinator.LoadCreationAttributes();
         var skills = runtime.Coordinator.LoadCreationSkills();
         var resourcesPresenter = new CharacterCreationResourcesInteractionPresenter(
@@ -163,6 +164,61 @@ internal static partial class AfterRunAuthorityHarness
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
         Console.WriteLine("PASS budget ribbon: typed family readiness, actionable inexact cards, actual editors, stale owner rejection, saved bytes unchanged");
+    }
+
+    private static void AssertCreationReadinessCopy(RunnerSessionCoordinator coordinator)
+    {
+        var actual = CreationPriorityLegalPathProjection.From(coordinator.LoadCreationFinalization());
+        Require(actual.CanOpenReview, "SETUP: the saved fixture must be ready for final review.");
+        var render = typeof(BuildPage).GetMethod("AddCreationFinalizationStatus",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        foreach (var projection in new[]
+        {
+            actual,
+            actual with
+            {
+                CanOpenReview = false,
+                Blockers = ["fixture-whole-build-blocker"],
+                Steps = [actual.Steps[0] with
+                {
+                    IsComplete = false,
+                    Blockers = ["fixture-first-blocker", "fixture-second-blocker"]
+                }]
+            }
+        })
+        {
+            string before = JsonSerializer.Serialize(projection);
+            var page = new BuildPage(coordinator);
+            render.Invoke(page, [projection]);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var card = (VerticalStackLayout)body.Children.OfType<Border>().Single().Content!;
+            var rows = card.Children.OfType<Label>().ToArray();
+            Require(rows.Where(row => row.AutomationId?.StartsWith("creation-finalization-step-", StringComparison.Ordinal) == true)
+                .All(row => !row.Text.Contains("source anchor", StringComparison.OrdinalIgnoreCase)),
+                "Completed step rows still present diagnostic source counts as gameplay feedback.");
+            Require(projection.Steps.SelectMany(step => step.Blockers).Concat(projection.Blockers)
+                .All(blocker => rows.Any(row => row.IsVisible && row.Text == blocker)),
+                "Readability must not hide any step or whole-build blocker.");
+            var diagnostics = card.Children.OfType<VerticalStackLayout>().Single(
+                child => child.AutomationId == "creation-finalization-readiness-details");
+            Require(!diagnostics.IsVisible, "Technical readiness metadata must start collapsed.");
+            var toggle = card.Children.OfType<Button>().Single();
+            ((IButtonController)toggle).SendClicked();
+            Require(diagnostics.IsVisible, "Readiness details did not expand.");
+            Require(diagnostics.Children.OfType<Label>().Any(row => row.Text.Contains(projection.SnapshotDigest!, StringComparison.Ordinal)),
+                "Technical details lost the exact snapshot digest.");
+            foreach (var step in projection.Steps)
+                Require(step.SourceAnchorIds.All(anchor => diagnostics.Children.OfType<Label>()
+                    .Any(row => row.Text.Contains(anchor, StringComparison.Ordinal))),
+                    "Technical details lost an exact source anchor.");
+            ((IButtonController)toggle).SendClicked();
+            Require(!diagnostics.IsVisible, "Readiness details did not collapse.");
+            body.Clear();
+            ((IButtonController)toggle).SendClicked();
+            Require(!diagnostics.IsVisible, "A detached readiness card still accepted a click.");
+            Require(JsonSerializer.Serialize(projection) == before,
+                "Display formatting modified the Core-derived readiness projection.");
+        }
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)
