@@ -348,6 +348,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunLinkedStaleDisplayOwnerCaptureCaseAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--magic-rereview-runtime-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunMagicReReview(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--skills-rereview-runtime-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSkillsReReview(args[1]);

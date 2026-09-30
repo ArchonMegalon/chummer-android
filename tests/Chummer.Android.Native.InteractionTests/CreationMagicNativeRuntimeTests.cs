@@ -20,6 +20,7 @@ internal static class CreationMagicNativeRuntimeTests
 {
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
     public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
+    public static void RunMagicReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, magicReReview: true);
 
     public static void RunSumToTen(string contentRoot)
     {
@@ -62,7 +63,7 @@ internal static class CreationMagicNativeRuntimeTests
 
     private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false,
         string? aspectedGroup = null, string buildMethod = CharacterCreationBuildMethods.Priority,
-        string? seedDirectory = null)
+        string? seedDirectory = null, bool magicReReview = false)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -285,6 +286,12 @@ internal static class CreationMagicNativeRuntimeTests
                 { CreationMagicResonance = state, CreationMagicResonanceEditor = editor });
             ExpectRejected(() => phone.CreatePowerLevelCandidate(light, 4));
             Console.WriteLine("PASS actual Adept source/raised MAG → Presentation caps → phone review/confirm → cold file-store reopen/replay");
+            if (magicReReview)
+            {
+                AfterRunAuthorityHarness.RunMagicReReviewCasesAsync(contentRoot, directory, resolver, id)
+                    .GetAwaiter().GetResult();
+                return;
+            }
             RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
         }
         finally { Directory.Delete(directory, recursive: true); }

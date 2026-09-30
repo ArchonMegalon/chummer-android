@@ -15,7 +15,7 @@
     },
     {
       "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
-      "sha256": "ca605e1995c296f1932e3ddd12da73a7b66688b05cf710f01eb47d5db31eb2dc"
+      "sha256": "4175b50b2941187664c5987917d8f7c1a7fea9805ef1ab1b5420ad1098f3d729"
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
@@ -47,11 +47,11 @@
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-      "sha256": "3f9c41de15d3d807c00e74edd79c3d3878d2f9f2786e45bcdd8dbdc125108120"
+      "sha256": "663ee29d4976c489a264369c4b5e5a1a2ad492b174b917c0c81fc0f87df16603"
     },
     {
       "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-      "sha256": "28a02e78e8a3f6f12cfd0f2aa51ad8d6163bfdb5c8750f8962ac99e44b368e25"
+      "sha256": "08101a6a3731de5feb6ae454fdfd35e77030365d0f32220b26f8c4b2334a2768"
     }
   ],
   "controls": [

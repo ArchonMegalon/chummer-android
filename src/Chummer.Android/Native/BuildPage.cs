@@ -2530,6 +2530,7 @@ public sealed class BuildPage : NativePageBase
                 StringComparison.Ordinal);
             bool canOpenMagicResonance = magicResonanceStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance);
+            bool canCheckMagicReReview = magicResonanceStage && !canOpenMagicResonance && readiness.Attributes;
             bool contactsStage = IsContactsStage(stage.StepId);
             bool canOpenContacts = contactsStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
@@ -2548,7 +2549,7 @@ public sealed class BuildPage : NativePageBase
                 ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
                 : null;
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
-                           || canOpenSkills || canCheckSkillsReReview || canOpenQualities || canOpenMagicResonance
+                           || canOpenSkills || canCheckSkillsReReview || canOpenQualities || canOpenMagicResonance || canCheckMagicReReview
                            || canOpenContacts || canOpenResources || identityRoute?.IsEnabled == true;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
@@ -2577,6 +2578,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
                     ? OpenCreationMagicResonanceAsync
+                : canCheckMagicReReview
+                    ? OpenCreationMagicReReviewAsync
                 : canOpenContacts
                     ? () => OpenCreationContactsAsync(creationContacts!.State!)
                 : canOpenFoundation
@@ -2603,6 +2606,8 @@ public sealed class BuildPage : NativePageBase
                 : canOpenMagicResonance
                     ? MagicResonanceStageDetail(
                         Coordinator.State.CreationMagicResonanceEditor!)
+                : canCheckMagicReReview
+                    ? CreationMagicReReviewPage.Text("Title", "Review saved Magic choices")
                 : canOpenContacts
                     ? CreationContactsStageDetail(creationContacts!.State!)
                 : canOpenFoundation
@@ -2620,6 +2625,7 @@ public sealed class BuildPage : NativePageBase
                 && !canCheckSkillsReReview
                 && !canOpenQualities
                 && !canOpenMagicResonance
+                && !canCheckMagicReReview
                 && !canOpenContacts
                 && !canOpenResources)
             {
@@ -3014,6 +3020,19 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationMagicResonanceAsync()
         => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator));
+
+    private async Task OpenCreationMagicReReviewAsync()
+    {
+        if (_creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        long generation = _creationDashboardAppearanceGeneration;
+        var result = await Task.Run(() => Coordinator.LoadCreationMagicReReview());
+        if (generation != _creationDashboardAppearanceGeneration
+            || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
+        if (result.Value is { } state && Coordinator.IsCreationMagicReReviewCurrent(state))
+            await Navigation.PushAsync(new CreationMagicReReviewPage(Coordinator, state));
+        else await DisplayAlertAsync(CreationMagicReReviewPage.Text("Title", "Review saved Magic choices"),
+            CreationMagicReReviewPage.Text("Unavailable", "These saved choices cannot be reviewed unchanged. Nothing was changed."), "OK");
+    }
 
     private Task OpenCreationContactsAsync(CharacterCreationContactsInteractionState authority)
         => Navigation.PushAsync(new CreationContactsPage(Coordinator, authority));

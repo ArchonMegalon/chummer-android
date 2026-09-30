@@ -854,4 +854,20 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Budget.Check" xml:space="preserve"><value>Fehlende Auswahl prüfen ›</value></data>
   <data name="Budget.Refreshing" xml:space="preserve"><value>Das Budget wird erneut geprüft. Bestätige zuerst Prioritäten und Metatyp und prüfe dann den passenden Erstellungsschritt. Es wurden keine Punkte oder Entscheidungen geändert.</value></data>
   <data name="SkillsReReview.CheckSave" xml:space="preserve"><value>Öffne den Runner erneut und prüfe das Speicherergebnis, bevor du es noch einmal versuchst.</value></data>
+  <data name="MagicReReview.Title" xml:space="preserve"><value>Gespeicherte Magieauswahl prüfen</value></data>
+  <data name="MagicReReview.Intro" xml:space="preserve"><value>Deine Attribute wurden nach dieser Auswahl geändert. Die Regelprüfung bestätigt, dass die gespeicherte Magieauswahl und ihre Budgets weiterhin gültig sind. Erst deine Bestätigung speichert die Neuprüfung.</value></data>
+  <data name="MagicReReview.Binding" xml:space="preserve"><value>Attributrevision {0} → {1}. Diese Auswahl bleibt erhalten:</value></data>
+  <data name="MagicReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2}</value></data>
+  <data name="MagicReReview.Power" xml:space="preserve"><value>{0} · Stufe {1}</value></data>
+  <data name="MagicReReview.Confirm" xml:space="preserve"><value>Auswahl behalten und aktuelle Attribute bestätigen</value></data>
+  <data name="MagicReReview.ConfirmBody" xml:space="preserve"><value>Genau diese Auswahl behalten und mit den aktuellen Attributen verknüpfen?</value></data>
+  <data name="MagicReReview.Apply" xml:space="preserve"><value>Bestätigen</value></data>
+  <data name="MagicReReview.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="MagicReReview.Saving" xml:space="preserve"><value>Geprüfte Auswahl wird gespeichert…</value></data>
+  <data name="MagicReReview.Saved" xml:space="preserve"><value>Neuprüfung gespeichert. Deine Auswahl und frühere Speicherbelege bleiben erhalten.</value></data>
+  <data name="MagicReReview.SavedRefresh" xml:space="preserve"><value>Mit Speicherbeleg gespeichert. Öffne den Runner zum Aktualisieren erneut; nicht noch einmal anwenden.</value></data>
+  <data name="MagicReReview.CheckSave" xml:space="preserve"><value>Öffne den Runner erneut und prüfe das Speicherergebnis, bevor du es nochmals versuchst.</value></data>
+  <data name="MagicReReview.Stale" xml:space="preserve"><value>Der Runner hat sich geändert. Öffne die Neuprüfung erneut für den aktuellen Stand.</value></data>
+  <data name="MagicReReview.Unavailable" xml:space="preserve"><value>Diese gespeicherte Auswahl kann nicht unverändert neu geprüft werden. Es wurde nichts geändert.</value></data>
+  <data name="MagicReReview.Back" xml:space="preserve"><value>Zurück ohne weitere Änderungen</value></data>
 </root>
