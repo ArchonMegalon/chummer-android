@@ -1299,7 +1299,7 @@ public sealed class BuildPage : NativePageBase
             projection?.Contacts;
         CharacterCreationResourcesInteractionLoadResult? creationResources =
             projection?.Resources;
-        AddCreationMethodRoute(snapshot, projection, prerequisite);
+        var methodRoute = AddCreationMethodRoute(snapshot, projection, prerequisite);
         if (projection is null
             || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
@@ -1357,14 +1357,7 @@ public sealed class BuildPage : NativePageBase
             creationResources, readiness);
         AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex);
         AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(
-            snapshot,
-            projection,
-            prerequisite,
-            attributes,
-            skills,
-            creationContacts,
-            creationResources, readiness);
+        AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute);
         AddFinalizationReviewAction();
     }
 
@@ -1559,7 +1552,7 @@ public sealed class BuildPage : NativePageBase
         }
     }
 
-    private void AddCreationMethodRoute(
+    private CreationBudgetRoute AddCreationMethodRoute(
         CharacterCreationWizardSnapshot snapshot,
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
@@ -1619,6 +1612,7 @@ public sealed class BuildPage : NativePageBase
             selected,
             enabled: canOpen,
             automationId: "creation-stage-method"));
+        return new($"Build method · {method}", detail, canOpen, selected, []);
     }
 
     private Border CreationNavigationRow(
@@ -2642,26 +2636,45 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
+        CharacterOverviewState displayed = Coordinator.State;
+        long generation = _dossierRenderGeneration;
         VerticalStackLayout blockers = new() { Spacing = 6 };
-        blockers.Add(NativeTheme.Eyebrow("Before you can finish"));
-        foreach (string blocker in snapshot.CompletionBlockers)
-        {
-            blockers.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
-        }
+        blockers.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
+            "Finalization.BeforeFinish", "Before you can finish")));
+        foreach (string message in snapshot.CompletionBlockers
+                     .Select(CreationFlowStrings.FinalizationBlocker).Distinct(StringComparer.Ordinal))
+            blockers.Add(NativeTheme.Body(message, NativeTheme.Danger));
         Border card = NativeTheme.Card(blockers);
         card.AutomationId = "creation-wizard-blockers";
+        VerticalStackLayout diagnostics = new()
+        {
+            Spacing = 6, IsVisible = false, AutomationId = "creation-wizard-blockers-details"
+        };
+        foreach (string code in snapshot.CompletionBlockers.Distinct(StringComparer.Ordinal))
+            diagnostics.Add(NativeTheme.Body(code, NativeTheme.Muted));
+        Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+            "Qualities.ShowDetails", "Show technical details"));
+        details.AutomationId = "creation-wizard-blockers-details-toggle";
+        details.Clicked += (_, _) =>
+        {
+            if (generation != _dossierRenderGeneration || !ReferenceEquals(card.Parent, _body)
+                || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed))
+                return;
+            diagnostics.IsVisible = !diagnostics.IsVisible;
+            details.Text = diagnostics.IsVisible
+                ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
+                : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+        };
+        blockers.Add(details);
+        blockers.Add(diagnostics);
         _body.Add(card);
     }
 
     private void AddLegalNextSteps(
         CharacterCreationWizardSnapshot snapshot,
-        CreationDashboardAuthorityProjection? projection,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
-        CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult,
-        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult,
-        CharacterCreationContactsInteractionLoadResult? creationContacts,
-        CharacterCreationResourcesInteractionLoadResult? creationResources,
-        CreationDashboardRenderReadiness readiness)
+        CreationDashboardRenderReadiness readiness,
+        IReadOnlyDictionary<string, CreationBudgetRoute> routes,
+        CreationBudgetRoute methodRoute)
     {
         if (!readiness.Skills
             && snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Skills))
@@ -2712,154 +2725,18 @@ public sealed class BuildPage : NativePageBase
                 continue;
             }
 
-            bool attributeStep = string.Equals(
-                stepId,
-                CharacterCreationWizardStepIds.Attributes,
-                StringComparison.Ordinal);
-            bool foundation = IsFoundationStage(stepId);
-            bool basicsStep = string.Equals(
-                stepId,
-                CharacterCreationWizardStepIds.Basics,
-                StringComparison.Ordinal);
-            bool canOpenBasics = basicsStep
-                                 && stage.IsAvailable
-                                 && Coordinator.State.Profile?.Created == false;
-            bool lifeModuleStep = string.Equals(
-                stepId,
-                CharacterCreationWizardStepIds.LifeModules,
-                StringComparison.Ordinal);
-            bool lifeModuleOrigin = lifeModuleStep && stage.IsAvailable
-                && Coordinator.CanOpenSr5LifeModuleOrigin();
-            bool canOpenFoundation = foundation
-                                     && !lifeModuleStep
-                                     && stage.IsAvailable
-                                     && HasAuthoritativeFoundationOptions();
-            bool canOpenAttributes = attributeStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage,
-                CharacterCreationWizardStepIds.Attributes,
-                readiness.Attributes);
-            bool skillStep = string.Equals(stepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
-            bool canOpenSkills = skillStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage,
-                CharacterCreationWizardStepIds.Skills,
-                readiness.Skills);
-            bool qualitiesStep = string.Equals(stepId, CharacterCreationWizardStepIds.Qualities, StringComparison.Ordinal);
-            bool canOpenQualities = qualitiesStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage, CharacterCreationWizardStepIds.Qualities, readiness.Qualities);
-            bool magicResonanceStep = string.Equals(
-                stepId,
-                CharacterCreationWizardStepIds.MagicResonance,
-                StringComparison.Ordinal);
-            bool canOpenMagicResonance = magicResonanceStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance);
-            bool contactsStep = IsContactsStage(stepId);
-            bool canOpenContacts = contactsStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage,
-                CharacterCreationWizardStepIds.ContactsLifestyles,
-                readiness.Contacts);
-            bool resourcesStep = IsResourcesStage(stepId);
-            bool canOpenResources = resourcesStep && BuildPageUiProjection.CanOpenExactTypedCreationStage(
-                stage,
-                CharacterCreationWizardStepIds.Resources,
-                readiness.Resources);
-            bool identityStep = string.Equals(
-                stepId,
-                CharacterCreationWizardStepIds.IdentityStory,
-                StringComparison.Ordinal);
-            CreationIdentityRouteState? identityRoute = identityStep
-                ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
-                : null;
+            // Use the same render-local authority, callback and scope label as
+            // the stage cards. A second route table previously forgot Method.
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
-            // Core's dedicated creation authority is the only Attributes route here.
-            bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenAttributes || canOpenSkills
-                           || canOpenQualities || canOpenMagicResonance || canOpenContacts
-                           || canOpenResources || identityRoute?.IsEnabled == true;
-            Func<Task> selected = canOpenBasics
-                ? OpenCreationBasicsAsync
-                : lifeModuleOrigin
-                ? OpenSr5LifeModuleOriginAsync
-                : canOpenResources
-                ? () => OpenCreationResourcesAsync(creationResources!.State!)
-                : canOpenFoundation
-                ? OpenCreationFoundationAsync
-                : canOpenAttributes
-                    ? () => OpenCreationAttributesAsync(attributeResult!.Value!)
-                : canOpenSkills
-                    ? () => OpenCreationSkillsAsync(skillsResult!.Value!)
-                : canOpenQualities
-                    ? OpenCreationQualitiesAsync
-                : canOpenMagicResonance
-                    ? OpenCreationMagicResonanceAsync
-                : canOpenContacts
-                    ? () => OpenCreationContactsAsync(creationContacts!.State!)
-                : () => Task.CompletedTask;
-            string detail = canOpenBasics
-                ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
-                : identityStep
-                ? identityRoute!.Blocker
-                : lifeModuleOrigin
-                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
-                : canOpenResources
-                ? CreationResourcesStageDetail(creationResources!.State!)
-                : canOpenFoundation
-                ? "Choose an exact metatype and Nationality Life Module"
-                : canOpenAttributes
-                    ? AttributeStageDetail(attributeResult!.Value!)
-                : canOpenSkills
-                    ? SkillsStageDetail(skillsResult!.Value!)
-                : canOpenQualities
-                    ? QualitiesStageDetail(Coordinator.State.CreationQualities!)
-                : canOpenMagicResonance
-                    ? MagicResonanceStageDetail(
-                        Coordinator.State.CreationMagicResonanceEditor!)
-                : canOpenContacts
-                    ? CreationContactsStageDetail(creationContacts!.State!)
-                : attributeStep
-                  && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Loading
-                    ? "creation-authority-loading"
-                : skillStep
-                  && projection?.Progress.Skills == CreationDashboardAuthorityPhaseState.Loading
-                    ? "creation-authority-loading"
-                : attributeStep
-                  && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Failed
-                    ? projection.AttributesFailureReason ?? "creation-attributes-authority-load-failed"
-                : skillStep
-                  && projection?.Progress.Skills == CreationDashboardAuthorityPhaseState.Failed
-                    ? projection.SkillsFailureReason ?? "creation-skills-authority-load-failed"
-                : contactsStep
-                  && projection?.Progress.Contacts == CreationDashboardAuthorityPhaseState.Loading
-                    ? "creation-authority-loading"
-                : contactsStep
-                  && projection?.Progress.Contacts == CreationDashboardAuthorityPhaseState.Failed
-                    ? projection.ContactsFailureReason ?? "creation-contacts-authority-load-failed"
-                : contactsStep && creationContacts is not null
-                    ? creationContacts.Blockers.FirstOrDefault()
-                      ?? creationContacts.State?.Blockers.FirstOrDefault()
-                      ?? "creation-contacts-authority-unavailable"
-                : resourcesStep
-                  && projection?.Progress.Resources == CreationDashboardAuthorityPhaseState.Loading
-                    ? "creation-authority-loading"
-                : resourcesStep
-                  && projection?.Progress.Resources == CreationDashboardAuthorityPhaseState.Failed
-                    ? projection.ResourcesFailureReason ?? "creation-resources-authority-load-failed"
-                : resourcesStep && creationResources is not null
-                    ? creationResources.Blockers.FirstOrDefault()
-                      ?? creationResources.State?.Blockers.FirstOrDefault()
-                      ?? "creation-resources-authority-unavailable"
-                : attributeStep && prerequisite?.Value is { } prerequisiteState
-                    ? AttributeGateDetail(prerequisiteState)
-                : attributeStep && stage.IsAvailable
-                    ? "Rules-authoritative Attribute increments and metatype adjustment are not available yet"
-                : stage.IsAvailable
-                    ? "Legal in the projection · dedicated phone step is not wired yet"
-                    : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
-            if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId))
-                detail = CurrentPhoneWizardScope.MarkExperimental(detail);
+            CreationBudgetRoute? route = stepId == CharacterCreationWizardStepIds.Method
+                ? methodRoute
+                : routes.GetValueOrDefault(stepId);
             _body.Add(CreationNavigationRow(
                 stage.Label,
-                detail,
-                selected,
-                canOpen,
+                route?.Detail ?? stage.Blockers.FirstOrDefault()
+                    ?? CreationFlowStrings.Get("Creation.RouteUnavailable", "This creation step is not available yet."),
+                route?.CanOpen == true ? route.Open : static () => Task.CompletedTask,
+                route?.CanOpen == true,
                 $"creation-next-{Token(stepId)}"));
         }
     }

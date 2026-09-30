@@ -164,10 +164,113 @@ internal static partial class AfterRunAuthorityHarness
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
         Console.WriteLine("PASS budget ribbon: typed family readiness, actionable inexact cards, actual editors, stale owner rejection, saved bytes unchanged");
+
+    }
+
+    internal static async Task RunCreationContinueRoutesAsync(string contentRoot)
+    {
+        foreach (string buildMethod in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationPrerequisite: true, productionCreationOverview: true);
+            var saved = PreparePrerequisiteOwnerFixture(runtime, buildMethod);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(async () =>
+            {
+                var prerequisite = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+                Require(prerequisite.Value is { } authority
+                    && CreationPrerequisitePhoneAuthority.IsReady(authority, runtime.Coordinator.State)
+                    && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(authority),
+                    "SETUP: fresh runner must have exact, openable method authority.");
+                var snapshot = runtime.Coordinator.State.CreationWizard!;
+                Require(snapshot.ActiveStepId == CharacterCreationWizardStepIds.Method,
+                    "SETUP: fresh runner must actually be at Creation method.");
+                var readiness = new CreationDashboardRenderReadiness(
+                    () => false, () => false, () => false, () => false, () => false, () => false);
+                var methodRender = typeof(BuildPage).GetMethod("AddCreationMethodRoute", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var nextRender = typeof(BuildPage).GetMethod("AddLegalNextSteps", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var stages = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                foreach (bool available in new[] { false, true })
+                {
+                    var page = new BuildPage(runtime.Coordinator);
+                    var nav = new NavigationPage(page);
+                    _ = new Window(nav);
+                    var typed = available ? prerequisite : null;
+                    var methodRoute = (CreationBudgetRoute)methodRender.Invoke(page, [snapshot, null, typed])!;
+                    var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
+                        [snapshot, null, typed, null, null, null, null, readiness])!;
+                    nextRender.Invoke(page, [snapshot, readiness, routes, methodRoute]);
+                    var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                    var cards = body.Children.OfType<Border>().Where(border => border.Content is Grid)
+                        .Select(border => (Grid)border.Content!).ToArray();
+                    var methodButton = cards.SelectMany(grid => grid.Children.OfType<Button>())
+                        .Single(button => button.AutomationId == "creation-next-method");
+                    Require(methodButton.IsEnabled == available && methodRoute.CanOpen == available,
+                        "Continue must agree with the canonical method route and never borrow generic legality.");
+                    foreach (var grid in cards)
+                    {
+                        var button = grid.Children.OfType<Button>().Single();
+                        if (button.AutomationId?.StartsWith("creation-next-", StringComparison.Ordinal) != true) continue;
+                        string step = button.AutomationId["creation-next-".Length..];
+                        var route = step == CharacterCreationWizardStepIds.Method ? methodRoute : routes[step];
+                        Require(button.IsEnabled == route.CanOpen && grid.Children.OfType<VerticalStackLayout>()
+                            .Single().Children.OfType<Label>().Any(label => label.Text == route.Detail),
+                            "Continue lost the shared readiness/scope explanation.");
+                    }
+                    if (available)
+                    {
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                        Require(nav.CurrentPage is CreationPrerequisitePage,
+                            "Continue did not open the real typed Creation method editor.");
+                        await nav.PopAsync(false);
+                        owners.Set(ContactsOwnerB);
+                        owners.Set(ContactsOwnerA);
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                    }
+                    else ((IButtonController)methodButton).SendClicked();
+                    Require(nav.Navigation.NavigationStack.Count == 1,
+                        "A blocked or stale-owner Continue link still navigated.");
+                }
+                ui.AssertHealthy();
+            });
+            var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
+                "Continue navigation changed the saved runner.");
+            Console.WriteLine($"PASS Continue {buildMethod}: actual method editor, blocked/stale-owner rejection, shared detail, saved bytes unchanged");
+        }
     }
 
     private static void AssertCreationReadinessCopy(RunnerSessionCoordinator coordinator)
     {
+        var snapshot = coordinator.State.CreationWizard! with
+        {
+            CompletionBlockers = ["creation-finalization-attributes-draft-required",
+                "creation-skills-attributes-draft-required", "fixture-unknown-blocker"]
+        };
+        string snapshotBefore = JsonSerializer.Serialize(snapshot);
+        var legacyPage = new BuildPage(coordinator);
+        typeof(BuildPage).GetMethod("AddCompletionBlockers", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(legacyPage, [snapshot]);
+        var legacyBody = (VerticalStackLayout)((ScrollView)legacyPage.Content!).Content!;
+        var legacyCard = (VerticalStackLayout)legacyBody.Children.OfType<Border>().Single().Content!;
+        var legacyLabels = legacyCard.Children.OfType<Label>().ToArray();
+        Require(legacyLabels.Count(label => label.Text == CreationFlowStrings.FinalizationBlocker(snapshot.CompletionBlockers[0])) == 1
+            && legacyLabels.Any(label => label.Text == "fixture-unknown-blocker"),
+            "Legacy completion box must show deduplicated actions and retain unknown blockers.");
+        var legacyDetails = legacyCard.Children.OfType<VerticalStackLayout>().Single();
+        var legacyToggle = legacyCard.Children.OfType<Button>().Single();
+        Require(!legacyDetails.IsVisible && snapshot.CompletionBlockers.All(code =>
+            legacyDetails.Children.OfType<Label>().Any(label => label.Text == code)),
+            "Legacy completion details must be collapsed and preserve every exact code.");
+        ((IButtonController)legacyToggle).SendClicked();
+        Require(legacyDetails.IsVisible, "Legacy blocker diagnostics did not expand.");
+        ((IButtonController)legacyToggle).SendClicked();
+        legacyBody.Clear();
+        ((IButtonController)legacyToggle).SendClicked();
+        Require(!legacyDetails.IsVisible && JsonSerializer.Serialize(snapshot) == snapshotBefore,
+            "A detached blocker card accepted a click or changed the Core projection.");
         var actual = CreationPriorityLegalPathProjection.From(coordinator.LoadCreationFinalization());
         Require(actual.CanOpenReview, "SETUP: the saved fixture must be ready for final review.");
         var render = typeof(BuildPage).GetMethod("AddCreationFinalizationStatus",

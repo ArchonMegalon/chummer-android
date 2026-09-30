@@ -73,14 +73,18 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
         source = BUILD.read_text(encoding="utf-8")
         stages = source[source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(") : source.index("private void AddCompletionBlockers(")]
         next_steps = source[source.index("private void AddLegalNextSteps(") : source.index("private static string? ProjectionStageBlocker(")]
-        method = source[source.index("private void AddCreationMethodRoute(") : source.index("private void AddFinalizationReviewAction(")]
+        method = source[source.index("private CreationBudgetRoute AddCreationMethodRoute(") : source.index("private void AddFinalizationReviewAction(")]
         finalization = source[source.index("private void AddFinalizationReviewAction(") : source.index("private void AddCreationFinalizationStatus(")]
 
         assert "canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId)" in stages
         assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in stages
         assert "enabled: canOpen" in stages
-        assert "canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stepId)" in next_steps
-        assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in next_steps
+        # Continue preserves the already-labelled exact stage/method route;
+        # it must not calculate a second, conflicting scope/admission table.
+        assert "route?.Detail" in next_steps
+        assert "routes.GetValueOrDefault(stepId)" in next_steps
+        assert "? methodRoute" in next_steps
+        assert "route?.CanOpen == true" in next_steps
         assert "canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod)" in method
         assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in method
         assert 'CurrentPhoneWizardScope.MarkExperimental("Review and finish creation")' in finalization

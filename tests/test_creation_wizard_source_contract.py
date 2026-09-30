@@ -22,7 +22,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
     def test_both_dashboard_routes_bind_each_typed_authority_to_its_own_step(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         # The compiled interaction matrix verifies the admission policy. This
-        # separate wiring guard covers both card and Continue-route call sites:
+        # separate wiring guard covers the shared card/Continue route table:
         # forwarding stage.StepId would wrongly authorize a different domain.
         calls = re.findall(
             r"bool canOpen(Attributes|Skills|Qualities|Contacts|Resources)\s*=\s*\w+(?:Stage|Step)\s*&&\s*"
@@ -37,16 +37,21 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "Contacts": ("ContactsLifestyles", "Contacts"),
             "Resources": ("Resources", "Resources"),
         }
-        self.assertEqual(10, len(calls))
+        self.assertEqual(5, len(calls))
         for route, (step, predicate) in expected.items():
-            self.assertEqual(2, calls.count((route, step, predicate)), route)
+            self.assertEqual(1, calls.count((route, step, predicate)), route)
+        self.assertIn("AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute);", source)
+        continuation = source.split("private void AddLegalNextSteps(", 1)[1].split("private ", 1)[0]
+        self.assertIn("? methodRoute", continuation)
+        self.assertIn("routes.GetValueOrDefault(stepId)", continuation)
+        self.assertIn("route?.CanOpen == true ? route.Open : static () => Task.CompletedTask", continuation)
 
     def test_readiness_is_local_to_one_dashboard_render(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         self.assertEqual(1, source.count("new CreationDashboardRenderReadiness("))
         self.assertIn("var readiness = new CreationDashboardRenderReadiness(", source)
         self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex)", source)
-        self.assertEqual(2, source.count("creationResources, readiness);"))
+        self.assertEqual(1, source.count("creationResources, readiness);"))
         for method in ("AddBudgetRibbon", "AddWizardStages", "AddLegalNextSteps"):
             return_type = "IReadOnlyDictionary<string, CreationBudgetRoute>" if method == "AddWizardStages" else "void"
             section = source.split(f"private {return_type} {method}(", 1)[1].split("private ", 1)[0]
