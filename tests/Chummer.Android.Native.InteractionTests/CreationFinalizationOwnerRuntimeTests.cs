@@ -179,7 +179,80 @@ internal static partial class AfterRunAuthorityHarness
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
         Console.WriteLine("PASS budget ribbon: compact cards, one effective-readiness hint, typed family readiness, actual editors, stale owner rejection, saved bytes unchanged");
+        await VerifySavedQualitiesKarmaBudgetAsync(contentRoot);
+    }
 
+    private static async Task VerifySavedQualitiesKarmaBudgetAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, creationAttributes: true, creationSkills: true,
+                productionCreationOverview: true);
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true, buildMethod: method);
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var service = runtime.Services.GetRequiredService<ICharacterCreationQualitiesService>();
+            var state = runtime.Coordinator.State.CreationQualities!;
+            Require(CreationQualitiesPhoneAuthority.IsReady(state, runtime.Coordinator.State),
+                "SETUP: Qualities must be current before choosing a real quality.");
+            var draft = new CreationQualitiesPhoneDraft();
+            draft.Bind(state, runtime.Coordinator.State);
+            var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, runtime.Coordinator.State);
+            var option = draft.AvailableOptions(state, runtime.Coordinator.State, editor, default)
+                .First(item => item.Name == "Acrobatic Defender" && item.KarmaCost == 4);
+            var render = typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            // Save and then remove the real selection through Core, not a forged
+            // snapshot. Cold-store reload must agree with the dashboard each time.
+            foreach (string[] selection in new[] { new[] { option.OptionId }, Array.Empty<string>() })
+            {
+                state = service.Load(new(runtime.Id)).Value!;
+                var preview = service.Preview(new(state.Binding, selection)).Value!;
+                Require(preview.CanConfirm, "SETUP: real quality selection must be confirmable.");
+                var result = service.Confirm(new(preview.Binding, selection, preview.PreviewDigest,
+                    "budget-karma-" + selection.Length, Guid.NewGuid(), true));
+                Require(result.Outcome == CharacterCreationFoundationOutcomes.Success,
+                    "SETUP: Core did not save the quality selection.");
+                var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                state = runtime.Coordinator.State.CreationQualities!;
+                Require(CreationQualitiesPhoneAuthority.IsReady(state, runtime.Coordinator.State)
+                    && state.Preview.KarmaRemaining == (selection.Length == 1 ? 21 : 25),
+                    "SETUP: saved Qualities must issue the cumulative Karma remainder.");
+                var attributes = runtime.Coordinator.LoadCreationAttributes();
+                Require(attributes.Value!.CreationKarmaBudget.Remaining == 25,
+                    "SETUP: Attributes must still describe only the earlier allocation step.");
+                var snapshot = runtime.Coordinator.State.CreationWizard!;
+                var karma = snapshot.Budgets.Single(row => row.BudgetId == CharacterCreationBudgetIds.Karma);
+                Require(karma.IsExact && karma.Remaining == state.Preview.KarmaRemaining,
+                    "SETUP: Presentation must project Core's cumulative Qualities budget.");
+                foreach (bool attributesReady in new[] { false, true })
+                foreach (bool exact in new[] { true, false })
+                {
+                    var page = new BuildPage(runtime.Coordinator);
+                    var readiness = new CreationDashboardRenderReadiness(
+                        () => attributesReady, () => false, () => true,
+                        () => false, () => false, () => false);
+                    render.Invoke(page, [snapshot with { Budgets = [karma with { IsExact = exact }] },
+                        attributes, null, readiness, null, null, null]);
+                    var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                    var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+                    var labels = ((Grid)card.Content!).Children.OfType<VerticalStackLayout>().Single()
+                        .Children.OfType<Label>().Select(label => label.Text).ToArray();
+                    string number = karma.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    Require(labels[0].EndsWith(exact ? number + " left" : "Not exact", StringComparison.Ordinal),
+                        $"{method}: saved Qualities Karma {number} was replaced by the earlier Attributes budget; exact={exact}, attributes={attributesReady}.");
+                    Require(!exact || labels[1].StartsWith(
+                        $"{karma.Used} / {karma.Total} karma", StringComparison.Ordinal),
+                        "Cumulative Karma used/total must match the same projection as its remainder.");
+                    Require(body.Children.OfType<Label>().Count(label => label.AutomationId == "creation-budget-status")
+                        == (exact ? 0 : 1), "An inexact cumulative budget must not become exact from earlier Attributes.");
+                }
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            }
+        }
+        Console.WriteLine("PASS Priority/Sum-to-Ten cumulative Karma: real +4 quality save, cold reopen, removal, no earlier-budget fallback, unchanged rendered bytes");
     }
 
     internal static async Task RunCreationContinueRoutesAsync(string contentRoot)
