@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Xml;
+using System.Xml.Linq;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -25,6 +27,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private CharacterOverviewState? _loadedDisplay;
     private CharacterCreationFoundationResult<CharacterCreationQualitiesState>? _loaded;
     private CharacterCreationQualitiesEditorState? _editor;
+    private IReadOnlyList<CharacterCreationQualitiesDesktopOption> _availableOptions = [];
     private bool _canReview;
     private string? _reviewCheckpointDigest;
     private bool _loading = true;
@@ -51,6 +54,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         _loaded = null;
         _loadedDisplay = null;
         _editor = null;
+        _availableOptions = [];
         _canReview = false;
         _reviewCheckpointDigest = null;
         _loading = true;
@@ -67,22 +71,24 @@ public sealed class CreationQualitiesPage : NativePageBase
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (loaded.Value is not { } state || !CreationQualitiesPhoneAuthority.IsReady(state, original))
-                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null);
+                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
                 draft.Bind(state, original);
                 if (!draft.Matches(state, original))
-                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null);
+                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
                 var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
                 bool canReview = CreationQualitiesPhoneAuthority.CanConfirmPreview(
                     state, original, draft.Preview ?? state.Preview, draft.SelectedOptionIds);
                 string? checkpointDigest = _store.TryRead(out var checkpoint, out _)
                     && checkpoint.OwnsExactReview(state, original) ? checkpoint.CheckpointDigest : null;
                 cancellationToken.ThrowIfCancellationRequested();
-                return (Editor: editor, CanReview: canReview, CheckpointDigest: checkpointDigest);
+                var available = draft.AvailableOptions(state, original, editor, cancellationToken);
+                return (Editor: editor, CanReview: canReview, CheckpointDigest: checkpointDigest, Options: available);
             }, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             _loadedDisplay = original;
             _loaded = loaded;
             _editor = prepared.Editor;
+            _availableOptions = prepared.Options;
             _canReview = prepared.CanReview;
             _reviewCheckpointDigest = prepared.CheckpointDigest;
             _draft = draft;
@@ -104,7 +110,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Qualities.Intro",
-                "Choose qualities within your Karma budget. Open an unavailable quality to see why it cannot be selected."),
+                "Only available qualities within your budget are shown. Tap ! to learn about their effects. Selected qualities remain available to remove."),
             NativeTheme.Muted));
 
         if (_loading)
@@ -373,7 +379,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         };
         _body.Add(search);
 
-        CharacterCreationQualitiesDesktopOption[] matches = editor.Options
+        CharacterCreationQualitiesDesktopOption[] matches = _availableOptions
             .Where(option => string.IsNullOrWhiteSpace(_filter)
                              || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
                              || (option.FollowUpChoiceLabel?.Contains(_filter, StringComparison.CurrentCultureIgnoreCase) ?? false))
@@ -453,6 +459,24 @@ public sealed class CreationQualitiesPage : NativePageBase
                         original: _loadedDisplay!)),
                     enabled: !checkpointOwnsLane,
                     automationId: $"creation-quality-option-{Token(option.OptionId)}");
+                var rowGrid = (Grid)row.Content!;
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+                Button info = NativeTheme.SecondaryButton("!");
+                info.AutomationId = $"creation-quality-info-{Token(option.OptionId)}";
+                info.WidthRequest = 50;
+                info.FontSize = 20;
+                info.Padding = 0;
+                info.VerticalOptions = LayoutOptions.Center;
+                SemanticProperties.SetDescription(info, CreationFlowStrings.Format(
+                    "Qualities.Info.Accessible", "Explain {0}", option.Name));
+                info.Clicked += async (_, _) =>
+                {
+                    if (!ReferenceEquals(row.Parent, _body) || _loadedDisplay is not { } original
+                        || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+                    var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
+                    await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, source));
+                };
+                rowGrid.Add(info, 2);
                 _body.Add(row);
             }
         }
@@ -706,6 +730,134 @@ public sealed class CreationQualitiesPage : NativePageBase
         => new(value.Trim().ToLowerInvariant()
             .Select(static character => char.IsLetterOrDigit(character) ? character : '-')
             .ToArray());
+}
+
+/// <summary>Read-only source-backed help; never a selection or a rules calculation.</summary>
+public sealed class CreationQualityInfoPage : NativePageBase
+{
+    private readonly CharacterOverviewState _original;
+    private readonly CharacterCreationQualityCatalogOption _option;
+    private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
+
+    internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
+        CharacterCreationQualityCatalogOption option) : base(coordinator)
+    {
+        _original = original;
+        _option = option;
+        Title = option.Name;
+        AutomationId = "creation-quality-info-page";
+        Content = new ScrollView { Content = _body };
+        Refresh();
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
+        {
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.Stale",
+                "Reopen Qualities for the current runner.")));
+            return;
+        }
+        _body.Add(NativeTheme.Title(_option.Name));
+        _body.Add(NativeTheme.Body(CreationFlowStrings.Format("Qualities.Info.Cost",
+            "Rating {0} · Karma {1}", _option.Rating, CreationQualitiesPage.Signed(_option.KarmaCost))));
+        if (!string.IsNullOrWhiteSpace(_option.FollowUpChoiceLabel))
+            _body.Add(NativeTheme.Body(_option.FollowUpChoiceLabel));
+        foreach (string effect in CreationQualityInfo.Effects(_option.SourceNodeXml))
+            _body.Add(NativeTheme.Body(effect));
+        _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.SourceNote",
+            "These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects."), NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(CreationQualityInfo.Citation(_option.SourceNodeXml), NativeTheme.Muted));
+        Button back = NativeTheme.ReadingButton(CreationFlowStrings.Get("Qualities.Configure.Back", "Back to qualities"));
+        back.AutomationId = "creation-quality-info-back";
+        back.Clicked += async (_, _) => await Navigation.PopAsync();
+        _body.Add(back);
+    }
+}
+
+internal static class CreationQualityInfo
+{
+    private static XElement Read(string xml)
+    {
+        using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings
+        { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 262144 });
+        return XElement.Load(reader);
+    }
+
+    public static string Citation(string xml)
+    {
+        var source = Read(xml);
+        return CreationFlowStrings.Format("Qualities.Info.Reference", "Rulebook: {0}, page {1}",
+            source.Element("source")?.Value ?? "—", source.Element("page")?.Value ?? "—");
+    }
+
+    public static IReadOnlyList<string> Effects(string xml)
+    {
+        var source = Read(xml);
+        var result = new List<string>();
+        foreach (var effect in source.Element("bonus")?.Elements() ?? [])
+        {
+            string? description = effect.Name.LocalName switch
+            {
+                "ambidextrous" => CreationFlowStrings.Get("Qualities.Info.Ambidextrous", "Use either hand without the off-hand penalty."),
+                "skillattribute" => Fields(effect, "Attribute-based tests"),
+                "skill" => Fields(effect, "Skill"),
+                "skillgroup" => Fields(effect, "Skill group"),
+                "specificattribute" => Fields(effect, "Attribute"),
+                "selectskill" => Fields(effect, "Chosen skill"),
+                "selectattributes" => Fields(effect, "Chosen attributes"),
+                "limitmodifier" => Fields(effect, "Limit"),
+                "initiative" => Scalar(effect, "Initiative"),
+                "initiativedice" => Scalar(effect, "Initiative dice"),
+                "armor" => Scalar(effect, "Armor"),
+                "physicalcm" => Scalar(effect, "Physical condition monitor"),
+                "stuncm" => Scalar(effect, "Stun condition monitor"),
+                "painresistance" => Scalar(effect, "Wound penalty resistance"),
+                "composure" => Scalar(effect, "Composure"),
+                "judgeintentions" => Scalar(effect, "Judge Intentions"),
+                "memory" => Scalar(effect, "Memory"),
+                "drainresist" => Scalar(effect, "Drain resistance"),
+                "fadingresist" => Scalar(effect, "Fading resistance"),
+                "spellresistance" => Scalar(effect, "Spell resistance"),
+                "toxincontactresist" => Scalar(effect, "Contact toxin resistance"),
+                "toxininhalationresist" => Scalar(effect, "Inhaled toxin resistance"),
+                "diseaseresist" => Scalar(effect, "Disease resistance"),
+                "sociallimit" => Scalar(effect, "Social limit"),
+                "mentallimit" => Scalar(effect, "Mental limit"),
+                "physicallimit" => Scalar(effect, "Physical limit"),
+                _ => null
+            };
+            if (description is null)
+                description = CreationFlowStrings.Get("Qualities.Info.Additional", "Additional or conditional effects: see the rulebook reference below.");
+            if (!result.Contains(description, StringComparer.Ordinal)) result.Add(description);
+        }
+        if (result.Count == 0)
+            result.Add(CreationFlowStrings.Get("Qualities.Info.Manual", "This catalog entry has no automatic modifier. Its roleplaying or situational benefit or drawback is described in the rulebook."));
+        return result;
+    }
+
+    private static string Scalar(XElement effect, string label)
+        => effect.HasElements ? Fields(effect, label) : $"{label}: {effect.Value}";
+
+    // Display source values/expressions verbatim, including their conditions.
+    // Do not evaluate Rating expressions or mistake a cap increase for dice.
+    private static string Fields(XElement effect, string label)
+    {
+        var parts = new List<string> { label };
+        foreach (var field in effect.Elements())
+        {
+            string? fieldLabel = field.Name.LocalName switch
+            {
+                "name" => "", "val" => "Modifier", "bonus" => "Bonus", "min" => "Minimum",
+                "max" => "Maximum", "aug" => "Augmented", "condition" => "When", "applytorating" => "Applies to rating",
+                "exclude" => "Except", _ => null
+            };
+            if (fieldLabel is null || field.HasElements || Guid.TryParse(field.Value, out _)) continue;
+            parts.Add(fieldLabel.Length == 0 ? field.Value : $"{fieldLabel}: {field.Value}");
+        }
+        return string.Join(" · ", parts);
+    }
 }
 
 /// <summary>Phone-deep details for one immutable Core option; no label-based identity.</summary>

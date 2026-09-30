@@ -199,7 +199,15 @@
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>ID de selección posterior</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Concedidas por selecciones anteriores</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · nivel {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Elige cualidades dentro de tu presupuesto de Karma. Abre una cualidad no disponible para ver por qué no se puede elegir.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Solo se muestran cualidades disponibles dentro de tu presupuesto. Pulsa ! para conocer sus efectos. Las elegidas siguen visibles para poder quitarlas.</value></data>
+  <data name="Qualities.Info.Accessible" xml:space="preserve"><value>Explicar {0}</value></data>
+  <data name="Qualities.Info.Cost" xml:space="preserve"><value>Nivel {0} · Karma {1}</value></data>
+  <data name="Qualities.Info.Reference" xml:space="preserve"><value>Manual: {0}, página {1}</value></data>
+  <data name="Qualities.Info.SourceNote" xml:space="preserve"><value>Estos son los efectos registrados en el catálogo. Consulta el manual para la descripción completa, las condiciones y los efectos narrativos.</value></data>
+  <data name="Qualities.Info.Manual" xml:space="preserve"><value>Esta entrada no tiene un modificador automático. Su ventaja o desventaja narrativa o circunstancial se describe en el manual.</value></data>
+  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Efectos adicionales o condicionales: consulta la referencia del manual.</value></data>
+  <data name="Qualities.Info.Ambidextrous" xml:space="preserve"><value>Usa cualquiera de las manos sin la penalización por mano torpe.</value></data>
+  <data name="Qualities.Info.Stale" xml:space="preserve"><value>Vuelve a abrir Cualidades para el runner actual.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} restante</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} restantes</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagénicas: +{0} / -{1}</value></data>

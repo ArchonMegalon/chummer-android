@@ -201,7 +201,15 @@
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>Follow-up id</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Granted by earlier choices</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · rating {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Choose qualities within your Karma budget. Open an unavailable quality to see why it cannot be selected.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Only available qualities within your budget are shown. Tap ! to learn about their effects. Selected qualities remain available to remove.</value></data>
+  <data name="Qualities.Info.Accessible" xml:space="preserve"><value>Explain {0}</value></data>
+  <data name="Qualities.Info.Cost" xml:space="preserve"><value>Rating {0} · Karma {1}</value></data>
+  <data name="Qualities.Info.Reference" xml:space="preserve"><value>Rulebook: {0}, page {1}</value></data>
+  <data name="Qualities.Info.SourceNote" xml:space="preserve"><value>These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects.</value></data>
+  <data name="Qualities.Info.Manual" xml:space="preserve"><value>This catalog entry has no automatic modifier. Its roleplaying or situational benefit or drawback is described in the rulebook.</value></data>
+  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Additional or conditional effects: see the rulebook reference below.</value></data>
+  <data name="Qualities.Info.Ambidextrous" xml:space="preserve"><value>Use either hand without the off-hand penalty.</value></data>
+  <data name="Qualities.Info.Stale" xml:space="preserve"><value>Reopen Qualities for the current runner.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} remaining</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} left</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagenic: +{0} / -{1}</value></data>

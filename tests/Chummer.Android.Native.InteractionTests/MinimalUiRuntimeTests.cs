@@ -174,6 +174,24 @@ internal static partial class AfterRunAuthorityHarness
             Require(MinimalVisible(talent).OfType<Button>().Any(x =>
                 x.AutomationId?.StartsWith("creation-prerequisite-talent-option-") == true),
                 "Minimal Talent list has no actual choices.");
+            foreach (var grantedTalent in draft.TalentOptions(prerequisite, priorityRuntime.Coordinator.State)
+                .Where(option => option.IsEnabled && option.Blockers.Count == 0
+                    && (option.ActiveSkillGrant is not null || option.SkillGroupGrant is not null)
+                    && CreationPrerequisitePhoneAuthority.IsTalentGrantAuthoritySupported(option)))
+            {
+                Require(draft.TrySelectTalent(prerequisite, priorityRuntime.Coordinator.State, grantedTalent.SelectionId),
+                    "SETUP: supported granted-skill Talent cannot be selected.");
+                var grantPage = new CreationTalentSkillGrantPage(priorityRuntime.Coordinator, draft, prerequisite, grantedTalent.SelectionId);
+                MinimalRender(grantPage);
+                MinimalRequireNoMachineValues(grantPage);
+                Require(MinimalVisibleText(grantPage).Contains(grantedTalent.Name)
+                    && MinimalVisibleText(grantPage).Contains("Granted rating"),
+                    "Talent skill choices lost the readable Talent or actual granted rating.");
+                ((IButtonController)MinimalVisible(grantPage).OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-prerequisite-talent-grant-details-toggle")).SendClicked();
+                Require(MinimalVisibleText(grantPage).Contains(grantedTalent.ActiveSkillGrant?.GrantDigest
+                    ?? grantedTalent.SkillGroupGrant!.GrantDigest), "Talent diagnostics lost the exact grant digest.");
+            }
             var confirmedAssignments = await priorityRuntime.Coordinator.ConfirmCreationPrerequisiteAsync(
                 assignmentsPreview, assignments, selections);
             Require(confirmedAssignments.Outcome == CharacterCreationFoundationOutcomes.Success,
