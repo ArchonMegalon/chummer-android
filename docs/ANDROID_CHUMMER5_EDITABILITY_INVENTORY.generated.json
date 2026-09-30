@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "75abe311ee5424aa8b5873d253eea1ecd275dfbcce42736ad812dedc96a968d0"
+        "sha256": "519f35c4465475bd18d1df17ca2990d7fe27f6b7eb862e60be00b25627b7529a"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -592,7 +592,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "38b93eedd9d29cf5dbd264da6b451f829c4110491e840ff185402605af77a317"
+        "sha256": "13a493607da5663574d4cada169445ac576d241a16eefd31ef583baf3841d69c"
       },
       {
         "path": "src/Chummer.Android/Native/AndroidCharacterSettingsPhoneCapabilities.Generated.cs",
@@ -607,27 +607,27 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "a33f704314a655b6399a7da4f026ba169dc84ae1436a6c6bf225d2a771c4e0f2"
+        "sha256": "fad1f3d22f9a2f88e2add3719294e2aacb8c76fe5c19a6f5c5ad633510cb6385"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
         "exists": true,
-        "sha256": "85a0bcd9ab53152e8fa88c267c2611c906435cef52423d6de3aceb6a709c2726"
+        "sha256": "b40ff24fb5371e6996117709d1d9c0533f7c04e470dd14622d2af9280fc9b01e"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
         "exists": true,
-        "sha256": "c3bebbbc27ff029da67e1bd3ffdb40d3dfd56fc20715032d5eb097ffc52aa201"
+        "sha256": "871d2c407356330f7f3cacbae5bf90f44773ef47131652d39dd176c04541a871"
       },
       {
         "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
         "exists": true,
-        "sha256": "ea26e83b26c2cc38a4528d5047177b93efd43becc47d8fcdd5e0332e3d8874dc"
+        "sha256": "bfef56ff8fbc1b6291dbcb1c7772bfd9d9df91946dbea552c20dd709c8f0b7c3"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "a187db3088361c0a317d6d093e0a8be1d206dfa8bcdaad56586c36c246b4a60f"
+        "sha256": "73a18dfa0022a644ec429eb21e0098ee81f4f14edfca79c0a95ba1b3a0db0659"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
@@ -817,7 +817,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "b531c46fd2422e112471b64b5056a2aab5c3d6357ca47abcfc5b74b1bdcf2889"
+        "sha256": "2372227a7da496d1d2df9268dd6de885c09c3e3bfd5f67a2a92b598c20a8c4b4"
       },
       {
         "path": ".github/workflows/api36-two-consecutive-green.yml",
@@ -887,7 +887,7 @@
       {
         "path": "scripts/materialize-android-p0-pr-authority.py",
         "exists": true,
-        "sha256": "b53aeaeebcb34254b2ffd7b34c679baba253586dd6bfa5d368f42f0d3a24351a"
+        "sha256": "857e01555e5279659a6c4093a1e588e874ff121e0596401791439a30433e8e70"
       },
       {
         "path": "scripts/prepare-api36-emulator-live-log.py",
@@ -907,7 +907,7 @@
       {
         "path": "src/Chummer.Android/Chummer.Android.csproj",
         "exists": true,
-        "sha256": "dc97216908e5c5c5484b49ab154e8ddd402f624c4faef1fd51e821d2474c9ca7"
+        "sha256": "b80b53daa3f15e20b3fb3c2c84fba7281235ecd6033d83ca95cb82bcab77af99"
       },
       {
         "path": "src/Chummer.Android/Proof/Api36ProofState.cs",
@@ -927,7 +927,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "6279c5d77bb9b3ef9ea52eb84b63828347371a0b38168768ef25440ab1242a4c"
+        "sha256": "363051c6707b46e877a96c302108fa7b3a9d46cd92cbc89253759a96da82de12"
       },
       {
         "path": "tests/test_api36_e2e_artifact_authority.py",
@@ -942,12 +942,12 @@
       {
         "path": "tests/test_api36_two_green_eligibility.py",
         "exists": true,
-        "sha256": "ab33a655daf73d859f6fec71ae10d2901f4a442562ef7df5527319fe8269d7e3"
+        "sha256": "1c5581bcdc43bad164da449a5f25ae4e30ba8a54981296a82e499702f6c44634"
       },
       {
         "path": "tests/test_android_p0_pr_authority.py",
         "exists": true,
-        "sha256": "358d880177890c969cc2542a2d241228820540894df5306d69d88a194e6b5dcc"
+        "sha256": "0946a45140ddb03d799b3ea04490ab82297e7d455f6d5a81a4345c1daa97fc6a"
       },
       {
         "path": "tests/test_android_design_policy_authority.py",
@@ -2517,7 +2517,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "e654be0cc92590160b1722163996aca6bd37a51fa215f64d55092bf43af143b9"
+        "sha256": "088a30cebd944034a125803a97695ca939b1237cf30b3443713ebb9582c12a28"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
