@@ -1,47 +1,75 @@
+using System.Runtime.CompilerServices;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
+using Chummer.Presentation;
+using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
 public sealed partial class RunnerSessionCoordinator
 {
-    private CreationSkillsPhoneConfirmResult CommittedSkillsRefreshRequired(
-        CharacterCreationSkillsReceipt receipt,
-        CharacterCreationSkillsState committedState,
-        IEnumerable<string> blockers)
+    private sealed record SkillsReviewLoad(CharacterOverviewState Display, CharacterCreationSkillsReReviewState State);
+    private sealed record SkillsReviewPreview(SkillsReviewLoad Load,
+        CharacterCreationSkillAllocation[] Skills, CharacterCreationSkillGroupAllocation[] Groups)
     {
-        _notice = "Skills draft saved. Reopen the character to refresh the phone view.";
-        NotifyChanged();
-        return CreationSkillsPhoneAuthority.CommittedRefreshRequired(receipt, committedState, blockers);
+        public bool ConfirmationStarted { get; set; }
     }
+    private readonly ConditionalWeakTable<CharacterCreationSkillsReReviewBinding, SkillsReviewLoad> _skillsReviewLoads = new();
+    private readonly ConditionalWeakTable<CharacterCreationSkillsReReviewPreview, SkillsReviewPreview> _skillsReviewPreviews = new();
+
+    internal bool IsCreationSkillsReReviewStateCurrent(CharacterCreationSkillsReReviewState state)
+        => _skillsReviewLoads.TryGetValue(state.Binding, out var issued) && ReferenceEquals(issued.State, state)
+           && SkillsDisplayCurrent(issued.Display) && CreationSkillsReReviewPhoneAuthority.Matches(state, State);
+
+    internal bool CanDisplayCreationSkillsReReviewReceipt(CharacterCreationSkillsReceipt receipt)
+        => _skillReceipts.TryGetValue(receipt, out var original)
+           && IsNativePersistenceOwnerCurrent(original.DisplayOwnerContext)
+           && State.DisplayOwnerContext == original.DisplayOwnerContext
+           && State.Session.OwnerContext == original.DisplayOwnerContext
+           && State.WorkspaceId == receipt.WorkspaceId;
 
     internal CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadCreationSkillsReReview()
     {
         var before = State;
-        if (_creationSkillsService is not ICharacterCreationSkillsReReviewService service
-            || before.Profile?.Created != false || before.WorkspaceId is not { } id)
-            return new(CharacterCreationFoundationOutcomes.Blocked, null, [CharacterCreationSkillsReReviewSchemas.Unavailable]);
-        var result = service.LoadReReview(new(id));
-        return result.Value is { } state
-            && (!CreationSkillsReReviewPhoneAuthority.Matches(state, before)
-                || !CreationSkillsReReviewPhoneAuthority.Matches(state, State))
-            ? new(CharacterCreationFoundationOutcomes.Conflict, null, [CharacterCreationSkillsReReviewSchemas.Stale])
-            : result;
+        if (!SkillsDisplayCurrent(before) || before.WorkspaceId is not { } id
+            || before.DisplayOwnerContext is not { } owner
+            || _ownerBoundSkillsService is not IOwnerBoundCharacterCreationSkillsReReviewService service)
+            return SkillsUnavailable<CharacterCreationSkillsReReviewState>();
+        var result = service.LoadReReview(owner, new(id));
+        if (!SkillsDisplayCurrent(before) || result.Value is { } candidate
+            && (!CreationSkillsReReviewPhoneAuthority.Matches(candidate, before)
+                || !CreationSkillsReReviewPhoneAuthority.Matches(candidate, State)))
+            return SkillsUnavailable<CharacterCreationSkillsReReviewState>();
+        if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state })
+        {
+            var issued = _skillsReviewLoads.GetValue(state.Binding, _ => new(before, state));
+            if (!ReferenceEquals(issued.State, state) || !SkillsDisplayCurrent(before))
+                return SkillsUnavailable<CharacterCreationSkillsReReviewState>();
+            _skillsReviewPreviews.GetValue(state.InitialPreview, _ => new(issued,
+                SortSkills(state.HistoricalDraft.Allocations), SortGroups(state.HistoricalDraft.GroupAllocations)));
+        }
+        return result;
     }
 
     internal CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewCreationSkillsReReview(
         CharacterCreationSkillsReReviewBinding binding,
         IReadOnlyList<CharacterCreationSkillAllocation> skills, IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
     {
-        var loaded = LoadCreationSkillsReReview();
-        if (_creationSkillsService is not ICharacterCreationSkillsReReviewService service
-            || loaded.Value is not { } state || !CreationSkillsReReviewPhoneAuthority.Equal(state.Binding, binding))
-            return new(CharacterCreationFoundationOutcomes.Conflict, null, [CharacterCreationSkillsReReviewSchemas.Stale]);
-        var result = service.PreviewReReview(new(binding, skills.ToArray(), groups.ToArray()));
-        return !CreationSkillsReReviewPhoneAuthority.Matches(state, State)
-            || result.Value is { } preview && !CreationSkillsReReviewPhoneAuthority.ValidPreview(state, preview, skills, groups)
-            ? new(CharacterCreationFoundationOutcomes.Conflict, null, [CharacterCreationSkillsReReviewSchemas.Stale])
-            : result;
+        if (!_skillsReviewLoads.TryGetValue(binding, out var issued)
+            || !IsCreationSkillsReReviewStateCurrent(issued.State)
+            || issued.Display.DisplayOwnerContext is not { } owner
+            || _ownerBoundSkillsService is not IOwnerBoundCharacterCreationSkillsReReviewService service)
+            return SkillsUnavailable<CharacterCreationSkillsReReviewPreview>();
+        var copied = SortSkills(skills);
+        var copiedGroups = SortGroups(groups);
+        var result = service.PreviewReReview(owner, new(binding, copied, copiedGroups));
+        if (!IsCreationSkillsReReviewStateCurrent(issued.State) || result.Value is { } candidate
+            && !CreationSkillsReReviewPhoneAuthority.ValidPreview(issued.State, candidate, copied, copiedGroups))
+            return SkillsUnavailable<CharacterCreationSkillsReReviewPreview>();
+        if (result.Value is { } preview
+            && result.Outcome is CharacterCreationFoundationOutcomes.Success or CharacterCreationFoundationOutcomes.Blocked)
+            _skillsReviewPreviews.GetValue(preview, _ => new(issued, copied, copiedGroups));
+        return result;
     }
 
     internal Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsReReviewAsync(
@@ -49,68 +77,74 @@ public sealed partial class RunnerSessionCoordinator
         IReadOnlyList<CharacterCreationSkillAllocation> skills, IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
         bool explicitlyReviewed, CancellationToken cancellationToken = default)
     {
-        var selectedSkills = skills.ToArray();
-        var selectedGroups = groups.ToArray();
+        var selectedSkills = SortSkills(skills);
+        var selectedGroups = SortGroups(groups);
         return WithWorkspaceActivationGateAsync(async () =>
         {
-            // All source resolution, disk reads and the atomic commit stay off
-            // the UI thread. Cancellation after commit cannot disguise success.
-            var confirmed = await Task.Run(() => ConfirmSkillsReReviewCore(
-                preview, selectedSkills, selectedGroups, explicitlyReviewed), cancellationToken);
-            if (confirmed.Receipt is not { } receipt || confirmed.RefreshedState is not { } committed
-                || confirmed.Outcome != CharacterCreationFoundationOutcomes.Success) return confirmed;
+            if (!explicitlyReviewed)
+                return new CreationSkillsPhoneConfirmResult(CharacterCreationFoundationOutcomes.Invalid, null, null,
+                    [CharacterCreationSkillsReReviewSchemas.ExplicitReviewRequired]);
+            if (!_skillsReviewPreviews.TryGetValue(preview, out var issued) || issued.ConfirmationStarted
+                || !IsCreationSkillsReReviewStateCurrent(issued.Load.State)
+                || !selectedSkills.SequenceEqual(issued.Skills) || !selectedGroups.SequenceEqual(issued.Groups)
+                || issued.Load.Display.DisplayOwnerContext is not { } owner
+                || _ownerBoundSkillsService is not IOwnerBoundCharacterCreationSkillsReReviewService service
+                || !CreationSkillsReReviewPhoneAuthority.ValidPreview(issued.Load.State, preview, selectedSkills, selectedGroups)
+                || !preview.CurrentPreview.CanConfirm || preview.CurrentPreview.Blockers.Count != 0)
+                return RejectedSkills(CharacterCreationSkillsReReviewSchemas.Stale);
+            var canonical = await Task.Run(() => service.PreviewReReview(owner,
+                new(preview.Binding, selectedSkills, selectedGroups)), cancellationToken);
+            if (!IsCreationSkillsReReviewStateCurrent(issued.Load.State)
+                || canonical.Outcome != CharacterCreationFoundationOutcomes.Success
+                || canonical.Value is not { CurrentPreview.CanConfirm: true } exact
+                || !CreationSkillsReReviewPhoneAuthority.Equal(preview, exact))
+                return RejectedSkills(CharacterCreationSkillsBlockers.PreviewDigestMismatch);
+            string key = CreationSkillsReReviewPhoneAuthority.IdempotencyKey(exact);
+            cancellationToken.ThrowIfCancellationRequested();
+            issued.ConfirmationStarted = true;
+            int entered = 0;
+            CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> result;
             try
             {
-                await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
-                await SyncShellAsync(cancellationToken);
-                if (!CreationSkillsPhoneAuthority.IsReady(committed, State))
-                    return CommittedSkillsRefreshRequired(receipt, committed, []);
+                // Core holds the exact original owner's synchronous lease through
+                // the atomic save. An uncertain write is never automatically retried.
+                result = await Task.Run(() =>
+                {
+                    Interlocked.Exchange(ref entered, 1);
+                    return service.ConfirmReReview(owner,
+                        new(exact.Binding, selectedSkills, selectedGroups, exact.PreviewDigest, key, true, true));
+                }, cancellationToken);
             }
-            catch (Exception)
+            catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)
+            { issued.ConfirmationStarted = false; throw; }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            { return new("outcome-unknown", null, null, ["creation-skills-confirm-outcome-unknown"]); }
+            if (result is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } receipt })
+                return new(result.Outcome, result.Value, null, result.Blockers);
+            _skillReceipts.GetValue(receipt, _ => issued.Load.Display);
+            try
             {
-                return CommittedSkillsRefreshRequired(receipt, committed, []);
+                var committed = await Task.Run(() => _ownerBoundSkillsService.Load(owner, new(receipt.WorkspaceId)));
+                if (committed.Value is not { } saved
+                    || !CreationSkillsReReviewPhoneAuthority.ReceiptMatches(receipt, exact, saved, key)
+                    || !IsNativePersistenceOwnerCurrent(owner)
+                    || _presenter is not IOwnerBoundWorkspaceRefreshPresenter bound)
+                    return NeedsReopen();
+                await bound.LoadAsync(owner, receipt.WorkspaceId, cancellationToken);
+                if (!IsCreationSkillsReceiptCurrent(receipt)) return NeedsReopen();
+                await SyncShellAsync(cancellationToken);
+                if (!IsCreationSkillsReceiptCurrent(receipt)) return NeedsReopen();
+                var refreshed = LoadCreationSkills();
+                if (refreshed.Value is not { } current || !IsCreationSkillsStateCurrent(current)
+                    || !CreationSkillsReReviewPhoneAuthority.ReceiptMatches(receipt, exact, current, key))
+                    return NeedsReopen();
+                NotifyChanged();
+                return IsCreationSkillsReceiptCurrent(receipt)
+                    ? new(CharacterCreationFoundationOutcomes.Success, receipt, current, []) : NeedsReopen();
             }
-            NotifyChanged();
-            return confirmed;
+            catch (Exception error) when (error is not OutOfMemoryException) { return NeedsReopen(); }
+            CreationSkillsPhoneConfirmResult NeedsReopen() => new(CharacterCreationFoundationOutcomes.Success,
+                receipt, null, [CharacterCreationSkillsBlockers.PostCommitRefreshRequired]);
         }, cancellationToken);
-    }
-
-    private CreationSkillsPhoneConfirmResult ConfirmSkillsReReviewCore(
-        CharacterCreationSkillsReReviewPreview preview,
-        IReadOnlyList<CharacterCreationSkillAllocation> skills, IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
-        bool explicitlyReviewed)
-    {
-        if (!explicitlyReviewed)
-            return new(CharacterCreationFoundationOutcomes.Invalid, null, null,
-                [CharacterCreationSkillsReReviewSchemas.ExplicitReviewRequired]);
-        var loaded = LoadCreationSkillsReReview();
-        if (_creationSkillsService is not ICharacterCreationSkillsReReviewService service
-            || loaded.Value is not { } state
-            || !CreationSkillsReReviewPhoneAuthority.ValidPreview(state, preview, skills, groups)
-            || !preview.CurrentPreview.CanConfirm || preview.CurrentPreview.Blockers.Count != 0)
-            return new(CharacterCreationFoundationOutcomes.Conflict, null, null, [CharacterCreationSkillsReReviewSchemas.Stale]);
-        var reprojection = service.PreviewReReview(new(preview.Binding, skills, groups));
-        if (reprojection.Outcome != CharacterCreationFoundationOutcomes.Success || reprojection.Value is not { } canonical
-            || !canonical.CurrentPreview.CanConfirm || !CreationSkillsReReviewPhoneAuthority.Equal(preview, canonical)
-            || !CreationSkillsReReviewPhoneAuthority.Matches(state, State))
-            return new(CharacterCreationFoundationOutcomes.Conflict, null, null, [CharacterCreationSkillsBlockers.PreviewDigestMismatch]);
-        string key = CreationSkillsReReviewPhoneAuthority.IdempotencyKey(canonical);
-        var result = service.ConfirmReReview(new(canonical.Binding, skills, groups, canonical.PreviewDigest, key, true, true));
-        if (result.Outcome != CharacterCreationFoundationOutcomes.Success || result.Value is not { } receipt)
-            return new(result.Outcome, result.Value, null, result.Blockers);
-        CharacterCreationFoundationResult<CharacterCreationSkillsState> committed;
-        try { committed = _creationSkillsService.Load(new(receipt.WorkspaceId)); }
-        catch (Exception)
-        {
-            return new(CharacterCreationFoundationOutcomes.Success, receipt, null,
-                [CharacterCreationSkillsBlockers.PostCommitRefreshRequired]);
-        }
-        if (committed.Value is not { } current
-            || !CreationSkillsReReviewPhoneAuthority.ReceiptMatches(receipt, canonical, current, key))
-            // A receipt means a write may already be durable. The page must not
-            // offer another confirmation when refresh/observation fails.
-            return new(CharacterCreationFoundationOutcomes.Success, receipt, committed.Value,
-                [CharacterCreationSkillsBlockers.PostCommitRefreshRequired]);
-        return new(CharacterCreationFoundationOutcomes.Success, receipt, current, []);
     }
 }

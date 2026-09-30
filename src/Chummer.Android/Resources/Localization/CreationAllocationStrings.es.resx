@@ -177,7 +177,7 @@
   <data name="SkillsReReview.Intro" xml:space="preserve"><value>Tus decisiones guardadas no cambian. Compáralas con las reglas actuales, corrige los conflictos y confirma explícitamente la propuesta completa.</value></data>
   <data name="SkillsReReview.Saved" xml:space="preserve"><value>Revisión guardada. Los comprobantes anteriores permanecen en el historial.</value></data>
   <data name="SkillsReReview.SavedRefresh" xml:space="preserve"><value>El guardado tiene un comprobante. Vuelve a abrir el runner para actualizar; no lo apliques otra vez.</value></data>
-  <data name="SkillsReReview.Stale" xml:space="preserve"><value>El contexto del runner ha cambiado. Abre de nuevo la revisión; no se ha aplicado nada.</value></data>
+  <data name="SkillsReReview.Stale" xml:space="preserve"><value>El contexto del runner ha cambiado. Abre de nuevo la revisión para comprobar el estado actual.</value></data>
   <data name="SkillsReReview.Binding" xml:space="preserve"><value>Revisión {0} · borrador anterior {1}</value></data>
   <data name="SkillsReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2} puntos; quedan {3}</value></data>
   <data name="SkillsReReview.Confirm" xml:space="preserve"><value>Revisar y confirmar estos cambios</value></data>
@@ -201,7 +201,7 @@
   <data name="SkillsReReview.Back" xml:space="preserve"><value>Volver sin más cambios</value></data>
   <data name="SkillsReReview.None" xml:space="preserve"><value>ninguna</value></data>
   <data name="SkillsReReview.Native" xml:space="preserve"><value>nativo</value></data>
-  <data name="SkillsReReview.Check" xml:space="preserve"><value>Comprobar decisiones anteriores de habilidades</value></data>
+  <data name="SkillsReReview.Check" xml:space="preserve"><value>Revisar las habilidades guardadas con las reglas actuales</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No hay ningún borrador anterior de habilidades compatible para este runner. No se ha cambiado nada.</value></data>
   <data name="Karma.Title" xml:space="preserve"><value>Base de Karma</value></data>
   <data name="Karma.Metatype" xml:space="preserve"><value>Metatipo</value></data>
@@ -853,4 +853,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Budget.Open" xml:space="preserve"><value>Revisar {0} ›</value></data>
   <data name="Budget.Check" xml:space="preserve"><value>Ver qué falta ›</value></data>
   <data name="Budget.Refreshing" xml:space="preserve"><value>Se está comprobando el presupuesto. Confirma primero las prioridades y el metatipo y después revisa el paso correspondiente. No se han cambiado puntos ni decisiones.</value></data>
+  <data name="SkillsReReview.CheckSave" xml:space="preserve"><value>Vuelve a abrir el runner y comprueba el resultado del guardado antes de intentarlo otra vez.</value></data>
 </root>

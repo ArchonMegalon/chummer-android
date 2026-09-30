@@ -27,7 +27,7 @@ class SkillsReReviewSourceTests(unittest.TestCase):
             values = {row.attrib["name"]: row.findtext("value", "") for row in entries}
             self.assertEqual(len(entries), len(values), "Duplicate resource key")
             catalogs.append({key: value for key, value in values.items() if key.startswith("SkillsReReview.")})
-        self.assertEqual(len(catalogs[0]), 30)
+        self.assertEqual(len(catalogs[0]), 31)
         for catalog in catalogs:
             self.assertEqual(set(catalog), set(catalogs[0]))
             for key, value in catalog.items():
@@ -43,7 +43,7 @@ class SkillsReReviewSourceTests(unittest.TestCase):
         self.assertIn("Coordinator.ConfirmCreationSkillsReReviewAsync", page)
         self.assertIn("generation != Volatile.Read(ref _generation)", page)
         self.assertIn("_body.IsEnabled = false", page)
-        self.assertIn("if (_confirmation?.Receipt is { } receipt)", page)
+        self.assertIn("Coordinator.CanDisplayCreationSkillsReReviewReceipt(receipt)", page)
         self.assertIn("preview.Changes", page)
         self.assertIn("change.SourceAnchorIds", page)
         for forbidden in ("File.Write", "XDocument", "CanEdit = true", "FileWorkspaceStore", "EvaluateAllocations"):
@@ -51,13 +51,19 @@ class SkillsReReviewSourceTests(unittest.TestCase):
 
     def test_coordinator_reprojects_before_commit_and_preserves_post_commit_receipt(self):
         source = (NATIVE / "RunnerSessionCoordinator.SkillsReReview.cs").read_text()
-        confirm = source[source.index("private CreationSkillsPhoneConfirmResult ConfirmSkillsReReviewCore"):]
+        confirm = source[source.index("internal Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsReReviewAsync"):]
         self.assertLess(confirm.index("service.PreviewReReview"), confirm.index("service.ConfirmReReview"))
-        self.assertLess(confirm.index("Equal(preview, canonical)"), confirm.index("service.ConfirmReReview"))
+        self.assertLess(confirm.index("Equal(preview, exact)"), confirm.index("service.ConfirmReReview"))
         self.assertIn("if (!explicitlyReviewed)", confirm)
         self.assertIn("PostCommitRefreshRequired", confirm)
         self.assertIn("WithWorkspaceActivationGateAsync", source)
-        self.assertIn("await Task.Run(() => ConfirmSkillsReReviewCore", source)
+        self.assertIn("IOwnerBoundCharacterCreationSkillsReReviewService", source)
+        self.assertIn("service.ConfirmReReview(owner,", source)
+        self.assertIn("service.PreviewReReview(owner,", source)
+        self.assertIn("service.LoadReReview(owner,", source)
+        self.assertIn("_skillsReviewPreviews.TryGetValue(preview", source)
+        self.assertIn("SkillsDisplayCurrent(issued.Display)", source)
+        self.assertIn("await bound.LoadAsync(owner,", source)
         self.assertNotIn("with { CanEdit = true", source)
 
 

@@ -17,7 +17,8 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     internal CreationSkillsReReviewPage(RunnerSessionCoordinator coordinator,
         CharacterCreationSkillsReReviewState state) : base(coordinator)
     {
-        _draft.Bind(state, coordinator.State);
+        if (coordinator.IsCreationSkillsReReviewStateCurrent(state))
+            _draft.Bind(state, coordinator.State);
         Title = Text("Title", "Review older Skills choices");
         AutomationId = "creation-skills-rereview-page";
         Content = new ScrollView { Content = _body };
@@ -43,9 +44,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Title(Text("Title", "Review older Skills choices")));
-        _body.Add(NativeTheme.Body(Text("Intro",
-            "Your saved choices remain unchanged. Compare them with current rules, correct any conflicts, then explicitly confirm the complete proposal."), NativeTheme.Muted));
-        if (_confirmation?.Receipt is { } receipt)
+        if (_confirmation?.Receipt is { } receipt && Coordinator.CanDisplayCreationSkillsReReviewReceipt(receipt))
         {
             var saved = NativeTheme.Body(_confirmation.Blockers.Count == 0
                 ? Text("Saved", "Review saved. Previous receipts remain in history.")
@@ -58,13 +57,23 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             AddExit();
             return;
         }
-        if (_draft.State is not { } state || _draft.Preview is not { } preview
-            || !CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
+        if (_confirmation is not null)
         {
-            _body.Add(NativeTheme.Body(Text("Stale", "The runner context changed. Reopen this review; nothing was applied."), NativeTheme.Danger));
+            foreach (string blocker in _confirmation.Blockers)
+                _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+            _body.Add(NativeTheme.Body(Text("CheckSave", "Reopen the runner to check the save result before trying again."), NativeTheme.Danger));
             AddExit();
             return;
         }
+        if (_draft.State is not { } state || _draft.Preview is not { } preview
+            || !Coordinator.IsCreationSkillsReReviewStateCurrent(state))
+        {
+            _body.Add(NativeTheme.Body(Text("Stale", "The runner context changed. Reopen this review to check the current state."), NativeTheme.Danger));
+            AddExit();
+            return;
+        }
+        _body.Add(NativeTheme.Body(Text("Intro",
+            "Your saved choices remain unchanged. Compare them with current rules, correct any conflicts, then explicitly confirm the complete proposal."), NativeTheme.Muted));
         var binding = NativeTheme.Body(Format("Binding", "Revision {0} · historical draft {1}",
             state.Binding.Current.ContentRevision, state.HistoricalDraft.DraftRevision), NativeTheme.Muted);
         binding.AutomationId = "creation-skills-rereview-binding";
@@ -79,18 +88,20 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         var confirm = NativeTheme.PrimaryButton(Text("Confirm", "Review and confirm these changes"));
         confirm.AutomationId = "creation-skills-rereview-confirm";
-        confirm.IsEnabled = _attached && _requestBlockers.Count == 0 && _draft.CanConfirm(Coordinator.State);
+        confirm.IsEnabled = _attached && _confirmation is null && _requestBlockers.Count == 0 && _draft.CanConfirm(Coordinator.State);
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
             long generation = Volatile.Read(ref _generation);
-            if (!_attached || !_draft.CanConfirm(Coordinator.State)) return;
+            if (!_attached || _confirmation is not null || !Coordinator.IsCreationSkillsReReviewStateCurrent(state)
+                || !_draft.CanConfirm(Coordinator.State)) return;
             var reviewed = _draft.Preview!;
             var skills = _draft.Skills.ToArray();
             var groups = _draft.Groups.ToArray();
             bool accepted = await DisplayAlertAsync(Text("Title", "Review older Skills choices"),
                 Text("ConfirmBody", "Apply exactly the comparison shown? Removed choices will leave the new draft, but previous decisions and receipts remain in history."),
                 Text("Apply", "Apply reviewed choices"), Text("Cancel", "Cancel"));
-            if (!accepted || !_attached || generation != Volatile.Read(ref _generation) || !_draft.CanConfirm(Coordinator.State)) return;
+            if (!accepted || !_attached || generation != Volatile.Read(ref _generation)
+                || !Coordinator.IsCreationSkillsReReviewStateCurrent(state) || !_draft.CanConfirm(Coordinator.State)) return;
             // The coordinator reprojects against the current store before CAS.
             // Preserve an observed receipt even if the page leaves while saving.
             _confirmation = await Coordinator.ConfirmCreationSkillsReReviewAsync(reviewed, skills, groups, explicitlyReviewed: true);
@@ -216,12 +227,14 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     private Task ProposeAsync(IReadOnlyList<CharacterCreationSkillAllocation> skills,
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups) => RunAsync(async () =>
     {
-        if (!_attached || _draft.State is not { } state || _confirmation?.Receipt is not null) return;
+        if (!_attached || _draft.State is not { } state || _confirmation is not null
+            || !Coordinator.IsCreationSkillsReReviewStateCurrent(state)) return;
         long generation = Volatile.Read(ref _generation);
         var selectedSkills = skills.ToArray();
         var selectedGroups = groups.ToArray();
         var result = await Task.Run(() => Coordinator.PreviewCreationSkillsReReview(state.Binding, selectedSkills, selectedGroups));
-        if (!_attached || generation != Volatile.Read(ref _generation)) return;
+        if (!_attached || generation != Volatile.Read(ref _generation)
+            || !Coordinator.IsCreationSkillsReReviewStateCurrent(state)) return;
         _requestBlockers = _draft.TryAdopt(Coordinator.State, result, selectedSkills, selectedGroups)
             ? [] : result.Blockers.Count > 0 ? result.Blockers : [CharacterCreationSkillsReReviewSchemas.Stale];
     });
