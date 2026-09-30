@@ -984,9 +984,9 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile.Created == false)
         {
             Title = "Create";
-            AddWorkspacePicker();
             if (string.Equals(Coordinator.State.Rules?.GameEdition, "SR6", StringComparison.OrdinalIgnoreCase))
             {
+                AddWorkspacePicker();
                 _body.Add(NativeTheme.Title(Sr6CreationCopy.Text("Title")));
                 _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("Scope"), NativeTheme.Muted));
                 if (Coordinator.CanOpenSr6Foundation())
@@ -1207,10 +1207,14 @@ public sealed class BuildPage : NativePageBase
             AutomationId = "creation-wizard-dashboard",
             Spacing = 8
         };
-        header.Add(NativeTheme.Title(
-            Coordinator.State.Profile?.Alias
-            ?? Coordinator.State.Profile?.Name
-            ?? "New runner"));
+        // The selected runner is already named by the picker. Keep it inside
+        // the measured dashboard header so route readiness retains a real,
+        // visible native anchor rather than an empty or hidden placeholder.
+        if (!AddWorkspacePicker(header))
+            header.Add(NativeTheme.Title(
+                Coordinator.State.Profile?.Alias
+                ?? Coordinator.State.Profile?.Name
+                ?? "New runner"));
         long appearanceGeneration = _creationDashboardAppearanceGeneration;
         if (snapshot is not null)
         {
@@ -1231,8 +1235,7 @@ public sealed class BuildPage : NativePageBase
         if (snapshot is null)
         {
             Label unavailable = NativeTheme.Body(
-                "The authoritative creation projection is unavailable. The wizard is fail-closed and will not "
-                + "expose the unrestricted editor or invent rules data.",
+                CreationFlowStrings.Get("Dashboard.Unavailable", "Your creation choices could not be loaded. Reopen this runner to try again."),
                 NativeTheme.Danger);
             unavailable.AutomationId = "creation-wizard-snapshot-unavailable";
             _body.Add(NativeTheme.Card(unavailable));
@@ -1243,7 +1246,10 @@ public sealed class BuildPage : NativePageBase
             $"Revision {snapshot.WorkspaceRevision} · snapshot {ShortDigest(snapshot.SnapshotDigest)}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-wizard-binding";
-        var diagnostics = NativeTheme.TechnicalDetails(binding, "creation-wizard-details");
+        var diagnosticValues = new VerticalStackLayout { Spacing = 6, Children = { binding } };
+        var diagnostics = NativeTheme.TechnicalDetails(diagnosticValues, "creation-wizard-details");
+        foreach (string code in snapshot.Steps.SelectMany(step => step.Blockers).Distinct(StringComparer.Ordinal))
+            diagnosticValues.Add(NativeTheme.Body(code, NativeTheme.Muted));
 
         if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.Karma)
         {
@@ -1286,6 +1292,18 @@ public sealed class BuildPage : NativePageBase
         }
 
         CreationDashboardAuthorityProjection? projection = ResolveCreationProjection(snapshot);
+        foreach (string? code in new[] { projection?.PrerequisiteFailureReason, projection?.AttributesFailureReason,
+                     projection?.SkillsFailureReason, projection?.ContactsFailureReason, projection?.ResourcesFailureReason }
+                 .Concat(projection?.Prerequisite?.Blockers ?? [])
+                 .Concat(projection?.Prerequisite?.Value?.Blockers ?? [])
+                 .Concat(projection?.Attributes?.Blockers ?? [])
+                 .Concat(projection?.Skills?.Blockers ?? [])
+                 .Concat(projection?.Contacts?.Blockers ?? [])
+                 .Concat(projection?.Resources?.Blockers ?? [])
+                 .Concat(projection?.Resources?.State?.Blockers ?? [])
+                 .Concat(projection?.Resources?.State?.Budget.Blockers ?? [])
+                 .Where(code => !string.IsNullOrWhiteSpace(code)).Distinct(StringComparer.Ordinal))
+            diagnosticValues.Add(NativeTheme.Body(code!, NativeTheme.Muted));
         PrepareCreationFinalizationProjection(snapshot, projection);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
             projection?.Prerequisite;
@@ -1298,14 +1316,17 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationResourcesInteractionLoadResult? creationResources =
             projection?.Resources;
         var methodRoute = AddCreationMethodRoute(snapshot, projection, prerequisite);
+        foreach (string code in methodRoute.Blockers)
+            diagnosticValues.Add(NativeTheme.Body(code, NativeTheme.Muted));
         if (projection is null
             || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
             Label loading = NativeTheme.Body(
-                "Loading the revision- and source-bound creation authority. Editing remains fail-closed until it is ready.",
+                CreationFlowStrings.Get("Dashboard.Loading", "Loading your creation choices…"),
                 NativeTheme.Muted);
             loading.AutomationId = "creation-dashboard-authority-loading";
             _body.Add(NativeTheme.Card(loading));
+            _body.Add(diagnostics);
             return;
         }
         if (projection.HasFailure)
@@ -1313,14 +1334,14 @@ public sealed class BuildPage : NativePageBase
             VerticalStackLayout failure = new() { Spacing = 8 };
             Label failed = NativeTheme.Body(
                 projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
-                    ? "The prerequisite creation authority could not be loaded. No rules data was inferred; use Retry authority or reopen this runner."
-                    : "A later creation authority phase could not be loaded. Ready phases remain usable; the affected stage stays fail-closed until Retry authority succeeds.",
+                    ? CreationFlowStrings.Get("Dashboard.LoadFailed", "Some choices could not be loaded. Try loading them again or reopen this runner.")
+                    : CreationFlowStrings.Get("Dashboard.PartialFailed", "Some steps could not be loaded. You can use the ready steps or try loading the others again."),
                 NativeTheme.Danger);
             failed.AutomationId = projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
                 ? "creation-dashboard-authority-failed"
                 : "creation-dashboard-authority-partial-failed";
             failure.Add(failed);
-            Button retry = NativeTheme.SecondaryButton("Retry authority");
+            Button retry = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Dashboard.Retry", "Try loading again"));
             retry.AutomationId = "creation-dashboard-authority-retry";
             retry.Clicked += (_, _) => RetryCreationProjection();
             failure.Add(retry);
@@ -1576,14 +1597,8 @@ public sealed class BuildPage : NativePageBase
                     ? () => Navigation.PushAsync(new CreationKarmaPage(Coordinator))
                     : static () => Task.CompletedTask;
 
-        string authorityDetail = canOpenKarma ? CreationKarmaCopy.Scope : canOpenPrerequisite
-            ? PrerequisiteStageDetail(prerequisite!.Value!)
-            : canOpenLifeModule
-                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
-                : prerequisiteMethod
-                    ? BuildPageUiProjection.CreationKarmaAuthorityRequired
-                      + " · "
-                      + (ProjectionStageBlocker(
+        string blocker = prerequisiteMethod
+                    ? (ProjectionStageBlocker(
                              projection,
                              prerequisiteStage: true,
                              attributeStage: false,
@@ -1602,9 +1617,7 @@ public sealed class BuildPage : NativePageBase
                         : "creation-build-method-editor-unavailable";
         string method = RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod);
         string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
-        string detail = canOpen
-            ? activeStage
-            : $"{activeStage} · {authorityDetail}";
+        string detail = canOpen ? activeStage : CreationFlowStrings.DashboardBlocker(blocker);
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
         _body.Add(CreationNavigationRow(
@@ -1613,7 +1626,7 @@ public sealed class BuildPage : NativePageBase
             selected,
             enabled: canOpen,
             automationId: "creation-stage-method"));
-        return new($"Build method · {method}", detail, canOpen, selected, []);
+        return new($"Build method · {method}", detail, canOpen, selected, canOpen ? [] : [blocker]);
     }
 
     private Border CreationNavigationRow(
@@ -1913,7 +1926,7 @@ public sealed class BuildPage : NativePageBase
             HashSet<string> diagnosticWarnings = new(StringComparer.Ordinal);
             void AddWarning(string blocker)
             {
-                string message = CreationFlowStrings.FinalizationBlocker(blocker);
+                string message = CreationFlowStrings.DashboardBlocker(blocker);
                 if (shownWarnings.Add(message))
                     card.Add(NativeTheme.Body(message, NativeTheme.Danger));
                 if (diagnosticWarnings.Add(blocker))
@@ -2589,7 +2602,7 @@ public sealed class BuildPage : NativePageBase
             string detail = canOpenBasics
                 ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
                 : identityStage
-                ? identityRoute!.Blocker
+                ? CreationFlowStrings.DashboardBlocker(identityRoute!.Blocker)
                 : lifeModuleOrigin
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"
                 : canOpenResources
@@ -2614,11 +2627,11 @@ public sealed class BuildPage : NativePageBase
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
                     : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
-                        ? projectionBlocker
+                        ? CreationFlowStrings.DashboardBlocker(projectionBlocker)
                     : priorityPrerequisite && prerequisite is not null
-                        ? prerequisite.Blockers.FirstOrDefault()
+                        ? CreationFlowStrings.DashboardBlocker(prerequisite.Blockers.FirstOrDefault()
                           ?? prerequisite.Value?.Blockers.FirstOrDefault()
-                          ?? HumanizeStatus(stage.Status)
+                          ?? "creation-prerequisite-authority-unavailable")
                         : HumanizeStatus(stage.Status);
             if (stage.Blockers.Count > 0
                 && !canOpenAttributes
@@ -2630,7 +2643,9 @@ public sealed class BuildPage : NativePageBase
                 && !canOpenContacts
                 && !canOpenResources)
             {
-                detail += $" · {stage.Blockers[0]}";
+                string guidance = CreationFlowStrings.DashboardBlocker(stage.Blockers[0]);
+                if (!string.Equals(detail, guidance, StringComparison.Ordinal))
+                    detail += $" · {guidance}";
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
@@ -2659,7 +2674,7 @@ public sealed class BuildPage : NativePageBase
         blockers.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Finalization.BeforeFinish", "Before you can finish")));
         foreach (string message in snapshot.CompletionBlockers
-                     .Select(CreationFlowStrings.FinalizationBlocker).Distinct(StringComparer.Ordinal))
+                     .Select(CreationFlowStrings.DashboardBlocker).Distinct(StringComparer.Ordinal))
             blockers.Add(NativeTheme.Body(message, NativeTheme.Danger));
         Border card = NativeTheme.Card(blockers);
         card.AutomationId = "creation-wizard-blockers";
@@ -2751,8 +2766,8 @@ public sealed class BuildPage : NativePageBase
                 : routes.GetValueOrDefault(stepId);
             _body.Add(CreationNavigationRow(
                 stage.Label,
-                route?.Detail ?? stage.Blockers.FirstOrDefault()
-                    ?? CreationFlowStrings.Get("Creation.RouteUnavailable", "This creation step is not available yet."),
+                route?.Detail ?? CreationFlowStrings.DashboardBlocker(stage.Blockers.FirstOrDefault()
+                    ?? "creation-route-unavailable"),
                 route?.CanOpen == true ? route.Open : static () => Task.CompletedTask,
                 route?.CanOpen == true,
                 $"creation-next-{Token(stepId)}"));
@@ -3549,12 +3564,12 @@ public sealed class BuildPage : NativePageBase
         }
     }
 
-    private void AddWorkspacePicker()
+    private bool AddWorkspacePicker(VerticalStackLayout? destination = null)
     {
         IReadOnlyList<OpenWorkspaceState> workspaces = Coordinator.State.OpenWorkspaces;
         if (workspaces.Count <= 1)
         {
-            return;
+            return false;
         }
 
         string[] labels = workspaces.Select(static workspace =>
@@ -3614,7 +3629,8 @@ public sealed class BuildPage : NativePageBase
                 }
             });
         };
-        _body.Add(picker);
+        (destination ?? _body).Add(picker);
+        return true;
     }
 
     private void AddSummary()
