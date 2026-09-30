@@ -260,4 +260,5 @@ No change has been saved yet.</value></data>
   <data name="NewRunnerTitle" xml:space="preserve"><value>New runner</value></data>
   <data name="NewRunnerSelectedBuildMethod" xml:space="preserve"><value>Build method: {0}. Tap Create runner to continue.</value></data>
   <data name="NewRunnerCreate" xml:space="preserve"><value>Create runner</value></data>
+  <data name="BackNavigationUnavailable" xml:space="preserve"><value>Could not go back. Please try again.</value></data>
 </root>

@@ -96,6 +96,32 @@ class AndroidUnresponsiveHotpathTests(unittest.TestCase):
             on_activity_result,
         )
 
+    def test_back_navigation_owns_one_pop_until_completion(self) -> None:
+        self.assertIn("IOnBackInvokedDispatcher.PriorityOverlay", self.main_activity)
+        back = self.main_activity.split("private bool HandleBackNavigation()", 1)[1].split(
+            "private static void HandleAccountLinkIntent", 1
+        )[0]
+        self.assertIn("_backNavigationGate.IsClaimed", back)
+        self.assertIn("WindowInsetsCompat.Type.Ime()", back)
+        self.assertIn("ViewCompat.GetRootWindowInsets", back)
+        self.assertIn("Hide(WindowInsetsCompat.Type.Ime())", back)
+        self.assertLess(back.index("Hide(WindowInsetsCompat.Type.Ime())"),
+                        back.index("shell?.Navigation"))
+        self.assertIn("_backNavigationGate.TryClaim()", back)
+        self.assertLess(back.index("_backNavigationGate.TryClaim()"),
+                        back.index("_ = PopBackNavigationAsync"))
+        self.assertNotIn("BeginInvokeOnMainThread(async", back)
+        self.assertIn("await MainThread.InvokeOnMainThreadAsync", back)
+        self.assertIn("ReferenceEquals(shell, Microsoft.Maui.Controls.Shell.Current)", back)
+        self.assertIn("ReferenceEquals(current, expectedPage)", back)
+        self.assertIn("_destroyed || !_resumed", back)
+        self.assertIn("await navigation.PopModalAsync()", back)
+        self.assertIn("await navigation.PopAsync()", back)
+        self.assertIn("catch (Exception exception)", back)
+        self.assertIn("finally", back)
+        self.assertIn("_backNavigationGate.Release()", back)
+        self.assertIn("BackNavigationUnavailable", back)
+
 
 if __name__ == "__main__":
     unittest.main()

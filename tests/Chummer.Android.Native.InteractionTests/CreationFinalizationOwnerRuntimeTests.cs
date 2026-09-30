@@ -467,7 +467,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(review.Preview.CanConfirm && probe.Previews == 1 && owners.ActiveLeases == 0,
                 "Background preview lost authority or retained an owner lease.");
             var journal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
-                original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent);
+                original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
                 out var storedReview, out _), "Scoped Magic review was not durable.");
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
@@ -493,7 +493,7 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Set(ContactsOwnerB);
                 var otherStamp = owners.Capture();
                 var otherJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
-                    otherStamp, stamp => stamp == owners.Capture());
+                    otherStamp, stamp => stamp == owners.Capture(), id.Value);
                 Require(!otherJournal.TryRead(out _, out var otherBlocker) && string.IsNullOrEmpty(otherBlocker),
                     "Another account could read the Magic review.");
                 owners.Set(ContactsOwnerA);
@@ -514,7 +514,7 @@ internal static partial class AfterRunAuthorityHarness
                 && !retainedDraft.Copy().Matches(retainedEditor, fresh),
                 "Old Magic selections survived an owner epoch change as current authority.");
             var freshJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
-                fresh.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent);
+                fresh.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(freshJournal.TryRead(out var recovered, out _)
                 && recovered.CheckpointDigest == storedReview.CheckpointDigest,
                 "Fresh same-account authority lost its durable review.");

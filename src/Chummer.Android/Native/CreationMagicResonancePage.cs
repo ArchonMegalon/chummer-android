@@ -27,7 +27,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         : this(
             coordinator,
             CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
-                coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent))
+                coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent,
+                coordinator.State.WorkspaceId?.Value
+                    ?? throw new InvalidOperationException("Open a runner before Magic / Resonance.")))
     {
     }
 

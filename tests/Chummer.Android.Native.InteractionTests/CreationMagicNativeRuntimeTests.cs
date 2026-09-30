@@ -1,6 +1,8 @@
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Files;
@@ -9,12 +11,15 @@ using Chummer.Infrastructure.Xml;
 using Chummer.Presentation.Overview;
 using Chummer.Rulesets.Hosting;
 using Chummer.Rulesets.Sr5;
+using Microsoft.Maui.Storage;
+using System.Text.Json;
 
 /// <summary>Actual source catalogs/services and file persistence, with the ordinary
 /// phone draft and Presentation projection. This is not an Android handler or device proof.</summary>
 internal static class CreationMagicNativeRuntimeTests
 {
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
+    public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
 
     public static void RunSumToTen(string contentRoot)
     {
@@ -826,7 +831,132 @@ internal static class CreationMagicNativeRuntimeTests
         Require(coldJournal.TryRead(out var unchanged, out blocker)
             && unchanged.CheckpointDigest == stored.CheckpointDigest,
             "Receipt display or rejected substitutions changed the durable journal.");
+        VerifyPreferencesWorkspaceIsolation(reviewed, confirming, stored);
         Console.WriteLine("PASS receipt constructor accepts durable round-trip; changed flags, snapshot, revision and phase remain rejected");
+    }
+
+    private static void VerifyPreferencesWorkspaceIsolation(
+        params CharacterCreationMagicResonanceCheckpoint[] legacyCheckpoints)
+    {
+        IPreferences previous = Preferences.Default;
+        var setter = typeof(Preferences).GetMethod("SetDefault", System.Reflection.BindingFlags.Static
+            | System.Reflection.BindingFlags.NonPublic)!;
+        try
+        {
+            setter.Invoke(null, [new AfterRunAuthorityHarness.RuntimePreferences()]);
+            VerifyPreferencesWorkspaceIsolationCore(legacyCheckpoints);
+        }
+        finally { setter.Invoke(null, [previous]); }
+    }
+
+    private static void VerifyPreferencesWorkspaceIsolationCore(
+        CharacterCreationMagicResonanceCheckpoint[] legacyCheckpoints)
+    {
+        var first = legacyCheckpoints[0];
+        string firstId = first.Review.Draft.ExpectedBinding.WorkspaceId.Value;
+        string secondId = Guid.NewGuid().ToString("N");
+        // Storage-only fixture: alter and rehash a real Core-issued review's
+        // workspace identity. This fixture is never submitted to Core.
+        var binding = first.Review.Draft.ExpectedBinding with { WorkspaceId = new(secondId) };
+        var preview = first.Review.Preview with { Binding = binding, PreviewDigest = string.Empty };
+        preview = preview with { PreviewDigest = CharacterCreationMagicResonanceDigest.Compute(preview) };
+        var second = CharacterCreationMagicResonanceCheckpoint.CreateReviewed(first.Review with
+        {
+            Draft = first.Review.Draft with { ExpectedBinding = binding },
+            Preview = preview
+        });
+        Require(second.IsStructurallyValid(), "SETUP: second runner journal is structurally invalid.");
+        foreach (var owner in new[] { OwnerScope.LocalSingleUser, new OwnerScope("magic-partition-" + Guid.NewGuid().ToString("N")) })
+        {
+            var owners = new AfterRunAuthorityHarness.ControlledLinkedOwner();
+            owners.Set(owner);
+            OwnerContextStamp stamp = owners.Capture();
+            bool IsCurrent(OwnerContextStamp? candidate) => candidate == owners.Capture();
+            var legacyBackend = new PreferencesCharacterCreationMagicResonanceCheckpointBackend(stamp, IsCurrent);
+            var secondBackend = new PreferencesCharacterCreationMagicResonanceCheckpointBackend(stamp, IsCurrent, secondId);
+            CharacterCreationMagicResonanceCheckpointStore Open(string id) =>
+                CharacterCreationMagicResonanceCheckpointStore.CreateDefault(stamp, IsCurrent, id);
+            const string baseKey = "sr5.priority.creation.magic-resonance.checkpoint.v1";
+            static string Hash(string text) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+            string ownerKey = owner == OwnerScope.LocalSingleUser ? baseKey : baseKey + ".owner." + Hash(owner.Value);
+            string secondKey = ownerKey + ".workspace." + Hash(secondId);
+            string previousLegacy = legacyBackend.Read();
+            try
+            {
+                foreach (var legacy in legacyCheckpoints)
+                {
+                    string originalBytes = JsonSerializer.Serialize(legacy);
+                    legacyBackend.Write(originalBytes);
+                    var secondStore = Open(secondId);
+                    Require(!secondStore.TryRead(out _, out var blocker) && string.IsNullOrEmpty(blocker),
+                        "Another runner's legacy checkpoint locked this runner: " + blocker);
+                    Require(secondStore.TryCreate(second, out var created, out blocker), blocker);
+                    Require(!secondStore.TryBeginConfirm(CharacterCreationMagicResonanceCheckpointCas.From(legacy), out _, out _),
+                        "A foreign runner's CAS advanced this journal.");
+                    Require(secondStore.TryBeginConfirm(CharacterCreationMagicResonanceCheckpointCas.From(created),
+                        out var pending, out blocker), blocker);
+                    Require(Open(secondId).TryRead(out var cold, out blocker) && cold.CheckpointDigest == pending.CheckpointDigest,
+                        "A cold scoped store lost its pending command: " + blocker);
+                    Require(!secondStore.TryDeleteReviewed(CharacterCreationMagicResonanceCheckpointCas.From(pending), out _)
+                        && !secondStore.TryAcknowledgeConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(pending), out _),
+                        "An uncertain scoped command was deletable.");
+                    ExpectRejected(() => secondBackend.Write(originalBytes));
+                    Require(secondStore.TryRead(out var untouched, out blocker) && untouched.CheckpointDigest == pending.CheckpointDigest,
+                        "A rejected cross-runner write changed this journal.");
+                    Require(legacyBackend.Read() == originalBytes
+                        && Open(firstId).TryRead(out var old, out blocker) && old.CheckpointDigest == legacy.CheckpointDigest,
+                        "The original runner lost or modified its legacy recovery.");
+                    if (legacy.Phase == CharacterCreationMagicResonanceCheckpointPhase.Confirmed)
+                    {
+                        Require(Open(firstId).TryAcknowledgeConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(legacy), out blocker), blocker);
+                        Require(string.IsNullOrEmpty(legacyBackend.Read()) && Open(secondId).TryRead(out _, out _),
+                            "Acknowledging the legacy runner removed the new runner's command.");
+                    }
+                    // Fixture teardown only; never used by production recovery.
+                    Preferences.Default.Remove(secondKey);
+                }
+                legacyBackend.Write("{broken");
+                Require(!Open(secondId).TryRead(out _, out var malformed) && !string.IsNullOrEmpty(malformed)
+                    && !Open(secondId).TryCreate(second, out _, out _)
+                    && legacyBackend.Read() == "{broken", "Malformed legacy data was ignored or overwritten.");
+                legacyBackend.Remove();
+                var scoped = Open(secondId);
+                Require(scoped.TryCreate(second, out _, out var error), error);
+                string secondBytes = secondBackend.Read();
+                legacyBackend.Write(secondBytes);
+                Require(!scoped.TryRead(out _, out var conflict) && !string.IsNullOrEmpty(conflict)
+                    && !scoped.TryDeleteReviewed(CharacterCreationMagicResonanceCheckpointCas.From(second), out _)
+                    && Preferences.Default.Get(secondKey, "") == secondBytes && legacyBackend.Read() == secondBytes,
+                    "Conflicting same-runner journals were admitted or deleted.");
+                legacyBackend.Remove();
+                foreach (string bad in new[] { "{broken", JsonSerializer.Serialize(first) })
+                {
+                    Preferences.Default.Set(secondKey, bad);
+                    Require(!scoped.TryRead(out _, out var invalid) && !string.IsNullOrEmpty(invalid)
+                        && !scoped.TryCreate(second, out _, out _) && Preferences.Default.Get(secondKey, "") == bad,
+                        "A malformed or wrong-runner scoped journal was accepted or overwritten.");
+                }
+                Preferences.Default.Set(secondKey, secondBytes);
+                owners.Set(new OwnerScope("other-magic-" + Guid.NewGuid().ToString("N")));
+                Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault(owners.Capture(), IsCurrent, secondId)
+                    .TryRead(out _, out var other) && string.IsNullOrEmpty(other), "Another owner read the runner's journal.");
+                owners.Set(owner);
+                Require(!scoped.TryRead(out _, out var stale) && !string.IsNullOrEmpty(stale)
+                    && !scoped.TryDeleteReviewed(CharacterCreationMagicResonanceCheckpointCas.From(second), out _),
+                    "An old owner epoch retained scoped checkpoint access.");
+                var fresh = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(owners.Capture(), IsCurrent, secondId);
+                Require(fresh.TryRead(out var restored, out _) && restored.CheckpointDigest == second.CheckpointDigest,
+                    "Fresh same-owner authority could not recover the scoped checkpoint.");
+            }
+            finally
+            {
+                Preferences.Default.Remove(secondKey);
+                if (string.IsNullOrEmpty(previousLegacy)) Preferences.Default.Remove(ownerKey);
+                else Preferences.Default.Set(ownerKey, previousLegacy);
+            }
+        }
+        Console.WriteLine("PASS Preferences runner partitions: all legacy phases retained, cold pending recovery, CAS/owner ABA, malformed/conflict rejection");
     }
 
     private sealed class MagicCheckpointBackend : ICharacterCreationMagicResonanceCheckpointBackend
