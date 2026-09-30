@@ -104,19 +104,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 59 is the latest [observed Internal availability](../play/evidence/preview59-internal-observation.md).
-It is available on Play Internal; physical Play installation of 59 is not yet
-verified. It further reduces Magic source-row hashing/serialization allocations;
-the measured 15.7% reduction is managed-only, not an Android speedup claim.
-Native Priority upgrade/save/new-process reopen preserved 23 prior workspaces.
-No new native timing was retained; Preview 58's 62.194-second constrained-emulator
-sample remains slow. Preview 58's readable save/conflict guidance and Preview 57's
+Preview 60 is the latest [observed Internal availability](../play/evidence/preview60-internal-observation.md).
+It is available on Play Internal; physical Play installation of 60 is not yet
+verified. Creation budgets now use one shared readiness hint, shorter actions and
+unchanged exact values/editor routes. Skills review guidance is translated.
+Affected managed/localization checks and a Release diagnostic native upgrade/reopen
+and prerequisite-navigation smoke passed; 27 saved workspace files were unchanged.
+This is not all-screen or physical performance approval. Preview 59's managed-only
+Magic allocation improvement remains included, without an Android speedup claim.
+Preview 58's readable save/conflict guidance and Preview 57's
 quality explanations/readability and all SR5 sources
 as defaults for new runners remain included, without changing old saved settings.
 Focused managed checks cover all four defaults. Preview 56's simpler Creation,
 Gear/Resources screens and explicit Skills/Magic re-review remain included.
 This is not all-screen polish or complete build-method/Career coverage.
-Preview 58 and earlier evidence stay immutable. Preview 55's
+Preview 59 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
