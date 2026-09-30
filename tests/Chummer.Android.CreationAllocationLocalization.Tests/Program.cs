@@ -77,6 +77,20 @@ foreach ((string locale, string expected) in new[]
         "Talent grant copy must use the real regional satellite and preserve Core's rating: " + locale);
 
 CultureInfo previousCulture = CultureInfo.CurrentUICulture;
+foreach ((string locale, string hint, string action, string check) in new[]
+{
+    ("en-GB", "Some budgets need more choices. Tap a budget to continue.", "Review Attributes", "Check what is missing"),
+    ("de-AT", "Für manche Budgets fehlt noch eine Auswahl. Tippe auf ein Budget, um fortzufahren.", "Attributes prüfen", "Fehlende Auswahl prüfen"),
+    ("es-MX", "Faltan opciones para calcular algunos presupuestos. Toca un presupuesto para continuar.", "Revisar Attributes", "Ver qué falta")
+})
+{
+    var culture = CultureInfo.GetCultureInfo(locale);
+    Assert(CreationAllocationStrings.Get("Budget.NeedsChoices", "fallback", culture) == hint,
+        "Shared budget explanation must use the regional catalog: " + locale);
+    Assert(CreationAllocationStrings.Format(culture, "Budget.Open", "fallback", "Attributes") == action
+        && CreationAllocationStrings.Get("Budget.Check", "fallback", culture) == check,
+        "Concise budget actions must preserve the destination without a duplicate chevron: " + locale);
+}
 foreach ((string locale, string expected) in new[]
 {
     ("en-GB", "Base metatype effects: armor +1 · reach +1 · lifestyle cost +100%"),
@@ -136,12 +150,18 @@ Dictionary<string, string> usedCopy = ReadSourceCopy(native, surfaceFiles);
 foreach ((string key, string fallback) in ReadSourceCopy(
              native,
              ["CreationAllocationStrings.cs", "BuildPage.cs", "CreationFinalizationPage.cs", "Sr6CreationCopy.cs",
-              "LifeModuleCompletionPage.cs", "LifeModuleCompletionPage.Purchases.cs"]))
+              "LifeModuleCompletionPage.cs", "LifeModuleCompletionPage.Purchases.cs", "CreationMagicReReviewPage.cs"]))
 {
     usedCopy.TryAdd(key, fallback);
 }
 foreach ((string key, string fallback) in ReadSourceCopy(native,
     ["LifeModuleCompletionPage.cs", "LifeModuleCompletionPage.Purchases.cs"], "LifeCopy", "LifeCompletion."))
+    usedCopy.TryAdd(key, fallback);
+foreach ((string key, string fallback) in ReadSourceCopy(native,
+    ["CreationMagicReReviewPage.cs"], "Text", "MagicReReview."))
+    usedCopy.TryAdd(key, fallback);
+foreach ((string key, string fallback) in ReadSourceCopy(native,
+    ["BuildPage.cs"], "CreationMagicReReviewPage.Text", "MagicReReview."))
     usedCopy.TryAdd(key, fallback);
 // SR6 shares this resource catalogue through a prefixed helper, including
 // conditional captions and typed-ID label families. Do not classify every
@@ -257,7 +277,9 @@ static Dictionary<string, string> ReadSourceCopy(string native, IEnumerable<stri
             "CreationSkillsReReviewPage.cs" => @"(?:Text|Format)",
             _ => @"(?:CreationAllocationStrings\.)?(?:Get|Format)"
         };
-        var pattern = new Regex(call + @"\(\s*""([^""]+)""\s*,\s*""((?:[^""\\]|\\.)*)""",
+        // Do not match the Get/Format suffix of another resource catalog such
+        // as CreationFlowStrings.Get. Keep qualified allocation and local calls.
+        var pattern = new Regex(@"(?<![\w.])" + call + @"\(\s*""([^""]+)""\s*,\s*""((?:[^""\\]|\\.)*)""",
             RegexOptions.Singleline);
         foreach (Match match in pattern.Matches(File.ReadAllText(Path.Combine(native, file))))
         {
@@ -321,6 +343,7 @@ static void AssertHelperScope(string native, IReadOnlyCollection<string> surface
     // shared starting-cash copy. Their other copy belongs to other catalogs.
     string[] expected = surfaceFiles.Append("CreationAllocationStrings.cs").Append("BuildPage.cs")
         .Append("CreationFinalizationPage.cs").Append("Sr6CreationCopy.cs").Append("LifeModuleCompletionPage.cs")
+        .Append("CreationMagicReReviewPage.cs")
         .Order(StringComparer.Ordinal)
         .ToArray();
     string[] actual = Directory.EnumerateFiles(native, "*.cs", SearchOption.TopDirectoryOnly)

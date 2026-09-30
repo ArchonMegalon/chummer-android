@@ -66,6 +66,13 @@ internal static partial class AfterRunAuthorityHarness
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
             Require(cards.Length == 6, "A saved budget disappeared from the ribbon.");
+            var sharedHints = body.Children.OfType<Label>()
+                .Where(label => label.AutomationId == "creation-budget-status").ToArray();
+            Require(sharedHints.Length == (attributesReady && skillsReady ? 0 : 1),
+                "Explain incomplete budgets once, only when effective typed authority remains inexact.");
+            Require(sharedHints.Length == 0 || sharedHints[0].Text ==
+                "Some budgets need more choices. Tap a budget to continue.",
+                "Incomplete budgets lost their shared explanation.");
             for (int index = 0; index < cards.Length; index++)
             {
                 bool ready = index < attributeBudgets.Length ? attributesReady : skillsReady;
@@ -77,8 +84,14 @@ internal static partial class AfterRunAuthorityHarness
                         ? expected.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
                         : "Not exact", StringComparison.Ordinal),
                     $"Budget {expected.BudgetId} lost its own readiness: attributes={attributesReady}, skills={skillsReady}.");
-                Require(ready || labels[1].Contains("cannot be calculated", StringComparison.Ordinal),
-                    "An unavailable domain lost its explanation or borrowed another domain's authority.");
+                string expectedDetail = ready
+                    ? expected.Used.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " / "
+                        + expected.Total.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
+                        + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points" : expected.Unit)
+                        + "\nCheck what is missing"
+                    : "Check what is missing";
+                Require(labels[1] == expectedDetail,
+                    "Budget cards must retain exact numbers without repeated paragraphs or duplicate chevrons.");
                 Require(((Grid)cards[index].Content!).Children.OfType<Button>().Single() is
                     { IsEnabled: true, AutomationId: not null }, "Budget is still a non-interactive label.");
             }
@@ -98,6 +111,8 @@ internal static partial class AfterRunAuthorityHarness
                 attributes, skills, readiness, null, projection, null]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+            Require(body.Children.OfType<Label>().Count(label => label.AutomationId == "creation-budget-status")
+                == (ready ? 0 : 1), "The shared hint must follow typed Resources authority too.");
             var label = ((Grid)card.Content!).Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();
             Require(label.Text.EndsWith(ready
                 ? resources.State!.Budget.RemainingNuyen.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
@@ -163,7 +178,7 @@ internal static partial class AfterRunAuthorityHarness
         var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
-        Console.WriteLine("PASS budget ribbon: typed family readiness, actionable inexact cards, actual editors, stale owner rejection, saved bytes unchanged");
+        Console.WriteLine("PASS budget ribbon: compact cards, one effective-readiness hint, typed family readiness, actual editors, stale owner rejection, saved bytes unchanged");
 
     }
 
