@@ -93,20 +93,13 @@ internal static class CreationAttributesPhoneAuthority
         CharacterCreationFoundationResult<CharacterCreationAttributesPreview> result,
         IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
     {
-        if (!string.Equals(
-                result.Outcome,
-                CharacterCreationFoundationOutcomes.Success,
-                StringComparison.Ordinal)
-            || !IsReady(state, overview)
+        if (!IsReady(state, overview)
             || result.Value is not { } preview
             || !BindingEquals(state.Binding, preview.Binding)
             || !AllocationIdentitiesMatch(state, allocations)
             || !ProjectionIdentitiesMatch(state, preview.Attributes)
             || !PreviewMatchesAllocations(preview, allocations)
             || !preview.RequiresExplicitConfirmation
-            || !preview.CanConfirm
-            || result.Blockers.Count != 0
-            || preview.Blockers.Count != 0
             || !BudgetIsExact(preview.NormalPointBudget)
             || !BudgetIsExact(preview.SpecialPointBudget)
             || !BudgetIsExact(preview.CreationKarmaBudget)
@@ -115,7 +108,26 @@ internal static class CreationAttributesPhoneAuthority
             return false;
         }
 
-        return true;
+        if (string.Equals(result.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal)
+            && preview.CanConfirm && result.Blockers.Count == 0 && preview.Blockers.Count == 0)
+        {
+            return true;
+        }
+
+        // Undoing an uncommitted +/- can return to the saved allocation. Core correctly
+        // rejects persisting that duplicate, but the phone may display it again. Admit
+        // only the complete, unchanged saved projection; confirmation remains separate.
+        const string duplicate = "creation-attributes-draft-duplicate";
+        return string.Equals(result.Outcome, CharacterCreationFoundationOutcomes.Blocked, StringComparison.Ordinal)
+            && !preview.CanConfirm
+            && result.Blockers.Count == 1 && result.Blockers[0] == duplicate
+            && preview.Blockers.Count == 1 && preview.Blockers[0] == duplicate
+            && state.PendingDraft is { } pending
+            && AllocationsEqual(allocations, pending.Allocations)
+            && ProjectionsEqual(preview.Attributes, state.Attributes)
+            && BudgetsEqual(preview.NormalPointBudget, state.NormalPointBudget)
+            && BudgetsEqual(preview.SpecialPointBudget, state.SpecialPointBudget)
+            && BudgetsEqual(preview.CreationKarmaBudget, state.CreationKarmaBudget);
     }
 
     public static bool CanConfirmPreview(
