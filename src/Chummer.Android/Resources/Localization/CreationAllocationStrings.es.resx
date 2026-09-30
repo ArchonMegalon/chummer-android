@@ -854,4 +854,20 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Budget.Check" xml:space="preserve"><value>Ver qué falta ›</value></data>
   <data name="Budget.Refreshing" xml:space="preserve"><value>Se está comprobando el presupuesto. Confirma primero las prioridades y el metatipo y después revisa el paso correspondiente. No se han cambiado puntos ni decisiones.</value></data>
   <data name="SkillsReReview.CheckSave" xml:space="preserve"><value>Vuelve a abrir el runner y comprueba el resultado del guardado antes de intentarlo otra vez.</value></data>
+  <data name="MagicReReview.Title" xml:space="preserve"><value>Revisar elecciones de magia guardadas</value></data>
+  <data name="MagicReReview.Intro" xml:space="preserve"><value>Tus atributos cambiaron después de guardar estas elecciones. La revisión de reglas confirma que las elecciones y sus presupuestos siguen siendo válidos. No se guarda nada hasta que confirmes.</value></data>
+  <data name="MagicReReview.Binding" xml:space="preserve"><value>Revisión de atributos {0} → {1}. Se conservan estas elecciones:</value></data>
+  <data name="MagicReReview.Budget" xml:space="preserve"><value>{0}: {1} / {2}</value></data>
+  <data name="MagicReReview.Power" xml:space="preserve"><value>{0} · nivel {1}</value></data>
+  <data name="MagicReReview.Confirm" xml:space="preserve"><value>Conservar elecciones y confirmar atributos actuales</value></data>
+  <data name="MagicReReview.ConfirmBody" xml:space="preserve"><value>¿Conservar exactamente estas elecciones y vincularlas a los atributos actuales?</value></data>
+  <data name="MagicReReview.Apply" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="MagicReReview.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="MagicReReview.Saving" xml:space="preserve"><value>Guardando elecciones revisadas…</value></data>
+  <data name="MagicReReview.Saved" xml:space="preserve"><value>Revisión guardada. Se conservan tus elecciones y los comprobantes anteriores.</value></data>
+  <data name="MagicReReview.SavedRefresh" xml:space="preserve"><value>Guardado con comprobante. Vuelve a abrir el runner para actualizar; no lo apliques otra vez.</value></data>
+  <data name="MagicReReview.CheckSave" xml:space="preserve"><value>Vuelve a abrir el runner y comprueba el resultado antes de volver a intentarlo.</value></data>
+  <data name="MagicReReview.Stale" xml:space="preserve"><value>El runner cambió. Vuelve a abrir esta revisión para comprobar el estado actual.</value></data>
+  <data name="MagicReReview.Unavailable" xml:space="preserve"><value>Estas elecciones no pueden revisarse sin cambios. No se ha modificado nada.</value></data>
+  <data name="MagicReReview.Back" xml:space="preserve"><value>Volver sin más cambios</value></data>
 </root>
