@@ -408,13 +408,27 @@ internal static partial class AfterRunAuthorityHarness
         public Task BeginAsyncVoid(Action action)
         {
             Require(ReferenceEquals(Current, this) && _operations == 0,
-                "SETUP: overlapping or off-context async-void admission.");
+                $"SETUP: overlapping or off-context async-void admission (operations={_operations}, current={Current?.GetType().Name ?? "null"}).");
             _callback = new(TaskCreationOptions.RunContinuationsAsynchronously);
             int previous = AsyncVoidStarts;
             action();
             Require(AsyncVoidStarts > previous, "SETUP: callback was not an actual async-void page entry.");
             if (_operations == 0) _callback.TrySetResult();
             return _callback.Task;
+        }
+        public async Task DrainDispatchedAsyncVoidAsync()
+        {
+            Require(ReferenceEquals(Current, this), "SETUP: drain must run on the managed UI pump.");
+            // A completed click can have queued a real async-void scroll reset.
+            // Let already-dispatched work start, then join its BCL completion;
+            // do not substitute a delay or declare the UI idle prematurely.
+            await Task.Yield();
+            if (_operations != 0)
+            {
+                _callback = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                await _callback.Task;
+            }
+            AssertHealthy();
         }
         public override void OperationStarted() { _operations++; AsyncVoidStarts++; }
         public override void OperationCompleted() { if (--_operations == 0) _callback?.TrySetResult(); }
