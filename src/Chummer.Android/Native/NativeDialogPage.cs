@@ -81,7 +81,8 @@ public sealed class NativeDialogPage : ContentPage
         }
         else if (!string.IsNullOrWhiteSpace(_coordinator.State.Notice))
         {
-            Label noticeLabel = NativeTheme.Body(_coordinator.State.Notice!);
+            Label noticeLabel = NativeTheme.Body(ProjectNotice(
+                dialog.Id, _coordinator.State.Notice!, _coordinator.State.Session.ActiveWorkspace?.Id.Value));
             noticeLabel.AutomationId = "dialog-notice";
             body.Add(noticeLabel);
         }
@@ -200,6 +201,23 @@ public sealed class NativeDialogPage : ContentPage
 
         Content = new ScrollView { Content = body };
         _closeToolbarItem.IsEnabled = !_interactionBusy;
+    }
+
+    // Translate only known transition notices for the exact active workspace.
+    // Keep presenter diagnostics and arbitrary user-authored text unchanged.
+    internal static string ProjectNotice(string dialogId, string notice, string? workspaceId)
+    {
+        if (dialogId != "dialog.new_character" || string.IsNullOrEmpty(workspaceId))
+            return notice;
+
+        if (notice == $"Save or discard local changes for '{workspaceId}' before you create another dossier.")
+            return PhoneStrings.Get("NewRunnerUnsavedChanges",
+                "Save or discard changes to your current runner before creating another. Cancel to return to it.");
+        if (notice == $"Resolve the revision conflict for '{workspaceId}' before you create another dossier.")
+            return PhoneStrings.Get("NewRunnerRevisionConflict",
+                "Resolve the save conflict for your current runner before creating another. Cancel to return to it.");
+
+        return notice;
     }
 
     private View CreateField(

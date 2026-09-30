@@ -261,4 +261,6 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="NewRunnerSelectedBuildMethod" xml:space="preserve"><value>Bauart: {0}. Tippe auf Runner erstellen, um fortzufahren.</value></data>
   <data name="NewRunnerCreate" xml:space="preserve"><value>Runner erstellen</value></data>
   <data name="BackNavigationUnavailable" xml:space="preserve"><value>Zurückgehen war nicht möglich. Bitte versuche es erneut.</value></data>
+  <data name="NewRunnerUnsavedChanges" xml:space="preserve"><value>Speichere oder verwirf die Änderungen am aktuellen Runner, bevor du einen neuen erstellst. Mit Abbrechen kehrst du zurück.</value></data>
+  <data name="NewRunnerRevisionConflict" xml:space="preserve"><value>Löse den Speicherkonflikt des aktuellen Runners, bevor du einen neuen erstellst. Mit Abbrechen kehrst du zurück.</value></data>
 </root>
