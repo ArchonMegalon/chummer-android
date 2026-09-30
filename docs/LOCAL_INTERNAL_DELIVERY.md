@@ -104,14 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 56 is the latest [observed Internal availability](../play/evidence/preview56-internal-observation.md).
-It is available on Play Internal; physical Play installation of 56 is not yet
-verified. It delivers simpler Creation/Gear/Resources screens, plain localized
-guidance, collapsed technical details, clear Gear save feedback and explicit
-Skills/Magic re-review after Attributes changes. Focused local tests and native
-affected-route save/reopen/restart checks passed. This is not all-screen polish
-or complete build-method/Career coverage. Preview 55 evidence stays immutable;
-its editorial-assisted illustrated chapter does not establish unattended
+Preview 57 is the latest [observed Internal availability](../play/evidence/preview57-internal-observation.md).
+It is available on Play Internal; physical Play installation of 57 is not yet
+verified. It adds quality explanations/readability and all SR5 sources as defaults
+for new runners without changing existing saved settings. Focused managed checks
+cover all four defaults; native Priority upgrade/save/reopen/process-restart smoke
+preserved all existing workspaces. The constrained emulator's slow cold creation
+is documented, not claimed as a performance pass. Preview 56's simpler Creation,
+Gear/Resources screens and explicit Skills/Magic re-review remain included.
+This is not all-screen polish or complete build-method/Career coverage.
+Preview 56 and earlier evidence stay immutable. Preview 55's
+editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
