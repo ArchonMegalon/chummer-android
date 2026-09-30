@@ -9,7 +9,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationPrerequisitePreviewPage : NativePageBase
 {
-    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CharacterCreationPrerequisitePreview _preview;
     private readonly IReadOnlyDictionary<string, string> _assignments;
     private readonly CreationPrerequisitePhoneSelections _selections;
@@ -70,7 +70,9 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
     {
         _renderGeneration++;
         _body.Clear();
-        _technicalDetails.Clear();
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         if (!Coordinator.CanDisplayCreationPrerequisitePreview(_preview))
         {
             Label stale = NativeTheme.Body(CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision,

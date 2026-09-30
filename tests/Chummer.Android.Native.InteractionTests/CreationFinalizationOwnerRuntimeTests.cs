@@ -457,6 +457,7 @@ internal static partial class AfterRunAuthorityHarness
             var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             MinimalRequireNoMachineValues(page);
+            MinimalRequireFreshDisclosure(page);
             var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
                 retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
             await (Task)typeof(CreationMagicResonanceOptionPage)
@@ -477,6 +478,7 @@ internal static partial class AfterRunAuthorityHarness
             var readableReview = new CreationMagicResonanceReviewPage(runtime.Coordinator, storedReview, journal);
             MinimalRender(readableReview);
             MinimalRequireNoMachineValues(readableReview);
+            MinimalRequireFreshDisclosure(readableReview);
             foreach (var identity in review.Preview.Selections.AdeptPowers.Select(item => item.Identity)
                          .Concat(review.Preview.Selections.Spells))
             {

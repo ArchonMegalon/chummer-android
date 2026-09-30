@@ -10,7 +10,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationMagicResonancePage : NativePageBase
 {
-    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationMagicResonancePhoneDraft _draft = new();
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
@@ -85,7 +85,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _technicalDetails.Clear();
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.DraftEyebrow", "SR5 · Draft")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Magic.Heading", "Magic and Resonance")));
         _body.Add(NativeTheme.Body(
@@ -1083,7 +1085,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 /// <summary>Immutable typed Review followed by one durable explicit Confirm transition.</summary>
 public sealed class CreationMagicResonanceReviewPage : NativePageBase
 {
-    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private IReadOnlyList<CharacterCreationMagicResonanceOptionProjection> _reviewOptions = [];
     private readonly CharacterOverviewState _display;
     private CharacterCreationMagicResonanceCheckpoint _checkpoint;
@@ -1130,7 +1132,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     {
         UpdateConfirmationFeedback();
         _body.Clear();
-        _technicalDetails.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _reviewOptions = [];
         if (!Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext))
         {

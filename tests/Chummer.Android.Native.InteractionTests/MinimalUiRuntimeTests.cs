@@ -132,6 +132,7 @@ internal static partial class AfterRunAuthorityHarness
                 assignmentsPreview, assignments, selections, CharacterCreationBuildMethods.Priority);
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(assignmentReview, "OnAppearing")));
             MinimalRequireNoMachineValues(assignmentReview);
+            MinimalRequireFreshDisclosure(assignmentReview);
             Require(MinimalVisibleText(assignmentReview).Contains(assignmentsPreview.TalentSelection!.Name)
                 && MinimalVisible(assignmentReview).OfType<Button>().Single(x =>
                     x.AutomationId == "creation-prerequisite-confirm").IsEnabled,
@@ -184,6 +185,7 @@ internal static partial class AfterRunAuthorityHarness
                 var grantPage = new CreationTalentSkillGrantPage(priorityRuntime.Coordinator, draft, prerequisite, grantedTalent.SelectionId);
                 MinimalRender(grantPage);
                 MinimalRequireNoMachineValues(grantPage);
+                MinimalRequireFreshDisclosure(grantPage);
                 Require(MinimalVisibleText(grantPage).Contains(grantedTalent.Name)
                     && MinimalVisibleText(grantPage).Contains("Granted rating"),
                     "Talent skill choices lost the readable Talent or actual granted rating.");
@@ -227,6 +229,7 @@ internal static partial class AfterRunAuthorityHarness
             ((IButtonController)jump).SendClicked();
             Require(scrollTarget is null, "A detached budget control still scrolls a refreshed screen.");
             MinimalRequireNoMachineValues(attributesPage);
+            MinimalRequireFreshDisclosure(attributesPage);
             IssuedPageLifecycle(attributesPage, "OnDisappearing");
             var gear = new CreationGearPage(runtime.Coordinator, actual, runtime.Presenter);
             await MinimalPrepareAsync(gear);
@@ -298,6 +301,19 @@ internal static partial class AfterRunAuthorityHarness
         await (Task)page.GetType().GetMethod("PrepareForAppearanceRefreshAsync",
             BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, [CancellationToken.None])!;
         MinimalRender(page);
+    }
+
+    private static void MinimalRequireFreshDisclosure(NativePageBase page)
+    {
+        var field = page.GetType().GetField("_technicalDetails", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var previous = (View)field.GetValue(page)!;
+        var parent = previous.Parent;
+        MinimalRender(page);
+        var current = (View)field.GetValue(page)!;
+        Require(!ReferenceEquals(previous, current) && parent is not null
+            && ReferenceEquals(previous.Parent, parent) && current.Parent is not null
+            && !ReferenceEquals(current.Parent, parent),
+            "A refreshed disclosure reused a native child still owned by its previous container.");
     }
 
     private static void MinimalRender(NativePageBase page) => page.GetType()

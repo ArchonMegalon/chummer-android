@@ -11,7 +11,7 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
 {
     private readonly CreationPrerequisitePhoneDraft _draft;
     private readonly CharacterCreationPrerequisiteState _state;
-    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private long _renderGeneration;
     private readonly string _talentSelectionId;
     private readonly VerticalStackLayout _body = new()
@@ -40,7 +40,9 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
     {
         _renderGeneration++;
         _body.Clear();
-        _technicalDetails.Clear();
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         CharacterCreationPrerequisiteState state = _state;
         if (!Coordinator.IsCreationPrerequisiteStateCurrent(state)
             || !_draft.Matches(state, Coordinator.State))

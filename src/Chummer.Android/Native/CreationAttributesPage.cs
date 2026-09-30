@@ -8,7 +8,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationAttributesPage : NativePageBase
 {
-    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationAttributesPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -35,7 +35,9 @@ public sealed class CreationAttributesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _technicalDetails.Clear();
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         _normalAttributesHeading = null;
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
