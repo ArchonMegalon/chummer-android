@@ -116,7 +116,7 @@
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Presupuestos exactos de Core</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirmar solo guarda el estado auxiliar de creación de Core. CharacterDocumentChanged debe seguir en false hasta la finalización completa.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magia y Resonancia</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>El talento pertenece a los requisitos de creación. Este paso solo selecciona identidades tipadas emitidas por Core; las semánticas personalizadas incompatibles y el talento de inteligencia artificial permanecen bloqueados de forma segura.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Elige la magia y las habilidades disponibles para tu talento.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adepto</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Puntos de poderes de adepto</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Mago especializado</value></data>
@@ -164,10 +164,11 @@
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
-  <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar borrador tipado exacto</value></data>
+  <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar tus elecciones</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento exacto no requiere identidades posteriores.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Revisar Magia / Resonancia</value></data>
-  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Identidades tipadas</value></data>
+  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Tus elecciones</value></data>
+  <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Vuelve a abrir Magia / Resonancia para ver esta elección.</value></data>
   <data name="Magic.ReviewChanged" xml:space="preserve"><value>Cambió la vista previa de Core, la autoridad de fuente/personalización/DJ o la revisión del espacio de trabajo.</value></data>
   <data name="Magic.ReviewExactDraft" xml:space="preserve"><value>Revisar borrador exacto</value></data>
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Metatipos prohibidos</value></data>
@@ -198,7 +199,15 @@
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>ID de selección posterior</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Concedidas por selecciones anteriores</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · nivel {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Elige cualidades dentro de tu presupuesto de Karma. Abre una cualidad no disponible para ver por qué no se puede elegir.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Solo se muestran cualidades disponibles dentro de tu presupuesto. Pulsa ! para conocer sus efectos. Las elegidas siguen visibles para poder quitarlas.</value></data>
+  <data name="Qualities.Info.Accessible" xml:space="preserve"><value>Explicar {0}</value></data>
+  <data name="Qualities.Info.Cost" xml:space="preserve"><value>Nivel {0} · Karma {1}</value></data>
+  <data name="Qualities.Info.Reference" xml:space="preserve"><value>Manual: {0}, página {1}</value></data>
+  <data name="Qualities.Info.SourceNote" xml:space="preserve"><value>Estos son los efectos registrados en el catálogo. Consulta el manual para la descripción completa, las condiciones y los efectos narrativos.</value></data>
+  <data name="Qualities.Info.Manual" xml:space="preserve"><value>Esta entrada no tiene un modificador automático. Su ventaja o desventaja narrativa o circunstancial se describe en el manual.</value></data>
+  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Efectos adicionales o condicionales: consulta la referencia del manual.</value></data>
+  <data name="Qualities.Info.Ambidextrous" xml:space="preserve"><value>Usa cualquiera de las manos sin la penalización por mano torpe.</value></data>
+  <data name="Qualities.Info.Stale" xml:space="preserve"><value>Vuelve a abrir Cualidades para el runner actual.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} restante</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} restantes</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagénicas: +{0} / -{1}</value></data>
@@ -271,4 +280,5 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Tus Atributos guardados dependen de estas elecciones, por lo que el método de creación está bloqueado. Continúa con los pasos restantes.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>La historia de fondo no se puede editar en esta versión.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Revisa este paso antes de continuar. Consulta los detalles técnicos para conocer el motivo exacto.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>El catálogo actual no describe el efecto de esta cualidad otorgada. Consulta las reglas de la elección que la otorgó.</value></data>
 </root>

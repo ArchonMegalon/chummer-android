@@ -56,6 +56,39 @@ internal sealed class CreationQualitiesPhoneDraft
 
     public bool IsSelected(string optionId) => _selectedOptionIds.Contains(optionId);
 
+    // Filter against Core's complete proposed selection, not a second phone
+    // implementation of Karma, duplicate, granted-quality or profile limits.
+    // Run once during background appearance preparation; search/paging reuse it.
+    public IReadOnlyList<CharacterCreationQualitiesDesktopOption> AvailableOptions(
+        CharacterCreationQualitiesState state,
+        CharacterOverviewState overview,
+        CharacterCreationQualitiesEditorState editor,
+        CancellationToken cancellationToken)
+    {
+        if (!Matches(state, overview)) return [];
+        var available = new List<CharacterCreationQualitiesDesktopOption>();
+        var selected = SelectedOptionIds;
+        foreach (var option in editor.Options)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Keep chosen entries reachable for removal, even in a draft whose
+            // budget still needs repair. Never silently discard the selection.
+            if (IsSelected(option.OptionId))
+            {
+                available.Add(option);
+                continue;
+            }
+            if (!CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)) continue;
+            var preview = CharacterCreationQualitiesRules.Evaluate(new(
+                state.Binding, state.Authority, [.. selected, option.OptionId]));
+            // Metagenic pairs are assembled one choice at a time. Core still
+            // requires balance before review/confirmation can be enabled.
+            if (preview.Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+                available.Add(option);
+        }
+        return available;
+    }
+
     public IReadOnlyList<string> WithToggle(CharacterCreationQualitiesDesktopOption option)
     {
         ArgumentNullException.ThrowIfNull(option);

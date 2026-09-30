@@ -11,6 +11,7 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
 {
     private readonly CreationPrerequisitePhoneDraft _draft;
     private readonly CharacterCreationPrerequisiteState _state;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private long _renderGeneration;
     private readonly string _talentSelectionId;
     private readonly VerticalStackLayout _body = new()
@@ -39,7 +40,9 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
     {
         _renderGeneration++;
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Core-projected Talent grant"));
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         CharacterCreationPrerequisiteState state = _state;
         if (!Coordinator.IsCreationPrerequisiteStateCurrent(state)
             || !_draft.Matches(state, Coordinator.State))
@@ -74,6 +77,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
             AddStaleRecovery([
                 CharacterCreationPrerequisiteBlockers.TalentSkillGrantAuthorityUnsupported
             ]);
+        if (_technicalDetails.Children.Count > 0)
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-prerequisite-talent-grant-details"));
     }
 
     private void AddActiveSkillGrant(
@@ -115,9 +120,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
                     ? CharacterCreationPrerequisiteBlockers
                         .TalentExoticSkillSpecializationRequired
                     : null,
-                choice.Blockers.Count > 0 ? string.Join(" · ", choice.Blockers) : null,
-                $"Source {choice.SourceId}",
-                $"Anchors {string.Join(" · ", choice.SourceAnchorIds)}");
+                choice.Blockers.Count > 0 ? string.Join(" · ", choice.Blockers) : null);
+            _technicalDetails.Add(NativeTheme.Body($"{choice.CanonicalName} · Source {choice.SourceId} · Anchors {string.Join(" · ", choice.SourceAnchorIds)}"));
             _body.Add(NativeTheme.NavigationRow(
                 isSelected ? $"✓ {choice.CanonicalName}" : choice.CanonicalName,
                 detail,
@@ -165,9 +169,8 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
             bool isSelected = selectedIndex >= 0;
             string detail = JoinDetails(
                 isSelected ? $"Selected slot {(selectedIndex + 1).ToString(CultureInfo.InvariantCulture)}" : null,
-                $"Members {choice.MemberSkillSourceIds.Count.ToString(CultureInfo.InvariantCulture)}",
-                $"Group digest {ShortDigest(choice.GroupDigest)}",
-                $"Anchors {string.Join(" · ", choice.SourceAnchorIds)}");
+                $"Members {choice.MemberSkillSourceIds.Count.ToString(CultureInfo.InvariantCulture)}");
+            _technicalDetails.Add(NativeTheme.Body($"{choice.CanonicalName} · Group digest {choice.GroupDigest} · Anchors {string.Join(" · ", choice.SourceAnchorIds)}"));
             _body.Add(NativeTheme.NavigationRow(
                 isSelected ? $"✓ {choice.CanonicalName}" : choice.CanonicalName,
                 detail,
@@ -213,13 +216,13 @@ public sealed class CreationTalentSkillGrantPage : NativePageBase
         }
         else
             card.Add(NativeTheme.Metric("Granted rating", rating.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Selector", selectorType));
-        card.Add(NativeTheme.Metric("Improvement", improvementKind));
+        _technicalDetails.Add(NativeTheme.Metric("Selector", selectorType));
+        _technicalDetails.Add(NativeTheme.Metric("Improvement", improvementKind));
         Label digest = NativeTheme.Body(grantDigest, NativeTheme.Muted);
         digest.AutomationId = "creation-prerequisite-talent-grant-digest";
-        card.Add(digest);
+        _technicalDetails.Add(digest);
         foreach (string anchor in anchors)
-            card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
+            _technicalDetails.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-talent-grant-authority";
         SemanticProperties.SetDescription(border, requiredAuthority);

@@ -456,11 +456,15 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            MinimalRequireNoMachineValues(page);
+            MinimalRequireFreshDisclosure(page);
             var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
                 retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
             await (Task)typeof(CreationMagicResonanceOptionPage)
                 .GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
                 .Invoke(option, [CancellationToken.None])!;
+            MinimalRender(option);
+            MinimalRequireNoMachineValues(option);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             Require(body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review" && button.IsEnabled),
                 "Background catalog did not expose the actual Core-ready editor.");
@@ -471,6 +475,18 @@ internal static partial class AfterRunAuthorityHarness
                 original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
                 out var storedReview, out _), "Scoped Magic review was not durable.");
+            var readableReview = new CreationMagicResonanceReviewPage(runtime.Coordinator, storedReview, journal);
+            MinimalRender(readableReview);
+            MinimalRequireNoMachineValues(readableReview);
+            MinimalRequireFreshDisclosure(readableReview);
+            foreach (var identity in review.Preview.Selections.AdeptPowers.Select(item => item.Identity)
+                         .Concat(review.Preview.Selections.Spells))
+            {
+                string name = retainedEditor.AdeptPowers.Concat(retainedEditor.Spells)
+                    .Single(item => item.Identity == identity).Name;
+                Require(MinimalVisibleText(readableReview).Contains(name),
+                    "Magic review must show the exact catalog name rather than an ID or placeholder.");
+            }
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
                 && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
             await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview);
@@ -779,7 +795,8 @@ internal static partial class AfterRunAuthorityHarness
         Border[] Rows() => Body().Children.OfType<Border>()
             .Where(row => row.Content is Grid grid && grid.Children.OfType<Button>()
                 .Any(button => button.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true)).ToArray();
-        string OptionId(Border row) => ((Grid)row.Content!).Children.OfType<Button>().Single().AutomationId;
+        string OptionId(Border row) => ((Grid)row.Content!).Children.OfType<Button>()
+            .Single(button => button.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true).AutomationId;
         Button Pager(string suffix) => Body().Children.OfType<HorizontalStackLayout>()
             .SelectMany(row => row.Children.OfType<Button>())
             .Single(button => button.AutomationId == "creation-qualities-catalog-" + suffix);
@@ -807,20 +824,114 @@ internal static partial class AfterRunAuthorityHarness
         await loading;
         probe.BeforeLoad = null;
         refresh.Invoke(page, null);
+        var state = (CharacterCreationFoundationResult<CharacterCreationQualitiesState>)typeof(CreationQualitiesPage)
+            .GetField("_loaded", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        var available = (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)typeof(CreationQualitiesPage)
+            .GetField("_availableOptions", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        Console.WriteLine($"QUALITIES_FILTER available={available.Count} total={state.Value!.Authority.Options.Count}");
+        Require(available.Count > 0 && available.Count < state.Value.Authority.Options.Count
+            && available.All(option => option.IsSelectable && CharacterCreationQualitiesRules.Evaluate(new(
+                state.Value.Binding, state.Value.Authority, [option.OptionId])).Blockers.All(blocker =>
+                    blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced)),
+            "Available-only catalog exposed an unavailable, over-budget or duplicate quality.");
+        var navigation = new NavigationPage(page);
+        Button help = ((Grid)Rows()[0].Content!).Children.OfType<Button>().Single(button => button.Text == "!");
+        Require(help.WidthRequest >= 48 && help.HeightRequest >= 48
+            && Microsoft.Maui.Controls.SemanticProperties.GetDescription(help).StartsWith("Explain "),
+            "Quality information needs a separate accessible touch target.");
+        ((IButtonController)help).SendClicked();
+        Require(navigation.CurrentPage is CreationQualityInfoPage,
+            "The quality ! button did not open read-only information.");
+        MinimalRequireNoMachineValues(navigation.CurrentPage);
+        await navigation.PopAsync(false);
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        var qualityState = state.Value ?? throw new InvalidOperationException("SETUP: missing quality state.");
+        var analytical = qualityState.Authority.Options.First(option => option.Name == "Analytical Mind");
+        var explanation = string.Join(" ", CreationQualityInfo.Effects(analytical.SourceNodeXml));
+        Require(explanation.Contains("Bonus: 2") && explanation.Contains("pattern recognition")
+            && CreationQualityInfo.Citation(analytical.SourceNodeXml).Contains("72"),
+            "Quality help lost the source modifier, condition or citation.");
+        var mystic = qualityState.Authority.Options.First(option => option.Name == "Mystic Adept");
+        var mysticEffects = string.Join(" ", CreationQualityInfo.Effects(mystic.SourceNodeXml));
+        Require(mysticEffects.Contains("MAG") && mysticEffects.Contains("magician")
+            && mysticEffects.Contains("adept") && mysticEffects.Contains("Unlocks skills"),
+            "Mystic Adept help omitted its actual source-backed attribute, capabilities or skill access.");
+        var grant = new CharacterCreationGrantedQuality("read-only-help-test", analytical.SourceId,
+            analytical.SelectionKey, analytical.Name, analytical.Type, analytical.Rating, analytical.KarmaCost,
+            analytical.IsMetagenic, false, false, "Heritage", analytical.SourceAnchorIds, "read-only-fixture");
+        Require(CreationQualityInfo.SourceForGrant(grant, qualityState.Authority.Options) == analytical.SourceNodeXml
+            && CreationQualityInfo.SourceForGrant(grant with { SourceId = Guid.NewGuid() }, qualityState.Authority.Options) is null
+            && CreationQualityInfo.SourceForGrant(grant,
+                [analytical, analytical with { SourceNodeXml = analytical.SourceNodeXml + " " }]) is null,
+            "Granted help must use one exact source identity, never names or conflicting source bytes.");
+        // Read-only rendering fixture; no synthetic grant enters Core or storage.
+        typeof(CreationQualitiesPage).GetMethod("AddGranted", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, [qualityState with { Authority = qualityState.Authority with { GrantedQualities = [grant] } }]);
+        MinimalRequireNoMachineValues(page);
+        Button grantHelp = MinimalVisible(page).OfType<Button>().Single(button =>
+            button.AutomationId == "creation-quality-granted-info-read-only-help-test");
+        ((IButtonController)grantHelp).SendClicked();
+        Require(navigation.CurrentPage is CreationQualityInfoPage
+            && MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2"),
+            "Granted quality lacks the same read-only bonus help as a purchase choice.");
+        MinimalRequireNoMachineValues(navigation.CurrentPage);
+        await navigation.PopAsync(false);
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        var editor = CreationQualitiesPhoneAuthority.ProjectEditor(qualityState, runtime.Coordinator.State);
+        var draft = new CreationQualitiesPhoneDraft();
+        draft.Bind(qualityState, runtime.Coordinator.State);
+        var expensive = available.Where(option => option.Type == CharacterCreationQualityType.Positive)
+            .OrderByDescending(option => option.KarmaCost).First();
+        var chosen = new[] { expensive.OptionId };
+        var quoted = CharacterCreationQualitiesRules.Evaluate(new(qualityState.Binding, qualityState.Authority, chosen));
+        Require(draft.TryAdopt(qualityState, runtime.Coordinator.State,
+            new(CharacterCreationFoundationOutcomes.Success, quoted, quoted.Blockers), chosen), "SETUP: quality draft unavailable.");
+        var afterSelection = draft.AvailableOptions(qualityState, runtime.Coordinator.State, editor, CancellationToken.None);
+        Require(afterSelection.Any(option => option.OptionId == expensive.OptionId)
+            && afterSelection.Where(option => option.OptionId != expensive.OptionId).All(option =>
+                CharacterCreationQualitiesRules.Evaluate(new(qualityState.Binding, qualityState.Authority,
+                    [expensive.OptionId, option.OptionId])).Blockers.All(blocker =>
+                        blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced)),
+            "Budget filtering hid the remove action or retained unaffordable additions.");
+        Require(draft.WithToggle(expensive).Count == 0, "Filtering changed removal semantics.");
+        // Same exact source catalog, but a deterministic zero-Karma fixture.
+        // This is a read-only quote, not a modification of the stored runner.
+        var spentBinding = qualityState.Binding with { CreationKarmaUsedBeforeQualities = qualityState.Binding.CreationKarmaTotal };
+        var spentState = qualityState with { Binding = spentBinding,
+            Preview = CharacterCreationQualitiesRules.Evaluate(new(spentBinding, qualityState.Authority, [])) };
+        spentState = spentState with { SnapshotDigest = CharacterCreationQualitiesRules.ComputeStateDigest(spentState) };
+        var spentDraft = new CreationQualitiesPhoneDraft();
+        spentDraft.Bind(spentState, runtime.Coordinator.State);
+        var affordable = spentDraft.AvailableOptions(spentState, runtime.Coordinator.State,
+            CreationQualitiesPhoneAuthority.ProjectEditor(spentState, runtime.Coordinator.State), CancellationToken.None);
+        Require(affordable.Count > 0 && affordable.Count < available.Count
+            && !affordable.Any(option => option.OptionId == expensive.OptionId),
+            "Zero-Karma catalog still offers a paid positive quality.");
+        using (var stopped = new CancellationTokenSource())
+        {
+            stopped.Cancel();
+            try { draft.AvailableOptions(qualityState, runtime.Coordinator.State, editor, stopped.Token);
+                throw new InvalidOperationException("Canceled availability preparation continued."); }
+            catch (OperationCanceledException) when (stopped.IsCancellationRequested) { }
+        }
         string[] first = Rows().Select(OptionId).ToArray();
-        Require(first.Length == 20 && Pager("next").IsEnabled && !Pager("previous").IsEnabled,
+        Require(first.Length == Math.Min(20, available.Count) && Pager("next").IsEnabled == (available.Count > 20)
+            && !Pager("previous").IsEnabled,
             "The real catalog must render only the first bounded page, with honest navigation.");
         Button review = Body().Children.OfType<Button>().Single(button => button.AutomationId == "creation-qualities-open-review");
         Require(review.IsEnabled && Body().Children.IndexOf(review) < Body().Children.IndexOf(Rows()[0]),
             "Review must be available before the catalog, including an empty valid selection.");
 
-        ((IButtonController)Pager("next")).SendClicked();
-        Require(Rows().Length == 20 && !Rows().Select(OptionId).Intersect(first).Any()
-                && Pager("previous").IsEnabled,
-            "Next must show another bounded set of exact Core identities.");
-        ((IButtonController)Pager("previous")).SendClicked();
-        Require(Rows().Select(OptionId).SequenceEqual(first),
-            "Previous must restore the same exact identities.");
+        if (Pager("next").IsEnabled)
+        {
+            ((IButtonController)Pager("next")).SendClicked();
+            Require(Rows().Length == Math.Min(20, available.Count - 20) && !Rows().Select(OptionId).Intersect(first).Any()
+                    && Pager("previous").IsEnabled,
+                "Next must show another bounded set of exact Core identities.");
+            ((IButtonController)Pager("previous")).SendClicked();
+            Require(Rows().Select(OptionId).SequenceEqual(first),
+                "Previous must restore the same exact identities.");
+        }
 
         filter.Invoke(page, ["no-such-quality-regression-20260919"]);
         Require(Rows().Length == 0 && !Pager("next").IsEnabled && !Pager("previous").IsEnabled,

@@ -21,6 +21,7 @@ internal static class CreationMagicNativeRuntimeTests
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
     public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
     public static void RunMagicReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, magicReReview: true);
+    public static void RunMysticReadability(string contentRoot) => RunTalent(contentRoot, technomancer: false, mysticAdept: true);
 
     public static void RunSumToTen(string contentRoot)
     {
@@ -206,7 +207,7 @@ internal static class CreationMagicNativeRuntimeTests
             }
             if (mysticAdept)
             {
-                RunMysticAdept(store, resolver, service, state, id, directory);
+                RunMysticAdept(store, resolver, service, state, id, directory, contentRoot);
                 RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
                 return;
             }
@@ -675,7 +676,7 @@ internal static class CreationMagicNativeRuntimeTests
 
     private static void RunMysticAdept(FileWorkspaceStore store, FileSystemCharacterSourceDataResolver resolver,
         CharacterCreationMagicResonanceService service, CharacterCreationMagicResonanceState state,
-        CharacterWorkspaceId id, string directory)
+        CharacterWorkspaceId id, string directory, string contentRoot)
     {
         foreach (var (language, title) in new[]
         {
@@ -790,6 +791,8 @@ internal static class CreationMagicNativeRuntimeTests
         Require(!CharacterCreationMagicResonanceWorkflow.TryProject(forgedState, out _), "Rehashed invented quote survived Presentation validation.");
         string key = CreationMagicResonancePhoneAuthority.ComputeIdempotencyKey(review);
         string beforeXml = store.Get(id).Value!.Document.Content;
+        AfterRunAuthorityHarness.RunCreationMagicBackgroundAsync(contentRoot, directory, id, review.Draft)
+            .GetAwaiter().GetResult();
         var confirmed = CharacterCreationMagicResonanceWorkflow.Confirm(service, review, key, explicitlyConfirmed: true);
         var coldStore = new FileWorkspaceStore(directory);
         var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);

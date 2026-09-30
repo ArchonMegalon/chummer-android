@@ -118,7 +118,7 @@
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exact Core budgets</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magic and Resonance</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>The Talent is owned by the Creation prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Choose the magic and abilities available to your Talent.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Adept power points</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Aspected magician</value></data>
@@ -166,10 +166,11 @@
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirm Magic/Resonance Creation draft</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
-  <data name="Magic.Review.Heading" xml:space="preserve"><value>Review exact typed draft</value></data>
+  <data name="Magic.Review.Heading" xml:space="preserve"><value>Review your choices</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>No follow-up identities are required by this exact Talent.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Review Magic / Resonance</value></data>
-  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Typed identities</value></data>
+  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Your choices</value></data>
+  <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Reopen Magic / Resonance to view this choice.</value></data>
   <data name="Magic.ReviewChanged" xml:space="preserve"><value>The Core preview, source/custom/GM authority, or workspace revision changed.</value></data>
   <data name="Magic.ReviewExactDraft" xml:space="preserve"><value>Review exact draft</value></data>
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Forbidden metatypes</value></data>
@@ -200,7 +201,15 @@
   <data name="Qualities.FollowUpId" xml:space="preserve"><value>Follow-up id</value></data>
   <data name="Qualities.Granted" xml:space="preserve"><value>Granted by earlier choices</value></data>
   <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · rating {1} · Karma {2}</value></data>
-  <data name="Qualities.Intro" xml:space="preserve"><value>Choose qualities within your Karma budget. Open an unavailable quality to see why it cannot be selected.</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Only available qualities within your budget are shown. Tap ! to learn about their effects. Selected qualities remain available to remove.</value></data>
+  <data name="Qualities.Info.Accessible" xml:space="preserve"><value>Explain {0}</value></data>
+  <data name="Qualities.Info.Cost" xml:space="preserve"><value>Rating {0} · Karma {1}</value></data>
+  <data name="Qualities.Info.Reference" xml:space="preserve"><value>Rulebook: {0}, page {1}</value></data>
+  <data name="Qualities.Info.SourceNote" xml:space="preserve"><value>These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects.</value></data>
+  <data name="Qualities.Info.Manual" xml:space="preserve"><value>This catalog entry has no automatic modifier. Its roleplaying or situational benefit or drawback is described in the rulebook.</value></data>
+  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Additional or conditional effects: see the rulebook reference below.</value></data>
+  <data name="Qualities.Info.Ambidextrous" xml:space="preserve"><value>Use either hand without the off-hand penalty.</value></data>
+  <data name="Qualities.Info.Stale" xml:space="preserve"><value>Reopen Qualities for the current runner.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} remaining</value></data>
   <data name="Qualities.Left" xml:space="preserve"><value>{0} left</value></data>
   <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagenic: +{0} / -{1}</value></data>
@@ -288,4 +297,5 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Story details cannot be edited in this build.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>This step needs attention before you can continue. See technical details for the exact reason.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.</value></data>
 </root>

@@ -117,13 +117,31 @@ internal static partial class AfterRunAuthorityHarness
             // Priority editing is intentionally locked once dependent stages
             // exist. Use a real new runner, not the ready-for-Gear fixture.
             await using var priorityRuntime = new NativeRewardRuntime(contentRoot,
-                linkedOwners: owners, creationPrerequisite: true);
+                linkedOwners: owners, creationPrerequisite: true, creationAttributes: true,
+                productionCreationOverview: true);
             await priorityRuntime.Coordinator.InitializeAsync();
             await AccountStartupTask(priorityRuntime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             var prioritySeed = PreparePrerequisiteOwnerFixture(priorityRuntime);
             await HydrateFinalizationOwnerAsync(priorityRuntime, owners, prioritySeed);
             var prerequisite = (await priorityRuntime.Coordinator.LoadCreationPrerequisiteAsync()).Value
                 ?? throw new InvalidOperationException("SETUP: real prerequisite authority unavailable.");
+            var (assignments, selections) = PrerequisiteSelections(prerequisite);
+            var assignmentsPreview = (await priorityRuntime.Coordinator.PreviewCreationPrerequisiteAsync(
+                prerequisite.Binding, assignments, selections)).Value!;
+            var assignmentReview = new CreationPrerequisitePreviewPage(priorityRuntime.Coordinator,
+                assignmentsPreview, assignments, selections, CharacterCreationBuildMethods.Priority);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(assignmentReview, "OnAppearing")));
+            MinimalRequireNoMachineValues(assignmentReview);
+            MinimalRequireFreshDisclosure(assignmentReview);
+            Require(MinimalVisibleText(assignmentReview).Contains(assignmentsPreview.TalentSelection!.Name)
+                && MinimalVisible(assignmentReview).OfType<Button>().Single(x =>
+                    x.AutomationId == "creation-prerequisite-confirm").IsEnabled,
+                "Readable assignments lost the actual Talent or exact confirmation.");
+            ((IButtonController)MinimalVisible(assignmentReview).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-prerequisite-preview-details-toggle")).SendClicked();
+            Require(MinimalVisibleText(assignmentReview).Contains(assignmentsPreview.PreviewDigest),
+                "Review diagnostics must retain the exact preview digest.");
+            IssuedPageLifecycle(assignmentReview, "OnDisappearing");
             var priorities = new CreationPrerequisitePage(priorityRuntime.Coordinator, prerequisite);
             MinimalRender(priorities);
             MinimalRequireNoMachineValues(priorities);
@@ -157,6 +175,62 @@ internal static partial class AfterRunAuthorityHarness
             Require(MinimalVisible(talent).OfType<Button>().Any(x =>
                 x.AutomationId?.StartsWith("creation-prerequisite-talent-option-") == true),
                 "Minimal Talent list has no actual choices.");
+            foreach (var grantedTalent in draft.TalentOptions(prerequisite, priorityRuntime.Coordinator.State)
+                .Where(option => option.IsEnabled && option.Blockers.Count == 0
+                    && (option.ActiveSkillGrant is not null || option.SkillGroupGrant is not null)
+                    && CreationPrerequisitePhoneAuthority.IsTalentGrantAuthoritySupported(option)))
+            {
+                Require(draft.TrySelectTalent(prerequisite, priorityRuntime.Coordinator.State, grantedTalent.SelectionId),
+                    "SETUP: supported granted-skill Talent cannot be selected.");
+                var grantPage = new CreationTalentSkillGrantPage(priorityRuntime.Coordinator, draft, prerequisite, grantedTalent.SelectionId);
+                MinimalRender(grantPage);
+                MinimalRequireNoMachineValues(grantPage);
+                MinimalRequireFreshDisclosure(grantPage);
+                Require(MinimalVisibleText(grantPage).Contains(grantedTalent.Name)
+                    && MinimalVisibleText(grantPage).Contains("Granted rating"),
+                    "Talent skill choices lost the readable Talent or actual granted rating.");
+                ((IButtonController)MinimalVisible(grantPage).OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-prerequisite-talent-grant-details-toggle")).SendClicked();
+                Require(MinimalVisibleText(grantPage).Contains(grantedTalent.ActiveSkillGrant?.GrantDigest
+                    ?? grantedTalent.SkillGroupGrant!.GrantDigest), "Talent diagnostics lost the exact grant digest.");
+            }
+            var confirmedAssignments = await priorityRuntime.Coordinator.ConfirmCreationPrerequisiteAsync(
+                assignmentsPreview, assignments, selections);
+            Require(confirmedAssignments.Outcome == CharacterCreationFoundationOutcomes.Success,
+                "SETUP: prerequisite confirmation failed.");
+            var attributesAuthority = priorityRuntime.Coordinator.LoadCreationAttributes().Value
+                ?? throw new InvalidOperationException("SETUP: Attribute authority unavailable.");
+            Require(CreationAttributesPhoneAuthority.IsReady(
+                attributesAuthority, priorityRuntime.Coordinator.State), "SETUP: editable Attribute authority unavailable.");
+            var attributesPage = new CreationAttributesPage(priorityRuntime.Coordinator, attributesAuthority);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributesPage, "OnAppearing")));
+            var scroll = (ScrollView)attributesPage.Content!;
+            Element? scrollTarget = null;
+            ((IScrollViewController)scroll).ScrollToRequested += (_, request) =>
+            {
+                scrollTarget = request.Element;
+                ((IScrollViewController)scroll).SendScrollFinished();
+            };
+            var jump = MinimalVisible(attributesPage).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-attributes-budget-normal-jump");
+            ((IButtonController)jump).SendClicked();
+            Require(scrollTarget?.AutomationId == "creation-attributes-normal-heading",
+                "Normal points must jump to the actual normal Attribute list.");
+            foreach (var attribute in attributesAuthority.Attributes)
+            {
+                var value = MinimalVisible(attributesPage).OfType<Label>().Single(x =>
+                    x.AutomationId == "creation-attributes-open-" + CreationAttributesPage.Token(attribute.AttributeId) + "-value");
+                Require(value.Text == attribute.Current.ToString(CultureInfo.InvariantCulture)
+                    && value.FontAttributes.HasFlag(FontAttributes.Bold) && value.FontSize >= 24
+                    && value.TextColor == NativeTheme.Text, "Current Attribute rating is not prominent/readable.");
+            }
+            scrollTarget = null;
+            MinimalRender(attributesPage);
+            ((IButtonController)jump).SendClicked();
+            Require(scrollTarget is null, "A detached budget control still scrolls a refreshed screen.");
+            MinimalRequireNoMachineValues(attributesPage);
+            MinimalRequireFreshDisclosure(attributesPage);
+            IssuedPageLifecycle(attributesPage, "OnDisappearing");
             var gear = new CreationGearPage(runtime.Coordinator, actual, runtime.Presenter);
             await MinimalPrepareAsync(gear);
             var visible = MinimalVisibleText(gear);
@@ -229,6 +303,19 @@ internal static partial class AfterRunAuthorityHarness
         MinimalRender(page);
     }
 
+    private static void MinimalRequireFreshDisclosure(NativePageBase page)
+    {
+        var field = page.GetType().GetField("_technicalDetails", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var previous = (View)field.GetValue(page)!;
+        var parent = previous.Parent;
+        MinimalRender(page);
+        var current = (View)field.GetValue(page)!;
+        Require(!ReferenceEquals(previous, current) && parent is not null
+            && ReferenceEquals(previous.Parent, parent) && current.Parent is not null
+            && !ReferenceEquals(current.Parent, parent),
+            "A refreshed disclosure reused a native child still owned by its previous container.");
+    }
+
     private static void MinimalRender(NativePageBase page) => page.GetType()
         .GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
 
@@ -251,7 +338,7 @@ internal static partial class AfterRunAuthorityHarness
     private static void MinimalRequireNoMachineValues(IVisualTreeElement element)
     {
         Require(!Regex.IsMatch(MinimalVisibleText(element),
-            @"sha256:|\b[0-9a-f]{32}\b|\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
+            @"sha256:|\b(?:[0-9a-f]{32}|[0-9a-f]{64})\b|\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
             RegexOptions.IgnoreCase), "Normal UI/accessibility contains machine identifiers.");
     }
 }

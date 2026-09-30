@@ -10,6 +10,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationMagicResonancePage : NativePageBase
 {
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationMagicResonancePhoneDraft _draft = new();
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
@@ -84,6 +85,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        // The previous disclosure still owns its native child after _body.Clear().
+        // Never attach that child to a new parent during a refresh.
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.DraftEyebrow", "SR5 · Draft")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Magic.Heading", "Magic and Resonance")));
         _body.Add(NativeTheme.Body(
@@ -130,6 +134,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddBlockers(editor.Blockers
             .Concat(review?.Preview.Blockers ?? [])
             .Concat(_localBlockers));
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-magic-resonance-details"));
     }
 
     internal static bool HasUnsupportedSeparateMagicProfile(CharacterCreationMagicResonanceState state) =>
@@ -159,7 +164,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         increase.IsEnabled = !laneLocked && editor.CanEdit && selected < purchase.MaximumPowerPoints;
         increase.Clicked += async (_, _) => await RunAsync(() => ChangeMysticPowerPointsAsync(editor, selected + 1));
         card.Add(increase);
-        AddSources(card, purchase.Policy.SourceAnchorIds);
+        AddSources(card, purchase.Policy.SourceAnchorIds, _technicalDetails);
         _body.Add(NativeTheme.Card(card));
     }
 
@@ -209,7 +214,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Muted);
         revisions.AutomationId = "creation-magic-resonance-binding";
-        _body.Add(revisions);
+        _technicalDetails.Add(revisions);
         AddDigest("creation-magic-resonance-authority-digest", binding.AuthorityDigest);
         AddDigest("creation-magic-resonance-source-digest", binding.SourceInputsDigest);
         AddDigest("creation-magic-resonance-custom-data-digest", binding.CustomDataInputsDigest);
@@ -224,15 +229,15 @@ public sealed class CreationMagicResonancePage : NativePageBase
         card.Add(NativeTheme.Title(talent.Name, 22));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), KindLabel(talent.Kind)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PriorityRank", "Priority rank"), talent.Rank));
-        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PrioritySourceId", "Priority source id"), talent.Identity.PrioritySourceId));
-        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.SelectionId", "Talent selection id"), talent.Identity.TalentSelectionId));
+        _technicalDetails.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PrioritySourceId", "Priority source id"), talent.Identity.PrioritySourceId));
+        _technicalDetails.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.SelectionId", "Talent selection id"), talent.Identity.TalentSelectionId));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Magic", "Magic"), talent.Magic.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Resonance", "Resonance"), talent.Resonance.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Depth", "Depth"), talent.Depth.ToString(CultureInfo.InvariantCulture)));
         AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredMetatypes", "Required metatypes"), talent.RequiredMetatypeNames);
         AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredCategories", "Required metatype categories"), talent.RequiredMetatypeCategories);
         AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames);
-        AddSources(card, talent.SourceAnchorIds);
+        AddSources(card, talent.SourceAnchorIds, _technicalDetails);
         foreach (string blocker in talent.Blockers)
             card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -738,19 +743,23 @@ public sealed class CreationMagicResonancePage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
     internal static void AddSources(
         VerticalStackLayout layout,
-        IReadOnlyList<string> sourceAnchorIds)
+        IReadOnlyList<string> sourceAnchorIds,
+        VerticalStackLayout? diagnostics = null)
     {
-        layout.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.SourceAnchors", "Source anchors")));
-        layout.Add(NativeTheme.Body(
-            sourceAnchorIds.Count == 0
-                ? CharacterCreationMagicResonanceBlockers.SourceDrift
-                : string.Join("\n", sourceAnchorIds),
-            sourceAnchorIds.Count == 0 ? NativeTheme.Danger : NativeTheme.Muted));
+        if (sourceAnchorIds.Count == 0)
+        {
+            layout.Add(NativeTheme.Body(CharacterCreationMagicResonanceBlockers.SourceDrift, NativeTheme.Danger));
+            return;
+        }
+        Label sources = NativeTheme.Body(string.Join("\n", sourceAnchorIds), NativeTheme.Muted);
+        if (diagnostics is not null) diagnostics.Add(sources);
+        else layout.Add(NativeTheme.TechnicalDetails(sources,
+            (layout.AutomationId ?? "creation-magic-resonance") + "-sources"));
     }
 
     private static void AddRequirement(
@@ -944,8 +953,9 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
             "SR5 · Draft · Choice")));
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
-        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
-        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), _option.Identity.SourceId));
+        VerticalStackLayout diagnostics = new() { Spacing = 6 };
+        diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
+        diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), _option.Identity.SourceId));
         details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Category", "Category"), _option.Category));
         details.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Option.PointCost", "Point cost"),
@@ -957,8 +967,8 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Page", "Page"), _option.Page));
         if (!string.IsNullOrWhiteSpace(_option.DrainExpression))
             details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Option.Drain", "Drain"), _option.DrainExpression));
-        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceNodeDigest", "Source node digest"), _option.SourceNodeDigest));
-        CreationMagicResonancePage.AddSources(details, _option.SourceAnchorIds);
+        diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceNodeDigest", "Source node digest"), _option.SourceNodeDigest));
+        CreationMagicResonancePage.AddSources(details, _option.SourceAnchorIds, diagnostics);
         foreach (string blocker in _option.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
             details.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
@@ -1018,6 +1028,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
             disabled.AutomationId = "creation-magic-resonance-option-disabled-reason";
             _body.Add(disabled);
         }
+        _body.Add(NativeTheme.TechnicalDetails(diagnostics, "creation-magic-resonance-option-details"));
     }
 
     private async Task ToggleAsync()
@@ -1074,6 +1085,8 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 /// <summary>Immutable typed Review followed by one durable explicit Confirm transition.</summary>
 public sealed class CreationMagicResonanceReviewPage : NativePageBase
 {
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private IReadOnlyList<CharacterCreationMagicResonanceOptionProjection> _reviewOptions = [];
     private readonly CharacterOverviewState _display;
     private CharacterCreationMagicResonanceCheckpoint _checkpoint;
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
@@ -1119,6 +1132,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     {
         UpdateConfirmationFeedback();
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
+        _reviewOptions = [];
         if (!Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext))
         {
             _body.Add(NativeTheme.Body("Reopen Magic / Resonance for the current account.", NativeTheme.Muted));
@@ -1126,6 +1141,10 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         }
         CharacterCreationMagicResonanceReview review = _checkpoint.Review;
         CharacterCreationMagicResonancePreview preview = review.Preview;
+        var editor = _display.CreationMagicResonanceEditor;
+        if (editor is not null && _checkpoint.OwnsExactReview(editor, _display))
+            _reviewOptions = editor.Traditions.Concat(editor.Streams).Concat(editor.AdeptPowers)
+                .Concat(editor.Spells).Concat(editor.ComplexForms).ToArray();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.Eyebrow", "SR5 · Review")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
             "Magic.Review.Heading",
@@ -1152,8 +1171,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             _body.Add(NativeTheme.Body(CreationMagicResonancePage.MysticPowerPointSummary(purchase), NativeTheme.Muted));
         AddSelections(preview.Selections);
         VerticalStackLayout sources = new() { Spacing = 5 };
-        CreationMagicResonancePage.AddSources(sources, preview.SourceAnchorIds);
-        _body.Add(NativeTheme.Card(sources));
+        CreationMagicResonancePage.AddSources(sources, preview.SourceAnchorIds, _technicalDetails);
+        if (sources.Children.Count > 0) _body.Add(NativeTheme.Card(sources));
         foreach (string blocker in preview.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
@@ -1166,6 +1185,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             NativeTheme.Muted);
         boundary.AutomationId = "creation-magic-resonance-review-auxiliary-only";
         _body.Add(boundary);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-magic-resonance-review-details"));
     }
 
     private void UpdateConfirmationFeedback()
@@ -1331,8 +1351,13 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         int? levels)
     {
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), identity.Kind));
-        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), identity.SourceId));
+        // Names belong to the exact reviewed catalog, never a newer ambient
+        // catalog or a name-based lookup used to reconstruct a mutation.
+        var matches = _reviewOptions.Where(option => option.Identity == identity).ToArray();
+        string name = matches.Length == 1 ? matches[0].Name
+            : CreationFlowStrings.Get("Magic.Review.UnavailableChoice", "Reopen Magic / Resonance to view this choice.");
+        card.Add(NativeTheme.Title(name, 18));
+        _technicalDetails.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), identity.SourceId));
         if (levels is not null)
             card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Option.Levels", "Levels"), levels.Value.ToString(CultureInfo.InvariantCulture)));
         _body.Add(NativeTheme.Card(card));
@@ -1343,7 +1368,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 }
 
@@ -1425,11 +1450,12 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         card.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.DocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
-        AddDigest(card, "creation-magic-resonance-receipt-digest", receipt.ReceiptDigest);
-        AddDigest(card, "creation-magic-resonance-receipt-draft-digest", receipt.DraftDigest);
-        AddDigest(card, "creation-magic-resonance-receipt-command-digest", receipt.CommandDigest);
-        AddDigest(card, "creation-magic-resonance-receipt-preview-digest", receipt.PreviewDigest);
-        AddDigest(card, "creation-magic-resonance-receipt-authority-digest", receipt.AuthorityDigest);
+        VerticalStackLayout diagnostics = new() { Spacing = 6 };
+        AddDigest(diagnostics, "creation-magic-resonance-receipt-digest", receipt.ReceiptDigest);
+        AddDigest(diagnostics, "creation-magic-resonance-receipt-draft-digest", receipt.DraftDigest);
+        AddDigest(diagnostics, "creation-magic-resonance-receipt-command-digest", receipt.CommandDigest);
+        AddDigest(diagnostics, "creation-magic-resonance-receipt-preview-digest", receipt.PreviewDigest);
+        AddDigest(diagnostics, "creation-magic-resonance-receipt-authority-digest", receipt.AuthorityDigest);
         Border receiptCard = NativeTheme.Card(card);
         receiptCard.AutomationId = "creation-magic-resonance-confirm-receipt";
         _body.Add(receiptCard);
@@ -1452,6 +1478,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
                                 && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
         acknowledge.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         _body.Add(acknowledge);
+        _body.Add(NativeTheme.TechnicalDetails(diagnostics, "creation-magic-resonance-receipt-details"));
     }
 
     private async Task AcknowledgeAsync()
