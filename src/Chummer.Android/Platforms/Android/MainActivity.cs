@@ -4,6 +4,7 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Window;
 using Android.Gms.Extensions;
+using AndroidX.Core.View;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -51,6 +52,7 @@ public sealed class MainActivity : MauiAppCompatActivity
 #endif
 
     private IOnBackInvokedCallback? _backInvokedCallback;
+    private readonly NativePageActionGate _backNavigationGate = new();
     private IAppUpdateManager? _appUpdateManager;
     private InstallStateListener? _installStateListener;
     private Handler? _reviewHandler;
@@ -95,8 +97,11 @@ public sealed class MainActivity : MauiAppCompatActivity
         if (OperatingSystem.IsAndroidVersionAtLeast(33))
         {
             _backInvokedCallback = new BackInvokedCallback(HandleBackNavigation);
+            // Shell owns the MAUI page stack. AndroidX can register a later
+            // default-priority Fragment callback during page updates; letting
+            // that empty native stack handle Back can finish this Activity.
             OnBackInvokedDispatcher.RegisterOnBackInvokedCallback(
-                IOnBackInvokedDispatcher.PriorityDefault,
+                IOnBackInvokedDispatcher.PriorityOverlay,
                 _backInvokedCallback);
         }
     }
@@ -281,16 +286,29 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     private bool HandleBackNavigation()
     {
-        Microsoft.Maui.Controls.INavigation? navigation = Microsoft.Maui.Controls.Shell.Current?.Navigation;
-        if (navigation?.ModalStack.Count > 0)
+        // Consume repeats even if the first pop has already changed the stack.
+        // Queuing another pop can invalidate Shell's implicit page routes while
+        // its first animated transition is still using them.
+        if (_destroyed || _backNavigationGate.IsClaimed) return true;
+        // Overlay priority also precedes the IME. Preserve the ordinary first
+        // Back = dismiss keyboard behavior without popping the focused editor.
+        var window = Window;
+        var decor = window?.DecorView;
+        if (decor is not null && ViewCompat.GetRootWindowInsets(decor)?.IsVisible(WindowInsetsCompat.Type.Ime()) == true)
         {
-            MainThread.BeginInvokeOnMainThread(async () => await navigation.PopModalAsync());
+            WindowCompat.GetInsetsController(window!, decor)?.Hide(WindowInsetsCompat.Type.Ime());
             return true;
         }
-
-        if (navigation?.NavigationStack.Count > 1)
+        Microsoft.Maui.Controls.Shell? shell = Microsoft.Maui.Controls.Shell.Current;
+        Microsoft.Maui.Controls.INavigation? navigation = shell?.Navigation;
+        bool modal = navigation?.ModalStack.Count > 0;
+        Microsoft.Maui.Controls.Page? expectedPage = modal
+            ? navigation!.ModalStack.LastOrDefault()
+            : navigation?.NavigationStack.Count > 1 ? navigation.NavigationStack.LastOrDefault() : null;
+        if (shell is not null && navigation is not null && expectedPage is not null)
         {
-            MainThread.BeginInvokeOnMainThread(async () => await navigation.PopAsync());
+            if (_backNavigationGate.TryClaim())
+                _ = PopBackNavigationAsync(shell, navigation, expectedPage, modal);
             return true;
         }
 
@@ -301,6 +319,51 @@ public sealed class MainActivity : MauiAppCompatActivity
         }
 
         return false;
+    }
+
+    private async Task PopBackNavigationAsync(
+        Microsoft.Maui.Controls.Shell shell,
+        Microsoft.Maui.Controls.INavigation navigation,
+        Microsoft.Maui.Controls.Page expectedPage,
+        bool modal)
+    {
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (_destroyed || !_resumed
+                    || !ReferenceEquals(shell, Microsoft.Maui.Controls.Shell.Current)) return;
+                var current = modal ? navigation.ModalStack.LastOrDefault()
+                    : navigation.NavigationStack.LastOrDefault();
+                // A tab switch, toolbar action or Activity replacement wins over
+                // a stale callback. Never pop a different page or rebuild a draft.
+                if (!ReferenceEquals(current, expectedPage)) return;
+                if (modal) await navigation.PopModalAsync();
+                else if (navigation.ModalStack.Count == 0) await navigation.PopAsync();
+            });
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("Back navigation failed ({0}).", exception.GetType().Name);
+            try
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    if (_destroyed || !_resumed
+                        || !ReferenceEquals(shell, Microsoft.Maui.Controls.Shell.Current)) return;
+                    await shell.DisplayAlertAsync("Chummer", PhoneStrings.Get("BackNavigationUnavailable",
+                        "Could not go back. Please try again."), PhoneStrings.Get("OK", "OK"));
+                });
+            }
+            catch (Exception reportError)
+            {
+                System.Diagnostics.Trace.TraceError("Back navigation notice failed ({0}).", reportError.GetType().Name);
+            }
+        }
+        finally
+        {
+            _backNavigationGate.Release();
+        }
     }
 
     private static void HandleAccountLinkIntent(Intent? intent)

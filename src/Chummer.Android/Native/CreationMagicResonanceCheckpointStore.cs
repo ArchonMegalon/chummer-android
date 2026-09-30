@@ -241,7 +241,8 @@ internal interface ICharacterCreationMagicResonanceCheckpointBackend
 
 internal sealed class PreferencesCharacterCreationMagicResonanceCheckpointBackend(
     Chummer.Application.Owners.OwnerContextStamp? original = null,
-    Func<Chummer.Application.Owners.OwnerContextStamp?, bool>? isCurrent = null) :
+    Func<Chummer.Application.Owners.OwnerContextStamp?, bool>? isCurrent = null,
+    string? workspaceId = null) :
     ICharacterCreationMagicResonanceCheckpointBackend
 {
     private const string StorageKey =
@@ -259,9 +260,53 @@ internal sealed class PreferencesCharacterCreationMagicResonanceCheckpointBacken
                 System.Text.Encoding.UTF8.GetBytes(owner.Owner.Value))).ToLowerInvariant();
     }
 
-    public string Read() => Preferences.Default.Get(Key(), string.Empty);
-    public void Write(string payload) => Preferences.Default.Set(Key(), payload);
-    public void Remove() => Preferences.Default.Remove(Key());
+    private string WorkspaceKey()
+    {
+        string ownerKey = Key(); // Recheck the retained owner stamp on every access.
+        if (workspaceId is null) return ownerKey; // Legacy/test-only composition.
+        if (string.IsNullOrWhiteSpace(workspaceId) || workspaceId != workspaceId.Trim())
+            throw new InvalidOperationException("A stable runner identity is required for the Magic/Resonance checkpoint.");
+        string scopedKey = ownerKey + ".workspace." + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(workspaceId))).ToLowerInvariant();
+        string legacy = Preferences.Default.Get(ownerKey, string.Empty);
+        string scoped = Preferences.Default.Get(scopedKey, string.Empty);
+
+        // Do not migrate/delete/replay an old journal on navigation. Its original
+        // runner continues using the old slot until its ordinary acknowledgement.
+        // An unreadable legacy journal still blocks: its owner runner is unknown.
+        if (!string.IsNullOrEmpty(legacy)
+            && ReadValidCheckpoint(legacy).Review.Draft.ExpectedBinding.WorkspaceId.Value == workspaceId)
+        {
+            if (!string.IsNullOrEmpty(scoped))
+                throw new InvalidOperationException("Conflicting Magic/Resonance checkpoints require recovery; neither was changed.");
+            return ownerKey;
+        }
+        if (!string.IsNullOrEmpty(scoped)) RequireWorkspace(scoped);
+        return scopedKey;
+    }
+
+    private static CharacterCreationMagicResonanceCheckpoint ReadValidCheckpoint(string payload)
+    {
+        var checkpoint = JsonSerializer.Deserialize<CharacterCreationMagicResonanceCheckpoint>(payload);
+        if (checkpoint is null || !checkpoint.IsStructurallyValid())
+            throw new InvalidOperationException("An invalid Magic/Resonance checkpoint requires recovery; it was not changed.");
+        return checkpoint;
+    }
+
+    private void RequireWorkspace(string payload)
+    {
+        if (ReadValidCheckpoint(payload).Review.Draft.ExpectedBinding.WorkspaceId.Value != workspaceId)
+            throw new InvalidOperationException("The Magic/Resonance checkpoint belongs to another runner.");
+    }
+
+    public string Read() => Preferences.Default.Get(WorkspaceKey(), string.Empty);
+    public void Write(string payload)
+    {
+        if (workspaceId is not null) RequireWorkspace(payload);
+        Preferences.Default.Set(WorkspaceKey(), payload);
+    }
+    public void Remove() => Preferences.Default.Remove(WorkspaceKey());
 }
 
 /// <summary>
@@ -289,6 +334,15 @@ public sealed class CharacterCreationMagicResonanceCheckpointStore
         Chummer.Application.Owners.OwnerContextStamp? original,
         Func<Chummer.Application.Owners.OwnerContextStamp?, bool> isCurrent)
         => new(new PreferencesCharacterCreationMagicResonanceCheckpointBackend(original, isCurrent));
+
+    internal static CharacterCreationMagicResonanceCheckpointStore CreateDefault(
+        Chummer.Application.Owners.OwnerContextStamp? original,
+        Func<Chummer.Application.Owners.OwnerContextStamp?, bool> isCurrent,
+        string workspaceId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceId);
+        return new(new PreferencesCharacterCreationMagicResonanceCheckpointBackend(original, isCurrent, workspaceId));
+    }
 
     public bool TryRead(
         out CharacterCreationMagicResonanceCheckpoint checkpoint,

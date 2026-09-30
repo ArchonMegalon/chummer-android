@@ -204,8 +204,11 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
         self.assertIn("isCurrent?.Invoke(original) != true", checkpoint)
         self.assertIn('StorageKey + ".owner."', checkpoint)
-        self.assertIn("Preferences.Default.Get(Key()", checkpoint)
+        self.assertIn("Preferences.Default.Get(WorkspaceKey()", checkpoint)
+        self.assertIn("string ownerKey = Key();", checkpoint)
+        self.assertIn('ownerKey + ".workspace."', checkpoint)
         self.assertIn("coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent", page)
+        self.assertIn("coordinator.State.WorkspaceId?.Value", page)
         self.assertIn("CharacterOverviewState original = _display", page)
         self.assertIn("ConfirmCreationMagicResonanceAsync(confirming, display: original)", page)
         self.assertIn("ResolveConfirmingAsync(checkpoint, original)", page)
@@ -243,12 +246,15 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
 
     def test_dashboard_magic_entry_uses_exact_typed_missing_draft_policy(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
-        for kind in ("Stage", "Step"):
-            self.assertIn(
-                f"canOpenMagicResonance = magicResonance{kind} && BuildPageUiProjection.CanOpenExactTypedCreationStage(\n"
-                "                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance)",
-                dashboard,
-            )
+        # Continue shares the stage-card route table since PR216; it no longer
+        # duplicates this predicate in a second magicResonanceStep branch.
+        self.assertIn(
+            "canOpenMagicResonance = magicResonanceStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(\n"
+            "                stage, CharacterCreationWizardStepIds.MagicResonance, readiness.MagicResonance)",
+            dashboard,
+        )
+        self.assertIn(": routes.GetValueOrDefault(stepId);", dashboard)
+        self.assertIn("route?.CanOpen == true ? route.Open : static () => Task.CompletedTask", dashboard)
         self.assertIn(
             "CharacterCreationWizardStepIds.MagicResonance => CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired",
             dashboard,

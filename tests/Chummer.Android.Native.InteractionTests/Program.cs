@@ -353,6 +353,11 @@ internal static class Program
             CreationMagicNativeRuntimeTests.Run(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-magic-checkpoint-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunCheckpointRecovery(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-sum-to-ten-magic-content-root")
         {
             CreationMagicNativeRuntimeTests.RunSumToTen(args[1]);
