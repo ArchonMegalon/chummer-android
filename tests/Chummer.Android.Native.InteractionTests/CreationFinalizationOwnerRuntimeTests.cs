@@ -178,11 +178,12 @@ internal static partial class AfterRunAuthorityHarness
             actual with
             {
                 CanOpenReview = false,
-                Blockers = ["fixture-whole-build-blocker"],
+                Blockers = ["fixture-whole-build-blocker", "creation-finalization-attributes-draft-required"],
                 Steps = [actual.Steps[0] with
                 {
                     IsComplete = false,
-                    Blockers = ["fixture-first-blocker", "fixture-second-blocker"]
+                    Blockers = ["fixture-first-blocker", "fixture-second-blocker",
+                        "creation-finalization-attributes-draft-required", "creation-skills-attributes-draft-required"]
                 }]
             }
         })
@@ -197,8 +198,10 @@ internal static partial class AfterRunAuthorityHarness
                 .All(row => !row.Text.Contains("source anchor", StringComparison.OrdinalIgnoreCase)),
                 "Completed step rows still present diagnostic source counts as gameplay feedback.");
             Require(projection.Steps.SelectMany(step => step.Blockers).Concat(projection.Blockers)
-                .All(blocker => rows.Any(row => row.IsVisible && row.Text == blocker)),
+                .All(blocker => rows.Any(row => row.IsVisible && row.Text == CreationFlowStrings.FinalizationBlocker(blocker))),
                 "Readability must not hide any step or whole-build blocker.");
+            Require(rows.Select(row => row.Text).Distinct(StringComparer.Ordinal).Count() == rows.Length,
+                "Repeated prerequisites still flood the readiness card with duplicate instructions.");
             var diagnostics = card.Children.OfType<VerticalStackLayout>().Single(
                 child => child.AutomationId == "creation-finalization-readiness-details");
             Require(!diagnostics.IsVisible, "Technical readiness metadata must start collapsed.");
@@ -207,6 +210,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(diagnostics.IsVisible, "Readiness details did not expand.");
             Require(diagnostics.Children.OfType<Label>().Any(row => row.Text.Contains(projection.SnapshotDigest!, StringComparison.Ordinal)),
                 "Technical details lost the exact snapshot digest.");
+            Require(projection.Steps.SelectMany(step => step.Blockers).Concat(projection.Blockers)
+                .All(blocker => diagnostics.Children.OfType<Label>().Any(row => row.Text == blocker)),
+                "Readable warnings lost their exact diagnostic blocker codes.");
             foreach (var step in projection.Steps)
                 Require(step.SourceAnchorIds.All(anchor => diagnostics.Children.OfType<Label>()
                     .Any(row => row.Text.Contains(anchor, StringComparison.Ordinal))),
@@ -219,6 +225,17 @@ internal static partial class AfterRunAuthorityHarness
             Require(JsonSerializer.Serialize(projection) == before,
                 "Display formatting modified the Core-derived readiness projection.");
         }
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("de");
+            Require(CreationFlowStrings.FinalizationBlocker("creation-finalization-attributes-draft-required")
+                == "Öffne Attribute, prüfe die Verteilung und speichere sie.",
+                "The German readiness action was not localized.");
+            Require(CreationFlowStrings.FinalizationBlocker("unknown-exact-blocker") == "unknown-exact-blocker",
+                "An unknown blocker was hidden by a guessed translation.");
+        }
+        finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)

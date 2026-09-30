@@ -1914,6 +1914,16 @@ public sealed class BuildPage : NativePageBase
                 diagnostics.Add(NativeTheme.Body($"Revision: {contentRevision.ToString(CultureInfo.InvariantCulture)}", NativeTheme.Muted));
             if (!string.IsNullOrWhiteSpace(projection.SnapshotDigest))
                 diagnostics.Add(NativeTheme.Body($"Snapshot: {projection.SnapshotDigest}", NativeTheme.Muted));
+            HashSet<string> shownWarnings = new(StringComparer.Ordinal);
+            HashSet<string> diagnosticWarnings = new(StringComparer.Ordinal);
+            void AddWarning(string blocker)
+            {
+                string message = CreationFlowStrings.FinalizationBlocker(blocker);
+                if (shownWarnings.Add(message))
+                    card.Add(NativeTheme.Body(message, NativeTheme.Danger));
+                if (diagnosticWarnings.Add(blocker))
+                    diagnostics.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            }
 
             foreach (CreationPriorityLegalPathStep step in projection.Steps)
             {
@@ -1927,7 +1937,7 @@ public sealed class BuildPage : NativePageBase
                 row.AutomationId = $"creation-finalization-step-{Token(step.StepId)}";
                 card.Add(row);
                 foreach (string blocker in step.Blockers)
-                    card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+                    AddWarning(blocker);
                 diagnostics.Add(NativeTheme.Body(
                     $"{step.StepId} · {step.SourceAnchorIds.Count.ToString(CultureInfo.InvariantCulture)} source anchor(s)"
                     + (step.SourceAnchorIds.Count > 0 ? "\n" + string.Join("\n", step.SourceAnchorIds) : string.Empty),
@@ -1940,7 +1950,7 @@ public sealed class BuildPage : NativePageBase
                     ? []
                     : [_creationFinalizationFailureReason];
             foreach (string blocker in blockers)
-                card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+                AddWarning(blocker);
             Label readiness = NativeTheme.Body(
                 projection.CanOpenReview
                     ? CreationFlowStrings.Get("Finalization.Ready", "Your creation choices are ready for review. Nothing changes until you confirm.")
