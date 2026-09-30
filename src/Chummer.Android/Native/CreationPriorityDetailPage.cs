@@ -12,6 +12,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     private readonly CreationPrerequisitePhoneDraft _draft;
     private readonly CharacterCreationPrerequisiteState _state;
     private long _renderGeneration;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly string _categoryId;
     private readonly VerticalStackLayout _body = new()
     {
@@ -47,6 +48,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     {
         _renderGeneration++;
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.DetailPage.Eyebrow", "Core-projected choice")));
         string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
         _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
@@ -76,7 +78,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 ShortDigest(state.SnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-detail-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
+        _body.Add(NativeTheme.Body(WizardStrings.Format("Common.Rank", "Rank {0}", rank.Rank), NativeTheme.Muted));
 
         if (string.Equals(
                 _categoryId,
@@ -89,6 +92,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
         {
             AddTalentOptions(state);
         }
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-prerequisite-detail-diagnostics"));
     }
 
     private void AddHeritageOptions(CharacterCreationPrerequisiteState state)
@@ -131,13 +135,15 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 option.HalvesNormalAttributePoints
                     ? WizardStrings.Get("Priority.DetailPage.HalvesAttributes", "Halves normal Attribute points")
                     : null,
-                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null,
+                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null);
+            _technicalDetails.Add(NativeTheme.Body(JoinDetails(
+                option.SelectionId,
                 option.SourceAnchorIds.Count > 0
                     ? WizardStrings.Format(
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", option.SourceAnchorIds))
-                    : null);
+                    : null), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 title,
                 detail,
@@ -212,13 +218,15 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                         required.ToString(CultureInfo.InvariantCulture))
                     : null,
                 grantBlockers.Count > 0 ? string.Join(" · ", grantBlockers) : null,
-                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null,
+                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null);
+            _technicalDetails.Add(NativeTheme.Body(JoinDetails(
+                option.SelectionId,
                 option.SourceAnchorIds.Count > 0
                     ? WizardStrings.Format(
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", option.SourceAnchorIds))
-                    : null);
+                    : null), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 option.Name,
                 detail,

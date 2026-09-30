@@ -59,7 +59,8 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                 ShortDigest(_state.SnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-category-binding";
-        _body.Add(binding);
+        VerticalStackLayout diagnostics = new() { Spacing = 6 };
+        diagnostics.Add(binding);
 
         IReadOnlyList<CreationPrerequisitePhoneRankOption> options =
             _draft.OptionsForCategory(_state, Coordinator.State, _categoryId);
@@ -89,7 +90,9 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                         "Priority.CategoryPage.RawGrant",
                         "Raw normal Attribute grant {0}",
                         raw.ToString(CultureInfo.InvariantCulture))
-                    : null,
+                    : null);
+            diagnostics.Add(NativeTheme.Body(JoinDetails(
+                projection.Rank,
                 WizardStrings.Format("Common.Source", "Source {0}", projection.SourceId),
                 WizardStrings.Format("Common.Node", "Node {0}", ShortDigest(projection.SourceNodeDigest)),
                 projection.SourceAnchorIds.Count > 0
@@ -97,7 +100,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", projection.SourceAnchorIds))
-                    : null);
+                    : null), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.Format("Common.Rank", "Rank {0}", projection.Rank),
                 detail,
@@ -107,6 +110,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
                 option.IsEnabled,
                 $"creation-prerequisite-rank-{Token(_categoryId)}-{Token(projection.Rank)}"));
         }
+        _body.Add(NativeTheme.TechnicalDetails(diagnostics, "creation-prerequisite-category-details"));
     }
 
     private async Task SelectAsync(string rank)

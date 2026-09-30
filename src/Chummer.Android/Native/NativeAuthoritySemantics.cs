@@ -8,9 +8,8 @@ internal readonly record struct NativeAuthoritySemanticValue(
 
 /// <summary>
 /// Adds machine-readable authority values without adding visible copy.  The
-/// transparent one-pixel labels are overlaid on existing content so they do
-/// not affect layout, while Android accessibility/UI automation receives the
-/// complete value through SemanticProperties.Description.
+/// transparent one-pixel labels are overlaid on existing content in explicit
+/// proof builds. Ordinary builds do not expose these machine values to TalkBack.
 /// </summary>
 internal static class NativeAuthoritySemantics
 {
@@ -88,6 +87,9 @@ internal static class NativeAuthoritySemantics
                 VerticalOptions = LayoutOptions.Start
             };
             SemanticProperties.SetDescription(semantic, value.ExactValue);
+#if !CHUMMER_API36_PROOF_INSTRUMENTATION
+            semantic.IsVisible = false;
+#endif
             overlay.Add(semantic);
         }
         return overlay;

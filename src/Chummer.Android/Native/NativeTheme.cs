@@ -64,7 +64,7 @@ internal static class NativeTheme
         Text = text,
         BackgroundColor = Ink,
         TextColor = Colors.White,
-        CornerRadius = 14,
+        CornerRadius = 10,
         HeightRequest = 50,
         Padding = new Thickness(18, 10),
         FontAttributes = FontAttributes.Bold
@@ -77,7 +77,7 @@ internal static class NativeTheme
         TextColor = Ink,
         BorderColor = Line,
         BorderWidth = 1,
-        CornerRadius = 14,
+        CornerRadius = 10,
         HeightRequest = 50,
         Padding = new Thickness(16, 10),
         FontAttributes = FontAttributes.Bold
@@ -88,10 +88,36 @@ internal static class NativeTheme
         BackgroundColor = Surface,
         Stroke = Line,
         StrokeThickness = 1,
-        StrokeShape = new RoundRectangle { CornerRadius = 20 },
-        Padding = padding ?? new Thickness(18),
+        StrokeShape = new RoundRectangle { CornerRadius = 12 },
+        Padding = padding ?? new Thickness(16),
         Content = content
     };
+
+    // Exact machine values remain available for troubleshooting, but do not
+    // compete with player choices or get read aloud by default. Never alter
+    // the underlying values (or filter arbitrary player names/book prose).
+    public static VerticalStackLayout TechnicalDetails(View content, string automationId)
+    {
+        VerticalStackLayout panel = new() { Spacing = 8, AutomationId = automationId };
+        content.IsVisible = false;
+#if CHUMMER_API36_PROOF_INSTRUMENTATION
+        content.IsVisible = true;
+#endif
+        string Copy() => CreationFlowStrings.Get(
+            content.IsVisible ? "Qualities.HideDetails" : "Qualities.ShowDetails",
+            content.IsVisible ? "Hide technical details" : "Show technical details");
+        Button toggle = ReadingButton(Copy());
+        toggle.AutomationId = automationId + "-toggle";
+        toggle.Clicked += (_, _) =>
+        {
+            if (panel.Parent is null || !ReferenceEquals(toggle.Parent, panel)) return;
+            content.IsVisible = !content.IsVisible;
+            toggle.Text = Copy();
+        };
+        panel.Add(toggle);
+        panel.Add(content);
+        return panel;
+    }
 
     public static Border NavigationRow(
         string title,

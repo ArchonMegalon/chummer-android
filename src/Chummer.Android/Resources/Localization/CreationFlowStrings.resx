@@ -277,4 +277,7 @@
   <data name="Finalization.ReviewResources" xml:space="preserve"><value>Open Resources and review and save your funding before choosing equipment.</value></data>
   <data name="Finalization.ReviewGear" xml:space="preserve"><value>Open Gear and review and save your equipment choices.</value></data>
   <data name="Finalization.ReviewSkillSources" xml:space="preserve"><value>Open Skills and review your choices against the current build method and enabled books.</value></data>
+  <data name="Gear.Saving" xml:space="preserve"><value>Saving gear…</value></data>
+  <data name="Gear.SavingDetail" xml:space="preserve"><value>Saving your equipment choices. Please wait…</value></data>
+  <data name="Gear.SavedBasket" xml:space="preserve"><value>Your equipment choices are saved.</value></data>
 </root>

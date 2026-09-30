@@ -23,6 +23,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         HeightRequest = 24
     };
     private readonly CreationPrerequisitePhoneDraft _draft = new();
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private CharacterCreationPrerequisiteState _revalidationAuthority;
     private CharacterCreationPrerequisiteState? _dashboardAuthority;
     private CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? _appearanceFailure;
@@ -209,7 +210,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         _latestApi36ProofReadyState = null;
 #endif
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Eyebrow", "Character creation")));
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(WizardStrings.Get("Priority.Heading", "Priority / Sum-to-Ten")));
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
             ResolveCurrentAuthority();
@@ -227,12 +228,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
 
         _draft.Bind(state, Coordinator.State);
-        // Keep the build-method authority in the first native viewport.  The
-        // following digest and Karma cards are deliberately tall; rendering the
-        // short method card between them can move it through Android's
-        // accessibility viewport between two otherwise overlapping swipes.
-        // This is presentation order only.  Every value still comes from the
-        // same revision-bound prerequisite state.
+        // Keep player choices above diagnostic details. The latter retain the
+        // same exact values and automation anchors in an explicit disclosure.
         AddMethod(state);
         AddBinding(state);
         AddCreationKarma(state.CreationKarmaBudget);
@@ -263,6 +260,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _prepareBlockers,
                 "creation-prerequisite-preview-blockers");
         AddActions(state);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-prerequisite-details"));
         _body.IsEnabled = IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
             && Coordinator.IsCreationPrerequisiteStateCurrent(state);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
@@ -349,7 +347,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 ShortDigest(state.Binding.AuthorityDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigestBinding(
             "creation-prerequisite-snapshot-digest",
             state.SnapshotDigest);
@@ -368,7 +366,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
     private void AddCreationKarma(CharacterCreationBudgetState budget)
@@ -378,15 +376,12 @@ public sealed class CreationPrerequisitePage : NativePageBase
         string remaining = FormatBudget(budget.Remaining, budget.Unit);
         VerticalStackLayout card = new() { Spacing = 7 };
         card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Karma.Heading", "Global Creation Karma")));
-        card.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Karma.BudgetId", "Budget ID"), budget.BudgetId));
+        _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Karma.BudgetId", "Budget ID"), budget.BudgetId));
         card.Add(NativeTheme.Metric(WizardStrings.Get("Common.Total", "Total"), total));
         card.Add(NativeTheme.Metric(WizardStrings.Get("Common.Used", "Used"), used));
         card.Add(NativeTheme.Metric(WizardStrings.Get("Common.Remaining", "Remaining"), remaining));
-        card.Add(NativeTheme.Body(
-            budget.IsExact
-                ? WizardStrings.Get("Priority.Karma.Exact", "Exact authoritative budget")
-                : WizardStrings.Get("Priority.Karma.Inexact", "Budget is not exact"),
-            budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
+        if (!budget.IsExact)
+            card.Add(NativeTheme.Body(WizardStrings.Get("Priority.Karma.Inexact", "Budget is not exact"), NativeTheme.Danger));
         foreach (string blocker in budget.Blockers)
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -405,7 +400,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
     private void AddMethod(CharacterCreationPrerequisiteState state)
     {
         VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Method.Heading", "Authoritative build method")));
         card.Add(NativeTheme.Title(
             string.Equals(
                 state.BuildMethod,
@@ -419,8 +413,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                     ? WizardStrings.Get("Priority.Priority", "Priority")
                     : state.BuildMethod,
             21));
-        card.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Method.SettingsProfile", "Settings profile"), state.Authority.SettingsProfileId));
-        card.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Method.PriorityTable", "Priority table"), state.Authority.PriorityTable));
+        _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Method.SettingsProfile", "Settings profile"), state.Authority.SettingsProfileId));
+        _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Method.PriorityTable", "Priority table"), state.Authority.PriorityTable));
         if (string.Equals(
                 state.BuildMethod,
                 CharacterCreationBuildMethods.Priority,
@@ -474,7 +468,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
             NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-pending-draft";
-        _body.Add(border);
+        _technicalDetails.Add(border);
     }
 
     private void AddCategories(CharacterCreationPrerequisiteState state)
@@ -501,7 +495,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 : JoinDetails(
                     WizardStrings.Format("Priority.Categories.Rank", "{0}. Rank {1}", index + 1, selected.Rank),
                     selected.Label,
-                    WizardStrings.Format("Common.SourceInline", "source {0}", selected.SourceId),
                     string.Equals(
                         category,
                         CharacterCreationPriorityCategoryIds.Attributes,
@@ -536,11 +529,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                             "Select an exact Core-projected metatype or metavariant")
                         : JoinDetails(
                             selectedHeritage.MetatypeName,
-                            selectedHeritage.MetavariantName,
-                            WizardStrings.Format(
-                                "Common.SelectionInline",
-                                "selection {0}",
-                                selectedHeritage.SelectionId)),
+                            selectedHeritage.MetavariantName),
                     () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
                         _draft,
@@ -555,7 +544,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         NativeTheme.Muted);
                     selectionId.AutomationId =
                         "creation-prerequisite-heritage-selection-id";
-                    _body.Add(selectionId);
+                    _technicalDetails.Add(selectionId);
                 }
             }
             else if (string.Equals(
@@ -574,10 +563,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         : JoinDetails(
                             selectedTalent.Name,
                             selectedTalent.Value,
-                            WizardStrings.Format(
-                                "Common.SelectionInline",
-                                "selection {0}",
-                                selectedTalent.SelectionId),
                             TalentGrantProgress(selectedTalent, state)),
                     () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
@@ -593,7 +578,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         NativeTheme.Muted);
                     selectionId.AutomationId =
                         "creation-prerequisite-talent-selection-id";
-                    _body.Add(selectionId);
+                    _technicalDetails.Add(selectionId);
                 }
             }
         }
@@ -676,7 +661,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-source-authority";
-        _body.Add(border);
+        _technicalDetails.Add(border);
     }
 
     private static VerticalStackLayout SourceAuthorityMetric(

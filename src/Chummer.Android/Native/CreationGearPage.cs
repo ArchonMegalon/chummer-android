@@ -14,6 +14,7 @@ public sealed class CreationGearPage : NativePageBase
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly AndroidSurfaceCopy _copy;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -68,9 +69,9 @@ public sealed class CreationGearPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(_copy["Gear.Eyebrow"]));
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
-        _body.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
+        _technicalDetails.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
 
         if (_loading)
         {
@@ -138,15 +139,15 @@ public sealed class CreationGearPage : NativePageBase
             ShortDigest(state.SnapshotDigest),
             ShortDigest(state.Binding.SourceDigest)), NativeTheme.Muted);
         binding.AutomationId = "creation-gear-binding";
-        _body.Add(binding);
-        _body.Add(ExactValue("creation-gear-binding-workspace-revision", state.Binding.WorkspaceRevision));
-        _body.Add(ExactValue("creation-gear-binding-content-revision", state.Binding.ContentRevision));
-        _body.Add(ExactValue("creation-gear-binding-saved-revision", state.Binding.SavedRevision));
-        _body.Add(ExactValue("creation-gear-binding-resources-draft-revision", state.Binding.ResourcesDraftRevision));
-        _body.Add(ExactValue("creation-gear-binding-raw-character-xml-digest", state.Binding.RawCharacterXmlDigest));
-        _body.Add(ExactValue("creation-gear-binding-auxiliary-state-digest", state.Binding.AuxiliaryStateDigest));
-        _body.Add(ExactValue("creation-gear-binding-resources-draft-digest", state.Binding.ResourcesDraftDigest));
-        _body.Add(ExactValue("creation-gear-binding-snapshot-digest", state.SnapshotDigest));
+        _technicalDetails.Add(binding);
+        _technicalDetails.Add(ExactValue("creation-gear-binding-workspace-revision", state.Binding.WorkspaceRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-content-revision", state.Binding.ContentRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-saved-revision", state.Binding.SavedRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-resources-draft-revision", state.Binding.ResourcesDraftRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-raw-character-xml-digest", state.Binding.RawCharacterXmlDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-auxiliary-state-digest", state.Binding.AuxiliaryStateDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-resources-draft-digest", state.Binding.ResourcesDraftDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-binding-snapshot-digest", state.SnapshotDigest));
     }
 
     private void AddPersistedBudget(CharacterCreationGearInteractionState state)
@@ -160,14 +161,14 @@ public sealed class CreationGearPage : NativePageBase
         card.Add(NativeTheme.Body(
             state.PendingDraft is null
                 ? _copy["Gear.NoConfirmedBasket"]
-                : _copy.Format("Gear.Draft", state.PendingDraft.DraftRevision, ShortDigest(state.PendingDraft.DraftDigest)),
+                : CreationFlowStrings.Get("Gear.SavedBasket", "Your equipment choices are saved."),
             NativeTheme.Muted));
-        card.Add(ExactValue("creation-gear-saved-basket-cost", state.Budget.BasketCost));
-        card.Add(ExactValue("creation-gear-saved-remaining-nuyen", state.Budget.RemainingNuyen));
+        _technicalDetails.Add(ExactValue("creation-gear-saved-basket-cost", state.Budget.BasketCost));
+        _technicalDetails.Add(ExactValue("creation-gear-saved-remaining-nuyen", state.Budget.RemainingNuyen));
         if (state.PendingDraft is { } pending)
         {
-            card.Add(ExactValue("creation-gear-saved-draft-revision", pending.DraftRevision));
-            card.Add(ExactValue("creation-gear-saved-draft-digest", pending.DraftDigest));
+            _technicalDetails.Add(ExactValue("creation-gear-saved-draft-revision", pending.DraftRevision));
+            _technicalDetails.Add(ExactValue("creation-gear-saved-draft-digest", pending.DraftDigest));
         }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-gear-saved-draft";
@@ -232,8 +233,8 @@ public sealed class CreationGearPage : NativePageBase
             option.PackageQuantity,
             option.Legality), NativeTheme.Muted));
         content.Add(NativeTheme.Metric(_copy["Gear.Quantity"], quantity.ToString(_copy.DisplayCulture)));
-        content.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-option-id", option.OptionId));
-        content.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-quantity", quantity));
+        _technicalDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-option-id", option.OptionId));
+        _technicalDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-quantity", quantity));
 
         HorizontalStackLayout actions = new() { Spacing = 8 };
         Button decrement = NativeTheme.SecondaryButton("−");
@@ -330,8 +331,8 @@ public sealed class CreationGearPage : NativePageBase
                 },
                 enabled,
                 $"creation-gear-catalog-{Token(option.OptionId)}"));
-            _body.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-id", option.OptionId));
-            _body.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-digest", option.OptionDigest));
+            _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-id", option.OptionId));
+            _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-digest", option.OptionDigest));
         }
 
         HorizontalStackLayout pager = new() { Spacing = 10 };
@@ -436,13 +437,14 @@ public sealed class CreationGearPage : NativePageBase
         card.Add(NativeTheme.Metric(_copy["Gear.MaximumAvailability"], state.Authority.MaximumAvailability.ToString(_copy.DisplayCulture)));
         card.Add(NativeTheme.Metric(_copy["Gear.MaximumBasketLines"], state.Authority.MaximumBasketLines.ToString(_copy.DisplayCulture)));
         card.Add(NativeTheme.Metric(_copy["Gear.MaximumQuantity"], state.Authority.MaximumQuantityPerLine.ToString(_copy.DisplayCulture)));
-        card.Add(ExactValue("creation-gear-authority-digest", state.Binding.AuthorityDigest));
-        card.Add(ExactValue("creation-gear-source-digest", state.Binding.SourceDigest));
-        card.Add(ExactValue("creation-gear-rules-digest", state.Binding.RulesDigest));
-        card.Add(ExactValue("creation-gear-runtime-digest", state.Binding.RuntimeDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-authority-digest", state.Binding.AuthorityDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-source-digest", state.Binding.SourceDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-rules-digest", state.Binding.RulesDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-runtime-digest", state.Binding.RuntimeDigest));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-gear-authority";
-        _body.Add(border);
+        _technicalDetails.Add(border);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-gear-details"));
     }
 
     private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)
@@ -479,7 +481,12 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private bool _ready;
     private bool _loading = true;
     private bool _submitted;
+    private bool _saving;
+    private Button? _confirm;
+    private Label? _confirmationStatus;
+    private ActivityIndicator? _saveProgress;
     private readonly AndroidSurfaceCopy _copy;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -525,7 +532,16 @@ public sealed class CreationGearPreviewPage : NativePageBase
 
     protected override void Refresh()
     {
+        // Keep the issued, possibly scrolled confirmation controls stable while
+        // saving. A changed account/runner must still hide the private preview.
+        if (_saving && Coordinator.CanDisplayCreationPurchase(_original)) return;
+        if (_saveProgress is { } previousProgress)
+            previousProgress.IsVisible = previousProgress.IsRunning = false;
+        _confirm = null;
+        _confirmationStatus = null;
+        _saveProgress = null;
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(_copy["GearPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["GearPreview.Title"]));
         if (!Coordinator.CanDisplayCreationPurchase(_original))
@@ -548,6 +564,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
                 _copy["GearPreview.Reopen"],
                 () => Navigation.PopAsync(),
                 automationId: "creation-gear-reopen"));
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-gear-preview-details"));
             return;
         }
 
@@ -563,6 +580,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
         confirm.AutomationId = "creation-gear-confirm";
         confirm.IsEnabled = exact;
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        _confirm = confirm;
         _body.Add(confirm);
         Label authority = NativeTheme.Body(
             exact
@@ -570,7 +588,15 @@ public sealed class CreationGearPreviewPage : NativePageBase
                 : _copy["GearPreview.ConfirmStale"],
             exact ? NativeTheme.Muted : NativeTheme.Danger);
         authority.AutomationId = "creation-gear-confirm-authority";
+        _confirmationStatus = authority;
         _body.Add(authority);
+        _saveProgress = new ActivityIndicator
+        {
+            IsVisible = false, IsRunning = false,
+            AutomationId = "creation-gear-save-progress"
+        };
+        _body.Add(_saveProgress);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-gear-preview-details"));
     }
 
     private void AddExactPreview()
@@ -581,10 +607,10 @@ public sealed class CreationGearPreviewPage : NativePageBase
         budget.Add(NativeTheme.Metric(_copy["GearPreview.BasketAfter"], Nuyen(_prepared.Preview.BudgetAfter.BasketCost)));
         budget.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(_prepared.Preview.BudgetAfter.RemainingNuyen)));
         budget.Add(NativeTheme.Metric(_copy["Common.Lines"], _prepared.Preview.After.Lines.Count.ToString(_copy.DisplayCulture)));
-        budget.Add(ExactValue("creation-gear-preview-basket-cost", _prepared.Preview.BudgetAfter.BasketCost));
-        budget.Add(ExactValue("creation-gear-preview-remaining-nuyen", _prepared.Preview.BudgetAfter.RemainingNuyen));
-        budget.Add(ExactValue("creation-gear-preview-digest", _prepared.Preview.PreviewDigest));
-        budget.Add(ExactValue("creation-gear-preview-state-snapshot-digest", _prepared.StateSnapshotDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-preview-basket-cost", _prepared.Preview.BudgetAfter.BasketCost));
+        _technicalDetails.Add(ExactValue("creation-gear-preview-remaining-nuyen", _prepared.Preview.BudgetAfter.RemainingNuyen));
+        _technicalDetails.Add(ExactValue("creation-gear-preview-digest", _prepared.Preview.PreviewDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-preview-state-snapshot-digest", _prepared.StateSnapshotDigest));
         Border budgetCard = NativeTheme.Card(budget);
         budgetCard.AutomationId = "creation-gear-preview-budget";
         _body.Add(budgetCard);
@@ -602,9 +628,9 @@ public sealed class CreationGearPreviewPage : NativePageBase
                 line.Legality,
                 line.SourceBook,
                 line.Page), NativeTheme.Muted));
-            content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-option-id", line.OptionId));
-            content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-quantity", line.Quantity));
-            content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-digest", line.LineDigest));
+            _technicalDetails.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-option-id", line.OptionId));
+            _technicalDetails.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-quantity", line.Quantity));
+            _technicalDetails.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-digest", line.LineDigest));
             Border lineCard = NativeTheme.Card(content);
             lineCard.AutomationId = $"creation-gear-preview-line-{Token(line.OptionId)}";
             _body.Add(lineCard);
@@ -617,28 +643,46 @@ public sealed class CreationGearPreviewPage : NativePageBase
         _submitted = true;
         _ready = false;
         _failure = null;
-        Refresh();
-        var result = await Coordinator.ConfirmCreationGearPurchaseAsync(_gear, _original, _prepared);
-        if (result.Receipt is not { } receipt
-            || result.Outcome is not (CharacterCreationGearOutcomes.Applied or CharacterCreationGearOutcomes.Replayed)
-            || !CreationGearPhoneAuthority.ReceiptMatches(_prepared, receipt))
+        _saving = true;
+        if (_confirm is { } confirm)
         {
-            _failure = result.Outcome == "outcome-unknown"
-                ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
-                : result.Blockers.FirstOrDefault() ?? CharacterCreationGearInteractionBlockers.ReceiptMismatch;
-            return;
+            confirm.IsEnabled = false;
+            confirm.Text = CreationFlowStrings.Get("Gear.Saving", "Saving gear…");
         }
-        // Retain the durable receipt before refreshing. Refresh failure is not
-        // mutation failure and must not permit a second submission.
-        _receipt = receipt;
-        if (result.RefreshedState is not { } refreshed
-            || !CreationGearPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
-            || !Coordinator.CanDisplayCreationPurchase(_original))
+        if (_confirmationStatus is { } status)
         {
-            _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
-            return;
+            status.Text = CreationFlowStrings.Get("Gear.SavingDetail", "Saving your equipment choices. Please wait…");
+            status.TextColor = NativeTheme.Muted;
         }
-
+        ActivityIndicator? progress = _saveProgress;
+        if (progress is not null) progress.IsVisible = progress.IsRunning = true;
+        try
+        {
+            var result = await Coordinator.ConfirmCreationGearPurchaseAsync(_gear, _original, _prepared);
+            if (result.Receipt is not { } receipt
+                || result.Outcome is not (CharacterCreationGearOutcomes.Applied or CharacterCreationGearOutcomes.Replayed)
+                || !CreationGearPhoneAuthority.ReceiptMatches(_prepared, receipt))
+            {
+                _failure = result.Outcome == "outcome-unknown"
+                    ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
+                    : result.Blockers.FirstOrDefault() ?? CharacterCreationGearInteractionBlockers.ReceiptMismatch;
+                return;
+            }
+            // Retain the durable receipt before refreshing. Refresh failure is not
+            // mutation failure and must not permit a second submission.
+            _receipt = receipt;
+            if (result.RefreshedState is not { } refreshed
+                || !CreationGearPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
+                || !Coordinator.CanDisplayCreationPurchase(_original))
+            {
+                _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
+            }
+        }
+        finally
+        {
+            _saving = false;
+            if (progress is not null) progress.IsVisible = progress.IsRunning = false;
+        }
     }
 
     private void AddReceipt(CharacterCreationGearReceipt receipt)
@@ -646,23 +690,23 @@ public sealed class CreationGearPreviewPage : NativePageBase
         VerticalStackLayout content = new() { Spacing = 6 };
         content.Add(NativeTheme.Eyebrow(_copy["GearPreview.Persisted"]));
         if (_failure is not null) content.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
-        content.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
-        content.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
-        content.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
+        _technicalDetails.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
+        _technicalDetails.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
+        _technicalDetails.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
         content.Add(NativeTheme.Metric(_copy["Gear.BasketCost"], Nuyen(receipt.BasketCost)));
-        content.Add(ExactValue("creation-gear-receipt-workspace-revision", receipt.WorkspaceRevision));
-        content.Add(ExactValue("creation-gear-receipt-saved-revision", receipt.SavedRevision));
-        content.Add(ExactValue("creation-gear-receipt-resources-draft-revision", receipt.ResourcesDraftRevision));
-        content.Add(ExactValue("creation-gear-receipt-draft-revision", receipt.DraftRevision));
-        content.Add(ExactValue("creation-gear-receipt-line-count", receipt.LineCount));
-        content.Add(ExactValue("creation-gear-receipt-basket-cost", receipt.BasketCost));
-        content.Add(ExactValue("creation-gear-receipt-remaining-nuyen", receipt.RemainingNuyen));
-        content.Add(ExactValue("creation-gear-receipt-raw-character-xml-digest", receipt.RawCharacterXmlDigest));
-        content.Add(ExactValue("creation-gear-receipt-resources-draft-digest", receipt.ResourcesDraftDigest));
-        content.Add(ExactValue("creation-gear-receipt-command-digest", receipt.CommandDigest));
-        content.Add(ExactValue("creation-gear-receipt-preview-digest", receipt.PreviewDigest));
-        content.Add(ExactValue("creation-gear-receipt-draft-digest", receipt.DraftDigest));
-        content.Add(ExactValue("creation-gear-receipt-digest", receipt.ReceiptDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-workspace-revision", receipt.WorkspaceRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-saved-revision", receipt.SavedRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-resources-draft-revision", receipt.ResourcesDraftRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-draft-revision", receipt.DraftRevision));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-line-count", receipt.LineCount));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-basket-cost", receipt.BasketCost));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-remaining-nuyen", receipt.RemainingNuyen));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-raw-character-xml-digest", receipt.RawCharacterXmlDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-resources-draft-digest", receipt.ResourcesDraftDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-command-digest", receipt.CommandDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-preview-digest", receipt.PreviewDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-draft-digest", receipt.DraftDigest));
+        _technicalDetails.Add(ExactValue("creation-gear-receipt-digest", receipt.ReceiptDigest));
         Border card = NativeTheme.Card(content);
         card.AutomationId = "creation-gear-confirm-receipt";
         _body.Add(card);

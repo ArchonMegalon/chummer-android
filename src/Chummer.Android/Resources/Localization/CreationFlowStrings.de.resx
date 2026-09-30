@@ -277,4 +277,7 @@
   <data name="Finalization.ReviewResources" xml:space="preserve"><value>Öffne Ressourcen, prüfe und speichere dein Budget, bevor du Ausrüstung auswählst.</value></data>
   <data name="Finalization.ReviewGear" xml:space="preserve"><value>Öffne Ausrüstung, prüfe deine Auswahl und speichere sie.</value></data>
   <data name="Finalization.ReviewSkillSources" xml:space="preserve"><value>Öffne Fertigkeiten und prüfe deine Auswahl anhand der aktuellen Bauart und aktivierten Bücher.</value></data>
+  <data name="Gear.Saving" xml:space="preserve"><value>Ausrüstung wird gespeichert…</value></data>
+  <data name="Gear.SavingDetail" xml:space="preserve"><value>Deine Ausrüstungsauswahl wird gespeichert. Bitte warten…</value></data>
+  <data name="Gear.SavedBasket" xml:space="preserve"><value>Deine Ausrüstungsauswahl ist gespeichert.</value></data>
 </root>

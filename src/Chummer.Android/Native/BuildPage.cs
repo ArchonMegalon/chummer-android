@@ -1207,14 +1207,10 @@ public sealed class BuildPage : NativePageBase
             AutomationId = "creation-wizard-dashboard",
             Spacing = 8
         };
-        header.Add(NativeTheme.Eyebrow("Character creation"));
         header.Add(NativeTheme.Title(
             Coordinator.State.Profile?.Alias
             ?? Coordinator.State.Profile?.Name
             ?? "New runner"));
-        header.Add(NativeTheme.Body(
-            "Build this runner step by step. Career changes stay guided after creation is complete.",
-            NativeTheme.Muted));
         long appearanceGeneration = _creationDashboardAppearanceGeneration;
         if (snapshot is not null)
         {
@@ -1247,13 +1243,14 @@ public sealed class BuildPage : NativePageBase
             $"Revision {snapshot.WorkspaceRevision} · snapshot {ShortDigest(snapshot.SnapshotDigest)}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-wizard-binding";
-        _body.Add(binding);
+        var diagnostics = NativeTheme.TechnicalDetails(binding, "creation-wizard-details");
 
         if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.Karma)
         {
             CancelCreationProjectionQueues();
             _creationProjection = null;
             AddKarmaCreationDashboard(snapshot);
+            _body.Add(diagnostics);
             return;
         }
 
@@ -1265,6 +1262,7 @@ public sealed class BuildPage : NativePageBase
             CancelCreationProjectionQueues();
             _creationProjection = null;
             AddLifeModuleCreationDashboard();
+            _body.Add(diagnostics);
             return;
         }
 
@@ -1359,6 +1357,7 @@ public sealed class BuildPage : NativePageBase
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute);
         AddFinalizationReviewAction();
+        _body.Add(diagnostics);
     }
 
     private void AddKarmaCreationDashboard(CharacterCreationWizardSnapshot snapshot)
@@ -1603,7 +1602,9 @@ public sealed class BuildPage : NativePageBase
                         : "creation-build-method-editor-unavailable";
         string method = RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod);
         string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
-        string detail = $"Active stage: {activeStage} · {authorityDetail}";
+        string detail = canOpen
+            ? activeStage
+            : $"{activeStage} · {authorityDetail}";
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
         _body.Add(CreationNavigationRow(
