@@ -204,9 +204,14 @@ internal static partial class AfterRunAuthorityHarness
             Require(state.CreationWizard is { CharacterCreated: false } wizard
                 && wizard.WorkspaceId == receipt.WorkspaceId.Value && wizard.WorkspaceRevision == receipt.ContentRevision
                 && wizard.BuildMethod == CharacterCreationBuildMethods.Priority
-                && state.CreationFoundation is not null && state.CreationContacts is not null && state.CreationQualities is not null
-                && state.CreationLifestyles is null,
-                "Production factory did not publish its required initial wizard projections with Lifestyles absent.");
+                && state.CreationFoundation is not null && state.CreationContacts is not null && state.CreationQualities is not null,
+                "Production factory did not publish its required initial wizard projections.");
+            Require(state.CreationLifestyles is { CharacterCreated: false } lifestyles
+                && lifestyles.Binding.WorkspaceId == receipt.WorkspaceId
+                && lifestyles.Binding.ContentRevision == receipt.ContentRevision
+                && lifestyles.Binding.SavedRevision == receipt.SavedRevision
+                && lifestyles.Lifestyles.Count == 0,
+                "Production owner-bound Lifestyles projection must describe the exact empty new runner.");
             Require(finalization is { LoadCalls: > 0, ReviewCalls: 0, ConfirmCalls: 0, LookupCalls: 0 }
                 && state.CreationFinalization is { CanReview: false, CharacterCreated: false } projected
                 && projected.Binding.WorkspaceId == receipt.WorkspaceId
