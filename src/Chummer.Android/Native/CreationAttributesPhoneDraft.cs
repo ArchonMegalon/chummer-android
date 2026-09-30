@@ -15,6 +15,20 @@ internal sealed class CreationAttributesPhoneDraft
     private string? _snapshotDigest;
     private CharacterCreationAttributesPreview? _projection;
 
+    // Worker preparation owns a copy; it must never enumerate or update the UI draft.
+    internal CreationAttributesPhoneDraft Copy()
+    {
+        var copy = new CreationAttributesPhoneDraft
+        {
+            _binding = _binding,
+            _snapshotDigest = _snapshotDigest,
+            _projection = _projection
+        };
+        foreach (var allocation in _allocations)
+            copy._allocations.Add(allocation.Key, allocation.Value);
+        return copy;
+    }
+
     public void Bind(
         CharacterCreationAttributesState state,
         CharacterOverviewState overview)

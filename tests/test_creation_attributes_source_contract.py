@@ -107,12 +107,25 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         allocation = page[page.index("public sealed class CreationAttributeAllocationPage") :]
         allocation = allocation[: allocation.index("public sealed class CreationAttributesPreviewPage")]
 
-        self.assertIn("_draft.ChangedAllocations(", allocation)
+        self.assertIn("var draft = _draft.Copy()", allocation)
+        self.assertIn("draft.ChangedAllocations(", allocation)
         self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", allocation)
         self.assertIn("CreationAttributesPhoneAuthority.CanAdoptPreview(", allocation)
         self.assertIn("_draft.TryAdopt(state, Coordinator.State, result!, allocations!)", allocation)
         self.assertNotIn("KarmaAttribute", allocation)
         self.assertNotIn("PriorityPointCost +", allocation)
+
+    def test_attribute_render_does_not_synchronously_read_core(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        allocation = page[page.index("public sealed class CreationAttributeAllocationPage") :]
+        allocation = allocation[: allocation.index("public sealed class CreationAttributesPreviewPage")]
+        render = allocation[allocation.index("protected override void Refresh()") :]
+        self.assertNotIn("Coordinator.RevalidateCreationAttributes(", render)
+        self.assertNotIn("Coordinator.PreviewCreationAttributes(", render)
+        self.assertIn("Task.Run(() => Coordinator.ReadCreationAuthority(original", allocation)
+        self.assertIn("generation != _preparationGeneration", allocation)
+        self.assertIn("_preparation?.Cancel()", allocation)
+        self.assertIn("SequenceEqual(prepared.Allocations)", allocation)
 
     def test_dashboard_overrides_stale_generic_stage_only_with_exact_authority(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
