@@ -857,6 +857,10 @@ internal static class CreationQualityInfo
                 "skill" => Fields(effect, "Skill"),
                 "skillgroup" => Fields(effect, "Skill group"),
                 "specificattribute" => Fields(effect, "Attribute"),
+                "enableattribute" => Fields(effect, "Enables attribute"),
+                "enabletab" => Fields(effect, "Enables capabilities"),
+                "unlockskills" => Scalar(effect, "Unlocks skills"),
+                "conditionmonitor" => Fields(effect, "Condition monitor"),
                 "selectskill" => Fields(effect, "Chosen skill"),
                 "selectattributes" => Fields(effect, "Chosen attributes"),
                 "limitmodifier" => Fields(effect, "Limit"),
@@ -903,6 +907,7 @@ internal static class CreationQualityInfo
             {
                 "name" => "", "val" => "Modifier", "bonus" => "Bonus", "min" => "Minimum",
                 "max" => "Maximum", "aug" => "Augmented", "condition" => "When", "applytorating" => "Applies to rating",
+                "thresholdoffset" => "Wound-penalty threshold offset",
                 "exclude" => "Except", _ => null
             };
             if (fieldLabel is null || field.HasElements || Guid.TryParse(field.Value, out _)) continue;
