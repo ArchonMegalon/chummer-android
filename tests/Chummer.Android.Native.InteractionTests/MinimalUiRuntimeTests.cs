@@ -13,6 +13,147 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunCreationQualityDetailsAsync(string contentRoot, string? smokeWorkspacePath = null)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, productionCreationOverview: true);
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+            if (smokeWorkspacePath is not null)
+            {
+                Require(Path.IsPathFullyQualified(smokeWorkspacePath), "Use an explicit private smoke fixture path.");
+                // Preserve unmodified real Core output for the isolated AVD's
+                // affected-route smoke, not a claim of UI-driven earlier steps.
+                File.Copy(Path.Combine(runtime.StateDirectory, "workspaces", runtime.Id.Value + ".json"),
+                    smokeWorkspacePath, overwrite: false);
+                Console.WriteLine("QUALITY_SMOKE_WORKSPACE " + runtime.Id.Value);
+            }
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var coordinator = runtime.Coordinator;
+            var original = coordinator.State;
+            var loaded = await coordinator.LoadCreationQualitiesForDisplayAsync(original, default);
+            var state = loaded.Value ?? throw new InvalidOperationException("SETUP: quality authority missing.");
+            var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
+            var draft = new CreationQualitiesPhoneDraft();
+            draft.Bind(state, original);
+            var option = draft.AvailableOptions(state, original, editor, default)
+                .Where(item => !item.IsMetagenic)
+                .OrderByDescending(item => !string.IsNullOrWhiteSpace(item.FollowUpChoiceLabel)).First();
+            var configure = new CreationQualityConfigurePage(coordinator, state, editor, option, draft, original);
+            var previewResult = coordinator.PreviewCreationQualities(state.Binding, [option.OptionId], original);
+            Require(draft.TryAdopt(state, original, previewResult, [option.OptionId])
+                && previewResult.Value is { CanConfirm: true }, "SETUP: selected quality must have a real confirmable preview.");
+            var preview = previewResult.Value!;
+            var checkpoint = CharacterCreationQualitiesCheckpoint.CreateReviewed(preview, [option.OptionId], Guid.NewGuid());
+            var store = CharacterCreationQualitiesCheckpointStore.CreateDefault(original.DisplayOwnerContext,
+                coordinator.IsCreationQualitiesOwnerCurrent);
+            Require(store.TryCreate(checkpoint, out checkpoint, out string blocker), blocker);
+            var review = new CreationQualitiesReviewPage(coordinator, checkpoint, store, original);
+            var oldCulture = CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    VerifyQualityDisclosure(configure, "creation-quality-configure-technical-details",
+                        "creation-quality-configure-toggle", option.OptionId, option.SourceId.ToString("D"));
+                    string configureText = MinimalVisibleText(configure);
+                    Require(configureText.Contains(option.Name) && configureText.Contains(CreationQualitiesPage.Signed(option.KarmaCost))
+                        && (string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel) || configureText.Contains(option.FollowUpChoiceLabel)),
+                        "Configure lost the quality name, exact cost or readable follow-up.");
+                    VerifyQualityDisclosure(review, "creation-qualities-review-technical-details",
+                        "creation-qualities-confirm-draft", checkpoint.TransactionId.ToString("D"), preview.PreviewDigest,
+                        preview.AuthorityDigest, preview.Binding.RawCharacterXmlDigest, preview.Binding.AuxiliaryStateDigest,
+                        option.OptionId, option.SourceId.ToString("D"));
+                    Require(MinimalVisibleText(review).Contains(option.Name)
+                        && MinimalVisible(review).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").Text
+                            == CreationFlowStrings.Get("Qualities.Review.Confirm", "missing"),
+                        "Review lost the selected name or localized save action.");
+                    var emptyPreview = coordinator.PreviewCreationQualities(state.Binding, [], original).Value!;
+                    var empty = new CreationQualitiesReviewPage(coordinator,
+                        CharacterCreationQualitiesCheckpoint.CreateReviewed(emptyPreview, [], Guid.NewGuid()), store, original);
+                    MinimalRender(empty);
+                    Require(MinimalVisibleText(empty).Contains(CreationFlowStrings.Get("Qualities.Review.Empty", "missing"))
+                        && MinimalVisible(empty).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").IsEnabled,
+                        "An empty valid review must explain that no additional qualities are selected.");
+                    MinimalRequireNoMachineValues(empty);
+                }
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                Require(store.TryRead(out var unchanged, out blocker) && unchanged.CheckpointDigest == checkpoint.CheckpointDigest,
+                    "Rendering/disclosure mutated the durable review.");
+
+                Require(store.TryBeginApply(CharacterCreationQualitiesCheckpointCas.From(checkpoint), out var applying, out blocker), blocker);
+                var result = await coordinator.ConfirmCreationQualitiesAsync(applying, display: original);
+                Require(result is { Receipt: not null, MutationOutcomeKnown: true, Outcome: CreationQualitiesPhoneOutcomes.Applied },
+                    "Actual quality confirmation failed.");
+                Require(store.TryRecordApplied(CharacterCreationQualitiesCheckpointCas.From(applying), result.Receipt!, out var applied, out blocker), blocker);
+                var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                Require(saved.ContentRevision == before.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision
+                    && saved.Document.Content == before.Document.Content, "Quality confirmation must save one auxiliary revision, not live character effects.");
+                await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                var cold = coordinator.LoadCreationQualities().Value!;
+                Require(CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(applying, result.Receipt!, cold),
+                    "Exact quality selection/receipt did not survive cold-store reopen.");
+                var receipt = new CreationQualitiesReceiptPage(coordinator, applied, result.Receipt!, store);
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    VerifyQualityDisclosure(receipt, "creation-qualities-receipt-technical-details",
+                        "creation-qualities-receipt-acknowledge", result.Receipt!.TransactionId.ToString("D"),
+                        result.Receipt.ReceiptDigest, result.Receipt.DraftDigest, result.Receipt.PlanDigest, result.Receipt.CommandDigest);
+                    Require(MinimalVisibleText(receipt).Contains(CreationFlowStrings.Get("Qualities.Receipt.Safe", "missing"))
+                        && MinimalVisible(receipt).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-receipt-acknowledge").Text
+                            == CreationFlowStrings.Get("Qualities.Receipt.Continue", "missing"),
+                        "Saved quality confirmation lost localized continuation or pending-finalization guidance.");
+                }
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                Require(store.TryRead(out var retained, out blocker) && retained.CheckpointDigest == applied.CheckpointDigest,
+                    "Receipt disclosure acknowledged or changed the pending receipt.");
+                Require(store.TryAcknowledgeApplied(CharacterCreationQualitiesCheckpointCas.From(applied), out blocker), blocker);
+                var owner = owners.Current;
+                owners.Set(ContactsOwnerB);
+                owners.Set(owner);
+                foreach (NativePageBase stale in new NativePageBase[] { configure, review, receipt })
+                {
+                    MinimalRender(stale);
+                    Require(!MinimalVisible(stale).OfType<Button>().Any(), "Stale owner generation still exposes quality actions or diagnostics.");
+                    MinimalRequireNoMachineValues(stale);
+                }
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            }
+            finally { CultureInfo.CurrentUICulture = oldCulture; }
+            Console.WriteLine("PASS quality configure/review/receipt: EN/DE/ES, exact hidden diagnostics, stale controls, one save/cold reopen, no display mutations");
+        });
+    }
+
+    private static void VerifyQualityDisclosure(NativePageBase page, string panelId, string actionId, params string[] exactValues)
+    {
+        MinimalRender(page);
+        MinimalRequireNoMachineValues(page);
+        Require(!MinimalVisibleText(page).Contains("CharacterDocumentChanged"), "Ordinary guidance leaks implementation jargon.");
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var panel = body.Children.OfType<VerticalStackLayout>().Single(item => item.AutomationId == panelId);
+        var toggle = panel.Children.OfType<Button>().Single();
+        var action = MinimalVisible(page).OfType<Button>().Single(item => item.AutomationId == actionId);
+        Require(action.IsEnabled && body.Children.IndexOf(action) < body.Children.IndexOf(panel)
+            && toggle.Text == CreationFlowStrings.Get("Qualities.ShowDetails", "missing"),
+            "Technical details displaced or disabled the primary action.");
+        ((IButtonController)toggle).SendClicked();
+        Require(exactValues.All(value => MinimalVisibleText(page).Contains(value, StringComparison.Ordinal))
+            && toggle.Text == CreationFlowStrings.Get("Qualities.HideDetails", "missing"),
+            "Expanded quality diagnostics lost exact values or localization.");
+        ((IButtonController)toggle).SendClicked();
+        MinimalRequireNoMachineValues(page);
+        MinimalRender(page);
+        ((IButtonController)toggle).SendClicked();
+        MinimalRequireNoMachineValues(page);
+        Require(!((VisualElement)panel.Children[1]).IsVisible,
+            "A detached quality disclosure reopened its old data after refresh.");
+    }
+
     internal static async Task RunMinimalUiAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();

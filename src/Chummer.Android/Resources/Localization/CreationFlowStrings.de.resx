@@ -191,7 +191,7 @@
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Zum Entwurf hinzufügen</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Zurück zu Vor- und Nachteilen</value></data>
   <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Vor- oder Nachteil konfigurieren</value></data>
-  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Core-Vorschau: +{0} positiv · -{1} negativ · {2} Karma verbleibend</value></data>
+  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Ausgewählt: +{0} positiv · -{1} negativ · {2} Karma verbleibend</value></data>
   <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Aus Entwurf entfernen</value></data>
   <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Budget für Vor- und Nachteile</value></data>
   <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Exakte Folgeauswahl</value></data>
@@ -224,8 +224,8 @@
   <data name="Qualities.Positive" xml:space="preserve"><value>Vorteile</value></data>
   <data name="Qualities.PositiveKarma" xml:space="preserve"><value>Karma für Vorteile</value></data>
   <data name="Qualities.PositiveKarmaUsed" xml:space="preserve"><value>Verwendetes positives Karma</value></data>
-  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Beleg für Vor- und Nachteile</value></data>
-  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Typisierte Auswahlen sind dauerhaft gespeichert. Charaktereffekte warten auf die Gesamtfinalisierung.</value></data>
+  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Vor- und Nachteile gespeichert</value></data>
+  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Deine Auswahl ist gespeichert. Ihre Auswirkungen werden beim Abschluss der Erschaffung angewendet.</value></data>
   <data name="Qualities.Receipt.Unsafe" xml:space="preserve"><value>Unsicherer Beleg: Das Charakterdokument wurde vor der Finalisierung geändert.</value></data>
   <data name="Qualities.Recovery.Applied" xml:space="preserve"><value>Ein geprüfter Beleg des Vor-/Nachteilentwurfs wartet auf Bestätigung.</value></data>
   <data name="Qualities.Recovery.Locked" xml:space="preserve"><value>Der Bereich für Vor- und Nachteile ist gesperrt.</value></data>
@@ -233,9 +233,9 @@
   <data name="Qualities.Recovery.Reviewed" xml:space="preserve"><value>Ein geprüfter Vor-/Nachteilentwurf kann ohne Rekonstruktion der Regeldaten fortgesetzt werden.</value></data>
   <data name="Qualities.Recovery.Stale" xml:space="preserve"><value>Der Checkpoint gehört zu einer anderen Revision oder seine Regelinstanz wurde geändert. Der Bereich bleibt sicher gesperrt; öffne den exakten Runner erneut oder nutze die Support-Wiederherstellung.</value></data>
   <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revision {0} · Transaktion {1}</value></data>
-  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Dies speichert nur den Hilfszustand der Erschaffung und seinen Beleg. CharacterDocumentChanged muss bis zur Finalisierung false bleiben.</value></data>
-  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Entwurf der Erschaffungs-Vor-/Nachteile bestätigen</value></data>
-  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Exakten Vor-/Nachteilentwurf prüfen</value></data>
+  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Deine Auswahl wird im Entwurf gespeichert. Ihre Auswirkungen werden beim Abschluss der Erschaffung angewendet.</value></data>
+  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Vor- und Nachteile speichern</value></data>
+  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Vor- und Nachteile prüfen</value></data>
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Vor- und Nachteile prüfen</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>Die Core-Vorschau, Quelleninstanz oder Workspace-Revision wurde geändert.</value></data>
   <data name="Qualities.ReviewSelected" xml:space="preserve"><value>{0} ausgewählte Vor- und Nachteile prüfen</value></data>
@@ -298,4 +298,6 @@
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Die Hintergrundgeschichte kann in dieser Version nicht bearbeitet werden.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Prüfe diesen Schritt, bevor du fortfährst. Den genauen Grund findest du in den technischen Details.</value></data>
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>Für diese gewährte Eigenschaft enthält der aktuelle Katalog keine Beschreibung der Wirkung. Sieh bei den Regeln der Auswahl nach, die sie gewährt hat.</value></data>
+  <data name="Qualities.Review.Empty" xml:space="preserve"><value>Keine zusätzlichen Vor- oder Nachteile ausgewählt.</value></data>
+  <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Weiter</value></data>
 </root>
