@@ -10967,7 +10967,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         callback = source[
             source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
-            source.index("private void AddCreationMethodRoute(")
+            source.index("private CreationBudgetRoute AddCreationMethodRoute(")
         ]
 
         self.assertIn(
@@ -11042,7 +11042,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         callback = source[
             source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
-            source.index("private void AddCreationMethodRoute(")
+            source.index("private CreationBudgetRoute AddCreationMethodRoute(")
         ]
         self.assertIn("Stopwatch.GetElapsedTime(waitStarted)", callback)
         self.assertIn("< CreationDashboardRouteReadyMaximumWait", callback)
@@ -13506,7 +13506,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_build_page_exposes_one_real_authority_gated_creation_method_route(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         dashboard_start = source.index("private void AddCreationWizardDashboard()")
-        route_start = source.index("private void AddCreationMethodRoute(")
+        route_start = source.index("private CreationBudgetRoute AddCreationMethodRoute(")
         dashboard = source[dashboard_start:route_start]
         route_end = source.index("private void AddFinalizationReviewAction(", route_start)
         route = source[route_start:route_end]
@@ -13544,7 +13544,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_zero_or_repeated_projected_method_steps_keep_one_canonical_route(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         dashboard_start = source.index("private void AddCreationWizardDashboard()")
-        dashboard_end = source.index("private void AddCreationMethodRoute(", dashboard_start)
+        dashboard_end = source.index("private CreationBudgetRoute AddCreationMethodRoute(", dashboard_start)
         dashboard = source[dashboard_start:dashboard_end]
         stages_start = source.index("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(")
         stages_end = source.index("private void AddCompletionBlockers(", stages_start)
@@ -16573,7 +16573,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_dashboard_navigation_refresh_lease_preserves_ready_routes(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         method = source[
-            source.index("private void AddCreationMethodRoute(") :
+            source.index("private CreationBudgetRoute AddCreationMethodRoute(") :
             source.index("private void AddFinalizationReviewAction(")
         ]
         stages = source[
@@ -16598,7 +16598,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         route_ready = source[
             source.index("private async Task EmitCreationDashboardRouteReadyAsync(") :
-            source.index("private void AddCreationMethodRoute(")
+            source.index("private CreationBudgetRoute AddCreationMethodRoute(")
         ]
         self.assertNotIn("NavigationStable", route_ready)
         finalization = source[
@@ -16713,9 +16713,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "AcceptCreationPrerequisite",
             "AcceptCreationAttributes",
             "AcceptCreationSkills",
-            "private static void ResolveCreationPhase<TResult>(",
+            "private void ResolveCreationPhase<TResult>(",
             "private void ScheduleCreationPhaseAcceptance<TResult>(",
-            "TResult result = loader();",
+            "TResult result = Coordinator.ReadCreationAuthority(original, loader, cancellationToken);",
             "accept(request.Key, completed, error);",
             "request.Key.Matches(Coordinator.State, snapshot)",
             "_creationProjection?.Binding.Equals(request.Key) == true",
@@ -16743,7 +16743,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(1, resolver.count("Coordinator.LoadCreationPrerequisite"))
         self.assertEqual(1, resolver.count("Coordinator.LoadCreationAttributes"))
         self.assertEqual(1, resolver.count("Coordinator.LoadCreationSkills"))
-        self.assertLess(resolver.index("queue.TryRequest("), resolver.index("TResult result = loader();"))
+        self.assertLess(resolver.index("queue.TryRequest("), resolver.index("Coordinator.ReadCreationAuthority(original, loader, cancellationToken)"))
         self.assertNotIn("Coordinator.LoadCreationPrerequisite()", resolver)
         self.assertNotIn("Coordinator.LoadCreationAttributes()", resolver)
         self.assertNotIn("Coordinator.LoadCreationSkills()", resolver)

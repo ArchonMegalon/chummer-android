@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-continue-routes-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContinueRoutesAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-budget-ribbon-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationBudgetRibbonAsync(args[1]);

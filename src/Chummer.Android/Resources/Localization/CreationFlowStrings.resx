@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Finalization.BeforeFinish" xml:space="preserve"><value>Before you can finish</value></data>
+  <data name="Creation.RouteUnavailable" xml:space="preserve"><value>This creation step is not available yet.</value></data>
   <data name="Purchases.SavedReopen" xml:space="preserve"><value>Saved. Reopen the character to refresh this view.</value></data>
   <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>The result could not be verified. Reopen the character before making another purchase.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Loading qualities…</value></data>
