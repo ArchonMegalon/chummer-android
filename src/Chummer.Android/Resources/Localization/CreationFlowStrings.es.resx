@@ -162,6 +162,7 @@
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revisión {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core confirma atómicamente solo el registro auxiliar de creación. Aquí no se modifica XML ni ningún efecto del personaje.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
+  <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar borrador tipado exacto</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento exacto no requiere identidades posteriores.</value></data>

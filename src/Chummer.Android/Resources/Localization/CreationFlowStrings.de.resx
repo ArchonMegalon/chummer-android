@@ -164,6 +164,7 @@
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core speichert atomar nur das Hilfsbuch der Erschaffung. Hier werden weder XML noch Charaktereffekte verändert.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Magie-/Resonanzentwurf der Erschaffung bestätigen</value></data>
+  <data name="Magic.Review.Confirming" xml:space="preserve"><value>Auswahl wird geprüft und gespeichert…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Prüfung</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Exakten typisierten Entwurf prüfen</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Für dieses exakte Talent sind keine Folgeidentitäten erforderlich.</value></data>
