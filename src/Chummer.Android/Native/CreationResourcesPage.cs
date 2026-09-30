@@ -85,7 +85,6 @@ public sealed class CreationResourcesPage : NativePageBase
         _body.Clear();
         _technicalDetails.Clear();
         _technicalDetails.IsVisible = false;
-        _body.Add(NativeTheme.Eyebrow(_copy["Resources.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["Resources.Title"]));
         _body.Add(NativeTheme.Body(_copy["Resources.Intro"], NativeTheme.Muted));
 
@@ -120,7 +119,7 @@ public sealed class CreationResourcesPage : NativePageBase
             VerticalStackLayout saved = new() { Spacing = 6 };
             saved.Add(NativeTheme.Eyebrow(_copy["Resources.SavedDraft"]));
             saved.Add(NativeTheme.Metric(_copy["Resources.KarmaInvested"], pending.KarmaInvestment.ToString(_copy.DisplayCulture)));
-            saved.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], pending.DraftRevision.ToString(_copy.DisplayCulture)));
+            _technicalDetails.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], pending.DraftRevision.ToString(_copy.DisplayCulture)));
             _technicalDetails.Add(ExactValue("Resources.Option", "creation-resources-saved-option-id", pending.SelectedOptionId));
             _technicalDetails.Add(ExactValue(
                 "Common.DraftRevision",
@@ -272,9 +271,8 @@ public sealed class CreationResourcesPage : NativePageBase
         card.Add(NativeTheme.Metric(_copy["Resources.KnownPurchases"], Nuyen(budget.KnownPurchaseCost)));
         card.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(budget.RemainingNuyen)));
         card.Add(NativeTheme.Metric(_copy["Resources.CarryoverLimit"], Nuyen(budget.CarryoverLimit)));
-        card.Add(NativeTheme.Body(
-            budget.IsExact ? _copy["Resources.ExactBudget"] : _copy["Resources.IncompleteBudget"],
-            budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
+        if (!budget.IsExact)
+            card.Add(NativeTheme.Body(_copy["Resources.IncompleteBudget"], NativeTheme.Danger));
         _technicalDetails.Add(ExactValue(
             "Resources.PriorityNuyen",
             $"{automationId}-priority-nuyen",
@@ -431,7 +429,6 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     {
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
-        _body.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["ResourcesPreview.Title"]));
         if (!Coordinator.CanDisplayCreationPurchase(_original))
         {

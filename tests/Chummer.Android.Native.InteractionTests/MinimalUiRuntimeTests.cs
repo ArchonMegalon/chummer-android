@@ -17,6 +17,22 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            foreach (var (locale, saveGear, saveBudget) in new[]
+            {
+                ("en-GB", "Save equipment", "Save budget"),
+                ("de-AT", "Ausrüstung speichern", "Budget speichern"),
+                ("es-MX", "Guardar equipo", "Guardar presupuesto")
+            })
+            {
+                var localized = AndroidSurfaceStrings.Resolve(locale);
+                Require(localized["GearPreview.Confirm"] == saveGear
+                    && localized["ResourcesPreview.Confirm"] == saveBudget,
+                    "Creation confirmation must describe the action in the player's language.");
+                foreach (var key in new[] { "Resources.CurrentBudget", "Resources.CoreAuthority",
+                    "Gear.DraftBasket", "Gear.ActiveCatalog", "GearPreview.ExactProjection" })
+                    Require(!Regex.IsMatch(localized[key], "Core|XML|authority|autoridad|Autorität",
+                        RegexOptions.IgnoreCase), "Player-facing headings expose implementation jargon.");
+            }
             const string id = "c49a893a-d445-4aac-bec0-c8501cba4c2c";
             var label = NativeTheme.Body(id);
             var details = NativeTheme.TechnicalDetails(label, "test-diagnostics");
@@ -101,6 +117,14 @@ internal static partial class AfterRunAuthorityHarness
             Require(MinimalVisible(gear).OfType<Button>().Any(x => x.AutomationId == "creation-gear-preview")
                 && MinimalVisible(gear).OfType<SearchBar>().Any()
                 && visible.Contains("¥"), "Minimal Gear hid budget, search or review.");
+            var copy = AndroidSurfaceStrings.Resolve();
+            var unchanged = MinimalVisible(gear).OfType<Label>()
+                .Single(x => x.AutomationId == "creation-gear-preview-authority");
+            Require(unchanged.Text == copy["Gear.ChangeBasket"]
+                && unchanged.TextColor.Equals(NativeTheme.Muted)
+                && !MinimalVisible(gear).OfType<Button>()
+                    .Single(x => x.AutomationId == "creation-gear-preview").IsEnabled,
+                "An unchanged saved basket is neutral guidance, not an error or a new save.");
             var disclosure = MinimalVisible(gear).OfType<Button>()
                 .Single(x => x.AutomationId == "creation-gear-details-toggle");
             ((IButtonController)disclosure).SendClicked();
@@ -119,13 +143,36 @@ internal static partial class AfterRunAuthorityHarness
             await MinimalPrepareAsync(preview);
             MinimalRequireNoMachineValues(preview);
             Require(MinimalVisible(preview).OfType<Button>().Any(x =>
-                    x.AutomationId == "creation-gear-confirm" && x.IsEnabled),
+                    x.AutomationId == "creation-gear-confirm" && x.IsEnabled
+                    && x.Text == copy["GearPreview.Confirm"]),
                 "Minimal preview hid or disabled explicit confirmation.");
+
+            var resources = new CharacterCreationResourcesInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+            var resourcePage = new CreationResourcesPage(runtime.Coordinator, resources, runtime.Presenter, actual);
+            await MinimalPrepareAsync(resourcePage);
+            MinimalRequireNoMachineValues(resourcePage);
+            var resourceText = MinimalVisibleText(resourcePage);
+            Require(resourceText.Contains("¥")
+                && !resourceText.Contains(copy["Common.DraftRevision"])
+                && !resourceText.Contains(copy["Resources.ExactBudget"])
+                && MinimalVisible(resourcePage).OfType<Button>().Any(x =>
+                    x.AutomationId == "creation-resources-open-gear" && x.IsEnabled),
+                "Resources must retain budget and next action without repeating technical status.");
+            // Exercise the warning branch without modifying the workspace or
+            // pretending a fabricated budget is admissible for a save.
+            var budget = resources.Load(original).State!.Budget;
+            typeof(CreationResourcesPage).GetMethod("AddBudget", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(resourcePage, [budget with { IsExact = false }, "Warning test", "test-incomplete-budget"]);
+            Require(MinimalVisible(resourcePage).OfType<Label>().Any(x =>
+                x.Text == copy["Resources.IncompleteBudget"] && x.TextColor.Equals(NativeTheme.Danger)),
+                "Minimal Resources suppressed an incomplete-cost warning.");
             Require(FinalizationDocumentDigest(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!)
                     == FinalizationDocumentDigest(before),
                 "Rendering/disclosing minimal UI mutated the workspace.");
         });
-        Console.WriteLine("PASS minimal native UI: collapsed exact diagnostics, readable controls, Gear budget/search/confirm, unchanged prose and persistence");
+        Console.WriteLine("PASS minimal native UI: localized plain actions, collapsed diagnostics, neutral unchanged basket, retained budget/warnings/confirm, unchanged prose and persistence");
     }
 
     private static async Task MinimalPrepareAsync(NativePageBase page)
