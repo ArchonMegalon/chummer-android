@@ -1878,13 +1878,18 @@ public sealed class BuildPage : NativePageBase
 
     private void AddCreationFinalizationStatus(CreationPriorityLegalPathProjection projection)
     {
+        CharacterOverviewState displayed = Coordinator.State;
+        long generation = _dossierRenderGeneration;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Legal build readiness"));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-finalization-readiness";
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
+            "Finalization.ReadinessTitle", "Ready for Career?")));
         if (projection.Outcome == "loading")
         {
             Label loading = NativeTheme.Body(
                 string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
-                    ? "Loading Core's sealed whole-build readiness. Finalization remains disabled."
+                    ? CreationFlowStrings.Get("Finalization.Checking", "Checking your saved creation choices…")
                     : _creationFinalizationFailureReason,
                 string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
                     ? NativeTheme.Muted
@@ -1896,25 +1901,47 @@ public sealed class BuildPage : NativePageBase
         }
         else
         {
-            card.Add(NativeTheme.Metric("Authority", projection.Outcome));
+            // These are diagnostics, not additional player requirements. An empty
+            // anchor list (for example, no chosen qualities) is not a failed step.
+            VerticalStackLayout diagnostics = new()
+            {
+                Spacing = 6,
+                IsVisible = false,
+                AutomationId = "creation-finalization-readiness-details"
+            };
+            diagnostics.Add(NativeTheme.Body($"Authority: {projection.Outcome}", NativeTheme.Muted));
             if (projection.ContentRevision is { } contentRevision)
-                card.Add(NativeTheme.Metric("Revision", contentRevision.ToString(CultureInfo.InvariantCulture)));
+                diagnostics.Add(NativeTheme.Body($"Revision: {contentRevision.ToString(CultureInfo.InvariantCulture)}", NativeTheme.Muted));
             if (!string.IsNullOrWhiteSpace(projection.SnapshotDigest))
-                card.Add(NativeTheme.Metric("Snapshot", ShortDigest(projection.SnapshotDigest)));
+                diagnostics.Add(NativeTheme.Body($"Snapshot: {projection.SnapshotDigest}", NativeTheme.Muted));
+            HashSet<string> shownWarnings = new(StringComparer.Ordinal);
+            HashSet<string> diagnosticWarnings = new(StringComparer.Ordinal);
+            void AddWarning(string blocker)
+            {
+                string message = CreationFlowStrings.FinalizationBlocker(blocker);
+                if (shownWarnings.Add(message))
+                    card.Add(NativeTheme.Body(message, NativeTheme.Danger));
+                if (diagnosticWarnings.Add(blocker))
+                    diagnostics.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            }
 
             foreach (CreationPriorityLegalPathStep step in projection.Steps)
             {
                 string status = step.IsComplete
-                    ? "complete"
-                    : step.IsRequired ? "required" : "optional";
-                string detail = step.Blockers.FirstOrDefault()
-                                ?? (step.SourceAnchorIds.Count > 0
-                                    ? $"{step.SourceAnchorIds.Count.ToString(CultureInfo.InvariantCulture)} source anchor(s)"
-                                    : "No source anchor in the current Core step");
-                Label row = NativeTheme.Body($"{RunnerSessionCoordinator.HumanizeId(step.StepId)} · {status} · {detail}",
+                    ? CreationFlowStrings.Get("Finalization.Complete", "complete")
+                    : step.IsRequired
+                        ? CreationFlowStrings.Get("Finalization.Required", "needs attention")
+                        : CreationFlowStrings.Get("Finalization.Optional", "optional");
+                Label row = NativeTheme.Body($"{RunnerSessionCoordinator.HumanizeId(step.StepId)} · {status}",
                     step.IsRequired && !step.IsComplete ? NativeTheme.Danger : NativeTheme.Muted);
                 row.AutomationId = $"creation-finalization-step-{Token(step.StepId)}";
                 card.Add(row);
+                foreach (string blocker in step.Blockers)
+                    AddWarning(blocker);
+                diagnostics.Add(NativeTheme.Body(
+                    $"{step.StepId} · {step.SourceAnchorIds.Count.ToString(CultureInfo.InvariantCulture)} source anchor(s)"
+                    + (step.SourceAnchorIds.Count > 0 ? "\n" + string.Join("\n", step.SourceAnchorIds) : string.Empty),
+                    NativeTheme.Muted));
             }
 
             IReadOnlyList<string> blockers = projection.Blockers.Count > 0
@@ -1923,19 +1950,32 @@ public sealed class BuildPage : NativePageBase
                     ? []
                     : [_creationFinalizationFailureReason];
             foreach (string blocker in blockers)
-                card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+                AddWarning(blocker);
             Label readiness = NativeTheme.Body(
                 projection.CanOpenReview
-                    ? "Core has sealed a reviewable whole-build plan."
-                    : "Review stays disabled until every Core-required typed draft is complete.",
+                    ? CreationFlowStrings.Get("Finalization.Ready", "Your creation choices are ready for review. Nothing changes until you confirm.")
+                    : CreationFlowStrings.Get("Finalization.Blocked", "Finish the required steps and resolve the warnings before reviewing your runner."),
                 projection.CanOpenReview ? NativeTheme.Success : NativeTheme.Danger);
             readiness.AutomationId = projection.CanOpenReview
                 ? "creation-finalization-authority-ready"
                 : "creation-finalization-authority-blocked";
             card.Add(readiness);
+            Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+                "Qualities.ShowDetails", "Show technical details"));
+            details.AutomationId = "creation-finalization-readiness-details-toggle";
+            details.Clicked += (_, _) =>
+            {
+                if (generation != _dossierRenderGeneration || !ReferenceEquals(border.Parent, _body)
+                    || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed))
+                    return;
+                diagnostics.IsVisible = !diagnostics.IsVisible;
+                details.Text = diagnostics.IsVisible
+                    ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
+                    : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+            };
+            card.Add(details);
+            card.Add(diagnostics);
         }
-        Border border = NativeTheme.Card(card);
-        border.AutomationId = "creation-finalization-readiness";
         _body.Add(border);
     }
 

@@ -259,4 +259,19 @@
   <data name="Qualities.HideDetails" xml:space="preserve"><value>Technische Details ausblenden</value></data>
   <data name="Qualities.SourceDisabled" xml:space="preserve"><value>Die benötigte Quelle ist für diesen Runner nicht aktiviert.</value></data>
   <data name="Qualities.Unavailable" xml:space="preserve"><value>Diese Qualität ist für diesen Runner derzeit nicht verfügbar.</value></data>
+  <data name="Finalization.ReadinessTitle" xml:space="preserve"><value>Bereit für die Karriere?</value></data>
+  <data name="Finalization.Checking" xml:space="preserve"><value>Deine gespeicherten Erschaffungsentscheidungen werden geprüft…</value></data>
+  <data name="Finalization.Complete" xml:space="preserve"><value>abgeschlossen</value></data>
+  <data name="Finalization.Required" xml:space="preserve"><value>noch offen</value></data>
+  <data name="Finalization.Optional" xml:space="preserve"><value>optional</value></data>
+  <data name="Finalization.Ready" xml:space="preserve"><value>Deine Erschaffungsentscheidungen sind bereit zur Prüfung. Erst deine Bestätigung übernimmt die Änderungen.</value></data>
+  <data name="Finalization.Blocked" xml:space="preserve"><value>Schließe die erforderlichen Schritte ab und behebe die Warnungen, bevor du deinen Runner prüfst.</value></data>
+  <data name="Finalization.ReviewMethod" xml:space="preserve"><value>Öffne die Bauart, prüfe Prioritäten und Metatyp und speichere deine Auswahl.</value></data>
+  <data name="Finalization.ReviewAttributes" xml:space="preserve"><value>Öffne Attribute, prüfe die Verteilung und speichere sie.</value></data>
+  <data name="Finalization.ReviewSkills" xml:space="preserve"><value>Öffne Fertigkeiten, prüfe deine Fertigkeiten und Sprachen und speichere die Auswahl.</value></data>
+  <data name="Finalization.ReviewQualities" xml:space="preserve"><value>Öffne Vor- und Nachteile, prüfe und speichere die Auswahl – auch wenn sie leer bleibt.</value></data>
+  <data name="Finalization.ReviewMagic" xml:space="preserve"><value>Öffne Magie / Resonanz, prüfe die für dein Talent nötigen Entscheidungen und speichere sie.</value></data>
+  <data name="Finalization.ReviewResources" xml:space="preserve"><value>Öffne Ressourcen, prüfe und speichere dein Budget, bevor du Ausrüstung auswählst.</value></data>
+  <data name="Finalization.ReviewGear" xml:space="preserve"><value>Öffne Ausrüstung, prüfe deine Auswahl und speichere sie.</value></data>
+  <data name="Finalization.ReviewSkillSources" xml:space="preserve"><value>Öffne Fertigkeiten und prüfe deine Auswahl anhand der aktuellen Bauart und aktivierten Bücher.</value></data>
 </root>

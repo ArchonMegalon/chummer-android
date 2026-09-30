@@ -259,4 +259,19 @@
   <data name="Qualities.HideDetails" xml:space="preserve"><value>Hide technical details</value></data>
   <data name="Qualities.SourceDisabled" xml:space="preserve"><value>The required source is not enabled for this runner.</value></data>
   <data name="Qualities.Unavailable" xml:space="preserve"><value>This quality is currently unavailable for this runner.</value></data>
+  <data name="Finalization.ReadinessTitle" xml:space="preserve"><value>Ready for Career?</value></data>
+  <data name="Finalization.Checking" xml:space="preserve"><value>Checking your saved creation choices…</value></data>
+  <data name="Finalization.Complete" xml:space="preserve"><value>complete</value></data>
+  <data name="Finalization.Required" xml:space="preserve"><value>needs attention</value></data>
+  <data name="Finalization.Optional" xml:space="preserve"><value>optional</value></data>
+  <data name="Finalization.Ready" xml:space="preserve"><value>Your creation choices are ready for review. Nothing changes until you confirm.</value></data>
+  <data name="Finalization.Blocked" xml:space="preserve"><value>Finish the required steps and resolve the warnings before reviewing your runner.</value></data>
+  <data name="Finalization.ReviewMethod" xml:space="preserve"><value>Open Build method, review your priorities and metatype, and save your choices.</value></data>
+  <data name="Finalization.ReviewAttributes" xml:space="preserve"><value>Open Attributes and review and save your allocation.</value></data>
+  <data name="Finalization.ReviewSkills" xml:space="preserve"><value>Open Skills and review and save your skill and language choices.</value></data>
+  <data name="Finalization.ReviewQualities" xml:space="preserve"><value>Open Qualities and review and save your choices, even if you choose none.</value></data>
+  <data name="Finalization.ReviewMagic" xml:space="preserve"><value>Open Magic / Resonance and review and save the choices required for your talent.</value></data>
+  <data name="Finalization.ReviewResources" xml:space="preserve"><value>Open Resources and review and save your funding before choosing equipment.</value></data>
+  <data name="Finalization.ReviewGear" xml:space="preserve"><value>Open Gear and review and save your equipment choices.</value></data>
+  <data name="Finalization.ReviewSkillSources" xml:space="preserve"><value>Open Skills and review your choices against the current build method and enabled books.</value></data>
 </root>
