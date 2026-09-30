@@ -214,7 +214,7 @@ public sealed class CreationGearPage : NativePageBase
             differs
                 ? _copy["Gear.CoreWillCalculate"]
                 : _copy["Gear.ChangeBasket"],
-            differs ? NativeTheme.Muted : NativeTheme.Danger);
+            NativeTheme.Muted);
         previewAuthority.AutomationId = "creation-gear-preview-authority";
         _body.Add(previewAuthority);
     }
@@ -542,7 +542,6 @@ public sealed class CreationGearPreviewPage : NativePageBase
         _saveProgress = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
-        _body.Add(NativeTheme.Eyebrow(_copy["GearPreview.Eyebrow"]));
         _body.Add(NativeTheme.Title(_copy["GearPreview.Title"]));
         if (!Coordinator.CanDisplayCreationPurchase(_original))
         {
