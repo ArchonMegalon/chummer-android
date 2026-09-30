@@ -348,11 +348,29 @@ public sealed class CreationQualitiesPage : NativePageBase
                     grant.Rating.ToString(CultureInfo.InvariantCulture),
                     Signed(grant.KarmaCost)),
                 NativeTheme.Muted));
-            card.Add(NativeTheme.Body(
+            _technicalDetails.Add(NativeTheme.Body(
                 string.Join(" · ", grant.SourceAnchorIds),
                 NativeTheme.Muted));
-            Border border = NativeTheme.Card(card);
+            Grid content = new() { ColumnDefinitions = [new(GridLength.Star), new(GridLength.Auto)], ColumnSpacing = 16 };
+            content.Add(card, 0);
+            Border border = NativeTheme.Card(content);
             border.AutomationId = $"creation-quality-granted-{Token(grant.GrantId)}";
+            Button info = NativeTheme.SecondaryButton("!");
+            info.AutomationId = $"creation-quality-granted-info-{Token(grant.GrantId)}";
+            info.WidthRequest = 50;
+            info.FontSize = 20;
+            info.Padding = 0;
+            info.VerticalOptions = LayoutOptions.Center;
+            SemanticProperties.SetDescription(info, CreationFlowStrings.Format(
+                "Qualities.Info.Accessible", "Explain {0}", grant.Name));
+            info.Clicked += async (_, _) =>
+            {
+                if (!ReferenceEquals(border.Parent, _body) || _loadedDisplay is not { } original
+                    || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+                await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, grant,
+                    CreationQualityInfo.SourceForGrant(grant, state.Authority.Options)));
+            };
+            content.Add(info, 1);
             _body.Add(border);
         }
     }
@@ -736,15 +754,35 @@ public sealed class CreationQualitiesPage : NativePageBase
 public sealed class CreationQualityInfoPage : NativePageBase
 {
     private readonly CharacterOverviewState _original;
-    private readonly CharacterCreationQualityCatalogOption _option;
+    private readonly string _name;
+    private readonly string _detail;
+    private readonly string? _followUp;
+    private readonly string? _sourceXml;
     private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
 
     internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
-        CharacterCreationQualityCatalogOption option) : base(coordinator)
+        CharacterCreationQualityCatalogOption option) : this(coordinator, original, option.Name,
+            CreationFlowStrings.Format("Qualities.Info.Cost", "Rating {0} · Karma {1}",
+                option.Rating, CreationQualitiesPage.Signed(option.KarmaCost)), option.FollowUpChoiceLabel, option.SourceNodeXml)
+    {
+    }
+
+    internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
+        CharacterCreationGrantedQuality grant, string? sourceXml) : this(coordinator, original, grant.Name,
+            CreationFlowStrings.Format("Qualities.GrantedDetail", "{0} · rating {1} · Karma {2}",
+                grant.Origin, grant.Rating, CreationQualitiesPage.Signed(grant.KarmaCost)), null, sourceXml)
+    {
+    }
+
+    private CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
+        string name, string detail, string? followUp, string? sourceXml) : base(coordinator)
     {
         _original = original;
-        _option = option;
-        Title = option.Name;
+        _name = name;
+        _detail = detail;
+        _followUp = followUp;
+        _sourceXml = sourceXml;
+        Title = name;
         AutomationId = "creation-quality-info-page";
         Content = new ScrollView { Content = _body };
         Refresh();
@@ -759,16 +797,20 @@ public sealed class CreationQualityInfoPage : NativePageBase
                 "Reopen Qualities for the current runner.")));
             return;
         }
-        _body.Add(NativeTheme.Title(_option.Name));
-        _body.Add(NativeTheme.Body(CreationFlowStrings.Format("Qualities.Info.Cost",
-            "Rating {0} · Karma {1}", _option.Rating, CreationQualitiesPage.Signed(_option.KarmaCost))));
-        if (!string.IsNullOrWhiteSpace(_option.FollowUpChoiceLabel))
-            _body.Add(NativeTheme.Body(_option.FollowUpChoiceLabel));
-        foreach (string effect in CreationQualityInfo.Effects(_option.SourceNodeXml))
-            _body.Add(NativeTheme.Body(effect));
+        _body.Add(NativeTheme.Title(_name));
+        _body.Add(NativeTheme.Body(_detail));
+        if (!string.IsNullOrWhiteSpace(_followUp))
+            _body.Add(NativeTheme.Body(_followUp));
+        if (_sourceXml is not null)
+            foreach (string effect in CreationQualityInfo.Effects(_sourceXml))
+                _body.Add(NativeTheme.Body(effect));
+        else
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.MissingSource",
+                "This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.")));
         _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.SourceNote",
             "These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects."), NativeTheme.Muted));
-        _body.Add(NativeTheme.Body(CreationQualityInfo.Citation(_option.SourceNodeXml), NativeTheme.Muted));
+        if (_sourceXml is not null)
+            _body.Add(NativeTheme.Body(CreationQualityInfo.Citation(_sourceXml), NativeTheme.Muted));
         Button back = NativeTheme.ReadingButton(CreationFlowStrings.Get("Qualities.Configure.Back", "Back to qualities"));
         back.AutomationId = "creation-quality-info-back";
         back.Clicked += async (_, _) => await Navigation.PopAsync();
@@ -778,6 +820,16 @@ public sealed class CreationQualityInfoPage : NativePageBase
 
 internal static class CreationQualityInfo
 {
+    // Resolve only within this accepted authority by source identity, never by
+    // a display name or an ambient catalog. Conflicting source bytes are not help.
+    internal static string? SourceForGrant(CharacterCreationGrantedQuality grant,
+        IReadOnlyList<CharacterCreationQualityCatalogOption> options)
+    {
+        var sources = options.Where(option => option.SourceId == grant.SourceId)
+            .Select(option => option.SourceNodeXml).Distinct(StringComparer.Ordinal).Take(2).ToArray();
+        return sources.Length == 1 ? sources[0] : null;
+    }
+
     private static XElement Read(string xml)
     {
         using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings

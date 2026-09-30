@@ -297,4 +297,5 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Deine gespeicherten Attribute hängen von dieser Auswahl ab. Die Erschaffungsmethode ist deshalb gesperrt. Fahre mit den übrigen Schritten fort.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Die Hintergrundgeschichte kann in dieser Version nicht bearbeitet werden.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Prüfe diesen Schritt, bevor du fortfährst. Den genauen Grund findest du in den technischen Details.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>Für diese gewährte Eigenschaft enthält der aktuelle Katalog keine Beschreibung der Wirkung. Sieh bei den Regeln der Auswahl nach, die sie gewährt hat.</value></data>
 </root>

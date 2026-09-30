@@ -280,4 +280,5 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Tus Atributos guardados dependen de estas elecciones, por lo que el método de creación está bloqueado. Continúa con los pasos restantes.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>La historia de fondo no se puede editar en esta versión.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Revisa este paso antes de continuar. Consulta los detalles técnicos para conocer el motivo exacto.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>El catálogo actual no describe el efecto de esta cualidad otorgada. Consulta las reglas de la elección que la otorgó.</value></data>
 </root>

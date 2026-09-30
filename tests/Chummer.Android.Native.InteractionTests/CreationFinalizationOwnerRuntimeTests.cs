@@ -851,6 +851,27 @@ internal static partial class AfterRunAuthorityHarness
         Require(explanation.Contains("Bonus: 2") && explanation.Contains("pattern recognition")
             && CreationQualityInfo.Citation(analytical.SourceNodeXml).Contains("72"),
             "Quality help lost the source modifier, condition or citation.");
+        var grant = new CharacterCreationGrantedQuality("read-only-help-test", analytical.SourceId,
+            analytical.SelectionKey, analytical.Name, analytical.Type, analytical.Rating, analytical.KarmaCost,
+            analytical.IsMetagenic, false, false, "Heritage", analytical.SourceAnchorIds, "read-only-fixture");
+        Require(CreationQualityInfo.SourceForGrant(grant, qualityState.Authority.Options) == analytical.SourceNodeXml
+            && CreationQualityInfo.SourceForGrant(grant with { SourceId = Guid.NewGuid() }, qualityState.Authority.Options) is null
+            && CreationQualityInfo.SourceForGrant(grant,
+                [analytical, analytical with { SourceNodeXml = analytical.SourceNodeXml + " " }]) is null,
+            "Granted help must use one exact source identity, never names or conflicting source bytes.");
+        // Read-only rendering fixture; no synthetic grant enters Core or storage.
+        typeof(CreationQualitiesPage).GetMethod("AddGranted", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, [qualityState with { Authority = qualityState.Authority with { GrantedQualities = [grant] } }]);
+        MinimalRequireNoMachineValues(page);
+        Button grantHelp = MinimalVisible(page).OfType<Button>().Single(button =>
+            button.AutomationId == "creation-quality-granted-info-read-only-help-test");
+        ((IButtonController)grantHelp).SendClicked();
+        Require(navigation.CurrentPage is CreationQualityInfoPage
+            && MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2"),
+            "Granted quality lacks the same read-only bonus help as a purchase choice.");
+        MinimalRequireNoMachineValues(navigation.CurrentPage);
+        await navigation.PopAsync(false);
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
         var editor = CreationQualitiesPhoneAuthority.ProjectEditor(qualityState, runtime.Coordinator.State);
         var draft = new CreationQualitiesPhoneDraft();
         draft.Bind(qualityState, runtime.Coordinator.State);

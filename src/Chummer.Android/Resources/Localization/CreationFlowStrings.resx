@@ -297,4 +297,5 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Story details cannot be edited in this build.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>This step needs attention before you can continue. See technical details for the exact reason.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.</value></data>
 </root>
