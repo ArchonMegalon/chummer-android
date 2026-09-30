@@ -540,7 +540,7 @@ internal static partial class AfterRunAuthorityHarness
         public NativeRewardRuntime(string contentRoot, bool governedConsequences = false, bool reputation = false,
             Func<ICharacterCareerReputationService, ICharacterCareerReputationService>? reputationDecorator = null,
             Action<string>? creationSkillsSeed = null,
-            Func<ICharacterCreationSkillsService, ICharacterCreationSkillsService>? skillsDecorator = null,
+            Func<IOwnerBoundCharacterCreationSkillsService, IOwnerBoundCharacterCreationSkillsService>? skillsDecorator = null,
             IAndroidLinkedCharacterFileService? linkedCharacters = null,
             Func<IAndroidLinkedWorkspaceReader, IAndroidLinkedWorkspaceReader>? linkedReaderDecorator = null,
             Func<string, AndroidLinkedCharacterIntentJournal>? linkedJournalFactory = null,
@@ -682,11 +682,11 @@ internal static partial class AfterRunAuthorityHarness
                     ownerBoundCreationAttributesService: creationAttributes
                         ? attributesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationAttributesService>())
                             ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationAttributesService>() : null,
-                    creationSkillsService: creationSkillsSeed is null ? null : skillsDecorator is null
-                        ? _provider.GetRequiredService<ICharacterCreationSkillsService>()
-                        : skillsDecorator(_provider.GetRequiredService<ICharacterCreationSkillsService>()),
+                    creationSkillsService: creationSkillsSeed is null ? null
+                        : _provider.GetRequiredService<ICharacterCreationSkillsService>(),
                     ownerBoundCreationSkillsService: creationSkills || creationSkillsSeed is not null
-                        ? _provider.GetRequiredService<IOwnerBoundCharacterCreationSkillsService>() : null,
+                        ? skillsDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationSkillsService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationSkillsService>() : null,
                     creationFinalizationService: creationFinalization || productionCreationOverview
                         ? _provider.GetRequiredService<ICharacterCreationFinalizationService>() : null,
                     ownerBoundCreationQualitiesService: productionCreationOverview

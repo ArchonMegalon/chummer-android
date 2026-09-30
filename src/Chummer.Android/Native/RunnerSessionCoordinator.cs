@@ -330,9 +330,6 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly IOwnerBoundCharacterCreationPrerequisiteService? _ownerBoundPrerequisiteService;
     private readonly IOwnerBoundCharacterCreationAttributesService? _ownerBoundAttributesService;
     private readonly IOwnerBoundCharacterCreationSkillsService? _ownerBoundSkillsService;
-    // Retained only by the separate historical Skills re-review route.
-    // Ordinary allocation must never fall back to this unscoped service.
-    private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly IOwnerBoundCharacterCreationQualitiesService? _ownerBoundQualitiesService;
     private readonly IOwnerBoundCharacterCreationMagicResonanceService? _ownerBoundMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
@@ -472,7 +469,6 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _originSceneDocuments = originSceneDocuments;
         _ownerBoundAttributesService = ownerBoundCreationAttributesService;
         _ownerBoundSkillsService = ownerBoundCreationSkillsService;
-        _creationSkillsService = creationSkillsService;
         _ownerBoundQualitiesService = ownerBoundCreationQualitiesService;
         _ownerBoundMagicResonanceService = ownerBoundCreationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;

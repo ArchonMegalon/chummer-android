@@ -4,7 +4,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
+using Chummer.Application.Owners;
+using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Microsoft.Maui.Controls;
@@ -18,24 +21,32 @@ internal static partial class AfterRunAuthorityHarness
         CharacterCreationSkillsPreview sourcePreview, CharacterCreationSkillsReceipt sourceReceipt)
     {
         foreach (var locale in new[] { "de-AT", "en-GB", "es-MX" })
-            foreach (var key in new[] { "Title", "Intro", "ConfirmBody", "Removed", "Restore", "Check", "Unavailable" })
+            foreach (var key in new[] { "Title", "Intro", "ConfirmBody", "Removed", "Restore", "Check", "Unavailable", "CheckSave" })
                 Require(CreationAllocationStrings.Get("SkillsReReview." + key, "missing", CultureInfo.GetCultureInfo(locale)) != "missing",
                     "Missing real re-review satellite resource: " + locale + "/" + key);
-        foreach (var (obsolete, failCommittedRead) in new[] { (false, false), (true, false), (false, true) })
+        foreach (var (obsolete, failCommittedRead, linked, uncertain) in new[]
+                     { (false, false, false, false), (false, false, true, false), (true, false, true, false),
+                       (false, true, true, false), (false, false, true, true) })
         {
             string? path = null;
             SkillsReReviewReadProbe? entryProbe = null;
+            FailedCommittedSkillsRead? failedSave = null;
+            var owners = new ControlledLinkedOwner();
+            var owner = linked ? ContactsOwnerA : OwnerScope.LocalSingleUser;
+            owners.Set(owner);
             await using var runtime = new NativeRewardRuntime(contentRoot, creationSkillsSeed: target =>
-                path = SeedHistoricalSkills(target, sourceDirectory, resolver, id, sourceState, sourcePreview, sourceReceipt, obsolete),
-                skillsDecorator: inner => failCommittedRead ? new FailedCommittedSkillsRead(inner)
-                    : entryProbe = new SkillsReReviewReadProbe(inner));
+                path = SeedHistoricalSkills(target, sourceDirectory, resolver, id, sourceState, sourcePreview, sourceReceipt, obsolete, owner),
+                skillsDecorator: inner => failCommittedRead || uncertain ? failedSave = new FailedCommittedSkillsRead(inner, uncertain)
+                    : entryProbe = new SkillsReReviewReadProbe(inner), linkedOwners: owners);
             runtime.Id = id;
             await runtime.Presenter.LoadAsync(id, default);
             Require(runtime.Coordinator.State.Profile?.Created == false && runtime.Coordinator.State.WorkspaceId == id,
                 "Real Presentation did not load the historical Creation runner.");
             byte[] before = File.ReadAllBytes(path!);
             var store = new FileWorkspaceStore(runtime.StateDirectory);
-            var original = store.Get(id).Value!;
+            WorkspaceStoreReadResult ReadCurrent() => linked ? store.Get(owner, id) : store.Get(id);
+            var original = ReadCurrent().Value!;
+            if (linked) Require(!store.Get(id).Success, "A legacy copy masked a wrong-partition review.");
             var originalReceipt = original.Document.AuxiliaryState.CharacterCreationSkillsReceipts!.Single();
             Require(runtime.Coordinator.LoadCreationSkills().Value is null,
                 "Ordinary phone Skills editing was silently unlocked for pre-policy history.");
@@ -43,8 +54,28 @@ internal static partial class AfterRunAuthorityHarness
             Require(loaded.Value is not null, "Actual native re-review unavailable: " + string.Join(",", loaded.Blockers));
             var state = loaded.Value!;
             if (entryProbe is not null)
+            {
                 await SkillsReReviewDashboardEntryAsync(runtime.Coordinator, entryProbe, obsolete);
+                await SkillsReReviewBudgetEntryAsync(runtime.Coordinator);
+            }
             Require(File.ReadAllBytes(path!).SequenceEqual(before), "Opening or leaving the actual dashboard recovery route changed history.");
+            if (linked && !failCommittedRead && !obsolete)
+            {
+                owners.Set(ContactsOwnerB);
+                owners.Set(owner);
+                Require(!runtime.Coordinator.IsCreationSkillsReReviewStateCurrent(state)
+                    && runtime.Coordinator.LoadCreationSkillsReReview().Value is null
+                    && runtime.Coordinator.PreviewCreationSkillsReReview(state.Binding,
+                        state.HistoricalDraft.Allocations, state.HistoricalDraft.GroupAllocations).Value is null,
+                    "A→B→A revived a retained review or silently rebound it to a new owner lifetime.");
+                Require((await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(state.InitialPreview,
+                    state.HistoricalDraft.Allocations, state.HistoricalDraft.GroupAllocations, true)).Receipt is null,
+                    "A stale owner-lifetime review committed.");
+                Require(File.ReadAllBytes(path!).SequenceEqual(before), "Rejected owner review changed the workspace.");
+                await HydrateFinalizationOwnerAsync(runtime, owners, original);
+                state = runtime.Coordinator.LoadCreationSkillsReReview().Value
+                    ?? throw new InvalidOperationException("An explicit fresh owner-bound reopen failed.");
+            }
             var draft = new CreationSkillsReReviewPhoneDraft();
             Require(draft.Bind(state, runtime.Coordinator.State) && !state.CurrentState.CanEdit,
                 "Re-review forged ordinary editable authority.");
@@ -103,6 +134,29 @@ internal static partial class AfterRunAuthorityHarness
             Require(nativeDraft.Preview!.PreviewDigest == preview.PreviewDigest,
                 "A queued action changed the proposal after page departure.");
             var confirmed = await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(preview, skills, groups, true);
+            if (uncertain)
+            {
+                Require(confirmed.Outcome == "outcome-unknown" && confirmed.Receipt is null && failedSave!.ConfirmCalls == 1,
+                    "An unobserved save was reported as a confirmed failure or success.");
+                typeof(CreationSkillsReReviewPage).GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, confirmed);
+                RefreshSkillsReReview(page);
+                Require(!body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-skills-rereview-confirm")
+                    && !body.Children.OfType<Label>().Any(label => label.Text == CreationAllocationStrings.Get("SkillsReReview.Intro", "missing"))
+                    && body.Children.OfType<Label>().Any(label => label.Text == CreationAllocationStrings.Get("SkillsReReview.CheckSave", "missing")),
+                    "An uncertain native save invited automatic reapplication or claimed nothing changed.");
+                Require((await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(preview, skills, groups, true)).Receipt is null
+                    && failedSave!.ConfirmCalls == 1, "An uncertain admitted save was automatically replayed.");
+                var observed = new OwnerBoundCharacterCreationSkillsService(new FileWorkspaceStore(runtime.StateDirectory), owners, resolver)
+                    .Load(owners.Capture(), new(id)).Value!;
+                var actual = ReadCurrent().Value!;
+                Require(actual.ContentRevision == original.ContentRevision + 1
+                    && actual.Document.AuxiliaryState.CharacterCreationSkillsReceipts is { Count: 2 } history
+                    && CreationSkillsReReviewPhoneAuthority.ReceiptMatches(history[1], preview, observed,
+                        CreationSkillsReReviewPhoneAuthority.IdempotencyKey(preview)),
+                    "Cold observation did not preserve the once-committed uncertain save.");
+                Console.WriteLine("PASS linked Skills uncertain save → no automatic retry → cold observation finds one exact receipt (managed)");
+                continue;
+            }
             Require(confirmed.Outcome == CharacterCreationFoundationOutcomes.Success && confirmed.Receipt is not null,
                 "Actual coordinator commit lost its durable receipt: " + string.Join(",", confirmed.Blockers));
             if (failCommittedRead)
@@ -118,7 +172,8 @@ internal static partial class AfterRunAuthorityHarness
             }
             else Require(confirmed.RefreshedState is not null && confirmed.Blockers.Count == 0,
                 "Actual presenter/shell refresh failed: " + string.Join(",", confirmed.Blockers));
-            var current = new CharacterCreationSkillsService(new FileWorkspaceStore(runtime.StateDirectory), resolver).Load(new(id)).Value!;
+            var current = new OwnerBoundCharacterCreationSkillsService(new FileWorkspaceStore(runtime.StateDirectory), owners, resolver)
+                .Load(owners.Capture(), new(id)).Value!;
             var coldPhone = new CreationSkillsPhoneDraft();
             coldPhone.Bind(current, runtime.Coordinator.State);
             Require(coldPhone.Matches(current, runtime.Coordinator.State), "Cold ordinary Skills phone did not reopen after explicit re-review.");
@@ -129,7 +184,7 @@ internal static partial class AfterRunAuthorityHarness
             wrongHistory = wrongHistory with { ReceiptDigest = CharacterCreationSkillsDigest.ComputeReceipt(wrongHistory) };
             Require(!CreationSkillsReReviewPhoneAuthority.ReceiptMatches(wrongHistory, preview, current, key),
                 "An independently rehashed receipt lost the historical chain binding.");
-            var after = store.Get(id).Value!;
+            var after = ReadCurrent().Value!;
             Require(after.ContentRevision == original.ContentRevision + 1
                 && after.Document.Content == original.Document.Content
                 && CreationSkillsReReviewPhoneAuthority.Equal(after.Document.AuxiliaryState.CharacterCreationPrerequisiteDraft,
@@ -141,12 +196,21 @@ internal static partial class AfterRunAuthorityHarness
                 && receipts[0].ReceiptDigest == originalReceipt.ReceiptDigest
                 && receipts[1].PreviousReceiptDigest == originalReceipt.ReceiptDigest,
                 "Explicit re-review failed to append to immutable history.");
-            var replay = new CharacterCreationSkillsService(new FileWorkspaceStore(runtime.StateDirectory), resolver).ConfirmReReview(
+            var replay = new OwnerBoundCharacterCreationSkillsService(new FileWorkspaceStore(runtime.StateDirectory), owners, resolver).ConfirmReReview(owners.Capture(),
                 new(preview.Binding, skills, groups, preview.PreviewDigest, CreationSkillsReReviewPhoneAuthority.IdempotencyKey(preview), true, true));
             Require(replay.Value?.ReceiptDigest == confirmed.Receipt!.ReceiptDigest
-                && store.Get(id).Value!.ContentRevision == after.ContentRevision, "Exact cold retry produced another mutation.");
+                && ReadCurrent().Value!.ContentRevision == after.ContentRevision, "Exact cold retry produced another mutation.");
             Require(runtime.Coordinator.LoadCreationSkillsReReview().Value is null,
                 "A completed migration remained eligible for automatic reapplication.");
+            if (linked)
+            {
+                owners.Set(ContactsOwnerB);
+                Require(!runtime.Coordinator.CanDisplayCreationSkillsReReviewReceipt(confirmed.Receipt!),
+                    "A receipt remained visible to another account.");
+                owners.Set(owner);
+                Require(!runtime.Coordinator.CanDisplayCreationSkillsReReviewReceipt(confirmed.Receipt!),
+                    "A→B→A revived a receipt retained by an old display lifetime.");
+            }
             Console.WriteLine("PASS native historical Skills review → " + (obsolete ? "two incremental repairs" : "unchanged legal choices")
                 + (failCommittedRead ? " → failed committed read retains receipt → explicit reopen" : " → real presenter/shell")
                 + " → cold reopen/replay (managed; no Activity proof)");
@@ -237,22 +301,89 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS actual historical dashboard recovery entry → native comparison; departed/reappearing late read remains inert; fresh entry succeeds (managed navigation)");
     }
 
-    private sealed class SkillsReReviewReadProbe(ICharacterCreationSkillsService inner)
-        : ICharacterCreationSkillsService, ICharacterCreationSkillsReReviewService
+    private static async Task SkillsReReviewBudgetEntryAsync(RunnerSessionCoordinator coordinator)
     {
-        private readonly ICharacterCreationSkillsReReviewService _review = (ICharacterCreationSkillsReReviewService)inner;
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var page = new BuildPage(coordinator);
+            var nav = new NavigationPage(page);
+            _ = new Window(nav);
+            using var lifetime = new CancellationTokenSource();
+            typeof(BuildPage).GetField("_creationDashboardRouteReadyLifetime", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(page, lifetime);
+            typeof(BuildPage).GetField("_creationDashboardAppearanceGeneration", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(page, 1L);
+            try
+            {
+                var snapshot = coordinator.State.CreationWizard!;
+                // Isolate the actual Skills rows for this managed route test;
+                // no ordinary Skills state or exact budget is manufactured.
+                string[] ids = [CharacterCreationBudgetIds.ActiveSkills,
+                    CharacterCreationBudgetIds.SkillGroups, CharacterCreationBudgetIds.KnowledgeSkills];
+                snapshot = snapshot with
+                {
+                    Steps = snapshot.Steps.Where(row => row.StepId == CharacterCreationWizardStepIds.Skills).ToArray(),
+                    Budgets = snapshot.Budgets.Where(row => ids.Contains(row.BudgetId)).ToArray()
+                };
+                Require(snapshot.Budgets.Count == 3 && snapshot.Budgets.All(row => !row.IsExact),
+                    "SETUP: historical Skills must have three inexact budget rows.");
+                var stages = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var pending = new CreationDashboardRenderReadiness(
+                    () => false, () => false, () => false, () => false, () => false, () => false);
+                var blocked = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
+                    [snapshot, null, null, null, null, null, null, pending])!;
+                Require(!blocked[CharacterCreationWizardStepIds.Skills].CanOpen,
+                    "Skills stage opened without current Attributes readiness.");
+                var readiness = new CreationDashboardRenderReadiness(
+                    () => true, () => false, () => false, () => false, () => false, () => false);
+                var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
+                    [snapshot, null, null, null, null, null, null, readiness])!;
+                Require(routes[CharacterCreationWizardStepIds.Skills].CanOpen && !readiness.Skills,
+                    "Blocked Skills did not expose a separate re-review route or falsely became ready.");
+                typeof(BuildPage).GetMethod("AddLegalNextSteps", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
+                    [snapshot, readiness, routes, new CreationBudgetRoute("Method", "Blocked", false, () => Task.CompletedTask, [])]);
+                typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
+                    [snapshot, null, null, readiness, routes, null, null]);
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                Require(!body.Children.OfType<Border>().SelectMany(border => border.Content is Grid grid
+                    ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())
+                    .Any(button => button.AutomationId == "creation-skills-rereview-open"),
+                    "Dashboard duplicated the recovery action despite its canonical Skills route.");
+                foreach (var card in body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>())
+                {
+                    var grid = (Grid)card.Content!;
+                    var label = grid.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();
+                    Require(label.Text.EndsWith("Not exact", StringComparison.Ordinal),
+                        "A recovery link fabricated an exact budget.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)grid.Children.OfType<Button>().Single()).SendClicked());
+                    Require(nav.Navigation.NavigationStack.Last() is CreationSkillsReReviewPage,
+                        "Not exact Skills tap failed to open the actual comparison page.");
+                    await nav.PopAsync(false);
+                }
+                ui.AssertHealthy();
+            }
+            finally { typeof(BuildPage).GetMethod("OnDisappearing", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null); }
+        });
+        Console.WriteLine("PASS actual inexact Skills budget taps → guarded read-only comparison; no false readiness or duplicate recovery link");
+    }
+
+    private sealed class SkillsReReviewReadProbe(IOwnerBoundCharacterCreationSkillsService inner)
+        : IOwnerBoundCharacterCreationSkillsService, IOwnerBoundCharacterCreationSkillsReReviewService
+    {
+        private readonly IOwnerBoundCharacterCreationSkillsReReviewService _review = (IOwnerBoundCharacterCreationSkillsReReviewService)inner;
         private int _pause, _reads;
         public int ReadCount => Volatile.Read(ref _reads);
         public TaskCompletionSource ReadEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource ReleaseRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void PauseNextRead() => Interlocked.Exchange(ref _pause, 1);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(CharacterCreationSkillsLoadRequest request) => inner.Load(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(CharacterCreationSkillsPreviewRequest request) => inner.Preview(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(CharacterCreationSkillsConfirmRequest request) => inner.Confirm(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadReReview(CharacterCreationSkillsLoadRequest request)
+        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request) => inner.Load(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(OwnerContextStamp owner, CharacterCreationSkillsPreviewRequest request) => inner.Preview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request) => inner.Confirm(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadReReview(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request)
         {
             Interlocked.Increment(ref _reads);
-            var result = _review.LoadReReview(request);
+            var result = _review.LoadReReview(owner, request);
             if (Interlocked.Exchange(ref _pause, 0) != 0)
             {
                 ReadEntered.TrySetResult();
@@ -260,32 +391,35 @@ internal static partial class AfterRunAuthorityHarness
             }
             return result;
         }
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(CharacterCreationSkillsReReviewConfirmRequest request) => _review.ConfirmReReview(request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request) => _review.ConfirmReReview(owner, request);
     }
 
-    private sealed class FailedCommittedSkillsRead(ICharacterCreationSkillsService inner)
-        : ICharacterCreationSkillsService, ICharacterCreationSkillsReReviewService
+    private sealed class FailedCommittedSkillsRead(IOwnerBoundCharacterCreationSkillsService inner, bool uncertain = false)
+        : IOwnerBoundCharacterCreationSkillsService, IOwnerBoundCharacterCreationSkillsReReviewService
     {
-        private readonly ICharacterCreationSkillsReReviewService _review = (ICharacterCreationSkillsReReviewService)inner;
+        private readonly IOwnerBoundCharacterCreationSkillsReReviewService _review = (IOwnerBoundCharacterCreationSkillsReReviewService)inner;
         private bool _committed;
-        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(CharacterCreationSkillsLoadRequest request) =>
-            _committed ? throw new IOException("Injected post-commit observation failure") : inner.Load(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(CharacterCreationSkillsPreviewRequest request) => inner.Preview(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(CharacterCreationSkillsConfirmRequest request) => inner.Confirm(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadReReview(CharacterCreationSkillsLoadRequest request) => _review.LoadReReview(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(CharacterCreationSkillsReReviewConfirmRequest request)
+        public int ConfirmCalls { get; private set; }
+        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request) =>
+            _committed ? throw new IOException("Injected post-commit observation failure") : inner.Load(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(OwnerContextStamp owner, CharacterCreationSkillsPreviewRequest request) => inner.Preview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request) => inner.Confirm(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewState> LoadReReview(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request) => _review.LoadReReview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request)
         {
-            var result = _review.ConfirmReReview(request);
+            ConfirmCalls++;
+            var result = _review.ConfirmReReview(owner, request);
             _committed = result.Outcome == CharacterCreationFoundationOutcomes.Success && result.Value is not null;
+            if (uncertain && _committed) throw new IOException("Injected loss of save reply after commit");
             return result;
         }
     }
 
     private static string SeedHistoricalSkills(string target, string sourceDirectory, ICharacterSourceDataResolver resolver,
         CharacterWorkspaceId id, CharacterCreationSkillsState state, CharacterCreationSkillsPreview preview,
-        CharacterCreationSkillsReceipt saved, bool obsolete)
+        CharacterCreationSkillsReceipt saved, bool obsolete, OwnerScope owner)
     {
         var workspace = new FileWorkspaceStore(sourceDirectory).Get(id).Value!;
         Require(resolver.TryCreateContext(workspace.Document.Content)!.TryResolveCreationSkillsAuthority(out var catalog)
@@ -326,7 +460,17 @@ internal static partial class AfterRunAuthorityHarness
         var record = JsonNode.Parse(File.ReadAllText(sourcePath))!.AsObject();
         record["AuxiliaryState"] = JsonSerializer.SerializeToNode(workspace.Document.AuxiliaryState with
             { CharacterCreationSkillsDraft = old, CharacterCreationSkillsReceipts = [receipt] });
-        string path = Path.Combine(target, Path.GetRelativePath(sourceDirectory, sourcePath));
+        var targetStore = new FileWorkspaceStore(target);
+        // Create only the secured partition; the controlled historical fixture
+        // is installed below, not admitted through a production import shortcut.
+        var empty = new WorkspaceDocument(workspace.Document.Content, workspace.Document.RulesetId, workspace.Document.Format);
+        var created = owner.IsLocalSingleUser
+            ? targetStore.CreateWorkspaceDocument(id, empty)
+            : targetStore.CreateWorkspaceDocument(owner, id, empty);
+        Require(created.Success, "Could not seed scoped history: " + created.Error);
+        string ownerDirectory = (string)typeof(FileWorkspaceStore).GetMethod("GetWorkspaceDirectory",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(targetStore, [owner])!;
+        string path = Path.Combine(ownerDirectory, id.Value + ".json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, record.ToJsonString());
         return path;

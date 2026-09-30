@@ -2513,6 +2513,11 @@ public sealed class BuildPage : NativePageBase
                 stage,
                 CharacterCreationWizardStepIds.Skills,
                 readiness.Skills);
+            // A stale saved Skills draft must stay non-editable, but the same
+            // stage/budget tap can open Core's separate read-only re-review.
+            // Do not infer migration eligibility or exact budgets here: the
+            // fresh owner-bound load decides that after the user opens it.
+            bool canCheckSkillsReReview = skillStage && !canOpenSkills && readiness.Attributes;
             bool qualitiesStage = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.Qualities,
@@ -2543,7 +2548,7 @@ public sealed class BuildPage : NativePageBase
                 ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
                 : null;
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
-                           || canOpenSkills || canOpenQualities || canOpenMagicResonance
+                           || canOpenSkills || canCheckSkillsReReview || canOpenQualities || canOpenMagicResonance
                            || canOpenContacts || canOpenResources || identityRoute?.IsEnabled == true;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
@@ -2566,6 +2571,8 @@ public sealed class BuildPage : NativePageBase
                     ? () => OpenCreationAttributesAsync(attributes!.Value!)
                 : canOpenSkills
                     ? () => OpenCreationSkillsAsync(skills!.Value!)
+                : canCheckSkillsReReview
+                    ? OpenCreationSkillsReReviewAsync
                 : canOpenQualities
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
@@ -2589,6 +2596,8 @@ public sealed class BuildPage : NativePageBase
                     ? AttributeStageDetail(attributes!.Value!)
                 : canOpenSkills
                     ? SkillsStageDetail(skills!.Value!)
+                : canCheckSkillsReReview
+                    ? CreationAllocationStrings.Get("SkillsReReview.Check", "Review saved Skills choices against current rules")
                 : canOpenQualities
                     ? QualitiesStageDetail(Coordinator.State.CreationQualities!)
                 : canOpenMagicResonance
@@ -2608,6 +2617,7 @@ public sealed class BuildPage : NativePageBase
             if (stage.Blockers.Count > 0
                 && !canOpenAttributes
                 && !canOpenSkills
+                && !canCheckSkillsReReview
                 && !canOpenQualities
                 && !canOpenMagicResonance
                 && !canOpenContacts
@@ -2677,12 +2687,13 @@ public sealed class BuildPage : NativePageBase
         CreationBudgetRoute methodRoute)
     {
         if (!readiness.Skills
+            && routes.GetValueOrDefault(CharacterCreationWizardStepIds.Skills)?.CanOpen != true
             && snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Skills))
         {
             // This opens a separate read-only recovery check, never the blocked
             // ordinary Skills editor. Core decides whether history is reviewable.
             _body.Add(CreationNavigationRow(CreationAllocationStrings.Get(
-                "SkillsReReview.Check", "Check older Skills choices for re-review"), null,
+                "SkillsReReview.Check", "Review saved Skills choices against current rules"), null,
                 OpenCreationSkillsReReviewAsync, enabled: true, automationId: "creation-skills-rereview-open"));
         }
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
@@ -2992,7 +3003,7 @@ public sealed class BuildPage : NativePageBase
         var result = await Task.Run(() => Coordinator.LoadCreationSkillsReReview());
         if (generation != _creationDashboardAppearanceGeneration
             || _creationDashboardRouteReadyLifetime is not { IsCancellationRequested: false }) return;
-        if (result.Value is { } state && CreationSkillsReReviewPhoneAuthority.Matches(state, Coordinator.State))
+        if (result.Value is { } state && Coordinator.IsCreationSkillsReReviewStateCurrent(state))
             await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, state));
         else await DisplayAlertAsync(CreationAllocationStrings.Get("SkillsReReview.Title", "Review older Skills choices"),
             CreationAllocationStrings.Get("SkillsReReview.Unavailable", "No supported historical Skills draft is available for this runner. Nothing was changed."), "OK");
