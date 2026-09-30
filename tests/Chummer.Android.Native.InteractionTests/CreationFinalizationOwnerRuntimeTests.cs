@@ -1269,6 +1269,7 @@ internal static partial class AfterRunAuthorityHarness
         Require(reopened.PendingDraft is not null && reopened.Attributes.Single(item => item.AttributeId == "BOD").Current == 2
             && coordinator.IsCreationAttributesStateCurrent(reopened) && owners.ActiveLeases == 0,
             "Saved allocation did not reopen under fresh owner authority.");
+        VerifyAttributesLocalUndo(runtime, reopened, ReadSaved);
         if (linked) Require(!new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Success,
             "Owner-bound allocation created a hidden legacy-local record.");
         using var canceled = new CancellationTokenSource();
@@ -1291,6 +1292,65 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PRIORITY_TABLE_ATTRIBUTES_ENTRY " + method + " linked=" + linked
             + " load/preview/save/reopen, forged inputs, owner ABA, replay and post-commit cancellation passed");
         await VerifyOwnerBoundSkillsAfterAttributesAsync(runtime, owners, linked, method);
+    }
+
+    private static void VerifyAttributesLocalUndo(NativeRewardRuntime runtime,
+        CharacterCreationAttributesState state, Func<WorkspaceStoredDocument> readSaved)
+    {
+        var coordinator = runtime.Coordinator;
+        string savedDigest = FinalizationDocumentDigest(readSaved());
+        foreach (bool karma in new[] { false, true })
+        {
+            var draft = new CreationAttributesPhoneDraft();
+            draft.Bind(state, coordinator.State);
+            var changed = draft.ChangedAllocations(state, "BOD", karma ? 0 : 1, karma ? 1 : 0)!;
+            var preview = coordinator.PreviewCreationAttributes(state.Binding, changed);
+            Require(draft.TryAdopt(state, coordinator.State, preview, changed),
+                "SETUP: actual Core did not admit the uncommitted attribute increment.");
+            var restored = draft.ChangedAllocations(state, "BOD", karma ? 0 : -1, karma ? -1 : 0)!;
+            var duplicate = coordinator.PreviewCreationAttributes(state.Binding, restored);
+            Require(duplicate.Value is { CanConfirm: false } value
+                && value.Blockers.SequenceEqual(new[] { "creation-attributes-draft-duplicate" })
+                && restored.SequenceEqual(state.PendingDraft!.Allocations),
+                "SETUP: Core did not identify the unchanged saved allocation: "
+                + JsonSerializer.Serialize(new { duplicate.Outcome, duplicate.Blockers,
+                    duplicate.Value?.CanConfirm, PreviewBlockers = duplicate.Value?.Blockers }));
+            Require(CreationAttributesPhoneAuthority.CanAdoptPreview(state, coordinator.State, duplicate, restored)
+                && draft.TryAdopt(state, coordinator.State, duplicate, restored),
+                "Local Attribute minus cannot restore the saved allocation after an uncommitted plus.");
+            Require(draft.Allocations(state).SequenceEqual(state.PendingDraft!.Allocations)
+                && draft.Attribute(state, "BOD")!.Current == state.Attributes.Single(x => x.AttributeId == "BOD").Current
+                && draft.NormalBudget(state) == state.NormalPointBudget
+                && draft.KarmaBudget(state) == state.CreationKarmaBudget,
+                "Local Attribute undo did not restore exact saved values and budgets.");
+            var original = duplicate.Value!;
+            Require(!CreationAttributesPhoneAuthority.CanConfirmPreview(state, coordinator.State, original, restored),
+                "Local undo must not authorize duplicate persistence.");
+            foreach (var invalid in new[]
+            {
+                duplicate with { Outcome = CharacterCreationFoundationOutcomes.Success },
+                duplicate with { Blockers = [] },
+                duplicate with { Blockers = ["creation-attributes-draft-duplicate", "another-blocker"] },
+                duplicate with { Value = original with { Blockers = [] } },
+                duplicate with { Value = original with { CanConfirm = true } },
+                duplicate with { Value = original with { RequiresExplicitConfirmation = false } },
+                duplicate with { Value = original with { Binding = original.Binding with { ContentRevision = original.Binding.ContentRevision + 1 } } },
+                duplicate with { Value = original with { NormalPointBudget = original.NormalPointBudget with { Total = original.NormalPointBudget.Total + 1, Remaining = original.NormalPointBudget.Remaining + 1 } } },
+                duplicate with { Value = original with { Attributes = original.Attributes.Select(x => x.AttributeId == "BOD" ? x with { Current = x.Current + 1 } : x).ToArray() } }
+            })
+            {
+                Require(!CreationAttributesPhoneAuthority.CanAdoptPreview(state, coordinator.State, invalid, restored)
+                    && !draft.TryAdopt(state, coordinator.State, invalid, restored),
+                    "Local undo admitted a noncanonical or additionally blocked saved projection.");
+            }
+            Require(!CreationAttributesPhoneAuthority.CanAdoptPreview(state, coordinator.State, duplicate, changed)
+                && !CreationAttributesPhoneAuthority.CanAdoptPreview(state,
+                    coordinator.State with { WorkspaceId = null }, duplicate, restored),
+                "Local undo ignored changed allocations or stale workspace identity.");
+        }
+        Require(FinalizationDocumentDigest(readSaved()) == savedDigest,
+            "Local Attribute plus/minus changed durable state without confirmation.");
+        Console.WriteLine("ATTRIBUTES_LOCAL_UNDO priority/karma, exact saved projection, duplicate-save and forged-state guards passed");
     }
 
     private static async Task VerifyOwnerBoundSkillsAfterAttributesAsync(NativeRewardRuntime runtime,
