@@ -126,7 +126,8 @@ internal static class NativeTheme
         bool enabled = true,
         string? automationId = null,
         Action? pressed = null,
-        Action? released = null)
+        Action? released = null,
+        string? value = null)
     {
         Grid row = new()
         {
@@ -150,7 +151,9 @@ internal static class NativeTheme
         }
 
         row.Add(copy);
-        Label chevron = Body("›", enabled ? Muted : Line);
+        Label chevron = value is null ? Body("›", enabled ? Muted : Line) : Title(value, 28);
+        if (value is not null && automationId is not null)
+            chevron.AutomationId = automationId + "-value";
         chevron.FontSize = 28;
         chevron.VerticalOptions = LayoutOptions.Center;
         row.Add(chevron, 1);

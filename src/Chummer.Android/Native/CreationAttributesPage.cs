@@ -8,6 +8,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationAttributesPage : NativePageBase
 {
+    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationAttributesPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -17,6 +18,8 @@ public sealed class CreationAttributesPage : NativePageBase
     private IReadOnlyList<string> _previewBlockers = [];
     private CharacterCreationAttributesState? _authority;
     private CharacterCreationAttributesState? _revalidationAuthority;
+    private readonly ScrollView _scroll;
+    private Label? _normalAttributesHeading;
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
@@ -26,12 +29,14 @@ public sealed class CreationAttributesPage : NativePageBase
         _revalidationAuthority = authority;
         Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
-        Content = new ScrollView { Content = _body };
+        Content = _scroll = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails.Clear();
+        _normalAttributesHeading = null;
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
             "Character creation")));
@@ -100,6 +105,7 @@ public sealed class CreationAttributesPage : NativePageBase
         if (_previewBlockers.Count > 0)
             AddBlockers(_previewBlockers, "creation-attributes-preview-blockers");
         AddReviewAction(state);
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-details"));
     }
 
     private void AddBinding(CharacterCreationAttributesState state)
@@ -113,7 +119,7 @@ public sealed class CreationAttributesPage : NativePageBase
                 state.Binding.PrerequisiteDraftRevision),
             NativeTheme.Muted);
         binding.AutomationId = "creation-attributes-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigest("creation-attributes-snapshot-digest", state.SnapshotDigest);
         AddDigest("creation-attributes-raw-character-xml-digest", state.Binding.RawCharacterXmlDigest);
         AddDigest("creation-attributes-auxiliary-state-digest", state.Binding.AuxiliaryStateDigest);
@@ -128,7 +134,7 @@ public sealed class CreationAttributesPage : NativePageBase
             "Exact ledgers")));
         AddBudgetCard(
             _draft.NormalBudget(state),
-            "creation-attributes-budget-normal");
+            "creation-attributes-budget-normal", state);
         AddBudgetCard(
             _draft.SpecialBudget(state),
             "creation-attributes-budget-special");
@@ -171,7 +177,7 @@ public sealed class CreationAttributesPage : NativePageBase
             pending.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         Label digest = NativeTheme.Body(pending.DraftDigest, NativeTheme.Muted);
         digest.AutomationId = "creation-attributes-pending-draft-digest";
-        card.Add(digest);
+        _technicalDetails.Add(digest);
         card.Add(NativeTheme.Body(
             pending.CharacterEffectsApplied
                 ? CreationAllocationStrings.Get(
@@ -191,7 +197,13 @@ public sealed class CreationAttributesPage : NativePageBase
         string category,
         string label)
     {
-        _body.Add(NativeTheme.Eyebrow(label));
+        Label heading = NativeTheme.Eyebrow(label);
+        if (category == CharacterCreationAttributeCategories.Normal)
+        {
+            heading.AutomationId = "creation-attributes-normal-heading";
+            _normalAttributesHeading = heading;
+        }
+        _body.Add(heading);
         foreach (CharacterCreationAttributeProjection attribute in _draft.Attributes(state)
                      .Where(attribute => string.Equals(
                          attribute.Category,
@@ -223,7 +235,8 @@ public sealed class CreationAttributesPage : NativePageBase
                     attribute.AttributeId,
                     state)),
                 enabled: attribute.IsEnabled,
-                automationId: $"creation-attributes-open-{Token(attribute.AttributeId)}"));
+                automationId: $"creation-attributes-open-{Token(attribute.AttributeId)}",
+                value: attribute.Current.ToString(CultureInfo.InvariantCulture)));
         }
     }
 
@@ -279,10 +292,27 @@ public sealed class CreationAttributesPage : NativePageBase
         _body.Add(note);
     }
 
-    private void AddBudgetCard(CharacterCreationBudgetState budget, string automationId)
+    private void AddBudgetCard(CharacterCreationBudgetState budget, string automationId,
+        CharacterCreationAttributesState? scrollAuthority = null)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Title(budget.Label, 18));
+        if (scrollAuthority is null)
+            card.Add(NativeTheme.Title(budget.Label, 18));
+        else
+        {
+            Button jump = NativeTheme.ReadingButton(budget.Label + " ↓");
+            jump.AutomationId = automationId + "-jump";
+            SemanticProperties.SetDescription(jump, budget.Label);
+            long appearance = CaptureAppearanceGeneration();
+            jump.Clicked += async (_, _) =>
+            {
+                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(card.Parent?.Parent, _body)
+                    || !Coordinator.IsCreationAttributesStateCurrent(scrollAuthority)
+                    || _normalAttributesHeading is not { Parent: not null } target) return;
+                await _scroll.ScrollToAsync(target, ScrollToPosition.Start, animated: true);
+            };
+            card.Add(jump);
+        }
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.Total", "Total"),
             FormatBudget(budget.Total, budget.Unit)));
@@ -329,7 +359,7 @@ public sealed class CreationAttributesPage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
     internal static string AttributeLabel(string attributeId)
@@ -538,9 +568,11 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.Category", "Category"),
             attribute.Category));
-        card.Add(NativeTheme.Metric(
-            CreationAllocationStrings.Get("AttributeAllocation.Current", "Current"),
-            attribute.Current.ToString(CultureInfo.InvariantCulture)));
+        Label current = NativeTheme.Title(attribute.Current.ToString(CultureInfo.InvariantCulture), 32);
+        current.AutomationId = "creation-attribute-allocation-current";
+        SemanticProperties.SetDescription(current, CreationAllocationStrings.Get("AttributeAllocation.Current", "Current")
+            + " " + attribute.Current.ToString(CultureInfo.InvariantCulture));
+        card.Add(current);
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("AttributeAllocation.NaturalRange", "Natural range"),
             $"{attribute.Minimum.ToString(CultureInfo.InvariantCulture)}–{attribute.Maximum.ToString(CultureInfo.InvariantCulture)}"));
@@ -621,11 +653,10 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
     private void AddSources(CharacterCreationAttributeProjection attribute)
     {
-        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.SourceAuthority",
-            "Source authority")));
+        VerticalStackLayout sources = new() { Spacing = 6 };
         foreach (string anchor in attribute.SourceAnchorIds)
-            _body.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
+            sources.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
+        _body.Add(NativeTheme.TechnicalDetails(sources, "creation-attribute-allocation-details"));
     }
 }
 

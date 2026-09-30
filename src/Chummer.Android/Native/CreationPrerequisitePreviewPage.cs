@@ -9,6 +9,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationPrerequisitePreviewPage : NativePageBase
 {
+    private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CharacterCreationPrerequisitePreview _preview;
     private readonly IReadOnlyDictionary<string, string> _assignments;
     private readonly CreationPrerequisitePhoneSelections _selections;
@@ -69,6 +70,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
     {
         _renderGeneration++;
         _body.Clear();
+        _technicalDetails.Clear();
         if (!Coordinator.CanDisplayCreationPrerequisitePreview(_preview))
         {
             Label stale = NativeTheme.Body(CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision,
@@ -95,7 +97,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 ShortDigest(_preview.PreviewDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-preview-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigestBinding(
             "creation-prerequisite-preview-digest",
             _preview.PreviewDigest);
@@ -117,6 +119,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-prerequisite-preview-details"));
     }
 
     private void AddHeritageAndTalent()
@@ -130,7 +133,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                     ? heritage.MetatypeName
                     : $"{heritage.MetatypeName} · {heritage.MetavariantName}",
                 18));
-            card.Add(NativeTheme.Metric(WizardStrings.Get("Common.SelectionId", "Selection ID"), heritage.SelectionId));
+            _technicalDetails.Add(NativeTheme.Metric(heritage.MetatypeName, heritage.SelectionId));
             card.Add(NativeTheme.Metric(
                 WizardStrings.Get("Common.SpecialAttributePointsLabel", "Special Attribute points"),
                 heritage.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
@@ -147,7 +150,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                         "Core keeps the raw normal Attribute grant."),
                 NativeTheme.Muted));
             foreach (string anchor in heritage.SourceAnchorIds)
-                card.Add(NativeTheme.Body(
+                _technicalDetails.Add(NativeTheme.Body(
                     WizardStrings.Format("Common.SourceAnchor", "Source anchor · {0}", anchor),
                     NativeTheme.Muted));
             Border border = NativeTheme.Card(card);
@@ -160,7 +163,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             VerticalStackLayout card = new() { Spacing = 6 };
             card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.Preview.TalentSelection", "Talent selection")));
             card.Add(NativeTheme.Title(talent.Name, 18));
-            card.Add(NativeTheme.Metric(WizardStrings.Get("Common.SelectionId", "Selection ID"), talent.SelectionId));
+            _technicalDetails.Add(NativeTheme.Metric(talent.Name, talent.SelectionId));
             card.Add(NativeTheme.Metric(WizardStrings.Get("Common.Value", "Value"), talent.Value));
             card.Add(NativeTheme.Metric(
                 WizardStrings.Get("Common.SpecialAttributePointsLabel", "Special Attribute points"),
@@ -180,7 +183,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                         grantPlan.SkillGroups.Count.ToString(CultureInfo.InvariantCulture))));
                 Label planDigest = NativeTheme.Body(grantPlan.PlanDigest, NativeTheme.Muted);
                 planDigest.AutomationId = "creation-prerequisite-preview-talent-grant-plan-digest";
-                card.Add(planDigest);
+                _technicalDetails.Add(planDigest);
                 for (int index = 0; index < grantPlan.ActiveSkills.Count; index++)
                 {
                     CharacterCreationTalentActiveSkillGrantPlanEntry entry =
@@ -219,12 +222,12 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                     card.Add(grant);
                 }
                 foreach (string anchor in grantPlan.SourceAnchorIds)
-                    card.Add(NativeTheme.Body(
+                    _technicalDetails.Add(NativeTheme.Body(
                         WizardStrings.Format("Priority.Preview.GrantSourceAnchor", "Grant source anchor · {0}", anchor),
                         NativeTheme.Muted));
             }
             foreach (string anchor in talent.SourceAnchorIds)
-                card.Add(NativeTheme.Body(
+                _technicalDetails.Add(NativeTheme.Body(
                     WizardStrings.Format("Common.SourceAnchor", "Source anchor · {0}", anchor),
                     NativeTheme.Muted));
             Border border = NativeTheme.Card(card);
@@ -250,8 +253,8 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                         RunnerSessionCoordinator.HumanizeId(assignment.CategoryId))),
                 18));
             card.Add(NativeTheme.Metric(WizardStrings.Get("Common.RankLabel", "Rank"), assignment.Rank));
-            card.Add(NativeTheme.Metric(WizardStrings.Get("Common.SourceId", "Source ID"), assignment.SourceId));
-            card.Add(NativeTheme.Metric(WizardStrings.Get("Common.SourceNode", "Source node"), assignment.SourceNodeDigest));
+            _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Common.SourceId", "Source ID"), assignment.SourceId));
+            _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Common.SourceNode", "Source node"), assignment.SourceNodeDigest));
             card.Add(NativeTheme.Metric(
                 WizardStrings.Get("Priority.Preview.SumToTenValue", "Sum-to-Ten value"),
                 assignment.SumToTenValue.ToString(CultureInfo.InvariantCulture)));
@@ -262,7 +265,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                     raw.ToString(CultureInfo.InvariantCulture)));
             }
             foreach (string anchor in assignment.SourceAnchorIds)
-                card.Add(NativeTheme.Body(
+                _technicalDetails.Add(NativeTheme.Body(
                     WizardStrings.Format("Common.SourceAnchor", "Source anchor · {0}", anchor),
                     NativeTheme.Muted));
             Border border = NativeTheme.Card(card, new Thickness(14));
@@ -475,7 +478,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             card,
             "creation-prerequisite-receipt-draft-revision",
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture));
-        card.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Draft.Digest", "Draft digest"), receipt.DraftDigest));
+        _technicalDetails.Add(NativeTheme.Metric(WizardStrings.Get("Priority.Draft.Digest", "Draft digest"), receipt.DraftDigest));
         card.Add(NativeTheme.Metric(
             WizardStrings.Get("Priority.Preview.KarmaRemaining", "Creation Karma remaining"),
             receipt.CreationKarmaRemaining.ToString(CultureInfo.InvariantCulture)));
@@ -580,17 +583,17 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
     {
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
-    private static void AddReceiptDigest(
+    private void AddReceiptDigest(
         VerticalStackLayout card,
         string automationId,
         string digest)
     {
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
-        card.Add(label);
+        _technicalDetails.Add(label);
     }
 
     private static void AddReceiptValue(

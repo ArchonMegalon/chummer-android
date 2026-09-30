@@ -117,13 +117,30 @@ internal static partial class AfterRunAuthorityHarness
             // Priority editing is intentionally locked once dependent stages
             // exist. Use a real new runner, not the ready-for-Gear fixture.
             await using var priorityRuntime = new NativeRewardRuntime(contentRoot,
-                linkedOwners: owners, creationPrerequisite: true);
+                linkedOwners: owners, creationPrerequisite: true, creationAttributes: true,
+                productionCreationOverview: true);
             await priorityRuntime.Coordinator.InitializeAsync();
             await AccountStartupTask(priorityRuntime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             var prioritySeed = PreparePrerequisiteOwnerFixture(priorityRuntime);
             await HydrateFinalizationOwnerAsync(priorityRuntime, owners, prioritySeed);
             var prerequisite = (await priorityRuntime.Coordinator.LoadCreationPrerequisiteAsync()).Value
                 ?? throw new InvalidOperationException("SETUP: real prerequisite authority unavailable.");
+            var (assignments, selections) = PrerequisiteSelections(prerequisite);
+            var assignmentsPreview = (await priorityRuntime.Coordinator.PreviewCreationPrerequisiteAsync(
+                prerequisite.Binding, assignments, selections)).Value!;
+            var assignmentReview = new CreationPrerequisitePreviewPage(priorityRuntime.Coordinator,
+                assignmentsPreview, assignments, selections, CharacterCreationBuildMethods.Priority);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(assignmentReview, "OnAppearing")));
+            MinimalRequireNoMachineValues(assignmentReview);
+            Require(MinimalVisibleText(assignmentReview).Contains(assignmentsPreview.TalentSelection!.Name)
+                && MinimalVisible(assignmentReview).OfType<Button>().Single(x =>
+                    x.AutomationId == "creation-prerequisite-confirm").IsEnabled,
+                "Readable assignments lost the actual Talent or exact confirmation.");
+            ((IButtonController)MinimalVisible(assignmentReview).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-prerequisite-preview-details-toggle")).SendClicked();
+            Require(MinimalVisibleText(assignmentReview).Contains(assignmentsPreview.PreviewDigest),
+                "Review diagnostics must retain the exact preview digest.");
+            IssuedPageLifecycle(assignmentReview, "OnDisappearing");
             var priorities = new CreationPrerequisitePage(priorityRuntime.Coordinator, prerequisite);
             MinimalRender(priorities);
             MinimalRequireNoMachineValues(priorities);
@@ -157,6 +174,42 @@ internal static partial class AfterRunAuthorityHarness
             Require(MinimalVisible(talent).OfType<Button>().Any(x =>
                 x.AutomationId?.StartsWith("creation-prerequisite-talent-option-") == true),
                 "Minimal Talent list has no actual choices.");
+            var confirmedAssignments = await priorityRuntime.Coordinator.ConfirmCreationPrerequisiteAsync(
+                assignmentsPreview, assignments, selections);
+            Require(confirmedAssignments.Outcome == CharacterCreationFoundationOutcomes.Success,
+                "SETUP: prerequisite confirmation failed.");
+            var attributesAuthority = priorityRuntime.Coordinator.LoadCreationAttributes().Value
+                ?? throw new InvalidOperationException("SETUP: Attribute authority unavailable.");
+            Require(CreationAttributesPhoneAuthority.IsReady(
+                attributesAuthority, priorityRuntime.Coordinator.State), "SETUP: editable Attribute authority unavailable.");
+            var attributesPage = new CreationAttributesPage(priorityRuntime.Coordinator, attributesAuthority);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributesPage, "OnAppearing")));
+            var scroll = (ScrollView)attributesPage.Content!;
+            Element? scrollTarget = null;
+            ((IScrollViewController)scroll).ScrollToRequested += (_, request) =>
+            {
+                scrollTarget = request.Element;
+                ((IScrollViewController)scroll).SendScrollFinished();
+            };
+            var jump = MinimalVisible(attributesPage).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-attributes-budget-normal-jump");
+            ((IButtonController)jump).SendClicked();
+            Require(scrollTarget?.AutomationId == "creation-attributes-normal-heading",
+                "Normal points must jump to the actual normal Attribute list.");
+            foreach (var attribute in attributesAuthority.Attributes)
+            {
+                var value = MinimalVisible(attributesPage).OfType<Label>().Single(x =>
+                    x.AutomationId == "creation-attributes-open-" + CreationAttributesPage.Token(attribute.AttributeId) + "-value");
+                Require(value.Text == attribute.Current.ToString(CultureInfo.InvariantCulture)
+                    && value.FontAttributes.HasFlag(FontAttributes.Bold) && value.FontSize >= 24
+                    && value.TextColor == NativeTheme.Text, "Current Attribute rating is not prominent/readable.");
+            }
+            scrollTarget = null;
+            MinimalRender(attributesPage);
+            ((IButtonController)jump).SendClicked();
+            Require(scrollTarget is null, "A detached budget control still scrolls a refreshed screen.");
+            MinimalRequireNoMachineValues(attributesPage);
+            IssuedPageLifecycle(attributesPage, "OnDisappearing");
             var gear = new CreationGearPage(runtime.Coordinator, actual, runtime.Presenter);
             await MinimalPrepareAsync(gear);
             var visible = MinimalVisibleText(gear);
@@ -251,7 +304,7 @@ internal static partial class AfterRunAuthorityHarness
     private static void MinimalRequireNoMachineValues(IVisualTreeElement element)
     {
         Require(!Regex.IsMatch(MinimalVisibleText(element),
-            @"sha256:|\b[0-9a-f]{32}\b|\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
+            @"sha256:|\b(?:[0-9a-f]{32}|[0-9a-f]{64})\b|\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
             RegexOptions.IgnoreCase), "Normal UI/accessibility contains machine identifiers.");
     }
 }

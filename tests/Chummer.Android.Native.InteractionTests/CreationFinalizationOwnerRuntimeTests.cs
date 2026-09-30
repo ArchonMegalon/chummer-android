@@ -456,11 +456,14 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            MinimalRequireNoMachineValues(page);
             var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
                 retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
             await (Task)typeof(CreationMagicResonanceOptionPage)
                 .GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
                 .Invoke(option, [CancellationToken.None])!;
+            MinimalRender(option);
+            MinimalRequireNoMachineValues(option);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             Require(body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review" && button.IsEnabled),
                 "Background catalog did not expose the actual Core-ready editor.");
@@ -471,6 +474,17 @@ internal static partial class AfterRunAuthorityHarness
                 original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
                 out var storedReview, out _), "Scoped Magic review was not durable.");
+            var readableReview = new CreationMagicResonanceReviewPage(runtime.Coordinator, storedReview, journal);
+            MinimalRender(readableReview);
+            MinimalRequireNoMachineValues(readableReview);
+            foreach (var identity in review.Preview.Selections.AdeptPowers.Select(item => item.Identity)
+                         .Concat(review.Preview.Selections.Spells))
+            {
+                string name = retainedEditor.AdeptPowers.Concat(retainedEditor.Spells)
+                    .Single(item => item.Identity == identity).Name;
+                Require(MinimalVisibleText(readableReview).Contains(name),
+                    "Magic review must show the exact catalog name rather than an ID or placeholder.");
+            }
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
                 && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
             await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview);

@@ -116,7 +116,7 @@
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Presupuestos exactos de Core</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirmar solo guarda el estado auxiliar de creación de Core. CharacterDocumentChanged debe seguir en false hasta la finalización completa.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magia y Resonancia</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>El talento pertenece a los requisitos de creación. Este paso solo selecciona identidades tipadas emitidas por Core; las semánticas personalizadas incompatibles y el talento de inteligencia artificial permanecen bloqueados de forma segura.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Elige la magia y las habilidades disponibles para tu talento.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adepto</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Puntos de poderes de adepto</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Mago especializado</value></data>
@@ -164,10 +164,11 @@
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
-  <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar borrador tipado exacto</value></data>
+  <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar tus elecciones</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento exacto no requiere identidades posteriores.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Revisar Magia / Resonancia</value></data>
-  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Identidades tipadas</value></data>
+  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Tus elecciones</value></data>
+  <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Vuelve a abrir Magia / Resonancia para ver esta elección.</value></data>
   <data name="Magic.ReviewChanged" xml:space="preserve"><value>Cambió la vista previa de Core, la autoridad de fuente/personalización/DJ o la revisión del espacio de trabajo.</value></data>
   <data name="Magic.ReviewExactDraft" xml:space="preserve"><value>Revisar borrador exacto</value></data>
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Metatipos prohibidos</value></data>

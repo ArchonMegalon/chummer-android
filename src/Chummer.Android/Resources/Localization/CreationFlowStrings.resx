@@ -118,7 +118,7 @@
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exact Core budgets</value></data>
   <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magic and Resonance</value></data>
-  <data name="Magic.Intro" xml:space="preserve"><value>The Talent is owned by the Creation prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed.</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Choose the magic and abilities available to your Talent.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
   <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Adept power points</value></data>
   <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Aspected magician</value></data>
@@ -166,10 +166,11 @@
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirm Magic/Resonance Creation draft</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
-  <data name="Magic.Review.Heading" xml:space="preserve"><value>Review exact typed draft</value></data>
+  <data name="Magic.Review.Heading" xml:space="preserve"><value>Review your choices</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>No follow-up identities are required by this exact Talent.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Review Magic / Resonance</value></data>
-  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Typed identities</value></data>
+  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Your choices</value></data>
+  <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Reopen Magic / Resonance to view this choice.</value></data>
   <data name="Magic.ReviewChanged" xml:space="preserve"><value>The Core preview, source/custom/GM authority, or workspace revision changed.</value></data>
   <data name="Magic.ReviewExactDraft" xml:space="preserve"><value>Review exact draft</value></data>
   <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Forbidden metatypes</value></data>
