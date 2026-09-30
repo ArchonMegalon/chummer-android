@@ -257,8 +257,9 @@ internal static partial class AfterRunAuthorityHarness
         var legacyCard = (VerticalStackLayout)legacyBody.Children.OfType<Border>().Single().Content!;
         var legacyLabels = legacyCard.Children.OfType<Label>().ToArray();
         Require(legacyLabels.Count(label => label.Text == CreationFlowStrings.FinalizationBlocker(snapshot.CompletionBlockers[0])) == 1
-            && legacyLabels.Any(label => label.Text == "fixture-unknown-blocker"),
-            "Legacy completion box must show deduplicated actions and retain unknown blockers.");
+            && legacyLabels.Any(label => label.Text == CreationFlowStrings.DashboardBlocker("fixture-unknown-blocker"))
+            && !legacyLabels.Any(label => label.Text == "fixture-unknown-blocker"),
+            "Completion must show deduplicated guidance and keep unknown codes in explicit diagnostics.");
         var legacyDetails = legacyCard.Children.OfType<VerticalStackLayout>().Single();
         var legacyToggle = legacyCard.Children.OfType<Button>().Single();
         Require(!legacyDetails.IsVisible && snapshot.CompletionBlockers.All(code =>
@@ -301,7 +302,7 @@ internal static partial class AfterRunAuthorityHarness
                 .All(row => !row.Text.Contains("source anchor", StringComparison.OrdinalIgnoreCase)),
                 "Completed step rows still present diagnostic source counts as gameplay feedback.");
             Require(projection.Steps.SelectMany(step => step.Blockers).Concat(projection.Blockers)
-                .All(blocker => rows.Any(row => row.IsVisible && row.Text == CreationFlowStrings.FinalizationBlocker(blocker))),
+                .All(blocker => rows.Any(row => row.IsVisible && row.Text == CreationFlowStrings.DashboardBlocker(blocker))),
                 "Readability must not hide any step or whole-build blocker.");
             Require(rows.Select(row => row.Text).Distinct(StringComparer.Ordinal).Count() == rows.Length,
                 "Repeated prerequisites still flood the readiness card with duplicate instructions.");

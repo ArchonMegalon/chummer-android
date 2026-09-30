@@ -280,4 +280,12 @@
   <data name="Gear.Saving" xml:space="preserve"><value>Saving gear…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Saving your equipment choices. Please wait…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Your equipment choices are saved.</value></data>
+  <data name="Dashboard.Unavailable" xml:space="preserve"><value>Your creation choices could not be loaded. Reopen this runner to try again.</value></data>
+  <data name="Dashboard.Loading" xml:space="preserve"><value>Loading your creation choices…</value></data>
+  <data name="Dashboard.LoadFailed" xml:space="preserve"><value>Some choices could not be loaded. Try loading them again or reopen this runner.</value></data>
+  <data name="Dashboard.PartialFailed" xml:space="preserve"><value>Some steps could not be loaded. You can use the ready steps or try loading the others again.</value></data>
+  <data name="Dashboard.Retry" xml:space="preserve"><value>Try loading again</value></data>
+  <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps.</value></data>
+  <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Story details cannot be edited in this build.</value></data>
+  <data name="Dashboard.StepBlocked" xml:space="preserve"><value>This step needs attention before you can continue. See technical details for the exact reason.</value></data>
 </root>

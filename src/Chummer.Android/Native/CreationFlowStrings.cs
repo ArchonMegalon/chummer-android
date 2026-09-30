@@ -9,6 +9,28 @@ namespace Chummer.Android.Native;
 /// </summary>
 public static class CreationFlowStrings
 {
+    // Dashboard display only. Callers retain the original codes in technical
+    // details and use Core readiness, never this text, to admit actions.
+    internal static string DashboardBlocker(string code)
+    {
+        string known = FinalizationBlocker(code);
+        if (!string.Equals(known, code, StringComparison.Ordinal)) return known;
+        return code switch
+        {
+            "creation-prerequisite-dependent-attributes-draft-exists"
+                => Get("Dashboard.MethodLocked", "Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps."),
+            "creation-authority-loading"
+                => Get("Dashboard.Loading", "Loading your creation choices…"),
+            "creation-prerequisite-authority-load-failed" or "creation-attributes-authority-load-failed"
+                or "creation-skills-authority-load-failed" or "creation-contacts-authority-load-failed"
+                or "creation-resources-authority-load-failed"
+                => Get("Dashboard.LoadFailed", "Some choices could not be loaded. Try loading them again or reopen this runner."),
+            "creation-identity-draft-contract-unavailable"
+                => Get("Dashboard.IdentityUnavailable", "Story details cannot be edited in this build."),
+            _ => Get("Dashboard.StepBlocked", "This step needs attention before you can continue. See technical details for the exact reason.")
+        };
+    }
+
     // Presentation only: exact known blockers get an actionable explanation.
     // Unknown codes are retained verbatim, never converted into readiness.
     internal static string FinalizationBlocker(string code) => code switch

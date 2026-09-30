@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
@@ -64,6 +65,52 @@ internal static partial class AfterRunAuthorityHarness
                 creationFinalization: true, productionCreationOverview: true, creationPrerequisite: true);
             var before = PrepareActualFinalizationReadyContext(runtime);
             await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            AssertCreationReadinessCopy(runtime.Coordinator);
+            var currentCulture = CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (var (locale, words) in new[] { ("en-GB", "saved Attributes"),
+                             ("de-AT", "gespeicherten Attribute"), ("es-MX", "Atributos guardados") })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    const string locked = "creation-prerequisite-dependent-attributes-draft-exists";
+                    string message = CreationFlowStrings.DashboardBlocker(locked);
+                    Require(message.Contains(words) && message == CreationFlowStrings.Get("Dashboard.MethodLocked", "missing"),
+                        "Locked method lacks localized dependent-Attributes guidance.");
+                    Require(CreationFlowStrings.DashboardBlocker("fixture-unknown-9d74b5ce")
+                        == CreationFlowStrings.Get("Dashboard.StepBlocked", "missing"),
+                        "Unknown codes must stay in diagnostics rather than leak into ordinary guidance.");
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = currentCulture; }
+            var lockedMethod = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+            Require(lockedMethod.Blockers.Concat(lockedMethod.Value?.Blockers ?? []).Contains(
+                "creation-prerequisite-dependent-attributes-draft-exists"),
+                "SETUP: saved Attributes must actually lock prerequisite edits.");
+            var dashboard = new BuildPage(runtime.Coordinator);
+            var snapshot = runtime.Coordinator.State.CreationWizard!;
+            Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State, snapshot, out var binding),
+                "SETUP: current dashboard binding missing.");
+            var projection = CreationDashboardAuthorityProjection.Loading(binding!) with
+            {
+                Prerequisite = lockedMethod,
+                Progress = CreationDashboardAuthorityPhaseProgress.ForBuildMethod(snapshot.BuildMethod) with
+                { Prerequisite = CreationDashboardAuthorityPhaseState.Ready }
+            };
+            var methodRoute = (CreationBudgetRoute)typeof(BuildPage).GetMethod("AddCreationMethodRoute",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(dashboard, [snapshot, projection, lockedMethod])!;
+            Require(!methodRoute.CanOpen && methodRoute.Detail == CreationFlowStrings.DashboardBlocker(
+                "creation-prerequisite-dependent-attributes-draft-exists")
+                && methodRoute.Blockers.SequenceEqual(["creation-prerequisite-dependent-attributes-draft-exists"])
+                && !MinimalVisible(dashboard).OfType<Button>().Single(x =>
+                    x.AutomationId == "creation-stage-method").IsEnabled,
+                "Plain locked-method guidance changed readiness or gave a misleading Karma reason.");
+            var header = new VerticalStackLayout();
+            bool hasPicker = (bool)typeof(BuildPage).GetMethod("AddWorkspacePicker",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(dashboard, [header])!;
+            Require(hasPicker == (runtime.Coordinator.State.OpenWorkspaces.Count > 1)
+                && (!hasPicker || header.Children.OfType<Picker>().Single().AutomationId == "build-workspace-picker"),
+                "Dashboard heading must retain the workspace selector only when needed.");
             var actual = new CharacterCreationGearInteractionPresenter(
                 runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
                 runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
