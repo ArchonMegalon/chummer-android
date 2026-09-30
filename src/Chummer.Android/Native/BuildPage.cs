@@ -2363,10 +2363,10 @@ public sealed class BuildPage : NativePageBase
         bool hasInexactBudget = false;
         foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
         {
-            // Each typed projection owns only its own budget family.  The old
-            // skills-first conditional left normal/special attributes and Karma
-            // on the conservative generic snapshot whenever Skills was ready,
-            // making a valid restored runner look blocked after restart.
+            // Each typed projection owns only its own budget family. Qualities
+            // already supplies cumulative Karma in the wizard snapshot. Once
+            // admitted, do not replace it with the earlier Attributes-only
+            // budget, even when the cumulative row itself remains inexact.
             CharacterCreationBudgetState budget = projectedBudget.BudgetId switch
             {
                 CharacterCreationBudgetIds.ActiveSkills
@@ -2385,7 +2385,7 @@ public sealed class BuildPage : NativePageBase
                     when readiness.Attributes && attributes!.Value is { } attributeState
                     => attributeState.SpecialPointBudget,
                 CharacterCreationBudgetIds.Karma
-                    when readiness.Attributes && attributes!.Value is { } attributeState
+                    when !readiness.Qualities && readiness.Attributes && attributes!.Value is { } attributeState
                     => attributeState.CreationKarmaBudget,
                 CharacterCreationBudgetIds.Resources
                     when readiness.Resources && projection?.Resources?.State is { } resourceState
