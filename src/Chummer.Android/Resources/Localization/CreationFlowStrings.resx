@@ -191,7 +191,7 @@
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Add to draft</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Back to qualities</value></data>
   <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Configure quality</value></data>
-  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Core preview: +{0} positive · -{1} negative · {2} Karma remaining</value></data>
+  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Selected: +{0} positive · -{1} negative · {2} Karma remaining</value></data>
   <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Remove from draft</value></data>
   <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Quality budgets</value></data>
   <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Exact follow-up</value></data>
@@ -224,8 +224,8 @@
   <data name="Qualities.Positive" xml:space="preserve"><value>Positive qualities</value></data>
   <data name="Qualities.PositiveKarma" xml:space="preserve"><value>Positive quality Karma</value></data>
   <data name="Qualities.PositiveKarmaUsed" xml:space="preserve"><value>Positive Karma used</value></data>
-  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Qualities receipt</value></data>
-  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Typed selections are durable. Character effects remain pending whole-build finalization.</value></data>
+  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Qualities saved</value></data>
+  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Your choices are saved. Their effects are applied when you finish creating your runner.</value></data>
   <data name="Qualities.Receipt.Unsafe" xml:space="preserve"><value>Unsafe receipt: the character document changed before finalization.</value></data>
   <data name="Qualities.Recovery.Applied" xml:space="preserve"><value>A verified quality-draft receipt is waiting for acknowledgement.</value></data>
   <data name="Qualities.Recovery.Locked" xml:space="preserve"><value>The quality lane is locked.</value></data>
@@ -233,9 +233,9 @@
   <data name="Qualities.Recovery.Reviewed" xml:space="preserve"><value>A reviewed quality draft can be resumed without reconstructing rules data.</value></data>
   <data name="Qualities.Recovery.Stale" xml:space="preserve"><value>The checkpoint belongs to another revision or its authority changed. The lane remains fail-closed; reopen the exact runner or use support recovery.</value></data>
   <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revision {0} · transaction {1}</value></data>
-  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>This commits only auxiliary Creation state and its receipt. CharacterDocumentChanged must remain false until finalization.</value></data>
-  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Confirm Creation qualities draft</value></data>
-  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Review exact quality draft</value></data>
+  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Your choices are saved with this draft. Their effects are applied when you finish creating your runner.</value></data>
+  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Save qualities</value></data>
+  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Review qualities</value></data>
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Review qualities</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>The Core preview, source authority or workspace revision changed.</value></data>
   <data name="Qualities.ReviewSelected" xml:space="preserve"><value>Review {0} selected qualities</value></data>
@@ -298,4 +298,6 @@
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Story details cannot be edited in this build.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>This step needs attention before you can continue. See technical details for the exact reason.</value></data>
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.</value></data>
+  <data name="Qualities.Review.Empty" xml:space="preserve"><value>No additional qualities selected.</value></data>
+  <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Continue</value></data>
 </root>

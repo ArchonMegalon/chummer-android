@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length is 2 or 3 && args[0] == "--creation-quality-details-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationQualityDetailsAsync(args[1], args.Length == 3 ? args[2] : null);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--minimal-ui-content-root")
         {
             await AfterRunAuthorityHarness.RunMinimalUiAsync(args[1]);

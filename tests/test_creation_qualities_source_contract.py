@@ -37,7 +37,9 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             copy = {row.attrib["name"]: row.findtext("value") for row in rows}
             self.assertEqual(len(rows), len(copy), "Duplicate localization key")
             for key in ("ShowDetails", "HideDetails", "SourceDisabled", "Unavailable",
-                        "Intro", "CoreLedgers", "FinalizationBoundary"):
+                        "Intro", "CoreLedgers", "FinalizationBoundary", "Configure.Preview",
+                        "Review.Heading", "Review.Confirm", "Review.Boundary", "Review.Empty",
+                        "Receipt.PageTitle", "Receipt.Safe", "Receipt.Continue"):
                 value = copy[f"Qualities.{key}"]
                 self.assertTrue(value)
                 self.assertNotIn("creation-qualities-", value)
@@ -99,10 +101,15 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             "TryRecordApplied(",
             'AutomationId = "creation-qualities-confirm-receipt"',
             "CharacterDocumentChanged",
-            "pending whole-build finalization",
+            "Their effects are applied when you finish creating your runner.",
         ):
             self.assertIn(marker, page)
 
+        # Read-only source-backed help parses bounded catalog XML. Selection,
+        # review and receipt pages must still delegate rules and edits to Core.
+        interactions = page[page.index("public sealed class CreationQualitiesPage"):
+                            page.index("public sealed class CreationQualityInfoPage")]
+        interactions += page[page.index("public sealed class CreationQualityConfigurePage"):]
         for forbidden in (
             "System.Xml",
             "XmlDocument",
@@ -115,7 +122,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             "KarmaCost =",
             "MaximumSelections =",
         ):
-            self.assertNotIn(forbidden, page)
+            self.assertNotIn(forbidden, interactions)
 
     def test_android_validates_projection_and_never_invents_rules(self) -> None:
         authority = (NATIVE / "CreationQualitiesPhoneAuthority.cs").read_text(

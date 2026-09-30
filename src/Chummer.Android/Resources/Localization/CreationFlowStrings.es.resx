@@ -189,7 +189,7 @@
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Añadir al borrador</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Volver a cualidades</value></data>
   <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Configurar cualidad</value></data>
-  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Vista previa de Core: +{0} positivas · -{1} negativas · {2} Karma restante</value></data>
+  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Seleccionadas: +{0} positivas · -{1} negativas · {2} Karma restante</value></data>
   <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Quitar del borrador</value></data>
   <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Presupuesto de cualidades</value></data>
   <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Selección posterior exacta</value></data>
@@ -222,8 +222,8 @@
   <data name="Qualities.Positive" xml:space="preserve"><value>Cualidades positivas</value></data>
   <data name="Qualities.PositiveKarma" xml:space="preserve"><value>Karma de cualidades positivas</value></data>
   <data name="Qualities.PositiveKarmaUsed" xml:space="preserve"><value>Karma positivo usado</value></data>
-  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Recibo de cualidades</value></data>
-  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Las selecciones tipadas están guardadas de forma duradera. Los efectos del personaje esperan la finalización completa.</value></data>
+  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Cualidades guardadas</value></data>
+  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Tus elecciones están guardadas. Sus efectos se aplicarán al terminar de crear tu runner.</value></data>
   <data name="Qualities.Receipt.Unsafe" xml:space="preserve"><value>Recibo inseguro: el documento del personaje cambió antes de la finalización.</value></data>
   <data name="Qualities.Recovery.Applied" xml:space="preserve"><value>Un recibo verificado del borrador de cualidades espera confirmación.</value></data>
   <data name="Qualities.Recovery.Locked" xml:space="preserve"><value>La sección de cualidades está bloqueada.</value></data>
@@ -231,9 +231,9 @@
   <data name="Qualities.Recovery.Reviewed" xml:space="preserve"><value>Un borrador de cualidades revisado puede reanudarse sin reconstruir datos de reglas.</value></data>
   <data name="Qualities.Recovery.Stale" xml:space="preserve"><value>El punto de control pertenece a otra revisión o cambió su autoridad. La sección permanece bloqueada de forma segura; vuelve a abrir el runner exacto o usa la recuperación de soporte.</value></data>
   <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revisión {0} · transacción {1}</value></data>
-  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Esto confirma solo el estado auxiliar de creación y su recibo. CharacterDocumentChanged debe seguir en false hasta la finalización.</value></data>
-  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de cualidades de creación</value></data>
-  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Revisar borrador exacto de cualidades</value></data>
+  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Tus elecciones se guardarán en el borrador. Sus efectos se aplicarán al terminar de crear tu runner.</value></data>
+  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Guardar cualidades</value></data>
+  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Revisar cualidades</value></data>
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Revisar cualidades</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>Cambió la vista previa de Core, la autoridad de fuente o la revisión del espacio de trabajo.</value></data>
   <data name="Qualities.ReviewSelected" xml:space="preserve"><value>Revisar {0} cualidades seleccionadas</value></data>
@@ -281,4 +281,6 @@
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>La historia de fondo no se puede editar en esta versión.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Revisa este paso antes de continuar. Consulta los detalles técnicos para conocer el motivo exacto.</value></data>
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>El catálogo actual no describe el efecto de esta cualidad otorgada. Consulta las reglas de la elección que la otorgó.</value></data>
+  <data name="Qualities.Review.Empty" xml:space="preserve"><value>No se han seleccionado cualidades adicionales.</value></data>
+  <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Continuar</value></data>
 </root>
