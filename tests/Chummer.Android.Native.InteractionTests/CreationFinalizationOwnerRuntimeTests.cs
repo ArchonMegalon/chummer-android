@@ -472,6 +472,7 @@ internal static partial class AfterRunAuthorityHarness
                 out var storedReview, out _), "Scoped Magic review was not durable.");
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
                 && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
+            await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview);
 
             using var canceled = new CancellationTokenSource();
             probe.BeforeRead = canceled.Cancel;
@@ -558,6 +559,68 @@ internal static partial class AfterRunAuthorityHarness
         });
         RequireSameRewardDocument(before, store.Get(id).Value!);
         Console.WriteLine("PASS Magic scoped catalog/preview/confirm, UI heartbeat, cancellation, owner ABA, journal isolation/recovery and unchanged local workspace");
+    }
+
+    private static async Task VerifyMagicConfirmationFeedbackAsync(RunnerSessionCoordinator coordinator,
+        MagicReadProbe probe, CharacterCreationMagicResonanceCheckpointStore journal,
+        CharacterCreationMagicResonanceCheckpoint reviewed)
+    {
+        var page = new CreationMagicResonanceReviewPage(coordinator, reviewed, journal);
+        var refresh = typeof(CreationMagicResonanceReviewPage)
+            .GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var confirm = typeof(CreationMagicResonanceReviewPage)
+            .GetMethod("ConfirmAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(coordinator)!;
+        foreach (bool cancel in new[] { false, true })
+        {
+            refresh.Invoke(page, null);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var button = body.Children.OfType<Button>().Single(item => item.AutomationId == "creation-magic-resonance-confirm-draft");
+            string idleText = button.Text;
+            var rendered = body.Children.ToArray();
+            Require(button.IsEnabled, "SETUP: exact Magic review must allow confirmation.");
+            int reads = probe.Loads;
+            probe.BeforeRead = () =>
+            {
+                if (cancel) throw new OperationCanceledException("magic-feedback-test");
+                throw new InvalidOperationException("magic-feedback-test");
+            };
+            await gate.WaitAsync();
+            Task pending = (Task)confirm.Invoke(page, null)!;
+            Exception? assertion = null;
+            try
+            {
+                Require(!pending.IsCompleted && !button.IsEnabled && button.Text != idleText,
+                    "Magic confirmation must immediately disable and relabel the rendered button before awaiting Core.");
+                var progress = body.Children.OfType<ActivityIndicator>()
+                    .Single(item => item.AutomationId == "creation-magic-resonance-confirm-progress");
+                Require(progress.IsVisible && progress.IsRunning && rendered.SequenceEqual(body.Children),
+                    "Magic confirmation must show progress in place without rebuilding the scrolled review.");
+                await (Task)confirm.Invoke(page, null)!;
+                Require(!pending.IsCompleted && probe.Loads == reads && probe.Confirms == 0,
+                    "A second pending confirmation must not enter Core or reset the busy state.");
+                Require(!button.IsEnabled && progress.IsRunning, "A duplicate confirmation cleared pending feedback.");
+            }
+            catch (Exception error) { assertion = error; }
+            finally { gate.Release(); }
+            try
+            {
+                await pending;
+                throw new Exception("SETUP: Magic feedback probe did not propagate its read failure.");
+            }
+            catch (Exception error) when (error.Message == "magic-feedback-test") { }
+            finally { probe.BeforeRead = null; }
+            if (assertion is not null) throw assertion;
+            var restored = body.Children.OfType<Button>().Single(item => item.AutomationId == button.AutomationId);
+            Require(restored.IsEnabled && restored.Text == idleText
+                && !body.Children.OfType<ActivityIndicator>().Any(item => item.IsRunning || item.IsVisible),
+                "Canceled or failed pre-commit reads must stop progress and restore exact review controls.");
+            Require(journal.TryRead(out var unchanged, out _)
+                && unchanged.CheckpointDigest == reviewed.CheckpointDigest && probe.Confirms == 0,
+                "Pending feedback or a failed read changed the durable Magic command.");
+        }
+        Console.WriteLine("PASS Magic pending feedback, in-place controls, duplicate exclusion and error/cancel cleanup");
     }
 
     private sealed class MagicReadProbe(IOwnerBoundCharacterCreationMagicResonanceService inner, ControlledLinkedOwner owners)

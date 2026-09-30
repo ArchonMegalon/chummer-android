@@ -164,6 +164,7 @@
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core atomically commits only the auxiliary creation ledger. No XML or character effect is mutated here.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirm Magic/Resonance Creation draft</value></data>
+  <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Review exact typed draft</value></data>
   <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>No follow-up identities are required by this exact Talent.</value></data>

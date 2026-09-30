@@ -1084,6 +1084,13 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     };
     private IReadOnlyList<string> _blockers = [];
     private int _confirmStarted;
+    private readonly Button _confirm;
+    private readonly ActivityIndicator _confirmProgress = new()
+    {
+        AutomationId = "creation-magic-resonance-confirm-progress",
+        IsVisible = false,
+        IsRunning = false
+    };
 
     internal CreationMagicResonanceReviewPage(
         RunnerSessionCoordinator coordinator,
@@ -1103,10 +1110,14 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         Title = CreationFlowStrings.Get("Magic.Review.PageTitle", "Review Magic / Resonance");
         AutomationId = "creation-magic-resonance-review-page";
         Content = new ScrollView { Content = _body };
+        _confirm = NativeTheme.PrimaryButton(string.Empty);
+        _confirm.AutomationId = "creation-magic-resonance-confirm-draft";
+        _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
     }
 
     protected override void Refresh()
     {
+        UpdateConfirmationFeedback();
         _body.Clear();
         if (!Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext))
         {
@@ -1146,18 +1157,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         foreach (string blocker in preview.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
-        Button confirm = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
-            "Magic.Review.Confirm",
-            "Confirm Magic/Resonance Creation draft"));
-        confirm.AutomationId = "creation-magic-resonance-confirm-draft";
-        confirm.IsEnabled = _checkpoint.Phase ==
-                                CharacterCreationMagicResonanceCheckpointPhase.Reviewed
-                            && preview.RequiresExplicitConfirmation
-                            && preview.CanConfirm
-                            && preview.Blockers.Count == 0
-                            && Volatile.Read(ref _confirmStarted) == 0;
-        confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
-        _body.Add(confirm);
+        _body.Add(_confirmProgress);
+        _body.Add(_confirm);
         Label boundary = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Magic.Review.Boundary",
@@ -1167,12 +1168,30 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         _body.Add(boundary);
     }
 
+    private void UpdateConfirmationFeedback()
+    {
+        bool pending = Volatile.Read(ref _confirmStarted) != 0;
+        CharacterCreationMagicResonancePreview preview = _checkpoint.Review.Preview;
+        _confirm.Text = pending
+            ? CreationFlowStrings.Get("Magic.Review.Confirming", "Checking and saving choices…")
+            : CreationFlowStrings.Get("Magic.Review.Confirm", "Confirm Magic/Resonance Creation draft");
+        _confirm.IsEnabled = !pending
+            && Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext)
+            && _checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Reviewed
+            && preview.RequiresExplicitConfirmation && preview.CanConfirm && preview.Blockers.Count == 0;
+        _confirmProgress.IsVisible = pending;
+        _confirmProgress.IsRunning = pending;
+    }
+
     private async Task ConfirmAsync()
     {
         if (Interlocked.CompareExchange(ref _confirmStarted, 1, 0) != 0)
             return;
         try
         {
+            // RunAsync suppresses coordinator refreshes while this action owns the gate.
+            // Update the existing controls before awaiting; do not rebuild a scrolled review.
+            UpdateConfirmationFeedback();
             long generation = CaptureAppearanceGeneration();
             CharacterOverviewState original = _display;
             CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
