@@ -104,16 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 57 is the latest [observed Internal availability](../play/evidence/preview57-internal-observation.md).
-It is available on Play Internal; physical Play installation of 57 is not yet
-verified. It adds quality explanations/readability and all SR5 sources as defaults
-for new runners without changing existing saved settings. Focused managed checks
-cover all four defaults; native Priority upgrade/save/reopen/process-restart smoke
-preserved all existing workspaces. The constrained emulator's slow cold creation
-is documented, not claimed as a performance pass. Preview 56's simpler Creation,
+Preview 58 is the latest [observed Internal availability](../play/evidence/preview58-internal-observation.md).
+It is available on Play Internal; physical Play installation of 58 is not yet
+verified. It reduces Creation hashing allocations and makes New runner's exact
+save/conflict guidance readable without technical IDs. Native Priority upgrade,
+save/reopen/process-restart smoke preserved all existing workspaces. One constrained
+emulator creation took 62.194 seconds and remains slow; no general performance
+pass is claimed. Preview 57's quality explanations/readability and all SR5 sources
+as defaults for new runners remain included, without changing old saved settings.
+Focused managed checks cover all four defaults. Preview 56's simpler Creation,
 Gear/Resources screens and explicit Skills/Magic re-review remain included.
 This is not all-screen polish or complete build-method/Career coverage.
-Preview 56 and earlier evidence stay immutable. Preview 55's
+Preview 57 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
