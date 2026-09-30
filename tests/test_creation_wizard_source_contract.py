@@ -11,6 +11,14 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_workspace_picker_pairs_its_light_surface_with_readable_text(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        picker = source.split("private void AddWorkspacePicker()", 1)[1].split("private ", 1)[0]
+        self.assertIn("BackgroundColor = NativeTheme.Surface", picker)
+        self.assertIn("TextColor = NativeTheme.Ink", picker)
+        self.assertIn("TitleColor = NativeTheme.Muted", picker)
+        self.assertIn('AutomationId = "build-workspace-picker"', picker)
+
     def test_both_dashboard_routes_bind_each_typed_authority_to_its_own_step(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         # The compiled interaction matrix verifies the admission policy. This
