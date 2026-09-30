@@ -261,4 +261,6 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="NewRunnerCreate" xml:space="preserve"><value>Crear runner</value></data>
   <data name="LoadingAccountData" xml:space="preserve"><value>Cargando datos de la cuenta…</value></data>
   <data name="BackNavigationUnavailable" xml:space="preserve"><value>No se pudo volver atrás. Inténtalo de nuevo.</value></data>
+  <data name="NewRunnerUnsavedChanges" xml:space="preserve"><value>Guarda o descarta los cambios del runner actual antes de crear otro. Pulsa Cancelar para volver.</value></data>
+  <data name="NewRunnerRevisionConflict" xml:space="preserve"><value>Resuelve el conflicto de guardado del runner actual antes de crear otro. Pulsa Cancelar para volver.</value></data>
 </root>

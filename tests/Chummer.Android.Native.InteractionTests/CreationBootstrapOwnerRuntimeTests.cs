@@ -133,9 +133,27 @@ internal static partial class AfterRunAuthorityHarness
                         && new FileWorkspaceStore(runtime.StateDirectory).List().Count == 1
                         && IssuedElements(guardedPage).OfType<Label>().Any(item =>
                             item.AutomationId == "dialog-notice"
-                            && item.Text == runtime.Coordinator.State.Notice
-                            && item.Text.Contains("Save or discard", StringComparison.Ordinal)),
+                            && item.Text == "Save or discard changes to your current runner before creating another. Cancel to return to it."
+                            && !item.Text.Contains(runtime.Coordinator.State.WorkspaceId!.Value.Value,
+                                StringComparison.Ordinal)),
                         "The unsaved-runner guard must explain why Create was blocked without creating a duplicate.");
+                    string workspaceId = runtime.Coordinator.State.WorkspaceId!.Value.Value;
+                    string originalNotice = runtime.Coordinator.State.Notice!;
+                    Require(originalNotice.Contains(workspaceId, StringComparison.Ordinal),
+                        "Rendering must retain the exact workspace in presenter diagnostics.");
+                    Require(Chummer.Android.Native.NativeDialogPage.ProjectNotice(
+                            "dialog.new_character",
+                            $"Resolve the revision conflict for '{workspaceId}' before you create another dossier.",
+                            workspaceId)
+                        == "Resolve the save conflict for your current runner before creating another. Cancel to return to it.",
+                        "A save conflict must remain explicit without exposing its workspace ID.");
+                    Require(Chummer.Android.Native.NativeDialogPage.ProjectNotice(
+                            "dialog.other", originalNotice, workspaceId) == originalNotice
+                        && Chummer.Android.Native.NativeDialogPage.ProjectNotice(
+                            "dialog.new_character", originalNotice, "another-workspace") == originalNotice
+                        && Chummer.Android.Native.NativeDialogPage.ProjectNotice(
+                            "dialog.new_character", "Player text " + workspaceId, workspaceId) == "Player text " + workspaceId,
+                        "Notice formatting must not rewrite unrelated, stale or user-authored text.");
                     Console.WriteLine("PASS native Create displays the unsaved-runner guard");
                 }
             }
