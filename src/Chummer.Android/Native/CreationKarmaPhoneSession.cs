@@ -48,7 +48,7 @@ internal sealed class CreationKarmaPhoneSession
     }
 
     public async Task ReloadAsync(bool includeSkills, CancellationToken ct, Func<bool> isCurrentPage, bool includeQualities = false,
-        bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
+        bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false, bool deferQualityPreview = false)
     {
         if (Halted || !FrameCurrent || !isCurrentPage()) return;
         var previous = Authority;
@@ -76,6 +76,9 @@ internal sealed class CreationKarmaPhoneSession
             && (!includeLifestyles || previous.LifestylesAuthority is not null)
             && (!includeMagic || previous.MagicCatalog is not null))
         {
+            // The quality page immediately validates this exact draft in its
+            // candidate batch. It must not render the old quote as current.
+            if (deferQualityPreview && includeQualities) return;
             // Core Preview already reloads the live workspace and source inputs,
             // then requires the exact original binding/snapshot. Do not precede
             // that with another identical catalog load on every deep-page visit.
@@ -126,6 +129,25 @@ internal sealed class CreationKarmaPhoneSession
         _quotedVersion = version;
         Blockers = result.Blockers;
         await RefreshAccessAsync(includeSkillAccess, ct, isCurrentPage);
+    }
+
+    public async Task<CreationKarmaQualityPage?> PreviewQualityPageAsync(string search, int offset, int pageSize,
+        CancellationToken ct, Func<bool> isCurrentPage)
+    {
+        _quotedVersion = -1;
+        Access = null;
+        if (!Ready || Selection is not { } selection || Authority is not { } state) return null;
+        long version = _version;
+        bool Current() => Ready && version == _version && ReferenceEquals(Authority, state) && isCurrentPage();
+        var page = await _coordinator.PreviewCreationKarmaQualityPageAsync(state, selection, search, offset,
+            pageSize, ct, Current);
+        if (!Current()) return null;
+        Quote = page?.DraftPreview?.Value;
+        if (page?.DraftPreview is not { } result)
+        { Blockers = [CharacterCreationKarmaMetatypeBlockers.StaleBinding]; return null; }
+        _quotedVersion = version;
+        Blockers = result.Blockers;
+        return page;
     }
 
     private async Task RefreshAccessAsync(bool includeSkillAccess, CancellationToken ct, Func<bool> isCurrentPage)
