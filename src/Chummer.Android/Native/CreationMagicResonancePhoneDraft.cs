@@ -75,6 +75,30 @@ internal sealed class CreationMagicResonancePhoneDraft
                overview)
            && CreationMagicResonancePhoneAuthority.EditorEquals(_editor, editor);
 
+    // One fresh admission prepares the page and its draft together. Re-projecting
+    // the same Core snapshot in Bind and then Matches is expensive on Android.
+    // This is not a cache: every appearance supplies newly loaded Core state,
+    // and the page still rechecks owner/display and performs copy/CAS adoption.
+    public bool TryBindLoaded(
+        CharacterCreationMagicResonanceState core,
+        CharacterOverviewState overview,
+        out CharacterCreationMagicResonanceEditorState? editor)
+    {
+        if (!CreationMagicResonancePhoneAuthority.TryProjectForOverview(core, overview, out editor)
+            || editor is null)
+            return false;
+
+        if (_editor is not null && _owner == overview.DisplayOwnerContext
+            && CreationMagicResonancePhoneAuthority.EditorEquals(_editor, editor))
+            return true;
+
+        _editor = editor;
+        _owner = overview.DisplayOwnerContext;
+        _review = null;
+        _selections = editor.Selections;
+        return true;
+    }
+
     public CharacterCreationMagicResonanceDesktopDraft CreateSingleCandidate(
         CharacterCreationMagicResonanceOptionProjection option)
     {

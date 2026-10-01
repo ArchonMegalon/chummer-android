@@ -315,6 +315,11 @@ internal static class CreationMagicNativeRuntimeTests
             IsRequired: true, IsAvailable: false, IsComplete: false, [],
             [CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired], [], []);
         bool ready = CreationMagicResonancePhoneAuthority.IsReady(state, editor, overview);
+        var preparedDraft = new CreationMagicResonancePhoneDraft();
+        Require(preparedDraft.TryBindLoaded(state, overview, out var bound)
+            && bound is not null && preparedDraft.Matches(bound, overview),
+            "Fresh draft admission did not preserve the full existing readiness contract.");
+        var beforeInvalid = preparedDraft.Selections;
         Require(CreationMagicResonancePhoneAuthority.TryProjectForOverview(state, overview, out var prepared)
             && prepared is not null && CreationMagicResonancePhoneAuthority.EditorEquals(editor, prepared),
             "Single-pass admission must return the exact canonical projection.");
@@ -323,6 +328,13 @@ internal static class CreationMagicNativeRuntimeTests
                 overview, out var corrupt) && corrupt is null,
             "Single-pass admission exposed a projection for corrupt Core state.");
         var changedEditor = editor with { Talent = editor.Talent with { Name = "invented talent" } };
+        Require(!preparedDraft.TryBindLoaded(
+                state with { SnapshotDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8("tampered") },
+                overview, out var invalidBinding) && invalidBinding is null
+            && !preparedDraft.TryBindLoaded(state,
+                overview with { CreationMagicResonanceEditor = changedEditor }, out invalidBinding)
+            && invalidBinding is null && ReferenceEquals(beforeInvalid, preparedDraft.Selections),
+            "Invalid fresh binding exposed an editor or overwrote the retained draft.");
         Require(!CreationMagicResonancePhoneAuthority.IsReady(state, changedEditor, overview)
             && !CreationMagicResonancePhoneAuthority.TryProjectForOverview(state,
                 overview with { CreationMagicResonanceEditor = changedEditor }, out var changed)
@@ -354,6 +366,9 @@ internal static class CreationMagicNativeRuntimeTests
         })
         {
             bool staleReady = CreationMagicResonancePhoneAuthority.IsReady(state, editor, stale);
+            Require(!preparedDraft.TryBindLoaded(state, stale, out var staleBinding)
+                && staleBinding is null && ReferenceEquals(beforeInvalid, preparedDraft.Selections),
+                "Fresh binding accepted stale authority or silently replaced the local choices.");
             Require(!CreationMagicResonancePhoneAuthority.TryProjectForOverview(state, stale, out var rejected)
                 && rejected is null, "Rejected Magic authority must not expose a usable editor.");
             Require(!staleReady && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
