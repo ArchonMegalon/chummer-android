@@ -161,7 +161,8 @@
   <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Esta revisión guardada ya no coincide con el runner. Vuelve a abrir el mismo runner o usa la recuperación de soporte; no guardes de nuevo.</value></data>
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revisión {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirma para guardar estas elecciones. Podrás finalizar la creación tras completar los demás pasos.</value></data>
-  <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
+  <data name="Magic.Review.Confirm" xml:space="preserve"><value>Guardar elecciones</value></data>
+  <data name="Magic.Review.Saving" xml:space="preserve"><value>Guardando…</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar tus elecciones</value></data>

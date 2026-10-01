@@ -9,6 +9,16 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationMagicResonanceSourceContractTests(unittest.TestCase):
+    def test_save_feedback_has_short_actions_and_translated_detail(self) -> None:
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            values = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
+            for key in ("Magic.Review.Confirm", "Magic.Review.Saving"):
+                self.assertTrue(values[key], (locale, key))
+                self.assertLessEqual(len(values[key]), 20, (locale, key))
+            self.assertTrue(values["Magic.Review.Confirming"], locale)
+            self.assertNotEqual(values["Magic.Review.Saving"], values["Magic.Review.Confirming"], locale)
+
     def test_core_reads_and_previews_are_async_and_render_uses_prepared_snapshot(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
         refresh = page[page.index("protected override void Refresh()") : page.index("internal static bool HasUnsupportedSeparateMagicProfile")]

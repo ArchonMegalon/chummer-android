@@ -950,14 +950,19 @@ internal static partial class AfterRunAuthorityHarness
             {
                 Require(!pending.IsCompleted && !button.IsEnabled && button.Text != idleText,
                     "Magic confirmation must immediately disable and relabel the rendered button before awaiting Core.");
-                var progress = body.Children.OfType<ActivityIndicator>()
+                var progress = body.Children.OfType<Label>()
                     .Single(item => item.AutomationId == "creation-magic-resonance-confirm-progress");
-                Require(progress.IsVisible && progress.IsRunning && rendered.SequenceEqual(body.Children),
-                    "Magic confirmation must show progress in place without rebuilding the scrolled review.");
+                Require(progress.IsVisible
+                    && progress.Text == CreationFlowStrings.Get("Magic.Review.Confirming", "Checking and saving choices…")
+                    && button.Text == CreationFlowStrings.Get("Magic.Review.Saving", "Saving…")
+                    && progress.TextColor == NativeTheme.Text
+                    && !MinimalVisible(page).OfType<ActivityIndicator>().Any(item => item.IsRunning)
+                    && rendered.SequenceEqual(body.Children),
+                    "Magic confirmation must show readable static progress in place without an animator or review rebuild.");
                 await (Task)confirm.Invoke(page, null)!;
                 Require(!pending.IsCompleted && probe.Loads == reads && probe.Confirms == 0,
                     "A second pending confirmation must not enter Core or reset the busy state.");
-                Require(!button.IsEnabled && progress.IsRunning, "A duplicate confirmation cleared pending feedback.");
+                Require(!button.IsEnabled && progress.IsVisible, "A duplicate confirmation cleared pending feedback.");
             }
             catch (Exception error) { assertion = error; }
             finally { gate.Release(); }
@@ -971,13 +976,15 @@ internal static partial class AfterRunAuthorityHarness
             if (assertion is not null) throw assertion;
             var restored = body.Children.OfType<Button>().Single(item => item.AutomationId == button.AutomationId);
             Require(restored.IsEnabled && restored.Text == idleText
+                && !body.Children.OfType<Label>().Single(item =>
+                    item.AutomationId == "creation-magic-resonance-confirm-progress").IsVisible
                 && !body.Children.OfType<ActivityIndicator>().Any(item => item.IsRunning || item.IsVisible),
                 "Canceled or failed pre-commit reads must stop progress and restore exact review controls.");
             Require(journal.TryRead(out var unchanged, out _)
                 && unchanged.CheckpointDigest == reviewed.CheckpointDigest && probe.Confirms == 0,
                 "Pending feedback or a failed read changed the durable Magic command.");
         }
-        Console.WriteLine("PASS Magic pending feedback, in-place controls, duplicate exclusion and error/cancel cleanup");
+        Console.WriteLine("PASS Magic readable non-animated pending feedback, in-place controls, duplicate exclusion and error/cancel cleanup");
     }
 
     private sealed class MagicReadProbe(IOwnerBoundCharacterCreationMagicResonanceService inner, ControlledLinkedOwner owners)
