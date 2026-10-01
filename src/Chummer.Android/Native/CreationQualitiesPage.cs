@@ -33,6 +33,13 @@ public sealed class CreationQualitiesPage : NativePageBase
     private string? _reviewCheckpointDigest;
     private bool _loading = true;
     private bool _checkpointOwnsLane;
+    private readonly ScrollView _scroll = new();
+    private HelpReturnPosition? _helpReturn;
+    private bool _returnedFromHelp;
+    private long _renderGeneration;
+
+    private sealed record HelpReturnPosition(
+        CreationQualityInfoPage Page, CharacterOverviewState Display, double Y, string Filter, int Offset);
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
@@ -47,8 +54,79 @@ public sealed class CreationQualitiesPage : NativePageBase
         _store = store ?? throw new ArgumentNullException(nameof(store));
         Title = CreationFlowStrings.Get("Qualities.PageTitle", "Qualities");
         AutomationId = "creation-qualities-page";
-        Content = new ScrollView { Content = _body };
+        _scroll.Content = _body;
+        _scroll.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ScrollView.ContentSize)) QueueHelpScrollRestore();
+        };
+        Content = _scroll;
         Refresh();
+    }
+
+    protected override void OnNavigatedTo(NavigatedToEventArgs args)
+    {
+        base.OnNavigatedTo(args);
+        RestoreAfterHelp(args.PreviousPage);
+    }
+
+    private void RestoreAfterHelp(Page? previousPage)
+    {
+        _returnedFromHelp = _helpReturn is { } position && ReferenceEquals(previousPage, position.Page);
+        if (!_returnedFromHelp) _helpReturn = null;
+        QueueHelpScrollRestore();
+    }
+
+    protected override void OnDisappearing()
+    {
+        // Keep the ticket while opening help, but never carry an unfinished
+        // restoration into another navigation or background/foreground cycle.
+        if (_returnedFromHelp) _helpReturn = null;
+        _returnedFromHelp = false;
+        base.OnDisappearing();
+    }
+
+    private async Task OpenInfoAsync(CreationQualityInfoPage page, CharacterOverviewState original)
+    {
+        if (!ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+        _helpReturn = double.IsFinite(_scroll.ScrollY) && _scroll.ScrollY > 0
+            ? new(page, original, _scroll.ScrollY, _filter, _catalogOffset) : null;
+        _returnedFromHelp = false;
+        try { await Navigation.PushAsync(page); }
+        catch { _helpReturn = null; throw; }
+    }
+
+    private void QueueHelpScrollRestore()
+    {
+        if (!_returnedFromHelp || _helpReturn is not { } position || _loading) return;
+        if (!IsCatalogCurrent() || !Coordinator.IsCreationCatalogDisplayCurrent(position.Display)
+            || position.Filter != _filter || position.Offset != _catalogOffset)
+        {
+            _helpReturn = null;
+            return;
+        }
+        long appearance = CaptureAppearanceGeneration();
+        long render = _renderGeneration;
+        // The fresh appearance still loads and validates through Core. Restore
+        // only presentation state, after the rebuilt content has been laid out.
+        Dispatcher.Dispatch(async () =>
+        {
+            if (!ReferenceEquals(_helpReturn, position) || !_returnedFromHelp || _loading
+                || render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                || !IsCatalogCurrent() || !Coordinator.IsCreationCatalogDisplayCurrent(position.Display)
+                || position.Filter != _filter || position.Offset != _catalogOffset
+                || _scroll.Height <= 0 || _scroll.ContentSize.Height <= _scroll.Height) return;
+            _helpReturn = null; // One attempt; late layout callbacks cannot move the user again.
+            try
+            {
+                await _scroll.ScrollToAsync(0, Math.Min(position.Y, _scroll.ContentSize.Height - _scroll.Height), animated: false);
+            }
+            catch (InvalidOperationException)
+            {
+                System.Diagnostics.Debug.WriteLine("Quality help scroll restoration unavailable after navigation.");
+            }
+        });
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
@@ -104,6 +182,7 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     protected override void Refresh()
     {
+        _renderGeneration++;
         _catalog.Clear();
         _body.Clear();
         _technicalDetails.Clear();
@@ -149,6 +228,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         AddTechnicalDetailsDisclosure();
         AddGranted(state);
         AddOptions(state, editor, checkpointOwnsLane);
+        QueueHelpScrollRestore();
     }
 
     private void AddBinding(CharacterCreationQualitiesState state)
@@ -370,8 +450,8 @@ public sealed class CreationQualitiesPage : NativePageBase
             {
                 if (!ReferenceEquals(border.Parent, _body) || _loadedDisplay is not { } original
                     || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
-                await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, grant,
-                    CreationQualityInfo.SourceForGrant(grant, state.Authority.Options)));
+                await OpenInfoAsync(new CreationQualityInfoPage(Coordinator, original, grant,
+                    CreationQualityInfo.SourceForGrant(grant, state.Authority.Options)), original);
             };
             content.Add(info, 1);
             _body.Add(border);
@@ -515,7 +595,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                         || _loadedDisplay is not { } original
                         || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
                     var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
-                    await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, source));
+                    await OpenInfoAsync(new CreationQualityInfoPage(Coordinator, original, source), original);
                 };
                 rowGrid.Add(info, 2);
                 _catalog.Add(row);

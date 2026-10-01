@@ -305,6 +305,8 @@ internal static partial class AfterRunAuthorityHarness
             ((IButtonController)nextPage).SendClicked();
             Require(ReferenceEquals(Search(), retainedSearch) && MinimalVisibleText(catalogPage) == secondPage,
                 "Paging detached the editor or a detached pager changed the new result list.");
+            await VerifyQualityHelpScrollReturnAsync(ui, catalogPage, catalogNavigation);
+            retainedSearch = Search();
             retainedSearch.Text = "Ambidextrous";
             ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
             Require(ReferenceEquals(Search(), retainedSearch)
@@ -409,8 +411,13 @@ internal static partial class AfterRunAuthorityHarness
                     "Receipt disclosure acknowledged or changed the pending receipt.");
                 Require(store.TryAcknowledgeApplied(CharacterCreationQualitiesCheckpointCas.From(applied), out blocker), blocker);
                 var owner = owners.Current;
-                owners.Set(ContactsOwnerB);
-                owners.Set(owner);
+                var freshCatalogPage = new CreationQualitiesPage(coordinator);
+                await MinimalPrepareAsync(freshCatalogPage);
+                await VerifyQualityHelpScrollReturnAsync(ui, freshCatalogPage, new NavigationPage(freshCatalogPage), () =>
+                {
+                    owners.Set(ContactsOwnerB);
+                    owners.Set(owner);
+                });
                 string staleCatalog = MinimalVisibleText(catalogPage);
                 var staleSearch = Search();
                 staleSearch.Text = "Catlike";
@@ -428,6 +435,53 @@ internal static partial class AfterRunAuthorityHarness
             finally { CultureInfo.CurrentUICulture = oldCulture; }
             Console.WriteLine("PASS quality configure/review/receipt: EN/DE/ES, exact hidden diagnostics, stale controls, one save/cold reopen, no display mutations");
         });
+    }
+
+    private static async Task VerifyQualityHelpScrollReturnAsync(
+        IssuedPageUiContext ui, CreationQualitiesPage page, NavigationPage navigation, Action? invalidateBeforeDispatch = null)
+    {
+        const double savedY = 735;
+        var scroll = (ScrollView)page.Content!;
+        var controller = (IScrollViewController)scroll;
+        var observed = new List<double>();
+        controller.ScrollToRequested += (_, request) =>
+        {
+            observed.Add(request.ScrollY);
+            controller.SendScrollFinished();
+        };
+        string Range() => MinimalVisible(page).OfType<Label>().Single(item =>
+            item.AutomationId == "creation-qualities-catalog-range").Text;
+        string range = Range();
+        controller.SetScrolledPosition(0, savedY);
+        var helpButton = MinimalVisible(page).OfType<Button>().First(item =>
+            item.AutomationId?.StartsWith("creation-quality-info-", StringComparison.Ordinal) == true);
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)helpButton).SendClicked()));
+        var help = navigation.CurrentPage;
+        Require(help is CreationQualityInfoPage, "Help did not open from the current catalog.");
+        await navigation.PopAsync();
+        controller.SetScrolledPosition(0, 0);
+        // Exercise the real fresh appearance load, not cached authority. Headless
+        // MAUI has no native layout/attachment callbacks, supplied explicitly here.
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+        ((IView)scroll).Arrange(new Microsoft.Maui.Graphics.Rect(0, 0, 400, 600));
+        typeof(ScrollView).GetProperty(nameof(ScrollView.ContentSize))!.SetValue(scroll,
+            new Microsoft.Maui.Graphics.Size(400, 3000));
+        typeof(CreationQualitiesPage).GetMethod("RestoreAfterHelp", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, [help]);
+        invalidateBeforeDispatch?.Invoke();
+        await ui.DrainDispatchedAsyncVoidAsync();
+        if (invalidateBeforeDispatch is not null)
+        {
+            Require(observed.Count == 0, "A queued help restoration scrolled after an owner A→B→A transition.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            return;
+        }
+        Require(observed.SequenceEqual([savedY]) && Range() == range,
+            "Returning from read-only help must restore the position and catalog page after fresh loading.");
+        MinimalRender(page);
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(observed.Count == 1, "A later catalog render replayed the help scroll restoration.");
+        IssuedPageLifecycle(page, "OnDisappearing");
     }
 
     private static void VerifyQualityDisclosure(NativePageBase page, string panelId, string actionId, params string[] exactValues)
