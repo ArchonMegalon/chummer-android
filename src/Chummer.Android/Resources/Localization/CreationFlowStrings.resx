@@ -206,10 +206,8 @@
   <data name="Qualities.Intro" xml:space="preserve"><value>Only available qualities within your budget are shown. Tap ! to learn about their effects. Selected qualities remain available to remove.</value></data>
   <data name="Qualities.Info.Accessible" xml:space="preserve"><value>Explain {0}</value></data>
   <data name="Qualities.Info.Cost" xml:space="preserve"><value>Rating {0} · Karma {1}</value></data>
-  <data name="Qualities.Info.Reference" xml:space="preserve"><value>Rulebook: {0}, page {1}</value></data>
-  <data name="Qualities.Info.SourceNote" xml:space="preserve"><value>These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects.</value></data>
-  <data name="Qualities.Info.Manual" xml:space="preserve"><value>This catalog entry has no automatic modifier. Its roleplaying or situational benefit or drawback is described in the rulebook.</value></data>
-  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Additional or conditional effects: see the rulebook reference below.</value></data>
+  <data name="Qualities.Info.Manual" xml:space="preserve"><value>A description of this quality is not available yet.</value></data>
+  <data name="Qualities.Info.Additional" xml:space="preserve"><value>Some additional effects are not yet described here.</value></data>
   <data name="Qualities.Info.Ambidextrous" xml:space="preserve"><value>Use either hand without the off-hand penalty.</value></data>
   <data name="Qualities.Info.Stale" xml:space="preserve"><value>Reopen Qualities for the current runner.</value></data>
   <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} remaining</value></data>
@@ -299,7 +297,7 @@
   <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>Story details cannot be edited in this build.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>This step needs attention before you can continue. See technical details for the exact reason.</value></data>
-  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.</value></data>
+  <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>The description for this granted quality is not available yet.</value></data>
   <data name="Qualities.Review.Empty" xml:space="preserve"><value>No additional qualities selected.</value></data>
   <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Continue</value></data>
   <data name="Magic.Catalog.Search" xml:space="preserve"><value>Search names or source books</value></data>
@@ -332,4 +330,447 @@
   <data name="Magic.Blocker.FormsLeft" xml:space="preserve"><value>You still have complex forms to choose. Open Complex forms and fill the remaining choices.</value></data>
   <data name="Magic.Blocker.FormsNotAllowed" xml:space="preserve"><value>Your selected talent does not allow complex forms. Remove them from this draft.</value></data>
   <data name="Magic.Blockers.Title" xml:space="preserve"><value>Before you continue</value></data>
+  <data name="Qualities.Summary.5b19dbcd-fb69-4a02-a25a-7ac5342ca576" xml:space="preserve"><value>You spot patterns and connect clues. The bonus applies to analytical tasks such as investigating evidence or solving puzzles, not every Logic test.</value></data>
+  <data name="Qualities.Summary.84305e09-f8d5-4a82-8257-0119b8c3f926" xml:space="preserve"><value>You move quietly and avoid attracting attention. This improves Sneaking tests; it does not make you invisible.</value></data>
+  <data name="Qualities.Summary.db579224-99c7-48e0-84ab-77a987a84f4a" xml:space="preserve"><value>Your flexible joints help you slip out of restraints. The bonus applies to Escape Artist tests.</value></data>
+  <data name="Qualities.Summary.225f0d31-8c03-4283-9a22-558ab01a6c47" xml:space="preserve"><value>Running and acrobatics come naturally to you. You gain bonuses to Running and Gymnastics, rather than a general increase to physical attributes.</value></data>
+  <data name="Qualities.Summary.58e3d62a-2073-4af5-b8e0-00c446b3a5ab" xml:space="preserve"><value>Choose a skill with exceptional potential. Its maximum rating increases; this does not grant a free skill level or bonus dice.</value></data>
+  <data name="Qualities.Summary.2ac8a95a-a4d0-4bef-a2f2-dcde020258cf" xml:space="preserve"><value>Choose an attribute other than Edge. Its natural maximum increases, giving you room to improve it further; its current value does not rise automatically.</value></data>
+  <data name="Qualities.Summary.c734e46a-d391-45a6-b022-6f18db5019f1" xml:space="preserve"><value>You grew up speaking two native languages. The additional native-language slot is not a bonus to every language skill.</value></data>
+  <data name="Qualities.Summary.9f25cc0a-c47c-49dd-953c-8fe60628bae8" xml:space="preserve"><value>You make a strong first impression. The social skill bonus applies when meeting someone for the first time, not to every later conversation.</value></data>
+  <data name="Qualities.Summary.b7866fb4-3747-4caf-9240-69cbdd79ce78" xml:space="preserve"><value>You keep functioning despite injuries. Wound penalties start later; damage is still recorded normally and this does not heal you.</value></data>
+  <data name="Qualities.Summary.78f7456d-78b8-461e-a2b2-bd0d63c48712" xml:space="preserve"><value>Your potential for good fortune is unusually high. Your Edge maximum increases, but you still need to buy the extra point.</value></data>
+  <data name="Qualities.Summary.9d3be1d9-1309-45e7-8bd9-1f5a3ede3522" xml:space="preserve"><value>You recall information and details more easily. This improves memory tests rather than granting knowledge you never learned.</value></data>
+  <data name="Qualities.Summary.291efdb6-a8b8-49ce-b2be-72f9d3f8a243" xml:space="preserve"><value>You recover well from injuries and exhaustion. Bonuses apply to healing you, including the listed Heal spell test; they do not improve healing other people.</value></data>
+  <data name="Qualities.Summary.00cc6499-db13-447e-8116-278d317a9e31" xml:space="preserve"><value>You withstand punishment better. The damage-resistance bonus helps you resist incoming damage; it is not extra armor.</value></data>
+  <data name="Qualities.Summary.18d2a522-6460-4654-916b-a96631f11323" xml:space="preserve"><value>You can survive more overflow damage after your Physical condition monitor fills. This does not prevent unconsciousness or remove injuries.</value></data>
+  <data name="Qualities.Summary.9d53e1e4-3f31-40cb-bfbe-4b94f5ba757e" xml:space="preserve"><value>Your talent combines magician abilities with adept powers. Choose and pay for the permitted spells, skills and powers in the Magic step; this entry does not grant every ability for free.</value></data>
+  <data name="Qualities.Summary.55247bdc-c313-4614-ae15-5012308096ff" xml:space="preserve"><value>You channel magic into adept powers. Select your powers in the Magic step; being an adept does not by itself make you a spellcaster.</value></data>
+  <data name="Qualities.Summary.c4b35412-bd91-45b4-b428-29da7edd5ff4" xml:space="preserve"><value>You access the Matrix through a living persona and Resonance abilities. The Computer bonus shown here is specifically for Matrix Perception.</value></data>
+  <data name="Qualities.Summary.25356bae-efcc-46c6-9c4f-66909b9b7233" xml:space="preserve"><value>An unpleasant reputation precedes you. Your Notoriety increases and can affect how others react to your runner.</value></data>
+  <data name="Qualities.Summary.1bad26cf-9d67-4bb1-9b4f-e9c80d668651" xml:space="preserve"><value>You notice details others miss, both with your senses and when reading an aura. The bonuses apply to Perception and Assensing.</value></data>
+  <data name="Qualities.Summary.e96c7280-b9b0-4112-8b65-a3568c7ca13e" xml:space="preserve"><value>Stress can make your hands shake. When triggered, an Agility + Body test determines whether you keep them steady; while shaking, Agility-based tests take a −2 dice penalty.</value></data>
+  <data name="Qualities.Summary.ba27345f-0e68-4660-9b76-2b999c3a4161" xml:space="preserve"><value>Controlling a vehicle directly is difficult for you: Piloting tests take a −2 dice penalty while you are in direct control.</value></data>
+  <data name="Qualities.Summary.0a7bcb95-dd9c-4e3e-ab0a-291a352ac1d4" xml:space="preserve"><value>You are especially vulnerable to disease. Pathogens affect you at increased Power; this is a drawback, not a resistance bonus.</value></data>
+  <data name="Qualities.Summary.8ba2830a-3f10-4877-9752-93be051b205b" xml:space="preserve"><value>A particular social situation causes you intense stress. In that situation, Leadership and Etiquette tests are more likely to glitch.</value></data>
+  <data name="Qualities.Summary.5150f4f0-5193-4f02-8914-d70e831e3567" xml:space="preserve"><value>When using Full Defense, you can rely on Gymnastics instead of Willpower. It still costs Initiative and is not a permanent defense bonus.</value></data>
+  <data name="Qualities.Summary.1d0c4278-501d-456f-ab63-69afee6fbf95" xml:space="preserve"><value>When using Full Defense, you can rely on Agility instead of Willpower. It still costs Initiative and is not a permanent defense bonus.</value></data>
+  <data name="Qualities.Summary.b5f6d958-2563-431b-a7a4-a9028a9f0277" xml:space="preserve"><value>When using Full Defense, you can rely on Perception instead of Willpower. It still costs Initiative and is not a permanent defense bonus.</value></data>
+  <data name="Qualities.Summary.0c23861e-36d1-4454-b327-0d8118d02d60" xml:space="preserve"><value>When using Full Defense, you can rely on Charisma instead of Willpower. It still costs Initiative and is not a permanent defense bonus.</value></data>
+  <data name="Qualities.Effect.Attribute-based tests" xml:space="preserve"><value>Attribute-based tests</value></data>
+  <data name="Qualities.Effect.Skill" xml:space="preserve"><value>Skill</value></data>
+  <data name="Qualities.Effect.Skill category" xml:space="preserve"><value>Skill category</value></data>
+  <data name="Qualities.Effect.Skill group" xml:space="preserve"><value>Skill group</value></data>
+  <data name="Qualities.Effect.Attribute" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Qualities.Effect.Enables attribute" xml:space="preserve"><value>Enables attribute</value></data>
+  <data name="Qualities.Effect.Enables capabilities" xml:space="preserve"><value>Enables capabilities</value></data>
+  <data name="Qualities.Effect.Unlocks skills" xml:space="preserve"><value>Unlocks skills</value></data>
+  <data name="Qualities.Effect.Condition monitor" xml:space="preserve"><value>Condition monitor</value></data>
+  <data name="Qualities.Effect.Chosen skill" xml:space="preserve"><value>Chosen skill</value></data>
+  <data name="Qualities.Effect.Chosen attributes" xml:space="preserve"><value>Chosen attributes</value></data>
+  <data name="Qualities.Effect.Limit" xml:space="preserve"><value>Limit</value></data>
+  <data name="Qualities.Effect.Spell tests" xml:space="preserve"><value>Spell tests</value></data>
+  <data name="Qualities.Effect.Damage resistance" xml:space="preserve"><value>Damage resistance</value></data>
+  <data name="Qualities.Effect.Physical healing" xml:space="preserve"><value>Physical healing</value></data>
+  <data name="Qualities.Effect.Stun recovery" xml:space="preserve"><value>Stun recovery</value></data>
+  <data name="Qualities.Effect.Additional native languages" xml:space="preserve"><value>Additional native languages</value></data>
+  <data name="Qualities.Effect.Notoriety" xml:space="preserve"><value>Notoriety</value></data>
+  <data name="Qualities.Effect.Public awareness" xml:space="preserve"><value>Public awareness</value></data>
+  <data name="Qualities.Effect.Surprise tests" xml:space="preserve"><value>Surprise tests</value></data>
+  <data name="Qualities.Effect.Defense tests" xml:space="preserve"><value>Defense tests</value></data>
+  <data name="Qualities.Effect.Reach" xml:space="preserve"><value>Reach</value></data>
+  <data name="Qualities.Effect.Fatigue resistance" xml:space="preserve"><value>Fatigue resistance</value></data>
+  <data name="Qualities.Effect.Ingested toxin resistance" xml:space="preserve"><value>Ingested toxin resistance</value></data>
+  <data name="Qualities.Effect.Injected toxin resistance" xml:space="preserve"><value>Injected toxin resistance</value></data>
+  <data name="Qualities.Effect.Contact pathogen resistance" xml:space="preserve"><value>Contact pathogen resistance</value></data>
+  <data name="Qualities.Effect.Inhaled pathogen resistance" xml:space="preserve"><value>Inhaled pathogen resistance</value></data>
+  <data name="Qualities.Effect.Ingested pathogen resistance" xml:space="preserve"><value>Ingested pathogen resistance</value></data>
+  <data name="Qualities.Effect.Injected pathogen resistance" xml:space="preserve"><value>Injected pathogen resistance</value></data>
+  <data name="Qualities.Effect.Initiative" xml:space="preserve"><value>Initiative</value></data>
+  <data name="Qualities.Effect.Initiative dice" xml:space="preserve"><value>Initiative dice</value></data>
+  <data name="Qualities.Effect.Armor" xml:space="preserve"><value>Armor</value></data>
+  <data name="Qualities.Effect.Physical condition monitor" xml:space="preserve"><value>Physical condition monitor</value></data>
+  <data name="Qualities.Effect.Stun condition monitor" xml:space="preserve"><value>Stun condition monitor</value></data>
+  <data name="Qualities.Effect.Wound penalty resistance" xml:space="preserve"><value>Wound penalty resistance</value></data>
+  <data name="Qualities.Effect.Composure" xml:space="preserve"><value>Composure</value></data>
+  <data name="Qualities.Effect.Judge Intentions" xml:space="preserve"><value>Judge Intentions</value></data>
+  <data name="Qualities.Effect.Memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="Qualities.Effect.Drain resistance" xml:space="preserve"><value>Drain resistance</value></data>
+  <data name="Qualities.Effect.Fading resistance" xml:space="preserve"><value>Fading resistance</value></data>
+  <data name="Qualities.Effect.Spell resistance" xml:space="preserve"><value>Spell resistance</value></data>
+  <data name="Qualities.Effect.Contact toxin resistance" xml:space="preserve"><value>Contact toxin resistance</value></data>
+  <data name="Qualities.Effect.Inhaled toxin resistance" xml:space="preserve"><value>Inhaled toxin resistance</value></data>
+  <data name="Qualities.Effect.Disease resistance" xml:space="preserve"><value>Disease resistance</value></data>
+  <data name="Qualities.Effect.Social limit" xml:space="preserve"><value>Social limit</value></data>
+  <data name="Qualities.Effect.Mental limit" xml:space="preserve"><value>Mental limit</value></data>
+  <data name="Qualities.Effect.Physical limit" xml:space="preserve"><value>Physical limit</value></data>
+  <data name="Qualities.Effect.Modifier" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Qualities.Effect.Bonus" xml:space="preserve"><value>Bonus</value></data>
+  <data name="Qualities.Effect.Minimum" xml:space="preserve"><value>Minimum</value></data>
+  <data name="Qualities.Effect.Maximum" xml:space="preserve"><value>Maximum</value></data>
+  <data name="Qualities.Effect.Augmented" xml:space="preserve"><value>Augmented</value></data>
+  <data name="Qualities.Effect.When" xml:space="preserve"><value>When</value></data>
+  <data name="Qualities.Effect.Applies to rating" xml:space="preserve"><value>Applies to rating</value></data>
+  <data name="Qualities.Effect.Wound-penalty threshold offset" xml:space="preserve"><value>Wound-penalty threshold offset</value></data>
+  <data name="Qualities.Effect.Additional overflow boxes" xml:space="preserve"><value>Additional overflow boxes</value></data>
+  <data name="Qualities.Effect.Except" xml:space="preserve"><value>Except</value></data>
+  <data name="Qualities.Value.LOG" xml:space="preserve"><value>Logic</value></data>
+  <data name="Qualities.Value.MAG" xml:space="preserve"><value>Magic</value></data>
+  <data name="Qualities.Value.RES" xml:space="preserve"><value>Resonance</value></data>
+  <data name="Qualities.Value.EDG" xml:space="preserve"><value>Edge</value></data>
+  <data name="Qualities.Value.Sneaking" xml:space="preserve"><value>Sneaking</value></data>
+  <data name="Qualities.Value.Escape Artist" xml:space="preserve"><value>Escape Artist</value></data>
+  <data name="Qualities.Value.Running" xml:space="preserve"><value>Running</value></data>
+  <data name="Qualities.Value.Gymnastics" xml:space="preserve"><value>Gymnastics</value></data>
+  <data name="Qualities.Value.Perception" xml:space="preserve"><value>Perception</value></data>
+  <data name="Qualities.Value.Assensing" xml:space="preserve"><value>Assensing</value></data>
+  <data name="Qualities.Value.Social Active" xml:space="preserve"><value>Social skills</value></data>
+  <data name="Qualities.Value.Heal" xml:space="preserve"><value>Heal</value></data>
+  <data name="Qualities.Value.Computer" xml:space="preserve"><value>Computer</value></data>
+  <data name="Qualities.Value.Matrix Perception" xml:space="preserve"><value>Matrix Perception</value></data>
+  <data name="Qualities.Value.Meeting people the first time" xml:space="preserve"><value>Meeting people for the first time</value></data>
+  <data name="Qualities.Value.Involving pattern recognition, evidence analysis, clue hunting, or solving puzzles" xml:space="preserve"><value>Pattern recognition, evidence analysis, finding clues or solving puzzles</value></data>
+  <data name="Qualities.Value.magician" xml:space="preserve"><value>magician</value></data>
+  <data name="Qualities.Value.adept" xml:space="preserve"><value>adept</value></data>
+  <data name="Qualities.Value.technomancer" xml:space="preserve"><value>technomancer</value></data>
+  <data name="Qualities.Effect.Attribute changes" xml:space="preserve"><value>Attribute changes</value></data>
+  <data name="Qualities.Effect.Cold resistance armor" xml:space="preserve"><value>Cold resistance armor</value></data>
+  <data name="Qualities.Effect.Fire resistance armor" xml:space="preserve"><value>Fire resistance armor</value></data>
+  <data name="Qualities.Effect.Astral reputation" xml:space="preserve"><value>Astral reputation</value></data>
+  <data name="Qualities.Effect.Resisting Judge Intentions" xml:space="preserve"><value>Resisting Judge Intentions</value></data>
+  <data name="Qualities.Effect.Reading another person's intentions" xml:space="preserve"><value>Reading another person's intentions</value></data>
+  <data name="Qualities.Effect.Detection spell resistance" xml:space="preserve"><value>Detection spell resistance</value></data>
+  <data name="Qualities.Effect.Decrease Intuition resistance" xml:space="preserve"><value>Decrease Intuition resistance</value></data>
+  <data name="Qualities.Effect.Decrease Logic resistance" xml:space="preserve"><value>Decrease Logic resistance</value></data>
+  <data name="Qualities.Effect.Mana illusion resistance" xml:space="preserve"><value>Mana illusion resistance</value></data>
+  <data name="Qualities.Effect.Physical illusion resistance" xml:space="preserve"><value>Physical illusion resistance</value></data>
+  <data name="Qualities.Effect.Mental manipulation resistance" xml:space="preserve"><value>Mental manipulation resistance</value></data>
+  <data name="Qualities.Effect.Resisting a new physical addiction" xml:space="preserve"><value>Resisting a new physical addiction</value></data>
+  <data name="Qualities.Effect.Resisting an existing physical addiction" xml:space="preserve"><value>Resisting an existing physical addiction</value></data>
+  <data name="Qualities.Effect.Resisting a new psychological addiction" xml:space="preserve"><value>Resisting a new psychological addiction</value></data>
+  <data name="Qualities.Effect.Resisting an existing psychological addiction" xml:space="preserve"><value>Resisting an existing psychological addiction</value></data>
+  <data name="Qualities.Effect.Drain value change" xml:space="preserve"><value>Drain value change</value></data>
+  <data name="Qualities.Effect.Fading value change" xml:space="preserve"><value>Fading value change</value></data>
+  <data name="Qualities.Effect.Adept Power Points" xml:space="preserve"><value>Adept Power Points</value></data>
+  <data name="Qualities.Effect.Unarmed damage change" xml:space="preserve"><value>Unarmed damage change</value></data>
+  <data name="Qualities.Effect.Unarmed attacks deal Physical damage" xml:space="preserve"><value>Unarmed attacks deal Physical damage</value></data>
+  <data name="Qualities.Effect.Add Essence to Physical healing tests" xml:space="preserve"><value>Add Essence to Physical healing tests</value></data>
+  <data name="Qualities.Effect.Add Essence to Stun recovery tests" xml:space="preserve"><value>Add Essence to Stun recovery tests</value></data>
+  <data name="Qualities.Effect.Cannot use bioware" xml:space="preserve"><value>Cannot use bioware</value></data>
+  <data name="Qualities.Effect.Unavailable bioware grade" xml:space="preserve"><value>Unavailable bioware grade</value></data>
+  <data name="Qualities.Effect.Unavailable cyberware grade" xml:space="preserve"><value>Unavailable cyberware grade</value></data>
+  <data name="Qualities.Effect.Cyberware Essence cost (% of normal)" xml:space="preserve"><value>Cyberware Essence cost (% of normal)</value></data>
+  <data name="Qualities.Effect.Bioware Essence cost (% of normal)" xml:space="preserve"><value>Bioware Essence cost (% of normal)</value></data>
+  <data name="Qualities.Effect.Lifestyle cost change (%)" xml:space="preserve"><value>Lifestyle cost change (%)</value></data>
+  <data name="Qualities.Effect.Availability change" xml:space="preserve"><value>Availability change</value></data>
+  <data name="Qualities.Effect.Maximum Essence change" xml:space="preserve"><value>Maximum Essence change</value></data>
+  <data name="Qualities.Effect.Unavailable skill" xml:space="preserve"><value>Unavailable skill</value></data>
+  <data name="Qualities.Effect.Unavailable skill group" xml:space="preserve"><value>Unavailable skill group</value></data>
+  <data name="Qualities.Effect.Unavailable skill-group category" xml:space="preserve"><value>Unavailable skill-group category</value></data>
+  <data name="Qualities.Effect.Cannot default in this skill category" xml:space="preserve"><value>Cannot default in this skill category</value></data>
+  <data name="Qualities.Effect.Skill-category Karma cost change" xml:space="preserve"><value>Skill-category Karma cost change</value></data>
+  <data name="Qualities.Effect.Active-skill Karma cost change" xml:space="preserve"><value>Active-skill Karma cost change</value></data>
+  <data name="Qualities.Effect.Knowledge-skill Karma cost change" xml:space="preserve"><value>Knowledge-skill Karma cost change</value></data>
+  <data name="Qualities.Effect.Minimum Knowledge-skill Karma cost" xml:space="preserve"><value>Minimum Knowledge-skill Karma cost</value></data>
+  <data name="Qualities.Effect.Skill-category Karma cost" xml:space="preserve"><value>Skill-category Karma cost</value></data>
+  <data name="Qualities.Effect.Percent of normal cost" xml:space="preserve"><value>Percent of normal cost</value></data>
+  <data name="Qualities.Effect.Skill-category creation-point cost" xml:space="preserve"><value>Skill-category creation-point cost</value></data>
+  <data name="Qualities.Effect.Specialization Karma cost" xml:space="preserve"><value>Specialization Karma cost</value></data>
+  <data name="Qualities.Effect.Skill-group-category Karma cost" xml:space="preserve"><value>Skill-group-category Karma cost</value></data>
+  <data name="Qualities.Effect.Knowledge skill points" xml:space="preserve"><value>Knowledge skill points</value></data>
+  <data name="Qualities.Effect.New spell Karma cost change" xml:space="preserve"><value>New spell Karma cost change</value></data>
+  <data name="Qualities.Effect.Contact Karma cost change" xml:space="preserve"><value>Contact Karma cost change</value></data>
+  <data name="Qualities.Effect.Minimum contact Karma cost change" xml:space="preserve"><value>Minimum contact Karma cost change</value></data>
+  <data name="Qualities.Effect.Starting nuyen change" xml:space="preserve"><value>Starting nuyen change</value></data>
+  <data name="Qualities.Effect.Karma-to-nuyen purchase limit change" xml:space="preserve"><value>Karma-to-nuyen purchase limit change</value></data>
+  <data name="Qualities.Effect.Restricted gear allowance" xml:space="preserve"><value>Restricted gear allowance</value></data>
+  <data name="Qualities.Effect.Special modification allowance" xml:space="preserve"><value>Special modification allowance</value></data>
+  <data name="Qualities.Effect.Spell damage change" xml:space="preserve"><value>Spell damage change</value></data>
+  <data name="Qualities.Effect.Spell Drain change" xml:space="preserve"><value>Spell Drain change</value></data>
+  <data name="Qualities.Effect.Focus-binding Karma cost change" xml:space="preserve"><value>Focus-binding Karma cost change</value></data>
+  <data name="Qualities.Effect.Use a different test attribute" xml:space="preserve"><value>Use a different test attribute</value></data>
+  <data name="Qualities.Effect.Living persona attribute changes" xml:space="preserve"><value>Living persona attribute changes</value></data>
+  <data name="Qualities.Effect.Additional limbs" xml:space="preserve"><value>Additional limbs</value></data>
+  <data name="Qualities.Effect.Replacement attribute limits" xml:space="preserve"><value>Replacement attribute limits</value></data>
+  <data name="Qualities.Effect.Grants quality" xml:space="preserve"><value>Grants quality</value></data>
+  <data name="Qualities.Effect.Grants metamagic" xml:space="preserve"><value>Grants metamagic</value></data>
+  <data name="Qualities.Effect.Grants echo" xml:space="preserve"><value>Grants echo</value></data>
+  <data name="Qualities.Effect.Grants spell" xml:space="preserve"><value>Grants spell</value></data>
+  <data name="Qualities.Effect.Grants augmentation" xml:space="preserve"><value>Grants augmentation</value></data>
+  <data name="Qualities.Effect.Only for" xml:space="preserve"><value>Only for</value></data>
+  <data name="Qualities.Effect.Lifestyle" xml:space="preserve"><value>Lifestyle</value></data>
+  <data name="Qualities.Effect.Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Qualities.Effect.Choose from" xml:space="preserve"><value>Choose from</value></data>
+  <data name="Qualities.Effect.Minimum skill rating" xml:space="preserve"><value>Minimum skill rating</value></data>
+  <data name="Qualities.Effect.Choice" xml:space="preserve"><value>Choice</value></data>
+  <data name="Qualities.Effect.Rating" xml:space="preserve"><value>Rating</value></data>
+  <data name="Qualities.Effect.Alchemical" xml:space="preserve"><value>Alchemical</value></data>
+  <data name="Qualities.Effect.Fixed choice" xml:space="preserve"><value>Fixed choice</value></data>
+  <data name="Qualities.Effect.Minimum change" xml:space="preserve"><value>Minimum change</value></data>
+  <data name="Qualities.Effect.Maximum change" xml:space="preserve"><value>Maximum change</value></data>
+  <data name="Qualities.Effect.Augmented maximum change" xml:space="preserve"><value>Augmented maximum change</value></data>
+  <data name="Qualities.Effect.Augmented maximum" xml:space="preserve"><value>Augmented maximum</value></data>
+  <data name="Qualities.Effect.Wound-penalty interval change" xml:space="preserve"><value>Wound-penalty interval change</value></data>
+  <data name="Qualities.Effect.Physical boxes" xml:space="preserve"><value>Physical boxes</value></data>
+  <data name="Qualities.Effect.Stun boxes" xml:space="preserve"><value>Stun boxes</value></data>
+  <data name="Qualities.Effect.Category" xml:space="preserve"><value>Category</value></data>
+  <data name="Qualities.Effect.Spell traits" xml:space="preserve"><value>Spell traits</value></data>
+  <data name="Qualities.Effect.Specialization" xml:space="preserve"><value>Specialization</value></data>
+  <data name="Qualities.Effect.Maximum Availability" xml:space="preserve"><value>Maximum Availability</value></data>
+  <data name="Qualities.Effect.Number of items" xml:space="preserve"><value>Number of items</value></data>
+  <data name="Qualities.Effect.Specialization bonuses do not apply" xml:space="preserve"><value>Specialization bonuses do not apply</value></data>
+  <data name="Qualities.Effect.Attack" xml:space="preserve"><value>Attack</value></data>
+  <data name="Qualities.Effect.Sleaze" xml:space="preserve"><value>Sleaze</value></data>
+  <data name="Qualities.Effect.Data Processing" xml:space="preserve"><value>Data Processing</value></data>
+  <data name="Qualities.Effect.Firewall" xml:space="preserve"><value>Firewall</value></data>
+  <data name="Qualities.Effect.Limb" xml:space="preserve"><value>Limb</value></data>
+  <data name="Qualities.Effect.Grade" xml:space="preserve"><value>Grade</value></data>
+  <data name="Qualities.Value.BOD" xml:space="preserve"><value>Body</value></data>
+  <data name="Qualities.Value.AGI" xml:space="preserve"><value>Agility</value></data>
+  <data name="Qualities.Value.REA" xml:space="preserve"><value>Reaction</value></data>
+  <data name="Qualities.Value.STR" xml:space="preserve"><value>Strength</value></data>
+  <data name="Qualities.Value.WIL" xml:space="preserve"><value>Willpower</value></data>
+  <data name="Qualities.Value.INT" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Qualities.Value.CHA" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Qualities.Value.ESS" xml:space="preserve"><value>Essence</value></data>
+  <data name="Qualities.Value./character/created" xml:space="preserve"><value>After character creation</value></data>
+  <data name="Qualities.Value.career" xml:space="preserve"><value>In Career</value></data>
+  <data name="Qualities.Value.once" xml:space="preserve"><value>One-time cost</value></data>
+  <data name="Qualities.Value.True" xml:space="preserve"><value>Yes</value></data>
+  <data name="Qualities.Value.False" xml:space="preserve"><value>No</value></data>
+  <data name="Qualities.Value.Academic" xml:space="preserve"><value>Academic knowledge</value></data>
+  <data name="Qualities.Value.Professional" xml:space="preserve"><value>Professional knowledge</value></data>
+  <data name="Qualities.Value.Technical Active" xml:space="preserve"><value>Technical skills</value></data>
+  <data name="Qualities.Value.Physical Active" xml:space="preserve"><value>Physical skills</value></data>
+  <data name="Qualities.Value.Combat Active" xml:space="preserve"><value>Combat skills</value></data>
+  <data name="Qualities.Value.Magical Active" xml:space="preserve"><value>Magical skills</value></data>
+  <data name="Qualities.Value.Resonance Active" xml:space="preserve"><value>Resonance skills</value></data>
+  <data name="Qualities.Value.Language" xml:space="preserve"><value>Languages</value></data>
+  <data name="Qualities.Value.Street" xml:space="preserve"><value>Street knowledge</value></data>
+  <data name="Qualities.Value.Interests" xml:space="preserve"><value>Interests</value></data>
+  <data name="Qualities.Value.Mental" xml:space="preserve"><value>Mental</value></data>
+  <data name="Qualities.Value.Physical" xml:space="preserve"><value>Physical</value></data>
+  <data name="Qualities.Value.Social" xml:space="preserve"><value>Social</value></data>
+  <data name="Qualities.Value.Ground" xml:space="preserve"><value>On land</value></data>
+  <data name="Qualities.Value.Swim" xml:space="preserve"><value>Swimming</value></data>
+  <data name="Qualities.Value.Fly" xml:space="preserve"><value>Flying</value></data>
+  <data name="Qualities.Value.Low" xml:space="preserve"><value>Low</value></data>
+  <data name="Qualities.Value.Squatter" xml:space="preserve"><value>Squatter</value></data>
+  <data name="Qualities.Value.Standard" xml:space="preserve"><value>Standard</value></data>
+  <data name="Qualities.Value.Alphaware" xml:space="preserve"><value>Alphaware</value></data>
+  <data name="Qualities.Value.Betaware" xml:space="preserve"><value>Betaware</value></data>
+  <data name="Qualities.Value.Deltaware" xml:space="preserve"><value>Deltaware</value></data>
+  <data name="Qualities.Value.Etiquette" xml:space="preserve"><value>Etiquette</value></data>
+  <data name="Qualities.Value.Negotiation" xml:space="preserve"><value>Negotiation</value></data>
+  <data name="Qualities.Value.Diplomacy" xml:space="preserve"><value>Diplomacy</value></data>
+  <data name="Qualities.Value.Combat" xml:space="preserve"><value>Combat</value></data>
+  <data name="Qualities.Value.Direct,NOT(Area)" xml:space="preserve"><value>Direct spells, excluding area spells</value></data>
+  <data name="Qualities.Value.Stolen" xml:space="preserve"><value>Stolen funds</value></data>
+  <data name="Qualities.Value.Spells" xml:space="preserve"><value>Spells</value></data>
+  <data name="Qualities.Value./character/created = false" xml:space="preserve"><value>During character creation</value></data>
+  <data name="Qualities.Value.LimitCondition_ExcludeIntimidation" xml:space="preserve"><value>Except Intimidation</value></data>
+  <data name="Qualities.Value.LimitCondition_Megacorp" xml:space="preserve"><value>One chosen megacorporation</value></data>
+  <data name="Qualities.Value.LimitCondition_Sprawl" xml:space="preserve"><value>One chosen sprawl</value></data>
+  <data name="Qualities.Value.LimitCondition_NationalLanguageRanks" xml:space="preserve"><value>National language rating 4 or higher</value></data>
+  <data name="Qualities.Value.LimitCondition_SkillsKnowledgeAcademic" xml:space="preserve"><value>Academic Knowledge skills only</value></data>
+  <data name="Qualities.Value.LimitCondition_QualityTrustworthy" xml:space="preserve"><value>Situations involving trust</value></data>
+  <data name="Qualities.Value.LimitCondition_QualityChatty" xml:space="preserve"><value>Communicating through AR or VR</value></data>
+  <data name="Qualities.Value.Combat maneuvers" xml:space="preserve"><value>Combat maneuvers</value></data>
+  <data name="Qualities.Value.Communities of majority orks and/or trolls" xml:space="preserve"><value>Communities with an ork or troll majority</value></data>
+  <data name="Qualities.Value.Groups of exclusively orks and/or trolls" xml:space="preserve"><value>Groups consisting only of orks or trolls</value></data>
+  <data name="Qualities.Value.Non-orks and -trolls" xml:space="preserve"><value>People who are neither orks nor trolls</value></data>
+  <data name="Qualities.Value.Involves a significant event in ork or troll history" xml:space="preserve"><value>A significant event in ork or troll history</value></data>
+  <data name="Qualities.Value.Items specifically for orks and/or trolls" xml:space="preserve"><value>Items specifically for orks or trolls</value></data>
+  <data name="Qualities.Value.Crowds of ten or more people" xml:space="preserve"><value>Crowds of at least ten people</value></data>
+  <data name="Qualities.Value.Hiding in a crowd" xml:space="preserve"><value>Hiding in a crowd</value></data>
+  <data name="Qualities.Value.Hearing" xml:space="preserve"><value>Hearing</value></data>
+  <data name="Qualities.Value.Scent" xml:space="preserve"><value>Scent</value></data>
+  <data name="Qualities.Value.Taste" xml:space="preserve"><value>Taste</value></data>
+  <data name="Qualities.Value.Touch" xml:space="preserve"><value>Touch</value></data>
+  <data name="Qualities.Value.Visual" xml:space="preserve"><value>Sight</value></data>
+  <data name="Qualities.Value.When in hosts" xml:space="preserve"><value>Inside hosts</value></data>
+  <data name="Qualities.Value.When not looking your best" xml:space="preserve"><value>When not looking your best</value></data>
+  <data name="Qualities.Value.With corporate personnel" xml:space="preserve"><value>With corporate personnel</value></data>
+  <data name="Qualities.Value.With non-combat personnel" xml:space="preserve"><value>With non-combat personnel</value></data>
+  <data name="Qualities.Value.With plausible-seeming evidence" xml:space="preserve"><value>With plausible-seeming evidence</value></data>
+  <data name="Qualities.Value.Matters of life or death" xml:space="preserve"><value>Matters of life or death</value></data>
+  <data name="Qualities.Value.Threading Complex Forms in Hot-Sim" xml:space="preserve"><value>Threading complex forms in hot-sim</value></data>
+  <data name="Qualities.Value.Crack File" xml:space="preserve"><value>Crack File</value></data>
+  <data name="Qualities.Value.Companion Sprite" xml:space="preserve"><value>Companion sprite</value></data>
+  <data name="Qualities.Value.Fault Sprite" xml:space="preserve"><value>Fault sprite</value></data>
+  <data name="Qualities.Value.Generalist Sprite" xml:space="preserve"><value>Generalist sprite</value></data>
+  <data name="Qualities.Value.Machine Sprite" xml:space="preserve"><value>Machine sprite</value></data>
+  <data name="Qualities.Value.Desert" xml:space="preserve"><value>Desert</value></data>
+  <data name="Qualities.Value.Forest" xml:space="preserve"><value>Forest</value></data>
+  <data name="Qualities.Value.Jungle" xml:space="preserve"><value>Jungle</value></data>
+  <data name="Qualities.Value.Mountain" xml:space="preserve"><value>Mountains</value></data>
+  <data name="Qualities.Value.Not Urban" xml:space="preserve"><value>Outside urban areas</value></data>
+  <data name="Qualities.Value.Polar" xml:space="preserve"><value>Polar regions</value></data>
+  <data name="Qualities.Value.Rural" xml:space="preserve"><value>Rural areas</value></data>
+  <data name="Qualities.Value.Urban" xml:space="preserve"><value>Urban areas</value></data>
+  <data name="Qualities.Value.Hot-Sim" xml:space="preserve"><value>Hot-sim</value></data>
+  <data name="Qualities.Summary.0f3a0971-1cc5-47d6-a32d-d098ecdfb4d9" xml:space="preserve"><value>Your Mental limit increases, allowing more hits to count on tests capped by that limit. This raises the cap, not your dice pool.</value></data>
+  <data name="Qualities.Summary.58e6a651-cdd7-4144-a2cc-4cee24526e92" xml:space="preserve"><value>Your Physical limit increases, allowing more hits to count on tests capped by that limit. This does not raise your physical attributes.</value></data>
+  <data name="Qualities.Summary.b9f1dbeb-1728-4250-a066-4773f758fe6a" xml:space="preserve"><value>Your Social limit increases, allowing more hits to count on tests capped by that limit. This is not a bonus to every social dice pool.</value></data>
+  <data name="Qualities.Summary.e160111a-5fe3-4154-9d5a-82330c9b32fc" xml:space="preserve"><value>You resist pathogens more effectively, whether exposure comes through contact, ingestion, inhalation or injection. Resistance helps with the test; it is not complete immunity.</value></data>
+  <data name="Qualities.Summary.c74c9ed8-a917-4809-9e8a-5717dd16619b" xml:space="preserve"><value>You resist toxins more effectively through all four exposure routes. The bonus applies to toxin resistance, not to damage resistance in general.</value></data>
+  <data name="Qualities.Summary.2b9a495d-b735-416b-a000-f648c3b4191a" xml:space="preserve"><value>Someone depends on your support. This level raises lifestyle costs by 10%; it does not grant extra starting money.</value></data>
+  <data name="Qualities.Summary.cc857826-3bb2-466d-987b-7d56a337bc08" xml:space="preserve"><value>Someone depends on your support. This level raises lifestyle costs by 20%; the extra expense continues with that lifestyle.</value></data>
+  <data name="Qualities.Summary.066a2de9-1717-44ca-a8c6-90366890574a" xml:space="preserve"><value>Someone places substantial demands on your support. This level raises lifestyle costs by 30%, rather than charging a one-time fee.</value></data>
+  <data name="Qualities.Summary.13fd45c3-e031-4452-8bf8-31829d2401f9" xml:space="preserve"><value>Your body handles augmentation poorly. Cyberware costs twice the normal Essence, and bioware is unavailable.</value></data>
+  <data name="Qualities.Summary.f0873c37-4f09-41cd-be81-88e8df5b42ae" xml:space="preserve"><value>Social training costs twice as many creation points or Karma. Social skill groups are unavailable, so you cannot use a group purchase to avoid those costs. Your Notoriety also increases.</value></data>
+  <data name="Qualities.Summary.d8362a78-54e9-4dbe-8388-6ba0a7b9df31" xml:space="preserve"><value>Academic, professional and technical learning is harder for you. The listed skills and specializations cost twice the normal Karma, and you cannot default in those categories. Technical skill-group training also costs more.</value></data>
+  <data name="Qualities.Summary.ce939b04-5fc6-49e9-a747-9c9d1254449e" xml:space="preserve"><value>You may obtain one item with Availability up to 24. This is an exception to the availability restriction, not a free item; its normal price still matters.</value></data>
+  <data name="Qualities.Summary.7706ce23-77c2-470f-bb7e-6a4e56fa78fe" xml:space="preserve"><value>This drawback penalizes Logic- and Intuition-based tests, memory, reading intentions, defense and surprise. It also weakens the listed magical and addiction resistance tests. Each listed penalty follows the quality's rating.</value></data>
+  <data name="Qualities.Summary.0c11aefb-2306-43e9-9588-a84a563e9025" xml:space="preserve"><value>Bony spikes make your unarmed attacks more dangerous. They add 2 to unarmed damage and change that damage to Physical.</value></data>
+  <data name="Qualities.Summary.51ba5e67-f2fd-4149-b24c-9b502ed0e7c7" xml:space="preserve"><value>You gain a pair of additional arms. This describes extra limbs, not two additional actions or a blanket attack bonus.</value></data>
+  <data name="Qualities.Summary.23bfa65d-9241-4183-b7ea-0e2935e42f29" xml:space="preserve"><value>Cyberware integrates more easily with your body. Its Essence cost is 90% of normal; this does not reduce its nuyen price.</value></data>
+  <data name="Qualities.Summary.dcecd7e5-8cf1-4f83-89fa-177e28cfba03" xml:space="preserve"><value>Bioware integrates more easily with your body. Its Essence cost is 90% of normal; this does not reduce its nuyen price.</value></data>
+  <data name="Qualities.Summary.00c827f6-aaa7-4003-87c9-f14e36263252" xml:space="preserve"><value>You gain 2 dice to resist developing a new physical or psychological addiction. This does not grant the same bonus once that addiction already exists.</value></data>
+  <data name="Qualities.Summary.0ebdfce5-c613-4fd9-9763-cae2d21c2153" xml:space="preserve"><value>Your Essence contributes to your recovery. Add it to tests for healing Physical damage and recovering from Stun damage.</value></data>
+  <data name="Qualities.Summary.00ae8fce-15aa-4a7f-90e3-9336824a626e" xml:space="preserve"><value>You are more vulnerable to addiction: physical and psychological addiction resistance tests take a 2-dice penalty. It applies both before an addiction develops and when one already exists.</value></data>
+  <data name="Qualities.Summary.919cc565-a5b6-4eda-addb-afa2e293af24" xml:space="preserve"><value>You read the room instinctively. Etiquette tests use Intuition as their attribute instead of the usual attribute; this does not change every social skill.</value></data>
+  <data name="Qualities.Summary.2c1aff52-95e2-43f5-98ea-c653c66b7ee7" xml:space="preserve"><value>People find your intentions harder to read. You gain 2 dice when resisting Judge Intentions; it does not improve your own ability to read someone else.</value></data>
+  <data name="Qualities.Summary.41416949-62eb-4638-9457-fd7e833cea58" xml:space="preserve"><value>You rely on reasoning in diplomatic negotiations. The Diplomacy specialization of Negotiation uses Logic instead of the usual attribute; other Negotiation specializations are unchanged.</value></data>
+  <data name="Qualities.Summary.e508350b-f61d-4878-bd6d-98f8c9e3588b" xml:space="preserve"><value>You gain Alter Ballistics as an alchemical spell. It is an alchemical option, not a permanent damage bonus to every firearm.</value></data>
+  <data name="Qualities.Effect.Essence change" xml:space="preserve"><value>Essence change</value></data>
+  <data name="Qualities.Effect.Essence adjustment for Magic loss only" xml:space="preserve"><value>Essence adjustment for Magic loss only</value></data>
+  <data name="Qualities.Effect.Essence-related special-attribute loss (% of normal)" xml:space="preserve"><value>Essence-related special-attribute loss (% of normal)</value></data>
+  <data name="Qualities.Effect.Extra earned Karma needed per Street Cred" xml:space="preserve"><value>Extra earned Karma needed per Street Cred</value></data>
+  <data name="Qualities.Effect.Walking multiplier change" xml:space="preserve"><value>Walking multiplier change</value></data>
+  <data name="Qualities.Effect.Running multiplier change" xml:space="preserve"><value>Running multiplier change</value></data>
+  <data name="Qualities.Effect.Sprint distance change" xml:space="preserve"><value>Sprint distance change</value></data>
+  <data name="Qualities.Effect.Replacement walking multiplier" xml:space="preserve"><value>Replacement walking multiplier</value></data>
+  <data name="Qualities.Effect.Replacement running multiplier" xml:space="preserve"><value>Replacement running multiplier</value></data>
+  <data name="Qualities.Effect.Replacement sprint distance" xml:space="preserve"><value>Replacement sprint distance</value></data>
+  <data name="Qualities.Effect.Meters per hit" xml:space="preserve"><value>Meters per hit</value></data>
+  <data name="Qualities.Effect.Multiplier" xml:space="preserve"><value>Multiplier</value></data>
+  <data name="Qualities.Effect.All movement types" xml:space="preserve"><value>All movement types</value></data>
+  <data name="Qualities.Effect.Unavailable chosen skill group" xml:space="preserve"><value>Unavailable chosen skill group</value></data>
+  <data name="Qualities.Effect.Permitted spell range" xml:space="preserve"><value>Permitted spell range</value></data>
+  <data name="Qualities.Effect.Free-spell allowance" xml:space="preserve"><value>Free-spell allowance</value></data>
+  <data name="Qualities.Effect.Based on attribute" xml:space="preserve"><value>Based on attribute</value></data>
+  <data name="Qualities.Effect.Based on skill" xml:space="preserve"><value>Based on skill</value></data>
+  <data name="Qualities.Effect.Restriction" xml:space="preserve"><value>Restriction</value></data>
+  <data name="Qualities.Effect.Percentage change" xml:space="preserve"><value>Percentage change</value></data>
+  <data name="Qualities.Effect.Pace" xml:space="preserve"><value>Pace</value></data>
+  <data name="Qualities.Value.walk" xml:space="preserve"><value>Walking</value></data>
+  <data name="Qualities.Value.run" xml:space="preserve"><value>Running</value></data>
+  <data name="Qualities.Value.sprint" xml:space="preserve"><value>Sprinting</value></data>
+  <data name="Qualities.Value.T" xml:space="preserve"><value>Touch</value></data>
+  <data name="Qualities.Value.T (A)" xml:space="preserve"><value>Touch (area)</value></data>
+  <data name="Qualities.Value.half,touchonly" xml:space="preserve"><value>Half the rating, rounded up; touch range only</value></data>
+  <data name="Qualities.Value.Spellcasting" xml:space="preserve"><value>Spellcasting</value></data>
+  <data name="Qualities.Value.Summoning" xml:space="preserve"><value>Summoning</value></data>
+  <data name="Qualities.Value.Binding" xml:space="preserve"><value>Binding</value></data>
+  <data name="Qualities.Summary.bd2cf8ea-4eb3-458c-aa04-2de47067f3ad" xml:space="preserve"><value>You cover ground faster. Your base walking and running multipliers become 3 and 6 times Agility, and each sprinting hit adds one extra meter. These are movement changes, not bonus dice.</value></data>
+  <data name="Qualities.Summary.5451c3da-b08c-4a63-899f-afb62bd50a57" xml:space="preserve"><value>Your legs improve running on land: the base running multiplier becomes six times Agility, and each sprinting hit adds one extra meter. This does not increase your walking multiplier.</value></data>
+  <data name="Qualities.Summary.c6a2aa0f-76fd-432b-85bb-3ef2c2857525" xml:space="preserve"><value>You build Street Cred more slowly. Earned Karma contributes one point per 20 Karma rather than per 10; this does not multiply your Street Cred by ten.</value></data>
+  <data name="Qualities.Summary.f6a8d504-db7a-47eb-ace5-604de21c80fd" xml:space="preserve"><value>Essence loss reduces your special attribute at 20% of the normal rate. This modifier changes the attribute loss, not the Essence cost or nuyen price of an augmentation.</value></data>
+  <data name="Qualities.Summary.742caf46-a10b-4aa1-a6bc-a53feb99748c" xml:space="preserve"><value>You gain a free-spell allowance equal to half your Magic, rounded up. Those spells must have Touch range, including touch-area spells; this is not permission to choose spells at any range.</value></data>
+  <data name="Qualities.Summary.bbc6879e-b50d-4862-b85c-a86c5b9e5d67" xml:space="preserve"><value>You specialize in spellcasting. Your free-spell allowance follows your Spellcasting rating, and learning a new spell costs one less Karma. Summoning and Binding are unavailable.</value></data>
+  <data name="Qualities.Effect.Choose from these powers, not all of them" xml:space="preserve"><value>Choose from these powers, not all of them</value></data>
+  <data name="Qualities.Effect.Number of choices" xml:space="preserve"><value>Number of choices</value></data>
+  <data name="Qualities.Effect.Power option" xml:space="preserve"><value>Power option</value></data>
+  <data name="Qualities.Effect.Granted power" xml:space="preserve"><value>Granted power</value></data>
+  <data name="Qualities.Effect.Fixed detail" xml:space="preserve"><value>Fixed detail</value></data>
+  <data name="Qualities.Effect.Power choices restricted to category" xml:space="preserve"><value>Power choices restricted to category</value></data>
+  <data name="Qualities.Effect.Granted equipment" xml:space="preserve"><value>Granted equipment</value></data>
+  <data name="Qualities.Effect.Included equipment" xml:space="preserve"><value>Included equipment</value></data>
+  <data name="Qualities.Effect.No nuyen cost for this granted item" xml:space="preserve"><value>No nuyen cost for this granted item</value></data>
+  <data name="Qualities.Effect.Pay full price" xml:space="preserve"><value>Pay full price</value></data>
+  <data name="Qualities.Effect.Quantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Qualities.Effect.Additional specialization option, not automatically learned" xml:space="preserve"><value>Additional specialization option, not automatically learned</value></data>
+  <data name="Qualities.Effect.Choose a free expertise specialization" xml:space="preserve"><value>Choose a free expertise specialization</value></data>
+  <data name="Qualities.Effect.Choose specialization from" xml:space="preserve"><value>Choose specialization from</value></data>
+  <data name="Qualities.Value.Adaptive Coloration" xml:space="preserve"><value>Adaptive Coloration</value></data>
+  <data name="Qualities.Value.Allergy" xml:space="preserve"><value>Allergy</value></data>
+  <data name="Qualities.Value.Animal Control" xml:space="preserve"><value>Animal Control</value></data>
+  <data name="Qualities.Value.Armor" xml:space="preserve"><value>Armor</value></data>
+  <data name="Qualities.Value.Aura Masking" xml:space="preserve"><value>Aura Masking</value></data>
+  <data name="Qualities.Value.Compulsion" xml:space="preserve"><value>Compulsion</value></data>
+  <data name="Qualities.Value.Concealment" xml:space="preserve"><value>Concealment</value></data>
+  <data name="Qualities.Value.Dietary Requirement" xml:space="preserve"><value>Dietary Requirement</value></data>
+  <data name="Qualities.Value.Dive Attack" xml:space="preserve"><value>Dive Attack</value></data>
+  <data name="Qualities.Value.Dual Natured" xml:space="preserve"><value>Dual Natured</value></data>
+  <data name="Qualities.Value.Elemental Attack" xml:space="preserve"><value>Elemental Attack</value></data>
+  <data name="Qualities.Value.Empathy" xml:space="preserve"><value>Empathy</value></data>
+  <data name="Qualities.Value.Enhanced Senses" xml:space="preserve"><value>Enhanced Senses</value></data>
+  <data name="Qualities.Value.Essence Drain" xml:space="preserve"><value>Essence Drain</value></data>
+  <data name="Qualities.Value.Essence Loss" xml:space="preserve"><value>Essence Loss</value></data>
+  <data name="Qualities.Value.Fear" xml:space="preserve"><value>Fear</value></data>
+  <data name="Qualities.Value.Hardened Armor" xml:space="preserve"><value>Hardened Armor</value></data>
+  <data name="Qualities.Value.Hardened Mystic Armor" xml:space="preserve"><value>Hardened Mystic Armor</value></data>
+  <data name="Qualities.Value.Immunity" xml:space="preserve"><value>Immunity</value></data>
+  <data name="Qualities.Value.Induced Dormancy" xml:space="preserve"><value>Induced Dormancy</value></data>
+  <data name="Qualities.Value.Infection" xml:space="preserve"><value>Infection</value></data>
+  <data name="Qualities.Value.Influence" xml:space="preserve"><value>Influence</value></data>
+  <data name="Qualities.Value.Innate Spell" xml:space="preserve"><value>Innate Spell</value></data>
+  <data name="Qualities.Value.Magical Guard" xml:space="preserve"><value>Magical Guard</value></data>
+  <data name="Qualities.Value.Mimicry" xml:space="preserve"><value>Mimicry</value></data>
+  <data name="Qualities.Value.Mist Form" xml:space="preserve"><value>Mist Form</value></data>
+  <data name="Qualities.Value.Movement" xml:space="preserve"><value>Movement</value></data>
+  <data name="Qualities.Value.Noxious Breath" xml:space="preserve"><value>Noxious Breath</value></data>
+  <data name="Qualities.Value.Paralyzing Howl" xml:space="preserve"><value>Paralyzing Howl</value></data>
+  <data name="Qualities.Value.Paralyzing Touch" xml:space="preserve"><value>Paralyzing Touch</value></data>
+  <data name="Qualities.Value.Pestilence" xml:space="preserve"><value>Pestilence</value></data>
+  <data name="Qualities.Value.Psychokinesis" xml:space="preserve"><value>Psychokinesis</value></data>
+  <data name="Qualities.Value.Realistic Form" xml:space="preserve"><value>Realistic Form</value></data>
+  <data name="Qualities.Value.Reduced Sense" xml:space="preserve"><value>Reduced Sense</value></data>
+  <data name="Qualities.Value.Regeneration" xml:space="preserve"><value>Regeneration</value></data>
+  <data name="Qualities.Value.Secretion/Substance Extrusion" xml:space="preserve"><value>Secretion/Substance Extrusion</value></data>
+  <data name="Qualities.Value.Shift (Dracoform)" xml:space="preserve"><value>Shift (Dracoform)</value></data>
+  <data name="Qualities.Value.Underwater Adaptation" xml:space="preserve"><value>Underwater Adaptation</value></data>
+  <data name="Qualities.Value.Venom" xml:space="preserve"><value>Venom</value></data>
+  <data name="Qualities.Value.Vestigial Wings" xml:space="preserve"><value>Vestigial Wings</value></data>
+  <data name="Qualities.Value.Vulnerability" xml:space="preserve"><value>Vulnerability</value></data>
+  <data name="Qualities.Value.Wall Walking" xml:space="preserve"><value>Wall Walking</value></data>
+  <data name="Qualities.Value.Aconite a.k.a. Wolf's Bane, Moderate" xml:space="preserve"><value>Aconite a.k.a. Wolf's Bane, Moderate</value></data>
+  <data name="Qualities.Value.Age" xml:space="preserve"><value>Age</value></data>
+  <data name="Qualities.Value.Air Pollution, Moderate" xml:space="preserve"><value>Air Pollution, Moderate</value></data>
+  <data name="Qualities.Value.Blind" xml:space="preserve"><value>Blind</value></data>
+  <data name="Qualities.Value.Cold" xml:space="preserve"><value>Cold</value></data>
+  <data name="Qualities.Value.Corrosive" xml:space="preserve"><value>Corrosive</value></data>
+  <data name="Qualities.Value.Ferrous Metals, Moderate" xml:space="preserve"><value>Ferrous Metals, Moderate</value></data>
+  <data name="Qualities.Value.Fire" xml:space="preserve"><value>Fire</value></data>
+  <data name="Qualities.Value.Foreboding" xml:space="preserve"><value>Foreboding</value></data>
+  <data name="Qualities.Value.Insecticides, Mild" xml:space="preserve"><value>Insecticides, Mild</value></data>
+  <data name="Qualities.Value.Iron" xml:space="preserve"><value>Iron</value></data>
+  <data name="Qualities.Value.Lack of Air (Essence) Minutes" xml:space="preserve"><value>Lack of Air (Essence) Minutes</value></data>
+  <data name="Qualities.Value.Low-Light Vision" xml:space="preserve"><value>Low-Light Vision</value></data>
+  <data name="Qualities.Value.Lowlight Vision" xml:space="preserve"><value>Lowlight Vision</value></data>
+  <data name="Qualities.Value.Mass Sight Removal" xml:space="preserve"><value>Mass Sight Removal</value></data>
+  <data name="Qualities.Value.Metahuman Blood" xml:space="preserve"><value>Metahuman Blood</value></data>
+  <data name="Qualities.Value.Metahuman Bone" xml:space="preserve"><value>Metahuman Bone</value></data>
+  <data name="Qualities.Value.Metahuman Flesh" xml:space="preserve"><value>Metahuman Flesh</value></data>
+  <data name="Qualities.Value.Normal Weapons" xml:space="preserve"><value>Normal Weapons</value></data>
+  <data name="Qualities.Value.Pathogens" xml:space="preserve"><value>Pathogens</value></data>
+  <data name="Qualities.Value.Queen's Command" xml:space="preserve"><value>Queen's Command</value></data>
+  <data name="Qualities.Value.Salt" xml:space="preserve"><value>Salt</value></data>
+  <data name="Qualities.Value.Self Only" xml:space="preserve"><value>Self Only</value></data>
+  <data name="Qualities.Value.Silver" xml:space="preserve"><value>Silver</value></data>
+  <data name="Qualities.Value.Silver, Moderate" xml:space="preserve"><value>Silver, Moderate</value></data>
+  <data name="Qualities.Value.Smell" xml:space="preserve"><value>Smell</value></data>
+  <data name="Qualities.Value.Sugar" xml:space="preserve"><value>Sugar</value></data>
+  <data name="Qualities.Value.Sunlight, Extreme" xml:space="preserve"><value>Sunlight, Extreme</value></data>
+  <data name="Qualities.Value.Sunlight, Mild" xml:space="preserve"><value>Sunlight, Mild</value></data>
+  <data name="Qualities.Value.Sunlight, Moderate" xml:space="preserve"><value>Sunlight, Moderate</value></data>
+  <data name="Qualities.Value.Sunlight, Severe" xml:space="preserve"><value>Sunlight, Severe</value></data>
+  <data name="Qualities.Value.Thermographic Vision" xml:space="preserve"><value>Thermographic Vision</value></data>
+  <data name="Qualities.Value.Toxins" xml:space="preserve"><value>Toxins</value></data>
+  <data name="Qualities.Value.Vermin" xml:space="preserve"><value>Vermin</value></data>
+  <data name="Qualities.Value.Visual Acuity" xml:space="preserve"><value>Visual Acuity</value></data>
+  <data name="Qualities.Value.Wood" xml:space="preserve"><value>Wood</value></data>
+  <data name="Qualities.Value.Wood, Severe" xml:space="preserve"><value>Wood, Severe</value></data>
+  <data name="Qualities.Value.Infected" xml:space="preserve"><value>Infected</value></data>
+  <data name="Qualities.Value.Drake" xml:space="preserve"><value>Drake</value></data>
+  <data name="Qualities.Value.Living Persona" xml:space="preserve"><value>Living Persona</value></data>
+  <data name="Qualities.Value.Commlinks" xml:space="preserve"><value>Commlinks</value></data>
+  <data name="Qualities.Value.Fake SIN" xml:space="preserve"><value>Fake SIN</value></data>
+  <data name="Qualities.Value.Fake License" xml:space="preserve"><value>Fake License</value></data>
+  <data name="Qualities.Value.ID/Credsticks" xml:space="preserve"><value>ID/Credsticks</value></data>
+  <data name="Qualities.Value.Electroception" xml:space="preserve"><value>Electroception</value></data>
+  <data name="Qualities.Value.Artisan" xml:space="preserve"><value>Artisan</value></data>
+  <data name="Qualities.Summary.c0d411e6-ca88-4011-b56c-9f594882beb4" xml:space="preserve"><value>You receive a rating-3 fake SIN with four rating-3 fake licenses. These supplied items have no additional nuyen cost; they are not a genuine registered identity.</value></data>
+  <data name="Qualities.Summary.fd9b9b6d-c969-40f1-8dc7-61f8e5d9cd4d" xml:space="preserve"><value>Choose a free expertise specialization in Artisan. Its benefit is tied to the chosen specialty, rather than granting a free Artisan rating or improving every use of the skill.</value></data>
 </root>

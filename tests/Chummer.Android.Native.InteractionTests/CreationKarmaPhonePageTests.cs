@@ -267,8 +267,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(info.Text == "!", "Quality effect help is missing.");
             await Click(info.AutomationId);
             Require(Current() is CreationQualityInfoPage
-                && IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains("Rulebook:", StringComparison.Ordinal) == true)
-                && probe.ConfirmCalls == 0, "Quality information must show the exact source citation without saving.");
+                && IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains("hands shake", StringComparison.Ordinal) == true)
+                && !IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains("Rulebook", StringComparison.OrdinalIgnoreCase) == true)
+                && probe.ConfirmCalls == 0, "Quality information must explain the effect inline without a book reference or saving.");
             await Back();
             int depthBeforeOldInfo = navigation.Navigation.NavigationStack.Count;
             await ui.BeginAsyncVoid(() => ((IButtonController)info).SendClicked());

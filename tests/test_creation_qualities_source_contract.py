@@ -46,6 +46,37 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
                 self.assertNotIn("Core", value)
                 self.assertNotIn("authority", value)
 
+    def test_quality_help_has_inline_copy_not_book_referrals(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        help_page = page[page.index("public sealed class CreationQualityInfoPage"):
+                         page.index("public sealed class CreationQualityConfigurePage")]
+        for forbidden in ("Citation(", "Qualities.Info.Reference", "Qualities.Info.SourceNote",
+                          "read the book", "See the rulebook", "Consult the rules"):
+            self.assertNotIn(forbidden, help_page)
+        keys = None
+        effect_keys = None
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            copy = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
+            self.assertEqual(len(copy), len({key.casefold() for key in copy}),
+                             "Resource compilation rejects case-only duplicate keys")
+            summaries = {key for key in copy if key.startswith("Qualities.Summary.")}
+            self.assertGreaterEqual(len(summaries), 59)
+            if keys is not None:
+                self.assertEqual(keys, summaries, "Quality summaries must be translated together")
+            keys = summaries
+            localized_effects = {key for key in copy if key.startswith(("Qualities.Effect.", "Qualities.Value."))}
+            if effect_keys is not None:
+                self.assertEqual(effect_keys, localized_effects, "Effect labels and conditions need all three locales")
+            effect_keys = localized_effects
+            for key, value in copy.items():
+                if key.startswith(("Qualities.Info.", "Qualities.Summary.")):
+                    self.assertTrue(value)
+                    for referral in ("rulebook", "Regelbuch", "consulta el manual", "Consulta las reglas"):
+                        self.assertNotIn(referral, value)
+                if key in localized_effects:
+                    self.assertTrue(value)
+
     def test_acknowledged_receipt_returns_through_phone_shell(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         action = page[page.index("private async Task AcknowledgeAsync()") :]

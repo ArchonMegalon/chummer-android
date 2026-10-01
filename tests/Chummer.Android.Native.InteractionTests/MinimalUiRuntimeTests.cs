@@ -13,8 +13,195 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    private static void VerifyQualitySummaryContent(string contentRoot)
+    {
+        var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
+            .Root!.Element("qualities")!.Elements("quality").ToArray();
+        var oldCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                int authored = 0, missing = 0, partial = 0;
+                foreach (var quality in catalog)
+                {
+                    string summary = CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "");
+                    if (summary.Length > 0) authored++;
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(lines.Count > 0 && lines.All(line => !string.IsNullOrWhiteSpace(line)),
+                        "Every catalog entry needs an explanation or an honest missing-description state.");
+                    string text = string.Join(" ", lines);
+                    Require(!Regex.IsMatch(text, @"[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}", RegexOptions.IgnoreCase)
+                        && !text.Contains("rulebook", StringComparison.OrdinalIgnoreCase)
+                        && !text.Contains("Regelbuch", StringComparison.OrdinalIgnoreCase)
+                        && !text.Contains("consulta el manual", StringComparison.OrdinalIgnoreCase),
+                        "Quality information exposed a machine identity or deferred to a book.");
+                    if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))) missing++;
+                    if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
+                    if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
+                }
+                Require(authored >= 59, "Localized source-identity summaries were not loaded from the real catalog.");
+                string fractionalEssence = string.Join(" ", CreationQualityInfo.Effects(
+                    "<quality><bonus><essencepenaltyt100>-150</essencepenaltyt100></bonus></quality>"));
+                Require(fractionalEssence.Contains((-1.5m).ToString(CultureInfo.CurrentUICulture))
+                    && !fractionalEssence.Contains("-150"), "Hundredths must use readable, localized display units.");
+                Console.WriteLine($"QUALITY_COPY locale={locale} catalog={catalog.Length} authored={authored} missing={missing} partial={partial}");
+            }
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
+            string Effect(string name) => string.Join(" ", CreationQualityInfo.Effects(
+                catalog.Single(quality => quality.Element("name")!.Value == name).ToString()));
+            Require(Effect("Catlike").Contains("Sneaking") && Effect("Catlike").Contains("Bonus: 2"),
+                "Specific-skill modifiers must be shown, not silently replaced by generic copy.");
+            Require(Effect("Exceptional Attribute").Contains("Maximum change: 1")
+                && Effect("Exceptional Attribute").Contains("Except: Edge"),
+                "Nested attribute choice must retain its maximum and Edge exclusion.");
+            Require(Effect("Will to Live").Contains("Additional overflow boxes: 1"),
+                "Overflow boxes must not be confused with damage resistance.");
+            Require(Effect("Quick Healer").Contains("Heal") && Effect("Quick Healer").Contains("Modifier: 2"),
+                "Spell-specific healing modifier was lost.");
+            Require(Effect("Uneducated").Contains("Cannot default")
+                && Effect("Uneducated").Contains("Percent of normal cost: 200")
+                && Effect("Uneducated").Contains("Specialization Karma cost"),
+                "Skill restrictions and double training costs must be distinguished from bonus dice.");
+            Require(Effect("Jack of All Trades Master of None").Contains("After character creation")
+                && Effect("Jack of All Trades Master of None").Contains("Maximum: 5")
+                && Effect("Jack of All Trades Master of None").Contains("Minimum: 6")
+                && !Effect("Jack of All Trades Master of None").Contains("/character/"),
+                "Karma cost conditions and rating boundaries must be retained in readable language.");
+            Require(Effect("Sensitive System").Contains("Cyberware Essence cost (% of normal): 200")
+                && Effect("Sensitive System").Contains("Cannot use bioware"),
+                "Essence multipliers and the bioware restriction were lost.");
+            Require(Effect("Dependent (Nuisance)").Contains("Lifestyle cost change (%): 10"),
+                "A lifestyle percentage must not be presented as nuyen or dice.");
+            Require(Effect("Celerity").Contains("Replacement walking multiplier")
+                && Effect("Celerity").Contains("Multiplier: 3")
+                && Effect("Celerity").Contains("Replacement running multiplier")
+                && Effect("Celerity").Contains("Multiplier: 6")
+                && Effect("Celerity").Contains("Meters per hit: 1")
+                && !Effect("Celerity").Contains("100"), "Replacement rates and extra sprint meters must not become 100 dice or a percentage.");
+            Require(Effect("Satyr Legs").Contains("Meters per hit: 1")
+                && !Effect("Satyr Legs").Contains("Replacement walking multiplier"),
+                "Satyr Legs must not borrow Celerity's walking benefit.");
+            Require(Effect("Consummate Professional").Contains("Extra earned Karma needed per Street Cred: 10")
+                && Effect("Consummate Professional").Contains("per 20 Karma"),
+                "Street Cred's extra Karma divisor is not a reputation multiplier.");
+            Require(Effect("Resonant Burnout").Contains("Essence-related special-attribute loss (% of normal): 20"),
+                "Reduced attribute loss must not be described as cheaper augmentation Essence.");
+            Require(Effect("Barehanded Adept").Contains("Based on attribute: Magic")
+                && Effect("Barehanded Adept").Contains("Half the rating, rounded up; touch range only")
+                && Effect("Barehanded Adept").Contains("Permitted spell range: Touch (area)"),
+                "Free spells must retain their Magic, rounding and Touch restrictions.");
+            Require(Effect("Dedicated Spellslinger").Contains("Based on skill: Spellcasting")
+                && Effect("Dedicated Spellslinger").Contains("Unavailable skill: Summoning")
+                && Effect("Dedicated Spellslinger").Contains("Unavailable skill: Binding"),
+                "Skill-based free spells must retain their unavailable magic skills.");
+            string deadSin = Effect("Dead SIN");
+            Require(deadSin.Contains("Granted equipment · Fake SIN") && deadSin.Contains("Rating: 3")
+                && Regex.Matches(deadSin, "Included equipment · Fake License").Count == 4,
+                "A granted SIN and four identical licenses must retain all four child items and their ratings.");
+            string banshee = Effect("Infected: Banshee");
+            Require(banshee.Contains("Granted power: Dual Natured") && banshee.Contains("Granted power: Allergy")
+                && banshee.Contains("Fixed detail: Sunlight, Severe")
+                && banshee.Contains("Choose from these powers, not all of them")
+                && banshee.Contains("Number of choices: 1") && banshee.Contains("Power option: Enhanced Senses")
+                && banshee.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Granted powers, selected details and optional choices must be distinguished; power names are not full rules.");
+            Require(Effect("Electroception (Electrosense)").Contains("Additional specialization option, not automatically learned")
+                && Effect("Electroception (Electrosense)").Contains("Specialization: Electroception")
+                && Effect("Electroception (Electrosense)").Contains("Skill: Perception"),
+                "A new specialization option must not be confused with automatically learning it.");
+            string inspired(string id) => string.Join(" ", CreationQualityInfo.Effects(
+                catalog.Single(quality => quality.Element("id")!.Value == id).ToString()));
+            Require(inspired("fd9b9b6d-c969-40f1-8dc7-61f8e5d9cd4d").Contains("Choose a free expertise specialization")
+                && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
+                "Same-name qualities must not share source-identity summaries or expertise effects.");
+            string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            string powers = Describe("<critterpowers><power rating='2'>Armor</power><power select='Fire'>Immunity</power></critterpowers>");
+            Require(powers.Contains("Granted power: Armor · Rating: 2") && powers.Contains("Fixed detail: Fire"),
+                "Granted power ratings and fixed selections cannot be dropped.");
+            string optional = Describe("<optionalpowers count='2'><optionalpower>Armor</optionalpower><optionalpower>Fear</optionalpower></optionalpowers>");
+            Require(optional.Contains("Number of choices: 2") && !optional.Contains("Granted power:"),
+                "Optional power count is a choice count, not a grant of every listed power.");
+            string gearPrice = Describe("<addgear><name>Test item</name><rating>Rating + 1</rating><quantity>2</quantity><fullcost /></addgear>");
+            Require(gearPrice.Contains("Pay full price") && gearPrice.Contains("Quantity: 2")
+                && gearPrice.Contains("Rating: Rating + 1") && !gearPrice.Contains("No nuyen cost"),
+                "Full-cost grants must not be described as free; retain quantity and symbolic rating.");
+            string hiddenGearCondition = Describe("<addgear><name>Test item</name><children><child><name>Child</name><futurecondition>unknown</futurecondition></child></children></addgear>");
+            Require(hiddenGearCondition.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Unknown conditions on included equipment must keep the whole explanation partial.");
+            string deeperGear = Describe("<addgear><name>Parent</name><children><child><name>Child</name><children><child><name>Not an admitted grandchild</name></child></children></child></children></addgear>");
+            Require(!deeperGear.Contains("Not an admitted grandchild")
+                && deeperGear.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Display must not grant recursively nested equipment beyond Core's immediate-child contract.");
+            string unresolved = Describe("<addqualities><addquality>00000000-0000-0000-0000-000000000001</addquality></addqualities>");
+            Require(!unresolved.Contains("00000000") && unresolved.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "An unresolved quality reference stays hidden and partial, not apparently complete.");
+            string specialization = Describe("<selectexpertise limittoskill='Artisan' limittospecialization='Painting,Sculpture' />");
+            Require(specialization.Contains("Choose from: Artisan") && specialization.Contains("Choose specialization from: Painting,Sculpture"),
+                "Expertise must preserve both skill and specialization restrictions.");
+            string sprint = Describe("<movementreplace><category>Fly</category><speed>sprint</speed><val>500</val></movementreplace>");
+            Require(sprint.Contains("Replacement sprint distance") && sprint.Contains("Category: Flying")
+                && sprint.Contains("Meters per hit: 5") && !sprint.Contains("500"), "Replacement sprint distance is also stored in hundredths.");
+            string noCategory = Describe("<movementreplace><val>3</val></movementreplace>");
+            Require(noCategory.Contains("Replacement walking multiplier") && noCategory.Contains("All movement types"),
+                "A replacement without explicit speed/category defaults to walking for all movement types.");
+            string mixedUnits = Describe("<sprintbonus><category>Ground</category><val>50</val><percent>25</percent></sprintbonus>");
+            Require(mixedUnits.Contains("Meters per hit: 0.5") && mixedUnits.Contains("Percentage change: 25"),
+                "Only the sprint-distance value uses hundredths; percentage changes must remain unchanged.");
+            string symbolic = Describe("<sprintbonus><category>Ground</category><val>Rating * 100</val></sprintbonus>");
+            Require(symbolic.Contains("Meters per hit: (Rating * 100) / 100"),
+                "Symbolic unit conversion must remain an unevaluated expression.");
+            string crystal = Describe("<essencepenaltyt100>-150</essencepenaltyt100><essencepenaltymagonlyt100>150</essencepenaltymagonlyt100>");
+            Require(crystal.Contains("Essence change: -1.5") && crystal.Contains("Essence adjustment for Magic loss only: 1.5"),
+                "Magic-specific Essence adjustment is not a grant of Magic attribute points.");
+            string legacyInitiative = Describe("<initiativepass precedence='0'>1</initiativepass>");
+            Require(legacyInitiative.Contains("Initiative dice: 1")
+                && legacyInitiative.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Legacy initiative tag means dice, but unexplained stacking precedence remains partial.");
+            Require(Describe("<movementreplace><speed>unknown</speed><val>500</val></movementreplace>")
+                == CreationFlowStrings.Get("Qualities.Info.Manual", ""), "Unknown movement types must not be guessed as walking.");
+            string fading = Describe("<fadingvalue specific='Resonance Spike'>-2</fadingvalue>");
+            Require(fading.Contains("Fading value change: -2") && fading.Contains("Only for: Resonance Spike"),
+                "A targeted Fading modifier must not appear to apply to every complex form.");
+            string limit = Describe("<limitmodifier><limit>Mental</limit><value>1</value><condition>LimitCondition_SkillsKnowledgeAcademic</condition></limitmodifier>");
+            Require(limit.Contains("Limit: Mental") && limit.Contains("Modifier: 1")
+                && limit.Contains("Academic Knowledge") && !limit.Contains("LimitCondition_"),
+                "Limit values and translated conditions were omitted.");
+            string restricted = Describe("<selectskill minimumrating='4' limittoskill='Hacking'><val>-2</val><disablespecializationeffects /></selectskill>");
+            Require(restricted.Contains("Minimum skill rating: 4") && restricted.Contains("Choose from: Hacking")
+                && restricted.Contains("Specialization bonuses do not apply"), "Skill-choice restrictions were lost.");
+            string partialText = Describe("<specificskill><name>Perception</name><bonus>1</bonus><futurecondition>unknown</futurecondition></specificskill>");
+            Require(partialText.Contains("Bonus: 1") && partialText.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "An unknown field must produce a partial-description warning instead of disappearing silently.");
+            string duplicatePartial = Describe("<specificskill><name>Perception</name><bonus>1</bonus></specificskill>"
+                + "<specificskill><name>Perception</name><bonus>1</bonus><futurecondition>unknown</futurecondition></specificskill>");
+            Require(duplicatePartial.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Text deduplication must not discard an unknown condition on the second effect.");
+            string conditionalLifestyle = Describe("<lifestylecost lifestyle='Low' condition='once'>10</lifestylecost>");
+            Require(conditionalLifestyle.Contains("Lifestyle: Low") && conditionalLifestyle.Contains("When: One-time cost"),
+                "Lifestyle scope and one-time conditions must remain visible.");
+            string expression = string.Join(" ", CreationQualityInfo.Effects(
+                "<quality><bonus><specificskill><name>Test skill</name><bonus>Rating + 1</bonus><condition>Only at night</condition></specificskill></bonus></quality>"));
+            Require(expression.Contains("Rating + 1") && expression.Contains("Only at night"),
+                "Read-only help must preserve expressions and conditions without evaluating rules.");
+            string unknown = string.Join(" ", CreationQualityInfo.Effects(
+                "<quality><name>Catlike</name><id>00000000-0000-0000-0000-000000000001</id><bonus><unrecognized /></bonus></quality>"));
+            Require(unknown == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "An unknown source identity must not borrow another quality's prose from its display name.");
+            try
+            {
+                CreationQualityInfo.Effects("<!DOCTYPE quality [<!ENTITY x 'unsafe'>]><quality>&x;</quality>");
+                throw new InvalidOperationException("Quality help accepted a DTD.");
+            }
+            catch (System.Xml.XmlException) { }
+        }
+        finally { CultureInfo.CurrentUICulture = oldCulture; }
+    }
+
     internal static async Task RunCreationQualityDetailsAsync(string contentRoot, string? smokeWorkspacePath = null)
     {
+        VerifyQualitySummaryContent(contentRoot);
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -80,6 +267,19 @@ internal static partial class AfterRunAuthorityHarness
                         && MinimalVisible(empty).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").IsEnabled,
                         "An empty valid review must explain that no additional qualities are selected.");
                     MinimalRequireNoMachineValues(empty);
+                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude" })
+                    {
+                        var helpOption = state.Authority.Options.First(item => item.Name == name);
+                        var help = new CreationQualityInfoPage(coordinator, original, helpOption);
+                        string helpText = MinimalVisibleText(help);
+                        string expected = CreationFlowStrings.Get("Qualities.Summary." + helpOption.SourceId.ToString("D"), "");
+                        Require(expected.Length > 40 && helpText.Contains(expected)
+                            && !helpText.Contains("Rulebook", StringComparison.OrdinalIgnoreCase)
+                            && !helpText.Contains("Regelbuch", StringComparison.OrdinalIgnoreCase)
+                            && !helpText.Contains("página", StringComparison.OrdinalIgnoreCase),
+                            "Quality help must contain the localized inline explanation, not a book citation.");
+                        MinimalRequireNoMachineValues(help);
+                    }
                 }
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 Require(store.TryRead(out var unchanged, out blocker) && unchanged.CheckpointDigest == checkpoint.CheckpointDigest,

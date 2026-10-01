@@ -1331,12 +1331,12 @@ internal static partial class AfterRunAuthorityHarness
         var qualityState = state.Value ?? throw new InvalidOperationException("SETUP: missing quality state.");
         var analytical = qualityState.Authority.Options.First(option => option.Name == "Analytical Mind");
         var explanation = string.Join(" ", CreationQualityInfo.Effects(analytical.SourceNodeXml));
-        Require(explanation.Contains("Bonus: 2") && explanation.Contains("pattern recognition")
-            && CreationQualityInfo.Citation(analytical.SourceNodeXml).Contains("72"),
-            "Quality help lost the source modifier, condition or citation.");
+        Require(explanation.Contains("Bonus: 2") && explanation.Contains("pattern recognition", StringComparison.OrdinalIgnoreCase)
+            && explanation.Contains("not every Logic test") && !explanation.Contains("Rulebook"),
+            "Quality help lost the inline explanation, source modifier or condition.");
         var mystic = qualityState.Authority.Options.First(option => option.Name == "Mystic Adept");
         var mysticEffects = string.Join(" ", CreationQualityInfo.Effects(mystic.SourceNodeXml));
-        Require(mysticEffects.Contains("MAG") && mysticEffects.Contains("magician")
+        Require(mysticEffects.Contains("Magic") && mysticEffects.Contains("magician")
             && mysticEffects.Contains("adept") && mysticEffects.Contains("Unlocks skills"),
             "Mystic Adept help omitted its actual source-backed attribute, capabilities or skill access.");
         var grant = new CharacterCreationGrantedQuality("read-only-help-test", analytical.SourceId,
