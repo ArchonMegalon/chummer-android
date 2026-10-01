@@ -104,13 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 62 is the latest [observed Internal availability](../play/evidence/preview62-internal-observation.md).
-It is available on Play Internal; physical Play installation of 62 is not yet
-verified. Creation now retains the cumulative saved Qualities Karma budget:
+Preview 63 is the latest [observed Internal availability](../play/evidence/preview63-internal-observation.md).
+It is available on Play Internal; physical Play installation of 63 is not yet
+verified. Core's operation-scoped quality batches remove repeated catalog
+preparation while preserving eligibility, option order and costs. Actual-Core
+equivalence/ownership checks and native selection/help/save/new-process receipt
+reopen passed; all 28 prior workspace files remained unchanged. Managed timing
+improved, but general Android/physical responsiveness is not qualified.
+Preview 62's cumulative saved Qualities Karma correction remains included:
 a 4-Karma quality leaves 21 of 25, including after verified new-process reopen.
 Core-backed Priority/Sum-to-Ten save, cold reopen and removal regressions passed;
 the native affected-route smoke preserved all 28 stored workspace files.
-Catalog latency remains an explicit follow-up; no physical-performance claim.
+Remaining native catalog/transition latency is an explicit follow-up; no physical-performance claim.
 Preview 61's quality configuration, review and saved receipts use readable names,
 costs and actions, with technical IDs/digests behind disclosure. Core-backed
 EN/DE/ES checks and native quality save/new-process receipt reopen passed; 27 old
