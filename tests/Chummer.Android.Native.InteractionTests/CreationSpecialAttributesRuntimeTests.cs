@@ -147,7 +147,13 @@ internal static partial class AfterRunAuthorityHarness
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, runtime.Coordinator.State);
                 var editor = new CreationAttributeAllocationPage(runtime.Coordinator, draft, attributeId, state);
+                int priorLoads = probe!.LoadCalls;
+                int priorPreviews = probe.PreviewCalls;
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
+                int expectedPreviews = new[] { (-1, 0), (1, 0), (0, -1), (0, 1) }
+                    .Count(change => draft.ChangedAllocations(state, attributeId, change.Item1, change.Item2) is not null);
+                Require(probe.LoadCalls - priorLoads == 1 && probe.PreviewCalls - priorPreviews == expectedPreviews,
+                    "Attribute controls must revalidate once, then use each fresh Core preview without redundant Load calls.");
                 var attribute = draft.Attribute(state, attributeId)!;
                 var plus = MinimalVisible(editor).OfType<Button>().Single(x =>
                     x.AutomationId == "creation-attribute-priority-increase-" + attributeId.ToLowerInvariant());
@@ -229,6 +235,7 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 IssuedPageLifecycle(editor, "OnDisappearing");
             }
+            await VerifyAttributePreviewStillReadsCurrentWorkspaceAsync(contentRoot);
             foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
             {
                 var owners = new ControlledLinkedOwner();
@@ -384,6 +391,40 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS " + method + " special entry, EN/DE/ES controls, Edge +/-, separate budgets, save/cold reopen, cap and owner ABA");
             }
         });
+    }
+
+    private static async Task VerifyAttributePreviewStillReadsCurrentWorkspaceAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        AttributesCommitProbe? probe = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+            attributesDecorator: actual => probe = new(actual));
+        var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+            attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        var coordinator = runtime.Coordinator;
+        var state = coordinator.LoadCreationAttributes().Value!;
+        var draft = new CreationAttributesPhoneDraft();
+        draft.Bind(state, coordinator.State);
+        var allocations = draft.ChangedAllocations(state, "MAG", 1, 0)!;
+        var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+        // Commit through actual Core without refreshing the displayed snapshot.
+        // A cached phone display must never make a later preview skip the current bytes.
+        var saved = probe!.Confirm(owners.Capture(), new(preview.Binding, allocations, preview.PreviewDigest, true));
+        Require(saved.Value is not null && coordinator.IsCreationAttributesStateCurrent(state),
+            "SETUP: external commit must leave an issued but outdated phone display.");
+        var document = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        int loads = probe.LoadCalls;
+        int previews = probe.PreviewCalls;
+        var rejected = coordinator.PreviewCreationAttributes(state.Binding, allocations);
+        Require(rejected.Value is null && rejected.Outcome != CharacterCreationFoundationOutcomes.Success
+            && probe.LoadCalls == loads && probe.PreviewCalls == previews + 1,
+            "Fresh Core preview must reject changed durable state without a separate phone Load.");
+        Require(!draft.TryAdopt(state, coordinator.State, rejected, allocations) && probe.ConfirmCalls == 1,
+            "Stale point preview admitted a draft or repeated a write.");
+        RequireSameRewardDocument(document, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        Console.WriteLine("PASS attribute preview current-workspace rejection without redundant Load or write replay");
     }
 
     private static async Task VerifyAttributeReviewPreparationAsync(IssuedPageUiContext ui, string contentRoot)

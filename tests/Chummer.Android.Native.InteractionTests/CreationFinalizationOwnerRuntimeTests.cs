@@ -2337,13 +2337,15 @@ internal static partial class AfterRunAuthorityHarness
     {
         public Action? AfterConfirm { get; set; }
         public Action? BeforeRead { get; set; }
+        public int LoadCalls { get; private set; }
+        public int PreviewCalls { get; private set; }
         public int ConfirmCalls { get; private set; }
         public CharacterCreationFoundationResult<CharacterCreationAttributesState> Load(OwnerContextStamp owner,
             CharacterCreationAttributesLoadRequest request)
-        { BeforeRead?.Invoke(); return inner.Load(owner, request); }
+        { LoadCalls++; BeforeRead?.Invoke(); return inner.Load(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Preview(OwnerContextStamp owner,
             CharacterCreationAttributesPreviewRequest request)
-        { BeforeRead?.Invoke(); return inner.Preview(owner, request); }
+        { PreviewCalls++; BeforeRead?.Invoke(); return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationAttributesReceipt> Confirm(OwnerContextStamp owner,
             CharacterCreationAttributesConfirmRequest request)
         {
