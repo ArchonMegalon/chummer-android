@@ -1,0 +1,80 @@
+using Chummer.Contracts.Characters;
+
+namespace Chummer.Android.Native;
+
+internal sealed record CreationKarmaQualityPage(
+    IReadOnlyList<CharacterCreationQualityCatalogOption> Options, int? NextOffset);
+
+public sealed partial class RunnerSessionCoordinator
+{
+    // Read-only, bounded display page. A candidate uses the same full Core
+    // preview as an actual selection, including replacement ratings and the
+    // shared Karma budget. Browsing never issues/replaces a confirmation.
+    internal Task<CreationKarmaQualityPage?> LoadCreationKarmaQualityPageAsync(
+        CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection selection,
+        string search, int offset, int pageSize, CancellationToken ct, Func<bool> isCurrentPage)
+    {
+        var frozen = selection.Freeze();
+        if (offset is < 0 or > 65_536 || pageSize is < 1 or > 20) throw new ArgumentOutOfRangeException(nameof(offset));
+        return WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!isCurrentPage() || !IsCreationKarmaStateCurrent(state)
+                || !_karmaStates.TryGetValue(state, out var original)
+                || original.DisplayOwnerContext is not { IsValid: true } owner
+                || _ownerBoundKarmaService is not { } service
+                || state.QualitiesCatalog is not { } catalog || frozen.QualityOptionIds is not { } selected)
+                return null;
+            var candidates = catalog.Options.Where(option => option.IsSelectable
+                    && !selected.Contains(option.OptionId, StringComparer.Ordinal)
+                    && option.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase))
+                .OrderBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(option => option.Rating).ThenBy(option => option.OptionId, StringComparer.Ordinal).ToArray();
+            var byId = catalog.Options.ToDictionary(option => option.OptionId, StringComparer.Ordinal);
+            var result = await Task.Run<CreationKarmaQualityPage?>(() =>
+            {
+                var available = new List<CharacterCreationQualityCatalogOption>();
+                int next = offset;
+                int end = Math.Min(candidates.Length, offset + pageSize * 3);
+                for (int index = offset; index < end; index++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var option = candidates[index];
+                    var ids = selected.Where(id => byId[id].SelectionKey != option.SelectionKey)
+                        .Append(option.OptionId).ToArray();
+                    var preview = service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
+                        frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment,
+                        ids, frozen.GearSelections, frozen.ContactSelections, frozen.LifestyleSelections,
+                        frozen.StartingLifestyleId, frozen.MagicSelections);
+                    ct.ThrowIfCancellationRequested();
+                    if (preview.Blockers.Contains(CharacterCreationKarmaMetatypeBlockers.StaleBinding)
+                        || preview.Outcome == CharacterCreationFoundationOutcomes.Conflict)
+                        return null;
+                    if (preview is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } quote })
+                    {
+                        // Only a known candidate rejection is an unavailable
+                        // option. An authority/read failure is not an empty list.
+                        if (preview.Blockers.Count > 0 && preview.Blockers.All(blocker => blocker is
+                            CharacterCreationQualitiesBlockers.InvalidSelection or
+                            CharacterCreationKarmaMetatypeBlockers.BudgetExceeded or
+                            CharacterCreationSkillsBlockers.AllocationInvalid)) continue;
+                        return null;
+                    }
+                    if (quote.Binding != state.Binding || quote.SnapshotDigest != state.SnapshotDigest)
+                        return null;
+                    // Like the Priority picker, permit building metagenic pairs
+                    // one choice at a time; final confirmation still requires balance.
+                    if (quote.Qualities is null || !quote.KarmaBudget.IsExact
+                        || quote.Blockers.Any(blocker => blocker != CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+                        continue;
+                    if (available.Count == pageSize)
+                        return new(Array.AsReadOnly(available.ToArray()), next);
+                    available.Add(option);
+                    next = index + 1;
+                }
+                return new(Array.AsReadOnly(available.ToArray()), end < candidates.Length ? end : null);
+            }, ct);
+            ct.ThrowIfCancellationRequested();
+            return isCurrentPage() && IsCreationKarmaStateCurrent(state) ? result : null;
+        }, ct);
+    }
+}

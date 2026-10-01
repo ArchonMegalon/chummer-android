@@ -257,7 +257,9 @@
   <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Puntos de conocimiento: {0} / {1}</value></data>
   <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
   <data name="Karma.Qualities" xml:space="preserve"><value>Cualidades</value></data>
-  <data name="Karma.QualityHelp" xml:space="preserve"><value>Elige cualidades de tus fuentes activas. Se muestran los costes de origen por nivel; Core aplica los multiplicadores y límites del perfil al total. Las opciones con efectos o requisitos sin resolver están deshabilitadas. Solo la revisión final guarda el borrador.</value></data>
+  <data name="Karma.QualityHelp" xml:space="preserve"><value>Solo se muestran las cualidades disponibles para tu borrador y presupuesto actuales. Pulsa ! para ver sus efectos. Siempre puedes quitar las seleccionadas. Solo la revisión final guarda el borrador.</value></data>
+  <data name="Karma.QualityEmpty" xml:space="preserve"><value>No hay cualidades disponibles en esta página. Prueba Siguiente u otra búsqueda, o revisa tu presupuesto y las demás decisiones del borrador.</value></data>
+  <data name="Karma.QualityCheckFailed" xml:space="preserve"><value>No se pudieron comprobar las cualidades disponibles. Tu selección no ha cambiado. Vuelve a abrir Cualidades.</value></data>
   <data name="Karma.QualityUnavailable" xml:space="preserve"><value>No disponible en este borrador</value></data>
   <data name="Karma.Selected" xml:space="preserve"><value>Seleccionado</value></data>
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · nivel {1} · coste de origen {2} Karma</value></data>
@@ -893,4 +895,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Tus elecciones de atributos se guardaron, pero esta vista no pudo actualizarse. Vuelve a abrir tu runner para verlas. No vuelvas a guardar estas elecciones.</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
   <data name="AttributesPreview.Saving" xml:space="preserve"><value>Guardando…</value></data>
+  <data name="Karma.QualityInfo" xml:space="preserve"><value>!</value></data>
 </root>
