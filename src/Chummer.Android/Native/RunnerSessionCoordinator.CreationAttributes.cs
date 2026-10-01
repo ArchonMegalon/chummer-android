@@ -74,13 +74,14 @@ public sealed partial class RunnerSessionCoordinator
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(allocations);
         if (!_attributeLoads.TryGetValue(binding, out var issued) || !IsCreationAttributesStateCurrent(issued.State)
+            || !CreationAttributesPhoneAuthority.IsReady(issued.State, State)
             || issued.Display.DisplayOwnerContext is not { } owner || _ownerBoundAttributesService is not { } service)
             return AttributesUnavailable<CharacterCreationAttributesPreview>();
-        var live = LoadCreationAttributesForDisplay(issued.Display);
-        if (live.Value is not { } state || !CreationAttributesPhoneAuthority.IsReady(state, State)
-            || !CreationAttributesPhoneAuthority.BindingEquals(binding, state.Binding))
-            return AttributesUnavailable<CharacterCreationAttributesPreview>();
         var copied = allocations.ToArray();
+        // Core Preview already reads the current workspace under the exact owner
+        // lease, rebuilds its source-bound state and checks the complete binding.
+        // A separate Load here repeats that expensive work for every +/- option.
+        // Keep the issued-display guards; confirmation still reloads/reprojects.
         var result = service.Preview(owner, new(binding, copied));
         if (!IsCreationAttributesStateCurrent(issued.State)) return AttributesUnavailable<CharacterCreationAttributesPreview>();
         if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } preview })
