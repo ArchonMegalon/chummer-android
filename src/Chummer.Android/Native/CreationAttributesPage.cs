@@ -824,6 +824,8 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     };
     private CreationAttributesPhoneConfirmResult? _confirmation;
     private readonly Action<CreationAttributesPhoneConfirmResult>? _onConfirmed;
+    private Button? _confirmButton;
+    private bool _saving;
 
     internal CreationAttributesPreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -842,6 +844,10 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
 
     protected override void Refresh()
     {
+        // Keep the pressed control and scroll position while the save finishes.
+        // Owner changes must still clear the previous account's projection.
+        if (_saving && Coordinator.CanDisplayCreationAttributesPreview(_preview)) return;
+        _confirmButton = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
@@ -875,6 +881,14 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         AddConfirmation();
         AddReceipt();
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-preview-details"));
+    }
+
+    protected override void OnDisappearing()
+    {
+        _confirmButton = null;
+        // Departure does not cancel/replay a mutation whose outcome may already
+        // be durable. The coordinator retains its exact owner and receipt guards.
+        base.OnDisappearing();
     }
 
     private void AddBudgets()
@@ -978,18 +992,34 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             return;
         }
 
-        bool canConfirm = Coordinator.CanOfferCreationAttributesConfirmation(_preview, _allocations);
+        bool canConfirm = !_saving && Coordinator.CanOfferCreationAttributesConfirmation(_preview, _allocations);
         Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "AttributesPreview.Confirm",
             "Save attribute choices"));
         confirm.AutomationId = "creation-attributes-confirm";
         confirm.IsEnabled = canConfirm;
+        _confirmButton = confirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            _confirmation = await Coordinator.ConfirmCreationAttributesAsync(
-                _preview,
-                _allocations);
-            _onConfirmed?.Invoke(_confirmation);
+            if (_saving || !ReferenceEquals(_confirmButton, confirm) || !confirm.IsEnabled
+                || !Coordinator.CanOfferCreationAttributesConfirmation(_preview, _allocations)) return;
+            _saving = true;
+            string label = confirm.Text;
+            confirm.IsEnabled = false;
+            confirm.Text = CreationAllocationStrings.Get("AttributesPreview.Saving", "Saving…");
+            try
+            {
+                _confirmation = await Coordinator.ConfirmCreationAttributesAsync(
+                    _preview,
+                    _allocations);
+                _onConfirmed?.Invoke(_confirmation);
+            }
+            finally
+            {
+                _saving = false;
+                confirm.Text = label;
+                // A fresh render, never this retained button, owns any next action.
+            }
         });
         _body.Add(confirm);
 

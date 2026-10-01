@@ -318,7 +318,7 @@ static void AssertAuthorityBoundary(string native)
 
     Assert(
         attributes.Contains("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", StringComparison.Ordinal)
-        && attributes.Contains("Coordinator.ConfirmCreationAttributesAsync(\n                _preview,\n                _allocations)", StringComparison.Ordinal)
+        && Regex.IsMatch(attributes, @"Coordinator\.ConfirmCreationAttributesAsync\(\s*_preview,\s*_allocations\)")
         && attributes.Contains("CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)", StringComparison.Ordinal),
         "Attribute preview/confirm/digest authority must remain exact");
     Assert(

@@ -6,6 +6,105 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunAttributeSaveFeedbackAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (var (outcome, locale) in new[] { ("saved", "en-GB"), ("departure", "de-AT"), ("owner-aba", "es-MX") })
+            {
+                var culture = CultureInfo.CurrentUICulture;
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                var owners = new ControlledLinkedOwner();
+                AttributesCommitProbe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                    attributesDecorator: actual => probe = new(actual));
+                var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                    attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+                await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var coordinator = runtime.Coordinator;
+                var state = coordinator.LoadCreationAttributes().Value!;
+                var draft = new CreationAttributesPhoneDraft();
+                draft.Bind(state, coordinator.State);
+                var allocations = draft.ChangedAllocations(state, "MAG", 1, 0)!;
+                var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+                var page = new CreationAttributesPreviewPage(coordinator, preview, allocations);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                var rendered = body.Children.ToArray();
+                var save = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
+                string label = save.Text;
+                using var release = new ManualResetEventSlim();
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                int reads = 0;
+                probe!.BeforeRead = () =>
+                {
+                    Interlocked.Increment(ref reads);
+                    entered.TrySetResult();
+                    Require(release.Wait(TimeSpan.FromSeconds(10)), "Attribute save feedback test was not released.");
+                };
+                Task pending = ui.BeginAsyncVoid(() => ((IButtonController)save).SendClicked());
+                try
+                {
+                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(!pending.IsCompleted && !save.IsEnabled
+                        && save.Text == CreationAllocationStrings.Get("AttributesPreview.Saving", "missing")
+                        && rendered.SequenceEqual(body.Children),
+                        "Attribute save must show retained, disabled pending feedback in " + locale);
+                    var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ => heartbeat.SetResult(), null);
+                    await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    ((IButtonController)save).SendClicked();
+                    MinimalRender(page);
+                    Require(reads == 1 && probe.ConfirmCalls == 0 && rendered.SequenceEqual(body.Children)
+                        && !save.IsEnabled && save.Text != label,
+                        "Duplicate save or refresh repeated work or cleared pending feedback.");
+                    if (outcome == "departure") IssuedPageLifecycle(page, "OnDisappearing");
+                    if (outcome == "owner-aba")
+                    {
+                        var owner = owners.Current;
+                        owners.Set(ContactsOwnerB);
+                        owners.Set(owner);
+                        MinimalRender(page);
+                        Require(!MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == save.AutomationId),
+                            "Owner transition exposed the previous account's pending save.");
+                    }
+                }
+                finally
+                {
+                    release.Set();
+                    try { await JoinIssuedPageAsync(pending); }
+                    finally { probe.BeforeRead = null; CultureInfo.CurrentUICulture = culture; }
+                }
+                Require(save.Text == label && !save.IsEnabled,
+                    "Save completion re-enabled a retained confirmation control.");
+                var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                if (outcome == "owner-aba")
+                {
+                    Require(probe.ConfirmCalls == 0, "Owner ABA entered the old account's mutation.");
+                    RequireSameRewardDocument(before, saved);
+                }
+                else
+                {
+                    Require(probe.ConfirmCalls == 1 && saved.ContentRevision == before.ContentRevision + 1
+                        && saved.SavedRevision == saved.ContentRevision, "Save feedback lost or repeated the committed save.");
+                    await coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+                    Require(probe.ConfirmCalls == 1, "Completed save feedback allowed replay.");
+                    await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                    var reopened = coordinator.LoadCreationAttributes().Value!;
+                    Require(reopened.Attributes.Single(x => x.AttributeId == "MAG").Current
+                        == state.Attributes.Single(x => x.AttributeId == "MAG").Current + 1,
+                        "Saved Magic point did not reopen after " + outcome);
+                    RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                }
+                IssuedPageLifecycle(page, "OnDisappearing");
+                Console.WriteLine("PASS attribute save pending feedback, UI heartbeat, duplicate/refresh guard and durable outcome: " + outcome);
+            }
+            await VerifyAttributeReviewRecoveryGuidanceAsync(ui, contentRoot);
+        });
+    }
+
     internal static async Task RunSpecialAttributesAsync(string contentRoot, string? smokePath)
     {
         using var ui = new IssuedPageUiContext();
