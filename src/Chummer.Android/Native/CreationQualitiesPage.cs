@@ -950,76 +950,97 @@ internal static class CreationQualityInfo
             ? CreationFlowStrings.Get("Qualities.Summary." + id.ToString("D"), string.Empty) : string.Empty;
         if (!string.IsNullOrWhiteSpace(summary)) result.Add(summary);
         bool incomplete = false;
-        foreach (var effect in source.Element("bonus")?.Elements() ?? [])
+        foreach (var scope in source.Elements().Where(node => node.Name.LocalName is "bonus" or "firstlevelbonus" or "naturalweapons"))
         {
-            string? description = effect.Name.LocalName switch
+            // A first-level modifier is applied once, not once per purchased level.
+            // Wrapper conditions that we cannot explain must not disappear.
+            incomplete |= scope.HasAttributes;
+            foreach (var effect in scope.Elements())
             {
-                "ambidextrous" => CreationFlowStrings.Get("Qualities.Info.Ambidextrous", "Use either hand without the off-hand penalty."),
-                "skillattribute" => Fields(effect, "Attribute-based tests"),
-                "skill" or "specificskill" => Fields(effect, "Skill"),
-                "skillcategory" => Fields(effect, "Skill category"),
-                "skillgroup" => Fields(effect, "Skill group"),
-                "specificattribute" => Fields(effect, "Attribute changes"),
-                "enableattribute" => Fields(effect, "Enables attribute"),
-                "enabletab" => Fields(effect, "Enables capabilities"),
-                "unlockskills" => Scalar(effect, "Unlocks skills"),
-                "conditionmonitor" => Fields(effect, "Condition monitor"),
-                "selectskill" => Fields(effect, "Chosen skill"),
-                "selectattributes" => string.Join("\n", effect.Elements("selectattribute")
-                    .Select(attribute => Fields(attribute, "Chosen attributes"))),
-                "limitmodifier" => Fields(effect, "Limit"),
-                "spelldicepool" => Fields(effect, "Spell tests"),
-                "damageresistance" => Scalar(effect, "Damage resistance"),
-                "physicalcmrecovery" => Scalar(effect, "Physical healing"),
-                "stuncmrecovery" => Scalar(effect, "Stun recovery"),
-                "nativelanguagelimit" => Scalar(effect, "Additional native languages"),
-                "notoriety" => Scalar(effect, "Notoriety"),
-                "publicawareness" => Scalar(effect, "Public awareness"),
-                "surprise" => Scalar(effect, "Surprise tests"),
-                "dodge" => Scalar(effect, "Defense tests"),
-                "reach" => Scalar(effect, "Reach"),
-                "fatigueresist" => Scalar(effect, "Fatigue resistance"),
-                "toxiningestionresist" => Scalar(effect, "Ingested toxin resistance"),
-                "toxininjectionresist" => Scalar(effect, "Injected toxin resistance"),
-                "pathogencontactresist" => Scalar(effect, "Contact pathogen resistance"),
-                "pathogeninhalationresist" => Scalar(effect, "Inhaled pathogen resistance"),
-                "pathogeningestionresist" => Scalar(effect, "Ingested pathogen resistance"),
-                "pathogeninjectionresist" => Scalar(effect, "Injected pathogen resistance"),
-                "initiative" => Scalar(effect, "Initiative"),
-                "initiativedice" or "initiativepass" => Scalar(effect, "Initiative dice"),
-                "armor" => Scalar(effect, "Armor"),
-                "physicalcm" => Scalar(effect, "Physical condition monitor"),
-                "stuncm" => Scalar(effect, "Stun condition monitor"),
-                "painresistance" => Scalar(effect, "Wound penalty resistance"),
-                "composure" => Scalar(effect, "Composure"),
-                "judgeintentions" => Scalar(effect, "Judge Intentions"),
-                "memory" => Scalar(effect, "Memory"),
-                "drainresist" => Scalar(effect, "Drain resistance"),
-                "fadingresist" => Scalar(effect, "Fading resistance"),
-                "spellresistance" => Scalar(effect, "Spell resistance"),
-                "toxincontactresist" => Scalar(effect, "Contact toxin resistance"),
-                "toxininhalationresist" => Scalar(effect, "Inhaled toxin resistance"),
-                "diseaseresist" => Scalar(effect, "Disease resistance"),
-                "sociallimit" => Scalar(effect, "Social limit"),
-                "mentallimit" => Scalar(effect, "Mental limit"),
-                "physicallimit" => Scalar(effect, "Physical limit"),
-                // A prompt is not itself a modifier. Authored copy explains
-                // the choice; the accepted option retains its follow-up label.
-                "selecttext" when summary.Length > 0 => string.Empty,
-                _ => AdditionalEffect(effect)
-            };
-            if (description is null)
-                incomplete = true;
-            else
-            {
-                // Unknown nested fields must not silently turn a partial
-                // modifier into an apparently complete explanation, including
-                // when its known text duplicates an earlier effect.
-                incomplete |= HasUndescribedDetail(effect);
-                bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities";
-                if (!string.IsNullOrWhiteSpace(description) && (repeatedGrant || !result.Contains(description, StringComparer.Ordinal)))
-                    result.Add(description);
+                string? description = scope.Name.LocalName == "naturalweapons" && effect.Name.LocalName != "naturalweapon"
+                    ? null : effect.Name.LocalName switch
+                {
+                    "ambidextrous" => CreationFlowStrings.Get("Qualities.Info.Ambidextrous", "Use either hand without the off-hand penalty."),
+                    "skillattribute" => Fields(effect, "Attribute-based tests"),
+                    "skill" or "specificskill" => Fields(effect, "Skill"),
+                    "skillcategory" => Fields(effect, "Skill category"),
+                    "skillgroup" => Fields(effect, "Skill group"),
+                    "specificattribute" => Fields(effect, "Attribute changes"),
+                    "enableattribute" => Fields(effect, "Enables attribute"),
+                    "enabletab" => Fields(effect, "Enables capabilities"),
+                    "unlockskills" => Scalar(effect, "Unlocks skills"),
+                    "conditionmonitor" => Fields(effect, "Condition monitor"),
+                    "selectskill" => Fields(effect, "Chosen skill"),
+                    "selectattributes" => string.Join("\n", effect.Elements("selectattribute")
+                        .Select(attribute => Fields(attribute, "Chosen attributes"))),
+                    "limitmodifier" => Fields(effect, "Limit"),
+                    "spelldicepool" => Fields(effect, "Spell tests"),
+                    "damageresistance" => Scalar(effect, "Damage resistance"),
+                    "physicalcmrecovery" => Scalar(effect, "Physical healing"),
+                    "stuncmrecovery" => Scalar(effect, "Stun recovery"),
+                    "nativelanguagelimit" => Scalar(effect, "Additional native languages"),
+                    "notoriety" => Scalar(effect, "Notoriety"),
+                    "publicawareness" => Scalar(effect, "Public awareness"),
+                    "surprise" => Scalar(effect, "Surprise tests"),
+                    "dodge" => Scalar(effect, "Defense tests"),
+                    "reach" => Scalar(effect, "Reach"),
+                    "fatigueresist" => Scalar(effect, "Fatigue resistance"),
+                    "toxiningestionresist" => Scalar(effect, "Ingested toxin resistance"),
+                    "toxininjectionresist" => Scalar(effect, "Injected toxin resistance"),
+                    "pathogencontactresist" => Scalar(effect, "Contact pathogen resistance"),
+                    "pathogeninhalationresist" => Scalar(effect, "Inhaled pathogen resistance"),
+                    "pathogeningestionresist" => Scalar(effect, "Ingested pathogen resistance"),
+                    "pathogeninjectionresist" => Scalar(effect, "Injected pathogen resistance"),
+                    "initiative" => Scalar(effect, "Initiative"),
+                    "initiativedice" or "initiativepass" => Scalar(effect, "Initiative dice"),
+                    "armor" => Scalar(effect, "Armor"),
+                    "physicalcm" => Scalar(effect, "Physical condition monitor"),
+                    "stuncm" => Scalar(effect, "Stun condition monitor"),
+                    "painresistance" => Scalar(effect, "Wound penalty resistance"),
+                    "composure" => Scalar(effect, "Composure"),
+                    "judgeintentions" => Scalar(effect, "Judge Intentions"),
+                    "memory" => Scalar(effect, "Memory"),
+                    "drainresist" => Scalar(effect, "Drain resistance"),
+                    "fadingresist" => Scalar(effect, "Fading resistance"),
+                    "spellresistance" => Scalar(effect, "Spell resistance"),
+                    "toxincontactresist" => Scalar(effect, "Contact toxin resistance"),
+                    "toxininhalationresist" => Scalar(effect, "Inhaled toxin resistance"),
+                    "diseaseresist" => Scalar(effect, "Disease resistance"),
+                    "sociallimit" => Scalar(effect, "Social limit"),
+                    "mentallimit" => Scalar(effect, "Mental limit"),
+                    "physicallimit" => Scalar(effect, "Physical limit"),
+                    // A prompt is not itself a modifier. Authored copy explains
+                    // the choice; the accepted option retains its follow-up label.
+                    "selecttext" when summary.Length > 0 => string.Empty,
+                    _ => AdditionalEffect(effect)
+                };
+                if (description is null)
+                    incomplete = true;
+                else
+                {
+                    // Unknown nested fields must not silently turn a partial
+                    // modifier into an apparently complete explanation, including
+                    // when its known text duplicates an earlier effect.
+                    incomplete |= HasUndescribedDetail(effect);
+                    if (!string.IsNullOrWhiteSpace(description) && scope.Name.LocalName == "firstlevelbonus")
+                        description = $"{Label("Once, at the first level only")}: {description}";
+                    bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities" or "naturalweapon";
+                    if (!string.IsNullOrWhiteSpace(description) && (repeatedGrant || !result.Contains(description, StringComparer.Ordinal)))
+                        result.Add(description);
+                }
             }
+        }
+        // A first-level side effect by itself is not the quality's full rules
+        // (for example Gremlins' Notoriety does not explain its glitch rules).
+        incomplete |= summary.Length == 0 && source.Element("firstlevelbonus") is not null
+            && !(source.Element("bonus")?.HasElements ?? false);
+        foreach (var weapon in source.Elements("addweapon"))
+        {
+            // This reference names a separate catalog entry. Do not resolve it
+            // from an ambient weapons file or invent its damage profile.
+            incomplete = true;
+            if (!weapon.HasElements && !string.IsNullOrWhiteSpace(weapon.Value) && !Guid.TryParse(weapon.Value, out _))
+                result.Add(Scalar(weapon, "Granted weapon; attack details not yet available"));
         }
         if (result.Count == 0)
             result.Add(CreationFlowStrings.Get("Qualities.Info.Manual", "A description of this quality is not available yet."));
@@ -1157,6 +1178,9 @@ internal static class CreationQualityInfo
         "allowspellrange" => Scalar(effect, "Permitted spell range"),
         "freespells" => Scalar(effect, "Free-spell allowance"),
         "addware" => Fields(effect, "Grants augmentation"),
+        "naturalweapon" => NaturalWeapon(effect),
+        "attributemaxclamp" when !effect.HasElements && effect.Value.Trim() is "BOD" or "AGI" or "REA" or "STR" or "CHA" or "INT" or "LOG" or "WIL"
+            => Scalar(effect, "Augmentations cannot raise this attribute above its natural maximum"),
         "dealerconnection" => DealerChoices(effect),
         "trustfund" => TrustFundLifestyle(effect),
         "cyberseeker" when !effect.HasElements => effect.Value.Trim() switch
@@ -1327,6 +1351,32 @@ internal static class CreationQualityInfo
         "fullcost" when field.Parent?.Name.LocalName is "addgear" or "child" => "Pay full price", _ => null
     };
 
+    private static readonly string[] NaturalWeaponFields = ["name", "reach", "damage", "ap", "useskill", "accuracy"];
+
+    private static string? NaturalWeapon(XElement effect)
+    {
+        var name = effect.Element("name");
+        if (name is null || name.HasElements || string.IsNullOrWhiteSpace(name.Value) || Guid.TryParse(name.Value, out _)) return null;
+        var parts = new List<string> { $"{Label("Natural weapon")}: {DisplayValue(name.Value)}" };
+        parts.AddRange(Attributes(effect));
+        foreach (var (field, label) in new[] { ("reach", "Reach"), ("damage", "Damage formula"),
+            ("ap", "Armor penetration"), ("useskill", "Skill"), ("accuracy", "Accuracy limit") })
+        {
+            var value = effect.Element(field);
+            if (value is null || value.HasElements || string.IsNullOrWhiteSpace(value.Value) || Guid.TryParse(value.Value, out _)) continue;
+            string text = DisplayValue(value.Value);
+            if (field == "damage")
+            {
+                // Spell out source tokens without evaluating Strength or rating.
+                text = text.Replace("{STR}", DisplayValue("STR"), StringComparison.Ordinal);
+                if (text.EndsWith('P')) text = text[..^1] + " " + Label("Physical damage");
+                else if (text.EndsWith('S')) text = text[..^1] + " " + Label("Stun damage");
+            }
+            parts.Add($"{Label(label)}: {text}");
+        }
+        return string.Join(" · ", parts);
+    }
+
     private static bool HasUndescribedDetail(XElement effect)
     {
         // Listing a granted/optional power does not explain that power's own
@@ -1338,6 +1388,12 @@ internal static class CreationQualityInfo
         if (!effect.HasElements && Guid.TryParse(effect.Value, out _)) return true;
         if (effect.Attributes().Any(attribute => AttributeLabel(attribute.Name.LocalName) is null
             && !(effect.Name.LocalName == "addspirit" && attribute.Name.LocalName == "ratingdivisor"))) return true;
+        if (effect.Name.LocalName == "naturalweapon")
+            return NaturalWeaponFields.Any(name => effect.Elements(name).Count() != 1
+                    || string.IsNullOrWhiteSpace(effect.Element(name)?.Value))
+                || effect.Elements().Any(field => (!NaturalWeaponFields.Contains(field.Name.LocalName, StringComparer.Ordinal)
+                        && field.Name.LocalName is not "source" and not "page")
+                    || field.HasElements || field.HasAttributes || Guid.TryParse(field.Value, out _));
         foreach (var field in effect.Elements())
         {
             if (effect.Name.LocalName is "addspirit" or "limitspiritcategory" && field.Name.LocalName == "addtoselected")

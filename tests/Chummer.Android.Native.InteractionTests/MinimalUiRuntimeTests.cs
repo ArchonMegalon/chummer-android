@@ -41,7 +41,18 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 79, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 82, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var quality in catalog.Where(quality => quality.Element("naturalweapons") is not null))
+                {
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    foreach (var weapon in quality.Element("naturalweapons")!.Elements("naturalweapon"))
+                    {
+                        string weaponName = weapon.Element("name")!.Value;
+                        string translated = CreationFlowStrings.Get("Qualities.Value." + weaponName, weaponName);
+                        Require(lines.Any(line => line.StartsWith(CreationFlowStrings.Get("Qualities.Effect.Natural weapon", "") + ": " + translated,
+                                StringComparison.Ordinal)), "Every encoded natural weapon must have a readable help entry in every locale.");
+                    }
+                }
                 string fractionalEssence = string.Join(" ", CreationQualityInfo.Effects(
                     "<quality><bonus><essencepenaltyt100>-150</essencepenaltyt100></bonus></quality>"));
                 Require(fractionalEssence.Contains((-1.5m).ToString(CultureInfo.CurrentUICulture))
@@ -117,6 +128,54 @@ internal static partial class AfterRunAuthorityHarness
                 && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
                 "Same-name qualities must not share source-identity summaries or expertise effects.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            string gremlins = Effect("Gremlins");
+            Require(gremlins.Contains("Once, at the first level only: Notoriety: 1")
+                && gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Gremlins' one-time Notoriety must not be multiplied or passed off as its complete glitch rules.");
+            string infirm = Effect("Infirm");
+            Require(Regex.Matches(infirm, "Once, at the first level only: Augmentations cannot raise this attribute above its natural maximum").Count == 4
+                && Regex.Matches(infirm, "Maximum change: -1").Count == 4,
+                "Infirm needs all four natural-maximum clamps as well as its four per-level maximum reductions.");
+            string profile = "<naturalweapon><name>Test claw</name><reach>0</reach><damage>({STR}+1)P</damage><ap>-1</ap><useskill>Unarmed Combat</useskill><accuracy>Physical</accuracy><source>HIDDEN_BOOK</source><page>999</page></naturalweapon>";
+            string DescribeSource(string body) => string.Join(" ", CreationQualityInfo.Effects("<quality>" + body + "</quality>"));
+            string scoped = DescribeSource("<bonus><notoriety>1</notoriety></bonus><firstlevelbonus><notoriety>1</notoriety></firstlevelbonus>");
+            Require(Regex.Matches(scoped, "Notoriety: 1").Count == 2
+                && Regex.Matches(scoped, "Once, at the first level only").Count == 1,
+                "Equal normal and first-level values have different scopes and must not be deduplicated together.");
+            string weapons = DescribeSource("<naturalweapons>" + profile + profile + "</naturalweapons>");
+            Require(Regex.Matches(weapons, "Natural weapon: Test claw").Count == 2
+                && weapons.Contains("Damage formula: (Strength+1) Physical damage")
+                && weapons.Contains("Armor penetration: -1") && weapons.Contains("Accuracy limit: Physical")
+                && !weapons.Contains("HIDDEN_BOOK") && !weapons.Contains("999")
+                && !weapons.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Natural weapons retain multiplicity and literal formulas but never source/page referrals.");
+            Require(Describe(profile).Contains("Natural weapon: Test claw"),
+                "A natural weapon can also be encoded inside the normal bonus node.");
+            foreach (string partial in new[] {
+                "<naturalweapons condition='unknown'>" + profile + "</naturalweapons>",
+                "<naturalweapons>" + profile.Replace("</naturalweapon>", "<futurecondition>unknown</futurecondition></naturalweapon>") + "</naturalweapons>",
+                "<naturalweapons>" + profile.Replace("<ap>-1</ap>", "") + "</naturalweapons>",
+                "<naturalweapons>" + profile.Replace("<ap>-1</ap>", "<ap>-1</ap><ap>-2</ap>") + "</naturalweapons>",
+                "<naturalweapons>" + profile.Replace("<ap>-1</ap>", "<ap condition='unknown'>-1</ap>") + "</naturalweapons>",
+                "<firstlevelbonus condition='unknown'><notoriety>1</notoriety></firstlevelbonus>" })
+                Require(DescribeSource(partial).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "Unknown wrapper/weapon conditions and absent or ambiguous fields must remain visibly partial.");
+            Require(DescribeSource("<naturalweapons><armor>2</armor></naturalweapons>") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "Only weapon definitions may be interpreted in the naturalweapons wrapper.");
+            string reference = DescribeSource("<addweapon rating='2'>Named weapon</addweapon><addweapon>Named weapon</addweapon>");
+            Require(Regex.Matches(reference, "Granted weapon; attack details not yet available: Named weapon").Count == 2
+                && reference.Contains("Rating: 2") && reference.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && !reference.Contains("Damage formula"), "Weapon references are not full attack profiles or ambient-catalog authority.");
+            Require(DescribeSource("<addweapon>00000000-0000-0000-0000-000000000001</addweapon>") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "Unresolved weapon identities must not leak into help.");
+            Require(Effect("Crystalline Shards").Contains("Armor penetration: 4")
+                && Effect("Crystalline Shards").Contains("Skill: Throwing Weapons")
+                && Effect("Crystalline Shards").Contains("four more armor")
+                && !Effect("Crystalline Shards").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "The shards' positive armor modifier must not be inverted or confused with a damage bonus.");
+            Require(Effect("Crystalline Blade").Contains("Reach: 1") && Effect("Crystalline Blade").Contains("Armor penetration: -2")
+                && Effect("Crystalline Claws").Contains("Damage formula: (Strength+1) Physical damage"),
+                "The distinct crystal weapon profiles must not borrow one another's damage, reach or armor values.");
             string dealer = Effect("Dealer Connection");
             Require(dealer.Contains("Choose one vehicle category for a 10% purchase discount")
                 && dealer.Contains("Choose from: Drones") && dealer.Contains("Choose from: Groundcraft")

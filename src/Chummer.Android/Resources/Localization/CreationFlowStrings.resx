@@ -832,4 +832,38 @@
   <data name="Qualities.Summary.b47319f5-372d-4e23-9fd9-a8e4aecd4c85" xml:space="preserve"><value>Pairs of eligible cyberlimbs strengthen your Willpower: +1 per complete pair, up to +2. Only limbs counted by the active cyberlimb settings qualify; a single limb or unrelated implant does not grant this bonus.</value></data>
   <data name="Qualities.Summary.38deea18-76f0-49a3-95ba-50006e4e7f90" xml:space="preserve"><value>Each complete pair of eligible cyberlimbs adds 1 to Agility and Strength, up to +2 each. The trade-off is three fewer Physical condition boxes per pair, up to six fewer boxes. Only limbs counted by the active cyberlimb settings qualify; this is not an unconditional attribute increase.</value></data>
   <data name="Qualities.Summary.e07fc29c-55cc-46b3-af56-3b1de76f0a89" xml:space="preserve"><value>You have access to influential contacts during creation. A separate pool of four times your Charisma pays for individual contacts with Connection 8 or higher, and the creation-time Connection ceiling rises to 12. This pool does not buy group contacts or increase every contact's Loyalty.</value></data>
+  <data name="Qualities.Effect.Once, at the first level only" xml:space="preserve"><value>Once, at the first level only</value></data>
+  <data name="Qualities.Effect.Natural weapon" xml:space="preserve"><value>Natural weapon</value></data>
+  <data name="Qualities.Effect.Damage formula" xml:space="preserve"><value>Damage formula</value></data>
+  <data name="Qualities.Effect.Armor penetration" xml:space="preserve"><value>Armor penetration</value></data>
+  <data name="Qualities.Effect.Accuracy limit" xml:space="preserve"><value>Accuracy limit</value></data>
+  <data name="Qualities.Effect.Physical damage" xml:space="preserve"><value>Physical damage</value></data>
+  <data name="Qualities.Effect.Stun damage" xml:space="preserve"><value>Stun damage</value></data>
+  <data name="Qualities.Effect.Augmentations cannot raise this attribute above its natural maximum" xml:space="preserve"><value>Augmentations cannot raise this attribute above its natural maximum</value></data>
+  <data name="Qualities.Effect.Granted weapon; attack details not yet available" xml:space="preserve"><value>Granted weapon; attack details not yet available</value></data>
+  <data name="Qualities.Value.Unarmed Combat" xml:space="preserve"><value>Unarmed Combat</value></data>
+  <data name="Qualities.Value.Throwing Weapons" xml:space="preserve"><value>Throwing Weapons</value></data>
+  <data name="Qualities.Value.Infected Claws" xml:space="preserve"><value>Infected Claws</value></data>
+  <data name="Qualities.Value.Infected Bite" xml:space="preserve"><value>Infected Bite</value></data>
+  <data name="Qualities.Value.Dracoform Claws" xml:space="preserve"><value>Dracoform Claws</value></data>
+  <data name="Qualities.Value.Dracoform Horns" xml:space="preserve"><value>Dracoform Horns</value></data>
+  <data name="Qualities.Value.Dracoform Tail" xml:space="preserve"><value>Dracoform Tail</value></data>
+  <data name="Qualities.Value.Dracoform Fangs" xml:space="preserve"><value>Dracoform Fangs</value></data>
+  <data name="Qualities.Value.Crystal Jaw" xml:space="preserve"><value>Crystal Jaw</value></data>
+  <data name="Qualities.Value.Crystalline Blade" xml:space="preserve"><value>Crystalline Blade</value></data>
+  <data name="Qualities.Value.Crystal Claw" xml:space="preserve"><value>Crystal Claw</value></data>
+  <data name="Qualities.Value.Crystalline Shards" xml:space="preserve"><value>Crystalline Shards</value></data>
+  <data name="Qualities.Value.Kick (Centaur)" xml:space="preserve"><value>Kick (Centaur)</value></data>
+  <data name="Qualities.Value.Bite (Naga)" xml:space="preserve"><value>Bite (Naga)</value></data>
+  <data name="Qualities.Value.Raptor Beak" xml:space="preserve"><value>Raptor Beak</value></data>
+  <data name="Qualities.Value.Digging Claws" xml:space="preserve"><value>Digging Claws</value></data>
+  <data name="Qualities.Value.Razor Claws" xml:space="preserve"><value>Razor Claws</value></data>
+  <data name="Qualities.Value.Retractable Claws" xml:space="preserve"><value>Retractable Claws</value></data>
+  <data name="Qualities.Value.Fangs" xml:space="preserve"><value>Fangs</value></data>
+  <data name="Qualities.Value.Functional Tail (Thagomizer)" xml:space="preserve"><value>Functional Tail (Thagomizer)</value></data>
+  <data name="Qualities.Value.Goring Horns" xml:space="preserve"><value>Goring Horns</value></data>
+  <data name="Qualities.Value.Larger Tusks" xml:space="preserve"><value>Larger Tusks</value></data>
+  <data name="Qualities.Summary.8779458a-5af9-4328-af57-4212eff304bf" xml:space="preserve"><value>Your crystalline blade is a natural weapon used with Unarmed Combat. It deals Physical damage equal to Strength plus 3, has Reach 1 and reduces the target's armor by 2. Your Physical limit sets its Accuracy; these values are not extra attack dice.</value></data>
+  <data name="Qualities.Summary.b4e54478-b550-4ee4-a69f-e22944b82b66" xml:space="preserve"><value>Your crystal claws are natural weapons used with Unarmed Combat. They deal Physical damage equal to Strength plus 1, have Reach 0 and reduce the target's armor by 1. Their Accuracy uses your Physical limit.</value></data>
+  <data name="Qualities.Summary.2169823c-22ab-457d-93f7-a96590ed77ff" xml:space="preserve"><value>Your crystalline shards use Throwing Weapons and deal Physical damage equal to Strength plus 3. Their armor-penetration value is +4: the target receives four more armor for this attack, not four less. Their Accuracy uses your Physical limit.</value></data>
 </root>
