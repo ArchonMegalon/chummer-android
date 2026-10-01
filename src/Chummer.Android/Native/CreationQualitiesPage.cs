@@ -953,6 +953,8 @@ internal static class CreationQualityInfo
         if (!string.IsNullOrWhiteSpace(summary)) result.Add(summary);
         int baseEffectIndex = result.Count;
         bool hasBaseEffects = false;
+        bool hasReputationEffect = false;
+        bool hasPrimaryEffect = false;
         bool incomplete = false;
         foreach (var scope in source.Elements().Where(node => node.Name.LocalName is "bonus" or "firstlevelbonus" or "naturalweapons"))
         {
@@ -974,7 +976,9 @@ internal static class CreationQualityInfo
                     "enabletab" => Fields(effect, "Enables capabilities"),
                     "unlockskills" => Scalar(effect, "Unlocks skills"),
                     "conditionmonitor" => Fields(effect, "Condition monitor"),
-                    "selectskill" => Fields(effect, "Chosen skill"),
+                    "selectskill" => effect.Elements().Any(field => field.Name.LocalName == "disablespecializationeffects"
+                        || ((field.Name.LocalName is "val" or "max") && !string.IsNullOrWhiteSpace(field.Value)))
+                        ? Fields(effect, "Chosen skill") : null,
                     "selectattributes" => string.Join("\n", effect.Elements("selectattribute")
                         .Select(attribute => Fields(attribute, "Chosen attributes"))),
                     "limitmodifier" => Fields(effect, "Limit"),
@@ -1027,6 +1031,12 @@ internal static class CreationQualityInfo
                     // when its known text duplicates an earlier effect.
                     incomplete |= HasUndescribedDetail(effect);
                     hasBaseEffects |= scope.Name.LocalName == "bonus" && !string.IsNullOrWhiteSpace(description);
+                    if (!string.IsNullOrWhiteSpace(description))
+                    {
+                        bool reputation = effect.Name.LocalName is "notoriety" or "publicawareness" or "astralreputation";
+                        hasReputationEffect |= reputation;
+                        hasPrimaryEffect |= !reputation;
+                    }
                     if (!string.IsNullOrWhiteSpace(description) && scope.Name.LocalName == "firstlevelbonus")
                         description = $"{Label("Once, at the first level only")}: {description}";
                     bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities" or "naturalweapon";
@@ -1039,6 +1049,9 @@ internal static class CreationQualityInfo
         // (for example Gremlins' Notoriety does not explain its glitch rules).
         incomplete |= summary.Length == 0 && source.Element("firstlevelbonus") is not null
             && !(source.Element("bonus")?.HasElements ?? false);
+        // Bad Luck, for example, encodes its Notoriety but not its main rule.
+        // Preserve that side effect without presenting it as complete help.
+        incomplete |= summary.Length == 0 && hasReputationEffect && !hasPrimaryEffect;
         foreach (var weapon in source.Elements("addweapon"))
         {
             // This reference names a separate catalog entry. Do not resolve it
