@@ -546,6 +546,9 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             MinimalRequireNoMachineValues(page);
             MinimalRequireFreshDisclosure(page);
+            var retainedCatalog = await VerifyMagicCatalogPagingAsync(runtime.Coordinator, retainedEditor, retainedDraft, ui);
+            Require(probe.Loads == 1 && probe.Previews == 0 && probe.Confirms == 0,
+                "Magic browsing must use the accepted snapshot without additional Core reads, previews or writes.");
             var option = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor,
                 retainedEditor.AdeptPowers.First(item => item.IsEnabled), retainedDraft);
             await (Task)typeof(CreationMagicResonanceOptionPage)
@@ -608,6 +611,17 @@ internal static partial class AfterRunAuthorityHarness
             try { await stale; throw new Exception("Owner ABA accepted an old Magic preview."); }
             catch (InvalidOperationException error) when (error.Message == CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision) { }
             Require(probe.Loads == reads && owners.ActiveLeases == 0, "Stale Magic worker entered Core.");
+            int staleNavigationCount = retainedCatalog.Navigation.Navigation.NavigationStack.Count;
+            await ui.BeginAsyncVoid(() => ((IButtonController)retainedCatalog.Row).SendClicked());
+            retainedCatalog.Search.Text = "invisible-owner-search";
+            ((ISearchBarController)retainedCatalog.Search).OnSearchButtonPressed();
+            Require(retainedCatalog.Navigation.Navigation.NavigationStack.Count == staleNavigationCount,
+                "An old catalog row navigated after owner A→B→A.");
+            MinimalRender(retainedCatalog.Page);
+            Require(!MinimalVisible(retainedCatalog.Page).OfType<Button>().Any(button =>
+                    button.AutomationId?.StartsWith("creation-magic-resonance-option-", StringComparison.Ordinal) == true),
+                "An old owner retained visible catalog actions.");
+            IssuedPageLifecycle(retainedCatalog.Page, "OnDisappearing");
             refresh.Invoke(page, null);
             Require(!body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-magic-resonance-open-review"),
                 "Owner transition left the old Magic catalog actionable.");
@@ -664,6 +678,81 @@ internal static partial class AfterRunAuthorityHarness
         });
         RequireSameRewardDocument(before, store.Get(id).Value!);
         Console.WriteLine("PASS Magic scoped catalog/preview/confirm, UI heartbeat, cancellation, owner ABA, journal isolation/recovery and unchanged local workspace");
+    }
+
+    private static async Task<(CreationMagicResonanceCatalogPage Page, Button Row, SearchBar Search, NavigationPage Navigation)>
+        VerifyMagicCatalogPagingAsync(RunnerSessionCoordinator coordinator,
+        CharacterCreationMagicResonanceEditorState editor, CreationMagicResonancePhoneDraft draft, IssuedPageUiContext ui)
+    {
+        foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+        foreach (string key in new[] { "Search", "NoMatches", "Showing", "Previous", "Next" })
+            Require(CreationFlowStrings.Get("Magic.Catalog." + key, "missing",
+                    System.Globalization.CultureInfo.GetCultureInfo(locale)) != "missing", "Missing Magic search translation.");
+        var options = editor.Spells.Count > 20 ? editor.Spells : editor.AdeptPowers;
+        Require(options.Count > 20, "SETUP: the actual Magic catalog must exercise multiple pages.");
+        string beforeSelections = JsonSerializer.Serialize(draft.Selections);
+        var catalog = new CreationMagicResonanceCatalogPage(coordinator, editor,
+            options[0].Identity.Kind, options, draft);
+        var navigation = new NavigationPage(catalog);
+        _ = new Window(navigation);
+        await ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalog, "OnAppearing"));
+        Button[] Rows() => MinimalVisible(catalog).OfType<Button>().Where(button =>
+            button.AutomationId?.StartsWith("creation-magic-resonance-option-", StringComparison.Ordinal) == true).ToArray();
+        Button Pager(string direction) => MinimalVisible(catalog).OfType<Button>().Single(button =>
+            button.AutomationId == "creation-magic-resonance-catalog-" + direction);
+        string Id(CharacterCreationMagicResonanceOptionProjection option) =>
+            $"creation-magic-resonance-option-{CreationMagicResonancePage.Token(option.Identity.Kind)}-{CreationMagicResonancePage.Token(option.Identity.SourceId)}";
+        Require(Rows().Length == 20, $"Magic must render a bounded catalog page, not all {options.Count} rows (rendered {Rows().Length}).");
+        var search = MinimalVisible(catalog).OfType<SearchBar>().Single();
+        Require(search.TextColor.Equals(NativeTheme.Text) && search.PlaceholderColor.Equals(NativeTheme.Muted)
+            && search.BackgroundColor.Equals(NativeTheme.Surface), "Magic search colors must remain readable.");
+        string[] first = Rows().Select(button => button.AutomationId).ToArray();
+        Button detachedNext = Pager("next"), detachedRow = Rows()[0];
+        ((IButtonController)detachedNext).SendClicked();
+        var second = Rows();
+        ((IButtonController)detachedNext).SendClicked();
+        Require(Rows().SequenceEqual(second), "A detached Next button advanced a newer page.");
+        int stackCount = navigation.Navigation.NavigationStack.Count;
+        await ui.BeginAsyncVoid(() => ((IButtonController)detachedRow).SendClicked());
+        Require(navigation.Navigation.NavigationStack.Count == stackCount, "A detached row opened another page.");
+        ((IButtonController)Pager("previous")).SendClicked();
+        Require(Rows().Select(button => button.AutomationId).SequenceEqual(first), "Previous lost exact source order.");
+        var visited = new List<string>();
+        do
+        {
+            Require(Rows().Length <= 20, "A later catalog page exceeded the row bound.");
+            visited.AddRange(Rows().Select(button => button.AutomationId));
+            if (!Pager("next").IsEnabled) break;
+            ((IButtonController)Pager("next")).SendClicked();
+        } while (visited.Count <= options.Count);
+        Require(visited.SequenceEqual(options.Select(Id)), "Paging omitted, repeated or reordered a Core option.");
+        void Search(string query)
+        {
+            search.Text = query;
+            ((ISearchBarController)search).OnSearchButtonPressed();
+        }
+        Search("  " + options.Last().Name.ToUpperInvariant() + "  ");
+        Require(Rows().Select(button => button.AutomationId).Contains(Id(options.Last())),
+            "Trimmed name search cannot find the final source option.");
+        Search(options[0].SourceBook);
+        Require(Rows().Select(button => button.AutomationId).SequenceEqual(options.Where(option =>
+            option.Name.Contains(options[0].SourceBook, StringComparison.CurrentCultureIgnoreCase)
+            || option.SourceBook.Contains(options[0].SourceBook, StringComparison.CurrentCultureIgnoreCase)).Take(20).Select(Id)),
+            "Source-book search changed exact source identities.");
+        Search("not-a-real-magic-choice-20261001");
+        Require(Rows().Length == 0 && !Pager("next").IsEnabled && !Pager("previous").IsEnabled,
+            "Empty search left stale choices or enabled paging.");
+        search.Text = string.Empty;
+        Require(Rows().Select(button => button.AutomationId).SequenceEqual(first), "Clearing search did not reset paging.");
+        Require(ReferenceEquals(search, MinimalVisible(catalog).OfType<SearchBar>().Single()),
+            "Paging/search replaced the focused search control.");
+        MinimalRequireNoMachineValues(catalog);
+        MinimalRender(catalog);
+        Search(options.Last().Name);
+        Require(Rows().Select(button => button.AutomationId).SequenceEqual(first), "A detached search changed a newer render.");
+        Require(JsonSerializer.Serialize(draft.Selections) == beforeSelections, "Browsing edited the Magic draft.");
+        Console.WriteLine($"PASS Magic catalog {options.Count} exact options, bounded pages, search, readable colors, detached controls and unchanged draft");
+        return (catalog, Rows()[0], MinimalVisible(catalog).OfType<SearchBar>().Single(), navigation);
     }
 
     private static async Task VerifyMagicConfirmationFeedbackAsync(RunnerSessionCoordinator coordinator,
