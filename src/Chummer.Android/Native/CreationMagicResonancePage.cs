@@ -105,6 +105,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             || !Coordinator.IsCreationCatalogDisplayCurrent(original))
         {
             AddBlockers([CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision]);
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-magic-resonance-details"));
             return;
         }
         if (load.Value is { } profileState && HasUnsupportedSeparateMagicProfile(profileState))
@@ -119,6 +120,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             AddBlockers(load.Blockers.Count == 0
                 ? [CharacterCreationMagicResonanceBlockers.AuthorityUnavailable]
                 : load.Blockers);
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-magic-resonance-details"));
             return;
         }
 
@@ -239,7 +241,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames);
         AddSources(card, talent.SourceAnchorIds, _technicalDetails);
         foreach (string blocker in talent.Blockers)
-            card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+            AddBlocker(card, blocker, _technicalDetails);
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-magic-resonance-talent";
         _body.Add(border);
@@ -285,7 +287,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     BudgetUnit(budget.Kind)),
                 budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
             foreach (string blocker in budget.Blockers)
-                card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+                AddBlocker(card, blocker, _technicalDetails);
             Border border = NativeTheme.Card(card, new Thickness(12));
             border.Margin = new Thickness(0, 0, 8, 8);
             border.AutomationId = $"creation-magic-resonance-budget-{Token(budget.Kind)}";
@@ -303,7 +305,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
         {
             if (!string.IsNullOrWhiteSpace(blocker))
             {
-                Label malformed = NativeTheme.Body(blocker, NativeTheme.Danger);
+                _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+                Label malformed = NativeTheme.Body(CreationFlowStrings.MagicBlocker(blocker), NativeTheme.Danger);
                 malformed.AutomationId = "creation-magic-resonance-checkpoint-blocker";
                 _body.Add(NativeTheme.Card(malformed));
             }
@@ -576,7 +579,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         {
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.ReviewNotCheckpointed", "Review not checkpointed"),
-                blocker,
+                CreationFlowStrings.MagicBlocker(blocker),
                 CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
@@ -605,9 +608,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     refreshed))
             {
                 throw new InvalidOperationException(
-                    CreationFlowStrings.Get(
-                        "Magic.ReviewChanged",
-                        "The Core preview, source/custom/GM authority, or workspace revision changed."));
+                    CharacterCreationMagicResonanceBlockers.PreviewDigestMismatch);
             }
             await Navigation.PushAsync(new CreationMagicResonanceReviewPage(
                 Coordinator,
@@ -618,7 +619,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         {
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.ReviewCannotResume", "Review cannot resume"),
-                exception.Message,
+                CreationFlowStrings.MagicBlocker(exception.Message),
                 CreationFlowStrings.Get("Common.OK", "OK"));
         }
     }
@@ -643,7 +644,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         {
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.CheckpointNotRemoved", "Checkpoint not removed"),
-                blocker,
+                CreationFlowStrings.MagicBlocker(blocker),
                 CreationFlowStrings.Get("Common.OK", "OK"));
         }
         Refresh();
@@ -683,7 +684,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             }
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.ReceiptLocked", "Receipt remains locked"),
-                recordBlocker,
+                CreationFlowStrings.MagicBlocker(recordBlocker),
                 CreationFlowStrings.Get("Common.OK", "OK"));
         }
         else if (result.MutationOutcomeKnown
@@ -699,14 +700,14 @@ public sealed class CreationMagicResonancePage : NativePageBase
             {
                 await DisplayAlertAsync(
                     CreationFlowStrings.Get("Common.CommitNotSaved", "Commit was not saved"),
-                    string.Join("\n", result.Blockers),
+                    string.Join("\n", result.Blockers.Select(CreationFlowStrings.MagicBlocker)),
                     CreationFlowStrings.Get("Common.OK", "OK"));
             }
             else
             {
                 await DisplayAlertAsync(
                     CreationFlowStrings.Get("Common.RecoveryLocked", "Recovery remains locked"),
-                    returnBlocker,
+                    CreationFlowStrings.MagicBlocker(returnBlocker),
                     CreationFlowStrings.Get("Common.OK", "OK"));
             }
         }
@@ -714,7 +715,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         {
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.CommitLocked", "Commit remains locked"),
-                string.Join("\n", result.Blockers),
+                string.Join("\n", result.Blockers.Select(CreationFlowStrings.MagicBlocker)),
                 CreationFlowStrings.Get("Common.OK", "OK"));
         }
         Refresh();
@@ -730,9 +731,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         if (normalized.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CoreBlockers", "Core blockers")));
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Blockers.Title", "Before you continue")));
         foreach (string blocker in normalized)
-            card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+            AddBlocker(card, blocker, _technicalDetails);
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-magic-resonance-blockers";
         _body.Add(border);
@@ -746,6 +747,12 @@ public sealed class CreationMagicResonancePage : NativePageBase
         _technicalDetails.Add(label);
     }
 
+    internal static void AddBlocker(VerticalStackLayout layout, string code, VerticalStackLayout diagnostics)
+    {
+        layout.Add(NativeTheme.Body($"• {CreationFlowStrings.MagicBlocker(code)}", NativeTheme.Danger));
+        diagnostics.Add(NativeTheme.Body(code, NativeTheme.Muted));
+    }
+
     internal static void AddSources(
         VerticalStackLayout layout,
         IReadOnlyList<string> sourceAnchorIds,
@@ -753,7 +760,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
     {
         if (sourceAnchorIds.Count == 0)
         {
-            layout.Add(NativeTheme.Body(CharacterCreationMagicResonanceBlockers.SourceDrift, NativeTheme.Danger));
+            string code = CharacterCreationMagicResonanceBlockers.SourceDrift;
+            layout.Add(NativeTheme.Body(CreationFlowStrings.MagicBlocker(code), NativeTheme.Danger));
+            if (diagnostics is not null) diagnostics.Add(NativeTheme.Body(code, NativeTheme.Muted));
+            else layout.Add(NativeTheme.TechnicalDetails(NativeTheme.Body(code, NativeTheme.Muted),
+                (layout.AutomationId ?? "creation-magic-resonance") + "-source-details"));
             return;
         }
         Label sources = NativeTheme.Body(string.Join("\n", sourceAnchorIds), NativeTheme.Muted);
@@ -868,7 +879,7 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         if (!_ready || _display is null || !Coordinator.IsCreationCatalogDisplayCurrent(_display))
         {
             _body.Add(NativeTheme.Body(
-                CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision,
+                CreationFlowStrings.MagicBlocker(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision),
                 NativeTheme.Danger));
             return;
         }
@@ -967,7 +978,7 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
                 option.SourceBook,
                 option.Page);
             if (!option.IsEnabled || option.Blockers.Count > 0)
-                detail += $" · {option.Blockers.FirstOrDefault() ?? CharacterCreationMagicResonanceBlockers.OptionDisabled}";
+                detail += $" · {CreationFlowStrings.MagicBlocker(option.Blockers.FirstOrDefault() ?? CharacterCreationMagicResonanceBlockers.OptionDisabled)}";
             Border row = NativeTheme.NavigationRow(
                 option.Name,
                 detail,
@@ -1051,7 +1062,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         CreationMagicResonancePage.AddSources(details, _option.SourceAnchorIds, diagnostics);
         foreach (string blocker in _option.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
-            details.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+            CreationMagicResonancePage.AddBlocker(details, blocker, diagnostics);
         Border card = NativeTheme.Card(details);
         card.AutomationId = "creation-magic-resonance-option-authority";
         _body.Add(card);
@@ -1102,8 +1113,8 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         if (!exact)
         {
             Label disabled = NativeTheme.Body(
-                _option.Blockers.FirstOrDefault()
-                ?? CharacterCreationMagicResonanceBlockers.OptionDisabled,
+                CreationFlowStrings.MagicBlocker(_option.Blockers.FirstOrDefault()
+                    ?? CharacterCreationMagicResonanceBlockers.OptionDisabled),
                 NativeTheme.Danger);
             disabled.AutomationId = "creation-magic-resonance-option-disabled-reason";
             _body.Add(disabled);
@@ -1255,7 +1266,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         if (sources.Children.Count > 0) _body.Add(NativeTheme.Card(sources));
         foreach (string blocker in preview.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
-            _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+            CreationMagicResonancePage.AddBlocker(_body, blocker, _technicalDetails);
         _body.Add(_confirmProgress);
         _body.Add(_confirm);
         Label boundary = NativeTheme.Body(
@@ -1569,7 +1580,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         {
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.ReceiptNotAcknowledged", "Receipt not acknowledged"),
-                blocker,
+                CreationFlowStrings.MagicBlocker(blocker),
                 CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
