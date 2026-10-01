@@ -917,6 +917,29 @@ internal static partial class AfterRunAuthorityHarness
         var available = (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)typeof(CreationQualitiesPage)
             .GetField("_availableOptions", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
         Console.WriteLine($"QUALITIES_FILTER available={available.Count} total={state.Value!.Authority.Options.Count}");
+        var catalogEditor = CreationQualitiesPhoneAuthority.ProjectEditor(state.Value, runtime.Coordinator.State);
+        var catalogDraft = new CreationQualitiesPhoneDraft();
+        catalogDraft.Bind(state.Value, runtime.Coordinator.State);
+        long allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var catalogTimer = System.Diagnostics.Stopwatch.StartNew();
+        string[] expectedIds = catalogEditor.Options
+            .Where(option => CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)
+                && CharacterCreationQualitiesRules.Evaluate(new(state.Value.Binding, state.Value.Authority,
+                    [option.OptionId])).Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+            .Select(option => option.OptionId).ToArray();
+        double individualMilliseconds = catalogTimer.Elapsed.TotalMilliseconds;
+        long individualBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+        allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        catalogTimer.Restart();
+        var repeatedBatch = catalogDraft.AvailableOptions(state.Value, runtime.Coordinator.State,
+            catalogEditor, CancellationToken.None);
+        double batchMilliseconds = catalogTimer.Elapsed.TotalMilliseconds;
+        long batchBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+        Require(available.Select(option => option.OptionId).SequenceEqual(expectedIds)
+            && repeatedBatch.Select(option => option.OptionId).SequenceEqual(expectedIds),
+            "Batch filtering must exactly preserve every eligible option and its order, not just exclude illegal rows.");
+        Console.WriteLine($"QUALITIES_BATCH managed-real-catalog total={state.Value.Authority.Options.Count} "
+            + $"individual={individualMilliseconds:F2}ms/{individualBytes}B batch={batchMilliseconds:F2}ms/{batchBytes}B");
         Require(available.Count > 0 && available.Count < state.Value.Authority.Options.Count
             && available.All(option => option.IsSelectable && CharacterCreationQualitiesRules.Evaluate(new(
                 state.Value.Binding, state.Value.Authority, [option.OptionId])).Blockers.All(blocker =>
@@ -975,12 +998,15 @@ internal static partial class AfterRunAuthorityHarness
         Require(draft.TryAdopt(qualityState, runtime.Coordinator.State,
             new(CharacterCreationFoundationOutcomes.Success, quoted, quoted.Blockers), chosen), "SETUP: quality draft unavailable.");
         var afterSelection = draft.AvailableOptions(qualityState, runtime.Coordinator.State, editor, CancellationToken.None);
-        Require(afterSelection.Any(option => option.OptionId == expensive.OptionId)
-            && afterSelection.Where(option => option.OptionId != expensive.OptionId).All(option =>
-                CharacterCreationQualitiesRules.Evaluate(new(qualityState.Binding, qualityState.Authority,
+        var expectedAfterSelection = editor.Options.Where(option => option.OptionId == expensive.OptionId
+            || CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)
+                && CharacterCreationQualitiesRules.Evaluate(new(qualityState.Binding, qualityState.Authority,
                     [expensive.OptionId, option.OptionId])).Blockers.All(blocker =>
-                        blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced)),
-            "Budget filtering hid the remove action or retained unaffordable additions.");
+                        blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+            .Select(option => option.OptionId);
+        Require(afterSelection.Select(option => option.OptionId).SequenceEqual(expectedAfterSelection)
+            && afterSelection.Any(option => option.OptionId == expensive.OptionId),
+            "Budget filtering must preserve every eligible addition in order and retain the remove action.");
         Require(draft.WithToggle(expensive).Count == 0, "Filtering changed removal semantics.");
         // Same exact source catalog, but a deterministic zero-Karma fixture.
         // This is a read-only quote, not a modification of the stored runner.
