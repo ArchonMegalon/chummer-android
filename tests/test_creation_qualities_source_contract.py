@@ -62,6 +62,16 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
                              "Resource compilation rejects case-only duplicate keys")
             summaries = {key for key in copy if key.startswith("Qualities.Summary.")}
             self.assertGreaterEqual(len(summaries), 198)
+            if locale == "":
+                bindings = {key.removeprefix("Qualities.SummarySource."): value for key, value in copy.items()
+                            if key.startswith("Qualities.SummarySource.")}
+                self.assertEqual({key.removeprefix("Qualities.Summary.") for key in summaries}, set(bindings))
+                for value in bindings.values():
+                    self.assertRegex(value, r"^[0-9A-F]{64}$")
+            else:
+                self.assertFalse(any(key.startswith("Qualities.SummarySource.") for key in copy),
+                                 "Definition bindings are invariant, not translated copy")
+            self.assertTrue(copy["Qualities.Info.ChangedDefinition"])
             if keys is not None:
                 self.assertEqual(keys, summaries, "Quality summaries must be translated together")
             keys = summaries

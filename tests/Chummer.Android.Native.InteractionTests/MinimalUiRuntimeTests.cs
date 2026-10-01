@@ -39,9 +39,33 @@ internal static partial class AfterRunAuthorityHarness
                         "Quality information exposed a machine identity or deferred to a book.");
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))) missing++;
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
-                    if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
+                    if (summary.Length > 0) Require(lines[0] == summary,
+                        "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
                 Require(authored >= 198, "Localized source-identity summaries were not loaded from the real catalog.");
+                var changedQuality = new System.Xml.Linq.XElement(catalog.Single(quality => quality.Element("name")!.Value == "Will to Live"));
+                string originalSummary = CreationFlowStrings.Get("Qualities.Summary." + changedQuality.Element("id")!.Value, "");
+                changedQuality.Element("bonus")!.Element("conditionmonitor")!.Element("overflow")!.Value = "4";
+                var changedHelp = CreationQualityInfo.Effects(changedQuality.ToString());
+                Require(!changedHelp.Contains(originalSummary),
+                    "A house-rule definition retaining an official ID must not display the original one-box explanation.");
+                Require(changedHelp[0] == CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")
+                    && changedHelp.Any(line => line.Contains(": 4", StringComparison.Ordinal)),
+                    "Changed definitions must explain the mismatch and retain their actual encoded values in every locale.");
+                foreach (var original in catalog.Where(quality => CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "").Length > 0))
+                {
+                    string prose = CreationFlowStrings.Get("Qualities.Summary." + original.Element("id")!.Value, "");
+                    Require(CreationQualityInfo.Effects(original.ToString(System.Xml.Linq.SaveOptions.DisableFormatting))[0] == prose,
+                        "Formatting alone must not discard a reviewed explanation.");
+                    foreach (string field in new[] { "karma", "limit", "required", "bonus" })
+                    {
+                        var amended = new System.Xml.Linq.XElement(original);
+                        amended.SetElementValue(field, "changed-definition");
+                        var lines = CreationQualityInfo.Effects(amended.ToString());
+                        Require(!lines.Contains(prose) && lines[0] == CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", ""),
+                            "Same-ID changes to cost, limits, prerequisites or effects must not borrow reviewed prose: " + field);
+                    }
+                }
                 foreach (string name in new[] { "Prototype Transhuman", "Wildcard Chimera",
                     "Resonant Stream: Technoshaman", "Resonant Stream: Cyberadept" })
                 {
