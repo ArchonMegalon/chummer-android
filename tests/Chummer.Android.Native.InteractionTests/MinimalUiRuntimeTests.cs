@@ -44,7 +44,24 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 245, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 259, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var quality in catalog.Where(quality => quality.Element("source")?.Value == "SR5"))
+                {
+                    string name = quality.Element("name")!.Value;
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Every SR5 core-source entry needs an original, translated summary, including hidden granted traits: " + name);
+                }
+                foreach (string name in new[] { "Codeslinger", "Spirit Affinity",
+                    "Infected Advanced Optional Power: Mimicry", "Infected Advanced Optional Power: Psychokinesis" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                        "A helpful summary must not hide unresolved action, spirit-picker or external-power details: " + name);
+                }
                 foreach (var quality in catalog.Where(quality => quality.Element("name")!.Value.StartsWith("SINner (", StringComparison.Ordinal)
                     || quality.Element("name")!.Value.StartsWith("Prejudiced (", StringComparison.Ordinal)))
                 {
@@ -158,6 +175,36 @@ internal static partial class AfterRunAuthorityHarness
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
             string Effect(string name) => string.Join(" ", CreationQualityInfo.Effects(
                 catalog.Single(quality => quality.Element("name")!.Value == name).ToString()));
+            Require(Effect("Codeslinger").Contains("one Matrix action that requires a test")
+                && Effect("Codeslinger").Contains("two dice")
+                && Effect("Home Ground").Contains("Only the selected benefit applies")
+                && Effect("Home Ground").Contains("+2 Street Cred"),
+                "Conditional action and home-ground benefits must not turn into blanket bonuses or bonus Karma.");
+            foreach (string name in new[] { "Natural Immunity (Natural)", "Natural Immunity (Synthetic)" })
+                Require(Effect(name).Contains("One exposure per 6 hours")
+                    && Effect(name).Contains("further exposures cause normal damage with half-time recovery")
+                    && Effect(name).Contains("Excludes magical agents"),
+                    "Selected-agent immunity must retain its interval, repeated-exposure damage and magical-agent exclusion.");
+            Require(Effect("Magician").Contains("does not grant every skill, spell or adept Power Points")
+                && Effect("Aspected Magician").Contains("Choose exactly one group")
+                && Effect("Aspected Magician").Contains("cannot project")
+                && Effect("Astral Perception").Contains("mundane physical tasks lose two dice")
+                && Effect("Astral Perception").Contains("not a free adept-power purchase"),
+                "Magic aptitude, an aspected skill group and a granted astral sense have different capabilities and costs.");
+            Require(Effect("Low-Light Vision").Contains("total darkness still blocks")
+                && Effect("Thermographic Vision").Contains("by one step")
+                && Effect("Thermographic Vision").Contains("not a flat Perception bonus"),
+                "Low-light and heat vision must retain distinct environmental limits.");
+            Require(Effect("Spirit Affinity").Contains("one extra service")
+                && Effect("Spirit Affinity").Contains("one die on Binding")
+                && Effect("Infected Advanced Optional Power: Mimicry").Contains("imitates sound, not the speaker's appearance")
+                && Effect("Infected Advanced Optional Power: Psychokinesis").Contains("hand's Strength and Agility, not your own attributes"),
+                "Spirit and infected-power help must distinguish services, imitation and a telekinetic hand from personal attribute bonuses.");
+            Require(Effect("Code of Honor").Contains("each protected death costs 1 adventure Karma")
+                && Effect("Scorched").Contains("Body + Willpower (4)")
+                && Effect("Scorched").Contains("6 hours, a glitch for 24")
+                && Effect("Scorched").Contains("−2 dice to resist its damage"),
+                "Moral restrictions and neurological aftereffects need actual consequences beyond their selection prompt or reputation.");
             Require(Effect("Catlike").Contains("Sneaking") && Effect("Catlike").Contains("Bonus: 2"),
                 "Specific-skill modifiers must be shown, not silently replaced by generic copy.");
             Require(Effect("Exceptional Attribute").Contains("Maximum change: 1")
@@ -754,8 +801,8 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Friends in High Places").Contains("Connection 8 or higher")
                 && Effect("Friends in High Places").Contains("four times your Charisma"),
                 "High-Connection contact points need their threshold and separate Charisma-based budget.");
-            Require(Effect("Codeslinger") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
-                "Codeslinger's missing source modifier must not be invented from its action-selection prompt.");
+            Require(Describe("<actiondicepool category='Matrix' />") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "An action-selection prompt alone must not invent Codeslinger's benefit without its definition-bound summary.");
             foreach (string malformed in new[] { "<trustfund>5</trustfund>", "<trustfund>Rating</trustfund>",
                 "<cyberseeker>unknown</cyberseeker>", "<overclocker>unknown</overclocker>",
                 "<dealerconnection />", "<dealerconnection><category>Unknown</category></dealerconnection>",
