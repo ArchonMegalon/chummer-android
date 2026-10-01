@@ -882,4 +882,5 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Attributes.KarmaExceeded" xml:space="preserve"><value>Es ist nicht genug Erschaffungs-Karma übrig.</value></data>
   <data name="Attributes.MaximumCountExceeded" xml:space="preserve"><value>Zu viele Attribute erreichen ihr natürliches Maximum. Senke zuerst ein anderes Attribut.</value></data>
   <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>Diese Änderung ist mit der aktuellen Auswahl und den Grenzen nicht verfügbar. Den genauen Grund findest du in den technischen Details.</value></data>
+  <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} hat den Höchstwert bei der Erschaffung erreicht: {1}. Übrige Punkte können den Wert nicht weiter erhöhen.</value></data>
 </root>

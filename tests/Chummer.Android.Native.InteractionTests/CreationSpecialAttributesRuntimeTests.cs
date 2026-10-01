@@ -11,6 +11,69 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            foreach (var (talent, rank, attributeId) in new[]
+            {
+                ("Mystic Adept", "C", "MAG"), ("Mystic Adept", "A", "MAG"),
+                ("Adept", "C", "MAG"), ("Technomancer", "C", "RES")
+            })
+            {
+                var owners = new ControlledLinkedOwner();
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, creationAttributes: true, productionCreationOverview: true);
+                var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                    fixtureAlias: "SpecialMagic" + rank, attributeTalent: talent, attributeTalentRank: rank);
+                await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var state = runtime.Coordinator.LoadCreationAttributes().Value!;
+                var draft = new CreationAttributesPhoneDraft();
+                draft.Bind(state, runtime.Coordinator.State);
+                var editor = new CreationAttributeAllocationPage(runtime.Coordinator, draft, attributeId, state);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
+                var attribute = draft.Attribute(state, attributeId)!;
+                var plus = MinimalVisible(editor).OfType<Button>().Single(x =>
+                    x.AutomationId == "creation-attribute-priority-increase-" + attributeId.ToLowerInvariant());
+                Require(draft.SpecialBudget(state).Remaining == 7,
+                    "Magic/Resonance fixture must retain the expected seven special points before testing the cap.");
+                Console.WriteLine($"CHECK {talent}/{rank}: {attributeId} {attribute.Current}/{attribute.Maximum}, special {draft.SpecialBudget(state).Remaining}, enabled {plus.IsEnabled}");
+                Require(plus.IsEnabled == (attribute.Current < attribute.Maximum),
+                    "Magic/Resonance special + does not match the actual Core cap with available points.");
+                if (plus.IsEnabled)
+                {
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                    Require(draft.Attribute(state, attributeId)!.Current == attribute.Current + 1
+                        && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1,
+                        "Magic/Resonance + did not allocate one special point.");
+                    var minus = MinimalVisible(editor).OfType<Button>().Single(x =>
+                        x.AutomationId == "creation-attribute-priority-decrease-" + attributeId.ToLowerInvariant());
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)minus).SendClicked()));
+                    Require(draft.Attribute(state, attributeId)!.Current == attribute.Current
+                        && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining,
+                        "Magic/Resonance - did not return the special point.");
+                }
+                else
+                {
+                    var culture = CultureInfo.CurrentUICulture;
+                    try
+                    {
+                        foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                        {
+                            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                            MinimalRender(editor);
+                            string expected = CreationAllocationStrings.Format("Attributes.MaximumReached", "missing",
+                                CreationAttributesPage.AttributeLabel(attributeId), attribute.Maximum);
+                            var reason = MinimalVisible(editor).OfType<Label>().Single(x =>
+                                x.AutomationId == plus.AutomationId + "-reason");
+                            Require(reason.Text.Contains(expected, StringComparison.Ordinal),
+                                "Capped Magic must explain the exact Core maximum in " + locale);
+                            MinimalRequireNoMachineValues(editor);
+                            Require(!MinimalVisible(editor).OfType<Button>().Single(x => x.AutomationId == plus.AutomationId).IsEnabled,
+                                "Readable limit guidance enabled an illegal Magic allocation.");
+                        }
+                    }
+                    finally { CultureInfo.CurrentUICulture = culture; }
+                }
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                IssuedPageLifecycle(editor, "OnDisappearing");
+            }
             foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
             {
                 var owners = new ControlledLinkedOwner();

@@ -665,18 +665,29 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
         if (!enabled && allocations is not null)
         {
-            string? blocker = result?.Value?.Blockers.FirstOrDefault()
-                              ?? result?.Blockers.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(blocker))
+            var blockers = (result?.Value?.Blockers ?? result?.Blockers ?? [])
+                .Where(code => !string.IsNullOrWhiteSpace(code)).Distinct(StringComparer.Ordinal).ToArray();
+            if (blockers.Length > 0)
             {
+                var projected = result?.Value?.Attributes.SingleOrDefault(item => item.AttributeId == _attributeId);
+                // Explain Core's rejected projection; this never admits an allocation
+                // or substitutes a locally calculated cap for the rules authority.
+                string explanation = string.Join(" ", blockers.Select(blocker =>
+                    blocker == CharacterCreationAttributesBlockers.AllocationInvalid
+                    && projected is { IsEnabled: true } && projected.Current > projected.Maximum
+                        ? CreationAllocationStrings.Format("Attributes.MaximumReached",
+                            "{0} has reached its creation maximum of {1}. Remaining points cannot raise it further.",
+                            CreationAttributesPage.AttributeLabel(_attributeId), projected.Maximum)
+                        : CreationAllocationStrings.AttributeBlocker(blocker)).Distinct(StringComparer.Ordinal));
                 Label reason = NativeTheme.Body(CreationAllocationStrings.Format(
                     "Common.ActionBlocker",
                     "{0}: {1}",
                     label,
-                    CreationAllocationStrings.AttributeBlocker(blocker)), NativeTheme.Muted);
+                    explanation), NativeTheme.Muted);
                 reason.AutomationId = $"{button.AutomationId}-reason";
                 _body.Add(reason);
-                _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+                foreach (string blocker in blockers)
+                    _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
             }
         }
     }

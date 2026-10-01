@@ -2795,7 +2795,8 @@ internal static partial class AfterRunAuthorityHarness
 
     private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
-        bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer")
+        bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
+        string? attributeTalent = null, string attributeTalentRank = "C")
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -2829,19 +2830,34 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "A";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "C";
         }
+        if (attributeTalent is not null)
+        {
+            Require(stopBeforeAttributes, "Awakened fixture is only intended for attribute allocation tests.");
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "B";
+            ranks[CharacterCreationPriorityCategoryIds.Talent] = attributeTalentRank;
+            ranks[CharacterCreationPriorityCategoryIds.Attributes] = attributeTalentRank == "A" ? "C" : "A";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "D";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "E";
+        }
         var human = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null
                 && item.MetatypeName == "Human");
-        var mundane = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
-                && item.Rank == "E").TalentOptions.First(item => item.IsEnabled
-                && item.Value.Equals(CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
-                && item.Magic is null && item.Resonance is null && item.Depth is null
-                && item.ActiveSkillGrant is null && item.SkillGroupGrant is null);
+        var talentOption = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Talent]).TalentOptions.First(item => item.IsEnabled
+                && item.Value.Equals(attributeTalent ?? CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
+                && (attributeTalent is not null || item.Magic is null && item.Resonance is null && item.Depth is null
+                    && item.ActiveSkillGrant is null && item.SkillGroupGrant is null));
+        var talentSkills = talentOption.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
+            .Take(talentOption.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
+        var talentGroups = talentOption.SkillGroupGrant?.Options
+            .Take(talentOption.SkillGroupGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
         var prerequisitePreview = prerequisites.Preview(new(initial.Binding, ranks)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = mundane.SelectionId }).Value!;
+            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+                TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups }).Value!;
         var prerequisiteReceipt = prerequisites.Confirm(new(prerequisitePreview.Binding, ranks,
             prerequisitePreview.PreviewDigest, ExplicitlyConfirmed: true)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = mundane.SelectionId });
+            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+                TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups });
         Require(prerequisiteReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));
         if (stopBeforeAttributes)
