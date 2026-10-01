@@ -695,12 +695,66 @@ internal static partial class AfterRunAuthorityHarness
             Require(confirmed.MutationOutcomeKnown && confirmed.Outcome == CreationMagicResonancePhoneOutcomes.Applied
                 && confirmed.Confirmation is not null && probe.Confirms == 1, "Owner-bound native Magic confirmation failed.");
             Require(freshJournal.TryRecordConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(confirming),
-                confirmed.Confirmation!, out _, out _), "Owner-bound Magic receipt was not journaled.");
+                confirmed.Confirmation!, out var savedCheckpoint, out _), "Owner-bound Magic receipt was not journaled.");
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!;
             Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
                 && cold.Document.Content == before.Document.Content
                 && runtime.Coordinator.State.CreationMagicResonance?.PendingDraft is not null,
                 "Native confirmation did not persist and re-project exactly one scoped draft.");
+            var receiptPage = new CreationMagicResonanceReceiptPage(runtime.Coordinator,
+                savedCheckpoint, confirmed.Confirmation!, freshJournal);
+            var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                    MinimalRender(receiptPage);
+                    MinimalRequireNoMachineValues(receiptPage);
+                    string text = MinimalVisibleText(receiptPage);
+                    Require(text.Contains(CreationMagicResonancePage.KindLabel(confirmed.Confirmation!.Receipt.TalentKind))
+                        && text.Contains(CreationFlowStrings.Get("Magic.Receipt.Safe", "missing")),
+                        "Saved Magic choices lost their localized talent or useful save guidance.");
+                    foreach (string diagnostic in new[] { "Common.PreviousRevision", "Common.ContentRevision", "Common.SavedRevision",
+                        "Common.DraftRevision", "Magic.Receipt.IdempotentReplay", "Magic.Receipt.CurrentDraft", "Common.DocumentChanged" })
+                        Require(!text.Contains(CreationFlowStrings.Get(diagnostic, "missing")),
+                            "Saved Magic diagnostics still dominate the ordinary receipt: " + diagnostic);
+                    var toggle = MinimalVisible(receiptPage).OfType<Button>()
+                        .Single(button => button.AutomationId == "creation-magic-resonance-receipt-details-toggle");
+                    ((IButtonController)toggle).SendClicked();
+                    Require(MinimalVisibleText(receiptPage).Contains(confirmed.Confirmation.Receipt.ReceiptDigest),
+                        "Expanded Magic diagnostics lost the exact receipt.");
+                    ((IButtonController)toggle).SendClicked();
+                    MinimalRequireNoMachineValues(receiptPage);
+                }
+            }
+            finally { System.Globalization.CultureInfo.CurrentUICulture = originalCulture; }
+            Require(freshJournal.TryRead(out var retainedReceipt, out _)
+                && retainedReceipt.CheckpointDigest == savedCheckpoint.CheckpointDigest,
+                "Rendering the Magic receipt acknowledged or changed the durable save.");
+            foreach (var owner in new[] { ContactsOwnerB, ContactsOwnerA })
+            {
+                owners.Set(owner);
+                MinimalRender(receiptPage);
+                Require(!MinimalVisible(receiptPage).OfType<Button>().Any(),
+                    "A retained Magic receipt exposes actions or diagnostics after an owner transition.");
+                await (Task)typeof(CreationMagicResonanceReceiptPage)
+                    .GetMethod("AcknowledgeAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(receiptPage, null)!;
+            }
+            await HydrateFinalizationOwnerAsync(runtime, owners, cold);
+            var reopenedJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
+                runtime.Coordinator.State.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
+            Require(reopenedJournal.TryRead(out var afterOwnerSwitch, out _)
+                && afterOwnerSwitch.CheckpointDigest == savedCheckpoint.CheckpointDigest,
+                "A stale receipt button acknowledged the durable save across owner transitions.");
+            var recoveredPage = new CreationMagicResonanceReceiptPage(runtime.Coordinator,
+                afterOwnerSwitch, afterOwnerSwitch.Confirmation!, reopenedJournal);
+            MinimalRender(recoveredPage);
+            Require(MinimalVisible(recoveredPage).OfType<Button>().Single(button =>
+                button.AutomationId == "creation-magic-resonance-receipt-acknowledge").IsEnabled,
+                "Returning to the original account with a fresh owner stamp cannot recover its saved receipt.");
+            MinimalRequireNoMachineValues(recoveredPage);
+            RequireSameRewardDocument(cold, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!);
         });
         RequireSameRewardDocument(before, store.Get(id).Value!);
         Console.WriteLine("PASS Magic scoped catalog/preview/confirm, UI heartbeat, cancellation, owner ABA, journal isolation/recovery and unchanged local workspace");

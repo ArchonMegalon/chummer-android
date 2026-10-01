@@ -114,9 +114,9 @@
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
   <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} selected · {1} {2} left · {3} Core options</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Draft</value></data>
-  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core has previewed this draft, but exact remaining budgets or blockers prevent confirmation.</value></data>
-  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exact Core budgets</value></data>
-  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization.</value></data>
+  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Some choices still need attention. Check the remaining points and messages before saving.</value></data>
+  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Your available choices</value></data>
+  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Save your choices here. They take effect when you finish character creation.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magic and Resonance</value></data>
   <data name="Magic.Intro" xml:space="preserve"><value>Choose the magic and abilities available to your Talent.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
@@ -152,22 +152,22 @@
   <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Idempotent replay</value></data>
   <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Magic / Resonance receipt</value></data>
   <data name="Magic.Receipt.PowerRemaining" xml:space="preserve"><value>Power points remaining</value></data>
-  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Typed choices are durable in Core auxiliary state. Character effects remain pending whole-build finalization.</value></data>
+  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Your choices are saved. They take effect when you finish character creation.</value></data>
   <data name="Magic.Receipt.SpellsRemaining" xml:space="preserve"><value>Spells remaining</value></data>
   <data name="Magic.Receipt.TalentKind" xml:space="preserve"><value>Talent kind</value></data>
   <data name="Magic.Receipt.Unsafe" xml:space="preserve"><value>Unsafe receipt: the character document changed before finalization.</value></data>
-  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>A digest-verified Core receipt is waiting for acknowledgement.</value></data>
-  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>An interrupted Core commit is locked to its exact idempotent command and can only be replayed.</value></data>
+  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Your choices were saved. Open the result to finish this step.</value></data>
+  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Saving was interrupted. Use recovery to check or finish the same save; do not start another.</value></data>
   <data name="Magic.Recovery.Locked" xml:space="preserve"><value>The Magic/Resonance lane is locked.</value></data>
-  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>A typed blocker-free Core review can be resumed without reconstructing rules data.</value></data>
-  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>This checkpoint belongs to another revision or authority digest. The lane stays fail-closed; reopen the exact runner or use support recovery.</value></data>
+  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>A checked selection is ready to resume. Review it before saving.</value></data>
+  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>This saved review no longer matches the runner. Reopen the same runner or use support recovery; do not save again.</value></data>
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
-  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core atomically commits only the auxiliary creation ledger. No XML or character effect is mutated here.</value></data>
+  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirm to save these choices. You can finish character creation after the remaining steps.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirm Magic/Resonance Creation draft</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Review your choices</value></data>
-  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>No follow-up identities are required by this exact Talent.</value></data>
+  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>No further choices are needed for this talent.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Review Magic / Resonance</value></data>
   <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Your choices</value></data>
   <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Reopen Magic / Resonance to view this choice.</value></data>

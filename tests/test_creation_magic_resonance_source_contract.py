@@ -82,7 +82,7 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             "TryRecordConfirmed(",
             'AutomationId = "creation-magic-resonance-confirm-receipt"',
             "CharacterDocumentChanged",
-            "whole-build finalization",
+            "acknowledge.IsEnabled = !receipt.CharacterDocumentChanged",
         ):
             self.assertIn(marker, page)
 
@@ -99,6 +99,38 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             "AI provider",
         ):
             self.assertNotIn(forbidden, page)
+
+    def test_magic_save_diagnostics_are_disclosed_not_primary_content(self) -> None:
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        receipt = page[page.index("public sealed class CreationMagicResonanceReceiptPage") :]
+        for key in ("Common.PreviousRevision", "Common.ContentRevision", "Common.SavedRevision",
+                    "Common.DraftRevision", "Magic.Receipt.IdempotentReplay",
+                    "Magic.Receipt.CurrentDraft", "Common.DocumentChanged"):
+            self.assertIn(f'diagnostics.Add(NativeTheme.Metric(\n            CreationFlowStrings.Get("{key}"', receipt)
+        self.assertIn('NativeTheme.TechnicalDetails(diagnostics, "creation-magic-resonance-receipt-details")', receipt)
+        self.assertIn("CreationMagicResonancePage.KindLabel(receipt.TalentKind)", receipt)
+        self.assertIn("acknowledge.IsEnabled = !receipt.CharacterDocumentChanged", receipt)
+        self.assertIn("Coordinator.IsCreationMagicOwnerCurrent(_originalOwner)", receipt)
+        self.assertIn("Coordinator.State.WorkspaceId == _confirmation.Receipt.WorkspaceId", receipt)
+        self.assertIn("if (!CanDisplayReceipt() || !_checkpoint.OwnsRecoveryRevision(Coordinator.State)) return;", receipt)
+        rereview = (NATIVE / "CreationMagicReReviewPage.cs").read_text(encoding="utf-8")
+        self.assertNotIn("_body.Add(identity)", rereview)
+        self.assertNotIn("_body.Add(binding)", rereview)
+        self.assertIn('NativeTheme.TechnicalDetails(identity, "creation-magic-rereview-receipt-details")', rereview)
+        self.assertIn('NativeTheme.TechnicalDetails(binding, "creation-magic-rereview-details")', rereview)
+
+    def test_magic_primary_copy_is_plain_language_in_all_supported_locales(self) -> None:
+        keys = ("Magic.DraftIncomplete", "Magic.ExactBudgets", "Magic.FinalizationBoundary",
+                "Magic.Receipt.Safe", "Magic.Review.Boundary", "Magic.Review.NoIdentities",
+                "Magic.Recovery.Confirmed", "Magic.Recovery.Confirming", "Magic.Recovery.Reviewed",
+                "Magic.Recovery.Stale")
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            values = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
+            for key in keys:
+                self.assertTrue(values[key], (locale, key))
+                for diagnostic in ("Core", "XML", "CharacterDocumentChanged", "digest", "idempoten", "Hilfszustand", "auxiliary"):
+                    self.assertNotIn(diagnostic.casefold(), values[key].casefold(), (locale, key))
 
     def test_android_trust_boundary_delegates_rules_and_fails_closed(self) -> None:
         authority = (NATIVE / "CreationMagicResonancePhoneAuthority.cs").read_text(

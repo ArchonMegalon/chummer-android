@@ -112,9 +112,9 @@
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
   <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} {2} restantes · {3} opciones de Core</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Borrador</value></data>
-  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core previsualizó este borrador, pero los presupuestos restantes exactos o los bloqueos impiden confirmarlo.</value></data>
-  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Presupuestos exactos de Core</value></data>
-  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Confirmar solo guarda el estado auxiliar de creación de Core. CharacterDocumentChanged debe seguir en false hasta la finalización completa.</value></data>
+  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Aún faltan algunas elecciones. Revisa los puntos restantes y los avisos antes de guardar.</value></data>
+  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Tus puntos y elecciones disponibles</value></data>
+  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Guarda aquí tus elecciones. Se aplicarán cuando termines la creación del personaje.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magia y Resonancia</value></data>
   <data name="Magic.Intro" xml:space="preserve"><value>Elige la magia y las habilidades disponibles para tu talento.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adepto</value></data>
@@ -150,22 +150,22 @@
   <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Repetición idempotente</value></data>
   <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Recibo de Magia/Resonancia</value></data>
   <data name="Magic.Receipt.PowerRemaining" xml:space="preserve"><value>Puntos de poder restantes</value></data>
-  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Las selecciones tipadas están guardadas de forma duradera en el estado auxiliar de Core. Los efectos del personaje esperan la finalización completa.</value></data>
+  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Tus elecciones están guardadas. Se aplicarán cuando termines la creación del personaje.</value></data>
   <data name="Magic.Receipt.SpellsRemaining" xml:space="preserve"><value>Hechizos restantes</value></data>
   <data name="Magic.Receipt.TalentKind" xml:space="preserve"><value>Tipo de talento</value></data>
   <data name="Magic.Receipt.Unsafe" xml:space="preserve"><value>Recibo inseguro: el documento del personaje cambió antes de la finalización.</value></data>
-  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Un recibo de Core verificado por resumen espera confirmación.</value></data>
-  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Una confirmación de Core interrumpida está vinculada a su comando idempotente exacto y solo puede repetirse.</value></data>
+  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Tus elecciones se guardaron. Abre el resultado para completar este paso.</value></data>
+  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Se interrumpió el guardado. Usa la recuperación para comprobar o completar ese mismo guardado; no inicies otro.</value></data>
   <data name="Magic.Recovery.Locked" xml:space="preserve"><value>La sección de Magia/Resonancia está bloqueada.</value></data>
-  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>Una revisión tipada de Core sin bloqueos puede reanudarse sin reconstruir datos de reglas.</value></data>
-  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Este punto de control pertenece a otra revisión o resumen de autoridad. La sección permanece bloqueada de forma segura; vuelve a abrir el runner exacto o usa la recuperación de soporte.</value></data>
+  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>Hay una selección revisada lista para continuar. Compruébala antes de guardar.</value></data>
+  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Esta revisión guardada ya no coincide con el runner. Vuelve a abrir el mismo runner o usa la recuperación de soporte; no guardes de nuevo.</value></data>
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revisión {0} · {1}</value></data>
-  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core confirma atómicamente solo el registro auxiliar de creación. Aquí no se modifica XML ni ningún efecto del personaje.</value></data>
+  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirma para guardar estas elecciones. Podrás finalizar la creación tras completar los demás pasos.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirmar borrador de creación de Magia/Resonancia</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar tus elecciones</value></data>
-  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento exacto no requiere identidades posteriores.</value></data>
+  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Este talento no necesita más elecciones.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Revisar Magia / Resonancia</value></data>
   <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Tus elecciones</value></data>
   <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Vuelve a abrir Magia / Resonancia para ver esta elección.</value></data>

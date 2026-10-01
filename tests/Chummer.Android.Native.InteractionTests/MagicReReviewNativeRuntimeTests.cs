@@ -56,6 +56,15 @@ internal static partial class AfterRunAuthorityHarness
             Render();
             Require(Confirm().IsEnabled && ((VerticalStackLayout)((ScrollView)page.Content!).Content!).Children.OfType<Label>()
                 .Any(label => label.Text.Contains("Light Body", StringComparison.Ordinal)), "Native review omitted saved source choices.");
+            Require(!MinimalVisible(page).OfType<Label>().Any(label => label.AutomationId == "creation-magic-rereview-binding"),
+                "Internal Attributes revision is visible before expanding review details.");
+            var detailsToggle = MinimalVisible(page).OfType<Button>()
+                .Single(button => button.AutomationId == "creation-magic-rereview-details-toggle");
+            ((IButtonController)detailsToggle).SendClicked();
+            Require(MinimalVisible(page).OfType<Label>().Any(label => label.AutomationId == "creation-magic-rereview-binding"),
+                "Explicit re-review troubleshooting lost the exact binding.");
+            ((IButtonController)detailsToggle).SendClicked();
+            Require(JsonSerializer.Serialize(Read()) == initial, "Review disclosure changed the runner.");
 
             if (linked && failure == "none")
             {
@@ -93,9 +102,25 @@ internal static partial class AfterRunAuthorityHarness
                 Require(runtime.Coordinator.CanDisplayCreationMagicReReviewReceipt(receipt),
                     "Known save receipt was lost after confirmation/refresh.");
                 Require((result.Blockers.Count == 0) == (failure == "none"), "Post-commit read failure was hidden.");
+                var savedPage = new CreationMagicReReviewPage(runtime.Coordinator, state);
+                typeof(CreationMagicReReviewPage).GetField("_confirmation", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .SetValue(savedPage, result);
+                MinimalRender(savedPage);
+                MinimalRequireNoMachineValues(savedPage);
+                var receiptToggle = MinimalVisible(savedPage).OfType<Button>()
+                    .Single(button => button.AutomationId == "creation-magic-rereview-receipt-details-toggle");
+                ((IButtonController)receiptToggle).SendClicked();
+                Require(MinimalVisibleText(savedPage).Contains(receipt.ReceiptDigest),
+                    "Expanded re-review receipt lost its exact identity.");
+                ((IButtonController)receiptToggle).SendClicked();
+                MinimalRequireNoMachineValues(savedPage);
                 owners.Set(ContactsOwnerB);
                 Require(!runtime.Coordinator.CanDisplayCreationMagicReReviewReceipt(receipt),
                     "A different account could display the save receipt.");
+                MinimalRender(savedPage);
+                Require(!MinimalVisible(savedPage).OfType<Button>().Any(button =>
+                    button.AutomationId == "creation-magic-rereview-receipt-details-toggle"),
+                    "A different account retained the old receipt disclosure.");
             }
             var coldOwner = new ControlledLinkedOwner();
             coldOwner.Set(owner);

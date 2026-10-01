@@ -84,9 +84,15 @@ def test_public_stories_filters_reader_and_accessibility_copy_are_resource_backe
 def test_scope_does_not_replace_stable_ids_or_dynamic_story_content() -> None:
     origin = _text(NATIVE / "OriginDossierLifeModuleDecisionPage.cs")
     archive = _text(NATIVE / "ShadowArchivePage.cs")
-    assert "_state.VisibleStoryMarkdown" in origin
-    assert "_state.DecisionPrompt" in origin
-    assert "choice.Label" in origin
+    # The choice page uses the shared story-facing projection and opens the
+    # dedicated reader. The old wizard lead-in is not an authored chapter and
+    # must not be reintroduced merely to satisfy a localization assertion.
+    assert "OriginStoryDecisionText.Prompt(_state)" in origin
+    assert "OriginStoryDecisionText.Choice(_state, choice.ChoiceId)" in origin
+    assert "string choiceId = choice.ChoiceId;" in origin
+    assert "_state.VisibleStoryMarkdown" not in origin
+    assert "if (_openBook is not null) await _openBook();" in origin
+    assert 'AutomationId = "origin-life-read-book"' in origin
     assert "story.Title" in archive
     assert "chapter.BodyMarkdown" in archive
     assert 'AutomationId = "origin-life-decision"' in origin
