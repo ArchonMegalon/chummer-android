@@ -415,9 +415,10 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private long _preparationGeneration;
     private bool _loading;
     private string? _failure;
-    private readonly ActivityIndicator _progress = new()
+    private readonly Label _progress = new()
     {
-        IsRunning = false, IsVisible = false,
+        Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…"),
+        TextColor = NativeTheme.Text, FontSize = 16, IsVisible = false,
         AutomationId = "creation-attribute-allocation-loading"
     };
     private readonly VerticalStackLayout _body = new()
@@ -451,7 +452,6 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation?.Cancel();
         _prepared = null;
         _loading = false;
-        _progress.IsRunning = false;
         _progress.IsVisible = false;
         base.OnDisappearing();
     }
@@ -511,7 +511,6 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             if (generation == _preparationGeneration)
             {
                 _loading = false;
-                _progress.IsRunning = false;
                 _progress.IsVisible = false;
             }
             if (ReferenceEquals(_preparation, lifetime)) _preparation = null;
@@ -525,13 +524,12 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
     protected override void Refresh()
     {
-        // A plus/minus preparation must not collapse the scrolled page to a spinner.
+        // A plus/minus preparation must not collapse the scrolled page.
         // Keep the old projection visible but non-actionable until the fresh one is ready.
         if (_loading && _body.Children.Count > 0)
         {
             foreach (Button button in _body.Children.OfType<Button>()) button.IsEnabled = false;
             _progress.IsVisible = true;
-            _progress.IsRunning = true;
             return;
         }
         _body.Clear();
@@ -541,7 +539,6 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             "Attribute allocation")));
         _body.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(_attributeId)));
         _progress.IsVisible = _loading;
-        _progress.IsRunning = _loading;
         _body.Add(_progress);
 
         if (_loading)
@@ -658,7 +655,19 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             {
                 if (ReferenceEquals(_prepared, prepared) && IsCurrent(prepared)
                     && _draft.TryAdopt(state, Coordinator.State, result!, allocations!))
-                    await PrepareAsync(CancellationToken.None);
+                {
+                    // Keep feedback on the control the user just pressed: the page's
+                    // loading message can be above the current scroll position.
+                    button.Text = CreationAllocationStrings.Get(
+                        "AttributeAllocation.Checking", "Checking points…");
+                    try { await PrepareAsync(CancellationToken.None); }
+                    finally
+                    {
+                        // Never re-enable this retained control. Only a newly rendered,
+                        // current Core preview may admit the next adjustment.
+                        button.Text = label;
+                    }
+                }
             });
         }
         _body.Add(button);

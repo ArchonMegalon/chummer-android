@@ -883,4 +883,5 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Attributes.MaximumCountExceeded" xml:space="preserve"><value>Too many attributes are at their natural maximum. Lower another attribute first.</value></data>
   <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>This change is unavailable with the current choices and limits. Technical details contain the exact reason.</value></data>
   <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} has reached its creation maximum of {1}. Remaining points cannot raise it further.</value></data>
+  <data name="AttributeAllocation.Checking" xml:space="preserve"><value>Checking points…</value></data>
 </root>

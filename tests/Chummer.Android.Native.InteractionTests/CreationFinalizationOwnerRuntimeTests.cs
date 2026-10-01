@@ -1947,8 +1947,11 @@ internal static partial class AfterRunAuthorityHarness
                     await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     Require(!pending.IsCompleted, "Attribute preview did not retain the delayed read.");
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                    Require(body.Children.OfType<ActivityIndicator>().Any(item => item.IsRunning),
-                        "Attribute loading must show progress before the Core read finishes.");
+                    Require(body.Children.OfType<Label>().Any(item => item.IsVisible
+                        && item.AutomationId == "creation-attribute-allocation-loading"
+                        && item.Text == CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…"))
+                        && !body.Children.OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                        "Attribute loading must show readable static progress before the Core read finishes.");
                     var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     ui.Post(_ => heartbeat.SetResult(), null);
                     await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));

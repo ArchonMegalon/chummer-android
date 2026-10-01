@@ -18,12 +18,19 @@ internal static partial class AfterRunAuthorityHarness
             })
             {
                 var owners = new ControlledLinkedOwner();
+                AttributesCommitProbe? probe = null;
                 await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
-                    creationFinalization: true, creationAttributes: true, productionCreationOverview: true);
+                    creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                    attributesDecorator: actual => probe = new(actual));
                 var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
                     fixtureAlias: "SpecialMagic" + rank, attributeTalent: talent, attributeTalentRank: rank);
                 await HydrateFinalizationOwnerAsync(runtime, owners, before);
                 var state = runtime.Coordinator.LoadCreationAttributes().Value!;
+                if (talent == "Mystic Adept" && rank == "C")
+                {
+                    await VerifySpecialPointPendingFeedbackAsync(ui, runtime, probe!, state);
+                    RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                }
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, runtime.Coordinator.State);
                 var editor = new CreationAttributeAllocationPage(runtime.Coordinator, draft, attributeId, state);
@@ -261,5 +268,93 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS " + method + " special entry, EN/DE/ES controls, Edge +/-, separate budgets, save/cold reopen, cap and owner ABA");
             }
         });
+    }
+
+    private static async Task VerifySpecialPointPendingFeedbackAsync(IssuedPageUiContext ui,
+        NativeRewardRuntime runtime, AttributesCommitProbe probe, CharacterCreationAttributesState state)
+    {
+        foreach (string outcome in new[] { "ready", "cancel", "error", "leave" })
+        {
+            var draft = new CreationAttributesPhoneDraft();
+            draft.Bind(state, runtime.Coordinator.State);
+            var page = new CreationAttributeAllocationPage(runtime.Coordinator, draft, "MAG", state);
+            var navigation = new NavigationPage(new ContentPage());
+            await navigation.PushAsync(page, false);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var rendered = body.Children.ToArray();
+            var plus = MinimalVisible(page).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-attribute-priority-increase-mag");
+            string label = plus.Text;
+            int initial = draft.Attribute(state, "MAG")!.Current;
+            using var release = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            int reads = 0;
+            probe.BeforeRead = () =>
+            {
+                Interlocked.Increment(ref reads);
+                entered.TrySetResult();
+                Require(release.Wait(TimeSpan.FromSeconds(10)), "Pending special point test was not released.");
+                if (outcome == "cancel") throw new OperationCanceledException();
+                if (outcome == "error") throw new InvalidOperationException("special-point-feedback-test");
+            };
+            Task pending = ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked());
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(!pending.IsCompleted && !plus.IsEnabled
+                    && plus.Text == CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…")
+                    && rendered.SequenceEqual(body.Children)
+                    && !body.Children.OfType<Button>().Any(x => x.IsEnabled)
+                    && !MinimalVisible(page).OfType<ActivityIndicator>().Any(x => x.IsRunning),
+                    "Special + must show static feedback on the retained button while every adjustment is disabled.");
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                // The existing async-void join owns the pending action. A duplicate
+                // click must return synchronously through the page action gate.
+                ((IButtonController)plus).SendClicked();
+                MinimalRender(page);
+                Require(reads == 1 && !pending.IsCompleted && rendered.SequenceEqual(body.Children)
+                    && plus.Text != label && draft.Attribute(state, "MAG")!.Current == initial + 1
+                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1,
+                    "A duplicate + or pending refresh repeated an adjustment or cleared visible feedback.");
+                if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
+            }
+            finally
+            {
+                release.Set();
+                try { await JoinIssuedPageAsync(pending); }
+                finally { probe.BeforeRead = null; }
+            }
+            Require(plus.Text == label && !plus.IsEnabled
+                && !MinimalVisible(page).OfType<Label>().Any(x =>
+                    x.AutomationId == "creation-attribute-allocation-loading" && x.IsVisible),
+                "Completion must clear feedback without re-enabling an old button: " + outcome);
+            if (outcome == "ready")
+            {
+                var fresh = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == plus.AutomationId);
+                Require(!ReferenceEquals(fresh, plus) && fresh.IsEnabled && fresh.Text == label,
+                    "Fresh Core preview did not restore the ordinary special + control.");
+            }
+            else
+                Require(!body.Children.OfType<Button>().Any(x => x.IsEnabled),
+                    "Canceled, failed or departed preparation enabled stale adjustments: " + outcome);
+            Require(alerts.Titles.Count == (outcome == "error" ? 1 : 0),
+                "Preparation errors must be reported once; cancellation/departure is not an error: " + outcome);
+            if (outcome != "leave") IssuedPageLifecycle(page, "OnDisappearing");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            Require(MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == plus.AutomationId
+                && x.IsEnabled && x.Text == label && !ReferenceEquals(x, plus)),
+                "Returning to the editor did not replace stale controls after " + outcome);
+            Require(probe.ConfirmCalls == 0 && draft.NormalBudget(state) == state.NormalPointBudget
+                && draft.KarmaBudget(state) == state.CreationKarmaBudget,
+                "Pending feedback saved the runner or changed another budget.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+        }
+        Console.WriteLine("PASS special + visible static pending feedback, UI heartbeat, duplicate exclusion, cancel/error/departure cleanup and fresh reappearance");
     }
 }

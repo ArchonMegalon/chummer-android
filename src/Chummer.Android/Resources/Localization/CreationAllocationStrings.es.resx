@@ -883,4 +883,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Attributes.MaximumCountExceeded" xml:space="preserve"><value>Demasiados atributos están en su máximo natural. Reduce primero otro atributo.</value></data>
   <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>Este cambio no está disponible con las elecciones y límites actuales. Los detalles técnicos contienen el motivo exacto.</value></data>
   <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} ha alcanzado su máximo durante la creación: {1}. Los puntos restantes no pueden aumentarlo más.</value></data>
+  <data name="AttributeAllocation.Checking" xml:space="preserve"><value>Comprobando puntos…</value></data>
 </root>
