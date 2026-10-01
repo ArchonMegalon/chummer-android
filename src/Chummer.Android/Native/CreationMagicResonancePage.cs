@@ -1003,6 +1003,13 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 {
     private CharacterOverviewState? _display;
     private bool _ready;
+    private bool _previewPending;
+    private long _previewGeneration;
+    private Shell? _pendingShell;
+    private readonly BackButtonBehavior _backBehavior = new();
+    private readonly List<(Button Button, bool Enabled)> _selectionActions = [];
+    private readonly Label _choiceProgress = NativeTheme.Body(CreationFlowStrings.Get(
+        "Magic.Option.Checking", "Checking your choice… You can go back when this finishes."), NativeTheme.Text);
     private readonly CharacterCreationMagicResonanceEditorState _editor;
     private readonly CharacterCreationMagicResonanceOptionProjection _option;
     private readonly CreationMagicResonancePhoneDraft _draft;
@@ -1024,7 +1031,38 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
         Title = CreationFlowStrings.Get("Magic.Option.PageTitle", "Configure choice");
         AutomationId = "creation-magic-resonance-option-page";
+        _choiceProgress.AutomationId = "creation-magic-resonance-option-progress";
+        _choiceProgress.IsVisible = false;
+        Shell.SetBackButtonBehavior(this, _backBehavior);
         Content = new ScrollView { Content = _body };
+    }
+
+    private bool KeepPendingChoice => _previewPending
+        && IsCurrentAppearanceGeneration(_previewGeneration)
+        && _display is { } display && Coordinator.IsCreationCatalogDisplayCurrent(display);
+
+    protected override bool OnBackButtonPressed()
+        => KeepPendingChoice || base.OnBackButtonPressed();
+
+    private void OnPendingNavigation(object? sender, ShellNavigatingEventArgs args)
+    {
+        if (sender is Shell shell && ReferenceEquals(shell.CurrentPage, this)
+            && KeepPendingChoice && args.CanCancel
+            && args.Source is ShellNavigationSource.Pop or ShellNavigationSource.PopToRoot)
+            args.Cancel();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        ReleasePendingNavigation();
+    }
+
+    private void ReleasePendingNavigation()
+    {
+        if (_pendingShell is { } shell) shell.Navigating -= OnPendingNavigation;
+        _pendingShell = null;
+        _backBehavior.IsEnabled = true;
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
@@ -1043,6 +1081,8 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_previewPending) return;
+        _selectionActions.Clear();
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Magic.Option.Eyebrow",
@@ -1068,6 +1108,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         Border card = NativeTheme.Card(details);
         card.AutomationId = "creation-magic-resonance-option-authority";
         _body.Add(card);
+        _body.Add(_choiceProgress);
 
         bool exact = _ready && _display is not null && Coordinator.IsCreationCatalogDisplayCurrent(_display);
         if (string.Equals(
@@ -1089,6 +1130,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
                 "Decrease level"));
             decrease.AutomationId = "creation-magic-resonance-power-decrease";
             decrease.IsEnabled = exact && levels > 0;
+            _selectionActions.Add((decrease, decrease.IsEnabled));
             decrease.Clicked += async (_, _) => await RunAsync(
                 () => ChangePowerLevelAsync(levels - 1));
             _body.Add(decrease);
@@ -1097,6 +1139,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
                 "Increase level"));
             increase.AutomationId = "creation-magic-resonance-power-increase";
             increase.IsEnabled = exact && levels < _option.MaximumLevels;
+            _selectionActions.Add((increase, increase.IsEnabled));
             increase.Clicked += async (_, _) => await RunAsync(
                 () => ChangePowerLevelAsync(levels + 1));
             _body.Add(increase);
@@ -1109,6 +1152,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
                     : CreationFlowStrings.Get("Magic.Option.Select", "Select for draft"));
             toggle.AutomationId = "creation-magic-resonance-option-toggle";
             toggle.IsEnabled = exact;
+            _selectionActions.Add((toggle, toggle.IsEnabled));
             toggle.Clicked += async (_, _) => await RunAsync(ToggleAsync);
             _body.Add(toggle);
         }
@@ -1159,23 +1203,54 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
 
     private async Task AdoptAsync(CharacterCreationMagicResonanceDesktopDraft candidate)
     {
+        if (_previewPending) return;
         long generation = CaptureAppearanceGeneration();
         if (!_ready || _display is not { } original
             || !Coordinator.IsCreationCatalogDisplayCurrent(original))
             throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
-        var before = _draft.Copy();
-        var prepared = before.Copy();
-        CharacterCreationMagicResonanceReview review =
-            await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, _editor, candidate);
-        bool valid = await Task.Run(() => prepared.TryAdopt(_editor, original, review));
-        if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
-        _blockers = review.Preview.Blockers;
-        if (!valid || !Coordinator.IsCreationCatalogDisplayCurrent(original)
-            || !_draft.TryAdoptPrepared(before, prepared))
-            _blockers = _blockers.Append(
-                    CharacterCreationMagicResonanceBlockers.DraftConflict)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
+        _previewPending = true;
+        _previewGeneration = generation;
+        _choiceProgress.IsVisible = true;
+        foreach (var action in _selectionActions) action.Button.IsEnabled = false;
+        _backBehavior.IsEnabled = false;
+        // Guard only this page's ordinary Back transition. Account switches and
+        // forced departures still invalidate the generation and reject the result.
+        for (Element? parent = Parent; parent is not null; parent = parent.Parent)
+        {
+            if (parent is not Shell shell) continue;
+            _pendingShell = shell;
+            shell.Navigating += OnPendingNavigation;
+            break;
+        }
+        try
+        {
+            var before = _draft.Copy();
+            var prepared = before.Copy();
+            CharacterCreationMagicResonanceReview review =
+                await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, _editor, candidate);
+            bool valid = await Task.Run(() => prepared.TryAdopt(_editor, original, review));
+            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            _blockers = review.Preview.Blockers;
+            if (!valid || !Coordinator.IsCreationCatalogDisplayCurrent(original)
+                || !_draft.TryAdoptPrepared(before, prepared))
+                _blockers = _blockers.Append(
+                        CharacterCreationMagicResonanceBlockers.DraftConflict)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+        }
+        finally
+        {
+            _previewPending = false;
+            _choiceProgress.IsVisible = false;
+            ReleasePendingNavigation();
+            bool current = IsCurrentAppearanceGeneration(generation)
+                && Coordinator.IsCreationCatalogDisplayCurrent(original);
+            foreach (var action in _selectionActions) action.Button.IsEnabled = current && action.Enabled;
+            // A forced leave-and-return may prepare a new appearance while the
+            // old preview drains. Release its render without adopting old work.
+            long currentGeneration = CaptureAppearanceGeneration();
+            if (currentGeneration != generation && IsCurrentAppearanceGeneration(currentGeneration)) Refresh();
+        }
     }
 }
 

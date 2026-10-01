@@ -602,6 +602,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
                 && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
             await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview);
+            await VerifyMagicOptionPendingAsync(runtime.Coordinator, probe, retainedEditor, retainedDraft, draft, ui);
 
             using var canceled = new CancellationTokenSource();
             probe.BeforeRead = canceled.Cancel;
@@ -916,6 +917,111 @@ internal static partial class AfterRunAuthorityHarness
         Require(JsonSerializer.Serialize(draft.Selections) == beforeSelections, "Browsing edited the Magic draft.");
         Console.WriteLine($"PASS Magic catalog {options.Count} exact options, bounded pages, search, readable colors, detached controls and unchanged draft");
         return (catalog, Rows()[0], MinimalVisible(catalog).OfType<SearchBar>().Single(), navigation);
+    }
+
+    private static async Task VerifyMagicOptionPendingAsync(RunnerSessionCoordinator coordinator,
+        MagicReadProbe probe, CharacterCreationMagicResonanceEditorState editor,
+        CreationMagicResonancePhoneDraft originalDraft, CharacterCreationMagicResonanceDesktopDraft candidate,
+        IssuedPageUiContext ui)
+    {
+        foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            Require(CreationFlowStrings.Get("Magic.Option.Checking", "missing",
+                System.Globalization.CultureInfo.GetCultureInfo(locale)) != "missing", "Missing pending choice translation.");
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(coordinator)!;
+        var adopt = typeof(CreationMagicResonanceOptionPage).GetMethod("AdoptAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var navigating = typeof(CreationMagicResonanceOptionPage).GetMethod("OnPendingNavigation", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        foreach (string outcome in new[] { "error", "cancel", "departure", "reappearance", "success" })
+        {
+            var draft = originalDraft.Copy();
+            string initial = JsonSerializer.Serialize(draft.Selections);
+            var page = new CreationMagicResonanceOptionPage(coordinator, editor,
+                editor.Spells.Concat(editor.AdeptPowers).First(item =>
+                    CreationMagicResonancePhoneAuthority.IsOptionConfigurable(editor, item)), draft);
+            var shell = new Shell();
+            var content = new ShellContent { Content = page };
+            shell.Items.Add(content);
+            _ = new Window(shell);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            Require(ReferenceEquals(shell.CurrentPage, page), "SETUP: option page is not the active Shell page.");
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var rendered = body.Children.ToArray();
+            var button = body.Children.OfType<Button>().Single(item =>
+                item.AutomationId is "creation-magic-resonance-option-toggle" or "creation-magic-resonance-power-increase");
+            var progress = body.Children.OfType<Label>().Single(item => item.AutomationId == "creation-magic-resonance-option-progress");
+            Require(button.IsEnabled && !progress.IsVisible, "Fresh option controls are not ready.");
+            probe.BeforeRead = outcome switch
+            {
+                "error" => () => throw new InvalidOperationException("magic-option-pending-test"),
+                "cancel" => () => throw new OperationCanceledException("magic-option-pending-test"),
+                _ => null
+            };
+            int previews = probe.Previews;
+            await gate.WaitAsync();
+            Task pending = (Task)adopt.Invoke(page, [candidate])!;
+            Exception? assertion = null;
+            try
+            {
+                Require(!pending.IsCompleted && !button.IsEnabled && progress.IsVisible
+                    && progress.TextColor == NativeTheme.Text && !Shell.GetBackButtonBehavior(page).IsEnabled
+                    && page.SendBackButtonPressed() && rendered.SequenceEqual(body.Children)
+                    && !MinimalVisible(page).OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                    "Pending option must show static in-place feedback and block hardware/toolbar back before awaiting Core.");
+                Require(ReferenceEquals(typeof(CreationMagicResonanceOptionPage)
+                    .GetField("_pendingShell", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page), shell),
+                    "Pending choice did not subscribe to its owning Shell.");
+                foreach (var (source, canCancel, expected) in new[] {
+                    (ShellNavigationSource.Pop, true, true), (ShellNavigationSource.PopToRoot, true, true),
+                    (ShellNavigationSource.Pop, false, false), (ShellNavigationSource.ShellItemChanged, true, false) })
+                {
+                    var args = new ShellNavigatingEventArgs(new ShellNavigationState("//runner/option"),
+                        new ShellNavigationState("//runner"), source, canCancel);
+                    navigating.Invoke(page, [shell, args]);
+                    Require(args.Cancelled == expected, "Pending choice intercepted the wrong navigation kind.");
+                }
+                await (Task)adopt.Invoke(page, [candidate])!;
+                Require(!pending.IsCompleted && probe.Previews == previews && progress.IsVisible && !button.IsEnabled,
+                    "Duplicate choice started another preview or cleared pending feedback.");
+                MinimalRender(page);
+                Require(rendered.SequenceEqual(body.Children), "Pending refresh replaced the active choice controls.");
+                if (outcome is "departure" or "reappearance")
+                {
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    Require(Shell.GetBackButtonBehavior(page).IsEnabled, "Departure retained the back lock.");
+                    if (outcome == "reappearance")
+                        await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                }
+            }
+            catch (Exception error) { assertion = error; }
+            finally { gate.Release(); }
+            try
+            {
+                await pending;
+                Require(outcome == "success", "A canceled/failed/departed option was accepted.");
+                Require(draft.Review is not null && JsonSerializer.Serialize(draft.Selections) != initial,
+                    "Successful preview did not retain the exact selected draft.");
+            }
+            catch (OperationCanceledException) when (outcome is "cancel" or "departure" or "reappearance") { }
+            catch (InvalidOperationException error) when (outcome == "error" && error.Message == "magic-option-pending-test") { }
+            finally
+            {
+                probe.BeforeRead = null;
+                if (outcome is not ("departure" or "reappearance")) Require(button.IsEnabled,
+                    "Current choice controls did not recover after the pending operation.");
+                if (outcome == "reappearance") Require(body.Children.OfType<Button>().Any(item =>
+                    item.AutomationId == button.AutomationId && item.IsEnabled && !ReferenceEquals(item, button)),
+                    "Old preview completion stranded a newly prepared appearance.");
+                if (outcome != "departure") IssuedPageLifecycle(page, "OnDisappearing");
+            }
+            if (assertion is not null) throw assertion;
+            Require(!progress.IsVisible && Shell.GetBackButtonBehavior(page).IsEnabled
+                && typeof(CreationMagicResonanceOptionPage).GetField("_pendingShell", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page) is null,
+                "Completed/failed preview retained progress or trapped back navigation.");
+            if (outcome != "success") Require(JsonSerializer.Serialize(draft.Selections) == initial,
+                "Failed/departed preview changed the shared draft.");
+            Require(probe.Confirms == 0, "Selecting a draft choice performed a durable confirmation.");
+        }
+        Console.WriteLine("PASS Magic option static pending feedback, duplicate/back guards, exact adoption and error/cancel/departure/reappearance cleanup");
     }
 
     private static async Task VerifyMagicConfirmationFeedbackAsync(RunnerSessionCoordinator coordinator,
