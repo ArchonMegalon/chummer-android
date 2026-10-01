@@ -293,14 +293,20 @@ internal static partial class AfterRunAuthorityHarness
                 availabilitySelection, "Overclocker", 0, 20, default, () => true);
             Require(funded is { Options.Count: > 0 }, "Affordable exact quality disappeared with the same sources.");
             var ratingIds = new List<string>();
+            int previewsBeforePage = probe.PreviewCalls;
             var largerPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
                 ordinarySelection, "", 0, 6, default, () => true);
+            Require(probe.PreviewCalls - previewsBeforePage <= 6,
+                "A quality page exceeded its full-preview work budget.");
             Require(largerPage is { Options.Count: >= 2 }, "SETUP: expected at least two available source choices.");
             int? cursor = 0;
             do
             {
+                previewsBeforePage = probe.PreviewCalls;
                 var ratingPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
                     ordinarySelection, "", cursor!.Value, 1, default, () => true);
+                Require(probe.PreviewCalls - previewsBeforePage <= 1,
+                    "Filtered pagination performed extra full previews to fill or look ahead.");
                 Require(ratingPage is not null, "Rating pagination lost its bound source read.");
                 ratingIds.AddRange(ratingPage!.Options.Select(option => option.OptionId));
                 cursor = ratingPage.NextOffset;

@@ -20,7 +20,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private int _page;
     private string _category = CharacterCreationSkillKinds.Active;
     private const int PageSize = 20;
-    private const int QualityPageSize = 6;
+    private const int QualityPageSize = 3;
     private CharacterCreationKarmaSkillAllocation? _editingSkill;
     private bool _skillInitialized;
     private string? _resourceInput;

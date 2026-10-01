@@ -1,3 +1,4 @@
+using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
@@ -34,11 +35,18 @@ public sealed partial class RunnerSessionCoordinator
             {
                 var available = new List<CharacterCreationQualityCatalogOption>();
                 int next = offset;
+                int checkedCount = 0;
                 int end = Math.Min(candidates.Length, offset + pageSize * 3);
-                for (int index = offset; index < end; index++)
+                for (int index = offset; index < end && checkedCount < pageSize; index++)
                 {
                     ct.ThrowIfCancellationRequested();
                     var option = candidates[index];
+                    next = index + 1;
+                    // Core can reject unsupported source effects without a
+                    // full reload of every other creation authority. Bound the
+                    // expensive previews, not just the number of visible rows.
+                    if (!CharacterCreationKarmaQualitiesRules.IsExactPurchase(option)) continue;
+                    checkedCount++;
                     var ids = selected.Where(id => byId[id].SelectionKey != option.SelectionKey)
                         .Append(option.OptionId).ToArray();
                     var preview = service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
@@ -66,12 +74,9 @@ public sealed partial class RunnerSessionCoordinator
                     if (quote.Qualities is null || !quote.KarmaBudget.IsExact
                         || quote.Blockers.Any(blocker => blocker != CharacterCreationQualitiesBlockers.MetagenicImbalanced))
                         continue;
-                    if (available.Count == pageSize)
-                        return new(Array.AsReadOnly(available.ToArray()), next);
                     available.Add(option);
-                    next = index + 1;
                 }
-                return new(Array.AsReadOnly(available.ToArray()), end < candidates.Length ? end : null);
+                return new(Array.AsReadOnly(available.ToArray()), next < candidates.Length ? next : null);
             }, ct);
             ct.ThrowIfCancellationRequested();
             return isCurrentPage() && IsCreationKarmaStateCurrent(state) ? result : null;
