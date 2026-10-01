@@ -865,30 +865,32 @@ public sealed class CreationQualityInfoPage : NativePageBase
     private readonly string _detail;
     private readonly string? _followUp;
     private readonly string? _sourceXml;
+    private readonly int _rating;
     private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
 
     internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
         CharacterCreationQualityCatalogOption option) : this(coordinator, original, option.Name,
             CreationFlowStrings.Format("Qualities.Info.Cost", "Rating {0} · Karma {1}",
-                option.Rating, CreationQualitiesPage.Signed(option.KarmaCost)), option.FollowUpChoiceLabel, option.SourceNodeXml)
+                option.Rating, CreationQualitiesPage.Signed(option.KarmaCost)), option.FollowUpChoiceLabel, option.SourceNodeXml, option.Rating)
     {
     }
 
     internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
         CharacterCreationGrantedQuality grant, string? sourceXml) : this(coordinator, original, grant.Name,
             CreationFlowStrings.Format("Qualities.GrantedDetail", "{0} · rating {1} · Karma {2}",
-                grant.Origin, grant.Rating, CreationQualitiesPage.Signed(grant.KarmaCost)), null, sourceXml)
+                grant.Origin, grant.Rating, CreationQualitiesPage.Signed(grant.KarmaCost)), null, sourceXml, grant.Rating)
     {
     }
 
     private CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
-        string name, string detail, string? followUp, string? sourceXml) : base(coordinator)
+        string name, string detail, string? followUp, string? sourceXml, int rating) : base(coordinator)
     {
         _original = original;
         _name = name;
         _detail = detail;
         _followUp = followUp;
         _sourceXml = sourceXml;
+        _rating = rating;
         Title = name;
         AutomationId = "creation-quality-info-page";
         Content = new ScrollView { Content = _body };
@@ -909,7 +911,7 @@ public sealed class CreationQualityInfoPage : NativePageBase
         if (!string.IsNullOrWhiteSpace(_followUp))
             _body.Add(NativeTheme.Body(_followUp));
         if (_sourceXml is not null)
-            foreach (string effect in CreationQualityInfo.Effects(_sourceXml))
+            foreach (string effect in CreationQualityInfo.Effects(_sourceXml, _rating))
                 _body.Add(NativeTheme.Body(effect));
         else
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.MissingSource",
@@ -940,7 +942,7 @@ internal static class CreationQualityInfo
         return XElement.Load(reader);
     }
 
-    public static IReadOnlyList<string> Effects(string xml)
+    public static IReadOnlyList<string> Effects(string xml, int rating = 1)
     {
         var source = Read(xml);
         var result = new List<string>();
@@ -949,6 +951,8 @@ internal static class CreationQualityInfo
         string summary = Guid.TryParse(source.Element("id")?.Value, out var id)
             ? CreationFlowStrings.Get("Qualities.Summary." + id.ToString("D"), string.Empty) : string.Empty;
         if (!string.IsNullOrWhiteSpace(summary)) result.Add(summary);
+        int baseEffectIndex = result.Count;
+        bool hasBaseEffects = false;
         bool incomplete = false;
         foreach (var scope in source.Elements().Where(node => node.Name.LocalName is "bonus" or "firstlevelbonus" or "naturalweapons"))
         {
@@ -1022,6 +1026,7 @@ internal static class CreationQualityInfo
                     // modifier into an apparently complete explanation, including
                     // when its known text duplicates an earlier effect.
                     incomplete |= HasUndescribedDetail(effect);
+                    hasBaseEffects |= scope.Name.LocalName == "bonus" && !string.IsNullOrWhiteSpace(description);
                     if (!string.IsNullOrWhiteSpace(description) && scope.Name.LocalName == "firstlevelbonus")
                         description = $"{Label("Once, at the first level only")}: {description}";
                     bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities" or "naturalweapon";
@@ -1042,6 +1047,13 @@ internal static class CreationQualityInfo
             if (!weapon.HasElements && !string.IsNullOrWhiteSpace(weapon.Value) && !Guid.TryParse(weapon.Value, out _))
                 result.Add(Scalar(weapon, "Granted weapon; attack details not yet available"));
         }
+        // The accepted option/grant supplies its level. Source modifiers are
+        // not an evaluated total; never multiply them or replace Rating in an
+        // expression here. Keep the original explanation first and distinguish
+        // the base values from the selected level beside the actual effects.
+        if (rating > 1 && hasBaseEffects)
+            result.Insert(baseEffectIndex, CreationFlowStrings.Format("Qualities.Info.BaseEffects",
+                "Selected level: {0}. The values below are base effects, not the combined total for this level. One-time effects are marked separately.", rating));
         if (result.Count == 0)
             result.Add(CreationFlowStrings.Get("Qualities.Info.Manual", "A description of this quality is not available yet."));
         else if (incomplete)
