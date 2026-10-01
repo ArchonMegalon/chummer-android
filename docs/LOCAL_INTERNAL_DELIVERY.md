@@ -104,14 +104,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 64 is the latest [observed Internal availability](../play/evidence/preview64-internal-observation.md).
-It is available on Play Internal; physical Play installation of 64 is not yet
-verified. Magic catalogs now show at most 20 rows per page with name/source-book
+Preview 65 is the latest [observed Internal availability](../play/evidence/preview65-internal-observation.md).
+It is available on Play Internal; physical Play installation of 65 is not yet
+verified. Magic blockers now have readable EN/DE/ES guidance, with exact codes
+behind diagnostic disclosure and unsupported selections still disabled. Actual-Core
+managed checks and the affected native guidance/disclosure/draft-selection smoke
+passed; all 30 existing workspace files were unchanged. No full native Magic
+save/restart or general performance claim. Repeated guidance, transition latency
+and disabled-button visual styling remain follow-ups.
+Preview 64's Magic catalogs show at most 20 rows per page with name/source-book
 search, retaining all Core options and unchanged rules. Managed catalog/owner/
 save-cold-reopen checks and native paging/search/draft-selection smoke passed;
 all 29 prior workspace files were unchanged. Native full Magic save/restart is
-not claimed. Existing raw Magic blocker messages and general transition latency
-remain follow-ups, not all-screen polish or physical-performance approval.
+not claimed. Its raw Magic blocker messages are addressed by Preview 65; historical
+evidence remains unchanged. This is not all-screen or physical-performance approval.
 Preview 63's Core operation-scoped quality batches remove repeated catalog
 preparation while preserving eligibility, option order and costs. Actual-Core
 equivalence/ownership checks and native selection/help/save/new-process receipt
