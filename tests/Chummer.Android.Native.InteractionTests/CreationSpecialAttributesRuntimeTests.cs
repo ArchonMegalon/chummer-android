@@ -11,7 +11,7 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
-            foreach (var (outcome, locale) in new[] { ("saved", "en-GB"), ("departure", "de-AT"), ("owner-aba", "es-MX") })
+            foreach (var (outcome, locale) in new[] { ("return-unknown", "en-GB"), ("saved", "en-GB"), ("departure", "de-AT"), ("owner-aba", "es-MX") })
             {
                 var culture = CultureInfo.CurrentUICulture;
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
@@ -44,6 +44,8 @@ internal static partial class AfterRunAuthorityHarness
                     entered.TrySetResult();
                     Require(release.Wait(TimeSpan.FromSeconds(10)), "Attribute save feedback test was not released.");
                 };
+                if (outcome == "return-unknown")
+                    probe.AfterConfirm = () => throw new IOException("synthetic-returned-save-response-loss");
                 Task pending = ui.BeginAsyncVoid(() => ((IButtonController)save).SendClicked());
                 try
                 {
@@ -60,7 +62,10 @@ internal static partial class AfterRunAuthorityHarness
                     Require(reads == 1 && probe.ConfirmCalls == 0 && rendered.SequenceEqual(body.Children)
                         && !save.IsEnabled && save.Text != label,
                         "Duplicate save or refresh repeated work or cleared pending feedback.");
-                    if (outcome == "departure") IssuedPageLifecycle(page, "OnDisappearing");
+                    if (outcome is "departure" or "return-unknown") IssuedPageLifecycle(page, "OnDisappearing");
+                    // The original click join also observes this genuine async-void
+                    // appearance; do not start a second overlapping join.
+                    if (outcome == "return-unknown") IssuedPageLifecycle(page, "OnAppearing");
                     if (outcome == "owner-aba")
                     {
                         var owner = owners.Current;
@@ -79,6 +84,11 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 Require(save.Text == label && !save.IsEnabled,
                     "Save completion re-enabled a retained confirmation control.");
+                if (outcome == "return-unknown")
+                    Require(MinimalVisibleText(page).Contains(
+                        CreationAllocationStrings.Get("AttributesPreview.SaveUncertain", "missing"), StringComparison.Ordinal)
+                        && !MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == save.AutomationId && x.IsEnabled),
+                        "Returning during an uncertain save hid the result or enabled a replay.");
                 var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
                 if (outcome == "owner-aba")
                 {

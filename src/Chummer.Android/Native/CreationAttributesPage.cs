@@ -1003,6 +1003,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         {
             if (_saving || !ReferenceEquals(_confirmButton, confirm) || !confirm.IsEnabled
                 || !Coordinator.CanOfferCreationAttributesConfirmation(_preview, _allocations)) return;
+            long saveAppearance = CaptureAppearanceGeneration();
             _saving = true;
             string label = confirm.Text;
             confirm.IsEnabled = false;
@@ -1019,6 +1020,12 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                 _saving = false;
                 confirm.Text = label;
                 // A fresh render, never this retained button, owns any next action.
+                // RunAsync refreshes only its original appearance. If the user
+                // returned while saving, show the result on that new appearance
+                // too, including uncertain outcomes that emit no Changed event.
+                long currentAppearance = CaptureAppearanceGeneration();
+                if (currentAppearance != saveAppearance && IsCurrentAppearanceGeneration(currentAppearance))
+                    Refresh();
             }
         });
         _body.Add(confirm);
