@@ -104,9 +104,15 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 63 is the latest [observed Internal availability](../play/evidence/preview63-internal-observation.md).
-It is available on Play Internal; physical Play installation of 63 is not yet
-verified. Core's operation-scoped quality batches remove repeated catalog
+Preview 64 is the latest [observed Internal availability](../play/evidence/preview64-internal-observation.md).
+It is available on Play Internal; physical Play installation of 64 is not yet
+verified. Magic catalogs now show at most 20 rows per page with name/source-book
+search, retaining all Core options and unchanged rules. Managed catalog/owner/
+save-cold-reopen checks and native paging/search/draft-selection smoke passed;
+all 29 prior workspace files were unchanged. Native full Magic save/restart is
+not claimed. Existing raw Magic blocker messages and general transition latency
+remain follow-ups, not all-screen polish or physical-performance approval.
+Preview 63's Core operation-scoped quality batches remove repeated catalog
 preparation while preserving eligibility, option order and costs. Actual-Core
 equivalence/ownership checks and native selection/help/save/new-process receipt
 reopen passed; all 28 prior workspace files remained unchanged. Managed timing
