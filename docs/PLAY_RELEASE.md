@@ -13,7 +13,15 @@ for historical replay only. Their guards and original policy bindings remain;
 they are not extra prerequisites for the local lane. Optional full E2E remains
 manual. Source-only CI cannot be reported as compile/runtime or release success.
 
-## Current observed Internal release: Preview 47 — September 27, 2026
+## Current observed Internal release
+
+The current release and physical-installation boundary are maintained in
+[Local Internal delivery](LOCAL_INTERNAL_DELIVERY.md#current-evidence-boundary).
+The numbered sections below are historical observations, not current-version
+assertions. Follow the linked current evidence before choosing the next unused
+version code; never rebuild or re-upload a consumed version.
+
+## Historical observed Internal release: Preview 47 — September 27, 2026
 
 Scoped authenticated Console readback at `2026-09-27T14:44:18Z` shows
 `47 (0.1.0-preview.47)` as **Available to internal testers**.

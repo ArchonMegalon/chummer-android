@@ -104,9 +104,15 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 68 is the latest [observed Internal availability](../play/evidence/preview68-internal-observation.md).
-It is available on Play Internal; physical Play installation of 68 is not yet
-verified. Fresh Magic draft admission now validates one canonical projection,
+Preview 69 is the latest [observed Internal availability](../play/evidence/preview69-internal-observation.md).
+It is available on Play Internal; physical Play installation of 69 is not yet
+verified. Magic review, save and recovery are readable and owner-bound. The new
+Core/UI packages and affected managed checks passed. Native selection, one save,
+verified new-process receipt reopen and acknowledgement passed; the other 29
+workspace files stayed unchanged. Confirmation still took about 85–90 seconds;
+no general responsiveness or ANR-free startup claim. Diagnostic x64/test identity
+and version 68 are separate from the production ARM64/version 69 artifact.
+Preview 68's fresh Magic draft admission validates one canonical projection,
 retaining unsaved choices on an unchanged owner/editor and rejecting stale or
 invalid authority. Actual-Core negative/ownership/cold-reopen checks and the
 affected native return/selection smoke passed; all 30 saved files were unchanged.
