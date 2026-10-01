@@ -108,7 +108,9 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             "ApplyCharacter",
             "AI provider",
         ):
-            self.assertNotIn(forbidden, page)
+            # Restoring navigation after preview is not permission to select or
+            # mutate. Keep the ban on unconditionally enabling product actions.
+            self.assertNotIn(forbidden, page.replace("_backBehavior.IsEnabled = true;", ""))
 
     def test_magic_save_diagnostics_are_disclosed_not_primary_content(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")

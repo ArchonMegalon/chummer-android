@@ -144,6 +144,7 @@
   <data name="Magic.Option.PageTitle" xml:space="preserve"><value>Configure choice</value></data>
   <data name="Magic.Option.PointCost" xml:space="preserve"><value>Point cost</value></data>
   <data name="Magic.Option.Select" xml:space="preserve"><value>Select for draft</value></data>
+  <data name="Magic.Option.Checking" xml:space="preserve"><value>Checking your choice… You can go back when this finishes.</value></data>
   <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Selected levels: {0}</value></data>
   <data name="Magic.PageTitle" xml:space="preserve"><value>Magic / Resonance</value></data>
   <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Current draft</value></data>

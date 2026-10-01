@@ -142,6 +142,7 @@
   <data name="Magic.Option.PageTitle" xml:space="preserve"><value>Configurar selección</value></data>
   <data name="Magic.Option.PointCost" xml:space="preserve"><value>Costo en puntos</value></data>
   <data name="Magic.Option.Select" xml:space="preserve"><value>Seleccionar para el borrador</value></data>
+  <data name="Magic.Option.Checking" xml:space="preserve"><value>Comprobando tu elección… Podrás volver cuando termine.</value></data>
   <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Niveles seleccionados: {0}</value></data>
   <data name="Magic.PageTitle" xml:space="preserve"><value>Magia / Resonancia</value></data>
   <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Borrador actual</value></data>

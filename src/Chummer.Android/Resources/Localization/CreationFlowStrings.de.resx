@@ -144,6 +144,7 @@
   <data name="Magic.Option.PageTitle" xml:space="preserve"><value>Auswahl konfigurieren</value></data>
   <data name="Magic.Option.PointCost" xml:space="preserve"><value>Punktkosten</value></data>
   <data name="Magic.Option.Select" xml:space="preserve"><value>Für Entwurf auswählen</value></data>
+  <data name="Magic.Option.Checking" xml:space="preserve"><value>Deine Auswahl wird geprüft… Danach kannst du zurückgehen.</value></data>
   <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Ausgewählte Stufen: {0}</value></data>
   <data name="Magic.PageTitle" xml:space="preserve"><value>Magie / Resonanz</value></data>
   <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Aktueller Entwurf</value></data>
