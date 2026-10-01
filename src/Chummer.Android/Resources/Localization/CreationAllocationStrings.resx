@@ -257,7 +257,9 @@
   <data name="Karma.KnowledgeBudget" xml:space="preserve"><value>Knowledge points: {0} / {1}</value></data>
   <data name="Karma.ValueCost" xml:space="preserve"><value>{0}: {1} · {2} Karma</value></data>
   <data name="Karma.Qualities" xml:space="preserve"><value>Qualities</value></data>
-  <data name="Karma.QualityHelp" xml:space="preserve"><value>Choose qualities from your active sources. Source costs are shown per rating; Core applies profile multipliers and limits to the totals. Choices with unresolved effects or requirements are disabled. Only the final review saves the draft.</value></data>
+  <data name="Karma.QualityHelp" xml:space="preserve"><value>Only qualities available for your current draft and budget are shown. Tap ! for their effects. Selected qualities can always be removed. Only the final review saves the draft.</value></data>
+  <data name="Karma.QualityEmpty" xml:space="preserve"><value>No available qualities on this page. Try Next or another search, or check your budget and other draft choices.</value></data>
+  <data name="Karma.QualityCheckFailed" xml:space="preserve"><value>Couldn't check available qualities. Your choices are unchanged. Reopen Qualities to check again.</value></data>
   <data name="Karma.QualityUnavailable" xml:space="preserve"><value>Unavailable in this draft</value></data>
   <data name="Karma.Selected" xml:space="preserve"><value>Selected</value></data>
   <data name="Karma.QualitySourceCost" xml:space="preserve"><value>{0} · rating {1} · source cost {2} Karma</value></data>
@@ -893,4 +895,5 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Your attribute choices were saved, but this view couldn't refresh. Reopen your runner to see them. Don't save these choices again.</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Checking your choices…</value></data>
   <data name="AttributesPreview.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Karma.QualityInfo" xml:space="preserve"><value>!</value></data>
 </root>

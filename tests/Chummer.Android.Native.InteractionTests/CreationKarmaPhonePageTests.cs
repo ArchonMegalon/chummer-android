@@ -219,12 +219,29 @@ internal static partial class AfterRunAuthorityHarness
                 return;
             }
             await QualitySearch("Code of Honor");
-            Require(IssuedElements(Current()).OfType<Button>().Any(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true)
-                && IssuedElements(Current()).OfType<Button>().Where(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true).All(b => !b.IsEnabled),
-                "An unresolved source prompt must not be offered as an ordinary purchase.");
+            var unresolvedHonor = Session().Authority!.QualitiesCatalog!.Options
+                .Where(option => option.Name == "Code of Honor" && !option.IsSelectable).ToArray();
+            Require(unresolvedHonor.Length > 0 && unresolvedHonor.All(option => !IssuedElements(Current()).OfType<Button>()
+                    .Any(button => button.AutomationId == "karma-add-quality-" + option.OptionId)),
+                "The available-quality picker still lists unresolved source prompts.");
+            // A separately sourced, fully defined Code of Honor variant may
+            // remain available. Never suppress it merely to match an old catalog.
             await QualitySearch("Unsteady Hands");
             var addNegative = IssuedElements(Current()).OfType<Button>().Single(b => b.AutomationId?.StartsWith("karma-add-quality-", StringComparison.Ordinal) == true);
             string negativeId = addNegative.AutomationId["karma-add-quality-".Length..];
+            Require(!IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains("quality:", StringComparison.Ordinal) == true),
+                "The ordinary quality picker exposed an internal source identity.");
+            var info = Element<Button>("karma-quality-info-" + negativeId);
+            Require(info.Text == "!", "Quality effect help is missing.");
+            await Click(info.AutomationId);
+            Require(Current() is CreationQualityInfoPage
+                && IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains("Rulebook:", StringComparison.Ordinal) == true)
+                && probe.ConfirmCalls == 0, "Quality information must show the exact source citation without saving.");
+            await Back();
+            int depthBeforeOldInfo = navigation.Navigation.NavigationStack.Count;
+            await ui.BeginAsyncVoid(() => ((IButtonController)info).SendClicked());
+            Require(navigation.Navigation.NavigationStack.Count == depthBeforeOldInfo,
+                "A detached quality information control navigated again.");
             await Click(addNegative.AutomationId);
             Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(0, 7, -7),
                 "Quality credit was not projected from the current Core quote.");
@@ -239,6 +256,91 @@ internal static partial class AfterRunAuthorityHarness
             Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(5, 7, -2)
                 && new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!.ContentRevision == before.ContentRevision,
                 "Quality selection must show Core net costs without persisting before review.");
+            var qualitySession = Session();
+            var qualityState = qualitySession.Authority!;
+            var ordinarySelection = qualitySession.Selection!;
+            var ordinaryQuote = qualitySession.Quote!;
+            var availabilitySelection = ordinarySelection with
+            {
+                QualityOptionIds = ordinarySelection.QualityOptionIds!.Where(optionId =>
+                    qualityState.QualitiesCatalog!.Options.Single(option => option.OptionId == optionId).Name != "Overclocker").ToArray()
+            };
+            var athletics = qualityState.SkillsCatalog!.SkillGroups.Single(group => group.Name == "Athletics");
+            var fullBudgetSelection = availabilitySelection with
+            {
+                Attributes = new[] { "BOD", "AGI", "REA", "STR", "CHA", "INT", "LOG", "WIL" }
+                    .Select(attribute => new CharacterCreationKarmaAttributeAllocation(attribute, 4))
+                    .Append(new("EDG", 5)).ToArray(),
+                Skills = ordinarySelection.Skills! with
+                {
+                    Skills = ordinarySelection.Skills!.Skills.Select(skill => skill.IsNativeLanguage ? skill : skill with { KarmaLevels = 6 }).ToArray(),
+                    Groups = [new(athletics.GroupId, 4)]
+                },
+                ResourceKarmaInvestment = null
+            };
+            var priced = await runtime.Coordinator.PreviewCreationKarmaAsync(qualityState, fullBudgetSelection);
+            Require(priced.Value is { CanSelect: true, KarmaBudget.Remaining: >= 0 },
+                "SETUP: exact nearly-full Karma budget rejected: " + string.Join(",", priced.Blockers));
+            fullBudgetSelection = fullBudgetSelection with { ResourceKarmaInvestment = priced.Value!.KarmaBudget.Remaining };
+            var fullBudget = await runtime.Coordinator.PreviewCreationKarmaAsync(qualityState, fullBudgetSelection);
+            Require(fullBudget.Value is { CanSelect: true, KarmaBudget.Remaining: 0 },
+                "SETUP: exact full-budget Karma fixture rejected: " + string.Join(",", fullBudget.Blockers));
+            var noFunds = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                fullBudgetSelection, "Overclocker", 0, 20, default, () => true);
+            Require(noFunds is { Options.Count: 0 } && runtime.Coordinator.IsCreationKarmaPreviewCurrent(fullBudget.Value!),
+                "An unaffordable quality was offered, or browsing replaced the issued confirmation.");
+            var funded = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                availabilitySelection, "Overclocker", 0, 20, default, () => true);
+            Require(funded is { Options.Count: > 0 }, "Affordable exact quality disappeared with the same sources.");
+            var ratingIds = new List<string>();
+            int previewsBeforePage = probe.PreviewCalls;
+            int batchesBeforePage = probe.QualityBatchCalls, candidatesBeforePage = probe.QualityCandidateCount;
+            var largerPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                ordinarySelection, "", 0, 6, default, () => true);
+            Require(probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls == batchesBeforePage + 1
+                && probe.QualityCandidateCount - candidatesBeforePage is > 0 and <= 6,
+                "A quality page must use one bounded Core batch without individual source reloads.");
+            Require(largerPage is { Options.Count: >= 2 }, "SETUP: expected at least two available source choices.");
+            int? cursor = 0;
+            do
+            {
+                previewsBeforePage = probe.PreviewCalls;
+                batchesBeforePage = probe.QualityBatchCalls; candidatesBeforePage = probe.QualityCandidateCount;
+                var ratingPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                    ordinarySelection, "", cursor!.Value, 1, default, () => true);
+                Require(probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls - batchesBeforePage <= 1
+                    && probe.QualityCandidateCount - candidatesBeforePage <= 1,
+                    "Filtered pagination performed extra full previews to fill or look ahead.");
+                Require(ratingPage is not null, "Rating pagination lost its bound source read.");
+                ratingIds.AddRange(ratingPage!.Options.Select(option => option.OptionId));
+                cursor = ratingPage.NextOffset;
+            } while (cursor is not null && ratingIds.Count < 2);
+            Require(ratingIds.SequenceEqual(largerPage!.Options.Take(2).Select(option => option.OptionId)),
+                "Filtered pagination skipped or duplicated a legal source choice.");
+            var canceledRead = new CancellationTokenSource();
+            probe.AfterPreview = canceledRead.Cancel;
+            bool canceled = false;
+            try { await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                availabilitySelection, "Overclocker", 0, 20, canceledRead.Token, () => true); }
+            catch (OperationCanceledException) { canceled = true; }
+            finally { probe.AfterPreview = null; canceledRead.Dispose(); }
+            Require(canceled, "Canceled quality checking returned actionable choices.");
+            bool currentQualityPage = true;
+            probe.AfterPreview = () => currentQualityPage = false;
+            var departedChoices = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                availabilitySelection, "Overclocker", 0, 20, default, () => currentQualityPage);
+            probe.AfterPreview = null;
+            Require(departedChoices is null && probe.ConfirmCalls == 0,
+                "A departed quality page admitted a late result or persisted a choice.");
+            probe.FailReads = true;
+            var failedChoices = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                availabilitySelection, "Overclocker", 0, 20, default, () => true);
+            probe.FailReads = false;
+            Require(failedChoices is null, "A failed source read was disguised as an empty available catalog.");
+            await qualitySession.PreviewAsync(default, () => true);
+            Require(qualitySession.QuoteCurrent && qualitySession.Quote!.QuoteDigest == ordinaryQuote.QuoteDigest,
+                "Read-only quality checks changed the actual draft budget.");
+            Console.WriteLine("PASS Karma quality availability: exact total budget, source eligibility, filtered rating pages, cancellation/departure/read failure, no writes or review replacement");
             await Back();
             await Click("karma-open-contacts");
             await Click("karma-add-contact");
@@ -400,6 +502,13 @@ internal static partial class AfterRunAuthorityHarness
                 && decision.Quote.Lifestyles.Budget.Remaining == 11950m
                 && decision.Command.StartingLifestyleId!.Value.ToString("D") == mediumId["karma-lifestyle-".Length..],
                 "Native review did not persist exactly the selected source-bound pending foundation.");
+            if (Environment.GetEnvironmentVariable("CHUMMER_KARMA_QUALITY_SMOKE_PATH") is { Length: > 0 } smokePath)
+            {
+                Require(Path.IsPathFullyQualified(smokePath) && !File.Exists(smokePath),
+                    "Native smoke export must be a new, explicit synthetic fixture path.");
+                File.Copy(Path.Combine(runtime.StateDirectory, "workspaces", id.Value + ".json"), smokePath, overwrite: false);
+                Console.WriteLine("Karma quality smoke fixture: " + id.Value);
+            }
             // Recreate all page/session objects and reread the actual durable
             // store. This is managed reopen evidence, not an Android process restart.
             IssuedPageLifecycle(Current(), "OnDisappearing");

@@ -85,7 +85,10 @@ internal static class CreationKarmaCopy
     public static string Talent => CreationAllocationStrings.Get("Karma.Talent", "Talent");
     public static string Attributes => CreationAllocationStrings.Get("Karma.Attributes", "Attributes");
     public static string Qualities => CreationAllocationStrings.Get("Karma.Qualities", "Qualities");
-    public static string QualityHelp => CreationAllocationStrings.Get("Karma.QualityHelp", "Choose qualities from your active sources. Source costs are shown per rating; Core applies profile multipliers and limits to the totals. Choices with unresolved effects or requirements are disabled. Only the final review saves the draft.");
+    public static string QualityInfo => CreationAllocationStrings.Get("Karma.QualityInfo", "!");
+    public static string QualityHelp => CreationAllocationStrings.Get("Karma.QualityHelp", "Only qualities available for your current draft and budget are shown. Tap ! for their effects. Selected qualities can always be removed. Only the final review saves the draft.");
+    public static string QualityEmpty => CreationAllocationStrings.Get("Karma.QualityEmpty", "No available qualities on this page. Try Next or another search, or check your budget and other draft choices.");
+    public static string QualityCheckFailed => CreationAllocationStrings.Get("Karma.QualityCheckFailed", "Couldn't check available qualities. Your choices are unchanged. Reopen Qualities to check again.");
     public static string QualityUnavailable => CreationAllocationStrings.Get("Karma.QualityUnavailable", "Unavailable in this draft");
     public static string Selected => CreationAllocationStrings.Get("Karma.Selected", "Selected");
     public static string QualitySourceCost(string name, int rating, int cost) => CreationAllocationStrings.Format("Karma.QualitySourceCost", "{0} · rating {1} · source cost {2} Karma", name, rating, cost);
