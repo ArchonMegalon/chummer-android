@@ -67,7 +67,16 @@ internal sealed class CreationQualitiesPhoneDraft
     {
         if (!Matches(state, overview)) return [];
         var available = new List<CharacterCreationQualitiesDesktopOption>();
-        var selected = SelectedOptionIds;
+        var additions = editor.Options
+            .Where(option => !IsSelected(option.OptionId)
+                && CreationQualitiesPhoneAuthority.IsOptionConfigurable(option))
+            .Select(option => option.OptionId)
+            .ToArray();
+        // Core snapshots and validates the shared catalog once for this load.
+        // No admission is cached across appearances, owner changes or revisions.
+        var previews = CharacterCreationQualitiesRules.EvaluateAdditions(
+            new(state.Binding, state.Authority, SelectedOptionIds), additions, cancellationToken);
+        int additionIndex = 0;
         foreach (var option in editor.Options)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -79,8 +88,7 @@ internal sealed class CreationQualitiesPhoneDraft
                 continue;
             }
             if (!CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)) continue;
-            var preview = CharacterCreationQualitiesRules.Evaluate(new(
-                state.Binding, state.Authority, [.. selected, option.OptionId]));
+            var preview = previews[additionIndex++];
             // Metagenic pairs are assembled one choice at a time. Core still
             // requires balance before review/confirmation can be enabled.
             if (preview.Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
