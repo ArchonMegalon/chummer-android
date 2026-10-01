@@ -11,6 +11,7 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            await VerifyAttributeReviewPreparationAsync(ui, contentRoot);
             await VerifyAttributeReviewRecoveryGuidanceAsync(ui, contentRoot);
             foreach (var (talent, rank, attributeId) in new[]
             {
@@ -276,6 +277,113 @@ internal static partial class AfterRunAuthorityHarness
         });
     }
 
+    private static async Task VerifyAttributeReviewPreparationAsync(IssuedPageUiContext ui, string contentRoot)
+    {
+        foreach (string outcome in new[] { "ready", "leave", "owner-aba", "error" })
+        {
+            var owners = new ControlledLinkedOwner();
+            AttributesCommitProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                attributesDecorator: actual => probe = new(actual));
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var state = runtime.Coordinator.LoadCreationAttributes().Value!;
+            var page = new CreationAttributesPage(runtime.Coordinator, state);
+            var navigation = new NavigationPage(new ContentPage());
+            await navigation.PushAsync(page, false);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var rendered = body.Children.ToArray();
+            var review = MinimalVisible(page).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-attributes-prepare-preview");
+            string label = review.Text;
+            int uiThread = Environment.CurrentManagedThreadId;
+            int reads = 0;
+            using var release = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            probe!.BeforeRead = () =>
+            {
+                Require(Environment.CurrentManagedThreadId != uiThread && owners.ActiveLeases == 0,
+                    "Review preparation must read off the UI thread without carrying an owner lease.");
+                Interlocked.Increment(ref reads);
+                entered.TrySetResult();
+                Require(release.Wait(TimeSpan.FromSeconds(10)), "Review preparation was not released.");
+                if (outcome == "error") throw new IOException("synthetic-review-read-failure");
+            };
+            Task pending = ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked());
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(!pending.IsCompleted && !review.IsEnabled
+                    && review.Text == CreationAllocationStrings.Get("Attributes.ReviewPreparing", "missing")
+                    && rendered.SequenceEqual(body.Children) && navigation.Navigation.NavigationStack.Count == 2,
+                    "Review must retain visible pending feedback before entering the next page.");
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                ((IButtonController)review).SendClicked();
+                MinimalRender(page);
+                Require(reads == 1 && !pending.IsCompleted && rendered.SequenceEqual(body.Children),
+                    "Duplicate review or refresh started another read or removed pending feedback.");
+                if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
+                if (outcome == "owner-aba")
+                {
+                    var owner = owners.Current;
+                    owners.Set(ContactsOwnerB);
+                    owners.Set(owner);
+                }
+            }
+            finally
+            {
+                release.Set();
+                try { await JoinIssuedPageAsync(pending); }
+                finally { probe.BeforeRead = null; }
+            }
+            Require(review.Text == label && !review.IsEnabled && alerts.Titles.Count == 0,
+                "Review completion re-enabled a retained control or exposed a raw exception: " + outcome);
+            var preview = navigation.Navigation.NavigationStack.Last() as CreationAttributesPreviewPage;
+            Require((preview is not null) == (outcome == "ready"),
+                "Failed, departed or owner-stale review entered a confirmation page: " + outcome);
+            if (preview is not null)
+            {
+                int beforeRender = reads;
+                probe.BeforeRead = () => Interlocked.Increment(ref reads);
+                try { MinimalRender(preview); MinimalRender(preview); }
+                finally { probe.BeforeRead = null; }
+                Require(reads == beforeRender && MinimalVisible(preview).OfType<Button>().Any(x =>
+                    x.AutomationId == "creation-attributes-confirm" && x.IsEnabled),
+                    "Issued review must render without Core I/O and retain its valid save action.");
+                IssuedPageLifecycle(preview, "OnDisappearing");
+            }
+            if (outcome == "error")
+            {
+                Require(!MinimalVisibleText(page).Contains("synthetic-review-read-failure", StringComparison.Ordinal)
+                    && !MinimalVisibleText(page).Contains("creation-attributes-", StringComparison.Ordinal)
+                    && MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == review.AutomationId
+                        && x.IsEnabled && !ReferenceEquals(x, review)),
+                    "Failed review must offer a fresh read-only retry with readable guidance.");
+                int beforeRetry = reads;
+                probe.BeforeRead = () => Interlocked.Increment(ref reads);
+                // Model a callback already queued before the old native control
+                // was disabled; the page must independently reject its identity.
+                review.IsEnabled = true;
+                try { await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked())); }
+                finally { probe.BeforeRead = null; }
+                Require(reads == beforeRetry && navigation.Navigation.NavigationStack.Count == 2,
+                    "Detached review control still read Core or navigated.");
+            }
+            Require(probe.ConfirmCalls == 0, "Review preparation persisted a workspace.");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            IssuedPageLifecycle(page, "OnDisappearing");
+        }
+        Console.WriteLine("PASS attribute review background read, UI heartbeat, retained feedback, duplicate/detached/owner-ABA/departure rejection and read-free rendering");
+    }
+
     private static async Task VerifyAttributeReviewRecoveryGuidanceAsync(IssuedPageUiContext ui, string contentRoot)
     {
         foreach (bool outcomeUnknown in new[] { true, false })
@@ -297,6 +405,11 @@ internal static partial class AfterRunAuthorityHarness
             CreationAttributesPhoneConfirmResult? applied = null;
             var review = new CreationAttributesPreviewPage(coordinator, preview, allocations, result => applied = result);
             MinimalRender(review);
+            int renderReads = 0;
+            probe!.BeforeRead = () => Interlocked.Increment(ref renderReads);
+            try { MinimalRender(review); MinimalRender(review); }
+            finally { probe.BeforeRead = null; }
+            Require(renderReads == 0, "Attribute review rendering performs synchronous Core reads on the UI thread.");
             var confirm = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
             Require(confirm.IsEnabled, "SETUP: recovery guidance requires an issued, valid Magic review.");
             probe!.AfterConfirm = () =>
