@@ -891,4 +891,5 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="AttributesPreview.Reopen" xml:space="preserve"><value>This review is no longer current. Return to your runner and reopen Attributes to check the latest choices.</value></data>
   <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>We couldn't confirm whether your choices were saved. Reopen your runner and check Attributes before making another change. Don't repeat this save.</value></data>
   <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Your attribute choices were saved, but this view couldn't refresh. Reopen your runner to see them. Don't save these choices again.</value></data>
+  <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Checking your choices…</value></data>
 </root>

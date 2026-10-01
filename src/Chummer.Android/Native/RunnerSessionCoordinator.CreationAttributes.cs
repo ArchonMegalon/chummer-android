@@ -92,6 +92,16 @@ public sealed partial class RunnerSessionCoordinator
         => _attributePreviews.TryGetValue(preview, out var issued) && !issued.ConfirmationStarted
            && IsCreationAttributesStateCurrent(issued.Load.State);
 
+    // Rendering uses the exact issued projection, never a synchronous Core read.
+    // This only offers the review action: ConfirmIssuedAttributesAsync still
+    // reloads, reprojects and validates the current bytes before any mutation.
+    internal bool CanOfferCreationAttributesConfirmation(CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => _attributePreviews.TryGetValue(preview, out var issued)
+           && IsCreationAttributesPreviewCurrent(preview)
+           && allocations.SequenceEqual(issued.Allocations)
+           && CreationAttributesPhoneAuthority.CanConfirmPreview(issued.Load.State, State, preview, allocations);
+
     internal bool CanDisplayCreationAttributesPreview(CharacterCreationAttributesPreview preview)
         => _attributePreviews.TryGetValue(preview, out var issued)
            && IsNativePersistenceOwnerCurrent(issued.Load.Display.DisplayOwnerContext)
