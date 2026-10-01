@@ -274,6 +274,50 @@ internal static partial class AfterRunAuthorityHarness
             var original = coordinator.State;
             var loaded = await coordinator.LoadCreationQualitiesForDisplayAsync(original, default);
             var state = loaded.Value ?? throw new InvalidOperationException("SETUP: quality authority missing.");
+            var catalogPage = new CreationQualitiesPage(coordinator);
+            await MinimalPrepareAsync(catalogPage);
+            var catalogNavigation = new NavigationPage(catalogPage);
+            SearchBar Search() => MinimalVisible(catalogPage).OfType<SearchBar>().Single();
+            var retainedSearch = Search();
+            var retainedReview = MinimalVisible(catalogPage).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-qualities-open-review");
+            var detachedHelp = MinimalVisible(catalogPage).OfType<Button>().First(item =>
+                item.AutomationId?.StartsWith("creation-quality-info-", StringComparison.Ordinal) == true);
+            retainedSearch.Text = "no-such-quality-focus-regression";
+            ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
+            Require(ReferenceEquals(Search(), retainedSearch) && ReferenceEquals(retainedReview,
+                MinimalVisible(catalogPage).OfType<Button>().Single(item => item.AutomationId == "creation-qualities-open-review")),
+                "Submitting a Quality search must not detach its editor or rebuild unrelated actions.");
+            Require(!MinimalVisible(catalogPage).OfType<Button>().Any(item =>
+                item.AutomationId?.StartsWith("creation-quality-info-", StringComparison.Ordinal) == true),
+                "An empty search retained old help actions.");
+            ((IButtonController)detachedHelp).SendClicked();
+            Require(ReferenceEquals(catalogNavigation.CurrentPage, catalogPage), "Filtered-out help navigated from a stale row.");
+            retainedSearch.Text = string.Empty;
+            Require(ReferenceEquals(Search(), retainedSearch) && MinimalVisible(catalogPage).OfType<Button>().Any(item =>
+                item.AutomationId?.StartsWith("creation-quality-info-", StringComparison.Ordinal) == true),
+                "Clearing a search detached the native editor instead of refreshing only results.");
+            var nextPage = MinimalVisible(catalogPage).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-qualities-catalog-next");
+            Require(nextPage.IsEnabled, "SETUP: expected multiple available catalog pages.");
+            ((IButtonController)nextPage).SendClicked();
+            string secondPage = MinimalVisibleText(catalogPage);
+            ((IButtonController)nextPage).SendClicked();
+            Require(ReferenceEquals(Search(), retainedSearch) && MinimalVisibleText(catalogPage) == secondPage,
+                "Paging detached the editor or a detached pager changed the new result list.");
+            retainedSearch.Text = "Ambidextrous";
+            ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
+            Require(ReferenceEquals(Search(), retainedSearch)
+                && MinimalVisibleText(catalogPage).Contains("Ambidextrous")
+                && ReferenceEquals(catalogNavigation.CurrentPage, catalogPage),
+                "Replacing and submitting a Quality search must stay in the catalog, not open Review.");
+            MinimalRender(catalogPage);
+            string freshCatalog = MinimalVisibleText(catalogPage);
+            retainedSearch.Text = string.Empty;
+            ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
+            Require(!ReferenceEquals(Search(), retainedSearch) && MinimalVisibleText(catalogPage) == freshCatalog,
+                "A detached SearchBar changed the new catalog.");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
             var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
             var draft = new CreationQualitiesPhoneDraft();
             draft.Bind(state, original);
@@ -367,6 +411,12 @@ internal static partial class AfterRunAuthorityHarness
                 var owner = owners.Current;
                 owners.Set(ContactsOwnerB);
                 owners.Set(owner);
+                string staleCatalog = MinimalVisibleText(catalogPage);
+                var staleSearch = Search();
+                staleSearch.Text = "Catlike";
+                ((ISearchBarController)staleSearch).OnSearchButtonPressed();
+                Require(MinimalVisibleText(catalogPage) == staleCatalog,
+                    "A search callback admitted catalog work across an owner A→B→A transition.");
                 foreach (NativePageBase stale in new NativePageBase[] { configure, review, receipt })
                 {
                     MinimalRender(stale);

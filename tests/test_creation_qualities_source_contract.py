@@ -110,6 +110,18 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             for key in ("Search", "NoMatches", "Showing", "Previous", "Next"):
                 self.assertIn(f'name="Qualities.{key}"', resources)
 
+    def test_search_refreshes_results_without_detaching_the_editor(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        filtering = page[page.index("private void ApplyFilter("):page.index("private void AddReview(")]
+        self.assertIn("RenderCatalog(state, editor, _checkpointOwnsLane)", filtering)
+        self.assertNotIn("Refresh();", filtering)
+        self.assertIn("IsCatalogCurrent()", filtering)
+        rendering = page[page.index("private void RenderCatalog("):page.index("private void ApplyFilter(")]
+        self.assertIn("_catalog.Clear();", rendering)
+        self.assertNotIn("_body.Clear();", rendering)
+        self.assertNotIn("new SearchBar", rendering)
+        self.assertIn("ReferenceEquals(search.Parent, _body)", page)
+
     def test_phone_journey_is_purpose_built_and_core_bound(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         for marker in (

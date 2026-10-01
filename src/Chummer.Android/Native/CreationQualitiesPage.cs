@@ -18,6 +18,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private CreationQualitiesPhoneDraft _draft = new();
     private readonly CharacterCreationQualitiesCheckpointStore _store;
     private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 8 };
+    private readonly VerticalStackLayout _catalog = new() { Spacing = 14 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -31,6 +32,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private bool _canReview;
     private string? _reviewCheckpointDigest;
     private bool _loading = true;
+    private bool _checkpointOwnsLane;
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
@@ -102,6 +104,7 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     protected override void Refresh()
     {
+        _catalog.Clear();
         _body.Clear();
         _technicalDetails.Clear();
         _technicalDetails.IsVisible = false;
@@ -389,13 +392,30 @@ public sealed class CreationQualitiesPage : NativePageBase
             TextColor = NativeTheme.Text,
             PlaceholderColor = NativeTheme.Muted
         };
-        search.SearchButtonPressed += (_, _) => ApplyFilter(search.Text);
+        search.SearchButtonPressed += (_, _) =>
+        {
+            if (ReferenceEquals(search.Parent, _body)) ApplyFilter(search.Text);
+        };
         search.TextChanged += (_, args) =>
         {
-            if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
+            if (ReferenceEquals(search.Parent, _body)
+                && string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
                 ApplyFilter(string.Empty);
         };
         _body.Add(search);
+        _body.Add(_catalog);
+        _checkpointOwnsLane = checkpointOwnsLane;
+        RenderCatalog(state, editor, checkpointOwnsLane);
+    }
+
+    private void RenderCatalog(
+        CharacterCreationQualitiesState state,
+        CharacterCreationQualitiesEditorState editor,
+        bool checkpointOwnsLane)
+    {
+        // Filtering must not detach the focused SearchBar. A whole-page rebuild
+        // on clear can send the next Enter key to a different action (Review).
+        _catalog.Clear();
 
         CharacterCreationQualitiesDesktopOption[] matches = _availableOptions
             .Where(option => string.IsNullOrWhiteSpace(_filter)
@@ -412,7 +432,7 @@ public sealed class CreationQualitiesPage : NativePageBase
             : CreationFlowStrings.Format("Qualities.Showing", "Showing {0}–{1} of {2}", _catalogOffset + 1, end, matches.Length),
             NativeTheme.Muted);
         range.AutomationId = "creation-qualities-catalog-range";
-        _body.Add(range);
+        _catalog.Add(range);
 
         // Keep navigation ahead of the bounded rows; neither review nor paging should
         // require scrolling through the entire Core catalog. Paging never edits the draft.
@@ -422,8 +442,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         previous.IsEnabled = _catalogOffset > 0;
         previous.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset = Math.Max(0, _catalogOffset - CatalogPageSize);
-            Refresh();
+            RenderCatalog(state, editor, checkpointOwnsLane);
         };
         pager.Add(previous);
         Button next = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Qualities.Next", "Next"));
@@ -431,18 +452,19 @@ public sealed class CreationQualitiesPage : NativePageBase
         next.IsEnabled = end < matches.Length;
         next.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset += CatalogPageSize;
-            Refresh();
+            RenderCatalog(state, editor, checkpointOwnsLane);
         };
         pager.Add(next);
-        _body.Add(pager);
+        _catalog.Add(pager);
 
         CharacterCreationQualitiesDesktopOption[] visible = matches.Skip(_catalogOffset).Take(CatalogPageSize).ToArray();
         foreach (CharacterCreationQualityType type in Enum.GetValues<CharacterCreationQualityType>())
         {
             if (!visible.Any(option => option.Type == type))
                 continue;
-            _body.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
+            _catalog.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
                 ? CreationFlowStrings.Get("Qualities.Positive", "Positive qualities")
                 : CreationFlowStrings.Get("Qualities.Negative", "Negative qualities")));
             foreach (CharacterCreationQualitiesDesktopOption option in visible
@@ -489,23 +511,28 @@ public sealed class CreationQualitiesPage : NativePageBase
                     "Qualities.Info.Accessible", "Explain {0}", option.Name));
                 info.Clicked += async (_, _) =>
                 {
-                    if (!ReferenceEquals(row.Parent, _body) || _loadedDisplay is not { } original
+                    if (!ReferenceEquals(row.Parent, _catalog) || !ReferenceEquals(_catalog.Parent, _body)
+                        || _loadedDisplay is not { } original
                         || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
                     var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
                     await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, source));
                 };
                 rowGrid.Add(info, 2);
-                _body.Add(row);
+                _catalog.Add(row);
             }
         }
     }
 
     private void ApplyFilter(string? value)
     {
+        if (!IsCatalogCurrent() || _loaded?.Value is not { } state || _editor is not { } editor) return;
         _filter = value?.Trim() ?? string.Empty;
         _catalogOffset = 0;
-        Refresh();
+        RenderCatalog(state, editor, _checkpointOwnsLane);
     }
+
+    private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
+        && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
 
     private void AddReview(
         CharacterCreationQualitiesState state,

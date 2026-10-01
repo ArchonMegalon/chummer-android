@@ -1247,17 +1247,16 @@ internal static partial class AfterRunAuthorityHarness
         var before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var page = new CreationQualitiesPage(runtime.Coordinator);
         var refresh = typeof(CreationQualitiesPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var filter = typeof(CreationQualitiesPage).GetMethod("ApplyFilter", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var prepare = typeof(CreationQualitiesPage).GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         Task Prepare(CreationQualitiesPage target, CancellationToken token = default)
             => (Task)prepare.Invoke(target, [token])!;
         VerticalStackLayout Body() => (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-        Border[] Rows() => Body().Children.OfType<Border>()
+        Border[] Rows() => MinimalVisible(page).OfType<Border>()
             .Where(row => row.Content is Grid grid && grid.Children.OfType<Button>()
                 .Any(button => button.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true)).ToArray();
         string OptionId(Border row) => ((Grid)row.Content!).Children.OfType<Button>()
             .Single(button => button.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true).AutomationId;
-        Button Pager(string suffix) => Body().Children.OfType<HorizontalStackLayout>()
+        Button Pager(string suffix) => MinimalVisible(page).OfType<HorizontalStackLayout>()
             .SelectMany(row => row.Children.OfType<Button>())
             .Single(button => button.AutomationId == "creation-qualities-catalog-" + suffix);
 
@@ -1405,7 +1404,8 @@ internal static partial class AfterRunAuthorityHarness
             && !Pager("previous").IsEnabled,
             "The real catalog must render only the first bounded page, with honest navigation.");
         Button review = Body().Children.OfType<Button>().Single(button => button.AutomationId == "creation-qualities-open-review");
-        Require(review.IsEnabled && Body().Children.IndexOf(review) < Body().Children.IndexOf(Rows()[0]),
+        Require(review.IsEnabled && Rows()[0].Parent is IView catalog
+            && Body().Children.IndexOf(review) < Body().Children.IndexOf(catalog),
             "Review must be available before the catalog, including an empty valid selection.");
 
         if (Pager("next").IsEnabled)
@@ -1419,12 +1419,14 @@ internal static partial class AfterRunAuthorityHarness
                 "Previous must restore the same exact identities.");
         }
 
-        filter.Invoke(page, ["no-such-quality-regression-20260919"]);
+        var search = Body().Children.OfType<SearchBar>().Single();
+        search.Text = "no-such-quality-regression-20260919";
+        ((ISearchBarController)search).OnSearchButtonPressed();
         Require(Rows().Length == 0 && !Pager("next").IsEnabled && !Pager("previous").IsEnabled,
             "An empty search must not leave stale rows or enabled navigation.");
-        var search = Body().Children.OfType<SearchBar>().Single();
         search.Text = string.Empty;
-        Require(Rows().Select(OptionId).SequenceEqual(first),
+        Require(ReferenceEquals(search, Body().Children.OfType<SearchBar>().Single())
+            && Rows().Select(OptionId).SequenceEqual(first),
             "Clearing search must return to the first catalog page.");
         Require(probe.LoadCalls == 1,
             "Rendering, paging and filtering must not reload Core after appearance preparation.");
