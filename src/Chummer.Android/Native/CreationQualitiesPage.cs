@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using Chummer.Contracts.Characters;
@@ -938,7 +940,7 @@ internal static class CreationQualityInfo
     private static XElement Read(string xml)
     {
         using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings
-        { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 262144 });
+        { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, IgnoreWhitespace = true, MaxCharactersInDocument = 262144 });
         return XElement.Load(reader);
     }
 
@@ -946,10 +948,24 @@ internal static class CreationQualityInfo
     {
         var source = Read(xml);
         var result = new List<string>();
-        // Original, localized explanatory copy, keyed by the accepted source's
-        // stable identity. It never quotes, calculates or admits a selection.
+        // An ID survives custom-data amendments. Prose written for the original
+        // definition must not contradict changed effects, costs or prerequisites.
+        // Parse normalization ignores indentation, not changes to rule content.
+        // This binds display copy only; Core still owns all selection admission.
         string summary = Guid.TryParse(source.Element("id")?.Value, out var id)
             ? CreationFlowStrings.Get("Qualities.Summary." + id.ToString("D"), string.Empty) : string.Empty;
+        if (summary.Length > 0)
+        {
+            string expected = CreationFlowStrings.Get("Qualities.SummarySource." + id.ToString("D"),
+                string.Empty, CultureInfo.InvariantCulture);
+            string actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source.ToString(SaveOptions.DisableFormatting))));
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            {
+                summary = string.Empty;
+                result.Add(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition",
+                    "This quality uses a different definition. Its full explanation is not available yet; any effects below come from this version."));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(summary)) result.Add(summary);
         int baseEffectIndex = result.Count;
         bool hasBaseEffects = false;
