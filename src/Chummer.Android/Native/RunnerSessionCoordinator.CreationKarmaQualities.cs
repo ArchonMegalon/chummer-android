@@ -4,7 +4,8 @@ using Chummer.Contracts.Characters;
 namespace Chummer.Android.Native;
 
 internal sealed record CreationKarmaQualityPage(
-    IReadOnlyList<CharacterCreationQualityCatalogOption> Options, int? NextOffset);
+    IReadOnlyList<CharacterCreationQualityCatalogOption> Options, int? NextOffset,
+    CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote>? DraftPreview = null);
 
 public sealed partial class RunnerSessionCoordinator
 {
@@ -14,9 +15,22 @@ public sealed partial class RunnerSessionCoordinator
     internal Task<CreationKarmaQualityPage?> LoadCreationKarmaQualityPageAsync(
         CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection selection,
         string search, int offset, int pageSize, CancellationToken ct, Func<bool> isCurrentPage)
+        => PrepareCreationKarmaQualityPageAsync(state, selection, search, offset, pageSize, ct, isCurrentPage, previewDraft: false);
+
+    // Explicit draft review on appearance/change, distinct from read-only browsing.
+    // The first batch member is the exact draft; candidate quotes are never issued.
+    internal Task<CreationKarmaQualityPage?> PreviewCreationKarmaQualityPageAsync(
+        CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection selection,
+        string search, int offset, int pageSize, CancellationToken ct, Func<bool> isCurrentPage)
+        => PrepareCreationKarmaQualityPageAsync(state, selection, search, offset, pageSize, ct, isCurrentPage, previewDraft: true);
+
+    private Task<CreationKarmaQualityPage?> PrepareCreationKarmaQualityPageAsync(
+        CharacterCreationKarmaMetatypeState state, CreationKarmaPhoneSelection selection,
+        string search, int offset, int pageSize, CancellationToken ct, Func<bool> isCurrentPage, bool previewDraft)
     {
         var frozen = selection.Freeze();
-        if (offset is < 0 or > 65_536 || pageSize is < 1 or > 20) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (offset is < 0 or > 65_536 || pageSize < 1 || pageSize > (previewDraft ? 19 : 20))
+            throw new ArgumentOutOfRangeException(nameof(offset));
         return WithWorkspaceActivationGateAsync(async () =>
         {
             if (!isCurrentPage() || !IsCreationKarmaStateCurrent(state)
@@ -25,6 +39,7 @@ public sealed partial class RunnerSessionCoordinator
                 || _ownerBoundKarmaService is not { } service
                 || state.QualitiesCatalog is not { } catalog || frozen.QualityOptionIds is not { } selected)
                 return null;
+            if (previewDraft) _karmaCurrentReview = null;
             var result = await Task.Run<CreationKarmaQualityPage?>(() =>
             {
                 ct.ThrowIfCancellationRequested();
@@ -39,6 +54,7 @@ public sealed partial class RunnerSessionCoordinator
                 ct.ThrowIfCancellationRequested();
                 var checkedOptions = new List<CharacterCreationQualityCatalogOption>();
                 var selections = new List<IReadOnlyList<string>>();
+                if (previewDraft) selections.Add(selected);
                 int next = offset;
                 int end = Math.Min(candidates.Length, offset + pageSize * 3);
                 for (int index = offset; index < end && checkedOptions.Count < pageSize; index++)
@@ -55,7 +71,7 @@ public sealed partial class RunnerSessionCoordinator
                     checkedOptions.Add(option);
                     selections.Add(ids);
                 }
-                if (checkedOptions.Count == 0)
+                if (selections.Count == 0)
                     return new(Array.Empty<CharacterCreationQualityCatalogOption>(), next < candidates.Length ? next : null);
                 // Core admits one fresh source/workspace snapshot for this bounded
                 // read, but computes the complete preview of every candidate.
@@ -65,13 +81,14 @@ public sealed partial class RunnerSessionCoordinator
                     frozen.StartingLifestyleId, frozen.MagicSelections), ct);
                 ct.ThrowIfCancellationRequested();
                 if (batch is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } previews }
-                    || previews.Results.Count != checkedOptions.Count) return null;
+                    || previews.Results.Count != selections.Count) return null;
+                var draft = previewDraft ? previews.Results[0] : null;
                 var available = new List<CharacterCreationQualityCatalogOption>();
                 for (int index = 0; index < checkedOptions.Count; index++)
                 {
                     ct.ThrowIfCancellationRequested();
                     var option = checkedOptions[index];
-                    var preview = previews.Results[index];
+                    var preview = previews.Results[index + (previewDraft ? 1 : 0)];
                     if (preview.Blockers.Contains(CharacterCreationKarmaMetatypeBlockers.StaleBinding)
                         || preview.Outcome == CharacterCreationFoundationOutcomes.Conflict)
                         return null;
@@ -94,10 +111,16 @@ public sealed partial class RunnerSessionCoordinator
                         continue;
                     available.Add(option);
                 }
-                return new(Array.AsReadOnly(available.ToArray()), next < candidates.Length ? next : null);
+                return new(Array.AsReadOnly(available.ToArray()), next < candidates.Length ? next : null, draft);
             }, ct);
             ct.ThrowIfCancellationRequested();
-            return isCurrentPage() && IsCreationKarmaStateCurrent(state) ? result : null;
+            if (!isCurrentPage() || !IsCreationKarmaStateCurrent(state) || result is null) return null;
+            if (!previewDraft) return result;
+            if (result.DraftPreview is not { } draftPreview) return null;
+            var accepted = AcceptKarmaPreview(draftPreview, state, frozen, original);
+            if (accepted.Outcome == CharacterCreationFoundationOutcomes.Conflict
+                || accepted.Blockers.Contains(CharacterCreationKarmaMetatypeBlockers.StaleBinding)) return null;
+            return result with { DraftPreview = accepted };
         }, ct);
     }
 }

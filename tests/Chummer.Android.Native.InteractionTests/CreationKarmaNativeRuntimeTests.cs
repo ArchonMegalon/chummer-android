@@ -18,7 +18,7 @@ internal static partial class AfterRunAuthorityHarness
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }
         string[] scenarios = ["commit", "cancel-after-commit", "lost-return",
             "owner-aba-during-open", "route-left-during-open", "cancel-during-open",
-            "owner-aba", "owner-aba-during-load", "owner-aba-during-preview",
+            "owner-aba", "owner-aba-during-load", "owner-aba-during-preview", "owner-aba-during-quality-preview",
             "route-left", "stale-review", "forged-review", "invalid-budget",
             "owner-aba-after-commit", "route-left-after-commit"];
         Require(onlyScenario is null || scenarios.Contains(onlyScenario), "Unknown Karma scenario.");
@@ -101,6 +101,18 @@ internal static partial class AfterRunAuthorityHarness
                 var qualityIds = new[] { state.QualitiesCatalog!.Options.Single(item => item.Name == "Unsteady Hands").OptionId };
                 var selection = new CreationKarmaPhoneSelection(human.OptionId, "mundane", attributes,
                     new(skillItems, []), 10.5m, qualityIds);
+                if (scenario == "owner-aba-during-quality-preview")
+                {
+                    probe!.AfterPreview = Aba;
+                    var qualityPage = await runtime.Coordinator.PreviewCreationKarmaQualityPageAsync(state, selection,
+                        "", 0, 3, default, () => true);
+                    Require(qualityPage is null && probe.QualityBatchCalls == 1 && probe.PreviewCalls == 0
+                        && probe.ConfirmCalls == 0 && owners.ActiveLeases == 0 && Unchanged(),
+                        "Owner ABA during the combined quality check issued authority or changed the workspace.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS native Karma: " + scenario);
+                    continue;
+                }
                 if (scenario == "owner-aba-during-preview") probe!.AfterPreview = Aba;
                 // Mutate the caller's lists AFTER scheduling: worker must retain
                 // the original reviewed input, not the page's next edit.

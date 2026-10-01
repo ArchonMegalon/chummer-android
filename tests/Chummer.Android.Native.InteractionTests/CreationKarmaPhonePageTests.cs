@@ -140,7 +140,13 @@ internal static partial class AfterRunAuthorityHarness
                         Interlocked.Increment(ref qualityEnumerations);
                     })
                 } };
+            int previewsBeforeQualities = probe.PreviewCalls, batchesBeforeQualities = probe.QualityBatchCalls;
+            int candidatesBeforeQualities = probe.QualityCandidateCount;
             await Click("karma-open-qualities");
+            Require(Session().QuoteCurrent && probe.PreviewCalls == previewsBeforeQualities
+                && probe.QualityBatchCalls == batchesBeforeQualities + 1
+                && probe.QualityCandidateCount - candidatesBeforeQualities is >= 1 and <= 4,
+                "Opening Qualities must quote the current draft and candidates in one fresh bounded Core batch.");
             Require(Session().Access is null,
                 "Qualities must not recalculate skill-display access merely because its catalog is already loaded.");
             if (magic)
@@ -268,7 +274,11 @@ internal static partial class AfterRunAuthorityHarness
             await ui.BeginAsyncVoid(() => ((IButtonController)info).SendClicked());
             Require(navigation.Navigation.NavigationStack.Count == depthBeforeOldInfo,
                 "A detached quality information control navigated again.");
+            previewsBeforeQualities = probe.PreviewCalls; batchesBeforeQualities = probe.QualityBatchCalls;
             await Click(addNegative.AutomationId);
+            Require(Session().QuoteCurrent && probe.PreviewCalls == previewsBeforeQualities
+                && probe.QualityBatchCalls == batchesBeforeQualities + 1,
+                "Changing a quality must not reload Core separately for the draft and its candidate page.");
             Require(Element<Label>("karma-quality-totals").Text == CreationKarmaCopy.QualityTotals(0, 7, -7),
                 "Quality credit was not projected from the current Core quote.");
             await Click("karma-remove-quality-" + negativeId);
@@ -374,7 +384,43 @@ internal static partial class AfterRunAuthorityHarness
             await qualitySession.PreviewAsync(default, () => true);
             Require(qualitySession.QuoteCurrent && qualitySession.Quote!.QuoteDigest == ordinaryQuote.QuoteDigest,
                 "Read-only quality checks changed the actual draft budget.");
-            Console.WriteLine("PASS Karma quality availability: background catalog preparation, exact total budget, source eligibility, filtered rating pages, cancellation/departure/read failure, no writes or review replacement");
+            previewsBeforePage = probe.PreviewCalls;
+            batchesBeforePage = probe.QualityBatchCalls; candidatesBeforePage = probe.QualityCandidateCount;
+            var emptyReviewedPage = await qualitySession.PreviewQualityPageAsync("no-quality-matches-this-filter",
+                0, 3, default, () => true);
+            Require(emptyReviewedPage is { Options.Count: 0, DraftPreview.Value: not null }
+                && qualitySession.QuoteCurrent && !ReferenceEquals(qualitySession.Quote, ordinaryQuote)
+                && qualitySession.Quote!.QuoteDigest == ordinaryQuote.QuoteDigest
+                && probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls == batchesBeforePage + 1
+                && probe.QualityCandidateCount == candidatesBeforePage + 1,
+                "An empty catalog page must still freshly validate the exact draft, without candidate/review substitution.");
+            var lastDraftReview = qualitySession.Quote!;
+            using (var canceledDraft = new CancellationTokenSource())
+            {
+                probe.AfterPreview = canceledDraft.Cancel;
+                canceled = false;
+                try { await qualitySession.PreviewQualityPageAsync("", 0, 3, canceledDraft.Token, () => true); }
+                catch (OperationCanceledException) { canceled = true; }
+                finally { probe.AfterPreview = null; }
+                Require(canceled && !qualitySession.QuoteCurrent
+                    && !runtime.Coordinator.IsCreationKarmaPreviewCurrent(lastDraftReview),
+                    "A canceled combined check retained an actionable draft review.");
+            }
+            currentQualityPage = true;
+            probe.AfterPreview = () => currentQualityPage = false;
+            var departedDraft = await qualitySession.PreviewQualityPageAsync("", 0, 3, default, () => currentQualityPage);
+            probe.AfterPreview = null;
+            Require(departedDraft is null && !qualitySession.QuoteCurrent,
+                "A departed combined check issued a draft or candidate page.");
+            probe.FailReads = true;
+            var failedDraft = await qualitySession.PreviewQualityPageAsync("", 0, 3, default, () => true);
+            probe.FailReads = false;
+            Require(failedDraft is null && !qualitySession.QuoteCurrent && probe.ConfirmCalls == 0,
+                "A failed combined source check retained a confirmable draft or performed a write.");
+            await qualitySession.PreviewQualityPageAsync("", 0, 3, default, () => true);
+            Require(qualitySession.QuoteCurrent && qualitySession.Quote!.QuoteDigest == ordinaryQuote.QuoteDigest,
+                "Explicit recovery changed the selected qualities or did not issue a fresh review.");
+            Console.WriteLine("PASS Karma quality availability: single fresh draft/candidate batch, empty page review, background catalog preparation, exact total budget, source eligibility, filtered rating pages, cancellation/departure/read failure, no writes or browse-review replacement");
             await Back();
             await Click("karma-open-contacts");
             await Click("karma-add-contact");

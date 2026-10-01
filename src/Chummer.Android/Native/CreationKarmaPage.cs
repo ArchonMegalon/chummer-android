@@ -89,13 +89,14 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         await _session.ReloadAsync(NeedsSkillAccess || IsMagicStep,
             cancellationToken, Current, includeQualities: _step == CreationKarmaStep.Qualities || IsMagicStep,
             includeGear: _step == CreationKarmaStep.Gear,
-            includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle, includeMagic: IsMagicStep);
+            includeLifestyles: _step is CreationKarmaStep.Lifestyles or CreationKarmaStep.Lifestyle, includeMagic: IsMagicStep,
+            deferQualityPreview: _step == CreationKarmaStep.Qualities);
         if (!Current() || !_session.Ready) return;
         MarkVisitedStage();
-        if (!_session.QuoteCurrent)
+        if (_step == CreationKarmaStep.Qualities)
+            await PrepareQualityPageAsync(cancellationToken, reset: true, previewDraft: true);
+        else if (!_session.QuoteCurrent)
             await _session.PreviewAsync(cancellationToken, Current, includeSkillAccess: NeedsSkillAccess);
-        if (Current() && _step == CreationKarmaStep.Qualities)
-            await PrepareQualityPageAsync(cancellationToken, reset: true);
 
         void MarkVisitedStage()
         {
@@ -217,13 +218,14 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         long appearance = CaptureAppearanceGeneration();
         _body.IsEnabled = false;
-        await _session.PreviewAsync(default, () => IsCurrentAppearanceGeneration(appearance),
-            includeSkillAccess: NeedsSkillAccess);
-        if (IsCurrentAppearanceGeneration(appearance) && _step == CreationKarmaStep.Qualities)
-            await PrepareQualityPageAsync(default, reset: true);
+        if (_step == CreationKarmaStep.Qualities)
+            await PrepareQualityPageAsync(default, reset: true, previewDraft: true);
+        else
+            await _session.PreviewAsync(default, () => IsCurrentAppearanceGeneration(appearance),
+                includeSkillAccess: NeedsSkillAccess);
     }
 
-    private async Task PrepareQualityPageAsync(CancellationToken ct, bool reset)
+    private async Task PrepareQualityPageAsync(CancellationToken ct, bool reset, bool previewDraft = false)
     {
         _qualityPage = null;
         _qualitySelection = null;
@@ -241,8 +243,10 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         _loading.IsRunning = true;
         try
         {
-            var page = await Coordinator.LoadCreationKarmaQualityPageAsync(state, selection,
-                _qualityQuery, _qualityOffsets[^1], QualityPageSize, lifetime.Token, Current);
+            var page = previewDraft
+                ? await _session.PreviewQualityPageAsync(_qualityQuery, _qualityOffsets[^1], QualityPageSize, lifetime.Token, Current)
+                : await Coordinator.LoadCreationKarmaQualityPageAsync(state, selection,
+                    _qualityQuery, _qualityOffsets[^1], QualityPageSize, lifetime.Token, Current);
             if (Current()) { _qualityPage = page; _qualitySelection = selection; }
         }
         finally
