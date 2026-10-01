@@ -62,9 +62,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (loaded.Value is not { } core
-                    || !CharacterCreationMagicResonanceWorkflow.TryProject(core, out var projected)
-                    || projected is null
-                    || !CreationMagicResonancePhoneAuthority.IsReady(core, projected, original))
+                    || !CreationMagicResonancePhoneAuthority.TryProjectForOverview(core, original, out var projected)
+                    || projected is null)
                     return null;
                 preparedDraft.Bind(projected, original);
                 return preparedDraft.Matches(projected, original) ? projected : null;
