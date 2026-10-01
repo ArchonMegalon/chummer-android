@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 156, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 194, "Localized source-identity summaries were not loaded from the real catalog.");
                 string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
                 var rated = CreationQualityInfo.Effects(willToLive, 3);
                 string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
@@ -243,6 +243,115 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Incompetent").Contains("Notoriety also increases by 1")
                 && Effect("Impassive").StartsWith("Your Social limit is 1 lower, except on Intimidation tests.", StringComparison.Ordinal),
                 "Restrictions must retain the selected group, reputation penalty and Intimidation exception.");
+            foreach (string name in new[]
+            {
+                "Animal Pelage (Insulating Pelt)",
+                "Arcane Arrester",
+                "Balance Receptor",
+                "Beak",
+                "Raptor Beak",
+                "Dermal Alteration (Bark Skin)",
+                "Dermal Alteration (Blubber)",
+                "Dermal Alteration (Dragon Skin)",
+                "Dermal Alteration (Granite Shell)",
+                "Dermal Alteration (Rhino Hide)",
+                "Dermal Deposits",
+                "Elongated Limbs",
+                "Functional Tail (Balance)",
+                "Functional Tail (Paddle)",
+                "Functional Tail (Prehensile)",
+                "Magnetoception",
+                "Ogre Stomach",
+                "Photometabolism",
+                "Thorns",
+                "Vomeronasal Organ",
+                "Webbed Digits",
+                "Adiposis",
+                "Deformity (Quasimodo)",
+                "Neoteny",
+                "Progeria",
+                "Slow Healer",
+                "Stubby Arms",
+                "Social Appearance Anxiety",
+                "Elevated Stress",
+                "Sloppy Code",
+                "Better on the Net [Attack]",
+                "Brittle [Attack]",
+                "Better on the Net [Data Processing]",
+                "Brittle [Data Processing]",
+                "Better on the Net [Firewall]",
+                "Brittle [Firewall]",
+                "Better on the Net [Sleaze]",
+                "Brittle [Sleaze]"
+            })
+            {
+                var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                string summary = CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "");
+                Require(summary.Length > 40 && Effect(name).StartsWith(summary, StringComparison.Ordinal),
+                    "Physical and Matrix traits need their own source-bound explanations: " + name);
+            }
+            foreach (var (name, field, improvedId, brittleId) in new[]
+            {
+                ("Attack", "attack", "522dbfb5-5ea0-4707-a7e8-1ac777b3aff7", "d40aee6b-80b7-43f5-b335-dabf8f1ad14d"),
+                ("Data Processing", "dataprocessing", "39139f84-b8ab-4523-ac02-851350e3f2b6", "64d430b1-6d6a-4abc-9ef8-3ddaee2352ce"),
+                ("Firewall", "firewall", "25d34c52-6927-44dd-85bd-684e9add1f89", "a1530804-a35b-4d2f-ae3e-50d647016903"),
+                ("Sleaze", "sleaze", "59436ccc-5e4b-481d-8d63-d3ba912f2d8a", "cb5bd1e5-b9ef-434f-af17-0e7b4decaa46")
+            })
+            {
+                foreach (var (id, amount, direction) in new[] { (improvedId, "2", "increases"), (brittleId, "-1", "decreases") })
+                {
+                    var quality = catalog.Single(quality => quality.Element("id")!.Value == id);
+                    var persona = quality.Element("bonus")!.Element("livingpersona")!;
+                    Require(persona.Elements().Count() == 1 && persona.Element(field)!.Value == amount
+                        && quality.Element("required")!.Descendants("quality").Single().Value == "Technomancer"
+                        && inspired(id).StartsWith($"Your living persona's {name} {direction} by {(amount == "-1" ? "1" : amount)}.", StringComparison.Ordinal)
+                        && inspired(id).Contains("requires a technomancer"),
+                        "Matrix help must preserve one exact attribute, direction, magnitude and technomancer requirement.");
+                }
+            }
+            Require(Effect("Animal Pelage (Insulating Pelt)").Contains("4 to armor against cold")
+                && Effect("Dermal Alteration (Blubber)").Contains("2 to armor against cold")
+                && Effect("Dermal Alteration (Dragon Skin)").Contains("2 to armor against fire"),
+                "Cold and fire armor must not become universal armor or interchangeable elemental protection.");
+            foreach (var (name, value) in new[] { ("Dermal Alteration (Bark Skin)", "2"),
+                ("Dermal Alteration (Granite Shell)", "4"), ("Dermal Alteration (Rhino Hide)", "3") })
+            {
+                var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                Require(quality.Element("bonus")!.Element("armor")!.Value == value
+                    && quality.Element("bonus")!.Element("armor")!.Attribute("group")!.Value == "0"
+                    && Effect(name).Contains($"{value}-point armor modifier")
+                    && Effect(name).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "Grouped armor may be explained, but its unexpanded stacking flag must still be marked partial.");
+            }
+            Require(Effect("Arcane Arrester").Contains("Each level adds two dice when resisting spells, up to two levels")
+                && Effect("Arcane Arrester").Contains("cannot be combined with Magic Resistance")
+                && Effect("Functional Tail (Balance)").Contains("one die to Gymnastics")
+                && Effect("Functional Tail (Paddle)").Contains("two dice to Swimming")
+                && Effect("Functional Tail (Prehensile)").Contains("one die to Gymnastics")
+                && Effect("Vomeronasal Organ").Contains("based on smell"),
+                "Spell resistance, alternative tail variants and scent bonuses must retain their distinct scopes.");
+            Require(Effect("Beak").Contains("lifestyle costs by 10%")
+                && Effect("Beak").Contains("one die when resisting ingested toxins")
+                && Effect("Ogre Stomach").Contains("lifestyle costs by 20%")
+                && Effect("Ogre Stomach").Contains("two dice when resisting ingested toxins")
+                && Effect("Raptor Beak").Contains("attack details are not yet described here")
+                && Effect("Raptor Beak").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Digestion bonuses must retain their cost/resistance differences, and weapon references stay incomplete.");
+            Require(Effect("Adiposis").Contains("replacement multipliers of 1 for walking and 2 for running")
+                && Effect("Adiposis").Contains("0.5 meters per hit")
+                && Effect("Adiposis").Contains("Physical Active skill tests also lose one die")
+                && Effect("Thorns").Contains("unarmed damage by 1, but Physical Active skill tests lose one die"),
+                "Replacement movement rates and damage bonuses must not hide their skill penalties.");
+            Require(Effect("Deformity (Quasimodo)").Contains("except Perception")
+                && Effect("Neoteny").Contains("Physical condition monitor has two fewer boxes")
+                && Effect("Neoteny").Contains("lifestyle costs increase by 10%")
+                && Effect("Slow Healer").Contains("do not add both penalties to one recovery test"),
+                "Physical drawbacks must preserve exclusions, monitor type and alternative healing rolls.");
+            Require(Effect("Social Appearance Anxiety").Contains("one die per quality level, up to three levels")
+                && Effect("Social Appearance Anxiety").Contains("When you are not looking your best")
+                && Effect("Elevated Stress").Contains("alternative situations, not eight penalties to combine")
+                && Effect("Sloppy Code").StartsWith("While inside a Matrix host,", StringComparison.Ordinal),
+                "Conditional and rated penalties must not be advertised as unconditional combined totals.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
             foreach (string name in new[] { "Animal Empathy", "City Slicker", "Outdoorsman", "Sense of Direction",
                 "Vehicle Empathy", "Water Sprite", "Computer Illiterate", "Loss of Confidence", "Nasty Vibe",
