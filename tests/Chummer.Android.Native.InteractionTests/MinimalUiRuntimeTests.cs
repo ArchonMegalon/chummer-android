@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 126, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 156, "Localized source-identity summaries were not loaded from the real catalog.");
                 string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
                 var rated = CreationQualityInfo.Effects(willToLive, 3);
                 string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
@@ -177,6 +177,72 @@ internal static partial class AfterRunAuthorityHarness
             Require(inspired("fd9b9b6d-c969-40f1-8dc7-61f8e5d9cd4d").Contains("Choose a free expertise specialization")
                 && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
                 "Same-name qualities must not share source-identity summaries or expertise effects.");
+            foreach (var (attribute, name, impairedId, metagenicId, optimizedId) in new[]
+            {
+                ("BOD", "Body", "96911a4d-d82e-4a1e-a550-3e12b8e14a7b", "2ffd990c-ced6-4484-955c-108473df5335", "3109f474-0d10-4c75-bc07-ef22afdd92ab"),
+                ("AGI", "Agility", "8a1a04ff-5bff-48b2-90c2-b9bdb5fde8e8", "96c4c8e1-2f5d-431c-96c8-db83820f747b", "c42cc305-3d7a-4c68-9ce7-32e1fc628505"),
+                ("REA", "Reaction", "959b00a6-a55b-4c6b-95b0-a9746b31a24d", "c734c06d-c9e4-431d-93ba-033e82444efc", "8c667328-eba0-4dc7-be5a-19c285997f10"),
+                ("STR", "Strength", "c00591dc-fe6d-4ff0-8e42-22000878f03f", "76ac03f1-b379-48a8-a6e8-d8611fce0adf", "a6b946e2-7e58-4607-b9ce-7b27055c9562"),
+                ("CHA", "Charisma", "14e71856-7d38-4e04-933f-069ed89a14e9", "f1609199-e601-4b69-837f-2029b2ea94f0", "7022143c-3d58-4ad7-9cdb-dab007f75f54"),
+                ("INT", "Intuition", "b58b47a7-9011-4bef-8ba2-ae561a443765", "7ee0765f-34f4-43ef-82c0-55c1b8bef8d8", "22a991a5-e8b1-4ca7-98b9-3181df5dbf7e"),
+                ("LOG", "Logic", "0df94dda-5941-4130-b6fc-0a98fcf7f846", "bfdffed5-b687-4cb4-ad6a-ac59788fdc8a", "62035d8e-c784-450e-9b03-501281a6771a"),
+                ("WIL", "Willpower", "a6a4d71d-452f-4d26-9588-e7a5bc2474c0", "a6536e32-5f2f-4865-8f6a-d2ba268d4647", "96ae02da-5824-4ebd-a0c5-65bb5b43fd48")
+            })
+            {
+                var impaired = catalog.Single(quality => quality.Element("id")!.Value == impairedId);
+                var metagenic = catalog.Single(quality => quality.Element("id")!.Value == metagenicId);
+                var optimized = catalog.Single(quality => quality.Element("id")!.Value == optimizedId);
+                foreach (var quality in new[] { impaired, metagenic, optimized })
+                    Require(quality.Element("bonus")!.Element("specificattribute")!.Element("name")!.Value == attribute,
+                        "An attribute explanation must bind to the matching source attribute, not merely a similar name.");
+                Require(impaired.Element("bonus")!.Element("specificattribute")!.Element("max")!.Value == "-2"
+                    && impaired.Element("bonus")!.Element("specificattribute")!.Element("min") is null
+                    && inspired(impairedId).StartsWith($"Your natural maximum for {name} is reduced by 2.", StringComparison.Ordinal),
+                    "Impaired Attribute lowers the maximum, not every roll or every attribute.");
+                Require(metagenic.Element("bonus")!.Element("specificattribute")!.Element("max")!.Value == "1"
+                    && metagenic.Element("bonus")!.Element("specificattribute")!.Element("min")!.Value == "1"
+                    && metagenic.Element("required")!.Descendants("quality").Count() == 3
+                    && inspired(metagenicId).StartsWith($"Your natural {name} range shifts up by 1:", StringComparison.Ordinal)
+                    && inspired(metagenicId).Contains("both its minimum and maximum increase")
+                    && inspired(metagenicId).Contains("requires a SURGE changeling trait"),
+                    "Metagenic Improvement raises both bounds and retains the changeling prerequisite.");
+                Require(optimized.Element("bonus")!.Element("specificattribute")!.Element("max")!.Value == "1"
+                    && optimized.Element("bonus")!.Element("specificattribute")!.Element("min") is null
+                    && optimized.Element("chargenonly") is not null
+                    && optimized.Element("forbidden")!.Descendants("bioware").Single().Value == $"Genetic Optimization ({name})"
+                    && inspired(optimizedId).StartsWith($"Your natural maximum for {name} increases by 1.", StringComparison.Ordinal)
+                    && inspired(optimizedId).Contains("not a free attribute point")
+                    && inspired(optimizedId).Contains("during creation only")
+                    && inspired(optimizedId).Contains("same attribute"),
+                    "Genetic Optimization raises only the ceiling, costs points to use, and keeps creation/bioware restrictions.");
+            }
+            Require(inspired("4e2ddf3d-802f-4206-85ce-81f1defa528f").StartsWith(
+                    "Your Mental limit increases by 1 for Academic Knowledge tests.", StringComparison.Ordinal)
+                && !inspired("4e2ddf3d-802f-4206-85ce-81f1defa528f").Contains("half")
+                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").StartsWith(
+                    "During creation, Academic Knowledge skills use half the normal point cost;", StringComparison.Ordinal)
+                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("Karma specialization costs are also halved")
+                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("rating 3 or higher costs 1 less Karma per advancement")
+                && !inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("Mental limit increases"),
+                "The two College Education identities have distinct limit versus training-cost rules.");
+            foreach (string name in new[] { "School of Hard Knocks", "Technical School Education" })
+            {
+                var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                var bonus = quality.Element("bonus")!;
+                Require(bonus.Element("skillcategorypointcostmultiplier")!.Element("val")!.Value == "50"
+                    && bonus.Element("skillcategorykarmacost")!.Element("val")!.Value == "-1"
+                    && bonus.Element("skillcategorykarmacost")!.Element("min")!.Value == "3"
+                    && bonus.Element("skillcategorykarmacost")!.Element("condition")!.Value == "/character/created"
+                    && bonus.Element("skillcategorykarmacostmultiplier") is null
+                    && bonus.Element("skillcategoryspecializationkarmacostmultiplier") is null
+                    && Effect(name).Contains("rating 3 or higher costs 1 less Karma per advancement")
+                    && Effect(name).Contains("does not halve creation-time Karma purchases or Karma specialization costs"),
+                    "Street/Professional discounts must not inherit the different Academic Karma discounts.");
+            }
+            Require(Effect("Incompetent").StartsWith("Choose one skill group that is unavailable to you.", StringComparison.Ordinal)
+                && Effect("Incompetent").Contains("Notoriety also increases by 1")
+                && Effect("Impassive").StartsWith("Your Social limit is 1 lower, except on Intimidation tests.", StringComparison.Ordinal),
+                "Restrictions must retain the selected group, reputation penalty and Intimidation exception.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
             foreach (string name in new[] { "Animal Empathy", "City Slicker", "Outdoorsman", "Sense of Direction",
                 "Vehicle Empathy", "Water Sprite", "Computer Illiterate", "Loss of Confidence", "Nasty Vibe",
