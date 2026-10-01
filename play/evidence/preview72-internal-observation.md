@@ -18,7 +18,7 @@ Special Attribute Points now has a guarded clickable jump to its attribute
 section. Edge, Magic and Resonance use explicit special-point +/- labels and
 spent-point text, with EN/DE/ES guidance. Core availability, caps, separate budgets,
 owner identity, preview and save admission remain unchanged. This also includes
-the already-merged pending Magic-choice feedback and early-Back guard from PR258.
+the already-merged pending Magic-choice feedback and early-Back guard from PR 258.
 
 An actual-Core regression reproduced the missing clickable entry on baseline.
 The focused managed build passed with zero warnings/errors. Priority/Sum-to-Ten
@@ -44,7 +44,7 @@ or proof implementation. Native Sum-to-Ten or physical coverage is not claimed.
 
 ## Exact local release
 
-- Android producer `467b70619e6dce023f2fbc82320496ee58bc3b9a`, PR259 merge
+- Android producer `467b70619e6dce023f2fbc82320496ee58bc3b9a`, PR 259 merge
   `f51f850d93ea9e0367859487c17e78b7bc95ba99`, identical source tree
   `cde4d8d5f8ea329b8a54652821521c8878514b2e`.
 - Required source/safety run `36836176692`, job `110284005735`, and GitGuardian
@@ -69,7 +69,7 @@ or proof implementation. Native Sum-to-Ten or physical coverage is not claimed.
   `6a996c91820dede136544f3fe5a24d87d8fa7d1cce8fa547db93c79f22edc4c0`.
 
 Local keyless ARM64 Release build: 150.83 seconds, zero warnings/errors,
-.NET10.0.112, existing toolchain image
+.NET 10.0.112, existing toolchain image
 `sha256:a174fae2f11575864da89e84bde682af7887e2e7213f54741764d8751e767eb5`.
 Bundle/API/ABI/privacy, all 331 content files, proof exclusion and private-key
 hygiene passed. Separate existing-key signing and keyless strict JAR/certificate/
@@ -88,7 +88,7 @@ The owned browser was closed. No provider generation or uncertain-job replay occ
 The emulator boot showed a System UI ANR; no ANR-free or general performance
 claim. Existing technical attribute-review labels still need polish. Affected
 native Priority evidence does not establish all-method/Career completeness.
-Physical72 is unverified; Preview52 remains the latest physical evidence. The
+Physical 72 is unverified; Preview 52 remains the latest physical evidence. The
 upload certificate is not a new Play App Signing certificate observation. Whole-
 book quality, cross-chapter likeness and remaining UI polish stay open; no hosted
 seven-journey, tablet/Full Editing/desktop/audiobook or public-beta completion claim.

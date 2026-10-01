@@ -108,12 +108,12 @@ Preview 72 is the latest [observed Internal availability](../play/evidence/previ
 It is available on Play Internal; physical Play installation of 72 is not yet
 verified. Special Attribute Points now jumps to its allocation group with explicit
 EN/DE/ES special-point controls. Actual-Core Priority/Sum-to-Ten checks and native
-Priority allocation/save/new-process reopen passed; other31workspacefiles stayed
+Priority allocation/save/new-process reopen passed; the other 31 workspace files stayed
 unchanged. Pending Magic-choice feedback and guarded early-Back behavior from
-PR258 are included. Preview71 was uploaded but held, then removed only from the
+PR 258 are included. Preview 71 was uploaded but held, then removed only from the
 unpublished draft; it remains in the artifact library and was never released.
 Existing technical attribute-review text, physical testing and full polish remain
-open. Prior Preview70 evidence remains immutable: static Magic saving feedback
+open. Prior Preview 70 evidence remains immutable: static Magic saving feedback
 replaces the animated spinner, with short
 EN/DE/ES actions and unchanged owner/review/mutation guards. Focused managed checks
 and native save/new-process receipt reopen passed; the other 29 workspace files
