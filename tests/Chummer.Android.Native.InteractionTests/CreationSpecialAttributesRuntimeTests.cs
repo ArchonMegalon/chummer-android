@@ -48,6 +48,41 @@ internal static partial class AfterRunAuthorityHarness
                     Require(draft.Attribute(state, attributeId)!.Current == attribute.Current
                         && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining,
                         "Magic/Resonance - did not return the special point.");
+                    RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                    plus = MinimalVisible(editor).OfType<Button>().Single(x =>
+                        x.AutomationId == "creation-attribute-priority-increase-" + attributeId.ToLowerInvariant());
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                    var allocations = draft.Allocations(state);
+                    var preview = runtime.Coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+                    CreationAttributesPhoneConfirmResult? applied = null;
+                    var review = new CreationAttributesPreviewPage(runtime.Coordinator, preview, allocations, result => applied = result);
+                    MinimalRender(review);
+                    var confirm = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
+                    Require(confirm.IsEnabled, "Legal Magic/Resonance special point cannot be confirmed.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+                    Require(applied is { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: not null },
+                        "Magic/Resonance special point confirmation failed.");
+                    var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                    Require(saved.ContentRevision == before.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision,
+                        "Magic/Resonance special point must save exactly one revision.");
+                    await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                    var reopened = runtime.Coordinator.LoadCreationAttributes().Value!;
+                    Require(reopened.Attributes.Single(x => x.AttributeId == attributeId).Current == attribute.Current + 1
+                        && reopened.SpecialPointBudget.Remaining == state.SpecialPointBudget.Remaining - 1
+                        && reopened.NormalPointBudget == state.NormalPointBudget
+                        && reopened.CreationKarmaBudget == state.CreationKarmaBudget,
+                        "Magic/Resonance allocation or independent budgets changed on cold-store reopen.");
+                    RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                    MinimalRender(review);
+                    Require(!MinimalVisible(review).OfType<Button>().Any(x => x.AutomationId == "creation-attributes-confirm"),
+                        "Saved Magic/Resonance review permits duplicate confirmation.");
+                    if (talent == "Mystic Adept" && rank == "C" && smokePath is not null)
+                    {
+                        Require(Path.IsPathFullyQualified(smokePath), "Use an explicit private smoke seed path.");
+                        File.Copy(Path.Combine(runtime.StateDirectory, "workspaces", runtime.Id.Value + ".json"),
+                            Path.ChangeExtension(smokePath, ".magic.json"), overwrite: false);
+                    }
+                    Console.WriteLine($"PASS {talent}/{rank} {attributeId} allocation, one save and cold-store reopen with unchanged normal/Karma pools");
                 }
                 else
                 {
@@ -70,8 +105,8 @@ internal static partial class AfterRunAuthorityHarness
                         }
                     }
                     finally { CultureInfo.CurrentUICulture = culture; }
+                    RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 }
-                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 IssuedPageLifecycle(editor, "OnDisappearing");
             }
             foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
