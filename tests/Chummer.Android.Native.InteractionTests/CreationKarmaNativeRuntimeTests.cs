@@ -208,7 +208,7 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class KarmaNativeProbe(IOwnerBoundCharacterCreationKarmaMetatypeService actual,
         SynchronizationContext ui) : IOwnerBoundCharacterCreationKarmaMetatypeService
     {
-        public int LoadCalls, PreviewCalls, OpenCalls;
+        public int LoadCalls, PreviewCalls, OpenCalls, QualityBatchCalls, QualityCandidateCount;
         public TimeSpan LoadTime, PreviewTime, OpenTime;
         public int ConfirmCalls, FinalConfirmCalls;
         public bool FailReads;
@@ -264,6 +264,16 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeCommit> Confirm(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeConfirmRequest request)
         { AssertBackground(); ConfirmCalls++; var result = actual.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
+        public CharacterCreationFoundationResult<CharacterCreationKarmaQualityPreviews> PreviewQualitySelections(
+            OwnerContextStamp owner, CharacterCreationKarmaQualityPreviewRequest request, CancellationToken ct = default)
+        {
+            AssertBackground(); QualityBatchCalls++; QualityCandidateCount += request.QualitySelections.Count;
+            if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
+            var result = actual.PreviewQualitySelections(owner, request, ct);
+            AfterPreview?.Invoke();
+            return result;
+        }
         public CharacterCreationFoundationResult<CharacterCreationKarmaFinalizationBudgetQuote> PreviewFinalizationBudget(
             OwnerContextStamp owner, CharacterCreationKarmaMetatypeBinding binding, string quoteDigest, int diceTotal)
         { AssertBackground(); return actual.PreviewFinalizationBudget(owner, binding, quoteDigest, diceTotal); }

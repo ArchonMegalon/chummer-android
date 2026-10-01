@@ -294,18 +294,22 @@ internal static partial class AfterRunAuthorityHarness
             Require(funded is { Options.Count: > 0 }, "Affordable exact quality disappeared with the same sources.");
             var ratingIds = new List<string>();
             int previewsBeforePage = probe.PreviewCalls;
+            int batchesBeforePage = probe.QualityBatchCalls, candidatesBeforePage = probe.QualityCandidateCount;
             var largerPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
                 ordinarySelection, "", 0, 6, default, () => true);
-            Require(probe.PreviewCalls - previewsBeforePage <= 6,
-                "A quality page exceeded its full-preview work budget.");
+            Require(probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls == batchesBeforePage + 1
+                && probe.QualityCandidateCount - candidatesBeforePage is > 0 and <= 6,
+                "A quality page must use one bounded Core batch without individual source reloads.");
             Require(largerPage is { Options.Count: >= 2 }, "SETUP: expected at least two available source choices.");
             int? cursor = 0;
             do
             {
                 previewsBeforePage = probe.PreviewCalls;
+                batchesBeforePage = probe.QualityBatchCalls; candidatesBeforePage = probe.QualityCandidateCount;
                 var ratingPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
                     ordinarySelection, "", cursor!.Value, 1, default, () => true);
-                Require(probe.PreviewCalls - previewsBeforePage <= 1,
+                Require(probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls - batchesBeforePage <= 1
+                    && probe.QualityCandidateCount - candidatesBeforePage <= 1,
                     "Filtered pagination performed extra full previews to fill or look ahead.");
                 Require(ratingPage is not null, "Rating pagination lost its bound source read.");
                 ratingIds.AddRange(ratingPage!.Options.Select(option => option.OptionId));

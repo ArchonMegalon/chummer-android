@@ -33,11 +33,11 @@ public sealed partial class RunnerSessionCoordinator
             var byId = catalog.Options.ToDictionary(option => option.OptionId, StringComparer.Ordinal);
             var result = await Task.Run<CreationKarmaQualityPage?>(() =>
             {
-                var available = new List<CharacterCreationQualityCatalogOption>();
+                var checkedOptions = new List<CharacterCreationQualityCatalogOption>();
+                var selections = new List<IReadOnlyList<string>>();
                 int next = offset;
-                int checkedCount = 0;
                 int end = Math.Min(candidates.Length, offset + pageSize * 3);
-                for (int index = offset; index < end && checkedCount < pageSize; index++)
+                for (int index = offset; index < end && checkedOptions.Count < pageSize; index++)
                 {
                     ct.ThrowIfCancellationRequested();
                     var option = candidates[index];
@@ -46,14 +46,28 @@ public sealed partial class RunnerSessionCoordinator
                     // full reload of every other creation authority. Bound the
                     // expensive previews, not just the number of visible rows.
                     if (!CharacterCreationKarmaQualitiesRules.IsExactPurchase(option)) continue;
-                    checkedCount++;
                     var ids = selected.Where(id => byId[id].SelectionKey != option.SelectionKey)
                         .Append(option.OptionId).ToArray();
-                    var preview = service.Preview(owner, state.Binding, frozen.MetatypeOptionId,
-                        frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment,
-                        ids, frozen.GearSelections, frozen.ContactSelections, frozen.LifestyleSelections,
-                        frozen.StartingLifestyleId, frozen.MagicSelections);
+                    checkedOptions.Add(option);
+                    selections.Add(ids);
+                }
+                if (checkedOptions.Count == 0)
+                    return new(Array.Empty<CharacterCreationQualityCatalogOption>(), next < candidates.Length ? next : null);
+                // Core admits one fresh source/workspace snapshot for this bounded
+                // read, but computes the complete preview of every candidate.
+                var batch = service.PreviewQualitySelections(owner, new(state.Binding, frozen.MetatypeOptionId,
+                    selections, frozen.TalentOptionId, frozen.Attributes, frozen.Skills, frozen.ResourceKarmaInvestment,
+                    frozen.GearSelections, frozen.ContactSelections, frozen.LifestyleSelections,
+                    frozen.StartingLifestyleId, frozen.MagicSelections), ct);
+                ct.ThrowIfCancellationRequested();
+                if (batch is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } previews }
+                    || previews.Results.Count != checkedOptions.Count) return null;
+                var available = new List<CharacterCreationQualityCatalogOption>();
+                for (int index = 0; index < checkedOptions.Count; index++)
+                {
                     ct.ThrowIfCancellationRequested();
+                    var option = checkedOptions[index];
+                    var preview = previews.Results[index];
                     if (preview.Blockers.Contains(CharacterCreationKarmaMetatypeBlockers.StaleBinding)
                         || preview.Outcome == CharacterCreationFoundationOutcomes.Conflict)
                         return null;
