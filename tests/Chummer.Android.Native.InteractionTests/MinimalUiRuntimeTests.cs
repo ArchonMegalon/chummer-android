@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 71, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 79, "Localized source-identity summaries were not loaded from the real catalog.");
                 string fractionalEssence = string.Join(" ", CreationQualityInfo.Effects(
                     "<quality><bonus><essencepenaltyt100>-150</essencepenaltyt100></bonus></quality>"));
                 Require(fractionalEssence.Contains((-1.5m).ToString(CultureInfo.CurrentUICulture))
@@ -117,6 +117,53 @@ internal static partial class AfterRunAuthorityHarness
                 && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
                 "Same-name qualities must not share source-identity summaries or expertise effects.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            string dealer = Effect("Dealer Connection");
+            Require(dealer.Contains("Choose one vehicle category for a 10% purchase discount")
+                && dealer.Contains("Choose from: Drones") && dealer.Contains("Choose from: Groundcraft")
+                && dealer.Contains("Choose from: Watercraft") && dealer.Contains("Choose from: Aircraft")
+                && !dealer.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Dealer Connection must distinguish one selected discount category from all vehicle categories.");
+            foreach (var (name, lifestyle) in new[] { ("Trust Fund I", "Medium"), ("Trust Fund II", "Low"),
+                ("Trust Fund III", "High"), ("Trust Fund IV", "Medium") })
+            {
+                string trust = Effect(name);
+                Require(trust.Contains("Lifestyle eligible for trust-fund support: " + lifestyle)
+                    && trust.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "Trust Fund levels identify lifestyle eligibility, not cash amounts or complete income rules.");
+            }
+            string redliner = Effect("Redliner");
+            Require(redliner.Contains("at most +2: Agility") && redliner.Contains("at most +2: Strength")
+                && redliner.Contains("lose 3 boxes per eligible cyberlimb pair, at most 6")
+                && !redliner.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Redliner's cyberlimb-dependent bonuses must include the Physical monitor penalty and both caps.");
+            Require(Effect("Cyber-Singularity Seeker").Contains("at most +2: Willpower")
+                && !Effect("Cyber-Singularity Seeker").Contains("lose 3 boxes"),
+                "Cyber-Singularity Seeker must not borrow Redliner's monitor penalty.");
+            Require(Effect("Overclocker").Contains("Add 1 to one chosen overclocked Matrix attribute")
+                && !Effect("Overclocker").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "An empty overclocker flag should explain its chosen-attribute benefit.");
+            Require(Effect("Friends in High Places").Contains("Connection 8 or higher")
+                && Effect("Friends in High Places").Contains("four times your Charisma"),
+                "High-Connection contact points need their threshold and separate Charisma-based budget.");
+            Require(Effect("Codeslinger") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "Codeslinger's missing source modifier must not be invented from its action-selection prompt.");
+            foreach (string malformed in new[] { "<trustfund>5</trustfund>", "<trustfund>Rating</trustfund>",
+                "<cyberseeker>unknown</cyberseeker>", "<overclocker>unknown</overclocker>",
+                "<dealerconnection />", "<dealerconnection><category>Unknown</category></dealerconnection>",
+                "<dealerconnection><category>00000000-0000-0000-0000-000000000001</category></dealerconnection>" })
+                Require(Describe(malformed) == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                    "Unknown enum values and absent/unresolved choice targets must not imply a known benefit.");
+            Require(Describe("<dealerconnection><category>Drones</category><futurecondition>unknown</futurecondition></dealerconnection>")
+                .Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "A known discount must not swallow an unknown dealer restriction.");
+            Require(Describe("<overclocker futurecondition='unknown' />")
+                .Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Unknown conditions on a known flag must remain visible as incomplete.");
+            foreach (string conditional in new[] { "<overclocker condition='Only at night' />",
+                "<cyberseeker condition='Only at night'>BOX</cyberseeker>", "<trustfund condition='Only at night'>1</trustfund>",
+                "<dealerconnection condition='Only at night'><category>Drones</category></dealerconnection>" })
+                Require(Describe(conditional).Contains("When: Only at night"),
+                    "Known conditions on special benefits must be displayed, not merely accepted by validation.");
             string datahaven = Effect("Prime Datahaven Membership");
             Require(datahaven.Contains("Granted contact") && datahaven.Contains("Connection: 5")
                 && datahaven.Contains("Base Loyalty: 1") && datahaven.Contains("Fixed Loyalty: 3")
