@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 88, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 103, "Localized source-identity summaries were not loaded from the real catalog.");
                 string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
                 var rated = CreationQualityInfo.Effects(willToLive, 3);
                 string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
@@ -86,6 +86,39 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Born Rich").Contains("increases by 30") && Effect("Born Rich").Contains("still pay the Karma")
                 && Effect("Out For Myself").Contains("three extra dice on Surprise tests"),
                 "Readable explanations must retain an increased exchange limit and surprise dice, not free Karma or Initiative.");
+            foreach (string name in new[] { "The Beast's Way", "The Spiritual Way", "The Burnout's Way", "The Magician's Way",
+                "Changeling (Class I SURGE)", "Changeling (Class II SURGE)", "Changeling (Class III SURGE)",
+                "Black Market Pipeline", "Erased", "Fame: Local", "Fame: National", "Fame: Megacorporate", "Fame: Global",
+                "Made Man", "Ex-Con" })
+            {
+                string text = Effect(name);
+                Require(!text.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                    && text.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "Special-rule summaries must explain supported effects without pretending their unencoded rules are complete: " + name);
+            }
+            Require(Effect("Erased").StartsWith("Your total Public Awareness is capped at 1.", StringComparison.Ordinal)
+                && Effect("Erased").Contains("A lower value stays lower"),
+                "Erased caps Public Awareness; it does not set it to one or reset all reputation.");
+            Require(Effect("The Beast's Way").Contains("If you choose Mentor Spirit")
+                && Effect("The Beast's Way").Contains("one die to Animal Handling")
+                && Effect("The Spiritual Way").Contains("one die to tests using the Conjuring skill group"),
+                "A free-quality cost waiver is not an automatic mentor grant, and the two Ways have different skill bonuses.");
+            Require(Effect("The Burnout's Way").Contains("80% of their normal Essence")
+                && Effect("The Burnout's Way").Contains("not a price discount")
+                && Effect("The Magician's Way").Contains("amount belongs to each power"),
+                "Adept Ways must not invent a blanket money or Power Point discount.");
+            foreach (string name in new[] { "Changeling (Class I SURGE)", "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" })
+                Require(Effect(name).Contains("separate 30-Karma limit") && Effect(name).Contains("not 30 extra Karma"),
+                    "The metagenic allowance must not be presented as general-purpose bonus Karma.");
+            Require(Effect("Black Market Pipeline").Contains("Eligible purchases in that category receive a 10% price discount")
+                && Effect("Made Man").Contains("group contact with Loyalty fixed at 3")
+                && Effect("Ex-Con").Contains("also gain SINner (Criminal)"),
+                "Contact and criminal-SIN explanations must retain their exact category, fixed Loyalty and grant boundaries.");
+            Require(Effect("Fame: Local").Contains("+1 to your Social limit in one chosen sprawl")
+                && Effect("Fame: National").Contains("national-language rating is at least 4")
+                && Effect("Fame: Megacorporate").Contains("+2 to your Social limit in one chosen megacorporation")
+                && Effect("Fame: Global").Contains("Public Awareness also increases by 8"),
+                "Fame variants must retain their distinct Social-limit scopes and reputation penalties.");
             Require(Effect("Quick Healer").Contains("Heal") && Effect("Quick Healer").Contains("Modifier: 2"),
                 "Spell-specific healing modifier was lost.");
             Require(Effect("Uneducated").Contains("Cannot default")
@@ -498,7 +531,7 @@ internal static partial class AfterRunAuthorityHarness
                         && MinimalVisible(empty).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").IsEnabled,
                         "An empty valid review must explain that no additional qualities are selected.");
                     MinimalRequireNoMachineValues(empty);
-                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude" })
+                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased" })
                     {
                         var helpOption = state.Authority.Options.First(item => item.Name == name);
                         var help = new CreationQualityInfoPage(coordinator, original, helpOption);

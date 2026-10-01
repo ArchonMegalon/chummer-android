@@ -61,7 +61,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
             self.assertEqual(len(copy), len({key.casefold() for key in copy}),
                              "Resource compilation rejects case-only duplicate keys")
             summaries = {key for key in copy if key.startswith("Qualities.Summary.")}
-            self.assertGreaterEqual(len(summaries), 88)
+            self.assertGreaterEqual(len(summaries), 103)
             if keys is not None:
                 self.assertEqual(keys, summaries, "Quality summaries must be translated together")
             keys = summaries
