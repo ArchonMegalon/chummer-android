@@ -1157,11 +1157,44 @@ internal static class CreationQualityInfo
         "allowspellrange" => Scalar(effect, "Permitted spell range"),
         "freespells" => Scalar(effect, "Free-spell allowance"),
         "addware" => Fields(effect, "Grants augmentation"),
+        "dealerconnection" => DealerChoices(effect),
+        "trustfund" => TrustFundLifestyle(effect),
+        "cyberseeker" when !effect.HasElements => effect.Value.Trim() switch
+        {
+            "WIL" or "AGI" or "STR" => Scalar(effect, "Cyberlimb attribute bonus: +1 per eligible pair, at most +2"),
+            "BOX" => Annotated(effect, Label("Physical condition monitor: lose 3 boxes per eligible cyberlimb pair, at most 6")),
+            _ => null
+        },
+        "overclocker" when !effect.HasElements && string.IsNullOrWhiteSpace(effect.Value)
+            => Annotated(effect, Label("Add 1 to one chosen overclocked Matrix attribute")),
         // Entries whose rules are not encoded (including enum-like flags such
-        // as trustfund) need authored copy. Never turn their raw value into a
+        // as fame) need authored copy. Never turn their raw value into a
         // made-up benefit, or a selection prompt into a rule explanation.
         _ => null
     };
+
+    private static string? TrustFundLifestyle(XElement effect)
+    {
+        // Source levels identify eligible lifestyles, not monthly nuyen or a
+        // dice modifier. Income/other manual conditions are not encoded here.
+        if (effect.HasElements) return null;
+        string? lifestyle = effect.Value.Trim() switch
+        { "1" or "4" => "Medium", "2" => "Low", "3" => "High", _ => null };
+        return lifestyle is null ? null : Annotated(effect, $"{Label("Lifestyle eligible for trust-fund support")}: {DisplayValue(lifestyle)}");
+    }
+
+    private static string? DealerChoices(XElement effect)
+    {
+        var categories = effect.Elements("category").ToArray();
+        if (categories.Length == 0 || categories.Any(category => category.HasElements
+            || category.Value is not ("Drones" or "Groundcraft" or "Watercraft" or "Aircraft"))) return null;
+        // Each listed category is an alternative, not a simultaneous discount.
+        return Annotated(effect, Label("Choose one vehicle category for a 10% purchase discount")) + "\n"
+            + string.Join("\n", categories.Select(category => Scalar(category, "Choose from")));
+    }
+
+    private static string Annotated(XElement effect, string text)
+        => string.Join(" · ", new[] { text }.Concat(Attributes(effect)));
 
     private static string PowerReferences(XElement effect, bool optional)
     {
@@ -1299,6 +1332,9 @@ internal static class CreationQualityInfo
         // Listing a granted/optional power does not explain that power's own
         // rules. Keep these entries partial until those definitions are bound.
         if (effect.Name.LocalName is "critterpowers" or "optionalpowers") return true;
+        // The encoded trust-fund level explains lifestyle eligibility only;
+        // it does not supply the complete income and narrative conditions.
+        if (effect.Name.LocalName == "trustfund") return true;
         if (!effect.HasElements && Guid.TryParse(effect.Value, out _)) return true;
         if (effect.Attributes().Any(attribute => AttributeLabel(attribute.Name.LocalName) is null
             && !(effect.Name.LocalName == "addspirit" && attribute.Name.LocalName == "ratingdivisor"))) return true;
