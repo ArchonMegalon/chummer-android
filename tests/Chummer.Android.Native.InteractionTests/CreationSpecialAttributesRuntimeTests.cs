@@ -28,8 +28,10 @@ internal static partial class AfterRunAuthorityHarness
                 var state = runtime.Coordinator.LoadCreationAttributes().Value!;
                 if (talent == "Mystic Adept" && rank == "C")
                 {
-                    await VerifySpecialPointPendingFeedbackAsync(ui, runtime, probe!, state);
+                    await VerifySpecialPointPendingFeedbackAsync(ui, runtime, owners, probe!, state);
                     RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                    await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                    state = runtime.Coordinator.LoadCreationAttributes().Value!;
                 }
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, runtime.Coordinator.State);
@@ -271,9 +273,10 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static async Task VerifySpecialPointPendingFeedbackAsync(IssuedPageUiContext ui,
-        NativeRewardRuntime runtime, AttributesCommitProbe probe, CharacterCreationAttributesState state)
+        NativeRewardRuntime runtime, ControlledLinkedOwner owners, AttributesCommitProbe probe,
+        CharacterCreationAttributesState state)
     {
-        foreach (string outcome in new[] { "ready", "cancel", "error", "leave" })
+        foreach (string outcome in new[] { "ready", "cancel", "error", "leave", "owner-aba" })
         {
             var draft = new CreationAttributesPhoneDraft();
             draft.Bind(state, runtime.Coordinator.State);
@@ -299,7 +302,7 @@ internal static partial class AfterRunAuthorityHarness
                 entered.TrySetResult();
                 Require(release.Wait(TimeSpan.FromSeconds(10)), "Pending special point test was not released.");
                 if (outcome == "cancel") throw new OperationCanceledException();
-                if (outcome == "error") throw new InvalidOperationException("special-point-feedback-test");
+                if (outcome is "error" or "owner-aba") throw new InvalidOperationException("special-point-feedback-test");
             };
             Task pending = ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked());
             try
@@ -341,10 +344,90 @@ internal static partial class AfterRunAuthorityHarness
                     "Fresh Core preview did not restore the ordinary special + control.");
             }
             else
-                Require(!body.Children.OfType<Button>().Any(x => x.IsEnabled),
+                Require(!body.Children.OfType<Button>().Any(x => x.IsEnabled
+                    && x.AutomationId != "creation-attribute-allocation-retry"),
                     "Canceled, failed or departed preparation enabled stale adjustments: " + outcome);
-            Require(alerts.Titles.Count == (outcome == "error" ? 1 : 0),
-                "Preparation errors must be reported once; cancellation/departure is not an error: " + outcome);
+            Require(alerts.Titles.Count == 0,
+                "Point checks must use readable in-page recovery, not raw exception dialogs: " + outcome);
+            if (outcome is "cancel" or "error" or "owner-aba")
+            {
+                Button? Retry() => MinimalVisible(page).OfType<Button>().SingleOrDefault(x =>
+                    x.AutomationId == "creation-attribute-allocation-retry");
+                Require(Retry() is { IsEnabled: true },
+                    "A failed point check stranded the editor without a read-only recovery action.");
+                var culture = CultureInfo.CurrentUICulture;
+                try
+                {
+                    foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                    {
+                        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                        MinimalRender(page);
+                        Require(Retry()!.Text == CreationAllocationStrings.Get("AttributeAllocation.CheckAgain", "missing")
+                            && MinimalVisibleText(page).Contains(CreationAllocationStrings.Get("AttributeAllocation.CheckFailed", "missing"))
+                            && !MinimalVisibleText(page).Contains("special-point-feedback-test")
+                            && !MinimalVisibleText(page).Contains("InvalidOperationException"),
+                            "Recovery must show localized guidance without raw exception text: " + locale);
+                        MinimalRequireNoMachineValues(page);
+                    }
+                }
+                finally { CultureInfo.CurrentUICulture = culture; MinimalRender(page); }
+                var allocations = draft.Allocations(state).ToArray();
+                Button retained = Retry()!;
+                if (outcome == "owner-aba")
+                {
+                    var owner = owners.Current;
+                    owners.Set(ContactsOwnerB);
+                    owners.Set(owner);
+                    int beforeRetry = reads;
+                    probe.BeforeRead = () => Interlocked.Increment(ref reads);
+                    try { await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retained).SendClicked())); }
+                    finally { probe.BeforeRead = null; }
+                    Require(reads == beforeRetry && Retry() is null && draft.Allocations(state).SequenceEqual(allocations)
+                        && !body.Children.OfType<Button>().Any(x => x.IsEnabled),
+                        "An owner A→B→A transition admitted retained recovery or changed the draft.");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    continue;
+                }
+                MinimalRender(page);
+                int priorReads = reads;
+                probe.BeforeRead = () => Interlocked.Increment(ref reads);
+                try { await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retained).SendClicked())); }
+                finally { probe.BeforeRead = null; }
+                Require(reads == priorReads, "A detached recovery button entered Core.");
+                Button retry = Retry()!;
+                release.Reset();
+                var retryEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                probe.BeforeRead = () =>
+                {
+                    Interlocked.Increment(ref reads);
+                    retryEntered.TrySetResult();
+                    Require(release.Wait(TimeSpan.FromSeconds(10)), "Recovery read was not released.");
+                };
+                Task retrying = ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked());
+                try
+                {
+                    await retryEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(!retry.IsEnabled && retry.Text == CreationAllocationStrings.Get("AttributeAllocation.Checking", "missing"),
+                        "Recovery must expose pending feedback before waiting for Core.");
+                    ((IButtonController)retry).SendClicked();
+                    Require(reads == priorReads + 1 && draft.Allocations(state).SequenceEqual(allocations),
+                        "A duplicate recovery replayed the point adjustment or started another read.");
+                }
+                finally
+                {
+                    release.Set();
+                    try { await JoinIssuedPageAsync(retrying); }
+                    finally { probe.BeforeRead = null; }
+                }
+                Require(Retry() is null && draft.Allocations(state).SequenceEqual(allocations)
+                    && draft.Attribute(state, "MAG")!.Current == initial + 1
+                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1
+                    && MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == plus.AutomationId && x.IsEnabled),
+                    "Read-only recovery lost or replayed the admitted point instead of restoring fresh controls.");
+            }
+            else
+                Require(!MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == "creation-attribute-allocation-retry"),
+                    "Successful or departed preparation exposed a recovery action.");
             if (outcome != "leave") IssuedPageLifecycle(page, "OnDisappearing");
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
             Require(MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == plus.AutomationId
@@ -355,6 +438,6 @@ internal static partial class AfterRunAuthorityHarness
                 "Pending feedback saved the runner or changed another budget.");
             IssuedPageLifecycle(page, "OnDisappearing");
         }
-        Console.WriteLine("PASS special + visible static pending feedback, UI heartbeat, duplicate exclusion, cancel/error/departure cleanup and fresh reappearance");
+        Console.WriteLine("PASS special + pending feedback, read-only failure recovery, localized guidance, duplicate/detached/owner-ABA rejection, UI heartbeat and fresh reappearance");
     }
 }

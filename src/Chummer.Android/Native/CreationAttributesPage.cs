@@ -414,6 +414,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private CancellationTokenSource? _preparation;
     private long _preparationGeneration;
     private bool _loading;
+    private bool _canRetryPreparation;
+    private Button? _retryButton;
     private string? _failure;
     private readonly Label _progress = new()
     {
@@ -452,6 +454,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation?.Cancel();
         _prepared = null;
         _loading = false;
+        _canRetryPreparation = false;
+        _retryButton = null;
         _progress.IsVisible = false;
         base.OnDisappearing();
     }
@@ -464,6 +468,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation = lifetime;
         CancellationToken ct = lifetime.Token;
         _prepared = null;
+        _canRetryPreparation = false;
+        _retryButton = null;
         _failure = null;
         _loading = true;
         if (_originalAuthority is null || !Coordinator.IsCreationAttributesStateCurrent(_originalAuthority))
@@ -471,6 +477,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         Refresh();
         var original = Coordinator.State;
         var draft = _draft.Copy();
+        bool settled = false;
         try
         {
             var prepared = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
@@ -505,6 +512,19 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             _failure = prepared.Failure;
             // Owner transition, navigation and local draft edits all invalidate a late result.
             if (prepared.Value is { } value && IsCurrent(value)) _prepared = value;
+            _canRetryPreparation = prepared.Value is null;
+            settled = true;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException && !ct.IsCancellationRequested)
+        {
+            if (generation == _preparationGeneration)
+            {
+                // This operation only reads previews; the already admitted local
+                // draft is retained. Never expose an exception message as UI copy.
+                _failure = error.GetType().Name;
+                _canRetryPreparation = true;
+                settled = true;
+            }
         }
         finally
         {
@@ -512,6 +532,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             {
                 _loading = false;
                 _progress.IsVisible = false;
+                if (settled && _prepared is null) Refresh();
             }
             if (ReferenceEquals(_preparation, lifetime)) _preparation = null;
         }
@@ -533,6 +554,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             return;
         }
         _body.Clear();
+        _retryButton = null;
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributeAllocation.Eyebrow",
@@ -548,12 +570,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         if (_prepared is not { } prepared || !IsCurrent(prepared)
             || _draft.Attribute(prepared.State, _attributeId) is not { } attribute)
         {
-            Label stale = NativeTheme.Body(
-                _failure
-                ?? CharacterCreationAttributesBlockers.StaleWorkspaceRevision,
-                NativeTheme.Danger);
-            stale.AutomationId = "creation-attribute-allocation-stale";
-            _body.Add(NativeTheme.Card(stale));
+            AddUnavailable();
             return;
         }
 
@@ -581,6 +598,48 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             CreationAllocationStrings.Get("AttributeAllocation.KarmaIncrease", "Karma level +"),
             "karma-increase");
         AddSources(attribute);
+    }
+
+    private bool CanRetryPreparation()
+        => _canRetryPreparation && !_loading && _prepared is null
+           && _originalAuthority is { } authority
+           && Coordinator.IsCreationAttributesStateCurrent(authority)
+           && _draft.Matches(authority, Coordinator.State);
+
+    private void AddUnavailable()
+    {
+        bool canRetry = CanRetryPreparation();
+        Label message = NativeTheme.Body(canRetry
+            ? CreationAllocationStrings.Get("AttributeAllocation.CheckFailed",
+                "Couldn't check the points. Your choices are still in this draft; nothing was saved. Check again to continue.")
+            : CreationAllocationStrings.Get("AttributeAllocation.Reopen",
+                "These choices are no longer current. Return to Attributes and reopen this editor."),
+            NativeTheme.Danger);
+        message.AutomationId = "creation-attribute-allocation-stale";
+        _body.Add(NativeTheme.Card(message));
+        if (canRetry)
+        {
+            long generation = _preparationGeneration;
+            string label = CreationAllocationStrings.Get("AttributeAllocation.CheckAgain", "Check again");
+            Button retry = NativeTheme.SecondaryButton(label);
+            retry.AutomationId = "creation-attribute-allocation-retry";
+            _retryButton = retry;
+            retry.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (!ReferenceEquals(_retryButton, retry) || generation != _preparationGeneration
+                    || !CanRetryPreparation()) return;
+                retry.Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…");
+                // Rebuild action previews for this exact draft; do not replay +/-.
+                try { await PrepareAsync(CancellationToken.None); }
+                finally { retry.Text = label; }
+            });
+            _body.Add(retry);
+        }
+        if (!string.IsNullOrWhiteSpace(_failure))
+        {
+            _technicalDetails.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attribute-allocation-details"));
+        }
     }
 
     private void AddProjection(CharacterCreationAttributeProjection attribute)

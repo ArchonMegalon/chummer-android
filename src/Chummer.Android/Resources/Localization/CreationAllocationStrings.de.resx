@@ -884,4 +884,7 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>Diese Änderung ist mit der aktuellen Auswahl und den Grenzen nicht verfügbar. Den genauen Grund findest du in den technischen Details.</value></data>
   <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} hat den Höchstwert bei der Erschaffung erreicht: {1}. Übrige Punkte können den Wert nicht weiter erhöhen.</value></data>
   <data name="AttributeAllocation.Checking" xml:space="preserve"><value>Punkte werden geprüft…</value></data>
+  <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>Die Punkte konnten nicht geprüft werden. Deine Auswahl bleibt im Entwurf; nichts wurde gespeichert. Prüfe erneut, um fortzufahren.</value></data>
+  <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Erneut prüfen</value></data>
+  <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>Diese Auswahl ist nicht mehr aktuell. Gehe zu „Attribute“ zurück und öffne diesen Editor erneut.</value></data>
 </root>
