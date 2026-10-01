@@ -44,7 +44,17 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 223, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 235, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var quality in catalog.Where(quality => quality.Element("name")!.Value.StartsWith("Allergy (", StringComparison.Ordinal)
+                    || quality.Element("name")!.Value.StartsWith("Addiction (", StringComparison.Ordinal)))
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                        "Every allergy and addiction grade needs translated, definition-bound effects beyond its choice prompt or reputation.");
+                }
                 foreach (string name in new[] { "Astral Beacon", "Bad Luck", "Combat Paralysis", "Codeblock",
                     "Distinctive Style", "Insomnia (Basic)", "Insomnia (Full)", "Simsense Vertigo",
                     "Low Pain Tolerance", "Elf Poser", "Ork Poser", "Spirit Bane" })
@@ -526,6 +536,41 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Spirit Bane").Contains("it gains two dice against your Banishing")
                 && Effect("Spirit Bane").Contains("Watchers and other constructs do not count"),
                 "Imitating a metatype must not grant attributes; spirit hostility must retain type scope and who rolls the bonus.");
+            foreach (string frequency in new[] { "Uncommon", "Common" })
+            {
+                string mild = Effect($"Allergy ({frequency}, Mild)");
+                string moderate = Effect($"Allergy ({frequency}, Moderate)");
+                string severe = Effect($"Allergy ({frequency}, Severe)");
+                string extreme = Effect($"Allergy ({frequency}, Extreme)");
+                Require(mild.Contains("Physical tests lose two dice")
+                    && mild.Contains("using that allergen loses one die")
+                    && moderate.Contains("Physical tests lose four dice")
+                    && moderate.Contains("using that allergen loses two dice"),
+                    "Mild/moderate allergies affect Physical tests and retain separate allergen-attack resistance penalties.");
+                Require(severe.Contains("all tests lose four dice")
+                    && severe.Contains("each minute causes one unresisted Physical damage box")
+                    && severe.Contains("using the allergen loses three dice")
+                    && extreme.Contains("all actions lose six dice")
+                    && extreme.Contains("every 30 seconds")
+                    && extreme.Contains("resistance loses four dice")
+                    && extreme.Contains("First Aid, Medicine or magic"),
+                    "Higher allergy grades must retain all-test scope, unresisted damage intervals and extreme-shock treatment.");
+                Require(!mild.Contains("unresisted") && !moderate.Contains("unresisted")
+                    && !severe.Contains("30 seconds") && !extreme.Contains("each minute"),
+                    "Lower allergy grades must not borrow ongoing damage or another grade's interval.");
+            }
+            Require(Effect("Addiction (Mild)").Contains("Monthly craving: one dose or one hour")
+                && Effect("Addiction (Mild)").Contains("lose two dice on Mental-based tests for psychological dependence")
+                && Effect("Addiction (Moderate)").Contains("every two weeks: one dose or one hour")
+                && Effect("Addiction (Moderate)").Contains("four dice on Mental-based tests for psychological dependence")
+                && Effect("Addiction (Moderate)").Contains("successful withdrawal test avoids those symptoms"),
+                "Mild/moderate addiction help must preserve craving frequency, conditional withdrawal and dependency scope.");
+            Require(Effect("Addiction (Severe)").Contains("Weekly craving: two doses or two hours")
+                && Effect("Addiction (Severe)").Contains("Social tests always lose two dice, even outside withdrawal")
+                && Effect("Addiction (Burnout)").Contains("Daily craving: at least three doses or three hours")
+                && Effect("Addiction (Burnout)").Contains("six fewer dice on Mental-based tests")
+                && Effect("Addiction (Burnout)").Contains("Social tests always lose three dice"),
+                "Severe/burnout addiction help must distinguish withdrawal penalties from the persistent social penalty.");
             Require(!Describe("<notoriety>1</notoriety><memory>1</memory>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
