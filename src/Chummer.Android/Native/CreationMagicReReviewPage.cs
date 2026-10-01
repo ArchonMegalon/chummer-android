@@ -44,7 +44,7 @@ public sealed class CreationMagicReReviewPage : NativePageBase
             _body.Add(saved);
             var identity = NativeTheme.Body(receipt.ReceiptDigest, NativeTheme.Muted);
             identity.AutomationId = "creation-magic-rereview-receipt";
-            _body.Add(identity);
+            _body.Add(NativeTheme.TechnicalDetails(identity, "creation-magic-rereview-receipt-details"));
             AddExit();
             return;
         }
@@ -62,7 +62,6 @@ public sealed class CreationMagicReReviewPage : NativePageBase
             "Attributes revision {0} → {1}. Keep all saved choices:",
             _state.HistoricalDraft.AttributesDraftRevision, _state.Binding.Current.AttributesDraftRevision), NativeTheme.Muted);
         binding.AutomationId = "creation-magic-rereview-binding";
-        _body.Add(binding);
         var choices = _state.HistoricalDraft.Selections;
         AddChoice(choices.Tradition);
         AddChoice(choices.Stream);
@@ -97,6 +96,7 @@ public sealed class CreationMagicReReviewPage : NativePageBase
         _body.Add(confirm);
         _body.Add(progress);
         AddExit();
+        _body.Add(NativeTheme.TechnicalDetails(binding, "creation-magic-rereview-details"));
     }
 
     private void AddChoice(CharacterCreationMagicResonanceOptionIdentity? identity, int? levels = null)

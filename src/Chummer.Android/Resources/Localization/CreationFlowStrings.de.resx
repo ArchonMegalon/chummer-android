@@ -114,9 +114,9 @@
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
   <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} ausgewählt · {1} {2} verbleibend · {3} Core-Optionen</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Entwurf</value></data>
-  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core hat diesen Entwurf geprüft, aber exakte Restbudgets oder Blockaden verhindern die Bestätigung.</value></data>
-  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exakte Core-Budgets</value></data>
-  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Die Bestätigung speichert nur den Core-Hilfszustand der Erschaffung. CharacterDocumentChanged muss bis zur Gesamtfinalisierung false bleiben.</value></data>
+  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Einige Angaben fehlen noch. Prüfe die übrigen Punkte und Hinweise vor dem Speichern.</value></data>
+  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Deine verfügbaren Punkte und Auswahlen</value></data>
+  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Speichere hier deine Auswahl. Sie wird wirksam, wenn du die Erschaffung abschließt.</value></data>
   <data name="Magic.Heading" xml:space="preserve"><value>Magie und Resonanz</value></data>
   <data name="Magic.Intro" xml:space="preserve"><value>Wähle die Magie und Fähigkeiten für dein Talent.</value></data>
   <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
@@ -152,22 +152,22 @@
   <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Idempotente Wiederholung</value></data>
   <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Magie-/Resonanzbeleg</value></data>
   <data name="Magic.Receipt.PowerRemaining" xml:space="preserve"><value>Verbleibende Kraftpunkte</value></data>
-  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Typisierte Auswahlen sind im Core-Hilfszustand dauerhaft gespeichert. Charaktereffekte warten auf die Gesamtfinalisierung.</value></data>
+  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Deine Auswahl ist gespeichert. Sie wird wirksam, wenn du die Erschaffung abschließt.</value></data>
   <data name="Magic.Receipt.SpellsRemaining" xml:space="preserve"><value>Verbleibende Zauber</value></data>
   <data name="Magic.Receipt.TalentKind" xml:space="preserve"><value>Talentart</value></data>
   <data name="Magic.Receipt.Unsafe" xml:space="preserve"><value>Unsicherer Beleg: Das Charakterdokument wurde vor der Finalisierung geändert.</value></data>
-  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Ein per Digest geprüfter Core-Beleg wartet auf Bestätigung.</value></data>
-  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Eine unterbrochene Core-Speicherung ist an ihren exakten idempotenten Befehl gebunden und kann nur wiederholt werden.</value></data>
+  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Deine Auswahl wurde gespeichert. Öffne das Ergebnis, um diesen Schritt abzuschließen.</value></data>
+  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Das Speichern wurde unterbrochen. Prüfe oder beende denselben Speichervorgang über die Wiederherstellung; starte keinen neuen.</value></data>
   <data name="Magic.Recovery.Locked" xml:space="preserve"><value>Der Magie-/Resonanzbereich ist gesperrt.</value></data>
-  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>Eine typisierte blockadenfreie Core-Prüfung kann ohne Rekonstruktion der Regeldaten fortgesetzt werden.</value></data>
-  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Dieser Checkpoint gehört zu einer anderen Revision oder Regelinstanz. Der Bereich bleibt sicher gesperrt; öffne den exakten Runner erneut oder nutze die Support-Wiederherstellung.</value></data>
+  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>Eine geprüfte Auswahl wartet auf dich. Sieh sie vor dem Speichern noch einmal durch.</value></data>
+  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Diese gespeicherte Prüfung passt nicht mehr zum Runner. Öffne denselben Runner erneut oder nutze die Support-Wiederherstellung; speichere nicht noch einmal.</value></data>
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
-  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core speichert atomar nur das Hilfsbuch der Erschaffung. Hier werden weder XML noch Charaktereffekte verändert.</value></data>
+  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Bestätige, um diese Auswahl zu speichern. Nach den übrigen Schritten kannst du die Erschaffung abschließen.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Magie-/Resonanzentwurf der Erschaffung bestätigen</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Auswahl wird geprüft und gespeichert…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Prüfung</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Deine Auswahl prüfen</value></data>
-  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Für dieses exakte Talent sind keine Folgeidentitäten erforderlich.</value></data>
+  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Für dieses Talent ist keine weitere Auswahl nötig.</value></data>
   <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Magie / Resonanz prüfen</value></data>
   <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Deine Auswahl</value></data>
   <data name="Magic.Review.UnavailableChoice" xml:space="preserve"><value>Öffne Magie / Resonanz erneut, um diese Auswahl zu sehen.</value></data>

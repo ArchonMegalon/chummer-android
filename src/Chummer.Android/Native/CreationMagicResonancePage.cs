@@ -91,7 +91,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Magic.Intro",
-                "The Talent is owned by the Creation prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed."),
+                "Choose the magic and abilities available to your Talent."),
             NativeTheme.Muted));
 
         if (_loading)
@@ -249,7 +249,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonancePreview? preview,
         IReadOnlyList<CharacterCreationMagicResonanceBudgetState> projected)
     {
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.ExactBudgets", "Exact Core budgets")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.ExactBudgets", "Your available choices")));
         CharacterCreationMagicResonanceBudgetState[] budgets = preview is null
             ? projected.ToArray()
             :
@@ -319,15 +319,15 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 CharacterCreationMagicResonanceCheckpointPhase.Reviewed =>
                     CreationFlowStrings.Get(
                         "Magic.Recovery.Reviewed",
-                        "A typed blocker-free Core review can be resumed without reconstructing rules data."),
+                        "A checked selection is ready to resume. Review it before saving."),
                 CharacterCreationMagicResonanceCheckpointPhase.Confirming =>
                     CreationFlowStrings.Get(
                         "Magic.Recovery.Confirming",
-                        "An interrupted Core commit is locked to its exact idempotent command and can only be replayed."),
+                        "Saving was interrupted. Use recovery to check or finish the same save; do not start another."),
                 CharacterCreationMagicResonanceCheckpointPhase.Confirmed =>
                     CreationFlowStrings.Get(
                         "Magic.Recovery.Confirmed",
-                        "A digest-verified Core receipt is waiting for acknowledgement."),
+                        "Your choices were saved. Open the result to finish this step."),
                 _ => CreationFlowStrings.Get("Magic.Recovery.Locked", "The Magic/Resonance lane is locked.")
             },
             NativeTheme.Muted));
@@ -385,7 +385,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             Label stale = NativeTheme.Body(
                 CreationFlowStrings.Get(
                     "Magic.Recovery.Stale",
-                    "This checkpoint belongs to another revision or authority digest. The lane stays fail-closed; reopen the exact runner or use support recovery."),
+                    "This saved review no longer matches the runner. Reopen the same runner or use support recovery; do not save again."),
                 NativeTheme.Danger);
             stale.AutomationId = "creation-magic-resonance-stale-checkpoint";
             recovery.Add(stale);
@@ -526,7 +526,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             Label incomplete = NativeTheme.Body(
                 CreationFlowStrings.Get(
                     "Magic.DraftIncomplete",
-                    "Core has previewed this draft, but exact remaining budgets or blockers prevent confirmation."),
+                    "Some choices still need attention. Check the remaining points and messages before saving."),
                 NativeTheme.Danger);
             incomplete.AutomationId = "creation-magic-resonance-draft-incomplete";
             _body.Add(incomplete);
@@ -534,7 +534,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         Label boundary = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Magic.FinalizationBoundary",
-                "Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization."),
+                "Save your choices here. They take effect when you finish character creation."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-magic-resonance-finalization-boundary";
         _body.Add(boundary);
@@ -1246,7 +1246,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
             "Magic.Review.Heading",
             "Review exact typed draft")));
-        _body.Add(NativeTheme.Body(
+        _technicalDetails.Add(NativeTheme.Body(
             CreationFlowStrings.Format(
                 "Magic.Review.Binding",
                 "Revision {0} · {1}",
@@ -1278,7 +1278,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         Label boundary = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Magic.Review.Boundary",
-                "Core atomically commits only the auxiliary creation ledger. No XML or character effect is mutated here."),
+                "Confirm to save these choices. You can finish character creation after the remaining steps."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-magic-resonance-review-auxiliary-only";
         _body.Add(boundary);
@@ -1438,7 +1438,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             _body.Add(NativeTheme.Body(
                 CreationFlowStrings.Get(
                     "Magic.Review.NoIdentities",
-                    "No follow-up identities are required by this exact Talent."),
+                    "No further choices are needed for this talent."),
                 NativeTheme.Muted));
         }
     }
@@ -1472,6 +1472,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
 /// <summary>Confirmed Core receipt; acknowledgement removes only the phone recovery journal.</summary>
 public sealed class CreationMagicResonanceReceiptPage : NativePageBase
 {
+    private readonly Chummer.Application.Owners.OwnerContextStamp? _originalOwner;
     private readonly CharacterCreationMagicResonanceCheckpoint _checkpoint;
     private readonly CharacterCreationMagicResonanceConfirmation _confirmation;
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
@@ -1487,6 +1488,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         CharacterCreationMagicResonanceConfirmation confirmation,
         CharacterCreationMagicResonanceCheckpointStore store) : base(coordinator)
     {
+        _originalOwner = coordinator?.State.DisplayOwnerContext;
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
         _confirmation = confirmation ?? throw new ArgumentNullException(nameof(confirmation));
         _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -1512,23 +1514,31 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (!CanDisplayReceipt())
+        {
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Recovery.Stale",
+                "Reopen the same runner to check this saved selection."), NativeTheme.Muted));
+            return;
+        }
         CharacterCreationMagicResonanceReceipt receipt = _confirmation.Receipt;
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Receipt.Eyebrow", "SR5 · Confirm")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Metric(
+        VerticalStackLayout diagnostics = new() { Spacing = 6 };
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.PreviousRevision", "Previous revision"),
             receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.ContentRevision", "Content revision"),
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.SavedRevision", "Saved revision"),
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.DraftRevision", "Draft revision"),
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Receipt.TalentKind", "Talent kind"), receipt.TalentKind));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Receipt.TalentKind", "Talent kind"),
+            CreationMagicResonancePage.KindLabel(receipt.TalentKind)));
         card.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Receipt.PowerRemaining", "Power points remaining"),
             CreationMagicResonancePage.Decimal(receipt.AdeptPowerPointsRemaining)));
@@ -1538,16 +1548,15 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         card.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Receipt.FormsRemaining", "Complex forms remaining"),
             receipt.ComplexFormsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Receipt.IdempotentReplay", "Idempotent replay"),
             _confirmation.IsIdempotentReplay.ToString().ToLowerInvariant()));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Receipt.CurrentDraft", "Current draft"),
             _confirmation.IsCurrentDraft.ToString().ToLowerInvariant()));
-        card.Add(NativeTheme.Metric(
+        diagnostics.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Common.DocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
-        VerticalStackLayout diagnostics = new() { Spacing = 6 };
         AddDigest(diagnostics, "creation-magic-resonance-receipt-digest", receipt.ReceiptDigest);
         AddDigest(diagnostics, "creation-magic-resonance-receipt-draft-digest", receipt.DraftDigest);
         AddDigest(diagnostics, "creation-magic-resonance-receipt-command-digest", receipt.CommandDigest);
@@ -1560,7 +1569,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
             !receipt.CharacterDocumentChanged
                 ? CreationFlowStrings.Get(
                     "Magic.Receipt.Safe",
-                    "Typed choices are durable in Core auxiliary state. Character effects remain pending whole-build finalization.")
+                    "Your choices are saved. They take effect when you finish character creation.")
                 : CreationFlowStrings.Get(
                     "Magic.Receipt.Unsafe",
                     "Unsafe receipt: the character document changed before finalization."),
@@ -1580,6 +1589,9 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
 
     private async Task AcknowledgeAsync()
     {
+        // A retained button must not acknowledge another account's or runner's
+        // journal, including A → B → A transitions with a newer owner stamp.
+        if (!CanDisplayReceipt() || !_checkpoint.OwnsRecoveryRevision(Coordinator.State)) return;
         if (!_store.TryAcknowledgeConfirmed(
                 CharacterCreationMagicResonanceCheckpointCas.From(_checkpoint),
                 out string blocker))
@@ -1596,6 +1608,9 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
             throw new InvalidOperationException("Creation returns through the phone Runner route.");
         await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
     }
+
+    private bool CanDisplayReceipt() => Coordinator.IsCreationMagicOwnerCurrent(_originalOwner)
+        && Coordinator.State.WorkspaceId == _confirmation.Receipt.WorkspaceId;
 
     private static void AddDigest(
         VerticalStackLayout card,
