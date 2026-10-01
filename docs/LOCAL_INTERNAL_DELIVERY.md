@@ -104,9 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 67 is the latest [observed Internal availability](../play/evidence/preview67-internal-observation.md).
-It is available on Play Internal; physical Play installation of 67 is not yet
-verified. Magic page/overview/review preparation reuses one canonical projection
+Preview 68 is the latest [observed Internal availability](../play/evidence/preview68-internal-observation.md).
+It is available on Play Internal; physical Play installation of 68 is not yet
+verified. Fresh Magic draft admission now validates one canonical projection,
+retaining unsaved choices on an unchanged owner/editor and rejecting stale or
+invalid authority. Actual-Core negative/ownership/cold-reopen checks and the
+affected native return/selection smoke passed; all 30 saved files were unchanged.
+One instrumented emulator pair measured return preparation at 8,984 to 6,016 ms;
+fresh Core loading remains about five seconds. This is not a general or physical
+speedup claim, nor a complete native Magic save/restart journey. Both diagnostic
+startups encountered a System UI ANR before the route; no ANR-free startup claim.
+Preview 67's Magic page/overview/review preparation reuses one canonical projection
 per fresh admission, retaining exact Core/owner/display/digest and mutation checks.
 Actual-Core managed negative/ownership/save-cold-reopen checks and native upgrade,
 stored-runner reopen, catalog selection and return-navigation smoke passed; all
