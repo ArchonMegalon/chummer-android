@@ -11,6 +11,7 @@ namespace Chummer.Android.Native;
 public sealed class CreationMagicResonancePage : NativePageBase
 {
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private readonly HashSet<string> _shownBlockerMessages = new(StringComparer.Ordinal);
     private readonly CreationMagicResonancePhoneDraft _draft = new();
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
     private readonly VerticalStackLayout _body = new()
@@ -85,6 +86,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _shownBlockerMessages.Clear();
         // The previous disclosure still owns its native child after _body.Clear().
         // Never attach that child to a new parent during a refresh.
         _technicalDetails = new() { Spacing = 6 };
@@ -241,7 +243,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames);
         AddSources(card, talent.SourceAnchorIds, _technicalDetails);
         foreach (string blocker in talent.Blockers)
-            AddBlocker(card, blocker, _technicalDetails);
+            AddBlocker(card, blocker, _technicalDetails, _shownBlockerMessages);
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-magic-resonance-talent";
         _body.Add(border);
@@ -287,7 +289,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     BudgetUnit(budget.Kind)),
                 budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
             foreach (string blocker in budget.Blockers)
-                AddBlocker(card, blocker, _technicalDetails);
+                AddBlocker(card, blocker, _technicalDetails, _shownBlockerMessages);
             Border border = NativeTheme.Card(card, new Thickness(12));
             border.Margin = new Thickness(0, 0, 8, 8);
             border.AutomationId = $"creation-magic-resonance-budget-{Token(budget.Kind)}";
@@ -733,7 +735,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Blockers.Title", "Before you continue")));
         foreach (string blocker in normalized)
-            AddBlocker(card, blocker, _technicalDetails);
+            AddBlocker(card, blocker, _technicalDetails, _shownBlockerMessages);
+        if (card.Children.Count == 1) return; // Every hint already accompanies its budget/talent.
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-magic-resonance-blockers";
         _body.Add(border);
@@ -747,10 +750,16 @@ public sealed class CreationMagicResonancePage : NativePageBase
         _technicalDetails.Add(label);
     }
 
-    internal static void AddBlocker(VerticalStackLayout layout, string code, VerticalStackLayout diagnostics)
+    internal static void AddBlocker(VerticalStackLayout layout, string code, VerticalStackLayout diagnostics,
+        ISet<string>? shownMessages = null)
     {
-        layout.Add(NativeTheme.Body($"• {CreationFlowStrings.MagicBlocker(code)}", NativeTheme.Danger));
-        diagnostics.Add(NativeTheme.Body(code, NativeTheme.Muted));
+        string message = CreationFlowStrings.MagicBlocker(code);
+        if (shownMessages is null || shownMessages.Add(message))
+            layout.Add(NativeTheme.Body($"• {message}", NativeTheme.Danger));
+        // Different exact codes can share a readable explanation. Keep every
+        // distinct code in diagnostics even when its visible hint is shared.
+        if (!diagnostics.Children.OfType<Label>().Any(label => label.Text == code))
+            diagnostics.Add(NativeTheme.Body(code, NativeTheme.Muted));
     }
 
     internal static void AddSources(
@@ -1060,9 +1069,6 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
             details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Option.Drain", "Drain"), _option.DrainExpression));
         diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceNodeDigest", "Source node digest"), _option.SourceNodeDigest));
         CreationMagicResonancePage.AddSources(details, _option.SourceAnchorIds, diagnostics);
-        foreach (string blocker in _option.Blockers.Concat(_blockers)
-                     .Distinct(StringComparer.Ordinal))
-            CreationMagicResonancePage.AddBlocker(details, blocker, diagnostics);
         Border card = NativeTheme.Card(details);
         card.AutomationId = "creation-magic-resonance-option-authority";
         _body.Add(card);
@@ -1110,14 +1116,18 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
             toggle.Clicked += async (_, _) => await RunAsync(ToggleAsync);
             _body.Add(toggle);
         }
-        if (!exact)
-        {
-            Label disabled = NativeTheme.Body(
-                CreationFlowStrings.MagicBlocker(_option.Blockers.FirstOrDefault()
-                    ?? CharacterCreationMagicResonanceBlockers.OptionDisabled),
-                NativeTheme.Danger);
+        VerticalStackLayout notices = new() { Spacing = 6 };
+        HashSet<string> shownMessages = new(StringComparer.Ordinal);
+        foreach (string blocker in _option.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
+            CreationMagicResonancePage.AddBlocker(notices, blocker, diagnostics, shownMessages);
+        if (!exact && notices.Children.Count == 0)
+            CreationMagicResonancePage.AddBlocker(notices,
+                CharacterCreationMagicResonanceBlockers.OptionDisabled, diagnostics, shownMessages);
+        if (!exact && notices.Children.OfType<Label>().FirstOrDefault() is { } disabled)
             disabled.AutomationId = "creation-magic-resonance-option-disabled-reason";
-            _body.Add(disabled);
+        if (notices.Children.Count > 0)
+        {
+            _body.Add(notices);
         }
         _body.Add(NativeTheme.TechnicalDetails(diagnostics, "creation-magic-resonance-option-details"));
     }

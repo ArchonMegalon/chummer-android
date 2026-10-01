@@ -59,7 +59,7 @@ internal static class NativeTheme
         return button;
     }
 
-    public static Button PrimaryButton(string text) => new()
+    public static Button PrimaryButton(string text) => WithAvailabilityStates(new Button
     {
         Text = text,
         BackgroundColor = Ink,
@@ -68,9 +68,9 @@ internal static class NativeTheme
         HeightRequest = 50,
         Padding = new Thickness(18, 10),
         FontAttributes = FontAttributes.Bold
-    };
+    });
 
-    public static Button SecondaryButton(string text) => new()
+    public static Button SecondaryButton(string text) => WithAvailabilityStates(new Button
     {
         Text = text,
         BackgroundColor = Colors.Transparent,
@@ -81,7 +81,36 @@ internal static class NativeTheme
         HeightRequest = 50,
         Padding = new Thickness(16, 10),
         FontAttributes = FontAttributes.Bold
-    };
+    });
+
+    private static Button WithAvailabilityStates(Button button)
+    {
+        // Do not fade the whole control: inactive actions still need readable
+        // text. Leaving Disabled restores the caller's ordinary local colors.
+        VisualStateManager.SetVisualStateGroups(button, new VisualStateGroupList
+        {
+            new VisualStateGroup
+            {
+                Name = "CommonStates",
+                States =
+                {
+                    new VisualState { Name = "Normal" },
+                    new VisualState
+                    {
+                        Name = "Disabled",
+                        Setters =
+                        {
+                            new Setter { Property = Button.BackgroundColorProperty, Value = Line },
+                            new Setter { Property = Button.TextColorProperty, Value = Text },
+                            new Setter { Property = Button.BorderColorProperty, Value = Muted },
+                            new Setter { Property = Button.BorderWidthProperty, Value = 1d }
+                        }
+                    }
+                }
+            }
+        });
+        return button;
+    }
 
     public static Border Card(View content, Thickness? padding = null) => new()
     {
