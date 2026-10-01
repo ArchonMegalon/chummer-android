@@ -300,4 +300,9 @@
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.</value></data>
   <data name="Qualities.Review.Empty" xml:space="preserve"><value>No additional qualities selected.</value></data>
   <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Magic.Catalog.Search" xml:space="preserve"><value>Search names or source books</value></data>
+  <data name="Magic.Catalog.NoMatches" xml:space="preserve"><value>No matching choices</value></data>
+  <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Showing {0}–{1} of {2}</value></data>
+  <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Magic.Catalog.Next" xml:space="preserve"><value>Next</value></data>
 </root>

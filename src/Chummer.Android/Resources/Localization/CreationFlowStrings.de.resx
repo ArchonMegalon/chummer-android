@@ -300,4 +300,9 @@
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>Für diese gewährte Eigenschaft enthält der aktuelle Katalog keine Beschreibung der Wirkung. Sieh bei den Regeln der Auswahl nach, die sie gewährt hat.</value></data>
   <data name="Qualities.Review.Empty" xml:space="preserve"><value>Keine zusätzlichen Vor- oder Nachteile ausgewählt.</value></data>
   <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Magic.Catalog.Search" xml:space="preserve"><value>Namen oder Quellenbücher suchen</value></data>
+  <data name="Magic.Catalog.NoMatches" xml:space="preserve"><value>Keine passenden Einträge</value></data>
+  <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Einträge {0}–{1} von {2}</value></data>
+  <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Magic.Catalog.Next" xml:space="preserve"><value>Weiter</value></data>
 </root>

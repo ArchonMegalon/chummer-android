@@ -809,6 +809,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
 /// <summary>Phone-deep list for one Core option kind.</summary>
 public sealed class CreationMagicResonanceCatalogPage : NativePageBase
 {
+    private const int CatalogPageSize = 20;
+    private int _catalogOffset;
+    private string _filter = string.Empty;
+    private long _renderGeneration;
+    private long _catalogGeneration;
     private CharacterOverviewState? _display;
     private bool _ready;
     private readonly CharacterCreationMagicResonanceEditorState _editor;
@@ -852,6 +857,9 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
 
     protected override void Refresh()
     {
+        long render = ++_renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        CharacterOverviewState? display = _display;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Magic.Catalog.Eyebrow",
@@ -875,7 +883,79 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
             _body.Add(NativeTheme.Card(empty));
             return;
         }
-        foreach (CharacterCreationMagicResonanceOptionProjection option in _options)
+        bool IsCurrent() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && _ready && display is not null && ReferenceEquals(display, _display)
+            && Coordinator.IsCreationCatalogDisplayCurrent(display);
+        SearchBar search = new()
+        {
+            AutomationId = "creation-magic-resonance-catalog-search",
+            Placeholder = CreationFlowStrings.Get("Magic.Catalog.Search", "Search names or source books"),
+            Text = _filter,
+            BackgroundColor = NativeTheme.Surface,
+            TextColor = NativeTheme.Text,
+            PlaceholderColor = NativeTheme.Muted
+        };
+        var rows = new VerticalStackLayout { Spacing = 12 };
+        void ApplyFilter(string? text)
+        {
+            if (!IsCurrent()) return;
+            _filter = text?.Trim() ?? string.Empty;
+            _catalogOffset = 0;
+            RenderCatalog(rows, IsCurrent);
+        }
+        search.SearchButtonPressed += (_, _) => ApplyFilter(search.Text);
+        search.TextChanged += (_, args) =>
+        {
+            if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
+                ApplyFilter(string.Empty);
+        };
+        _body.Add(search);
+        _body.Add(rows);
+        RenderCatalog(rows, IsCurrent);
+    }
+
+    private void RenderCatalog(VerticalStackLayout rows, Func<bool> isCurrent)
+    {
+        if (!isCurrent()) return;
+        long catalogGeneration = ++_catalogGeneration;
+        bool CanUseRows() => catalogGeneration == _catalogGeneration && isCurrent();
+        // Filter the retained, validated projection only. Browsing neither reads
+        // Core again nor edits selections; option actions still preview through Core.
+        var matches = _options.Where(option => string.IsNullOrEmpty(_filter)
+            || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
+            || option.SourceBook.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+        _catalogOffset = Math.Min(_catalogOffset, Math.Max(0, matches.Length - 1) / CatalogPageSize * CatalogPageSize);
+        int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
+        rows.Clear();
+        Label range = NativeTheme.Body(matches.Length == 0
+            ? CreationFlowStrings.Get("Magic.Catalog.NoMatches", "No matching choices")
+            : CreationFlowStrings.Format("Magic.Catalog.Showing", "Showing {0}–{1} of {2}",
+                _catalogOffset + 1, end, matches.Length), NativeTheme.Muted);
+        range.AutomationId = "creation-magic-resonance-catalog-range";
+        rows.Add(range);
+        HorizontalStackLayout pager = new() { Spacing = 10 };
+        Button previous = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Magic.Catalog.Previous", "Previous"));
+        previous.AutomationId = "creation-magic-resonance-catalog-previous";
+        previous.IsEnabled = _catalogOffset > 0;
+        previous.Clicked += (_, _) =>
+        {
+            if (!CanUseRows()) return;
+            _catalogOffset = Math.Max(0, _catalogOffset - CatalogPageSize);
+            RenderCatalog(rows, isCurrent);
+        };
+        pager.Add(previous);
+        Button next = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Magic.Catalog.Next", "Next"));
+        next.AutomationId = "creation-magic-resonance-catalog-next";
+        next.IsEnabled = end < matches.Length;
+        next.Clicked += (_, _) =>
+        {
+            if (!CanUseRows() || end >= matches.Length) return;
+            _catalogOffset += CatalogPageSize;
+            RenderCatalog(rows, isCurrent);
+        };
+        pager.Add(next);
+        rows.Add(pager);
+        foreach (CharacterCreationMagicResonanceOptionProjection option in matches.Skip(_catalogOffset).Take(CatalogPageSize))
         {
             bool selected = _draft.IsSelected(option.Identity);
             string detail = CreationFlowStrings.Format(
@@ -891,13 +971,13 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
             Border row = NativeTheme.NavigationRow(
                 option.Name,
                 detail,
-                () => Navigation.PushAsync(new CreationMagicResonanceOptionPage(
+                () => CanUseRows() ? Navigation.PushAsync(new CreationMagicResonanceOptionPage(
                     Coordinator,
                     _editor,
                     option,
-                    _draft)),
+                    _draft)) : Task.CompletedTask,
                 automationId: $"creation-magic-resonance-option-{CreationMagicResonancePage.Token(option.Identity.Kind)}-{CreationMagicResonancePage.Token(option.Identity.SourceId)}");
-            _body.Add(row);
+            rows.Add(row);
         }
     }
 }

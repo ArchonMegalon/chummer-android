@@ -283,4 +283,9 @@
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>El catálogo actual no describe el efecto de esta cualidad otorgada. Consulta las reglas de la elección que la otorgó.</value></data>
   <data name="Qualities.Review.Empty" xml:space="preserve"><value>No se han seleccionado cualidades adicionales.</value></data>
   <data name="Qualities.Receipt.Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Magic.Catalog.Search" xml:space="preserve"><value>Buscar nombres o libros</value></data>
+  <data name="Magic.Catalog.NoMatches" xml:space="preserve"><value>No hay opciones coincidentes</value></data>
+  <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Mostrando {0}–{1} de {2}</value></data>
+  <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Magic.Catalog.Next" xml:space="preserve"><value>Siguiente</value></data>
 </root>

@@ -34,11 +34,17 @@ internal static class CreationMagicNativeRuntimeTests
     // Test-only fixture export for a bounded real Android editor/save/restart smoke.
     // Core performs bootstrap and prerequisite mutations; no hand-written authority.
     public static void ExportSumToTenMagicSeed(string contentRoot, string directory)
+        => ExportMagicSeed(contentRoot, directory, mysticAdept: false);
+
+    public static void ExportMysticMagicSeed(string contentRoot, string directory)
+        => ExportMagicSeed(contentRoot, directory, mysticAdept: true);
+
+    private static void ExportMagicSeed(string contentRoot, string directory, bool mysticAdept)
     {
         Require(Path.IsPathFullyQualified(directory) && Directory.Exists(directory)
             && !Directory.EnumerateFileSystemEntries(directory).Any(), "Seed destination must be explicit and empty.");
         RunTalent(contentRoot, technomancer: false, buildMethod: CharacterCreationBuildMethods.SumToTen,
-            seedDirectory: directory);
+            seedDirectory: directory, mysticAdept: mysticAdept);
     }
 
     public static void Run(string contentRoot)
