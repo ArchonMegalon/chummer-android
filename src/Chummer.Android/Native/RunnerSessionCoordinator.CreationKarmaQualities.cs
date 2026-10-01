@@ -25,14 +25,18 @@ public sealed partial class RunnerSessionCoordinator
                 || _ownerBoundKarmaService is not { } service
                 || state.QualitiesCatalog is not { } catalog || frozen.QualityOptionIds is not { } selected)
                 return null;
-            var candidates = catalog.Options.Where(option => option.IsSelectable
-                    && !selected.Contains(option.OptionId, StringComparer.Ordinal)
-                    && option.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase))
-                .OrderBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(option => option.Rating).ThenBy(option => option.OptionId, StringComparer.Ordinal).ToArray();
-            var byId = catalog.Options.ToDictionary(option => option.OptionId, StringComparer.Ordinal);
             var result = await Task.Run<CreationKarmaQualityPage?>(() =>
             {
+                ct.ThrowIfCancellationRequested();
+                // Filtering, culture-aware sorting and indexing visit the whole
+                // catalog. Keep them off the phone UI context, not just Core reads.
+                var candidates = catalog.Options.Where(option => option.IsSelectable
+                        && !selected.Contains(option.OptionId, StringComparer.Ordinal)
+                        && option.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase))
+                    .OrderBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ThenBy(option => option.Rating).ThenBy(option => option.OptionId, StringComparer.Ordinal).ToArray();
+                var byId = catalog.Options.ToDictionary(option => option.OptionId, StringComparer.Ordinal);
+                ct.ThrowIfCancellationRequested();
                 var checkedOptions = new List<CharacterCreationQualityCatalogOption>();
                 var selections = new List<IReadOnlyList<string>>();
                 int next = offset;

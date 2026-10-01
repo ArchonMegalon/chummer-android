@@ -6,6 +6,19 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    private sealed class ObservedQualityOptions(IReadOnlyList<CharacterCreationQualityCatalogOption> options,
+        Action enumerate) : IReadOnlyList<CharacterCreationQualityCatalogOption>
+    {
+        public int Count => options.Count;
+        public CharacterCreationQualityCatalogOption this[int index] => options[index];
+        public IEnumerator<CharacterCreationQualityCatalogOption> GetEnumerator()
+        {
+            enumerate();
+            return options.GetEnumerator();
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false, bool magic = false)
     {
         using var ui = new IssuedPageUiContext();
@@ -114,6 +127,19 @@ internal static partial class AfterRunAuthorityHarness
             Require(Session().Access is { IsReady: true } && !ReferenceEquals(previousAccess, Session().Access),
                 "Reopening Skills must obtain fresh access, not reuse a departed chooser's projection.");
             await Back();
+            bool observeQualityEnumeration = false;
+            int qualityEnumerations = 0;
+            probe.TransformLoad = state => state.QualitiesCatalog is not { } catalog ? state
+                : state with { QualitiesCatalog = catalog with
+                {
+                    Options = new ObservedQualityOptions(catalog.Options, () =>
+                    {
+                        if (!observeQualityEnumeration) return;
+                        Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                            "Quality catalog filtering/sorting/indexing ran on the Android UI context.");
+                        Interlocked.Increment(ref qualityEnumerations);
+                    })
+                } };
             await Click("karma-open-qualities");
             Require(Session().Access is null,
                 "Qualities must not recalculate skill-display access merely because its catalog is already loaded.");
@@ -295,8 +321,16 @@ internal static partial class AfterRunAuthorityHarness
             var ratingIds = new List<string>();
             int previewsBeforePage = probe.PreviewCalls;
             int batchesBeforePage = probe.QualityBatchCalls, candidatesBeforePage = probe.QualityCandidateCount;
-            var largerPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
-                ordinarySelection, "", 0, 6, default, () => true);
+            CreationKarmaQualityPage? largerPage;
+            observeQualityEnumeration = true;
+            try
+            {
+                largerPage = await runtime.Coordinator.LoadCreationKarmaQualityPageAsync(qualityState,
+                    ordinarySelection, "", 0, 6, default, () => true);
+            }
+            finally { observeQualityEnumeration = false; }
+            Require(qualityEnumerations >= 2,
+                "The catalog enumeration guard did not observe filtering and the identity index.");
             Require(probe.PreviewCalls == previewsBeforePage && probe.QualityBatchCalls == batchesBeforePage + 1
                 && probe.QualityCandidateCount - candidatesBeforePage is > 0 and <= 6,
                 "A quality page must use one bounded Core batch without individual source reloads.");
@@ -340,7 +374,7 @@ internal static partial class AfterRunAuthorityHarness
             await qualitySession.PreviewAsync(default, () => true);
             Require(qualitySession.QuoteCurrent && qualitySession.Quote!.QuoteDigest == ordinaryQuote.QuoteDigest,
                 "Read-only quality checks changed the actual draft budget.");
-            Console.WriteLine("PASS Karma quality availability: exact total budget, source eligibility, filtered rating pages, cancellation/departure/read failure, no writes or review replacement");
+            Console.WriteLine("PASS Karma quality availability: background catalog preparation, exact total budget, source eligibility, filtered rating pages, cancellation/departure/read failure, no writes or review replacement");
             await Back();
             await Click("karma-open-contacts");
             await Click("karma-add-contact");

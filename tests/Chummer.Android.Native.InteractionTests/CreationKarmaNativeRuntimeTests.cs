@@ -214,6 +214,7 @@ internal static partial class AfterRunAuthorityHarness
         public bool FailReads;
         public Action? AfterLoad, AfterPreview, AfterConfirm, AfterOpen, AfterFinalConfirm;
         public Func<CharacterCreationKarmaMetatypeOpen, CharacterCreationKarmaMetatypeOpen>? TransformOpen;
+        public Func<CharacterCreationKarmaMetatypeState, CharacterCreationKarmaMetatypeState>? TransformLoad;
         private void AssertBackground() => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
             "Synchronous Karma Core work ran on the Android UI synchronization context.");
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeOpen> Open(
@@ -240,6 +241,8 @@ internal static partial class AfterRunAuthorityHarness
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = actual.Load(owner, id, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic);
             LoadTime += System.Diagnostics.Stopwatch.GetElapsedTime(started);
+            if (result.Value is { } value && TransformLoad is { } transform)
+                result = result with { Value = transform(value) };
             AfterLoad?.Invoke(); return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeQuote> Preview(
