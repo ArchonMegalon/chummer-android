@@ -18,6 +18,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private CreationQualitiesPhoneDraft _draft = new();
     private readonly CharacterCreationQualitiesCheckpointStore _store;
     private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 8 };
+    private readonly VerticalStackLayout _catalog = new() { Spacing = 14 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -31,6 +32,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private bool _canReview;
     private string? _reviewCheckpointDigest;
     private bool _loading = true;
+    private bool _checkpointOwnsLane;
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
@@ -102,6 +104,7 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     protected override void Refresh()
     {
+        _catalog.Clear();
         _body.Clear();
         _technicalDetails.Clear();
         _technicalDetails.IsVisible = false;
@@ -389,13 +392,30 @@ public sealed class CreationQualitiesPage : NativePageBase
             TextColor = NativeTheme.Text,
             PlaceholderColor = NativeTheme.Muted
         };
-        search.SearchButtonPressed += (_, _) => ApplyFilter(search.Text);
+        search.SearchButtonPressed += (_, _) =>
+        {
+            if (ReferenceEquals(search.Parent, _body)) ApplyFilter(search.Text);
+        };
         search.TextChanged += (_, args) =>
         {
-            if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
+            if (ReferenceEquals(search.Parent, _body)
+                && string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
                 ApplyFilter(string.Empty);
         };
         _body.Add(search);
+        _body.Add(_catalog);
+        _checkpointOwnsLane = checkpointOwnsLane;
+        RenderCatalog(state, editor, checkpointOwnsLane);
+    }
+
+    private void RenderCatalog(
+        CharacterCreationQualitiesState state,
+        CharacterCreationQualitiesEditorState editor,
+        bool checkpointOwnsLane)
+    {
+        // Filtering must not detach the focused SearchBar. A whole-page rebuild
+        // on clear can send the next Enter key to a different action (Review).
+        _catalog.Clear();
 
         CharacterCreationQualitiesDesktopOption[] matches = _availableOptions
             .Where(option => string.IsNullOrWhiteSpace(_filter)
@@ -412,7 +432,7 @@ public sealed class CreationQualitiesPage : NativePageBase
             : CreationFlowStrings.Format("Qualities.Showing", "Showing {0}–{1} of {2}", _catalogOffset + 1, end, matches.Length),
             NativeTheme.Muted);
         range.AutomationId = "creation-qualities-catalog-range";
-        _body.Add(range);
+        _catalog.Add(range);
 
         // Keep navigation ahead of the bounded rows; neither review nor paging should
         // require scrolling through the entire Core catalog. Paging never edits the draft.
@@ -422,8 +442,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         previous.IsEnabled = _catalogOffset > 0;
         previous.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset = Math.Max(0, _catalogOffset - CatalogPageSize);
-            Refresh();
+            RenderCatalog(state, editor, checkpointOwnsLane);
         };
         pager.Add(previous);
         Button next = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Qualities.Next", "Next"));
@@ -431,18 +452,19 @@ public sealed class CreationQualitiesPage : NativePageBase
         next.IsEnabled = end < matches.Length;
         next.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset += CatalogPageSize;
-            Refresh();
+            RenderCatalog(state, editor, checkpointOwnsLane);
         };
         pager.Add(next);
-        _body.Add(pager);
+        _catalog.Add(pager);
 
         CharacterCreationQualitiesDesktopOption[] visible = matches.Skip(_catalogOffset).Take(CatalogPageSize).ToArray();
         foreach (CharacterCreationQualityType type in Enum.GetValues<CharacterCreationQualityType>())
         {
             if (!visible.Any(option => option.Type == type))
                 continue;
-            _body.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
+            _catalog.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
                 ? CreationFlowStrings.Get("Qualities.Positive", "Positive qualities")
                 : CreationFlowStrings.Get("Qualities.Negative", "Negative qualities")));
             foreach (CharacterCreationQualitiesDesktopOption option in visible
@@ -489,23 +511,28 @@ public sealed class CreationQualitiesPage : NativePageBase
                     "Qualities.Info.Accessible", "Explain {0}", option.Name));
                 info.Clicked += async (_, _) =>
                 {
-                    if (!ReferenceEquals(row.Parent, _body) || _loadedDisplay is not { } original
+                    if (!ReferenceEquals(row.Parent, _catalog) || !ReferenceEquals(_catalog.Parent, _body)
+                        || _loadedDisplay is not { } original
                         || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
                     var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
                     await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, source));
                 };
                 rowGrid.Add(info, 2);
-                _body.Add(row);
+                _catalog.Add(row);
             }
         }
     }
 
     private void ApplyFilter(string? value)
     {
+        if (!IsCatalogCurrent() || _loaded?.Value is not { } state || _editor is not { } editor) return;
         _filter = value?.Trim() ?? string.Empty;
         _catalogOffset = 0;
-        Refresh();
+        RenderCatalog(state, editor, _checkpointOwnsLane);
     }
+
+    private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
+        && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
 
     private void AddReview(
         CharacterCreationQualitiesState state,
@@ -806,11 +833,7 @@ public sealed class CreationQualityInfoPage : NativePageBase
                 _body.Add(NativeTheme.Body(effect));
         else
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.MissingSource",
-                "This granted quality has no effect description in the current catalog. Consult the rules for the choice that granted it.")));
-        _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.SourceNote",
-            "These are the effects recorded in the catalog. See the rulebook for the full description, conditions and roleplaying effects."), NativeTheme.Muted));
-        if (_sourceXml is not null)
-            _body.Add(NativeTheme.Body(CreationQualityInfo.Citation(_sourceXml), NativeTheme.Muted));
+                "The description for this granted quality is not available yet.")));
         Button back = NativeTheme.ReadingButton(CreationFlowStrings.Get("Qualities.Configure.Back", "Back to qualities"));
         back.AutomationId = "creation-quality-info-back";
         back.Clicked += async (_, _) => await Navigation.PopAsync();
@@ -837,35 +860,53 @@ internal static class CreationQualityInfo
         return XElement.Load(reader);
     }
 
-    public static string Citation(string xml)
-    {
-        var source = Read(xml);
-        return CreationFlowStrings.Format("Qualities.Info.Reference", "Rulebook: {0}, page {1}",
-            source.Element("source")?.Value ?? "—", source.Element("page")?.Value ?? "—");
-    }
-
     public static IReadOnlyList<string> Effects(string xml)
     {
         var source = Read(xml);
         var result = new List<string>();
+        // Original, localized explanatory copy, keyed by the accepted source's
+        // stable identity. It never quotes, calculates or admits a selection.
+        string summary = Guid.TryParse(source.Element("id")?.Value, out var id)
+            ? CreationFlowStrings.Get("Qualities.Summary." + id.ToString("D"), string.Empty) : string.Empty;
+        if (!string.IsNullOrWhiteSpace(summary)) result.Add(summary);
+        bool incomplete = false;
         foreach (var effect in source.Element("bonus")?.Elements() ?? [])
         {
             string? description = effect.Name.LocalName switch
             {
                 "ambidextrous" => CreationFlowStrings.Get("Qualities.Info.Ambidextrous", "Use either hand without the off-hand penalty."),
                 "skillattribute" => Fields(effect, "Attribute-based tests"),
-                "skill" => Fields(effect, "Skill"),
+                "skill" or "specificskill" => Fields(effect, "Skill"),
+                "skillcategory" => Fields(effect, "Skill category"),
                 "skillgroup" => Fields(effect, "Skill group"),
-                "specificattribute" => Fields(effect, "Attribute"),
+                "specificattribute" => Fields(effect, "Attribute changes"),
                 "enableattribute" => Fields(effect, "Enables attribute"),
                 "enabletab" => Fields(effect, "Enables capabilities"),
                 "unlockskills" => Scalar(effect, "Unlocks skills"),
                 "conditionmonitor" => Fields(effect, "Condition monitor"),
                 "selectskill" => Fields(effect, "Chosen skill"),
-                "selectattributes" => Fields(effect, "Chosen attributes"),
+                "selectattributes" => string.Join("\n", effect.Elements("selectattribute")
+                    .Select(attribute => Fields(attribute, "Chosen attributes"))),
                 "limitmodifier" => Fields(effect, "Limit"),
+                "spelldicepool" => Fields(effect, "Spell tests"),
+                "damageresistance" => Scalar(effect, "Damage resistance"),
+                "physicalcmrecovery" => Scalar(effect, "Physical healing"),
+                "stuncmrecovery" => Scalar(effect, "Stun recovery"),
+                "nativelanguagelimit" => Scalar(effect, "Additional native languages"),
+                "notoriety" => Scalar(effect, "Notoriety"),
+                "publicawareness" => Scalar(effect, "Public awareness"),
+                "surprise" => Scalar(effect, "Surprise tests"),
+                "dodge" => Scalar(effect, "Defense tests"),
+                "reach" => Scalar(effect, "Reach"),
+                "fatigueresist" => Scalar(effect, "Fatigue resistance"),
+                "toxiningestionresist" => Scalar(effect, "Ingested toxin resistance"),
+                "toxininjectionresist" => Scalar(effect, "Injected toxin resistance"),
+                "pathogencontactresist" => Scalar(effect, "Contact pathogen resistance"),
+                "pathogeninhalationresist" => Scalar(effect, "Inhaled pathogen resistance"),
+                "pathogeningestionresist" => Scalar(effect, "Ingested pathogen resistance"),
+                "pathogeninjectionresist" => Scalar(effect, "Injected pathogen resistance"),
                 "initiative" => Scalar(effect, "Initiative"),
-                "initiativedice" => Scalar(effect, "Initiative dice"),
+                "initiativedice" or "initiativepass" => Scalar(effect, "Initiative dice"),
                 "armor" => Scalar(effect, "Armor"),
                 "physicalcm" => Scalar(effect, "Physical condition monitor"),
                 "stuncm" => Scalar(effect, "Stun condition monitor"),
@@ -882,36 +923,362 @@ internal static class CreationQualityInfo
                 "sociallimit" => Scalar(effect, "Social limit"),
                 "mentallimit" => Scalar(effect, "Mental limit"),
                 "physicallimit" => Scalar(effect, "Physical limit"),
-                _ => null
+                // A prompt is not itself a modifier. Authored copy explains
+                // the choice; the accepted option retains its follow-up label.
+                "selecttext" when summary.Length > 0 => string.Empty,
+                _ => AdditionalEffect(effect)
             };
             if (description is null)
-                description = CreationFlowStrings.Get("Qualities.Info.Additional", "Additional or conditional effects: see the rulebook reference below.");
-            if (!result.Contains(description, StringComparer.Ordinal)) result.Add(description);
+                incomplete = true;
+            else
+            {
+                // Unknown nested fields must not silently turn a partial
+                // modifier into an apparently complete explanation, including
+                // when its known text duplicates an earlier effect.
+                incomplete |= HasUndescribedDetail(effect);
+                bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities";
+                if (!string.IsNullOrWhiteSpace(description) && (repeatedGrant || !result.Contains(description, StringComparer.Ordinal)))
+                    result.Add(description);
+            }
         }
         if (result.Count == 0)
-            result.Add(CreationFlowStrings.Get("Qualities.Info.Manual", "This catalog entry has no automatic modifier. Its roleplaying or situational benefit or drawback is described in the rulebook."));
+            result.Add(CreationFlowStrings.Get("Qualities.Info.Manual", "A description of this quality is not available yet."));
+        else if (incomplete)
+            result.Add(CreationFlowStrings.Get("Qualities.Info.Additional", "Some additional effects are not yet described here."));
         return result;
     }
 
-    private static string Scalar(XElement effect, string label)
-        => effect.HasElements ? Fields(effect, label) : $"{label}: {effect.Value}";
+    private static string Label(string value) => CreationFlowStrings.Get("Qualities.Effect." + value, value);
 
-    // Display source values/expressions verbatim, including their conditions.
-    // Do not evaluate Rating expressions or mistake a cap increase for dice.
-    private static string Fields(XElement effect, string label)
+    private static string Scalar(XElement effect, string label, bool hundredths = false)
+        => effect.HasElements ? Fields(effect, label)
+            : string.Join(" · ", new[] { string.IsNullOrWhiteSpace(effect.Value)
+                ? Label(label) : $"{Label(label)}: {(hundredths ? DisplayHundredths(effect.Value) : DisplayValue(effect.Value))}" }.Concat(Attributes(effect)));
+
+    // Formatting source units is not evaluating an improvement. Keep symbolic
+    // expressions symbolic; in particular never substitute the current rating.
+    private static string DisplayHundredths(string value)
+        => decimal.TryParse(value, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite,
+            CultureInfo.InvariantCulture, out var number)
+            ? (number / 100m).ToString("0.############################", CultureInfo.CurrentUICulture)
+            : Guid.TryParse(value, out _) ? string.Empty : $"({DisplayValue(value)}) / 100";
+
+    private static string? ReplacementMovement(XElement effect)
     {
-        var parts = new List<string> { label };
+        string speed = (effect.Element("speed")?.Value ?? "walk").ToLowerInvariant();
+        string? label = speed switch
+        {
+            "walk" => "Replacement walking multiplier", "run" => "Replacement running multiplier",
+            "sprint" => "Replacement sprint distance", _ => null
+        };
+        if (label is null) return null;
+        string text = Fields(effect, label, speed == "sprint" ? "Meters per hit" : "Multiplier", speed == "sprint");
+        return string.IsNullOrWhiteSpace(effect.Element("category")?.Value)
+            ? $"{text} · {Label("All movement types")}" : text;
+    }
+
+    // These are display mappings of the accepted source XML, not another rules
+    // evaluator. In particular percentages remain percentages, not dice bonuses.
+    private static string? AdditionalEffect(XElement effect) => effect.Name.LocalName switch
+    {
+        "coldarmor" => Scalar(effect, "Cold resistance armor"),
+        "firearmor" => Scalar(effect, "Fire resistance armor"),
+        "defensetest" => Scalar(effect, "Defense tests"),
+        "astralreputation" => Scalar(effect, "Astral reputation"),
+        "judgeintentionsdefense" => Scalar(effect, "Resisting Judge Intentions"),
+        "judgeintentionsoffense" => Scalar(effect, "Reading another person's intentions"),
+        "detectionspellresist" => Scalar(effect, "Detection spell resistance"),
+        "decreaseintresist" => Scalar(effect, "Decrease Intuition resistance"),
+        "decreaselogresist" => Scalar(effect, "Decrease Logic resistance"),
+        "manaillusionresist" => Scalar(effect, "Mana illusion resistance"),
+        "physicalillusionresist" => Scalar(effect, "Physical illusion resistance"),
+        "mentalmanipulationresist" => Scalar(effect, "Mental manipulation resistance"),
+        "physiologicaladdictionfirsttime" => Scalar(effect, "Resisting a new physical addiction"),
+        "physiologicaladdictionalreadyaddicted" => Scalar(effect, "Resisting an existing physical addiction"),
+        "psychologicaladdictionfirsttime" => Scalar(effect, "Resisting a new psychological addiction"),
+        "psychologicaladdictionalreadyaddicted" => Scalar(effect, "Resisting an existing psychological addiction"),
+        "drainvalue" => Scalar(effect, "Drain value change"),
+        "fadingvalue" => Scalar(effect, "Fading value change"),
+        "adeptpowerpoints" => Scalar(effect, "Adept Power Points"),
+        "unarmeddv" => Scalar(effect, "Unarmed damage change"),
+        "unarmeddvphysical" => Scalar(effect, "Unarmed attacks deal Physical damage"),
+        "addesstophysicalcmrecovery" => Scalar(effect, "Add Essence to Physical healing tests"),
+        "addesstostuncmrecovery" => Scalar(effect, "Add Essence to Stun recovery tests"),
+        "disablebioware" => Scalar(effect, "Cannot use bioware"),
+        "disablebiowaregrade" => Scalar(effect, "Unavailable bioware grade"),
+        "disablecyberwaregrade" => Scalar(effect, "Unavailable cyberware grade"),
+        "cyberwareessmultiplier" or "cyberwaretotalessmultiplier" => Scalar(effect, "Cyberware Essence cost (% of normal)"),
+        "biowareessmultiplier" => Scalar(effect, "Bioware Essence cost (% of normal)"),
+        "lifestylecost" => Scalar(effect, "Lifestyle cost change (%)"),
+        "availability" => Scalar(effect, "Availability change"),
+        "essencemax" => Scalar(effect, "Maximum Essence change"),
+        "essencepenalty" => Scalar(effect, "Essence change"),
+        "essencepenaltyt100" => Scalar(effect, "Essence change", hundredths: true),
+        "essencepenaltymagonlyt100" => Scalar(effect, "Essence adjustment for Magic loss only", hundredths: true),
+        "specialattburnmultiplier" => Scalar(effect, "Essence-related special-attribute loss (% of normal)"),
+        "streetcredmultiplier" => Scalar(effect, "Extra earned Karma needed per Street Cred"),
+        "walkmultiplier" => Fields(effect, "Walking multiplier change"),
+        "runmultiplier" => Fields(effect, "Running multiplier change"),
+        "sprintbonus" => Fields(effect, "Sprint distance change", "Meters per hit", hundredths: true),
+        "movementreplace" => ReplacementMovement(effect),
+        "skilldisable" => Scalar(effect, "Unavailable skill"),
+        "skillgroupdisable" => Scalar(effect, "Unavailable skill group"),
+        "skillgroupdisablechoice" => Scalar(effect, "Unavailable chosen skill group"),
+        "skillgroupcategorydisable" => Scalar(effect, "Unavailable skill-group category"),
+        "blockskillcategorydefaulting" => Scalar(effect, "Cannot default in this skill category"),
+        "skillcategorykarmacost" => Fields(effect, "Skill-category Karma cost change"),
+        "activeskillkarmacost" => Fields(effect, "Active-skill Karma cost change"),
+        "knowledgeskillkarmacost" => Fields(effect, "Knowledge-skill Karma cost change"),
+        "knowledgeskillkarmacostmin" => Fields(effect, "Minimum Knowledge-skill Karma cost"),
+        "skillcategorykarmacostmultiplier" => Fields(effect, "Skill-category Karma cost", "Percent of normal cost"),
+        "skillcategorypointcostmultiplier" => Fields(effect, "Skill-category creation-point cost", "Percent of normal cost"),
+        "skillcategoryspecializationkarmacostmultiplier" => Fields(effect, "Specialization Karma cost", "Percent of normal cost"),
+        "skillgroupcategorykarmacostmultiplier" => Fields(effect, "Skill-group-category Karma cost", "Percent of normal cost"),
+        "knowledgeskillpoints" => Fields(effect, "Knowledge skill points"),
+        "newspellkarmacost" => Scalar(effect, "New spell Karma cost change"),
+        "contactkarma" => Scalar(effect, "Contact Karma cost change"),
+        "contactkarmaminimum" => Scalar(effect, "Minimum contact Karma cost change"),
+        "nuyenamt" => Scalar(effect, "Starting nuyen change"),
+        "nuyenmaxbp" => Scalar(effect, "Karma-to-nuyen purchase limit change"),
+        "restrictedgear" => Fields(effect, "Restricted gear allowance"),
+        "specialmodificationlimit" => Scalar(effect, "Special modification allowance"),
+        "spellcategorydamage" => Fields(effect, "Spell damage change"),
+        "spellcategorydrain" => Fields(effect, "Spell Drain change"),
+        "spelldescriptordamage" => Fields(effect, "Spell damage change"),
+        "spelldescriptordrain" => Fields(effect, "Spell Drain change"),
+        "focusbindingkarmacost" => Fields(effect, "Focus-binding Karma cost change"),
+        "swapskillattribute" or "swapskillspecattribute" => Fields(effect, "Use a different test attribute"),
+        "livingpersona" => Fields(effect, "Living persona attribute changes"),
+        "addlimb" => Fields(effect, "Additional limbs"),
+        "replaceattributes" => string.Join("\n", effect.Elements("replaceattribute")
+            .Select(attribute => Fields(attribute, "Replacement attribute limits"))),
+        "addqualities" => string.Join("\n", effect.Elements("addquality").Select(quality => Scalar(quality, "Grants quality"))),
+        "addmetamagic" => Scalar(effect, "Grants metamagic"),
+        "addecho" => Scalar(effect, "Grants echo"),
+        "addspell" => Scalar(effect, "Grants spell"),
+        "critterpowers" => PowerReferences(effect, optional: false),
+        "optionalpowers" => PowerReferences(effect, optional: true),
+        "limitcritterpowercategory" => Scalar(effect, "Power choices restricted to category"),
+        "addgear" => Equipment(effect),
+        "addskillspecializationoption" => SpecializationOptions(effect),
+        "selectexpertise" => Scalar(effect, "Choose a free expertise specialization"),
+        "addcontact" => ContactEffect(effect, existing: false),
+        "selectcontact" => ContactEffect(effect, existing: true),
+        "weaponskillaccuracy" => WeaponEffect(effect, "Weapon Accuracy change, not bonus dice"),
+        "weaponcategorydv" => WeaponEffect(effect, "Weapon damage change, not bonus dice"),
+        "limitspellcategory" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Spell choices restricted to one chosen category" : "Spell choices restricted to category"),
+        "allowspellcategory" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Choose an additionally permitted spell category" : "Additionally permitted spell category"),
+        "blockspelldescriptor" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Choose an excluded spell trait" : "Excluded spell trait"),
+        "limitspiritcategory" => SpiritChoices(effect, restricted: true),
+        "addspirit" => SpiritChoices(effect, restricted: false),
+        "allowspellrange" => Scalar(effect, "Permitted spell range"),
+        "freespells" => Scalar(effect, "Free-spell allowance"),
+        "addware" => Fields(effect, "Grants augmentation"),
+        // Entries whose rules are not encoded (including enum-like flags such
+        // as trustfund) need authored copy. Never turn their raw value into a
+        // made-up benefit, or a selection prompt into a rule explanation.
+        _ => null
+    };
+
+    private static string PowerReferences(XElement effect, bool optional)
+    {
+        var lines = new List<string>();
+        if (optional)
+        {
+            lines.Add(Label("Choose from these powers, not all of them"));
+            lines.Add($"{Label("Number of choices")}: {DisplayValue(effect.Attribute("count")?.Value ?? "1")}");
+        }
+        foreach (var power in effect.Elements(optional ? "optionalpower" : "power"))
+        {
+            // Names/selected parameters are source references, not an expanded
+            // power definition. Never borrow rules from an ambient catalog.
+            if (power.HasElements || string.IsNullOrWhiteSpace(power.Value) || Guid.TryParse(power.Value, out _)) continue;
+            var parts = new List<string> { $"{Label(optional ? "Power option" : "Granted power")}: {DisplayValue(power.Value)}" };
+            if (power.Attribute("rating") is { } rating)
+                parts.Add($"{Label("Rating")}: {DisplayValue(rating.Value)}");
+            if (power.Attribute("select") is { } selection)
+                parts.Add($"{Label("Fixed detail")}: {DisplayValue(selection.Value)}");
+            lines.Add(string.Join(" · ", parts));
+        }
+        return string.Join("\n", lines);
+    }
+
+    private static string Equipment(XElement effect)
+    {
+        static string Item(XElement item, string label) => Fields(item, label)
+            + (item.Element("fullcost") is null ? $" · {Label("No nuyen cost for this granted item")}" : string.Empty);
+        var lines = new List<string> { Item(effect, "Granted equipment") };
+        // Core addgear admits immediate children. Preserve multiplicity: four
+        // identical included licenses must not become a single displayed item.
+        lines.AddRange(effect.Elements("children").Elements("child")
+            .Select(child => Item(child, "Included equipment")));
+        return string.Join("\n", lines);
+    }
+
+    private static string SpecializationOptions(XElement effect)
+    {
+        var lines = new List<string> { Fields(effect, "Additional specialization option, not automatically learned") };
+        lines.AddRange(effect.Elements("skills").Elements("skill")
+            .Where(skill => !skill.HasElements && !string.IsNullOrWhiteSpace(skill.Value) && !Guid.TryParse(skill.Value, out _))
+            .Select(skill => Scalar(skill, "Skill")));
+        return string.Join("\n", lines);
+    }
+
+    private static string? ContactEffect(XElement effect, bool existing)
+    {
+        // Choosing an existing contact alone does not explain Sensei or Black
+        // Market Pipeline. Only show changes actually encoded on that contact.
+        if (existing && !effect.Elements().Any(field => field.Name.LocalName is "forcedloyalty" or "free" or "forcegroup")) return null;
+        var parts = new List<string> { Fields(effect, existing ? "Chosen existing contact" : "Granted contact") };
+        if (!existing)
+        {
+            if (effect.Element("connection") is null) parts.Add($"{Label("Connection")}: 1");
+            if (effect.Element("loyalty") is null) parts.Add($"{Label("Base Loyalty")}: 1");
+        }
+        return string.Join(" · ", parts);
+    }
+
+    private static string? WeaponEffect(XElement effect, string label)
+    {
+        // Without a modifier or a target, a selection prompt is not a rule.
+        if (string.IsNullOrWhiteSpace(effect.Element(effect.Name.LocalName == "weaponskillaccuracy" ? "value" : "bonus")?.Value)
+            || (effect.Element("selectskill") is null && string.IsNullOrWhiteSpace(effect.Element("name")?.Value))) return null;
+        var parts = new List<string> { Fields(effect, label) };
+        parts.AddRange(effect.Elements("selectskill").Select(skill => Fields(skill, "Chosen skill")));
+        return string.Join(" · ", parts);
+    }
+
+    private static string? SpiritChoices(XElement effect, bool restricted)
+    {
+        var parts = new List<string> { Fields(effect, restricted
+            ? "Summoning restricted to one chosen spirit type"
+            : "Choose an additional summonable spirit type, not a summoned spirit") };
+        if (!restricted)
+        {
+            string? skill = effect.Attribute("skill")?.Value;
+            if (string.IsNullOrEmpty(skill)) parts.Add($"{Label("Number of choices")}: 1");
+            else
+            {
+                string divisor = effect.Attribute("ratingdivisor")?.Value ?? "1";
+                if (!int.TryParse(divisor, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) || parsed < 1) return null;
+                parts.Add($"{Label("Number of choices")}: {Label("Base skill rating")} / {parsed} ({Label("Rounded down")})");
+            }
+        }
+        return string.Join(" · ", parts);
+    }
+
+    private static string? AttributeLabel(string name) => name switch
+    {
+        "condition" => "When", "specific" => "Only for", "lifestyle" => "Lifestyle",
+        "type" => "Type", "limittoskill" => "Choose from", "excludecategory" => "Except",
+        "minimumrating" => "Minimum skill rating", "select" => "Choice", "rating" => "Rating",
+        "alchemical" => "Alchemical", "forced" => "Fixed choice",
+        "attribute" => "Based on attribute", "skill" => "Based on skill", "limit" => "Restriction",
+        "limittospecialization" => "Choose specialization from", "exclude" => "Except", _ => null
+    };
+
+    private static IEnumerable<string> Attributes(XElement effect)
+        => effect.Attributes().Where(attribute => AttributeLabel(attribute.Name.LocalName) is not null)
+            .Select(attribute => $"{Label(AttributeLabel(attribute.Name.LocalName)!)}: {DisplayValue(attribute.Value)}");
+
+    private static string? FieldLabel(XElement field, string valueLabel) => field.Name.LocalName switch
+    {
+        "name" => "", "val" or "value" => valueLabel, "bonus" => "Bonus",
+        "min" when field.Parent?.Name.LocalName is "specificattribute" or "selectattribute" => "Minimum change",
+        "max" when field.Parent?.Name.LocalName is "specificattribute" or "selectattribute" or "selectskill" => "Maximum change",
+        "aug" when field.Parent?.Name.LocalName is "specificattribute" or "selectattribute" => "Augmented maximum change",
+        "min" => "Minimum", "max" => "Maximum", "aug" => "Augmented maximum",
+        "condition" => "When", "applytorating" => "Applies to rating",
+        "thresholdoffset" => "Wound-penalty threshold offset", "threshold" => "Wound-penalty interval change",
+        "overflow" => "Additional overflow boxes", "physical" => "Physical boxes", "stun" => "Stun boxes",
+        "exclude" or "excludeattribute" => "Except", "attribute" => "Attribute",
+        "limit" => "Limit", "category" => "Category", "descriptor" => "Spell traits",
+        "limittoskill" => "Skill", "spec" => "Specialization", "extracontains" => "Only for",
+        "availability" => "Maximum Availability", "amount" => "Number of items",
+        "disablespecializationeffects" => "Specialization bonuses do not apply",
+        "attack" => "Attack", "sleaze" => "Sleaze", "dataprocessing" => "Data Processing", "firewall" => "Firewall",
+        "limbslot" => "Limb", "grade" => "Grade", "type" => "Type",
+        "percent" => "Percentage change", "speed" => "Pace", "skillgroup" => "Choose from",
+        "rating" => "Rating", "quantity" => "Quantity", "skill" => "Skill",
+        "spirit" when field.Parent?.Name.LocalName is "addspirit" or "limitspiritcategory" => "Choose from",
+        "connection" when field.Parent?.Name.LocalName is "addcontact" => "Connection",
+        "loyalty" when field.Parent?.Name.LocalName is "addcontact" => "Base Loyalty",
+        "forcedloyalty" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Fixed Loyalty",
+        "free" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Does not cost contact points",
+        "group" when field.Parent?.Name.LocalName == "addcontact" => "Group contact",
+        "forcegroup" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Must remain a group contact",
+        "canwrite" when field.Parent?.Name.LocalName == "addcontact" => "Contact details may be edited",
+        "fullcost" when field.Parent?.Name.LocalName is "addgear" or "child" => "Pay full price", _ => null
+    };
+
+    private static bool HasUndescribedDetail(XElement effect)
+    {
+        // Listing a granted/optional power does not explain that power's own
+        // rules. Keep these entries partial until those definitions are bound.
+        if (effect.Name.LocalName is "critterpowers" or "optionalpowers") return true;
+        if (!effect.HasElements && Guid.TryParse(effect.Value, out _)) return true;
+        if (effect.Attributes().Any(attribute => AttributeLabel(attribute.Name.LocalName) is null
+            && !(effect.Name.LocalName == "addspirit" && attribute.Name.LocalName == "ratingdivisor"))) return true;
         foreach (var field in effect.Elements())
         {
-            string? fieldLabel = field.Name.LocalName switch
+            if (effect.Name.LocalName is "addspirit" or "limitspiritcategory" && field.Name.LocalName == "addtoselected")
             {
-                "name" => "", "val" => "Modifier", "bonus" => "Bonus", "min" => "Minimum",
-                "max" => "Maximum", "aug" => "Augmented", "condition" => "When", "applytorating" => "Applies to rating",
-                "thresholdoffset" => "Wound-penalty threshold offset",
-                "exclude" => "Except", _ => null
-            };
+                // Core's display-name bookkeeping flag does not change the
+                // selected spirit type; only admit its known boolean shape.
+                if (field.HasElements || field.HasAttributes || !bool.TryParse(field.Value, out _)) return true;
+                continue;
+            }
+            if (effect.Name.LocalName is "weaponskillaccuracy" or "weaponcategorydv" && field.Name.LocalName == "selectskill")
+            {
+                if (HasUndescribedDetail(field)) return true;
+                continue;
+            }
+            if (effect.Name.LocalName == "addgear" && field.Name.LocalName == "children")
+            {
+                if (field.HasAttributes || field.Elements().Any(child => child.Name.LocalName != "child" || HasUndescribedDetail(child))) return true;
+                continue;
+            }
+            if (effect.Name.LocalName == "addskillspecializationoption" && field.Name.LocalName == "skills")
+            {
+                if (field.HasAttributes || field.Elements().Any(skill => skill.Name.LocalName != "skill"
+                    || skill.HasElements || skill.HasAttributes || Guid.TryParse(skill.Value, out _))) return true;
+                continue;
+            }
+            if (field.Name.LocalName is "selectattribute" or "replaceattribute" or "addquality")
+            {
+                if (HasUndescribedDetail(field)) return true;
+                continue;
+            }
+            if (FieldLabel(field, "Modifier") is null || field.HasElements || field.HasAttributes || Guid.TryParse(field.Value, out _)) return true;
+        }
+        return false;
+    }
+
+    private static string DisplayValue(string value)
+        => Guid.TryParse(value, out _) ? string.Empty
+            : CreationFlowStrings.Get("Qualities.Value." + (value switch
+                { "Magician" => "magician", "Adept" => "adept", "Technomancer" => "technomancer", _ => value }), value);
+
+    // Preserve source expressions and conditions; only convert known display
+    // units. Do not evaluate Rating or mistake a cap increase for dice.
+    private static string Fields(XElement effect, string label, string valueLabel = "Modifier", bool hundredths = false)
+    {
+        var parts = new List<string> { Label(label) };
+        parts.AddRange(Attributes(effect));
+        foreach (var field in effect.Elements())
+        {
+            string? fieldLabel = FieldLabel(field, valueLabel);
             if (fieldLabel is null || field.HasElements || Guid.TryParse(field.Value, out _)) continue;
-            parts.Add(fieldLabel.Length == 0 ? field.Value : $"{fieldLabel}: {field.Value}");
+            if (field.Name.LocalName is "disablespecializationeffects" or "fullcost" or "free" or "group" or "forcegroup" or "canwrite") parts.Add(Label(fieldLabel));
+            else if (!string.IsNullOrWhiteSpace(field.Value))
+            {
+                string value = hundredths && field.Name.LocalName is "val" or "value"
+                    ? DisplayHundredths(field.Value) : DisplayValue(field.Value);
+                parts.Add(fieldLabel.Length == 0 ? value : $"{Label(fieldLabel)}: {value}");
+            }
         }
         return string.Join(" · ", parts);
     }
