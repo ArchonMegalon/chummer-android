@@ -288,4 +288,29 @@
   <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Mostrando {0}–{1} de {2}</value></data>
   <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Magic.Catalog.Next" xml:space="preserve"><value>Siguiente</value></data>
+  <data name="Magic.Blocker.Unknown" xml:space="preserve"><value>Esta elección aún no se puede confirmar. Consulta el motivo en Detalles técnicos; no repitas un guardado cuyo resultado aún sea desconocido.</value></data>
+  <data name="Magic.Blocker.Load" xml:space="preserve"><value>No se pudieron cargar las opciones de magia. Vuelve a abrir este personaje y después Magia / Resonancia.</value></data>
+  <data name="Magic.Blocker.Attributes" xml:space="preserve"><value>Abre Atributos, revisa tu distribución y guárdala antes de elegir magia.</value></data>
+  <data name="Magic.Blocker.Method" xml:space="preserve"><value>Abre Método de creación, revisa y guarda tu metatipo y tu talento.</value></data>
+  <data name="Magic.Blocker.Changed" xml:space="preserve"><value>Esta vista ya no coincide con tu personaje o las reglas. Vuelve a abrir Magia / Resonancia y revisa las opciones actuales.</value></data>
+  <data name="Magic.Blocker.Draft" xml:space="preserve"><value>No se pudieron verificar estas elecciones. Revísalas antes de guardar; no crees otra copia de un borrador sin resolver.</value></data>
+  <data name="Magic.Blocker.Confirm" xml:space="preserve"><value>Revisa tus elecciones y pulsa Confirmar para guardarlas.</value></data>
+  <data name="Magic.Blocker.Metatype" xml:space="preserve"><value>Tu metatipo no permite este talento. Revisa el talento elegido en Método de creación.</value></data>
+  <data name="Magic.Blocker.Disabled" xml:space="preserve"><value>Esta opción no está disponible para tu personaje y sus reglas actuales.</value></data>
+  <data name="Magic.Blocker.Duplicate" xml:space="preserve"><value>Esta opción ya está seleccionada. Consérvala una sola vez.</value></data>
+  <data name="Magic.Blocker.Unsupported" xml:space="preserve"><value>Esta opción requiere reglas que el asistente aún no admite. Elige una opción compatible para continuar.</value></data>
+  <data name="Magic.Blocker.SaveLocked" xml:space="preserve"><value>No se pudo verificar el resultado del guardado. Conserva este borrador y usa su recuperación; no inicies otro guardado.</value></data>
+  <data name="Magic.Blocker.RefreshSaved" xml:space="preserve"><value>Las elecciones se guardaron, pero no se pudo actualizar la vista. Vuelve a abrir el personaje para comprobar el resultado; no vuelvas a guardar.</value></data>
+  <data name="Magic.Blocker.PowersOver" xml:space="preserve"><value>Tus poderes de adepto superan los puntos disponibles. Quita un poder o reduce su nivel.</value></data>
+  <data name="Magic.Blocker.PowersLeft" xml:space="preserve"><value>Aún tienes puntos de poder por asignar. Elige poderes o ajusta sus niveles para repartir los puntos restantes.</value></data>
+  <data name="Magic.Blocker.PowersNotAllowed" xml:space="preserve"><value>El talento elegido no permite poderes de adepto. Quítalos del borrador.</value></data>
+  <data name="Magic.Blocker.SpellsOver" xml:space="preserve"><value>Has elegido demasiados hechizos. Quita hechizos hasta que el saldo restante sea cero.</value></data>
+  <data name="Magic.Blocker.SpellsLeft" xml:space="preserve"><value>Aún te quedan hechizos por elegir. Abre Hechizos y completa las elecciones restantes.</value></data>
+  <data name="Magic.Blocker.SpellsNotAllowed" xml:space="preserve"><value>El talento elegido no permite hechizos. Quítalos del borrador.</value></data>
+  <data name="Magic.Blocker.Tradition" xml:space="preserve"><value>Elige una tradición mágica disponible antes de guardar.</value></data>
+  <data name="Magic.Blocker.Stream" xml:space="preserve"><value>Elige una corriente de Resonancia disponible antes de guardar.</value></data>
+  <data name="Magic.Blocker.FormsOver" xml:space="preserve"><value>Has elegido demasiadas formas complejas. Quita formas hasta que el saldo restante sea cero.</value></data>
+  <data name="Magic.Blocker.FormsLeft" xml:space="preserve"><value>Aún te quedan formas complejas por elegir. Abre Formas complejas y completa las elecciones restantes.</value></data>
+  <data name="Magic.Blocker.FormsNotAllowed" xml:space="preserve"><value>El talento elegido no permite formas complejas. Quítalas del borrador.</value></data>
+  <data name="Magic.Blockers.Title" xml:space="preserve"><value>Antes de continuar</value></data>
 </root>

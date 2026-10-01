@@ -703,6 +703,49 @@ internal static partial class AfterRunAuthorityHarness
         string Id(CharacterCreationMagicResonanceOptionProjection option) =>
             $"creation-magic-resonance-option-{CreationMagicResonancePage.Token(option.Identity.Kind)}-{CreationMagicResonancePage.Token(option.Identity.SourceId)}";
         Require(Rows().Length == 20, $"Magic must render a bounded catalog page, not all {options.Count} rows (rendered {Rows().Length}).");
+        var disabled = options.First(item => item.Blockers.Count > 0);
+        var oldCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                string fallback = CreationFlowStrings.Get("Magic.Blocker.Unknown", "missing");
+                foreach (var field in typeof(CharacterCreationMagicResonanceBlockers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                    .Concat(typeof(CreationMagicResonancePhoneBlockers).GetFields(BindingFlags.Public | BindingFlags.Static)))
+                {
+                    string code = (string)field.GetRawConstantValue()!;
+                    string message = CreationFlowStrings.MagicBlocker(code);
+                    Require(message != fallback && message != code && !message.Contains("creation-magic-resonance-"),
+                        "A current Magic blocker lost its specific explanation: " + code + "/" + locale);
+                }
+                Require(CreationFlowStrings.MagicBlocker("future-error: 7bc6d833-dca3-451c-a21c-956af80f4eb7") == fallback,
+                    "Unknown errors must not leak exception text or IDs into ordinary guidance.");
+                var detail = new CreationMagicResonanceOptionPage(coordinator, editor, disabled, draft);
+                await (Task)typeof(CreationMagicResonanceOptionPage)
+                    .GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .Invoke(detail, [CancellationToken.None])!;
+                MinimalRender(detail);
+                Require(!MinimalVisibleText(detail).Contains("creation-magic-resonance-", StringComparison.Ordinal),
+                    "A disabled Magic choice exposes raw blocker codes instead of readable guidance: " + locale);
+                Require(disabled.Blockers.All(code => MinimalVisibleText(detail).Contains(CreationFlowStrings.MagicBlocker(code))),
+                    "Disabled choices need the exact localized reason, not a blank or generic summary.");
+                Require(!MinimalVisible(detail).OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-magic-resonance-option-toggle"
+                    || button.AutomationId == "creation-magic-resonance-power-increase").IsEnabled,
+                    "Readable guidance must not enable a blocked Core option.");
+                var panel = MinimalVisible(detail).OfType<VerticalStackLayout>().Single(item =>
+                    item.AutomationId == "creation-magic-resonance-option-details");
+                var toggle = panel.Children.OfType<Button>().Single();
+                ((IButtonController)toggle).SendClicked();
+                Require(disabled.Blockers.All(code => MinimalVisibleText(detail).Contains(code, StringComparison.Ordinal)),
+                    "Expanded diagnostics must retain the exact Core blocker codes.");
+                ((IButtonController)toggle).SendClicked();
+                Require(!MinimalVisibleText(detail).Contains("creation-magic-resonance-", StringComparison.Ordinal),
+                    "Closing diagnostics left raw codes in the ordinary UI.");
+            }
+        }
+        finally { System.Globalization.CultureInfo.CurrentUICulture = oldCulture; }
         var search = MinimalVisible(catalog).OfType<SearchBar>().Single();
         Require(search.TextColor.Equals(NativeTheme.Text) && search.PlaceholderColor.Equals(NativeTheme.Muted)
             && search.BackgroundColor.Equals(NativeTheme.Surface), "Magic search colors must remain readable.");

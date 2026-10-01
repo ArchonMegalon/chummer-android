@@ -305,4 +305,29 @@
   <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Einträge {0}–{1} von {2}</value></data>
   <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Zurück</value></data>
   <data name="Magic.Catalog.Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Magic.Blocker.Unknown" xml:space="preserve"><value>Diese Auswahl kann noch nicht bestätigt werden. Den Grund findest du unter Technische Details. Wiederhole keinen Speichervorgang mit unklarem Ergebnis.</value></data>
+  <data name="Magic.Blocker.Load" xml:space="preserve"><value>Die Magieauswahl konnte nicht geladen werden. Öffne diesen Runner und anschließend Magie / Resonanz erneut.</value></data>
+  <data name="Magic.Blocker.Attributes" xml:space="preserve"><value>Öffne Attribute, überprüfe deine Verteilung und speichere sie vor der Magieauswahl.</value></data>
+  <data name="Magic.Blocker.Method" xml:space="preserve"><value>Öffne Bauart und überprüfe und speichere deinen Metatyp und dein Talent.</value></data>
+  <data name="Magic.Blocker.Changed" xml:space="preserve"><value>Diese Ansicht passt nicht mehr zum Runner oder zu den Regeln. Öffne Magie / Resonanz erneut und überprüfe die aktuellen Optionen.</value></data>
+  <data name="Magic.Blocker.Draft" xml:space="preserve"><value>Diese Auswahl konnte nicht überprüft werden. Prüfe sie vor dem Speichern erneut. Erstelle keine zweite Kopie eines ungeklärten Entwurfs.</value></data>
+  <data name="Magic.Blocker.Confirm" xml:space="preserve"><value>Prüfe deine Auswahl und speichere sie mit Bestätigen.</value></data>
+  <data name="Magic.Blocker.Metatype" xml:space="preserve"><value>Dein Metatyp erlaubt dieses Talent nicht. Prüfe das unter Bauart ausgewählte Talent.</value></data>
+  <data name="Magic.Blocker.Disabled" xml:space="preserve"><value>Diese Option ist für deinen aktuellen Runner und seine Regeln nicht verfügbar.</value></data>
+  <data name="Magic.Blocker.Duplicate" xml:space="preserve"><value>Diese Option ist bereits ausgewählt. Wähle sie nur einmal.</value></data>
+  <data name="Magic.Blocker.Unsupported" xml:space="preserve"><value>Diese Option benötigt Regeln, die der Assistent noch nicht unterstützt. Wähle eine unterstützte Option, um fortzufahren.</value></data>
+  <data name="Magic.Blocker.SaveLocked" xml:space="preserve"><value>Das Speicherergebnis konnte nicht überprüft werden. Behalte diesen Entwurf und nutze seine Wiederherstellung. Starte keinen zweiten Speichervorgang.</value></data>
+  <data name="Magic.Blocker.RefreshSaved" xml:space="preserve"><value>Die Auswahl wurde gespeichert, aber die Ansicht konnte nicht aktualisiert werden. Öffne den Runner erneut, um das Ergebnis zu prüfen. Speichere nicht erneut.</value></data>
+  <data name="Magic.Blocker.PowersOver" xml:space="preserve"><value>Deine Adeptenkräfte kosten mehr Kraftpunkte als verfügbar. Entferne eine Kraft oder senke ihre Stufe.</value></data>
+  <data name="Magic.Blocker.PowersLeft" xml:space="preserve"><value>Du hast noch Kraftpunkte zu vergeben. Wähle Kräfte oder passe ihre Stufen an, um die verbleibenden Punkte zu verteilen.</value></data>
+  <data name="Magic.Blocker.PowersNotAllowed" xml:space="preserve"><value>Dein gewähltes Talent erlaubt keine Adeptenkräfte. Entferne sie aus diesem Entwurf.</value></data>
+  <data name="Magic.Blocker.SpellsOver" xml:space="preserve"><value>Du hast zu viele Zauber ausgewählt. Entferne Zauber, bis der verbleibende Wert null ist.</value></data>
+  <data name="Magic.Blocker.SpellsLeft" xml:space="preserve"><value>Du kannst noch Zauber wählen. Öffne Zauber und ergänze die noch fehlende Auswahl.</value></data>
+  <data name="Magic.Blocker.SpellsNotAllowed" xml:space="preserve"><value>Dein gewähltes Talent erlaubt keine Zauber. Entferne sie aus diesem Entwurf.</value></data>
+  <data name="Magic.Blocker.Tradition" xml:space="preserve"><value>Wähle vor dem Speichern eine verfügbare magische Tradition.</value></data>
+  <data name="Magic.Blocker.Stream" xml:space="preserve"><value>Wähle vor dem Speichern eine verfügbare Resonanzströmung.</value></data>
+  <data name="Magic.Blocker.FormsOver" xml:space="preserve"><value>Du hast zu viele komplexe Formen ausgewählt. Entferne Formen, bis der verbleibende Wert null ist.</value></data>
+  <data name="Magic.Blocker.FormsLeft" xml:space="preserve"><value>Du kannst noch komplexe Formen wählen. Öffne Komplexe Formen und ergänze die noch fehlende Auswahl.</value></data>
+  <data name="Magic.Blocker.FormsNotAllowed" xml:space="preserve"><value>Dein gewähltes Talent erlaubt keine komplexen Formen. Entferne sie aus diesem Entwurf.</value></data>
+  <data name="Magic.Blockers.Title" xml:space="preserve"><value>Bevor du fortfährst</value></data>
 </root>

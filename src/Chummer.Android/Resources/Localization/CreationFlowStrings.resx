@@ -305,4 +305,29 @@
   <data name="Magic.Catalog.Showing" xml:space="preserve"><value>Showing {0}–{1} of {2}</value></data>
   <data name="Magic.Catalog.Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Magic.Catalog.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Magic.Blocker.Unknown" xml:space="preserve"><value>This choice cannot be confirmed yet. Open Technical details for the reason; do not repeat a save whose result is still unknown.</value></data>
+  <data name="Magic.Blocker.Load" xml:space="preserve"><value>Magic choices could not be loaded. Reopen this runner and try opening Magic / Resonance again.</value></data>
+  <data name="Magic.Blocker.Attributes" xml:space="preserve"><value>Open Attributes, review your allocation and save it before choosing magic.</value></data>
+  <data name="Magic.Blocker.Method" xml:space="preserve"><value>Open Build method and review and save your metatype and talent choices.</value></data>
+  <data name="Magic.Blocker.Changed" xml:space="preserve"><value>This view no longer matches your runner or rules. Reopen Magic / Resonance and review the current choices.</value></data>
+  <data name="Magic.Blocker.Draft" xml:space="preserve"><value>These choices could not be verified. Review them again before saving; do not create a second copy of an unresolved draft.</value></data>
+  <data name="Magic.Blocker.Confirm" xml:space="preserve"><value>Review your choices and use Confirm to save them.</value></data>
+  <data name="Magic.Blocker.Metatype" xml:space="preserve"><value>Your metatype does not allow this talent. Review the talent selected in Build method.</value></data>
+  <data name="Magic.Blocker.Disabled" xml:space="preserve"><value>This choice is not available for your current runner and rules.</value></data>
+  <data name="Magic.Blocker.Duplicate" xml:space="preserve"><value>This choice is already selected. Keep it only once.</value></data>
+  <data name="Magic.Blocker.Unsupported" xml:space="preserve"><value>This choice needs rules that this wizard does not support yet. Choose a supported option to continue.</value></data>
+  <data name="Magic.Blocker.SaveLocked" xml:space="preserve"><value>The save result could not be verified. Keep this draft and use its recovery action; do not start a second save.</value></data>
+  <data name="Magic.Blocker.RefreshSaved" xml:space="preserve"><value>The choices were saved, but this view could not refresh. Reopen the runner to check the saved result; do not save again.</value></data>
+  <data name="Magic.Blocker.PowersOver" xml:space="preserve"><value>Your adept powers exceed the available power points. Remove a power or reduce its level.</value></data>
+  <data name="Magic.Blocker.PowersLeft" xml:space="preserve"><value>You still have power points to assign. Choose powers or adjust their levels to fill the remaining budget.</value></data>
+  <data name="Magic.Blocker.PowersNotAllowed" xml:space="preserve"><value>Your selected talent does not allow adept powers. Remove them from this draft.</value></data>
+  <data name="Magic.Blocker.SpellsOver" xml:space="preserve"><value>You have selected too many spells. Remove spells until the remaining count is zero.</value></data>
+  <data name="Magic.Blocker.SpellsLeft" xml:space="preserve"><value>You still have spells to choose. Open Spells and fill the remaining choices.</value></data>
+  <data name="Magic.Blocker.SpellsNotAllowed" xml:space="preserve"><value>Your selected talent does not allow spells. Remove them from this draft.</value></data>
+  <data name="Magic.Blocker.Tradition" xml:space="preserve"><value>Choose an available magical tradition before saving.</value></data>
+  <data name="Magic.Blocker.Stream" xml:space="preserve"><value>Choose an available Resonance stream before saving.</value></data>
+  <data name="Magic.Blocker.FormsOver" xml:space="preserve"><value>You have selected too many complex forms. Remove forms until the remaining count is zero.</value></data>
+  <data name="Magic.Blocker.FormsLeft" xml:space="preserve"><value>You still have complex forms to choose. Open Complex forms and fill the remaining choices.</value></data>
+  <data name="Magic.Blocker.FormsNotAllowed" xml:space="preserve"><value>Your selected talent does not allow complex forms. Remove them from this draft.</value></data>
+  <data name="Magic.Blockers.Title" xml:space="preserve"><value>Before you continue</value></data>
 </root>
