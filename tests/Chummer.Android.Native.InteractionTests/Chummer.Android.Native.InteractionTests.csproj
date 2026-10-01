@@ -28,6 +28,7 @@
     <Compile Include="DamageSaveReceiptRuntimeTests.cs" />
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
     <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
+    <Compile Include="CreationSpecialAttributesRuntimeTests.cs" />
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="MinimalUiRuntimeTests.cs" />
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />

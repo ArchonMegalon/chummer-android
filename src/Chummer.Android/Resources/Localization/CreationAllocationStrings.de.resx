@@ -870,4 +870,8 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="MagicReReview.Unavailable" xml:space="preserve"><value>Diese gespeicherte Auswahl kann nicht unverändert neu geprüft werden. Es wurde nichts geändert.</value></data>
   <data name="MagicReReview.Back" xml:space="preserve"><value>Zurück ohne weitere Änderungen</value></data>
   <data name="SkillsPreview.Stale" xml:space="preserve"><value>Diese Prüfung ist nicht mehr aktuell. Öffne den Runner erneut.</value></data>
+  <data name="AttributeAllocation.SpecialDecrease" xml:space="preserve"><value>Spezialpunkt −</value></data>
+  <data name="AttributeAllocation.SpecialIncrease" xml:space="preserve"><value>Spezialpunkt +</value></data>
+  <data name="AttributeAllocation.SpecialSpent" xml:space="preserve"><value>Verteilte Spezialpunkte</value></data>
+  <data name="Attributes.SpecialHelp" xml:space="preserve"><value>Wähle unten Edge, Magie oder Resonanz, um Spezialattributspunkte zu verteilen. Verfügbarkeit und Grenzen hängen von deinem Metatyp und Talent ab.</value></data>
 </root>

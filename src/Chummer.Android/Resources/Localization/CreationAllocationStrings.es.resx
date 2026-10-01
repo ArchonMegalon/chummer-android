@@ -870,4 +870,8 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="MagicReReview.Unavailable" xml:space="preserve"><value>Estas elecciones no pueden revisarse sin cambios. No se ha modificado nada.</value></data>
   <data name="MagicReReview.Back" xml:space="preserve"><value>Volver sin más cambios</value></data>
   <data name="SkillsPreview.Stale" xml:space="preserve"><value>Esta revisión ya no está actualizada. Vuelve a abrir el runner.</value></data>
+  <data name="AttributeAllocation.SpecialDecrease" xml:space="preserve"><value>Punto especial −</value></data>
+  <data name="AttributeAllocation.SpecialIncrease" xml:space="preserve"><value>Punto especial +</value></data>
+  <data name="AttributeAllocation.SpecialSpent" xml:space="preserve"><value>Puntos especiales asignados</value></data>
+  <data name="Attributes.SpecialHelp" xml:space="preserve"><value>Elige Edge, Magia o Resonancia abajo para asignar puntos de atributo especial. La disponibilidad y los límites dependen de tu metatipo y talento.</value></data>
 </root>
