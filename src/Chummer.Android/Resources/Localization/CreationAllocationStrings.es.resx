@@ -892,4 +892,5 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>No pudimos confirmar si se guardaron tus elecciones. Vuelve a abrir tu runner y comprueba Atributos antes de hacer otro cambio. No repitas este guardado.</value></data>
   <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Tus elecciones de atributos se guardaron, pero esta vista no pudo actualizarse. Vuelve a abrir tu runner para verlas. No vuelvas a guardar estas elecciones.</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
+  <data name="AttributesPreview.Saving" xml:space="preserve"><value>Guardando…</value></data>
 </root>

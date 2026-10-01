@@ -892,4 +892,5 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>Wir konnten nicht bestätigen, ob deine Auswahl gespeichert wurde. Öffne deinen Runner erneut und prüfe die Attribute, bevor du etwas änderst. Wiederhole diesen Speichervorgang nicht.</value></data>
   <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Deine Attributauswahl wurde gespeichert, aber die Ansicht konnte nicht aktualisiert werden. Öffne deinen Runner erneut, um sie zu sehen. Speichere diese Auswahl nicht noch einmal.</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Auswahl wird geprüft…</value></data>
+  <data name="AttributesPreview.Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
 </root>
