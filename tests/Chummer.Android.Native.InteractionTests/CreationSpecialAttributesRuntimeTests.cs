@@ -11,6 +11,7 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            await VerifyAttributeReviewRecoveryGuidanceAsync(ui, contentRoot);
             foreach (var (talent, rank, attributeId) in new[]
             {
                 ("Mystic Adept", "C", "MAG"), ("Mystic Adept", "A", "MAG"),
@@ -259,6 +260,9 @@ internal static partial class AfterRunAuthorityHarness
                 MinimalRender(review);
                 Require(!MinimalVisible(review).OfType<Button>().Any(), "Owner ABA exposed old review actions or diagnostics.");
                 MinimalRequireNoMachineValues(review);
+                Require(!MinimalVisibleText(review).Contains("creation-attributes-", StringComparison.Ordinal)
+                    && MinimalVisibleText(review).Contains(CreationAllocationStrings.Get("AttributesPreview.Reopen", "missing")),
+                    "Stale review must show safe reopen guidance instead of internal blocker codes.");
                 IssuedPageLifecycle(cappedPage, "OnDisappearing");
                 IssuedPageLifecycle(editor, "OnDisappearing");
                 IssuedPageLifecycle(page, "OnDisappearing");
@@ -270,6 +274,86 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS " + method + " special entry, EN/DE/ES controls, Edge +/-, separate budgets, save/cold reopen, cap and owner ABA");
             }
         });
+    }
+
+    private static async Task VerifyAttributeReviewRecoveryGuidanceAsync(IssuedPageUiContext ui, string contentRoot)
+    {
+        foreach (bool outcomeUnknown in new[] { true, false })
+        {
+            var owners = new ControlledLinkedOwner();
+            AttributesCommitProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                attributesDecorator: actual => probe = new(actual));
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var coordinator = runtime.Coordinator;
+            var state = coordinator.LoadCreationAttributes().Value!;
+            var draft = new CreationAttributesPhoneDraft();
+            draft.Bind(state, coordinator.State);
+            var allocations = draft.ChangedAllocations(state, "MAG", 1, 0)!;
+            var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+            CreationAttributesPhoneConfirmResult? applied = null;
+            var review = new CreationAttributesPreviewPage(coordinator, preview, allocations, result => applied = result);
+            MinimalRender(review);
+            var confirm = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
+            Require(confirm.IsEnabled, "SETUP: recovery guidance requires an issued, valid Magic review.");
+            probe!.AfterConfirm = () =>
+            {
+                // Both faults occur after an actual durable Core commit. The UI
+                // must never claim that nothing was saved or replay the write.
+                if (outcomeUnknown) throw new IOException("synthetic-attribute-response-loss");
+                probe.BeforeRead = () =>
+                {
+                    probe.BeforeRead = null;
+                    throw new IOException("synthetic-attribute-refresh-failure");
+                };
+            };
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+            string code = outcomeUnknown ? "creation-attributes-confirm-outcome-unknown"
+                : "creation-attributes-post-commit-refresh-required";
+            Require(applied?.Blockers.SequenceEqual(new[] { code }) == true && probe.ConfirmCalls == 1,
+                "SETUP: expected the exact post-commit recovery outcome.");
+            var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            Require(saved.ContentRevision == before.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision,
+                "Recovery fixture must persist exactly one revision.");
+            var culture = CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    MinimalRender(review);
+                    string visible = MinimalVisibleText(review);
+                    string key = outcomeUnknown ? "AttributesPreview.SaveUncertain" : "AttributesPreview.SavedReopen";
+                    string expected = CreationAllocationStrings.Get(key, "missing");
+                    Require(expected != "missing" && visible.Contains(expected, StringComparison.Ordinal)
+                        && !visible.Contains("creation-attributes-", StringComparison.Ordinal)
+                        && !visible.Contains(CreationAllocationStrings.Get("AttributeAllocation.CheckFailed", "missing"), StringComparison.Ordinal),
+                        "Review must explain the save/reopen outcome without internal codes or claiming nothing was saved: " + locale);
+                    MinimalRequireNoMachineValues(review);
+                    var save = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
+                    Require(!save.IsEnabled, "Recovery guidance re-enabled an uncertain or already committed save.");
+                    var details = MinimalVisible(review).OfType<Button>().Single(x =>
+                        x.AutomationId == "creation-attributes-preview-details-toggle");
+                    ((IButtonController)details).SendClicked();
+                    Require(MinimalVisibleText(review).Contains(code, StringComparison.Ordinal) && !save.IsEnabled,
+                        "Technical details must retain the exact recovery code without enabling another save.");
+                    ((IButtonController)details).SendClicked();
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = culture; }
+            await coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+            Require(probe.ConfirmCalls == 1, "Recovery review repeated the durable write.");
+            RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            var reopened = coordinator.LoadCreationAttributes().Value!;
+            Require(reopened.Attributes.Single(x => x.AttributeId == "MAG").Current
+                == state.Attributes.Single(x => x.AttributeId == "MAG").Current + 1,
+                "Saved Magic point did not survive recovery and cold-store reopen.");
+            Console.WriteLine("PASS localized attribute review recovery, exact diagnostic disclosure, no replay and cold reopen: " + code);
+        }
     }
 
     private static async Task VerifySpecialPointPendingFeedbackAsync(IssuedPageUiContext ui,
