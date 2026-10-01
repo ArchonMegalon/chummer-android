@@ -17,6 +17,8 @@ internal static partial class AfterRunAuthorityHarness
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
             .Root!.Element("qualities")!.Elements("quality").ToArray();
+        static string SummaryKey(System.Xml.Linq.XElement quality)
+            => "Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D");
         var oldCulture = CultureInfo.CurrentUICulture;
         try
         {
@@ -26,7 +28,7 @@ internal static partial class AfterRunAuthorityHarness
                 int authored = 0, missing = 0, partial = 0;
                 foreach (var quality in catalog)
                 {
-                    string summary = CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "");
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
                     if (summary.Length > 0) authored++;
                     var lines = CreationQualityInfo.Effects(quality.ToString());
                     Require(lines.Count > 0 && lines.All(line => !string.IsNullOrWhiteSpace(line)),
@@ -42,7 +44,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 198, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 211, "Localized source-identity summaries were not loaded from the real catalog.");
                 var changedQuality = new System.Xml.Linq.XElement(catalog.Single(quality => quality.Element("name")!.Value == "Will to Live"));
                 string originalSummary = CreationFlowStrings.Get("Qualities.Summary." + changedQuality.Element("id")!.Value, "");
                 changedQuality.Element("bonus")!.Element("conditionmonitor")!.Element("overflow")!.Value = "4";
@@ -52,9 +54,9 @@ internal static partial class AfterRunAuthorityHarness
                 Require(changedHelp[0] == CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")
                     && changedHelp.Any(line => line.Contains(": 4", StringComparison.Ordinal)),
                     "Changed definitions must explain the mismatch and retain their actual encoded values in every locale.");
-                foreach (var original in catalog.Where(quality => CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "").Length > 0))
+                foreach (var original in catalog.Where(quality => CreationFlowStrings.Get(SummaryKey(quality), "").Length > 0))
                 {
-                    string prose = CreationFlowStrings.Get("Qualities.Summary." + original.Element("id")!.Value, "");
+                    string prose = CreationFlowStrings.Get(SummaryKey(original), "");
                     Require(CreationQualityInfo.Effects(original.ToString(System.Xml.Linq.SaveOptions.DisableFormatting))[0] == prose,
                         "Formatting alone must not discard a reviewed explanation.");
                     foreach (string field in new[] { "karma", "limit", "required", "bonus" })
@@ -481,12 +483,51 @@ internal static partial class AfterRunAuthorityHarness
                 "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
             Require(gremlins.Contains("Once, at the first level only: Notoriety: 1")
-                && gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
-                "Gremlins' one-time Notoriety must not be multiplied or passed off as its complete glitch rules.");
+                && gremlins.Contains("minimum of one") && gremlins.Contains("Implants are unaffected")
+                && gremlins.Contains("cannot be used to sabotage")
+                && !gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Gremlins needs its glitch rule and scope, not just a one-time reputation modifier.");
             string ratedGremlins = string.Join(" ", CreationQualityInfo.Effects(
                 catalog.Single(quality => quality.Element("name")!.Value == "Gremlins").ToString(), 3));
             Require(ratedGremlins == gremlins,
-                "First-level effects alone do not need a base-value notice, and must remain visibly incomplete.");
+                "The per-level glitch description must not multiply the one-time Notoriety effect.");
+            var unknownGremlins = new System.Xml.Linq.XElement(catalog.Single(quality => quality.Element("name")!.Value == "Gremlins"));
+            unknownGremlins.Element("id")!.Value = Guid.Empty.ToString("D");
+            Require(CreationQualityInfo.Effects(unknownGremlins.ToString()).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "An unrelated first-level-only definition still needs the incomplete-description warning.");
+            foreach (string name in new[] { "Ambidextrous", "Astral Chameleon", "Blandness", "Focused Concentration",
+                "Gearhead", "Guts", "Human-Looking", "Juryrigger", "Natural Hardening", "Gremlins",
+                "Mentor Spirit", "Paragon", "Inherent Program" })
+            {
+                var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                Require(summary.Length > 40 && Effect(name).StartsWith(summary, StringComparison.Ordinal),
+                    "Core quality help must provide original source-bound prose: " + name);
+            }
+            Require(Effect("Astral Chameleon").Contains("twice as quickly")
+                && Effect("Astral Chameleon").Contains("not your physical presence")
+                && Effect("Blandness").Contains("Magical and Matrix searches are unaffected")
+                && Effect("Blandness").Contains("stand out can remove the benefit"),
+                "Concealment explanations must retain their different scopes and exceptions.");
+            Require(Effect("Focused Concentration").Contains("one spell or complex form")
+                && Effect("Focused Concentration").Contains("does not exceed this quality's rating")
+                && Effect("Focused Concentration").Contains("does not waive Drain or Fading")
+                && Effect("Guts").Contains("resisting fear or intimidation")
+                && Effect("Guts").Contains("does not make you immune"),
+                "Mental-discipline help must not grant unlimited sustaining, fear immunity or attack bonuses.");
+            Require(Effect("Gearhead").Contains("20% more Speed or +1 Handling")
+                && Effect("Gearhead").Contains("per extra minute")
+                && Effect("Juryrigger").Contains("Results are temporary")
+                && Effect("Juryrigger").Contains("burns out its critical components"),
+                "Technical tricks must retain their alternatives, temporary duration and damage risk.");
+            Require(Effect("Human-Looking").Contains("actual metatype and its attributes do not change")
+                && Effect("Natural Hardening").Contains("one point of natural biofeedback filtering")
+                && Effect("Natural Hardening").Contains("not ordinary physical attacks"),
+                "Appearance and biofeedback protection must not imply altered metatype or general armor.");
+            foreach (string name in new[] { "Mentor Spirit", "Paragon", "Inherent Program" })
+                Require(Effect(name).Contains("not yet fully described here")
+                    && Effect(name).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "A guide/program choice is useful partial help, not the selected profile's full mechanics.");
             string infirm = Effect("Infirm");
             Require(Regex.Matches(infirm, "Once, at the first level only: Augmentations cannot raise this attribute above its natural maximum").Count == 4
                 && Regex.Matches(infirm, "Maximum change: -1").Count == 4,
