@@ -232,7 +232,7 @@ TRUSTED_FULL_PROJECT_LOCK = {
     "sizeBytes": 70707,
 }
 TRUSTED_CORE_CONTENT_COMMIT = "7247a7f3051f3b9412bae4877bbfebec788b589a"
-TRUSTED_CORE_CONTENT_TREE = "e715b5f88c6bb73fb81fc308ce5831625bd35d78"
+TRUSTED_CORE_CONTENT_TREE = "1298e01009e8740cc31e8e3687a56329144467fd"
 WP1_REFERENCE_EVIDENCE_FILES = {
     "executionEvidence.toolchainLog": "toolchain.log",
     "executionEvidence.packageAuthorityLog": "package-authority.log",
