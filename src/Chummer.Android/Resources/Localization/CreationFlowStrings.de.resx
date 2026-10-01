@@ -773,4 +773,44 @@
   <data name="Qualities.Value.Artisan" xml:space="preserve"><value>Kunsthandwerk</value></data>
   <data name="Qualities.Summary.c0d411e6-ca88-4011-b56c-9f594882beb4" xml:space="preserve"><value>Du erhältst eine gefälschte SIN der Stufe 3 mit vier gefälschten Lizenzen der Stufe 3. Für diese gewährten Gegenstände fallen keine zusätzlichen Nuyenkosten an. Sie bilden keine echte registrierte Identität.</value></data>
   <data name="Qualities.Summary.fd9b9b6d-c969-40f1-8dc7-61f8e5d9cd4d" xml:space="preserve"><value>Wähle eine kostenlose Expertenspezialisierung in Kunsthandwerk. Ihr Vorteil gilt für das gewählte Spezialgebiet. Du erhältst weder eine kostenlose Fertigkeitsstufe noch einen Bonus auf jede Anwendung von Kunsthandwerk.</value></data>
+  <data name="Qualities.Effect.Chosen existing contact" xml:space="preserve"><value>Gewählter bestehender Kontakt</value></data>
+  <data name="Qualities.Effect.Granted contact" xml:space="preserve"><value>Zusätzlicher Kontakt</value></data>
+  <data name="Qualities.Effect.Connection" xml:space="preserve"><value>Einfluss</value></data>
+  <data name="Qualities.Effect.Base Loyalty" xml:space="preserve"><value>Grundloyalität</value></data>
+  <data name="Qualities.Effect.Fixed Loyalty" xml:space="preserve"><value>Festgelegte Loyalität</value></data>
+  <data name="Qualities.Effect.Does not cost contact points" xml:space="preserve"><value>Kostet keine Kontaktpunkte</value></data>
+  <data name="Qualities.Effect.Group contact" xml:space="preserve"><value>Gruppenkontakt</value></data>
+  <data name="Qualities.Effect.Must remain a group contact" xml:space="preserve"><value>Muss ein Gruppenkontakt bleiben</value></data>
+  <data name="Qualities.Effect.Contact details may be edited" xml:space="preserve"><value>Kontaktdaten dürfen bearbeitet werden</value></data>
+  <data name="Qualities.Effect.Weapon Accuracy change, not bonus dice" xml:space="preserve"><value>Änderung der Waffenpräzision, keine Zusatzwürfel</value></data>
+  <data name="Qualities.Effect.Weapon damage change, not bonus dice" xml:space="preserve"><value>Änderung des Waffenschadens, keine Zusatzwürfel</value></data>
+  <data name="Qualities.Effect.Spell choices restricted to one chosen category" xml:space="preserve"><value>Zauberauswahl auf eine gewählte Kategorie begrenzt</value></data>
+  <data name="Qualities.Effect.Spell choices restricted to category" xml:space="preserve"><value>Zauberauswahl auf Kategorie begrenzt</value></data>
+  <data name="Qualities.Effect.Choose an additionally permitted spell category" xml:space="preserve"><value>Zusätzlich erlaubte Zauberkategorie wählen</value></data>
+  <data name="Qualities.Effect.Additionally permitted spell category" xml:space="preserve"><value>Zusätzlich erlaubte Zauberkategorie</value></data>
+  <data name="Qualities.Effect.Choose an excluded spell trait" xml:space="preserve"><value>Ausgeschlossenes Zaubermerkmal wählen</value></data>
+  <data name="Qualities.Effect.Excluded spell trait" xml:space="preserve"><value>Ausgeschlossenes Zaubermerkmal</value></data>
+  <data name="Qualities.Effect.Summoning restricted to one chosen spirit type" xml:space="preserve"><value>Beschwörung auf eine gewählte Geisterart begrenzt</value></data>
+  <data name="Qualities.Effect.Choose an additional summonable spirit type, not a summoned spirit" xml:space="preserve"><value>Eine weitere beschwörbare Geisterart wählen, keinen beschworenen Geist</value></data>
+  <data name="Qualities.Effect.Base skill rating" xml:space="preserve"><value>Grundwert der Fertigkeit</value></data>
+  <data name="Qualities.Effect.Rounded down" xml:space="preserve"><value>Abgerundet</value></data>
+  <data name="Qualities.Value.Spirit of Air" xml:space="preserve"><value>Luftgeist</value></data>
+  <data name="Qualities.Value.Spirit of Earth" xml:space="preserve"><value>Erdgeist</value></data>
+  <data name="Qualities.Value.Spirit of Fire" xml:space="preserve"><value>Feuergeist</value></data>
+  <data name="Qualities.Value.Spirit of Water" xml:space="preserve"><value>Wassergeist</value></data>
+  <data name="Qualities.Value.Rituals" xml:space="preserve"><value>Rituale</value></data>
+  <data name="Qualities.Value.Spell" xml:space="preserve"><value>Zauberspruch</value></data>
+  <data name="Qualities.Value.Astral Combat,Blades,Clubs,Exotic Melee Weapon,Unarmed Combat" xml:space="preserve"><value>Astralkampf, Klingenwaffen, Knüppel, Exotische Nahkampfwaffe, Waffenloser Kampf</value></data>
+  <data name="Qualities.Summary.7297d8b0-8bb8-4d7a-ab10-2d4e4381e5d0" xml:space="preserve"><value>Deine Mitgliedschaft gewährt einen Gruppenkontakt mit Einfluss 5 und festgelegter Loyalität 3. Dieser Kontakt kostet keine Kontaktpunkte; die festgelegte Loyalität ersetzt seinen Grundwert.</value></data>
+  <data name="Qualities.Summary.81fc0829-3456-4701-8ecc-f101d145b538" xml:space="preserve"><value>Wähle eine zulässige Fertigkeit. Waffen, die sie verwenden, erhalten 1 Punkt Präzision: Ihr Limit steigt, nicht ihr Angriffswürfelpool. Die Einschränkungen der Fertigkeitsauswahl stehen darunter.</value></data>
+  <data name="Qualities.Summary.8c49fcfb-54fa-43ce-b2af-51780dabf40f" xml:space="preserve"><value>Du kannst zwei weitere Geisterarten zum Beschwören wählen, aber Binden nicht verwenden. Das erweitert die verfügbaren Arten; du erhältst weder zwei bereits beschworene Geister noch zwei geschuldete Dienste.</value></data>
+  <data name="Qualities.Summary.2a599984-62e4-4110-9784-dc1922df395d" xml:space="preserve"><value>Du kannst Spruchzauberei nicht verwenden. Für je zwei volle Punkte im Grundwert von Beschwören wählst du eine weitere beschwörbare Geisterart. Die Auswahl beschwört keinen Geist und gewährt keine Dienste.</value></data>
+  <data name="Qualities.Summary.c1d4d7ec-9ebb-4e85-ae72-8155b0f27478" xml:space="preserve"><value>Du erhältst Zugang zu Magie sowie den Fertigkeiten der Hexerei und Beschwörung. Deine Zauberauswahl ist auf eine gewählte Kategorie und deine Beschwörung auf eine gewählte Geisterart begrenzt. Kostenlose Zauber oder Geister erhältst du dadurch nicht.</value></data>
+  <data name="Qualities.Summary.d03a9696-2341-4894-8cf2-0537c4e74af2" xml:space="preserve"><value>Wähle eine Zauberkategorie außer Ritualen. Der Entzug von Zaubern dieser Kategorie sinkt um 2; Rituale bleiben zusätzlich erlaubt. Die Fertigkeitsgruppe Beschwörung steht nicht zur Verfügung.</value></data>
+  <data name="Qualities.Summary.cfc637e9-0071-4313-a25b-b411793f2321" xml:space="preserve"><value>Kampfzauber verursachen 1 Punkt mehr Schaden und zugleich 1 Punkt mehr Entzug. Für eine zulässige gewählte Kampffertigkeit kommt ein eigener Waffenschadensbonus von +1 hinzu. Beide Effekte gewähren keine zusätzlichen Angriffswürfel.</value></data>
+  <data name="Qualities.Summary.4d5e0fd2-dab3-4de0-9756-096a748bb3cc" xml:space="preserve"><value>Deine Zauberauswahl ist auf eine gewählte Kategorie und deine Beschwörung auf Luftgeister begrenzt. Die Fertigkeitsgruppe Verzaubern ist nicht verfügbar. Die Wahl der Art gewährt keinen bereits beschworenen Geist.</value></data>
+  <data name="Qualities.Summary.de428f71-12d1-4c21-98c5-1b3f86da5ba2" xml:space="preserve"><value>Deine Zauberauswahl ist auf eine gewählte Kategorie und deine Beschwörung auf Erdgeister begrenzt. Die Fertigkeitsgruppe Verzaubern ist nicht verfügbar. Die Wahl der Art gewährt keinen bereits beschworenen Geist.</value></data>
+  <data name="Qualities.Summary.d426f03d-6a3e-4696-a977-a49fb93be9aa" xml:space="preserve"><value>Deine Zauberauswahl ist auf eine gewählte Kategorie und deine Beschwörung auf Feuergeister begrenzt. Die Fertigkeitsgruppe Verzaubern ist nicht verfügbar. Die Wahl der Art gewährt keinen bereits beschworenen Geist.</value></data>
+  <data name="Qualities.Summary.c9c20750-894a-42b8-8119-0e12484698d4" xml:space="preserve"><value>Deine Zauberauswahl ist auf eine gewählte Kategorie und deine Beschwörung auf Wassergeister begrenzt. Die Fertigkeitsgruppe Verzaubern ist nicht verfügbar. Die Wahl der Art gewährt keinen bereits beschworenen Geist.</value></data>
+  <data name="Qualities.Summary.554ca59c-22e6-46ef-9b05-250ec8abd728" xml:space="preserve"><value>Ein geeignetes Gerät kann +1 auf sein gewähltes übertaktetes Matrixattribut erhalten. Der Bonus gilt nur für dieses Attribut, nicht für alle Matrixattribute oder sämtliche Matrixproben.</value></data>
 </root>

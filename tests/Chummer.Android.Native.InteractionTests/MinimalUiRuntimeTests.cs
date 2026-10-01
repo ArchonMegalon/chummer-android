@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 59, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 71, "Localized source-identity summaries were not loaded from the real catalog.");
                 string fractionalEssence = string.Join(" ", CreationQualityInfo.Effects(
                     "<quality><bonus><essencepenaltyt100>-150</essencepenaltyt100></bonus></quality>"));
                 Require(fractionalEssence.Contains((-1.5m).ToString(CultureInfo.CurrentUICulture))
@@ -117,6 +117,57 @@ internal static partial class AfterRunAuthorityHarness
                 && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
                 "Same-name qualities must not share source-identity summaries or expertise effects.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            string datahaven = Effect("Prime Datahaven Membership");
+            Require(datahaven.Contains("Granted contact") && datahaven.Contains("Connection: 5")
+                && datahaven.Contains("Base Loyalty: 1") && datahaven.Contains("Fixed Loyalty: 3")
+                && datahaven.Contains("Group contact") && datahaven.Contains("Does not cost contact points"),
+                "Granted group contact must preserve free cost, Connection and fixed versus base Loyalty.");
+            string practice = Effect("Practice, Practice, Practice");
+            Require(practice.Contains("Weapon Accuracy change, not bonus dice") && practice.Contains("Modifier: 1")
+                && practice.Contains("Chosen skill · Except: Combat skills"),
+                "Weapon Accuracy is not an attack-pool bonus; preserve the accepted skill exclusion.");
+            string deathDealer = Effect("Death Dealer (Adept)");
+            Require(deathDealer.Contains("Weapon damage change, not bonus dice") && deathDealer.Contains("Bonus: 1")
+                && deathDealer.Contains("Choose from: Astral Combat,Blades,Clubs,Exotic Melee Weapon,Unarmed Combat")
+                && deathDealer.Contains("Spell Drain change"), "Weapon damage's skill restriction and increased spell Drain must remain visible.");
+            string chainBreaker = Effect("Chain Breaker");
+            Require(Regex.Matches(chainBreaker, "Choose an additional summonable spirit type, not a summoned spirit").Count == 2
+                && chainBreaker.Contains("Unavailable skill: Binding"), "Two spirit-type choices must not be deduplicated or described as summoned allies.");
+            string conjurer = Effect("Dedicated Conjurer");
+            Require(conjurer.Contains("Based on skill: Summoning")
+                && conjurer.Contains("Number of choices: Base skill rating / 2 (Rounded down)")
+                && conjurer.Contains("Unavailable skill: Spellcasting") && !conjurer.Contains("addtoselected"),
+                "Dedicated Conjurer needs its full-increment skill basis without exposing bookkeeping XML.");
+            string hedge = Effect("Hedge Witch/Wizard");
+            Require(hedge.Contains("Spell choices restricted to one chosen category · Except: Rituals")
+                && hedge.Contains("Additionally permitted spell category: Rituals"),
+                "Excluding Rituals from the category choice must not hide that Rituals remain separately permitted.");
+            Require(Effect("Elementalist (Fire)").Contains("Summoning restricted to one chosen spirit type · Choose from: Spirit of Fire")
+                && Effect("Elementalist (Fire)").Contains("Unavailable skill group: Enchanting"),
+                "Elementalist must show its spirit restriction and forbidden skill group.");
+            Require(Describe("<selectcontact />") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "A contact selection prompt alone does not explain Sensei or another quality's rules.");
+            string contact = Describe("<selectcontact><type>nongroup</type><forcedloyalty>Rating + 1</forcedloyalty><free /></selectcontact>");
+            Require(contact.Contains("Chosen existing contact") && contact.Contains("Fixed Loyalty: Rating + 1")
+                && contact.Contains("Does not cost contact points") && !contact.Contains("Granted contact"),
+                "Changing an existing contact is not creating a new one; retain symbolic values.");
+            Require(Describe("<addcontact />").Contains("Connection: 1") && Describe("<addcontact />").Contains("Base Loyalty: 1"),
+                "Default contact values must not disappear when omitted from source XML.");
+            string repeatedContacts = Describe("<addcontact /><addcontact />");
+            Require(Regex.Matches(repeatedContacts, "Granted contact").Count == 2,
+                "Two independent granted contacts must remain two displayed contacts.");
+            string unknownWeaponCondition = Describe("<weaponskillaccuracy><value>1</value><selectskill limittoskill='Pistols' futurecondition='unknown' /></weaponskillaccuracy>");
+            Require(unknownWeaponCondition.Contains("Choose from: Pistols")
+                && unknownWeaponCondition.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Unknown nested weapon-choice conditions must not be silently dropped.");
+            Require(Describe("<weaponskillaccuracy><selectskill /></weaponskillaccuracy>") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "A missing weapon modifier must not be guessed as a +1 bonus.");
+            Require(Describe("<addspirit skill='Summoning' ratingdivisor='unknown' />") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "An unknown spirit-choice divisor must not be evaluated or invented.");
+            string symbolicSpirit = Describe("<addspirit skill='Summoning' ratingdivisor='2'><futurecondition>unknown</futurecondition></addspirit>");
+            Require(symbolicSpirit.Contains("Base skill rating / 2 (Rounded down)")
+                && symbolicSpirit.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Known spirit-choice basis must not conceal an unknown condition.");
             string powers = Describe("<critterpowers><power rating='2'>Armor</power><power select='Fire'>Immunity</power></critterpowers>");
             Require(powers.Contains("Granted power: Armor · Rating: 2") && powers.Contains("Fixed detail: Fire"),
                 "Granted power ratings and fixed selections cannot be dropped.");

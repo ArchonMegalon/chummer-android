@@ -909,7 +909,8 @@ internal static class CreationQualityInfo
                 // modifier into an apparently complete explanation, including
                 // when its known text duplicates an earlier effect.
                 incomplete |= HasUndescribedDetail(effect);
-                if (!string.IsNullOrWhiteSpace(description) && !result.Contains(description, StringComparer.Ordinal))
+                bool repeatedGrant = effect.Name.LocalName is "addspirit" or "addsprite" or "addcontact" or "addgear" or "critterpowers" or "addqualities";
+                if (!string.IsNullOrWhiteSpace(description) && (repeatedGrant || !result.Contains(description, StringComparer.Ordinal)))
                     result.Add(description);
             }
         }
@@ -1034,6 +1035,18 @@ internal static class CreationQualityInfo
         "addgear" => Equipment(effect),
         "addskillspecializationoption" => SpecializationOptions(effect),
         "selectexpertise" => Scalar(effect, "Choose a free expertise specialization"),
+        "addcontact" => ContactEffect(effect, existing: false),
+        "selectcontact" => ContactEffect(effect, existing: true),
+        "weaponskillaccuracy" => WeaponEffect(effect, "Weapon Accuracy change, not bonus dice"),
+        "weaponcategorydv" => WeaponEffect(effect, "Weapon damage change, not bonus dice"),
+        "limitspellcategory" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Spell choices restricted to one chosen category" : "Spell choices restricted to category"),
+        "allowspellcategory" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Choose an additionally permitted spell category" : "Additionally permitted spell category"),
+        "blockspelldescriptor" => Scalar(effect, string.IsNullOrWhiteSpace(effect.Value)
+            ? "Choose an excluded spell trait" : "Excluded spell trait"),
+        "limitspiritcategory" => SpiritChoices(effect, restricted: true),
+        "addspirit" => SpiritChoices(effect, restricted: false),
         "allowspellrange" => Scalar(effect, "Permitted spell range"),
         "freespells" => Scalar(effect, "Free-spell allowance"),
         "addware" => Fields(effect, "Grants augmentation"),
@@ -1087,6 +1100,49 @@ internal static class CreationQualityInfo
         return string.Join("\n", lines);
     }
 
+    private static string? ContactEffect(XElement effect, bool existing)
+    {
+        // Choosing an existing contact alone does not explain Sensei or Black
+        // Market Pipeline. Only show changes actually encoded on that contact.
+        if (existing && !effect.Elements().Any(field => field.Name.LocalName is "forcedloyalty" or "free" or "forcegroup")) return null;
+        var parts = new List<string> { Fields(effect, existing ? "Chosen existing contact" : "Granted contact") };
+        if (!existing)
+        {
+            if (effect.Element("connection") is null) parts.Add($"{Label("Connection")}: 1");
+            if (effect.Element("loyalty") is null) parts.Add($"{Label("Base Loyalty")}: 1");
+        }
+        return string.Join(" · ", parts);
+    }
+
+    private static string? WeaponEffect(XElement effect, string label)
+    {
+        // Without a modifier or a target, a selection prompt is not a rule.
+        if (string.IsNullOrWhiteSpace(effect.Element(effect.Name.LocalName == "weaponskillaccuracy" ? "value" : "bonus")?.Value)
+            || (effect.Element("selectskill") is null && string.IsNullOrWhiteSpace(effect.Element("name")?.Value))) return null;
+        var parts = new List<string> { Fields(effect, label) };
+        parts.AddRange(effect.Elements("selectskill").Select(skill => Fields(skill, "Chosen skill")));
+        return string.Join(" · ", parts);
+    }
+
+    private static string? SpiritChoices(XElement effect, bool restricted)
+    {
+        var parts = new List<string> { Fields(effect, restricted
+            ? "Summoning restricted to one chosen spirit type"
+            : "Choose an additional summonable spirit type, not a summoned spirit") };
+        if (!restricted)
+        {
+            string? skill = effect.Attribute("skill")?.Value;
+            if (string.IsNullOrEmpty(skill)) parts.Add($"{Label("Number of choices")}: 1");
+            else
+            {
+                string divisor = effect.Attribute("ratingdivisor")?.Value ?? "1";
+                if (!int.TryParse(divisor, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) || parsed < 1) return null;
+                parts.Add($"{Label("Number of choices")}: {Label("Base skill rating")} / {parsed} ({Label("Rounded down")})");
+            }
+        }
+        return string.Join(" · ", parts);
+    }
+
     private static string? AttributeLabel(string name) => name switch
     {
         "condition" => "When", "specific" => "Only for", "lifestyle" => "Lifestyle",
@@ -1094,7 +1150,7 @@ internal static class CreationQualityInfo
         "minimumrating" => "Minimum skill rating", "select" => "Choice", "rating" => "Rating",
         "alchemical" => "Alchemical", "forced" => "Fixed choice",
         "attribute" => "Based on attribute", "skill" => "Based on skill", "limit" => "Restriction",
-        "limittospecialization" => "Choose specialization from", _ => null
+        "limittospecialization" => "Choose specialization from", "exclude" => "Except", _ => null
     };
 
     private static IEnumerable<string> Attributes(XElement effect)
@@ -1120,6 +1176,14 @@ internal static class CreationQualityInfo
         "limbslot" => "Limb", "grade" => "Grade", "type" => "Type",
         "percent" => "Percentage change", "speed" => "Pace", "skillgroup" => "Choose from",
         "rating" => "Rating", "quantity" => "Quantity", "skill" => "Skill",
+        "spirit" when field.Parent?.Name.LocalName is "addspirit" or "limitspiritcategory" => "Choose from",
+        "connection" when field.Parent?.Name.LocalName is "addcontact" => "Connection",
+        "loyalty" when field.Parent?.Name.LocalName is "addcontact" => "Base Loyalty",
+        "forcedloyalty" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Fixed Loyalty",
+        "free" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Does not cost contact points",
+        "group" when field.Parent?.Name.LocalName == "addcontact" => "Group contact",
+        "forcegroup" when field.Parent?.Name.LocalName is "addcontact" or "selectcontact" => "Must remain a group contact",
+        "canwrite" when field.Parent?.Name.LocalName == "addcontact" => "Contact details may be edited",
         "fullcost" when field.Parent?.Name.LocalName is "addgear" or "child" => "Pay full price", _ => null
     };
 
@@ -1129,9 +1193,22 @@ internal static class CreationQualityInfo
         // rules. Keep these entries partial until those definitions are bound.
         if (effect.Name.LocalName is "critterpowers" or "optionalpowers") return true;
         if (!effect.HasElements && Guid.TryParse(effect.Value, out _)) return true;
-        if (effect.Attributes().Any(attribute => AttributeLabel(attribute.Name.LocalName) is null)) return true;
+        if (effect.Attributes().Any(attribute => AttributeLabel(attribute.Name.LocalName) is null
+            && !(effect.Name.LocalName == "addspirit" && attribute.Name.LocalName == "ratingdivisor"))) return true;
         foreach (var field in effect.Elements())
         {
+            if (effect.Name.LocalName is "addspirit" or "limitspiritcategory" && field.Name.LocalName == "addtoselected")
+            {
+                // Core's display-name bookkeeping flag does not change the
+                // selected spirit type; only admit its known boolean shape.
+                if (field.HasElements || field.HasAttributes || !bool.TryParse(field.Value, out _)) return true;
+                continue;
+            }
+            if (effect.Name.LocalName is "weaponskillaccuracy" or "weaponcategorydv" && field.Name.LocalName == "selectskill")
+            {
+                if (HasUndescribedDetail(field)) return true;
+                continue;
+            }
             if (effect.Name.LocalName == "addgear" && field.Name.LocalName == "children")
             {
                 if (field.HasAttributes || field.Elements().Any(child => child.Name.LocalName != "child" || HasUndescribedDetail(child))) return true;
@@ -1168,7 +1245,7 @@ internal static class CreationQualityInfo
         {
             string? fieldLabel = FieldLabel(field, valueLabel);
             if (fieldLabel is null || field.HasElements || Guid.TryParse(field.Value, out _)) continue;
-            if (field.Name.LocalName is "disablespecializationeffects" or "fullcost") parts.Add(Label(fieldLabel));
+            if (field.Name.LocalName is "disablespecializationeffects" or "fullcost" or "free" or "group" or "forcegroup" or "canwrite") parts.Add(Label(fieldLabel));
             else if (!string.IsNullOrWhiteSpace(field.Value))
             {
                 string value = hundredths && field.Name.LocalName is "val" or "value"
