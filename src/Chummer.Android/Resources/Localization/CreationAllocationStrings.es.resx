@@ -887,4 +887,8 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>No se pudieron comprobar los puntos. Tus elecciones siguen en este borrador; no se ha guardado nada. Comprueba de nuevo para continuar.</value></data>
   <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Comprobar de nuevo</value></data>
   <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>Estas elecciones ya no están actualizadas. Vuelve a Atributos y abre este editor de nuevo.</value></data>
+  <data name="AttributesPreview.CheckChoices" xml:space="preserve"><value>Revisar tus elecciones</value></data>
+  <data name="AttributesPreview.Reopen" xml:space="preserve"><value>Esta revisión ya no está actualizada. Vuelve a tu runner y abre Atributos de nuevo para comprobar las elecciones actuales.</value></data>
+  <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>No pudimos confirmar si se guardaron tus elecciones. Vuelve a abrir tu runner y comprueba Atributos antes de hacer otro cambio. No repitas este guardado.</value></data>
+  <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Tus elecciones de atributos se guardaron, pero esta vista no pudo actualizarse. Vuelve a abrir tu runner para verlas. No vuelvas a guardar estas elecciones.</value></data>
 </root>

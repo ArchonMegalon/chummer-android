@@ -83,6 +83,13 @@ public static class CreationAllocationStrings
             => Get("Attributes.KarmaExceeded", "Not enough creation Karma remains."),
         "creation-attributes-maximum-count-exceeded"
             => Get("Attributes.MaximumCountExceeded", "Too many attributes are at their natural maximum. Lower another attribute first."),
+        "creation-attributes-stale-workspace-revision" or "creation-attributes-stale-raw-character-xml-digest"
+            or "creation-attributes-preview-digest-mismatch"
+            => Get("AttributesPreview.Reopen", "This review is no longer current. Return to your runner and reopen Attributes to check the latest choices."),
+        "creation-attributes-confirm-outcome-unknown"
+            => Get("AttributesPreview.SaveUncertain", "We couldn't confirm whether your choices were saved. Reopen your runner and check Attributes before making another change. Don't repeat this save."),
+        "creation-attributes-post-commit-refresh-required"
+            => Get("AttributesPreview.SavedReopen", "Your attribute choices were saved, but this view couldn't refresh. Reopen your runner to see them. Don't save these choices again."),
         _ => Get("Attributes.ChangeUnavailable", "This change is unavailable with the current choices and limits. Technical details contain the exact reason.")
     };
 }

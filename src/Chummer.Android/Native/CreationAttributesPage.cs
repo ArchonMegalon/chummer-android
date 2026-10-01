@@ -811,7 +811,8 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             "Attribute allocation")));
         if (!Coordinator.CanDisplayCreationAttributesPreview(_preview))
         {
-            _body.Add(NativeTheme.Body(CharacterCreationAttributesBlockers.StaleWorkspaceRevision, NativeTheme.Danger));
+            _body.Add(NativeTheme.Body(CreationAllocationStrings.AttributeBlocker(
+                CharacterCreationAttributesBlockers.StaleWorkspaceRevision), NativeTheme.Danger));
             return;
         }
         Label binding = NativeTheme.Body(
@@ -908,9 +909,12 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         if (blockers.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Common.Blockers", "Blockers")));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "AttributesPreview.CheckChoices", "Check your choices")));
+        foreach (string guidance in blockers.Select(CreationAllocationStrings.AttributeBlocker).Distinct(StringComparer.Ordinal))
+            card.Add(NativeTheme.Body(guidance, NativeTheme.Danger));
         foreach (string blocker in blockers)
-            card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+            _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attributes-preview-blockers";
         _body.Add(border);

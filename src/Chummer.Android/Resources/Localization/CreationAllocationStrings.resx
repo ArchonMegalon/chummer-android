@@ -887,4 +887,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>Couldn't check the points. Your choices are still in this draft; nothing was saved. Check again to continue.</value></data>
   <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Check again</value></data>
   <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>These choices are no longer current. Return to Attributes and reopen this editor.</value></data>
+  <data name="AttributesPreview.CheckChoices" xml:space="preserve"><value>Check your choices</value></data>
+  <data name="AttributesPreview.Reopen" xml:space="preserve"><value>This review is no longer current. Return to your runner and reopen Attributes to check the latest choices.</value></data>
+  <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>We couldn't confirm whether your choices were saved. Reopen your runner and check Attributes before making another change. Don't repeat this save.</value></data>
+  <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Your attribute choices were saved, but this view couldn't refresh. Reopen your runner to see them. Don't save these choices again.</value></data>
 </root>

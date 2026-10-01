@@ -887,4 +887,8 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>Die Punkte konnten nicht geprüft werden. Deine Auswahl bleibt im Entwurf; nichts wurde gespeichert. Prüfe erneut, um fortzufahren.</value></data>
   <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Erneut prüfen</value></data>
   <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>Diese Auswahl ist nicht mehr aktuell. Gehe zu „Attribute“ zurück und öffne diesen Editor erneut.</value></data>
+  <data name="AttributesPreview.CheckChoices" xml:space="preserve"><value>Auswahl prüfen</value></data>
+  <data name="AttributesPreview.Reopen" xml:space="preserve"><value>Diese Prüfung ist nicht mehr aktuell. Kehre zu deinem Runner zurück und öffne die Attribute erneut, um die aktuelle Auswahl zu prüfen.</value></data>
+  <data name="AttributesPreview.SaveUncertain" xml:space="preserve"><value>Wir konnten nicht bestätigen, ob deine Auswahl gespeichert wurde. Öffne deinen Runner erneut und prüfe die Attribute, bevor du etwas änderst. Wiederhole diesen Speichervorgang nicht.</value></data>
+  <data name="AttributesPreview.SavedReopen" xml:space="preserve"><value>Deine Attributauswahl wurde gespeichert, aber die Ansicht konnte nicht aktualisiert werden. Öffne deinen Runner erneut, um sie zu sehen. Speichere diese Auswahl nicht noch einmal.</value></data>
 </root>
