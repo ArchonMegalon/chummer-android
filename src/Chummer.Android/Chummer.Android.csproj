@@ -10,8 +10,8 @@
     <MauiVersion>10.0.20</MauiVersion>
     <ApplicationTitle>Chummer</ApplicationTitle>
     <ApplicationId>com.myexternalbrain.chummer</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0-preview.65</ApplicationDisplayVersion>
-    <ApplicationVersion>65</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0-preview.66</ApplicationDisplayVersion>
+    <ApplicationVersion>66</ApplicationVersion>
     <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
     <TargetSdkVersion>36</TargetSdkVersion>
     <AndroidMinSdkVersion>24</AndroidMinSdkVersion>

@@ -544,6 +544,12 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            foreach (string message in retainedEditor.Budgets.SelectMany(budget => budget.Blockers)
+                         .Concat(retainedEditor.Blockers).Concat(retainedEditor.Talent.Blockers)
+                         .Select(CreationFlowStrings.MagicBlocker).Distinct(StringComparer.Ordinal))
+                Require(MinimalVisible(page).OfType<Label>().Count(label =>
+                    label.Text.TrimStart('•', ' ') == message) == 1,
+                    "Magic repeats or loses the same budget/talent guidance after refresh.");
             MinimalRequireNoMachineValues(page);
             MinimalRequireFreshDisclosure(page);
             var retainedCatalog = await VerifyMagicCatalogPagingAsync(runtime.Coordinator, retainedEditor, retainedDraft, ui);
@@ -730,6 +736,10 @@ internal static partial class AfterRunAuthorityHarness
                     "A disabled Magic choice exposes raw blocker codes instead of readable guidance: " + locale);
                 Require(disabled.Blockers.All(code => MinimalVisibleText(detail).Contains(CreationFlowStrings.MagicBlocker(code))),
                     "Disabled choices need the exact localized reason, not a blank or generic summary.");
+                foreach (string message in disabled.Blockers.Select(CreationFlowStrings.MagicBlocker).Distinct(StringComparer.Ordinal))
+                    Require(MinimalVisible(detail).OfType<Label>().Count(label =>
+                        label.Text.TrimStart('•', ' ') == message) == 1,
+                        "A blocked Magic choice repeats the same guidance: " + locale);
                 Require(!MinimalVisible(detail).OfType<Button>().Single(button =>
                     button.AutomationId == "creation-magic-resonance-option-toggle"
                     || button.AutomationId == "creation-magic-resonance-power-increase").IsEnabled,
@@ -746,6 +756,42 @@ internal static partial class AfterRunAuthorityHarness
             }
         }
         finally { System.Globalization.CultureInfo.CurrentUICulture = oldCulture; }
+        var sharedHints = new VerticalStackLayout();
+        var exactCodes = new VerticalStackLayout();
+        var shown = new HashSet<string>(StringComparer.Ordinal);
+        string[] codes = [CharacterCreationMagicResonanceBlockers.OptionInvalid,
+            CharacterCreationMagicResonanceBlockers.OptionDisabled,
+            CharacterCreationMagicResonanceBlockers.TraditionRequired];
+        foreach (string code in codes.Concat(codes))
+            CreationMagicResonancePage.AddBlocker(sharedHints, code, exactCodes, shown);
+        Require(sharedHints.Children.Count == 2 && exactCodes.Children.Count == 3
+            && codes.All(code => exactCodes.Children.OfType<Label>().Any(label => label.Text == code)),
+            "Shared readable guidance must retain every distinct exact code without repeating hints.");
+        foreach (Button button in new[] { NativeTheme.PrimaryButton("Select"), NativeTheme.SecondaryButton("Previous") })
+        {
+            var background = button.BackgroundColor;
+            var foreground = button.TextColor;
+            double height = button.HeightRequest;
+            button.IsEnabled = false;
+            Require(VisualStateManager.GoToState(button, "Disabled")
+                && button.BackgroundColor.Equals(NativeTheme.Line)
+                && button.TextColor.Equals(NativeTheme.Text)
+                && button.BorderColor.Equals(NativeTheme.Muted)
+                && button.Opacity == 1 && button.HeightRequest == height && !button.IsEnabled,
+                "Disabled actions must look inactive without fading text or changing touch targets/admission.");
+            button.IsEnabled = true;
+            Require(VisualStateManager.GoToState(button, "Normal")
+                && button.BackgroundColor.Equals(background) && button.TextColor.Equals(foreground),
+                "Re-enabled actions did not recover their original appearance.");
+            button.BackgroundColor = NativeTheme.Signal;
+            button.TextColor = NativeTheme.Ink;
+            button.IsEnabled = false;
+            VisualStateManager.GoToState(button, "Disabled");
+            button.IsEnabled = true;
+            VisualStateManager.GoToState(button, "Normal");
+            Require(button.BackgroundColor.Equals(NativeTheme.Signal) && button.TextColor.Equals(NativeTheme.Ink),
+                "Availability states replaced a caller's custom enabled colors.");
+        }
         var search = MinimalVisible(catalog).OfType<SearchBar>().Single();
         Require(search.TextColor.Equals(NativeTheme.Text) && search.PlaceholderColor.Equals(NativeTheme.Muted)
             && search.BackgroundColor.Equals(NativeTheme.Surface), "Magic search colors must remain readable.");
