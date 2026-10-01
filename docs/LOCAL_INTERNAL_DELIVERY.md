@@ -104,9 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 69 is the latest [observed Internal availability](../play/evidence/preview69-internal-observation.md).
-It is available on Play Internal; physical Play installation of 69 is not yet
-verified. Magic review, save and recovery are readable and owner-bound. The new
+Preview 70 is the latest [observed Internal availability](../play/evidence/preview70-internal-observation.md).
+It is available on Play Internal; physical Play installation of 70 is not yet
+verified. Static Magic saving feedback replaces the animated spinner, with short
+EN/DE/ES actions and unchanged owner/review/mutation guards. Focused managed checks
+and native save/new-process receipt reopen passed; the other 29 workspace files
+stayed unchanged. One normal-animation emulator comparison measured 58,250 to
+14,088 ms; this is not a general or physical speedup claim. Leaving a spell option
+before its asynchronous selected-state update can still discard that uncommitted
+selection. Pending feedback assertions are managed, not a native pending-frame
+observation. Private x64/test-ID/version68 timing probes are absent from the clean
+production ARM64/version70 artifact. Full polish and physical testing remain open.
+Preview 69's Magic review, save and recovery are readable and owner-bound. The new
 Core/UI packages and affected managed checks passed. Native selection, one save,
 verified new-process receipt reopen and acknowledgement passed; the other 29
 workspace files stayed unchanged. Confirmation still took about 85–90 seconds;
