@@ -20,6 +20,7 @@ public sealed class CreationAttributesPage : NativePageBase
     private CharacterCreationAttributesState? _revalidationAuthority;
     private readonly ScrollView _scroll;
     private Label? _normalAttributesHeading;
+    private Label? _specialAttributesHeading;
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
@@ -39,6 +40,7 @@ public sealed class CreationAttributesPage : NativePageBase
         // Never attach that child to a new parent during a refresh.
         _technicalDetails = new() { Spacing = 6 };
         _normalAttributesHeading = null;
+        _specialAttributesHeading = null;
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
             "Character creation")));
@@ -139,7 +141,7 @@ public sealed class CreationAttributesPage : NativePageBase
             "creation-attributes-budget-normal", state);
         AddBudgetCard(
             _draft.SpecialBudget(state),
-            "creation-attributes-budget-special");
+            "creation-attributes-budget-special", state, CharacterCreationAttributeCategories.Special);
         AddBudgetCard(
             _draft.KarmaBudget(state),
             "creation-attributes-budget-karma");
@@ -205,7 +207,16 @@ public sealed class CreationAttributesPage : NativePageBase
             heading.AutomationId = "creation-attributes-normal-heading";
             _normalAttributesHeading = heading;
         }
+        else if (category == CharacterCreationAttributeCategories.Special)
+        {
+            heading.AutomationId = "creation-attributes-special-heading";
+            _specialAttributesHeading = heading;
+        }
         _body.Add(heading);
+        if (category == CharacterCreationAttributeCategories.Special)
+            _body.Add(NativeTheme.Body(CreationAllocationStrings.Get(
+                "Attributes.SpecialHelp",
+                "Choose Edge, Magic or Resonance below to spend special attribute points. Availability and limits depend on your metatype and talent."), NativeTheme.Muted));
         foreach (CharacterCreationAttributeProjection attribute in _draft.Attributes(state)
                      .Where(attribute => string.Equals(
                          attribute.Category,
@@ -295,7 +306,8 @@ public sealed class CreationAttributesPage : NativePageBase
     }
 
     private void AddBudgetCard(CharacterCreationBudgetState budget, string automationId,
-        CharacterCreationAttributesState? scrollAuthority = null)
+        CharacterCreationAttributesState? scrollAuthority = null,
+        string category = CharacterCreationAttributeCategories.Normal)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         if (scrollAuthority is null)
@@ -308,9 +320,11 @@ public sealed class CreationAttributesPage : NativePageBase
             long appearance = CaptureAppearanceGeneration();
             jump.Clicked += async (_, _) =>
             {
+                Label? target = category == CharacterCreationAttributeCategories.Special
+                    ? _specialAttributesHeading : _normalAttributesHeading;
                 if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(card.Parent?.Parent, _body)
                     || !Coordinator.IsCreationAttributesStateCurrent(scrollAuthority)
-                    || _normalAttributesHeading is not { Parent: not null } target) return;
+                    || target is not { Parent: not null }) return;
                 await _scroll.ScrollToAsync(target, ScrollToPosition.Start, animated: true);
             };
             card.Add(jump);
@@ -544,11 +558,15 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         AddBudgetSummary(state);
         AddAdjustment(
             state,
-            CreationAllocationStrings.Get("AttributeAllocation.PriorityDecrease", "Priority point −"),
+            attribute.Category == CharacterCreationAttributeCategories.Special
+                ? CreationAllocationStrings.Get("AttributeAllocation.SpecialDecrease", "Special point −")
+                : CreationAllocationStrings.Get("AttributeAllocation.PriorityDecrease", "Priority point −"),
             "priority-decrease");
         AddAdjustment(
             state,
-            CreationAllocationStrings.Get("AttributeAllocation.PriorityIncrease", "Priority point +"),
+            attribute.Category == CharacterCreationAttributeCategories.Special
+                ? CreationAllocationStrings.Get("AttributeAllocation.SpecialIncrease", "Special point +")
+                : CreationAllocationStrings.Get("AttributeAllocation.PriorityIncrease", "Priority point +"),
             "priority-increase");
         AddAdjustment(
             state,
@@ -582,7 +600,9 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             CreationAllocationStrings.Get("AttributeAllocation.AugmentedMaximum", "Augmented maximum"),
             attribute.AugmentedMaximum.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
+            attribute.Category == CharacterCreationAttributeCategories.Special
+                ? CreationAllocationStrings.Get("AttributeAllocation.SpecialSpent", "Special points spent")
+                : CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
             attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels"),

@@ -870,4 +870,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="MagicReReview.Unavailable" xml:space="preserve"><value>These saved choices cannot be reviewed unchanged. Nothing was changed.</value></data>
   <data name="MagicReReview.Back" xml:space="preserve"><value>Back without further changes</value></data>
   <data name="SkillsPreview.Stale" xml:space="preserve"><value>This review is no longer current. Reopen the runner.</value></data>
+  <data name="AttributeAllocation.SpecialDecrease" xml:space="preserve"><value>Special point −</value></data>
+  <data name="AttributeAllocation.SpecialIncrease" xml:space="preserve"><value>Special point +</value></data>
+  <data name="AttributeAllocation.SpecialSpent" xml:space="preserve"><value>Special points spent</value></data>
+  <data name="Attributes.SpecialHelp" xml:space="preserve"><value>Choose Edge, Magic or Resonance below to spend special attribute points. Availability and limits depend on your metatype and talent.</value></data>
 </root>
