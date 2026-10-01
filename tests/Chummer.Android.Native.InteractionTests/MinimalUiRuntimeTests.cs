@@ -44,7 +44,34 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 235, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 245, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var quality in catalog.Where(quality => quality.Element("name")!.Value.StartsWith("SINner (", StringComparison.Ordinal)
+                    || quality.Element("name")!.Value.StartsWith("Prejudiced (", StringComparison.Ordinal)))
+                {
+                    string name = quality.Element("name")!.Value;
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    bool unresolvedIssuerChoice = name is "SINner (Corporate)" or "SINner (Corporate Limited)";
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                        && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")) == unresolvedIssuerChoice,
+                        "SIN/prejudice help must explain each variant without concealing unresolved corporate issuer-picker details: " + name);
+                    if (name.StartsWith("SINner (", StringComparison.Ordinal))
+                    {
+                        int tax = name == "SINner (Corporate)" ? 10 : name == "SINner (Corporate Limited)" ? 20 : 15;
+                        Require(Regex.IsMatch(summary, $@"\b{tax}\s?%")
+                            && Regex.Matches(summary, @"\b\d+\s?%").Count == 1,
+                            "Every translated SIN variant must retain its own gross-income tax rate: " + name);
+                    }
+                    else
+                    {
+                        int dice = name.EndsWith("Biased)", StringComparison.Ordinal) ? 2
+                            : name.EndsWith("Outspoken)", StringComparison.Ordinal) ? 4 : 6;
+                        Require(summary.Contains($"{dice}", StringComparison.Ordinal)
+                            && summary.Contains($"+{dice}", StringComparison.Ordinal),
+                            "Translated prejudice help must retain both the player's penalty and the target's negotiation bonus: " + name);
+                    }
+                }
                 foreach (var quality in catalog.Where(quality => quality.Element("name")!.Value.StartsWith("Allergy (", StringComparison.Ordinal)
                     || quality.Element("name")!.Value.StartsWith("Addiction (", StringComparison.Ordinal)))
                 {
@@ -571,6 +598,34 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Addiction (Burnout)").Contains("six fewer dice on Mental-based tests")
                 && Effect("Addiction (Burnout)").Contains("Social tests always lose three dice"),
                 "Severe/burnout addiction help must distinguish withdrawal penalties from the persistent social penalty.");
+            foreach (string frequency in new[] { "Common", "Specific" })
+            {
+                foreach (var (degree, dice) in new[] { ("Biased", 2), ("Outspoken", 4), ("Radical", 6) })
+                {
+                    string prejudice = Effect($"Prejudiced ({frequency}, {degree})");
+                    Require(prejudice.Contains($"Social tests with its members take -{dice} dice")
+                        && prejudice.Contains($"when negotiating with you, they gain +{dice} dice")
+                        && prejudice.Contains("not a penalty to every social interaction"),
+                        "Prejudice severity must change both opponents' rolls only when interacting with the chosen group.");
+                    Require(prejudice.Contains(frequency == "Common" ? "commonly encountered" : "more narrowly defined"),
+                        "Target prevalence must remain distinct from the severity's dice modifiers.");
+                }
+            }
+            Require(Effect("SINner (National)").Contains("15% of gross income")
+                && Effect("SINner (National)").Contains("identity and biometrics")
+                && Effect("SINner (National)").Contains("fake identity does not erase this record")
+                && Effect("SINner (Criminal)").Contains("15% of gross income")
+                && Effect("SINner (Criminal)").Contains("replaces any previous SIN")
+                && Effect("SINner (Criminal)").Contains("Registered magic users also face checks")
+                && Effect("SINner (Criminal)").Contains("Notoriety: 1"),
+                "National/criminal SINs need their registry, replacement and oversight consequences beyond the encoded reputation modifier.");
+            Require(Effect("SINner (Corporate Limited)").Contains("20% of gross income")
+                && Effect("SINner (Corporate Limited)").Contains("not leadership or special-forces privileges")
+                && Effect("SINner (Corporate Limited)").Contains("target you for extraction")
+                && Effect("SINner (Corporate)").Contains("10% of gross income")
+                && Effect("SINner (Corporate)").Contains("global registry only confirms SIN validity")
+                && Effect("SINner (Corporate)").Contains("does not grant free corporate resources"),
+                "Corporate SIN variants must not swap tax rates, disclose the same registry detail or imply free corporate equipment.");
             Require(!Describe("<notoriety>1</notoriety><memory>1</memory>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
