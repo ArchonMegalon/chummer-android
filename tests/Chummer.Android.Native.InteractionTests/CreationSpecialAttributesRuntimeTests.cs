@@ -16,7 +16,8 @@ internal static partial class AfterRunAuthorityHarness
                 var owners = new ControlledLinkedOwner();
                 await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                     creationFinalization: true, creationAttributes: true, productionCreationOverview: true);
-                var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeAttributes: true);
+                var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeAttributes: true,
+                    fixtureAlias: "SpecialPoints" + method);
                 await HydrateFinalizationOwnerAsync(runtime, owners, before);
                 var coordinator = runtime.Coordinator;
                 var state = coordinator.LoadCreationAttributes().Value!;

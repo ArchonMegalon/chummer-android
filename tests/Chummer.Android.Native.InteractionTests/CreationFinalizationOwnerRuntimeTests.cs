@@ -2795,7 +2795,7 @@ internal static partial class AfterRunAuthorityHarness
 
     private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
-        bool stopBeforeAttributes = false)
+        bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer")
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -2807,7 +2807,7 @@ internal static partial class AfterRunAuthorityHarness
         Require(CharacterCreationBootstrapProfiles.TryResolveCanonicalSettingsProfileId(
             buildMethod, out string profile), "Canonical build-method profile missing.");
         var created = bootstrap.Create(new(CharacterCreationBootstrapSchemas.RequestV1,
-            CharacterCreationBootstrapStages.AwaitingFoundationSelection, "sr5", "Finalization Runner", "Finalizer",
+            CharacterCreationBootstrapStages.AwaitingFoundationSelection, "sr5", "Finalization Runner", fixtureAlias,
             buildMethod, profile));
         Require(created.Outcome == CharacterCreationBootstrapOutcomes.Success && created.Value is not null,
             "Actual Bootstrap failed: " + JsonSerializer.Serialize(created));
