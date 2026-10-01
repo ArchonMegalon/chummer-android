@@ -163,7 +163,8 @@
   <data name="Magic.Recovery.Stale" xml:space="preserve"><value>This saved review no longer matches the runner. Reopen the same runner or use support recovery; do not save again.</value></data>
   <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirm to save these choices. You can finish character creation after the remaining steps.</value></data>
-  <data name="Magic.Review.Confirm" xml:space="preserve"><value>Confirm Magic/Resonance Creation draft</value></data>
+  <data name="Magic.Review.Confirm" xml:space="preserve"><value>Save choices</value></data>
+  <data name="Magic.Review.Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Review your choices</value></data>

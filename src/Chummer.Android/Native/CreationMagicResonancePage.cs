@@ -1195,12 +1195,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     private IReadOnlyList<string> _blockers = [];
     private int _confirmStarted;
     private readonly Button _confirm;
-    private readonly ActivityIndicator _confirmProgress = new()
-    {
-        AutomationId = "creation-magic-resonance-confirm-progress",
-        IsVisible = false,
-        IsRunning = false
-    };
+    // Keep saving feedback readable without a continuous animation competing
+    // with the fresh rule checks and post-save overview preparation.
+    private readonly Label _confirmProgress = NativeTheme.Body(string.Empty);
 
     internal CreationMagicResonanceReviewPage(
         RunnerSessionCoordinator coordinator,
@@ -1220,6 +1217,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         Title = CreationFlowStrings.Get("Magic.Review.PageTitle", "Review Magic / Resonance");
         AutomationId = "creation-magic-resonance-review-page";
         Content = new ScrollView { Content = _body };
+        _confirmProgress.AutomationId = "creation-magic-resonance-confirm-progress";
+        _confirmProgress.IsVisible = false;
         _confirm = NativeTheme.PrimaryButton(string.Empty);
         _confirm.AutomationId = "creation-magic-resonance-confirm-draft";
         _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
@@ -1290,14 +1289,15 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         bool pending = Volatile.Read(ref _confirmStarted) != 0;
         CharacterCreationMagicResonancePreview preview = _checkpoint.Review.Preview;
         _confirm.Text = pending
-            ? CreationFlowStrings.Get("Magic.Review.Confirming", "Checking and saving choices…")
-            : CreationFlowStrings.Get("Magic.Review.Confirm", "Confirm Magic/Resonance Creation draft");
+            ? CreationFlowStrings.Get("Magic.Review.Saving", "Saving…")
+            : CreationFlowStrings.Get("Magic.Review.Confirm", "Save choices");
         _confirm.IsEnabled = !pending
             && Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext)
             && _checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Reviewed
             && preview.RequiresExplicitConfirmation && preview.CanConfirm && preview.Blockers.Count == 0;
+        _confirmProgress.Text = CreationFlowStrings.Get(
+            "Magic.Review.Confirming", "Checking and saving choices…");
         _confirmProgress.IsVisible = pending;
-        _confirmProgress.IsRunning = pending;
     }
 
     private async Task ConfirmAsync()
