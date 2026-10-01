@@ -61,12 +61,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
             var editor = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (loaded.Value is not { } core
-                    || !CreationMagicResonancePhoneAuthority.TryProjectForOverview(core, original, out var projected)
-                    || projected is null)
-                    return null;
-                preparedDraft.Bind(projected, original);
-                return preparedDraft.Matches(projected, original) ? projected : null;
+                return loaded.Value is { } core
+                    && preparedDraft.TryBindLoaded(core, original, out var projected)
+                    ? projected : null;
             }, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (!Coordinator.IsCreationCatalogDisplayCurrent(original)

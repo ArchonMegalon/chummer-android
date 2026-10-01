@@ -573,6 +573,16 @@ internal static partial class AfterRunAuthorityHarness
             var review = await runtime.Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, original.CreationMagicResonanceEditor!, draft);
             Require(review.Preview.CanConfirm && probe.Previews == 1 && owners.ActiveLeases == 0,
                 "Background preview lost authority or retained an owner lease.");
+            var returnedDraft = retainedDraft.Copy();
+            Require(returnedDraft.TryAdopt(retainedEditor, original, review),
+                "Return-navigation regression fixture could not adopt the exact Core review.");
+            var selectedBeforeReturn = returnedDraft.Selections;
+            var returnWatch = System.Diagnostics.Stopwatch.StartNew();
+            Require(returnedDraft.TryBindLoaded(original.CreationMagicResonance!, original, out var returnedEditor)
+                && returnedEditor is not null && ReferenceEquals(selectedBeforeReturn, returnedDraft.Selections)
+                && ReferenceEquals(review, returnedDraft.Review) && returnedDraft.Matches(returnedEditor, original),
+                "Fresh return admission discarded unsaved selections or their exact review.");
+            Console.WriteLine($"MAGIC_TIMING draftReturnWithIndependentCheckMs={returnWatch.Elapsed.TotalMilliseconds:F2}");
             var journal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
                 original.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(journal.TryCreate(CharacterCreationMagicResonanceCheckpoint.CreateReviewed(review),
@@ -644,6 +654,11 @@ internal static partial class AfterRunAuthorityHarness
             Require(!retainedDraft.Matches(retainedEditor, fresh)
                 && !retainedDraft.Copy().Matches(retainedEditor, fresh),
                 "Old Magic selections survived an owner epoch change as current authority.");
+            Require(returnedDraft.TryBindLoaded(fresh.CreationMagicResonance!, fresh, out var freshEditor)
+                && freshEditor is not null && returnedDraft.Review is null
+                && CharacterCreationMagicResonanceDigest.Compute(returnedDraft.Selections)
+                    == CharacterCreationMagicResonanceDigest.Compute(freshEditor.Selections),
+                "Fresh owner A after A→B→A inherited an earlier epoch's unsaved choices or review.");
             var freshJournal = CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
                 fresh.DisplayOwnerContext, runtime.Coordinator.IsCreationMagicOwnerCurrent, id.Value);
             Require(freshJournal.TryRead(out var recovered, out _)
