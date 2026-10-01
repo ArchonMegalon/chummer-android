@@ -44,7 +44,22 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 211, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 223, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Astral Beacon", "Bad Luck", "Combat Paralysis", "Codeblock",
+                    "Distinctive Style", "Insomnia (Basic)", "Insomnia (Full)", "Simsense Vertigo",
+                    "Low Pain Tolerance", "Elf Poser", "Ork Poser", "Spirit Bane" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                        && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")) == (name == "Spirit Bane"),
+                        "Negative qualities need their own translated rules, not just reputation or a choice prompt: " + name);
+                    // Spirit Bane's type picker references another catalog via
+                    // selecttext attributes. Do not mark that unresolved detail
+                    // complete just because its common rules now have prose.
+                }
                 var changedQuality = new System.Xml.Linq.XElement(catalog.Single(quality => quality.Element("name")!.Value == "Will to Live"));
                 string originalSummary = CreationFlowStrings.Get("Qualities.Summary." + changedQuality.Element("id")!.Value, "");
                 changedQuality.Element("bonus")!.Element("conditionmonitor")!.Element("overflow")!.Value = "4";
@@ -475,10 +490,42 @@ internal static partial class AfterRunAuthorityHarness
                 && Describe("<selectskill><disablespecializationeffects /></selectskill>").Contains("Specialization bonuses do not apply"),
                 "Maximum-only and specialization-only changes are real effects even without bonus dice.");
             Require(Effect("Bad Luck").Contains("Notoriety: 1")
-                && Effect("Bad Luck").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && Effect("Bad Luck").Contains("Whenever you spend Edge")
+                && Effect("Bad Luck").Contains("only once per session")
+                && Effect("Bad Luck").Contains("stop making this check")
+                && !Effect("Bad Luck").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Bad Luck must explain its limited Edge reversal as well as its reputation effect.");
+            Require(Describe("<notoriety>1</notoriety>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
                 && Describe("<publicawareness>2</publicawareness>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
                 && Describe("<astralreputation>1</astralreputation><selectskill />").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Reputation side effects must remain visible but must not masquerade as the full quality rules.");
+            Require(Effect("Astral Beacon").Contains("linger twice as long")
+                && Effect("Astral Beacon").Contains("one fewer hit")
+                && Effect("Astral Beacon").Contains("not their dice pool")
+                && Effect("Distinctive Style").Contains("minimum one")
+                && Effect("Distinctive Style").Contains("Astral searches are unaffected"),
+                "Astral and physical identifiability must keep their scopes and thresholds distinct from dice modifiers.");
+            Require(Effect("Combat Paralysis").Contains("halve your first Initiative score, rounding up")
+                && Effect("Combat Paralysis").Contains("Later Initiative tests are normal")
+                && Effect("Combat Paralysis").Contains("Surprise tests lose three dice")
+                && Effect("Combat Paralysis").Contains("Composure tests under fire or in combat need one extra hit"),
+                "Combat Paralysis must retain opening-score, Surprise and Composure effects without halving all later Initiative.");
+            Require(Effect("Insomnia (Basic)").Contains("doubles each recovery interval")
+                && Effect("Insomnia (Full)").Contains("prevents any healing from that rest attempt")
+                && Effect("Insomnia (Basic)") != Effect("Insomnia (Full)"),
+                "The two sleep-related drawbacks must distinguish slower recovery from a failed recovery attempt.");
+            Require(Effect("Codeblock").Contains("one Matrix action that requires a test")
+                && Effect("Codeblock").Contains("Other Matrix actions are unaffected")
+                && Effect("Simsense Vertigo").Contains("smartlinks, simrigs and image links")
+                && Effect("Low Pain Tolerance").Contains("every two filled boxes instead of every three"),
+                "Interface penalties and earlier wound penalties must not become universal test penalties or smaller monitors.");
+            Require(Effect("Elf Poser").Contains("human-only")
+                && Effect("Ork Poser").Contains("human or elf")
+                && Effect("Ork Poser").Contains("do not gain ork attributes")
+                && Effect("Spirit Bane").Contains("one spirit type")
+                && Effect("Spirit Bane").Contains("it gains two dice against your Banishing")
+                && Effect("Spirit Bane").Contains("Watchers and other constructs do not count"),
+                "Imitating a metatype must not grant attributes; spirit hostility must retain type scope and who rolls the bonus.");
             Require(!Describe("<notoriety>1</notoriety><memory>1</memory>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
