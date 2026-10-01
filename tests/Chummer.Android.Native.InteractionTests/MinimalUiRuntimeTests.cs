@@ -41,7 +41,18 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 194, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 198, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Prototype Transhuman", "Wildcard Chimera",
+                    "Resonant Stream: Technoshaman", "Resonant Stream: Cyberadept" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 80 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                        && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                        "Special choices need translated, useful help without concealing unexpanded rules: " + name);
+                }
                 string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
                 var rated = CreationQualityInfo.Effects(willToLive, 3);
                 string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
@@ -352,7 +363,52 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Elevated Stress").Contains("alternative situations, not eight penalties to combine")
                 && Effect("Sloppy Code").StartsWith("While inside a Matrix host,", StringComparison.Ordinal),
                 "Conditional and rated penalties must not be advertised as unconditional combined totals.");
+            var prototype = catalog.Single(quality => quality.Element("name")!.Value == "Prototype Transhuman");
+            Require(prototype.Element("chargenonly") is not null
+                && prototype.Element("bonus")!.Element("prototypetranshuman")!.Value == "1"
+                && prototype.Element("bonus")!.Element("selectquality")!.Elements("quality").Select(choice => choice.Value)
+                    .SequenceEqual(new[] { "Wanted", "Allergy (Common, Mild)", "Astral Beacon", "Insomnia (Basic)" })
+                && Effect("Prototype Transhuman").Contains("Up to 1 Essence worth of bioware")
+                && Effect("Prototype Transhuman").Contains("bioware still costs nuyen")
+                && Effect("Prototype Transhuman").Contains("without gaining extra Karma")
+                && Effect("Prototype Transhuman").Contains("not a general Essence discount"),
+                "Prototype help must preserve the creation-only allowance and mandatory drawback, not free augmentation purchases.");
+            var chimera = catalog.Single(quality => quality.Element("name")!.Value == "Wildcard Chimera");
+            var chimeraChoices = chimera.Element("bonus")!.Element("selectquality")!;
+            Require(chimeraChoices.Elements("quality").Count() == 17
+                && chimeraChoices.Element("discountqualities")!.Elements("quality").Count() == 13
+                && chimera.Element("required")!.Descendants("quality").All(quality => quality.Value.StartsWith("Infected:", StringComparison.Ordinal))
+                && Effect("Wildcard Chimera").Contains("choice of one optional infected power")
+                && Effect("Wildcard Chimera").Contains("alternatives, not powers you receive together")
+                && Effect("Wildcard Chimera").Contains("zero cost does not promise a free power"),
+                "Chimera help must distinguish one referenced power, optional drawbacks and unresolved final cost.");
+            var technoshaman = catalog.Single(quality => quality.Element("name")!.Value == "Resonant Stream: Technoshaman");
+            var cyberadept = catalog.Single(quality => quality.Element("name")!.Value == "Resonant Stream: Cyberadept");
+            foreach (var stream in new[] { technoshaman, cyberadept })
+                Require(stream.Element("required")!.Descendants("quality").Single().Value == "Technomancer"
+                    && stream.Element("forbidden")!.Descendants("quality").Count() == 6,
+                    "Stream explanations must retain the technomancer prerequisite and incompatible streams.");
+            Require(technoshaman.Element("bonus")!.Elements().Single().Name.LocalName == "allowspritefettering"
+                && Effect("Resonant Stream: Technoshaman").Contains("permanently fetter one sprite")
+                && Effect("Resonant Stream: Technoshaman").Contains("does not grant a free sprite")
+                && Effect("Resonant Stream: Technoshaman").Contains("In Career, fettering costs Karma equal to the sprite's rating"),
+                "Fettering permission must not be advertised as unlimited free sprites.");
+            var cyberadeptSkills = cyberadept.Element("bonus")!.Elements("specificskill").ToArray();
+            Require(cyberadept.Element("bonus")!.Element("cyberadeptdaemon") is not null
+                && cyberadeptSkills.Length == 4 && cyberadeptSkills.All(skill => skill.Element("bonus")!.Value == "2")
+                && cyberadeptSkills.Select(skill => skill.Element("condition")!.Value).Distinct().OrderBy(value => value)
+                    .SequenceEqual(new[] { "Companion Sprite", "Fault Sprite" })
+                && cyberadeptSkills.Select(skill => skill.Element("name")!.Value).Distinct().OrderBy(value => value)
+                    .SequenceEqual(new[] { "Compiling", "Decompiling" })
+                && Effect("Resonant Stream: Cyberadept").Contains("not a four-die bonus")
+                && Effect("Resonant Stream: Cyberadept").Contains("subject to the character's current limits and rules settings")
+                && Effect("Resonant Stream: Cyberadept").Contains("does not refund Essence or undo bioware loss"),
+                "Cyberadept help must preserve alternative sprite targets and conditional Resonance recovery.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            foreach (string effect in new[] { "<allowspritefettering />", "<cyberadeptdaemon />",
+                "<prototypetranshuman>9</prototypetranshuman>", "<selectquality><quality>Unknown</quality></selectquality>" })
+                Require(Describe(effect) == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                    "Curated source-identity summaries must not invent mechanics for an unrelated or unknown source.");
             foreach (string name in new[] { "Animal Empathy", "City Slicker", "Outdoorsman", "Sense of Direction",
                 "Vehicle Empathy", "Water Sprite", "Computer Illiterate", "Loss of Confidence", "Nasty Vibe",
                 "Grease Monkey", "Alibi", "Closer", "Innocuous", "Memory Palace", "Hi-Rez",
