@@ -815,4 +815,38 @@
   <data name="Qualities.Summary.b47319f5-372d-4e23-9fd9-a8e4aecd4c85" xml:space="preserve"><value>Las parejas de ciberextremidades válidas refuerzan tu Voluntad: +1 por pareja completa, hasta +2. Solo cuentan las extremidades admitidas por la configuración activa; una extremidad suelta u otro implante no concede esta bonificación.</value></data>
   <data name="Qualities.Summary.38deea18-76f0-49a3-95ba-50006e4e7f90" xml:space="preserve"><value>Cada pareja completa de ciberextremidades válidas añade 1 a Agilidad y Fuerza, hasta +2 a cada una. A cambio pierdes tres casillas de daño físico por pareja, hasta seis casillas. Solo cuentan las extremidades admitidas por la configuración activa; no es un aumento incondicional.</value></data>
   <data name="Qualities.Summary.e07fc29c-55cc-46b3-af56-3b1de76f0a89" xml:space="preserve"><value>Durante la creación puedes acceder a contactos influyentes. Dispones de una reserva separada de cuatro veces tu Carisma para contactos individuales con Conexión 8 o superior, y el máximo de Conexión al crear pasa a 12. Esta reserva no compra contactos de grupo ni aumenta la Lealtad de todos tus contactos.</value></data>
+  <data name="Qualities.Effect.Once, at the first level only" xml:space="preserve"><value>Solo una vez, en el primer nivel</value></data>
+  <data name="Qualities.Effect.Natural weapon" xml:space="preserve"><value>Arma natural</value></data>
+  <data name="Qualities.Effect.Damage formula" xml:space="preserve"><value>Fórmula de daño</value></data>
+  <data name="Qualities.Effect.Armor penetration" xml:space="preserve"><value>Penetración de armadura</value></data>
+  <data name="Qualities.Effect.Accuracy limit" xml:space="preserve"><value>Límite de precisión</value></data>
+  <data name="Qualities.Effect.Physical damage" xml:space="preserve"><value>Daño físico</value></data>
+  <data name="Qualities.Effect.Stun damage" xml:space="preserve"><value>Daño de aturdimiento</value></data>
+  <data name="Qualities.Effect.Augmentations cannot raise this attribute above its natural maximum" xml:space="preserve"><value>Los aumentos tampoco pueden elevar este atributo por encima de su máximo natural</value></data>
+  <data name="Qualities.Effect.Granted weapon; attack details not yet available" xml:space="preserve"><value>Arma concedida; detalles del ataque aún no disponibles</value></data>
+  <data name="Qualities.Value.Unarmed Combat" xml:space="preserve"><value>Combate sin armas</value></data>
+  <data name="Qualities.Value.Throwing Weapons" xml:space="preserve"><value>Armas arrojadizas</value></data>
+  <data name="Qualities.Value.Infected Claws" xml:space="preserve"><value>Garras de infectado</value></data>
+  <data name="Qualities.Value.Infected Bite" xml:space="preserve"><value>Mordisco de infectado</value></data>
+  <data name="Qualities.Value.Dracoform Claws" xml:space="preserve"><value>Garras de dracoforma</value></data>
+  <data name="Qualities.Value.Dracoform Horns" xml:space="preserve"><value>Cuernos de dracoforma</value></data>
+  <data name="Qualities.Value.Dracoform Tail" xml:space="preserve"><value>Cola de dracoforma</value></data>
+  <data name="Qualities.Value.Dracoform Fangs" xml:space="preserve"><value>Colmillos de dracoforma</value></data>
+  <data name="Qualities.Value.Crystal Jaw" xml:space="preserve"><value>Mandíbula de cristal</value></data>
+  <data name="Qualities.Value.Crystalline Blade" xml:space="preserve"><value>Hoja cristalina</value></data>
+  <data name="Qualities.Value.Crystal Claw" xml:space="preserve"><value>Garra de cristal</value></data>
+  <data name="Qualities.Value.Crystalline Shards" xml:space="preserve"><value>Fragmentos cristalinos</value></data>
+  <data name="Qualities.Value.Kick (Centaur)" xml:space="preserve"><value>Coz (centauro)</value></data>
+  <data name="Qualities.Value.Bite (Naga)" xml:space="preserve"><value>Mordisco (naga)</value></data>
+  <data name="Qualities.Value.Raptor Beak" xml:space="preserve"><value>Pico de rapaz</value></data>
+  <data name="Qualities.Value.Digging Claws" xml:space="preserve"><value>Garras excavadoras</value></data>
+  <data name="Qualities.Value.Razor Claws" xml:space="preserve"><value>Garras afiladas</value></data>
+  <data name="Qualities.Value.Retractable Claws" xml:space="preserve"><value>Garras retráctiles</value></data>
+  <data name="Qualities.Value.Fangs" xml:space="preserve"><value>Colmillos</value></data>
+  <data name="Qualities.Value.Functional Tail (Thagomizer)" xml:space="preserve"><value>Cola funcional (mazo con púas)</value></data>
+  <data name="Qualities.Value.Goring Horns" xml:space="preserve"><value>Cuernos de embestida</value></data>
+  <data name="Qualities.Value.Larger Tusks" xml:space="preserve"><value>Colmillos grandes</value></data>
+  <data name="Qualities.Summary.8779458a-5af9-4328-af57-4212eff304bf" xml:space="preserve"><value>Tu hoja cristalina es un arma natural que usa Combate sin armas. Causa daño físico de Fuerza más 3, tiene alcance 1 y reduce la armadura del objetivo en 2. Su precisión depende de tu límite físico; estos valores no añaden dados al ataque.</value></data>
+  <data name="Qualities.Summary.b4e54478-b550-4ee4-a69f-e22944b82b66" xml:space="preserve"><value>Tus garras de cristal son armas naturales que usan Combate sin armas. Causan daño físico de Fuerza más 1, tienen alcance 0 y reducen la armadura del objetivo en 1. Su precisión usa tu límite físico.</value></data>
+  <data name="Qualities.Summary.2169823c-22ab-457d-93f7-a96590ed77ff" xml:space="preserve"><value>Tus fragmentos cristalinos usan Armas arrojadizas y causan daño físico de Fuerza más 3. Su penetración de armadura es +4: el objetivo recibe cuatro puntos más de armadura contra este ataque, no cuatro menos. Su precisión usa tu límite físico.</value></data>
 </root>

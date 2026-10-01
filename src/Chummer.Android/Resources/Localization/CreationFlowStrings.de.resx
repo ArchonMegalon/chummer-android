@@ -832,4 +832,38 @@
   <data name="Qualities.Summary.b47319f5-372d-4e23-9fd9-a8e4aecd4c85" xml:space="preserve"><value>Paare berücksichtigter Cybergliedmaßen stärken deine Willenskraft: +1 pro vollständigem Paar, höchstens +2. Es zählen nur die Gliedmaßen, die deine aktiven Cybergliedmaßen-Einstellungen berücksichtigen. Eine einzelne Gliedmaße oder ein anderes Implantat gewährt diesen Bonus nicht.</value></data>
   <data name="Qualities.Summary.38deea18-76f0-49a3-95ba-50006e4e7f90" xml:space="preserve"><value>Jedes vollständige Paar berücksichtigter Cybergliedmaßen erhöht Geschicklichkeit und Stärke um 1, höchstens um jeweils 2. Dafür verliert dein körperlicher Zustandsmonitor drei Kästchen pro Paar, höchstens sechs. Es zählen nur Gliedmaßen gemäß den aktiven Cybergliedmaßen-Einstellungen; der Attributsbonus gilt nicht bedingungslos.</value></data>
   <data name="Qualities.Summary.e07fc29c-55cc-46b3-af56-3b1de76f0a89" xml:space="preserve"><value>Bei der Erschaffung stehen dir einflussreiche Kontakte offen. Ein eigener Pool in Höhe deiner vierfachen Charisma-Punktzahl bezahlt einzelne Kontakte mit Einfluss 8 oder höher; der maximale Einfluss bei der Erschaffung steigt auf 12. Dieser Pool bezahlt keine Gruppenkontakte und erhöht nicht automatisch deren Loyalität.</value></data>
+  <data name="Qualities.Effect.Once, at the first level only" xml:space="preserve"><value>Einmalig auf der ersten Stufe</value></data>
+  <data name="Qualities.Effect.Natural weapon" xml:space="preserve"><value>Natürliche Waffe</value></data>
+  <data name="Qualities.Effect.Damage formula" xml:space="preserve"><value>Schadensformel</value></data>
+  <data name="Qualities.Effect.Armor penetration" xml:space="preserve"><value>Panzerungsdurchdringung</value></data>
+  <data name="Qualities.Effect.Accuracy limit" xml:space="preserve"><value>Präzisionslimit</value></data>
+  <data name="Qualities.Effect.Physical damage" xml:space="preserve"><value>Körperlicher Schaden</value></data>
+  <data name="Qualities.Effect.Stun damage" xml:space="preserve"><value>Betäubungsschaden</value></data>
+  <data name="Qualities.Effect.Augmentations cannot raise this attribute above its natural maximum" xml:space="preserve"><value>Auch Verstärkungen können dieses Attribut nicht über sein natürliches Maximum erhöhen</value></data>
+  <data name="Qualities.Effect.Granted weapon; attack details not yet available" xml:space="preserve"><value>Gewährte Waffe; Angriffswerte noch nicht verfügbar</value></data>
+  <data name="Qualities.Value.Unarmed Combat" xml:space="preserve"><value>Waffenloser Kampf</value></data>
+  <data name="Qualities.Value.Throwing Weapons" xml:space="preserve"><value>Wurfwaffen</value></data>
+  <data name="Qualities.Value.Infected Claws" xml:space="preserve"><value>Klauen eines Infizierten</value></data>
+  <data name="Qualities.Value.Infected Bite" xml:space="preserve"><value>Biss eines Infizierten</value></data>
+  <data name="Qualities.Value.Dracoform Claws" xml:space="preserve"><value>Klauen der Drakoform</value></data>
+  <data name="Qualities.Value.Dracoform Horns" xml:space="preserve"><value>Hörner der Drakoform</value></data>
+  <data name="Qualities.Value.Dracoform Tail" xml:space="preserve"><value>Schwanz der Drakoform</value></data>
+  <data name="Qualities.Value.Dracoform Fangs" xml:space="preserve"><value>Fangzähne der Drakoform</value></data>
+  <data name="Qualities.Value.Crystal Jaw" xml:space="preserve"><value>Kristallkiefer</value></data>
+  <data name="Qualities.Value.Crystalline Blade" xml:space="preserve"><value>Kristallklinge</value></data>
+  <data name="Qualities.Value.Crystal Claw" xml:space="preserve"><value>Kristallklaue</value></data>
+  <data name="Qualities.Value.Crystalline Shards" xml:space="preserve"><value>Kristallsplitter</value></data>
+  <data name="Qualities.Value.Kick (Centaur)" xml:space="preserve"><value>Tritt (Zentaur)</value></data>
+  <data name="Qualities.Value.Bite (Naga)" xml:space="preserve"><value>Biss (Naga)</value></data>
+  <data name="Qualities.Value.Raptor Beak" xml:space="preserve"><value>Raubvogelschnabel</value></data>
+  <data name="Qualities.Value.Digging Claws" xml:space="preserve"><value>Grabklauen</value></data>
+  <data name="Qualities.Value.Razor Claws" xml:space="preserve"><value>Rasierklauen</value></data>
+  <data name="Qualities.Value.Retractable Claws" xml:space="preserve"><value>Einziehbare Klauen</value></data>
+  <data name="Qualities.Value.Fangs" xml:space="preserve"><value>Fangzähne</value></data>
+  <data name="Qualities.Value.Functional Tail (Thagomizer)" xml:space="preserve"><value>Funktionaler Schwanz (Stachelschwanz)</value></data>
+  <data name="Qualities.Value.Goring Horns" xml:space="preserve"><value>Stoßhörner</value></data>
+  <data name="Qualities.Value.Larger Tusks" xml:space="preserve"><value>Vergrößerte Hauer</value></data>
+  <data name="Qualities.Summary.8779458a-5af9-4328-af57-4212eff304bf" xml:space="preserve"><value>Deine Kristallklinge ist eine natürliche Waffe für Waffenlosen Kampf. Sie verursacht körperlichen Schaden in Höhe von Stärke plus 3, hat Reichweite 1 und senkt die Panzerung des Ziels um 2. Dein körperliches Limit bestimmt ihre Präzision; diese Werte sind keine zusätzlichen Angriffswürfel.</value></data>
+  <data name="Qualities.Summary.b4e54478-b550-4ee4-a69f-e22944b82b66" xml:space="preserve"><value>Deine Kristallklauen sind natürliche Waffen für Waffenlosen Kampf. Sie verursachen körperlichen Schaden in Höhe von Stärke plus 1, haben Reichweite 0 und senken die Panzerung des Ziels um 1. Ihre Präzision verwendet dein körperliches Limit.</value></data>
+  <data name="Qualities.Summary.2169823c-22ab-457d-93f7-a96590ed77ff" xml:space="preserve"><value>Deine Kristallsplitter verwenden Wurfwaffen und verursachen körperlichen Schaden in Höhe von Stärke plus 3. Ihre Panzerungsdurchdringung beträgt +4: Das Ziel erhält für diesen Angriff vier Punkte mehr Panzerung, nicht weniger. Ihre Präzision verwendet dein körperliches Limit.</value></data>
 </root>
