@@ -104,9 +104,15 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 66 is the latest [observed Internal availability](../play/evidence/preview66-internal-observation.md).
-It is available on Play Internal; physical Play installation of 66 is not yet
-verified. Duplicate Magic guidance is removed while retaining all exact diagnostic
+Preview 67 is the latest [observed Internal availability](../play/evidence/preview67-internal-observation.md).
+It is available on Play Internal; physical Play installation of 67 is not yet
+verified. Magic page/overview/review preparation reuses one canonical projection
+per fresh admission, retaining exact Core/owner/display/digest and mutation checks.
+Actual-Core managed negative/ownership/save-cold-reopen checks and native upgrade,
+stored-runner reopen, catalog selection and return-navigation smoke passed; all
+30 saved workspace files stayed unchanged. Main-page return is still noticeably
+delayed; no full native Magic save/restart or general speedup claim.
+Preview 66's duplicate Magic guidance is removed while retaining all exact diagnostic
 codes, and disabled primary/secondary buttons have readable colors. Actual-Core
 managed checks and affected native disclosure/disabled-control/draft-selection
 smoke passed; all 30 existing workspace files were unchanged. No full native
