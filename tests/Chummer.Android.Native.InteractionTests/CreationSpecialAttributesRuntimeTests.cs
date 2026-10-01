@@ -63,6 +63,13 @@ internal static partial class AfterRunAuthorityHarness
                         Require(Plus().IsEnabled && Plus().Text == CreationAllocationStrings.Get("AttributeAllocation.SpecialIncrease", "missing")
                             && Minus().Text == CreationAllocationStrings.Get("AttributeAllocation.SpecialDecrease", "missing"),
                             "Special point controls are disabled or wrongly labelled in " + locale);
+                        MinimalRequireNoMachineValues(editor);
+                        Require(!MinimalVisibleText(editor).Contains("\nEDG\n", StringComparison.Ordinal),
+                            "Attribute editor leaks its typed ID in " + locale);
+                        MinimalRender(page);
+                        Require(!MinimalVisibleText(page).Contains("creation-attributes-", StringComparison.Ordinal)
+                            && MinimalVisibleText(page).Contains(CreationAllocationStrings.Get("Attributes.EssenceNotSpendable", "missing")),
+                            "Disabled special attributes must explain availability without raw codes in " + locale);
                     }
                 }
                 finally { CultureInfo.CurrentUICulture = culture; MinimalRender(editor); }
@@ -81,12 +88,41 @@ internal static partial class AfterRunAuthorityHarness
                 var allocations = draft.Allocations(state);
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
-                var applied = await coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+                CreationAttributesPhoneConfirmResult? applied = null;
+                var review = new CreationAttributesPreviewPage(coordinator, preview, allocations, result => applied = result);
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    VerifyQualityDisclosure(review, "creation-attributes-preview-details", "creation-attributes-confirm",
+                        preview.PreviewDigest, preview.Binding.RawCharacterXmlDigest, preview.Binding.AuxiliaryStateDigest);
+                    var value = MinimalVisible(review).OfType<Label>().Single(x => x.AutomationId == "creation-attributes-preview-value-edg");
+                    Require(value.Text == (initialEdge + 1).ToString(CultureInfo.InvariantCulture)
+                        && value.FontSize >= 28 && value.FontAttributes.HasFlag(FontAttributes.Bold)
+                        && !MinimalVisibleText(review).Contains("\nEDG\n", StringComparison.Ordinal)
+                        && MinimalVisibleText(review).Contains(CreationAllocationStrings.Get("AttributeAllocation.SpecialSpent", "missing")),
+                        "Review lost readable special allocation value/cost in " + locale);
+                }
+                CultureInfo.CurrentUICulture = culture;
+                MinimalRender(review);
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                var confirm = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
                 Require(applied is { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: not null },
                     "Special point allocation could not be saved.");
                 var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
                 Require(saved.ContentRevision == before.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision,
                     "Special point confirmation must save exactly one revision.");
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                    VerifyQualityDisclosure(review, "creation-attributes-preview-details", "creation-attributes-back-to-build",
+                        applied!.Receipt!.DraftDigest, applied.RefreshedState!.Binding.AuxiliaryStateDigest);
+                    Require(MinimalVisibleText(review).Contains(CreationAllocationStrings.Get("AttributesPreview.SavedHeading", "missing"), StringComparison.OrdinalIgnoreCase)
+                        && !MinimalVisibleText(review).Contains("\nEDG\n", StringComparison.Ordinal),
+                        "Saved receipt must show localized result, not typed IDs.");
+                }
+                CultureInfo.CurrentUICulture = culture;
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 await HydrateFinalizationOwnerAsync(runtime, owners, saved);
                 var reopened = coordinator.LoadCreationAttributes().Value!;
                 Require(reopened.Attributes.Single(x => x.AttributeId == "EDG").Current == initialEdge + 1
@@ -113,6 +149,9 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Set(originalOwner);
                 MinimalRender(cappedPage);
                 Require(!MinimalVisible(cappedPage).OfType<Button>().Any(x => x.IsEnabled), "Owner ABA revived special allocation.");
+                MinimalRender(review);
+                Require(!MinimalVisible(review).OfType<Button>().Any(), "Owner ABA exposed old review actions or diagnostics.");
+                MinimalRequireNoMachineValues(review);
                 IssuedPageLifecycle(cappedPage, "OnDisappearing");
                 IssuedPageLifecycle(editor, "OnDisappearing");
                 IssuedPageLifecycle(page, "OnDisappearing");
