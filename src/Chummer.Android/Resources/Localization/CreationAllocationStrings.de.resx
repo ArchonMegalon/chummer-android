@@ -31,30 +31,30 @@
   <data name="Attributes.AttributeDetail" xml:space="preserve"><value>{0} · Bereich {1}–{2} · Priorität {3} · Karma-Stufen {4} ({5} Karma)</value></data>
   <data name="Attributes.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Voraussetzung-Entwurf {2}</value></data>
   <data name="Attributes.CreationLimits" xml:space="preserve"><value>Erschaffungsgrenzen</value></data>
-  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exakte Konten</value></data>
+  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Verfügbare Punkte</value></data>
   <data name="Attributes.Heading" xml:space="preserve"><value>Attribute verteilen</value></data>
-  <data name="Attributes.Intro" xml:space="preserve"><value>Jeder Wert, jede Grenze und alle Kosten unten werden vom Core für genau diesen Entwurf berechnet.</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Wähle ein Attribut, um Punkte zu vergeben. Normale und Spezialattribute nutzen getrennte Punktevorräte.</value></data>
   <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma-Multiplikator je gesteigerter Stufe</value></data>
   <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Am Metatyp-Maximum erlaubte Attribute</value></data>
   <data name="Attributes.Normal" xml:space="preserve"><value>Normale Attribute</value></data>
   <data name="Attributes.NotEnabledByTalent" xml:space="preserve"><value>Durch dieses Talent nicht aktiviert</value></data>
   <data name="Attributes.PageTitle" xml:space="preserve"><value>Attribute</value></data>
-  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Gespeicherten Entwurf fortgesetzt</value></data>
-  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>Die typisierten Verteilungs-IDs wurden aus dem Core-Hilfszustand fortgesetzt. Charakterauswirkungen warten weiterhin auf die Finalisierung.</value></data>
-  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Die Prüfung schreibt keine Charakterdaten. Die Bestätigung speichert nur einen typisierten Hilfsentwurf für die abschließende, zusammengesetzte Erschaffungstransaktion.</value></data>
-  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Exakte Verteilung prüfen</value></data>
+  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Gespeicherte Verteilung</value></data>
+  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>Deine gespeicherte Verteilung ist wiederhergestellt. Du kannst sie bis zum Abschluss der Erschaffung ändern.</value></data>
+  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Prüfe deine Auswahl und bestätige sie, um diesen Erschaffungsentwurf zu speichern.</value></data>
+  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Verteilung prüfen</value></data>
   <data name="Attributes.Special" xml:space="preserve"><value>Spezialattribute</value></data>
   <data name="Attributes.UnexpectedAppliedEffects" xml:space="preserve"><value>Unerwartet angewendete Charakterauswirkungen; die Bearbeitung bleibt sicher gesperrt.</value></data>
-  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Attributsentwurf bestätigen</value></data>
-  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Die Bestätigung ist an genau diesen Vorschau-Digest gebunden und speichert vor der Finalisierung keine Charakterauswirkungen.</value></data>
-  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Attributsentwurf bestätigt und verbindlichen Zustand neu geladen.</value></data>
+  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Attribute speichern</value></data>
+  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Speichere die hier angezeigte Auswahl. Dein Runner bleibt in der Erschaffung.</value></data>
+  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Deine Attribute sind gespeichert.</value></data>
   <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Verbleibendes Erschaffungs-Karma</value></data>
-  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Typisierte Attribute sind dauerhaft gespeichert; Charakterauswirkungen warten auf die abschließende, zusammengesetzte Erschaffungstransaktion.</value></data>
-  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Endgültige Entwurfskonten</value></data>
+  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Diese Auswahl ist im Erschaffungsentwurf gespeichert. Schließe die Erschaffung separat ab, um in die Karriere zu wechseln.</value></data>
+  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Punkte nach dem Speichern</value></data>
   <data name="AttributesPreview.NormalPointsRemaining" xml:space="preserve"><value>Verbleibende normale Punkte</value></data>
   <data name="AttributesPreview.PageTitle" xml:space="preserve"><value>Attribute prüfen</value></data>
   <data name="AttributesPreview.SpecialPointsRemaining" xml:space="preserve"><value>Verbleibende Spezialpunkte</value></data>
-  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Typisierte Verteilungen</value></data>
+  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Deine Attribute</value></data>
   <data name="Common.ActionBlocker" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Common.After" xml:space="preserve"><value>Nachher</value></data>
   <data name="Common.Anchors" xml:space="preserve"><value>Anker {0}</value></data>
@@ -874,4 +874,17 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="AttributeAllocation.SpecialIncrease" xml:space="preserve"><value>Spezialpunkt +</value></data>
   <data name="AttributeAllocation.SpecialSpent" xml:space="preserve"><value>Verteilte Spezialpunkte</value></data>
   <data name="Attributes.SpecialHelp" xml:space="preserve"><value>Wähle unten Edge, Magie oder Resonanz, um Spezialattributspunkte zu verteilen. Verfügbarkeit und Grenzen hängen von deinem Metatyp und Talent ab.</value></data>
+  <data name="Attributes.SpecialDetail" xml:space="preserve"><value>{0} · Bereich {1}–{2} · Spezialpunkte {3} · Karma-Stufen {4} ({5} Karma)</value></data>
+  <data name="AttributesPreview.SavedHeading" xml:space="preserve"><value>Attribute gespeichert</value></data>
+  <data name="Attributes.EssenceNotSpendable" xml:space="preserve"><value>Essenz lässt sich hier nicht mit Attributspunkten oder Karma erhöhen.</value></data>
+  <data name="Attributes.SpecialPointsExceeded" xml:space="preserve"><value>Es sind nicht genug Spezialattributspunkte übrig.</value></data>
+  <data name="Attributes.NormalPointsExceeded" xml:space="preserve"><value>Es sind nicht genug normale Attributspunkte übrig.</value></data>
+  <data name="Attributes.KarmaExceeded" xml:space="preserve"><value>Es ist nicht genug Erschaffungs-Karma übrig.</value></data>
+  <data name="Attributes.MaximumCountExceeded" xml:space="preserve"><value>Zu viele Attribute erreichen ihr natürliches Maximum. Senke zuerst ein anderes Attribut.</value></data>
+  <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>Diese Änderung ist mit der aktuellen Auswahl und den Grenzen nicht verfügbar. Den genauen Grund findest du in den technischen Details.</value></data>
+  <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} hat den Höchstwert bei der Erschaffung erreicht: {1}. Übrige Punkte können den Wert nicht weiter erhöhen.</value></data>
+  <data name="AttributeAllocation.Checking" xml:space="preserve"><value>Punkte werden geprüft…</value></data>
+  <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>Die Punkte konnten nicht geprüft werden. Deine Auswahl bleibt im Entwurf; nichts wurde gespeichert. Prüfe erneut, um fortzufahren.</value></data>
+  <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Erneut prüfen</value></data>
+  <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>Diese Auswahl ist nicht mehr aktuell. Gehe zu „Attribute“ zurück und öffne diesen Editor erneut.</value></data>
 </root>

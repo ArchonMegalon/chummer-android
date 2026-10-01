@@ -50,7 +50,7 @@ public sealed class CreationAttributesPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationAllocationStrings.Get(
                 "Attributes.Intro",
-                "Every value, limit, and cost below is projected by Core for this exact draft."),
+                "Choose an attribute to spend points. Normal and special attributes use separate pools."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
@@ -135,7 +135,7 @@ public sealed class CreationAttributesPage : NativePageBase
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Attributes.ExactLedgers",
-            "Exact ledgers")));
+            "Available points")));
         AddBudgetCard(
             _draft.NormalBudget(state),
             "creation-attributes-budget-normal", state);
@@ -175,8 +175,8 @@ public sealed class CreationAttributesPage : NativePageBase
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Attributes.ResumedDraft",
-            "Resumed persisted draft")));
-        card.Add(NativeTheme.Metric(
+            "Saved allocation")));
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
             pending.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         Label digest = NativeTheme.Body(pending.DraftDigest, NativeTheme.Muted);
@@ -189,7 +189,7 @@ public sealed class CreationAttributesPage : NativePageBase
                     "Unexpected applied character effects; editing remains fail-closed.")
                 : CreationAllocationStrings.Get(
                     "Attributes.ResumedDraftDetail",
-                    "The typed allocation IDs resumed from Core auxiliary state. Character effects are still pending finalization."),
+                    "Your saved allocation is restored. You can still change it before finishing character creation."),
             pending.CharacterEffectsApplied ? NativeTheme.Danger : NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attributes-pending-draft";
@@ -224,9 +224,12 @@ public sealed class CreationAttributesPage : NativePageBase
                          StringComparison.Ordinal)))
         {
             string detail = attribute.IsEnabled
-                ? CreationAllocationStrings.Format(
-                    "Attributes.AttributeDetail",
-                    "{0} · range {1}–{2} · Priority {3} · Karma levels {4} ({5} karma)",
+                ? string.Format(CultureInfo.CurrentUICulture,
+                    attribute.Category == CharacterCreationAttributeCategories.Special
+                        ? CreationAllocationStrings.Get("Attributes.SpecialDetail",
+                            "{0} · range {1}–{2} · special points {3} · Karma levels {4} ({5} karma)")
+                        : CreationAllocationStrings.Get("Attributes.AttributeDetail",
+                            "{0} · range {1}–{2} · Priority {3} · Karma levels {4} ({5} karma)"),
                     attribute.Current,
                     attribute.Minimum,
                     attribute.Maximum,
@@ -235,9 +238,11 @@ public sealed class CreationAttributesPage : NativePageBase
                     attribute.KarmaCost)
                 : string.Join(
                     " · ",
-                    attribute.DisableReasons.DefaultIfEmpty(CreationAllocationStrings.Get(
+                    attribute.DisableReasons.Select(CreationAllocationStrings.AttributeBlocker).DefaultIfEmpty(CreationAllocationStrings.Get(
                         "Attributes.NotEnabledByTalent",
                         "Not enabled by this Talent")));
+            foreach (string reason in attribute.DisableReasons)
+                _technicalDetails.Add(NativeTheme.Body(attribute.AttributeId + ": " + reason, NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 AttributeLabel(attribute.AttributeId),
                 detail,
@@ -257,7 +262,7 @@ public sealed class CreationAttributesPage : NativePageBase
     {
         Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "Attributes.ReviewExact",
-            "Review exact allocation"));
+            "Review allocation"));
         review.AutomationId = "creation-attributes-prepare-preview";
         review.IsEnabled = Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State);
         review.Clicked += async (_, _) => await RunAsync(async () =>
@@ -299,7 +304,7 @@ public sealed class CreationAttributesPage : NativePageBase
         Label note = NativeTheme.Body(
             CreationAllocationStrings.Get(
                 "Attributes.ReviewBoundary",
-                "Review creates no character write. Confirmation stores only a typed auxiliary draft for the final composed creation transaction."),
+                "Review your choices, then confirm to save this creation draft."),
             NativeTheme.Muted);
         note.AutomationId = "creation-attributes-draft-only-notice";
         _body.Add(note);
@@ -395,6 +400,7 @@ public sealed class CreationAttributesPage : NativePageBase
 /// </summary>
 public sealed class CreationAttributeAllocationPage : NativePageBase
 {
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationAttributesPhoneDraft _draft;
     private readonly string _attributeId;
     private readonly CharacterCreationAttributesState? _originalAuthority;
@@ -408,10 +414,13 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private CancellationTokenSource? _preparation;
     private long _preparationGeneration;
     private bool _loading;
+    private bool _canRetryPreparation;
+    private Button? _retryButton;
     private string? _failure;
-    private readonly ActivityIndicator _progress = new()
+    private readonly Label _progress = new()
     {
-        IsRunning = false, IsVisible = false,
+        Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…"),
+        TextColor = NativeTheme.Text, FontSize = 16, IsVisible = false,
         AutomationId = "creation-attribute-allocation-loading"
     };
     private readonly VerticalStackLayout _body = new()
@@ -445,7 +454,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation?.Cancel();
         _prepared = null;
         _loading = false;
-        _progress.IsRunning = false;
+        _canRetryPreparation = false;
+        _retryButton = null;
         _progress.IsVisible = false;
         base.OnDisappearing();
     }
@@ -458,6 +468,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation = lifetime;
         CancellationToken ct = lifetime.Token;
         _prepared = null;
+        _canRetryPreparation = false;
+        _retryButton = null;
         _failure = null;
         _loading = true;
         if (_originalAuthority is null || !Coordinator.IsCreationAttributesStateCurrent(_originalAuthority))
@@ -465,6 +477,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         Refresh();
         var original = Coordinator.State;
         var draft = _draft.Copy();
+        bool settled = false;
         try
         {
             var prepared = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
@@ -499,14 +512,27 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             _failure = prepared.Failure;
             // Owner transition, navigation and local draft edits all invalidate a late result.
             if (prepared.Value is { } value && IsCurrent(value)) _prepared = value;
+            _canRetryPreparation = prepared.Value is null;
+            settled = true;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException && !ct.IsCancellationRequested)
+        {
+            if (generation == _preparationGeneration)
+            {
+                // This operation only reads previews; the already admitted local
+                // draft is retained. Never expose an exception message as UI copy.
+                _failure = error.GetType().Name;
+                _canRetryPreparation = true;
+                settled = true;
+            }
         }
         finally
         {
             if (generation == _preparationGeneration)
             {
                 _loading = false;
-                _progress.IsRunning = false;
                 _progress.IsVisible = false;
+                if (settled && _prepared is null) Refresh();
             }
             if (ReferenceEquals(_preparation, lifetime)) _preparation = null;
         }
@@ -519,22 +545,22 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
     protected override void Refresh()
     {
-        // A plus/minus preparation must not collapse the scrolled page to a spinner.
+        // A plus/minus preparation must not collapse the scrolled page.
         // Keep the old projection visible but non-actionable until the fresh one is ready.
         if (_loading && _body.Children.Count > 0)
         {
             foreach (Button button in _body.Children.OfType<Button>()) button.IsEnabled = false;
             _progress.IsVisible = true;
-            _progress.IsRunning = true;
             return;
         }
         _body.Clear();
+        _retryButton = null;
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributeAllocation.Eyebrow",
             "Attribute allocation")));
         _body.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(_attributeId)));
         _progress.IsVisible = _loading;
-        _progress.IsRunning = _loading;
         _body.Add(_progress);
 
         if (_loading)
@@ -544,12 +570,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         if (_prepared is not { } prepared || !IsCurrent(prepared)
             || _draft.Attribute(prepared.State, _attributeId) is not { } attribute)
         {
-            Label stale = NativeTheme.Body(
-                _failure
-                ?? CharacterCreationAttributesBlockers.StaleWorkspaceRevision,
-                NativeTheme.Danger);
-            stale.AutomationId = "creation-attribute-allocation-stale";
-            _body.Add(NativeTheme.Card(stale));
+            AddUnavailable();
             return;
         }
 
@@ -579,13 +600,55 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         AddSources(attribute);
     }
 
+    private bool CanRetryPreparation()
+        => _canRetryPreparation && !_loading && _prepared is null
+           && _originalAuthority is { } authority
+           && Coordinator.IsCreationAttributesStateCurrent(authority)
+           && _draft.Matches(authority, Coordinator.State);
+
+    private void AddUnavailable()
+    {
+        bool canRetry = CanRetryPreparation();
+        Label message = NativeTheme.Body(canRetry
+            ? CreationAllocationStrings.Get("AttributeAllocation.CheckFailed",
+                "Couldn't check the points. Your choices are still in this draft; nothing was saved. Check again to continue.")
+            : CreationAllocationStrings.Get("AttributeAllocation.Reopen",
+                "These choices are no longer current. Return to Attributes and reopen this editor."),
+            NativeTheme.Danger);
+        message.AutomationId = "creation-attribute-allocation-stale";
+        _body.Add(NativeTheme.Card(message));
+        if (canRetry)
+        {
+            long generation = _preparationGeneration;
+            string label = CreationAllocationStrings.Get("AttributeAllocation.CheckAgain", "Check again");
+            Button retry = NativeTheme.SecondaryButton(label);
+            retry.AutomationId = "creation-attribute-allocation-retry";
+            _retryButton = retry;
+            retry.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (!ReferenceEquals(_retryButton, retry) || generation != _preparationGeneration
+                    || !CanRetryPreparation()) return;
+                retry.Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…");
+                // Rebuild action previews for this exact draft; do not replay +/-.
+                try { await PrepareAsync(CancellationToken.None); }
+                finally { retry.Text = label; }
+            });
+            _body.Add(retry);
+        }
+        if (!string.IsNullOrWhiteSpace(_failure))
+        {
+            _technicalDetails.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
+            _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attribute-allocation-details"));
+        }
+    }
+
     private void AddProjection(CharacterCreationAttributeProjection attribute)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.TypedId", "Typed ID"),
             attribute.AttributeId));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.Category", "Category"),
             attribute.Category));
         Label current = NativeTheme.Title(attribute.Current.ToString(CultureInfo.InvariantCulture), 32);
@@ -651,34 +714,57 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             {
                 if (ReferenceEquals(_prepared, prepared) && IsCurrent(prepared)
                     && _draft.TryAdopt(state, Coordinator.State, result!, allocations!))
-                    await PrepareAsync(CancellationToken.None);
+                {
+                    // Keep feedback on the control the user just pressed: the page's
+                    // loading message can be above the current scroll position.
+                    button.Text = CreationAllocationStrings.Get(
+                        "AttributeAllocation.Checking", "Checking points…");
+                    try { await PrepareAsync(CancellationToken.None); }
+                    finally
+                    {
+                        // Never re-enable this retained control. Only a newly rendered,
+                        // current Core preview may admit the next adjustment.
+                        button.Text = label;
+                    }
+                }
             });
         }
         _body.Add(button);
 
         if (!enabled && allocations is not null)
         {
-            string? blocker = result?.Value?.Blockers.FirstOrDefault()
-                              ?? result?.Blockers.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(blocker))
+            var blockers = (result?.Value?.Blockers ?? result?.Blockers ?? [])
+                .Where(code => !string.IsNullOrWhiteSpace(code)).Distinct(StringComparer.Ordinal).ToArray();
+            if (blockers.Length > 0)
             {
+                var projected = result?.Value?.Attributes.SingleOrDefault(item => item.AttributeId == _attributeId);
+                // Explain Core's rejected projection; this never admits an allocation
+                // or substitutes a locally calculated cap for the rules authority.
+                string explanation = string.Join(" ", blockers.Select(blocker =>
+                    blocker == CharacterCreationAttributesBlockers.AllocationInvalid
+                    && projected is { IsEnabled: true } && projected.Current > projected.Maximum
+                        ? CreationAllocationStrings.Format("Attributes.MaximumReached",
+                            "{0} has reached its creation maximum of {1}. Remaining points cannot raise it further.",
+                            CreationAttributesPage.AttributeLabel(_attributeId), projected.Maximum)
+                        : CreationAllocationStrings.AttributeBlocker(blocker)).Distinct(StringComparer.Ordinal));
                 Label reason = NativeTheme.Body(CreationAllocationStrings.Format(
                     "Common.ActionBlocker",
                     "{0}: {1}",
                     label,
-                    blocker), NativeTheme.Muted);
+                    explanation), NativeTheme.Muted);
                 reason.AutomationId = $"{button.AutomationId}-reason";
                 _body.Add(reason);
+                foreach (string blocker in blockers)
+                    _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
             }
         }
     }
 
     private void AddSources(CharacterCreationAttributeProjection attribute)
     {
-        VerticalStackLayout sources = new() { Spacing = 6 };
         foreach (string anchor in attribute.SourceAnchorIds)
-            sources.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
-        _body.Add(NativeTheme.TechnicalDetails(sources, "creation-attribute-allocation-details"));
+            _technicalDetails.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attribute-allocation-details"));
     }
 }
 
@@ -687,6 +773,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 /// </summary>
 public sealed class CreationAttributesPreviewPage : NativePageBase
 {
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CharacterCreationAttributesPreview _preview;
     private readonly IReadOnlyList<CharacterCreationAttributeAllocation> _allocations;
     private readonly VerticalStackLayout _body = new()
@@ -715,6 +802,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.ExplicitReview",
             "Explicit review")));
@@ -735,7 +823,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                 CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-attributes-preview-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigest("creation-attributes-preview-digest", _preview.PreviewDigest);
         AddDigest("creation-attributes-preview-raw-character-xml-digest", _preview.Binding.RawCharacterXmlDigest);
         AddDigest("creation-attributes-preview-auxiliary-state-digest", _preview.Binding.AuxiliaryStateDigest);
@@ -744,13 +832,14 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-preview-details"));
     }
 
     private void AddBudgets()
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.FinalDraftLedgers",
-            "Final draft ledgers")));
+            "Points after saving")));
         foreach (CharacterCreationBudgetState budget in new[]
                  {
                      _preview.NormalPointBudget,
@@ -779,19 +868,24 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.TypedAllocations",
-            "Typed allocations")));
+            "Your attributes")));
         foreach (CharacterCreationAttributeProjection attribute in _preview.Attributes)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(attribute.AttributeId), 18));
-            card.Add(NativeTheme.Metric(
+            _technicalDetails.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.TypedId", "Typed ID"),
                 attribute.AttributeId));
+            Label current = NativeTheme.Title(attribute.Current.ToString(CultureInfo.InvariantCulture), 28);
+            current.AutomationId = $"creation-attributes-preview-value-{CreationAttributesPage.Token(attribute.AttributeId)}";
+            SemanticProperties.SetDescription(current, CreationAttributesPage.AttributeLabel(attribute.AttributeId)
+                + " · " + CreationAllocationStrings.Get("Common.Value", "Value")
+                + " " + attribute.Current.ToString(CultureInfo.InvariantCulture));
+            card.Add(current);
             card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Value", "Value"),
-                attribute.Current.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
+                attribute.Category == CharacterCreationAttributeCategories.Special
+                    ? CreationAllocationStrings.Get("AttributeAllocation.SpecialSpent", "Special points spent")
+                    : CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
                 attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels"),
@@ -833,7 +927,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         {
             Label complete = NativeTheme.Body(CreationAllocationStrings.Get(
                 "AttributesPreview.Confirmed",
-                "Attributes draft confirmed and authoritative state reloaded."));
+                "Your attribute choices are saved."));
             complete.AutomationId = "creation-attributes-confirmed";
             _body.Add(NativeTheme.Card(complete));
             return;
@@ -850,7 +944,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                               _allocations);
         Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "AttributesPreview.Confirm",
-            "Confirm Attributes draft"));
+            "Save attribute choices"));
         confirm.AutomationId = "creation-attributes-confirm";
         confirm.IsEnabled = canConfirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
@@ -865,7 +959,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         Label explicitAction = NativeTheme.Body(
             CreationAllocationStrings.Get(
                 "AttributesPreview.ConfirmationBoundary",
-                "Confirmation is bound to this exact preview digest and stores no character effects before finalization."),
+                "Save the choices shown here. Your runner stays in character creation."),
             NativeTheme.Muted);
         explicitAction.AutomationId = "creation-attributes-explicit-confirmation";
         _body.Add(explicitAction);
@@ -885,18 +979,19 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
 
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.AtomicDraftReceipt",
-            "Atomic draft receipt")));
-        card.Add(NativeTheme.Metric(
+            "AttributesPreview.SavedHeading", "Attributes saved")));
+        _technicalDetails.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.AtomicDraftReceipt", "Atomic draft receipt")));
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.PreviousRevision", "Previous revision"),
             receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.ContentRevision", "Content revision"),
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.SavedRevision", "Saved revision"),
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
@@ -908,17 +1003,17 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("AttributesPreview.CreationKarmaRemaining", "Creation Karma remaining"),
             receipt.CreationKarmaRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.CharacterDocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
-        AddReceiptDigest(card, "creation-attributes-receipt-draft-digest", receipt.DraftDigest);
-        AddReceiptDigest(card, "creation-attributes-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
-        AddReceiptDigest(card, "creation-attributes-receipt-auxiliary-state-digest", refreshed.Binding.AuxiliaryStateDigest);
+        AddReceiptDigest(_technicalDetails, "creation-attributes-receipt-draft-digest", receipt.DraftDigest);
+        AddReceiptDigest(_technicalDetails, "creation-attributes-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
+        AddReceiptDigest(_technicalDetails, "creation-attributes-receipt-auxiliary-state-digest", refreshed.Binding.AuxiliaryStateDigest);
         card.Add(NativeTheme.Body(
             refreshed.PendingDraft?.CharacterEffectsApplied == false
                 ? CreationAllocationStrings.Get(
                     "AttributesPreview.DurablePendingFinalization",
-                    "Typed Attributes are durable; character effects remain pending the final composed creation transaction.")
+                    "These choices are saved in your creation draft. Finish character creation separately to enter Career.")
                 : CreationAllocationStrings.Get(
                     "Common.CharacterEffectStateUnsafe",
                     "Character-effect state is not safe to continue."),
@@ -949,7 +1044,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
     private static void AddReceiptDigest(

@@ -6,7 +6,7 @@ namespace Chummer.Android.Native;
 /// <summary>
 /// Resource-backed UI copy for the native SR5 creation Attribute, Skills, and Metatype
 /// allocation surfaces. Core-projected labels, identifiers, digests, and blockers deliberately
-/// remain outside this layer.
+/// retain their exact values; blocker guidance is display-only, never admission logic.
 /// </summary>
 public static class CreationAllocationStrings
 {
@@ -66,4 +66,23 @@ public static class CreationAllocationStrings
             "DEP" => Get("Attribute.DEP", "Depth"),
             _ => attributeId
         };
+
+    // Exact blocker codes remain in the technical disclosure. Unknown codes never
+    // become permission to spend points or a guessed rule explanation.
+    public static string AttributeBlocker(string code) => code switch
+    {
+        "creation-attributes-special-not-enabled" or "creation-attributes-attribute-disabled"
+            => Get("Attributes.NotEnabledByTalent", "Not enabled by this Talent"),
+        "creation-attributes-essence-not-spendable"
+            => Get("Attributes.EssenceNotSpendable", "Essence cannot be raised with attribute points or Karma here."),
+        "creation-attributes-special-points-exceeded"
+            => Get("Attributes.SpecialPointsExceeded", "Not enough special attribute points remain."),
+        "creation-attributes-normal-points-exceeded"
+            => Get("Attributes.NormalPointsExceeded", "Not enough normal attribute points remain."),
+        "creation-attributes-global-karma-exceeded"
+            => Get("Attributes.KarmaExceeded", "Not enough creation Karma remains."),
+        "creation-attributes-maximum-count-exceeded"
+            => Get("Attributes.MaximumCountExceeded", "Too many attributes are at their natural maximum. Lower another attribute first."),
+        _ => Get("Attributes.ChangeUnavailable", "This change is unavailable with the current choices and limits. Technical details contain the exact reason.")
+    };
 }

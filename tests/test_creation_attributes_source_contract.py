@@ -44,7 +44,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             "Coordinator.ConfirmCreationAttributesAsync(",
             'AutomationId = "creation-attributes-confirm-receipt"',
             "CharacterEffectsApplied",
-            "pending finalization",
+            "Finish character creation separately to enter Career.",
         ):
             self.assertIn(marker, page)
 

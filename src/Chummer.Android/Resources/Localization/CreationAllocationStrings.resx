@@ -31,30 +31,30 @@
   <data name="Attributes.AttributeDetail" xml:space="preserve"><value>{0} · range {1}–{2} · Priority {3} · Karma levels {4} ({5} karma)</value></data>
   <data name="Attributes.Binding" xml:space="preserve"><value>Revision {0} · saved {1} · prerequisite draft {2}</value></data>
   <data name="Attributes.CreationLimits" xml:space="preserve"><value>Creation limits</value></data>
-  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exact ledgers</value></data>
+  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Available points</value></data>
   <data name="Attributes.Heading" xml:space="preserve"><value>Allocate Attributes</value></data>
-  <data name="Attributes.Intro" xml:space="preserve"><value>Every value, limit, and cost below is projected by Core for this exact draft.</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Choose an attribute to spend points. Normal and special attributes use separate pools.</value></data>
   <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma multiplier per raised level</value></data>
   <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Attributes allowed at metatype maximum</value></data>
   <data name="Attributes.Normal" xml:space="preserve"><value>Normal Attributes</value></data>
   <data name="Attributes.NotEnabledByTalent" xml:space="preserve"><value>Not enabled by this Talent</value></data>
   <data name="Attributes.PageTitle" xml:space="preserve"><value>Attributes</value></data>
-  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Resumed persisted draft</value></data>
-  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>The typed allocation IDs resumed from Core auxiliary state. Character effects are still pending finalization.</value></data>
-  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Review creates no character write. Confirmation stores only a typed auxiliary draft for the final composed creation transaction.</value></data>
-  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Review exact allocation</value></data>
+  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Saved allocation</value></data>
+  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>Your saved allocation is restored. You can still change it before finishing character creation.</value></data>
+  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Review your choices, then confirm to save this creation draft.</value></data>
+  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Review allocation</value></data>
   <data name="Attributes.Special" xml:space="preserve"><value>Special Attributes</value></data>
   <data name="Attributes.UnexpectedAppliedEffects" xml:space="preserve"><value>Unexpected applied character effects; editing remains fail-closed.</value></data>
-  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Confirm Attributes draft</value></data>
-  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Confirmation is bound to this exact preview digest and stores no character effects before finalization.</value></data>
-  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Attributes draft confirmed and authoritative state reloaded.</value></data>
+  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Save attribute choices</value></data>
+  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Save the choices shown here. Your runner stays in character creation.</value></data>
+  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Your attribute choices are saved.</value></data>
   <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Creation Karma remaining</value></data>
-  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Typed Attributes are durable; character effects remain pending the final composed creation transaction.</value></data>
-  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Final draft ledgers</value></data>
+  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>These choices are saved in your creation draft. Finish character creation separately to enter Career.</value></data>
+  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Points after saving</value></data>
   <data name="AttributesPreview.NormalPointsRemaining" xml:space="preserve"><value>Normal points remaining</value></data>
   <data name="AttributesPreview.PageTitle" xml:space="preserve"><value>Review Attributes</value></data>
   <data name="AttributesPreview.SpecialPointsRemaining" xml:space="preserve"><value>Special points remaining</value></data>
-  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Typed allocations</value></data>
+  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Your attributes</value></data>
   <data name="Common.ActionBlocker" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Common.After" xml:space="preserve"><value>After</value></data>
   <data name="Common.Anchors" xml:space="preserve"><value>Anchors {0}</value></data>
@@ -874,4 +874,17 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="AttributeAllocation.SpecialIncrease" xml:space="preserve"><value>Special point +</value></data>
   <data name="AttributeAllocation.SpecialSpent" xml:space="preserve"><value>Special points spent</value></data>
   <data name="Attributes.SpecialHelp" xml:space="preserve"><value>Choose Edge, Magic or Resonance below to spend special attribute points. Availability and limits depend on your metatype and talent.</value></data>
+  <data name="Attributes.SpecialDetail" xml:space="preserve"><value>{0} · range {1}–{2} · special points {3} · Karma levels {4} ({5} karma)</value></data>
+  <data name="AttributesPreview.SavedHeading" xml:space="preserve"><value>Attributes saved</value></data>
+  <data name="Attributes.EssenceNotSpendable" xml:space="preserve"><value>Essence cannot be raised with attribute points or Karma here.</value></data>
+  <data name="Attributes.SpecialPointsExceeded" xml:space="preserve"><value>Not enough special attribute points remain.</value></data>
+  <data name="Attributes.NormalPointsExceeded" xml:space="preserve"><value>Not enough normal attribute points remain.</value></data>
+  <data name="Attributes.KarmaExceeded" xml:space="preserve"><value>Not enough creation Karma remains.</value></data>
+  <data name="Attributes.MaximumCountExceeded" xml:space="preserve"><value>Too many attributes are at their natural maximum. Lower another attribute first.</value></data>
+  <data name="Attributes.ChangeUnavailable" xml:space="preserve"><value>This change is unavailable with the current choices and limits. Technical details contain the exact reason.</value></data>
+  <data name="Attributes.MaximumReached" xml:space="preserve"><value>{0} has reached its creation maximum of {1}. Remaining points cannot raise it further.</value></data>
+  <data name="AttributeAllocation.Checking" xml:space="preserve"><value>Checking points…</value></data>
+  <data name="AttributeAllocation.CheckFailed" xml:space="preserve"><value>Couldn't check the points. Your choices are still in this draft; nothing was saved. Check again to continue.</value></data>
+  <data name="AttributeAllocation.CheckAgain" xml:space="preserve"><value>Check again</value></data>
+  <data name="AttributeAllocation.Reopen" xml:space="preserve"><value>These choices are no longer current. Return to Attributes and reopen this editor.</value></data>
 </root>
