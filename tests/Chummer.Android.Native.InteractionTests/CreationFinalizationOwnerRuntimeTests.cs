@@ -525,6 +525,7 @@ internal static partial class AfterRunAuthorityHarness
                 entered.TrySetResult();
                 Require(release.Wait(TimeSpan.FromSeconds(10)), "Magic test read was not released.");
             };
+            var preparationWatch = System.Diagnostics.Stopwatch.StartNew();
             Task loading = (Task)prepare.Invoke(page, [CancellationToken.None])!;
             try
             {
@@ -536,9 +537,13 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { release.Set(); }
             await loading;
+            preparationWatch.Stop();
             probe.BeforeRead = null;
+            var renderWatch = System.Diagnostics.Stopwatch.StartNew();
             refresh.Invoke(page, null);
             refresh.Invoke(page, null);
+            renderWatch.Stop();
+            Console.WriteLine($"MAGIC_TIMING initialPreparationMs={preparationWatch.Elapsed.TotalMilliseconds:F2} coreLoadMs={probe.LastLoadMilliseconds:F2} twoRendersMs={renderWatch.Elapsed.TotalMilliseconds:F2}");
             Require(probe.Loads == 1, "Rendering reloaded the entire Magic catalog.");
             var retainedEditor = (CharacterCreationMagicResonanceEditorState)typeof(CreationMagicResonancePage)
                 .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
@@ -911,6 +916,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         public int UiThreadId { get; set; }
         public int Loads { get; private set; }
+        public double LastLoadMilliseconds { get; private set; }
         public int Previews { get; private set; }
         public int Confirms { get; private set; }
         public bool AllowConfirm { get; set; }
@@ -924,7 +930,13 @@ internal static partial class AfterRunAuthorityHarness
         }
         public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load(
             OwnerContextStamp original, CharacterCreationMagicResonanceLoadRequest request)
-        { Check(original); Loads++; return inner.Load(original, request); }
+        {
+            Check(original);
+            Loads++;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            try { return inner.Load(original, request); }
+            finally { LastLoadMilliseconds = watch.Elapsed.TotalMilliseconds; }
+        }
         public CharacterCreationFoundationResult<CharacterCreationMagicResonancePreview> Preview(
             OwnerContextStamp original, CharacterCreationMagicResonancePreviewRequest request)
         { Check(original); Previews++; return inner.Preview(original, request); }

@@ -20,8 +20,22 @@ internal static class CreationMagicResonancePhoneAuthority
         CharacterOverviewState overview)
     {
         ArgumentNullException.ThrowIfNull(overview);
+        return editor is { CanEdit: true, Blockers.Count: 0 }
+               && CharacterCreationMagicResonancePresentationContract.IsSupportedTalentKind(editor.Talent.Kind)
+               && TryProjectForOverview(core, overview, out var projected)
+               && EditorEquals(projected!, editor);
+    }
+
+    // Validate and return the same projection. Never cache authority across reads:
+    // callers still obtain fresh Core state and retain the exact owner/display.
+    public static bool TryProjectForOverview(
+        CharacterCreationMagicResonanceState? core,
+        CharacterOverviewState overview,
+        out CharacterCreationMagicResonanceEditorState? editor)
+    {
+        ArgumentNullException.ThrowIfNull(overview);
+        editor = null;
         if (core is null
-            || editor is null
             || overview.Profile?.Created != false
             || overview.WorkspaceId != core.Binding.WorkspaceId
             || overview.ContentRevision != core.Binding.ContentRevision
@@ -32,10 +46,6 @@ internal static class CreationMagicResonancePhoneAuthority
             || !string.IsNullOrWhiteSpace(overview.Error)
             || !core.CanEdit
             || core.Blockers.Count != 0
-            || !editor.CanEdit
-            || editor.Blockers.Count != 0
-            || !CharacterCreationMagicResonancePresentationContract.IsSupportedTalentKind(
-                editor.Talent.Kind)
             || !CanonicalBinding(core.Binding)
             || !CharacterCreationMagicResonanceDigest.IsCanonical(core.SnapshotDigest)
             || !CharacterCreationMagicResonanceDigest.EqualsFixedTime(
@@ -45,8 +55,8 @@ internal static class CreationMagicResonancePhoneAuthority
             || !CharacterCreationMagicResonanceWorkflow.TryProject(
                 core,
                 out CharacterCreationMagicResonanceEditorState? projected)
-            || projected is null
-            || !EditorEquals(projected, editor))
+            || projected is not { CanEdit: true, Blockers.Count: 0 }
+            || !CharacterCreationMagicResonancePresentationContract.IsSupportedTalentKind(projected.Talent.Kind))
         {
             return false;
         }
@@ -54,22 +64,22 @@ internal static class CreationMagicResonancePhoneAuthority
         CharacterCreationMagicResonanceState? overviewCore = overview.CreationMagicResonance;
         CharacterCreationMagicResonanceEditorState? overviewEditor =
             overview.CreationMagicResonanceEditor;
-        return overviewCore is not null
-               && overviewEditor is not null
-               && CharacterCreationMagicResonanceDigest.EqualsFixedTime(
+        if (overviewCore is null
+            || overviewEditor is null
+            || !CharacterCreationMagicResonanceDigest.EqualsFixedTime(
                    overviewCore.SnapshotDigest,
                    core.SnapshotDigest)
-               && BindingEquals(overviewCore.Binding, core.Binding)
-               && EditorEquals(overviewEditor, editor);
+            || !BindingEquals(overviewCore.Binding, core.Binding)
+            || !EditorEquals(overviewEditor, projected))
+            return false;
+        editor = projected;
+        return true;
     }
 
     public static bool MatchesOverview(
         CharacterCreationMagicResonanceState state,
         CharacterOverviewState overview)
-        => CharacterCreationMagicResonanceWorkflow.TryProject(
-               state,
-               out CharacterCreationMagicResonanceEditorState? editor)
-           && IsReady(state, editor, overview);
+        => TryProjectForOverview(state, overview, out _);
 
     public static bool BindingEquals(
         CharacterCreationMagicResonanceBinding left,

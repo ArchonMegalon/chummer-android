@@ -315,6 +315,19 @@ internal static class CreationMagicNativeRuntimeTests
             IsRequired: true, IsAvailable: false, IsComplete: false, [],
             [CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired], [], []);
         bool ready = CreationMagicResonancePhoneAuthority.IsReady(state, editor, overview);
+        Require(CreationMagicResonancePhoneAuthority.TryProjectForOverview(state, overview, out var prepared)
+            && prepared is not null && CreationMagicResonancePhoneAuthority.EditorEquals(editor, prepared),
+            "Single-pass admission must return the exact canonical projection.");
+        Require(!CreationMagicResonancePhoneAuthority.TryProjectForOverview(
+                state with { SnapshotDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8("tampered") },
+                overview, out var corrupt) && corrupt is null,
+            "Single-pass admission exposed a projection for corrupt Core state.");
+        var changedEditor = editor with { Talent = editor.Talent with { Name = "invented talent" } };
+        Require(!CreationMagicResonancePhoneAuthority.IsReady(state, changedEditor, overview)
+            && !CreationMagicResonancePhoneAuthority.TryProjectForOverview(state,
+                overview with { CreationMagicResonanceEditor = changedEditor }, out var changed)
+            && changed is null,
+            "Single-pass admission accepted a non-canonical displayed editor.");
         Require(ready && BuildPageUiProjection.CanOpenExactTypedCreationStage(
             stage, CharacterCreationWizardStepIds.MagicResonance, ready),
             "The real source-bound Magic editor could not author its own required draft.");
@@ -341,6 +354,8 @@ internal static class CreationMagicNativeRuntimeTests
         })
         {
             bool staleReady = CreationMagicResonancePhoneAuthority.IsReady(state, editor, stale);
+            Require(!CreationMagicResonancePhoneAuthority.TryProjectForOverview(state, stale, out var rejected)
+                && rejected is null, "Rejected Magic authority must not expose a usable editor.");
             Require(!staleReady && !BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage, CharacterCreationWizardStepIds.MagicResonance, staleReady),
                 "Missing-draft entry admitted stale or absent Magic authority.");

@@ -2148,11 +2148,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             || !IsCreationCatalogDisplayCurrent(original)
             || original.DisplayOwnerContext is not { } owner
             || live.Value is not { } state
-            || !CharacterCreationMagicResonanceWorkflow.TryProject(
-                state,
+            || !CreationMagicResonancePhoneAuthority.TryProjectForOverview(
+                state, original,
                 out CharacterCreationMagicResonanceEditorState? editor)
             || editor is null
-            || !CreationMagicResonancePhoneAuthority.IsReady(state, editor, original)
             || !CreationMagicResonancePhoneAuthority.EditorEquals(
                 expectedEditor,
                 editor))
