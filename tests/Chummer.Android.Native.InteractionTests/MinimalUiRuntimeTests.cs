@@ -41,7 +41,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 103, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 126, "Localized source-identity summaries were not loaded from the real catalog.");
                 string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
                 var rated = CreationQualityInfo.Effects(willToLive, 3);
                 string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
@@ -178,6 +178,52 @@ internal static partial class AfterRunAuthorityHarness
                 && !inspired("f8f216b5-1c29-467d-9fb5-c9812408203d").Contains("Choose a free expertise specialization"),
                 "Same-name qualities must not share source-identity summaries or expertise effects.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
+            foreach (string name in new[] { "Animal Empathy", "City Slicker", "Outdoorsman", "Sense of Direction",
+                "Vehicle Empathy", "Water Sprite", "Computer Illiterate", "Loss of Confidence", "Nasty Vibe",
+                "Grease Monkey", "Alibi", "Closer", "Innocuous", "Memory Palace", "Hi-Rez",
+                "Tough as Nails (Physical)", "Tough as Nails (Stun)", "Reduced Sense (Smell)",
+                "Reduced Sense (Taste)", "Reduced Sense (Touch)", "Reduced Sense (Hearing)",
+                "Reduced Sense (Sight)", "Reduced Sense (Astral Sight)" })
+            {
+                var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                string summary = CreationFlowStrings.Get("Qualities.Summary." + quality.Element("id")!.Value, "");
+                Require(summary.Length > 40 && Effect(name).StartsWith(summary, StringComparison.Ordinal),
+                    "A supported skill or monitor effect needs its own source-bound explanation: " + name);
+            }
+            Require(Effect("City Slicker").Contains("other than Survival")
+                && Effect("City Slicker").Contains("general one-die penalty")
+                && Effect("City Slicker").Contains("Outside urban areas, Perception loses one die")
+                && Effect("Outdoorsman").Contains("alternative environments, not six bonuses added together"),
+                "Environmental bonuses must retain their exceptions and penalties, not stack alternative conditions.");
+            Require(Effect("Vehicle Empathy").Contains("except Gunnery")
+                && Effect("Water Sprite").Contains("two dice to Diving tests and two dice to Swimming tests")
+                && Effect("Loss of Confidence").Contains("rating of at least 4")
+                && Effect("Loss of Confidence").Contains("specialization bonuses do not apply")
+                && Effect("Computer Illiterate").Contains("skill ratings stay unchanged"),
+                "Skill help must preserve exclusions, selection restrictions and dice versus learned ratings.");
+            Require(Effect("Alibi").Contains("plausible-seeming evidence")
+                && Effect("Closer").Contains("life or death") && Effect("Innocuous").Contains("hiding in a crowd")
+                && Effect("Hi-Rez").Contains("Other Computer tests do not gain this bonus"),
+                "Conditional skill bonuses must not be advertised as unconditional.");
+            Require(Effect("Tough as Nails (Physical)").StartsWith("Each level adds one box to your Physical condition monitor.", StringComparison.Ordinal)
+                && Effect("Tough as Nails (Stun)").StartsWith("Each level adds one box to your Stun condition monitor.", StringComparison.Ordinal)
+                && Effect("Reduced Sense (Sight)").Contains("rely on sight")
+                && Effect("Reduced Sense (Astral Sight)").Contains("Assensing tests"),
+                "Physical versus Stun boxes and visual versus astral perception must stay distinct.");
+            Require(Effect("Frostbite") == CreationFlowStrings.Get("Qualities.Info.Manual", "")
+                && Describe("<selectskill limittoskill='Hacking' />") == CreationFlowStrings.Get("Qualities.Info.Manual", "")
+                && Describe("<selectskill><val> </val></selectskill>") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "A skill-selection prompt with no modifier must not pass for a rule explanation.");
+            Require(Effect("Aptitude").Contains("Maximum change: 1")
+                && Describe("<selectskill><disablespecializationeffects /></selectskill>").Contains("Specialization bonuses do not apply"),
+                "Maximum-only and specialization-only changes are real effects even without bonus dice.");
+            Require(Effect("Bad Luck").Contains("Notoriety: 1")
+                && Effect("Bad Luck").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && Describe("<publicawareness>2</publicawareness>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && Describe("<astralreputation>1</astralreputation><selectskill />").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Reputation side effects must remain visible but must not masquerade as the full quality rules.");
+            Require(!Describe("<notoriety>1</notoriety><memory>1</memory>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
             Require(gremlins.Contains("Once, at the first level only: Notoriety: 1")
                 && gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
@@ -531,7 +577,7 @@ internal static partial class AfterRunAuthorityHarness
                         && MinimalVisible(empty).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").IsEnabled,
                         "An empty valid review must explain that no additional qualities are selected.");
                     MinimalRequireNoMachineValues(empty);
-                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased" })
+                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased", "Animal Empathy" })
                     {
                         var helpOption = state.Authority.Options.First(item => item.Name == name);
                         var help = new CreationQualityInfoPage(coordinator, original, helpOption);
