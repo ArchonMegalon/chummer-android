@@ -41,7 +41,14 @@ internal static partial class AfterRunAuthorityHarness
                     if (lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))) partial++;
                     if (summary.Length > 0) Require(lines[0] == summary, "The original summary must precede technical effects.");
                 }
-                Require(authored >= 82, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 88, "Localized source-identity summaries were not loaded from the real catalog.");
+                string willToLive = catalog.Single(quality => quality.Element("name")!.Value == "Will to Live").ToString();
+                var rated = CreationQualityInfo.Effects(willToLive, 3);
+                string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 3);
+                Require(rated[1] == levelNotice && levelNotice.Contains("3")
+                    && rated[2].Contains("1") && !rated[2].Contains("3")
+                    && !CreationQualityInfo.Effects(willToLive, 1).Contains(levelNotice),
+                    "A rated quality must distinguish its source values from the selected level, without Android multiplying them.");
                 foreach (var quality in catalog.Where(quality => quality.Element("naturalweapons") is not null))
                 {
                     var lines = CreationQualityInfo.Effects(quality.ToString());
@@ -69,6 +76,16 @@ internal static partial class AfterRunAuthorityHarness
                 "Nested attribute choice must retain its maximum and Edge exclusion.");
             Require(Effect("Will to Live").Contains("Additional overflow boxes: 1"),
                 "Overflow boxes must not be confused with damage resistance.");
+            Require(Effect("Magic Resistance").StartsWith("Each level adds one die when resisting spells.", StringComparison.Ordinal)
+                && Effect("Magic Resistance").Contains("Spell resistance: 1"),
+                "Magic Resistance needs a per-level spell-resistance explanation, not a spellcasting bonus.");
+            Require(Effect("Resistance to Pathogens/Toxins").StartsWith("Add two dice", StringComparison.Ordinal)
+                && Effect("Resistance to Pathogens and Toxins").StartsWith("Add one die", StringComparison.Ordinal)
+                && Effect("Resistance to Pathogens and Toxins").Contains("not the sum of all listed routes"),
+                "The two distinct resistance sources must keep their exact values and must not sum alternative exposure routes.");
+            Require(Effect("Born Rich").Contains("increases by 30") && Effect("Born Rich").Contains("still pay the Karma")
+                && Effect("Out For Myself").Contains("three extra dice on Surprise tests"),
+                "Readable explanations must retain an increased exchange limit and surprise dice, not free Karma or Initiative.");
             Require(Effect("Quick Healer").Contains("Heal") && Effect("Quick Healer").Contains("Modifier: 2"),
                 "Spell-specific healing modifier was lost.");
             Require(Effect("Uneducated").Contains("Cannot default")
@@ -132,12 +149,23 @@ internal static partial class AfterRunAuthorityHarness
             Require(gremlins.Contains("Once, at the first level only: Notoriety: 1")
                 && gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Gremlins' one-time Notoriety must not be multiplied or passed off as its complete glitch rules.");
+            string ratedGremlins = string.Join(" ", CreationQualityInfo.Effects(
+                catalog.Single(quality => quality.Element("name")!.Value == "Gremlins").ToString(), 3));
+            Require(ratedGremlins == gremlins,
+                "First-level effects alone do not need a base-value notice, and must remain visibly incomplete.");
             string infirm = Effect("Infirm");
             Require(Regex.Matches(infirm, "Once, at the first level only: Augmentations cannot raise this attribute above its natural maximum").Count == 4
                 && Regex.Matches(infirm, "Maximum change: -1").Count == 4,
                 "Infirm needs all four natural-maximum clamps as well as its four per-level maximum reductions.");
             string profile = "<naturalweapon><name>Test claw</name><reach>0</reach><damage>({STR}+1)P</damage><ap>-1</ap><useskill>Unarmed Combat</useskill><accuracy>Physical</accuracy><source>HIDDEN_BOOK</source><page>999</page></naturalweapon>";
             string DescribeSource(string body) => string.Join(" ", CreationQualityInfo.Effects("<quality>" + body + "</quality>"));
+            var unknownRated = CreationQualityInfo.Effects("<quality><bonus><futureeffect>3</futureeffect></bonus></quality>", 3);
+            Require(unknownRated.Count == 1 && unknownRated[0] == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+                "A rating notice must not disguise missing rule descriptions as usable help.");
+            string formulaRated = string.Join(" ", CreationQualityInfo.Effects(
+                "<quality><bonus><spellresistance>Rating * 2</spellresistance></bonus></quality>", 3));
+            Require(formulaRated.Contains("Spell resistance: Rating * 2") && !formulaRated.Contains("Spell resistance: 6"),
+                "The help renderer must never evaluate rating expressions or invent a combined total.");
             string scoped = DescribeSource("<bonus><notoriety>1</notoriety></bonus><firstlevelbonus><notoriety>1</notoriety></firstlevelbonus>");
             Require(Regex.Matches(scoped, "Notoriety: 1").Count == 2
                 && Regex.Matches(scoped, "Once, at the first level only").Count == 1,
@@ -483,6 +511,22 @@ internal static partial class AfterRunAuthorityHarness
                             "Quality help must contain the localized inline explanation, not a book citation.");
                         MinimalRequireNoMachineValues(help);
                     }
+                    var ratedOption = state.Authority.Options.First(item => item.Name == "Will to Live" && item.Rating == 3);
+                    string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", ratedOption.Rating);
+                    var ratedHelp = new CreationQualityInfoPage(coordinator, original, ratedOption);
+                    Require(MinimalVisibleText(ratedHelp).Contains(levelNotice),
+                        "The catalog help page must pass the accepted option's level to the description.");
+                    // Presentation-only grant fixture: no grant is persisted or
+                    // admitted. Both help constructors must preserve the level.
+                    var grant = new CharacterCreationGrantedQuality("help-grant-fixture", ratedOption.SourceId,
+                        "help-selection-fixture", ratedOption.Name, ratedOption.Type, ratedOption.Rating, 0,
+                        false, false, false, "Earlier choice", [], "help-digest-fixture");
+                    var grantedHelp = new CreationQualityInfoPage(coordinator, original, grant, ratedOption.SourceNodeXml);
+                    Require(MinimalVisibleText(grantedHelp).Contains(levelNotice),
+                        "Already-granted qualities must retain the same base-versus-selected-level distinction.");
+                    var firstLevelHelp = new CreationQualityInfoPage(coordinator, original, ratedOption with { Rating = 1 });
+                    Require(!MinimalVisibleText(firstLevelHelp).Contains(CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", 1)),
+                        "A single-level description must not show an irrelevant combined-total notice.");
                 }
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 Require(store.TryRead(out var unchanged, out blocker) && unchanged.CheckpointDigest == checkpoint.CheckpointDigest,
