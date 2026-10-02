@@ -44,7 +44,41 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 374, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 392, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var quality in catalog.Where(q => q.Element("source")!.Value is "RG" or "R5"))
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Combat, vehicle and environmental qualities need inline help: " + quality.Element("name")!.Value);
+                }
+                foreach (var rule in new[] { (Name: "Brand Loyalty (Manufacturer)", Numbers: "1,1"),
+                    (Name: "Brand Loyalty (Product)", Numbers: "1,1"), (Name: "Sharpshooter", Numbers: "2,1"),
+                    (Name: "Radiation Sponge", Numbers: "1"), (Name: "Rad-Tolerant", Numbers: "1"),
+                    (Name: "Spacer", Numbers: "1"), (Name: "Earther", Numbers: "2"),
+                    (Name: "Combat Junkie", Numbers: "4,4"), (Name: "Chaser", Numbers: "2"),
+                    (Name: "Dealer Connection", Numbers: "10,4"), (Name: "Grease Monkey", Numbers: "1"),
+                    (Name: "Speed Demon", Numbers: "1,3,4"), (Name: "Stunt Driver", Numbers: "2"),
+                    (Name: "Subtle Pilot", Numbers: "2"), (Name: "Motion Sickness", Numbers: "3,4,12"),
+                    (Name: "Too Much Data", Numbers: "4,2"), (Name: "Accident Prone", Numbers: "2"),
+                    (Name: "Blighted (6 Months)", Numbers: "3,−1"),
+                    (Name: "Blighted (12 Months)", Numbers: "3,−1"), (Name: "Blighted (24 Months)", Numbers: "3,−2,−1") })
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "");
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Combat/vehicle/environment translation changed modifiers or thresholds: " + rule.Name);
+                }
+                foreach (var group in new[] { new[] { "Brand Loyalty (Manufacturer)", "Brand Loyalty (Product)" },
+                    new[] { "Blighted (6 Months)", "Blighted (12 Months)", "Blighted (24 Months)" },
+                    new[] { "Radiation Sponge", "Rad-Tolerant" } })
+                    Require(group.Select(name => CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == name)), ""))
+                        .Distinct().Count() == group.Length,
+                        "Different scopes or environmental drawbacks must not collapse to one generic description.");
+                Require(CreationQualityInfo.Effects(catalog.Single(q => q.Element("name")!.Value == "One Trick Pony").ToString())
+                    .Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "A summary of the technique grant must not hide the unresolved chosen technique's effects.");
                 foreach (string name in new[] { "Astral Hazing", "Berserker", "Bioluminescence", "Cephalopod Skull",
                     "Cold-Blooded", "Symbiosis", "Adiposis", "Neoteny", "Slow Healer", "Stubby Arms" })
                 {
