@@ -2806,4 +2806,10 @@
   <data name="Qualities.SummarySource.90a7cc01-ee0f-4d60-aeb9-05752e68ddf9" xml:space="preserve"><value>A88CA9BC4CA5F363C088F259E600D739A0647746A3B51B4B37B07CC82376C955</value></data>
   <data name="Qualities.Summary.c284e172-1d20-4844-b24c-e094d2588b72" xml:space="preserve"><value>Dual-natured drake form with fangs, fire attacks, hardened physical and astral armor, and aquatic adaptation. Improves Body, Strength, Reaction and Intuition, but also makes you Wanted.</value></data>
   <data name="Qualities.SummarySource.c284e172-1d20-4844-b24c-e094d2588b72" xml:space="preserve"><value>EF037E36A4EB689B801CAC445B645B47B5869E974078A420BD7EB109001CDFAA</value></data>
+  <data name="Qualities.Summary.233cb57f-6e4d-45dc-b7a9-9bc1e1bf940c" xml:space="preserve"><value>Deliberate direct Matrix damage costs Karma; data-bomb traps are exempt.</value></data>
+  <data name="Qualities.SummarySource.233cb57f-6e4d-45dc-b7a9-9bc1e1bf940c" xml:space="preserve"><value>9FDC230A79EE8354A3FA900D98040D8695EDCDE9E4A1AC35D4A3C926EDDE31C6</value></data>
+  <data name="Qualities.Summary.bf68095e-35b9-49dc-a008-f67bbac9b83b" xml:space="preserve"><value>Lower Drain or extra adept power makes your magic more noticeable through mentor imagery; you cannot switch this mask off.</value></data>
+  <data name="Qualities.SummarySource.bf68095e-35b9-49dc-a008-f67bbac9b83b" xml:space="preserve"><value>9827938BD480FF5091A3065A5F034A9CBD0A1411B7A88CB1C299211ECFB354EA</value></data>
+  <data name="Qualities.Summary.8b18a3aa-fd5a-4712-8dd4-117d7a73ba11" xml:space="preserve"><value>Extra starting equipment comes from theft; its former owners set a bounty and send hunters after you.</value></data>
+  <data name="Qualities.SummarySource.8b18a3aa-fd5a-4712-8dd4-117d7a73ba11" xml:space="preserve"><value>90041FFFC0B8FAE8677856EC85DC0F268945E718628085895656FA795E2478FD</value></data>
 </root>
