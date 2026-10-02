@@ -2812,4 +2812,28 @@
   <data name="Qualities.SummarySource.bf68095e-35b9-49dc-a008-f67bbac9b83b" xml:space="preserve"><value>9827938BD480FF5091A3065A5F034A9CBD0A1411B7A88CB1C299211ECFB354EA</value></data>
   <data name="Qualities.Summary.8b18a3aa-fd5a-4712-8dd4-117d7a73ba11" xml:space="preserve"><value>Extra starting equipment comes from theft; its former owners set a bounty and send hunters after you.</value></data>
   <data name="Qualities.SummarySource.8b18a3aa-fd5a-4712-8dd4-117d7a73ba11" xml:space="preserve"><value>90041FFFC0B8FAE8677856EC85DC0F268945E718628085895656FA795E2478FD</value></data>
+  <data name="Qualities.Summary.9f5ba6ba-c18e-49a4-8043-2dc5e7900b0c" xml:space="preserve"><value>A mild compulsion affects your private surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.9f5ba6ba-c18e-49a4-8043-2dc5e7900b0c" xml:space="preserve"><value>6693D608E5B3B872B88E7552B8363040DB83E203C1514F7C5C36E8B09C6EB300</value></data>
+  <data name="Qualities.Summary.9d11f7df-c783-4bcb-8970-3473379bcf9d" xml:space="preserve"><value>A moderate compulsion affects your private surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.9d11f7df-c783-4bcb-8970-3473379bcf9d" xml:space="preserve"><value>E8848837DB147AA492E48AD300B61BA3088EC3DCDD9A1DBA13AEEAF4B393F0D5</value></data>
+  <data name="Qualities.Summary.6406fb36-187e-486e-8dd0-1ddf6f1b3dbe" xml:space="preserve"><value>A strong compulsion affects your private surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.6406fb36-187e-486e-8dd0-1ddf6f1b3dbe" xml:space="preserve"><value>CF1B4CC400BCBDEF5E23118D4BEFB7546363694D6178C44A48F46722EDC15CDF</value></data>
+  <data name="Qualities.Summary.882c7cbc-2a0a-4465-ac2e-7ae8af98c928" xml:space="preserve"><value>A very strong compulsion affects your private surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.882c7cbc-2a0a-4465-ac2e-7ae8af98c928" xml:space="preserve"><value>15CC3CC1A73E0191FC39D9846BD0A9AB81BFAA6B3C6E9498BDC9169E53080E3B</value></data>
+  <data name="Qualities.Summary.d194fce3-8b1b-4ad8-a2be-87dbdd1c0569" xml:space="preserve"><value>A mild compulsion affects one aspect of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.d194fce3-8b1b-4ad8-a2be-87dbdd1c0569" xml:space="preserve"><value>CC506F6214BCF23BE42082C069E3545C31F0406E88F9A9E087F2653C99A858A3</value></data>
+  <data name="Qualities.Summary.beb59507-23bc-4b21-97d9-a3256d505774" xml:space="preserve"><value>A moderate compulsion affects one aspect of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.beb59507-23bc-4b21-97d9-a3256d505774" xml:space="preserve"><value>620C4B0B29ED611CC527B444709C8AFF68134167909617AB8C66B3A85751129B</value></data>
+  <data name="Qualities.Summary.03c2f009-825b-4464-abd1-1d27d5ce905e" xml:space="preserve"><value>A strong compulsion affects one aspect of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.03c2f009-825b-4464-abd1-1d27d5ce905e" xml:space="preserve"><value>5872634F8E78D772920306D6A3E30748F7F14D4800727FF6A1E81F82FCD2741D</value></data>
+  <data name="Qualities.Summary.5792c584-c1e0-4231-9cdf-e6ef27ce2539" xml:space="preserve"><value>A very strong compulsion affects one aspect of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.5792c584-c1e0-4231-9cdf-e6ef27ce2539" xml:space="preserve"><value>C68216ECCA6BDDB94CC801DDAE71F94B83FF080CD2DD197110E7E0DA199249F2</value></data>
+  <data name="Qualities.Summary.f7ca837e-3691-4b49-8ef2-5f2ddbe53c1e" xml:space="preserve"><value>A mild compulsion affects broad aspects of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.f7ca837e-3691-4b49-8ef2-5f2ddbe53c1e" xml:space="preserve"><value>38C11D768B6E4F88624C237B7FEBE7C899939A2447BF5A16004FF7D153BC416B</value></data>
+  <data name="Qualities.Summary.e73e2f0a-3bba-42d7-9351-d68255ce3f3a" xml:space="preserve"><value>A moderate compulsion affects broad aspects of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.e73e2f0a-3bba-42d7-9351-d68255ce3f3a" xml:space="preserve"><value>75010904A72109206758029DA7A7241C37B0FA22CDF916AC5240CDCFC9AF3342</value></data>
+  <data name="Qualities.Summary.cd39499d-ec05-44ec-b13f-fc66e11f686c" xml:space="preserve"><value>A strong compulsion affects broad aspects of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.cd39499d-ec05-44ec-b13f-fc66e11f686c" xml:space="preserve"><value>CF6682B3AAC037B7B8F565421D595D28501F552DEDD1D554A0BA1946F764284C</value></data>
+  <data name="Qualities.Summary.3039da6f-ad92-4082-bcf1-f2b400323679" xml:space="preserve"><value>A very strong compulsion affects broad aspects of your public surroundings; resisting the urge takes a Composure test.</value></data>
+  <data name="Qualities.SummarySource.3039da6f-ad92-4082-bcf1-f2b400323679" xml:space="preserve"><value>E1F5FCB723105D434D221A8CC0A70C61F7E3042857330B302365609ADE3E3784</value></data>
 </root>
