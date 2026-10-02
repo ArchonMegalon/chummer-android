@@ -44,7 +44,32 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 315, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 325, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Hawk Eye", "Jack of All Trades Master of None",
+                    "Lightning Reflexes", "Linguist", "Sensei", "Trustworthy", "Witness My Hate",
+                    "Illiterate", "Deaf" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Talents, training and sensory drawbacks need translated, definition-bound explanations: " + name);
+                }
+                var inspiredVariants = catalog.Where(q => q.Element("name")!.Value == "Inspired").ToArray();
+                Require(inspiredVariants.Length == 2, "The consumed catalog has two distinct Inspired definitions.");
+                foreach (var quality in inspiredVariants)
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary,
+                        "Same-name qualities must retain their own translated, exact-definition summary.");
+                }
+                Require(inspiredVariants.Select(q => CreationFlowStrings.Get(SummaryKey(q), "")).Distinct().Count() == 2,
+                    "Inspired's skill bonus must not overwrite its different expertise variant.");
+                Require(CreationQualityInfo.Effects(catalog.Single(q => q.Element("name")!.Value == "Sensei").ToString())
+                    .Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                    "Sensei's summary must not hide unresolved contact/skill selection details.");
                 foreach (string name in new[] { "Phobia (Uncommon, Mild)", "Phobia (Uncommon, Moderate)",
                     "Phobia (Uncommon, Severe)", "Phobia (Common, Mild)", "Phobia (Common, Moderate)",
                     "Phobia (Common, Severe)", "Poor Self Control (Braggart)",
@@ -238,6 +263,42 @@ internal static partial class AfterRunAuthorityHarness
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
             string Effect(string name) => string.Join(" ", CreationQualityInfo.Effects(
                 catalog.Single(quality => quality.Element("name")!.Value == name).ToString()));
+            string EffectById(string id) => string.Join(" ", CreationQualityInfo.Effects(
+                catalog.Single(quality => quality.Element("id")!.Value == id).ToString()));
+            Require(Effect("Hawk Eye").Contains("range penalties as one category nearer")
+                && Effect("Hawk Eye").Contains("Incompatible with electronic vision enhancements")
+                && Effect("Lightning Reflexes").Contains("+1 Initiative rating, +1 Initiative die")
+                && Effect("Lightning Reflexes").Contains("do not stack with technological, chemical or magical enhancements"),
+                "Natural vision and reflexes must retain their augmentation restrictions and distinct initiative values.");
+            string inspiredTalent = EffectById("f8f216b5-1c29-467d-9fb5-c9812408203d");
+            string inspiredExpertise = EffectById("fd9b9b6d-c969-40f1-8dc7-61f8e5d9cd4d");
+            Require(inspiredTalent.Contains("Choose Artisan or Performance")
+                && inspiredTalent.Contains("only among artists who know your reputation")
+                && inspiredTalent.Contains("does not grant a specialization")
+                && inspiredExpertise.StartsWith("Choose a free expertise specialization in Artisan.", StringComparison.Ordinal)
+                && !inspiredExpertise.Contains("Street Cred"),
+                "The two Inspired definitions share a name but not their skill choice, reputation or expertise benefits.");
+            Require(Effect("Jack of All Trades Master of None").Contains("After creation")
+                && Effect("Jack of All Trades Master of None").Contains("rating 5 or lower costs 1 less Karma, minimum 1")
+                && Effect("Jack of All Trades Master of None").Contains("rating 6 or higher cost 2 extra Karma")
+                && Effect("Linguist").Contains("half as long")
+                && Effect("Linguist").Contains("At creation, language points buy twice as much")
+                && Effect("Linguist").Contains("rating 3 or higher costs 1 less Karma"),
+                "Training discounts must keep creation/Career boundaries and the higher-rating surcharge.");
+            Require(Effect("Sensei").Contains("Connection 3+")
+                && Effect("Sensei").Contains("teacher rating 13; Instruction 10 dice, limit 7")
+                && Effect("Sensei").Contains("rating 12; Instruction 12 dice, limit 8")
+                && Effect("Sensei").Contains("not free ranks for you")
+                && Effect("Trustworthy").Contains("only when the situation involves trusting you"),
+                "A teacher's skill ratings are not the runner's, and a trust-based limit is not a blanket social modifier.");
+            Require(Effect("Witness My Hate").Contains("Single-target direct combat spells")
+                && Effect("Witness My Hate").Contains("2 more damage but cause 2 more Drain")
+                && Effect("Witness My Hate").Contains("does not improve indirect or area spells")
+                && Effect("Illiterate").Contains("others' electronics, not your own")
+                && Effect("Illiterate").Contains("cost double Karma afterward until you learn to read and buy off")
+                && Effect("Deaf").Contains("audio-only Perception automatically fails")
+                && Effect("Deaf").Contains("General Perception loses 2 dice; Surprise loses 3"),
+                "Spell damage needs its Drain tradeoff; sensory drawbacks must retain their affected tests and recovery requirements.");
             Require(Effect("Codeslinger").Contains("one Matrix action that requires a test")
                 && Effect("Codeslinger").Contains("two dice")
                 && Effect("Home Ground").Contains("Only the selected benefit applies")
