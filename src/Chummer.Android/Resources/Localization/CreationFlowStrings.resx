@@ -1656,6 +1656,7 @@
   <data name="Spells.Duration.I" xml:space="preserve"><value>Instant effect.</value></data>
   <data name="Spells.Duration.S" xml:space="preserve"><value>Must be sustained.</value></data>
   <data name="Spells.Duration.P" xml:space="preserve"><value>Becomes permanent after completion.</value></data>
+  <data name="Spells.Duration.Special" xml:space="preserve"><value>Special duration.</value></data>
   <data name="Spells.Type.M" xml:space="preserve"><value>Mana spell.</value></data>
   <data name="Spells.Type.P" xml:space="preserve"><value>Physical spell.</value></data>
   <data name="Spells.Drain" xml:space="preserve"><value>Drain: {0} (F = Force).</value></data>
@@ -1954,4 +1955,38 @@
   <data name="Spells.SummarySource.575e98fc-a165-403c-aef0-4877fb75845a" xml:space="preserve"><value>DDF34B181A13B8AAB6CACB1F2F26CDDA165881F8D267D29EE55CC1FFB4A0134D</value></data>
   <data name="Spells.Summary.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>Interprets one speaker's intent, not exact wording.</value></data>
   <data name="Spells.SummarySource.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>FA5EA294741C8E001986F2073B7C4A2EBE5E6AE66D231E1C7CC2297472E47475</value></data>
+  <data name="Spells.Summary.f7fb9b03-d7ee-4695-8e38-443a7d2b13e4" xml:space="preserve"><value>Camouflage against living observers.</value></data>
+  <data name="Spells.SummarySource.f7fb9b03-d7ee-4695-8e38-443a7d2b13e4" xml:space="preserve"><value>310652DEC7CF30EECAF2722FAD6DBD9D19F5B9B81DA128C92E0C71526607D12B</value></data>
+  <data name="Spells.Summary.03bcc045-08db-4967-80e3-09640859aa69" xml:space="preserve"><value>Camouflage, including cameras.</value></data>
+  <data name="Spells.SummarySource.03bcc045-08db-4967-80e3-09640859aa69" xml:space="preserve"><value>D3F94FD026D5E24F9DCB8E4ACEFDA2E864983607D581F0EA425C047453410B1C</value></data>
+  <data name="Spells.Summary.55c77b11-0647-4ece-9164-27caeadcf764" xml:space="preserve"><value>Disrupts one sensor's targeting.</value></data>
+  <data name="Spells.SummarySource.55c77b11-0647-4ece-9164-27caeadcf764" xml:space="preserve"><value>5EFEB325F441015A3638A50976F1487A85A7A909188243CE7502050C5AE73FC7</value></data>
+  <data name="Spells.Summary.4c01416b-ff1c-4e55-a2eb-b8048b8709e4" xml:space="preserve"><value>Disrupts sensors' targeting.</value></data>
+  <data name="Spells.SummarySource.4c01416b-ff1c-4e55-a2eb-b8048b8709e4" xml:space="preserve"><value>2D6A5F08C18809E346DEDE4966F3B6F71B3983ABF1CA9512710939A11EFB1ABC</value></data>
+  <data name="Spells.Summary.b3179247-4b02-47ea-abb0-0934b673cff2" xml:space="preserve"><value>Intangible double; cannot attack.</value></data>
+  <data name="Spells.SummarySource.b3179247-4b02-47ea-abb0-0934b673cff2" xml:space="preserve"><value>117AE431608241196E139B6A6778BEE2AB8EBC0CC72E9D028D3FF975FED67AB9</value></data>
+  <data name="Spells.Summary.8d724d8c-e6a0-41d7-8799-4fbb02de62a0" xml:space="preserve"><value>Sends dreams to sleepers.</value></data>
+  <data name="Spells.SummarySource.8d724d8c-e6a0-41d7-8799-4fbb02de62a0" xml:space="preserve"><value>12BA78A4B9B7903BA7DA286B113B8555F395159420A7D753890CB8C6F7DE9A48</value></data>
+  <data name="Spells.Summary.86dfd77f-afcb-4533-951c-7b2ea8d462c5" xml:space="preserve"><value>Pleasure distracts the target.</value></data>
+  <data name="Spells.SummarySource.86dfd77f-afcb-4533-951c-7b2ea8d462c5" xml:space="preserve"><value>E677EAC9D55232CF0742C463956B3E9B2C6945DDDCC0C0C31AC78C783DFF7E5C</value></data>
+  <data name="Spells.Summary.883457da-6b0f-49d8-b40e-fcdf7486737e" xml:space="preserve"><value>Pleasure distracts nearby targets.</value></data>
+  <data name="Spells.SummarySource.883457da-6b0f-49d8-b40e-fcdf7486737e" xml:space="preserve"><value>B07F300D196DE336751FEB429A7CF0238A9EF76156599034916F7CD0F1F5AA2C</value></data>
+  <data name="Spells.Summary.e02e6362-5b3c-410c-818b-890c8d008321" xml:space="preserve"><value>Fear distracts everyone nearby.</value></data>
+  <data name="Spells.SummarySource.e02e6362-5b3c-410c-818b-890c8d008321" xml:space="preserve"><value>90D3050BD90E73AA7F1CAAE29C1804594320E4391E9A1E1FB339C22D127FB353</value></data>
+  <data name="Spells.Summary.b60ef1c2-565a-4b96-9ca2-270905d977ea" xml:space="preserve"><value>Metal feels burning-hot.</value></data>
+  <data name="Spells.SummarySource.b60ef1c2-565a-4b96-9ca2-270905d977ea" xml:space="preserve"><value>1DECCAF0E046D7E00E9B31D7AF0DC112C4C71BAE9EA002D4FBBBC010CA574C92</value></data>
+  <data name="Spells.Summary.945fc713-6e3d-4b1e-b1aa-a1dbd2a9d429" xml:space="preserve"><value>Dampens one sense, including sensors.</value></data>
+  <data name="Spells.SummarySource.945fc713-6e3d-4b1e-b1aa-a1dbd2a9d429" xml:space="preserve"><value>FAACF7D90746FC14CA70DB32E55DAB72843C164FEE736FD50A1D7853EEEDBA76</value></data>
+  <data name="Spells.Summary.4dad17ac-f04c-49ce-a719-e475620028d3" xml:space="preserve"><value>Area-wide sense impairment, including sensors.</value></data>
+  <data name="Spells.SummarySource.4dad17ac-f04c-49ce-a719-e475620028d3" xml:space="preserve"><value>71F0884EFC40C307E52130AA41826E9982AC04C41C1C51CB7F3A02E6A6131736</value></data>
+  <data name="Spells.Summary.0a2e9859-b489-43f7-8e8a-d29cb4c8b682" xml:space="preserve"><value>Nauseating smell distracts.</value></data>
+  <data name="Spells.SummarySource.0a2e9859-b489-43f7-8e8a-d29cb4c8b682" xml:space="preserve"><value>31E264494FB26ADDEAA8B602975977ADAF06F13ABD34F5EE7DDD3A419E5FC6B6</value></data>
+  <data name="Spells.Summary.ecd4d99e-7e5c-43be-bfb7-7af989879236" xml:space="preserve"><value>Area-wide distracting stench.</value></data>
+  <data name="Spells.SummarySource.ecd4d99e-7e5c-43be-bfb7-7af989879236" xml:space="preserve"><value>FFF0BB37B290AF519D4C240FD72D5912FE8FD02FC1A18CEC33FFD90832F34A68</value></data>
+  <data name="Spells.Summary.466e45ee-755d-4fd6-ba23-298afa5849ef" xml:space="preserve"><value>Muffles sounds crossing the boundary.</value></data>
+  <data name="Spells.SummarySource.466e45ee-755d-4fd6-ba23-298afa5849ef" xml:space="preserve"><value>FBED059ED273AEFA8349F63E18BBA1413697A5AA13CCEA566B2950E7121E2049</value></data>
+  <data name="Spells.Summary.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>Temporarily swaps vehicles' sensor signatures.</value></data>
+  <data name="Spells.SummarySource.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>9DD80A6C7F266CD93694AF643C6F0EC96BDE5A7BF1CD0251B246958565E8D2F8</value></data>
+  <data name="Spells.Summary.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>Disguises vehicles; maintain contact.</value></data>
+  <data name="Spells.SummarySource.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>6ED7F2086571E9CEA7F3DC426F2E0E7803DC5AD84FCDDF5A81FF7BCC28DC7B0C</value></data>
 </root>

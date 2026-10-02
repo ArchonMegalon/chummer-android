@@ -1231,6 +1231,7 @@
   <data name="Spells.Duration.I" xml:space="preserve"><value>Sofortige Wirkung.</value></data>
   <data name="Spells.Duration.S" xml:space="preserve"><value>Muss aufrechterhalten werden.</value></data>
   <data name="Spells.Duration.P" xml:space="preserve"><value>Wird nach Abschluss permanent.</value></data>
+  <data name="Spells.Duration.Special" xml:space="preserve"><value>Besondere Wirkungsdauer.</value></data>
   <data name="Spells.Type.M" xml:space="preserve"><value>Manazauber.</value></data>
   <data name="Spells.Type.P" xml:space="preserve"><value>Physischer Zauber.</value></data>
   <data name="Spells.Drain" xml:space="preserve"><value>Entzug: {0} (F = Kraftstufe).</value></data>
@@ -1391,4 +1392,21 @@
   <data name="Spells.Summary.ab70d6c1-60e8-4475-87ee-16790cb9ff68" xml:space="preserve"><value>Sucht einen bestimmten aktuellen Gedanken.</value></data>
   <data name="Spells.Summary.575e98fc-a165-403c-aef0-4877fb75845a" xml:space="preserve"><value>Sucht einen bestimmten aktuellen Gedanken.</value></data>
   <data name="Spells.Summary.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>Übersetzt den Sinn eines Gesprächspartners, nicht wortgetreu.</value></data>
+  <data name="Spells.Summary.f7fb9b03-d7ee-4695-8e38-443a7d2b13e4" xml:space="preserve"><value>Tarnt vor Lebewesen.</value></data>
+  <data name="Spells.Summary.03bcc045-08db-4967-80e3-09640859aa69" xml:space="preserve"><value>Tarnt auch vor Kameras.</value></data>
+  <data name="Spells.Summary.55c77b11-0647-4ece-9164-27caeadcf764" xml:space="preserve"><value>Stört eine Sensor-Zielerfassung.</value></data>
+  <data name="Spells.Summary.4c01416b-ff1c-4e55-a2eb-b8048b8709e4" xml:space="preserve"><value>Stört Sensor-Zielerfassungen.</value></data>
+  <data name="Spells.Summary.b3179247-4b02-47ea-abb0-0934b673cff2" xml:space="preserve"><value>Körperloses Doppel; kampfunfähig.</value></data>
+  <data name="Spells.Summary.8d724d8c-e6a0-41d7-8799-4fbb02de62a0" xml:space="preserve"><value>Sendet Schlafenden Träume.</value></data>
+  <data name="Spells.Summary.86dfd77f-afcb-4533-951c-7b2ea8d462c5" xml:space="preserve"><value>Lust lenkt ab.</value></data>
+  <data name="Spells.Summary.883457da-6b0f-49d8-b40e-fcdf7486737e" xml:space="preserve"><value>Lust lenkt Umstehende ab.</value></data>
+  <data name="Spells.Summary.e02e6362-5b3c-410c-818b-890c8d008321" xml:space="preserve"><value>Angst lenkt alle ab.</value></data>
+  <data name="Spells.Summary.b60ef1c2-565a-4b96-9ca2-270905d977ea" xml:space="preserve"><value>Metallkontakt fühlt sich brennendheiß an.</value></data>
+  <data name="Spells.Summary.945fc713-6e3d-4b1e-b1aa-a1dbd2a9d429" xml:space="preserve"><value>Dämpft einen Sinn, einschließlich Sensoren.</value></data>
+  <data name="Spells.Summary.4dad17ac-f04c-49ce-a719-e475620028d3" xml:space="preserve"><value>Sinnesschwächung im Bereich, einschließlich Sensoren.</value></data>
+  <data name="Spells.Summary.0a2e9859-b489-43f7-8e8a-d29cb4c8b682" xml:space="preserve"><value>Übler Geruch lenkt ab.</value></data>
+  <data name="Spells.Summary.ecd4d99e-7e5c-43be-bfb7-7af989879236" xml:space="preserve"><value>Ablenkender Gestank im Bereich.</value></data>
+  <data name="Spells.Summary.466e45ee-755d-4fd6-ba23-298afa5849ef" xml:space="preserve"><value>Dämpft grenzüberschreitenden Schall.</value></data>
+  <data name="Spells.Summary.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>Tauscht Fahrzeug-Sensorsignaturen zeitweilig.</value></data>
+  <data name="Spells.Summary.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>Tarnt Fahrzeuge; Berührung halten.</value></data>
 </root>
