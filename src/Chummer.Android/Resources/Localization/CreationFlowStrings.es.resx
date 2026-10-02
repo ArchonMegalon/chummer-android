@@ -1496,4 +1496,23 @@
   <data name="Spells.Summary.8689fa5c-5965-4230-9706-245be36b242c" xml:space="preserve"><value>Reduce el daño por radiación a todos dentro de una cúpula protectora.</value></data>
   <data name="Spells.Range.S" xml:space="preserve"><value>Afecta al lanzador.</value></data>
   <data name="Spells.Range.S (A)" xml:space="preserve"><value>Área centrada en el lanzador.</value></data>
+  <data name="Spells.Summary.b98919cb-4e48-4839-891b-e93e9edd466c" xml:space="preserve"><value>Plantas atrapan y reducen Agilidad.</value></data>
+  <data name="Spells.Summary.4b4d9aa1-e38d-4684-9201-02f99a8480d2" xml:space="preserve"><value>Plantas atrapan y reducen Agilidad.</value></data>
+  <data name="Spells.Summary.2896f942-1af6-424f-b93d-b7c3d7e69cdd" xml:space="preserve"><value>Ataduras espinosas hieren repetidamente y reducen Agilidad.</value></data>
+  <data name="Spells.Summary.3b1052db-d347-4d89-a147-c54092a57f78" xml:space="preserve"><value>Ataduras espinosas hieren repetidamente y reducen Agilidad.</value></data>
+  <data name="Spells.Summary.98381c0f-da21-466e-9f66-46381496be5a" xml:space="preserve"><value>Mejora atributos físicos; aumentar el tamaño es opcional.</value></data>
+  <data name="Spells.Summary.d5312f77-833f-4942-93e5-0a109996bca6" xml:space="preserve"><value>Golpes mágicos causan daño físico y aturdimiento adicional.</value></data>
+  <data name="Spells.Summary.271cbaa4-c7fe-450a-b7e2-65ad90621b6f" xml:space="preserve"><value>Golpes mágicos causan daño físico y aturdimiento adicional.</value></data>
+  <data name="Spells.Summary.b28accd7-e2b5-491e-ab0c-00a74be62f1a" xml:space="preserve"><value>Fragmentos mágicos afilados hieren al objetivo.</value></data>
+  <data name="Spells.Summary.a63280c2-3bf8-4007-9578-58580a684b03" xml:space="preserve"><value>Fragmentos mágicos afilados hieren objetivos en una zona.</value></data>
+  <data name="Spells.Summary.2933d3c3-50ff-4fe8-8414-37f2520e39e1" xml:space="preserve"><value>Duplica alimentos existentes; las copias no pueden volver a multiplicarse.</value></data>
+  <data name="Spells.Summary.e7d5f89f-ae86-4ad3-aeb2-42e82a81e7ae" xml:space="preserve"><value>Roca fundida causa daño por fuego y ácido.</value></data>
+  <data name="Spells.Summary.f39ed466-c61a-47fe-8822-4f3113baf176" xml:space="preserve"><value>La gravedad dificulta acciones físicas y puede inmovilizar.</value></data>
+  <data name="Spells.Summary.4115bdb8-c298-44f7-8a1c-8097133378ec" xml:space="preserve"><value>La gravedad dificulta acciones físicas y puede inmovilizar.</value></data>
+  <data name="Spells.Summary.ef1febff-d790-4706-80b1-6ddfbf9d61e5" xml:space="preserve"><value>Desconcentra y reduce Iniciativa.</value></data>
+  <data name="Spells.Summary.243313e6-a9af-456a-9631-6581d869aa02" xml:space="preserve"><value>Modifica balas alquímicamente; requiere Armero Alquímico.</value></data>
+  <data name="Spells.Summary.3fc55119-a6c3-4b0c-91eb-de107fbdea98" xml:space="preserve"><value>Revela fragmentos de los últimos momentos de alguien recién fallecido.</value></data>
+  <data name="Spells.Summary.1cbb5f25-7ce7-4347-bea6-764da9ee6e18" xml:space="preserve"><value>Abre temporalmente el tejido, reduciendo el daño quirúrgico.</value></data>
+  <data name="Spells.Summary.89046778-a77a-4f21-a448-a750af0898eb" xml:space="preserve"><value>Suprime ciertos poderes de criaturas o la visión astral de seres duales.</value></data>
+  <data name="Spells.Summary.4c595074-add0-40da-a707-598d2b94ae4f" xml:space="preserve"><value>Suprime ciertos poderes de criaturas o la visión astral de seres duales.</value></data>
 </root>

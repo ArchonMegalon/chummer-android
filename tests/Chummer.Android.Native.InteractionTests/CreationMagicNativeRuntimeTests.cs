@@ -18,6 +18,12 @@ using System.Text.Json;
 /// phone draft and Presentation projection. This is not an Android handler or device proof.</summary>
 internal static class CreationMagicNativeRuntimeTests
 {
+    internal static bool HasOrdinaryArcanaSummary(string book, string name) =>
+        book is "BB" or "BTB"
+        || book == "FA" && new[] { "Branch", "Vines", "Thorn", "Rosebush", "Growth",
+            "Lash", "Slash", "Claw", "Barrage", "Multiply Food", "Comet", "Gravity",
+            "Gravity Well", "Evil Eye", "Alter Ballistics" }.Contains(name);
+
     internal static bool HasNewSupplementSummary(string book, string category, string name) =>
         book is "SS" or "CA"
         || book == "HT" && (category is "Combat" or "Manipulation")
@@ -72,7 +78,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 256, $"Expected 256 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 275, $"Expected 275 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -226,6 +232,32 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
                         "Shadow Spells help replaced accepted Drain: " + spell.Name + "/" + locale);
                 }
+                var ordinaryArcana = authority.Spells.Where(spell =>
+                    HasOrdinaryArcanaSummary(spell.SourceBook, spell.Name)).ToArray();
+                Require(ordinaryArcana.Length == 19
+                    && ordinaryArcana.Count(spell => spell.SourceBook == "FA") == 15
+                    && ordinaryArcana.Count(spell => spell.SourceBook == "BB") == 2
+                    && ordinaryArcana.Count(spell => spell.SourceBook == "BTB") == 2,
+                    "Expected all 19 selected ordinary spells; blood spells and rituals remain separate.");
+                foreach (var spell in ordinaryArcana)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && !summary.Contains("Damage: 0."),
+                        "An ordinary supplement spell lacks its exact-source effect: " + spell.Name + "/" + locale);
+                    foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
+                    {
+                        string key = field == "Range" && spell.Category == "Detection" && xml.Element(element)!.Value == "T"
+                            ? "Spells.Detection.Touch" : "Spells." + field + "." + xml.Element(element)!.Value;
+                        string expected = CreationFlowStrings.Get(key, "missing");
+                        Require(expected != "missing" && summary.Contains(expected),
+                            "Ordinary supplement help lost its Core profile: " + spell.Name + "/" + field + "/" + locale);
+                    }
+                    Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
+                        "Ordinary supplement help replaced accepted Drain: " + spell.Name + "/" + locale);
+                }
                 var supplementSpells = authority.Spells.Where(spell =>
                     HasNewSupplementSummary(spell.SourceBook, spell.Category, spell.Name)).ToArray();
                 Require(supplementSpells.Length == 31
@@ -305,6 +337,16 @@ internal static class CreationMagicNativeRuntimeTests
                 "Attribute spell help must retain opposite effects and distinct costs.");
             string SpellHelp(string name, string? book = null) => CreationSpellInfo.Summary(
                 authority.Spells.Single(spell => spell.Name == name && (book is null || spell.SourceBook == book)));
+            foreach (string name in new[] { "Vines", "Comet", "Mass Astral Disruption" })
+                Require(SpellHelp(name).Contains("Target within line of sight.")
+                    && !SpellHelp(name).Contains("Area within line of sight."),
+                    "A help-only edit must not silently substitute another source's range: " + name);
+            Require(SpellHelp("Alter Ballistics").Contains("Requires touch.")
+                && SpellHelp("Alter Ballistics").Contains("Instant effect.")
+                && SpellHelp("Death Replay").Contains("Touch casting; separate sensing range.")
+                && SpellHelp("Incision").Contains("Requires touch.")
+                && SpellHelp("Incision").Contains("Must be sustained."),
+                "Effect help must keep alchemy, sensing and ordinary touch profiles separate.");
             foreach (var (single, area) in new[] { ("Bind", "Net Bind"), ("Mana Bind", "Mana Net"),
                 ("Calm Animal", "Calm Pack"), ("Control Animal", "Control Pack"), ("Incubus", "Incubus Shroud") })
                 Require(SpellHelp(single).Contains("Target within line of sight.")
