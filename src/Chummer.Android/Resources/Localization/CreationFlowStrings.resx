@@ -2956,4 +2956,30 @@
   <data name="Qualities.SummarySource.c4dab0b4-32c4-4840-9713-aa46c2412835" xml:space="preserve"><value>34D97D226637C8A683E38F6A409FDD06B1EB22D881AA4724FC26FED057C8C942</value></data>
   <data name="Qualities.Summary.ba1644ab-2191-4366-8f5f-13c21eca1cc4" xml:space="preserve"><value>Resisting the urge to spread harmful misinformation or pull Matrix pranks requires Composure, even when your friends would suffer.</value></data>
   <data name="Qualities.SummarySource.ba1644ab-2191-4366-8f5f-13c21eca1cc4" xml:space="preserve"><value>CA8C653AB841D4C1AF0608B75B543C31F809773B3F9142F1DFEFAD5135219DD7</value></data>
+  <data name="Qualities.Summary.d398b3ec-93b1-4229-906a-49d7136045cb" xml:space="preserve"><value>Contacts mistake you for a CFD victim and refuse in-person meetings; remote dealings require them to fail Loyalty.</value></data>
+  <data name="Qualities.SummarySource.d398b3ec-93b1-4229-906a-49d7136045cb" xml:space="preserve"><value>A19F971C33A5510FB01F4A331588AC1AF2AACDC8020F4B577354A227517AD7E4</value></data>
+  <data name="Qualities.Summary.f5fada49-7344-4e0d-b2d8-61aead583d7b" xml:space="preserve"><value>Apparently safe opportunities to hurt others demand Composure to resist, even when giving in could jeopardize your plans.</value></data>
+  <data name="Qualities.SummarySource.f5fada49-7344-4e0d-b2d8-61aead583d7b" xml:space="preserve"><value>2AB49170A43DC838F7268006CEFFCFC44D0502673092A9376761C30B149DEC2E</value></data>
+  <data name="Qualities.Summary.815f235c-dda7-4140-a667-c274ced1d9d6" xml:space="preserve"><value>Monthly rivals match your Street Cred; surviving defeat in Physical overflow removes this drawback, wipes Street Cred and adds Notoriety.</value></data>
+  <data name="Qualities.SummarySource.815f235c-dda7-4140-a667-c274ced1d9d6" xml:space="preserve"><value>5909D66F5A3CE35D4CD36EE1B21D16CB0EC0790CD93CC00D8BE0B3ACEB62E411</value></data>
+  <data name="Qualities.Summary.c41e83a2-1a36-4b97-b286-5fbc6510d3d7" xml:space="preserve"><value>Strangers' suspicion penalizes your initial social interactions.</value></data>
+  <data name="Qualities.SummarySource.c41e83a2-1a36-4b97-b286-5fbc6510d3d7" xml:space="preserve"><value>4F0CF64354303A59CD4BDAB314FBC1F1640F44414405174C57FFB910EE7A3B2B</value></data>
+  <data name="Qualities.Summary.93bdc421-a7c8-44e9-9f6a-9c316638c889" xml:space="preserve"><value>Favoring your chosen common group weakens your social rolls and improves their negotiations.</value></data>
+  <data name="Qualities.SummarySource.93bdc421-a7c8-44e9-9f6a-9c316638c889" xml:space="preserve"><value>7FA4376794BFD572D2FF56DC8DEEAC9337B2495EF2FC3D67F6BC936415863019</value></data>
+  <data name="Qualities.Summary.4de3693d-687e-4d49-a2f9-b9f6bd21aa91" xml:space="preserve"><value>Stronger favoritism further weakens social dealings with your chosen common group and improves their negotiating advantage.</value></data>
+  <data name="Qualities.SummarySource.4de3693d-687e-4d49-a2f9-b9f6bd21aa91" xml:space="preserve"><value>31F947A471AAA00056145EB10C9844D61CF6E0DBC434687DEF23BE3F00FFCF7A</value></data>
+  <data name="Qualities.Summary.3fdb7c0d-ddaa-4f70-ae04-1f5a8e4a50c5" xml:space="preserve"><value>Extreme favoritism imposes the greatest social penalties with your chosen common group and gives them a negotiating advantage.</value></data>
+  <data name="Qualities.SummarySource.3fdb7c0d-ddaa-4f70-ae04-1f5a8e4a50c5" xml:space="preserve"><value>F5EBA591E878AC2BD4660AE5832A802F64D170D554955576ECB24D2566A6F6F0</value></data>
+  <data name="Qualities.Summary.b618c943-41f7-46ae-80e7-69e543bc0ec6" xml:space="preserve"><value>Briefly suspend astral perception, with action penalties and most critter powers disabled; exceeding the daily allowance permanently reduces Magic.</value></data>
+  <data name="Qualities.SummarySource.b618c943-41f7-46ae-80e7-69e543bc0ec6" xml:space="preserve"><value>A5E8C040F5E0626B1879D66741573F9351AB00B1A15644E3D7D807A6DF1E4C50</value></data>
+  <data name="Qualities.Summary.ef1e36f8-6c4c-4908-9155-ecef6c376c6e" xml:space="preserve"><value>Alchemical preparations keep their Potency longer before decay begins; their initial strength is unchanged.</value></data>
+  <data name="Qualities.SummarySource.ef1e36f8-6c4c-4908-9155-ecef6c376c6e" xml:space="preserve"><value>65BD81E6E68C75FC281A85BFD688063BF81590AD4F31A5AECAD176FA913686E6</value></data>
+  <data name="Qualities.Summary.05089559-972e-463c-a276-641e358a9201" xml:space="preserve"><value>One chosen natural element deals half damage before resistance, protecting worn gear too; you are immune to its secondary effects.</value></data>
+  <data name="Qualities.SummarySource.05089559-972e-463c-a276-641e358a9201" xml:space="preserve"><value>401B70C74EBC332BB1D47E559FE5A26D17AE54D1892DC9E0E88D033B7B9FEEE1</value></data>
+  <data name="Qualities.Summary.1638946e-7e2e-4e57-a7cb-d20f2e4eead1" xml:space="preserve"><value>Extended Matrix searches gain dice but are more vulnerable to glitches; ordinary single-roll searches do not gain this bonus.</value></data>
+  <data name="Qualities.SummarySource.1638946e-7e2e-4e57-a7cb-d20f2e4eead1" xml:space="preserve"><value>39EE586374638E36FE5052CBC397E264E314A1EF26C7F889E35DD6C50144B4CB</value></data>
+  <data name="Qualities.Summary.356eabd2-7d97-46bb-81a1-ac913a670364" xml:space="preserve"><value>One chosen trained Matrix skill loses dice while non-Patrol IC is active in your host; its learned rating stays unchanged.</value></data>
+  <data name="Qualities.SummarySource.356eabd2-7d97-46bb-81a1-ac913a670364" xml:space="preserve"><value>6AC0F0A359EAF5C4F2DF45814D59B942C20A3EBCA969BD1F87BBFD44981F2098</value></data>
+  <data name="Qualities.Summary.96322f26-94cf-4d2c-9282-6525f9008fec" xml:space="preserve"><value>Jobs yielding paydata bring extra income, but former auction attendees can recognize your persona and cause trouble over past dealings.</value></data>
+  <data name="Qualities.SummarySource.96322f26-94cf-4d2c-9282-6525f9008fec" xml:space="preserve"><value>1ADD46262EF00539832042B54C14B36DCFBEB4DB58322AF8D4260671B2B330F0</value></data>
 </root>
