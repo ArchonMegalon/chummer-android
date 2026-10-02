@@ -56,6 +56,11 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
         self.git("init", "-q")
         self.git("config", "user.name", "Policy Fixture")
         self.git("config", "user.email", "policy@example.invalid")
+        # Short-lived fixture repos must not leave detached writers racing cleanup.
+        # This changes only fixture-local Git configuration, not verifier policy.
+        self.git("config", "maintenance.auto", "false")
+        self.git("config", "gc.auto", "0")
+        self.git("config", "gc.autoDetach", "false")
         self.git("remote", "add", "origin", "https://github.com/" + policy.DESIGN_REPOSITORY + ".git")
         self.seal()
 
@@ -83,7 +88,9 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
             if not workflow.exists():
                 workflow.write_text("on:\n  workflow_dispatch:\n\npermissions:\n  contents: read\n")
         for args in (("init", "-q"), ("config", "user.name", "Android Policy Fixture"),
-                     ("config", "user.email", "policy@example.invalid"), ("add", "."),
+                     ("config", "user.email", "policy@example.invalid"),
+                     ("config", "maintenance.auto", "false"), ("config", "gc.auto", "0"),
+                     ("config", "gc.autoDetach", "false"), ("add", "."),
                      ("commit", "-q", "--allow-empty", "-m", "admitted Design pin")):
             subprocess.run(["git", "-C", str(self.android), *args], check=True, capture_output=True)
 
@@ -93,6 +100,15 @@ class DesignPolicyAuthorityTests(unittest.TestCase):
 
     def test_authenticates_actual_git_and_raw_bytes_without_executing_design(self):
         self.assertEqual(self.expected, self.verify())
+
+    def test_temporary_repos_do_not_start_background_maintenance(self):
+        for root in (self.design, self.android):
+            for key, expected in (("maintenance.auto", "false"), ("gc.auto", "0"),
+                                  ("gc.autoDetach", "false")):
+                with self.subTest(repo=root.name, key=key):
+                    actual = subprocess.run(["git", "-C", str(root), "config", "--local", "--get", key],
+                                            check=True, capture_output=True, text=True).stdout.strip()
+                    self.assertEqual(expected, actual)
 
     def test_rejects_missing_extra_stale_and_substituted_bindings(self):
         # Historical receipt validation deliberately remains on the historical pin.
