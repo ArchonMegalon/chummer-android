@@ -44,7 +44,20 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 289, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 305, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Albinism I", "Albinism II",
+                    "Amnesia (Surface Loss)", "Amnesia (Neural Deletion)",
+                    "Day Job (10 hrs)", "Day Job (20 hrs)", "Day Job (40 hrs)", "In Debt",
+                    "Incomplete Deprogramming", "Oblivious I", "Oblivious II",
+                    "Pacifist I", "Pacifist II", "Records on File", "Sensory Overload Syndrome", "Wanted" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Drawback variants and obligations need translated, definition-bound explanations: " + name);
+                }
                 foreach (string name in new[] { "Asthma", "Big Regret", "Blind", "Borrowed Time",
                     "Computer Illiterate", "Creature of Comfort (Middle)", "Creature of Comfort (High)",
                     "Creature of Comfort (Luxury)", "Did You Just Call Me Dumb?", "Driven",
@@ -263,6 +276,38 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Spirit Whisperer").Contains("the summoning itself still uses the declared Force")
                 && Effect("Steely Eyed Wheelman").Contains("by 1, never below 0"),
                 "The spirit's resistance bonus must not be given to its summoner, and reduced terrain penalties cannot become a bonus.");
+            Require(Effect("Albinism I").Contains("Cybereye-compatible")
+                && Effect("Albinism II").Contains("before other Karma spending")
+                && Effect("Amnesia (Surface Loss)").Contains("2 Karma and adds one rank")
+                && Effect("Amnesia (Neural Deletion)").Contains("GM-led play")
+                && Effect("Amnesia (Neural Deletion)").Contains("Karma buyoff and the GM's story goals"),
+                "Variant help must distinguish reduced symptoms and GM-mediated memory recovery without promising automatic app behavior.");
+            foreach (var job in new[] { (Hours: 10, Pay: "1,000"), (Hours: 20, Pay: "2,500"), (Hours: 40, Pay: "5,000") })
+                Require(Effect($"Day Job ({job.Hours} hrs)").Contains($"{job.Hours} hours/week, ¥{job.Pay}/month")
+                    && Effect($"Day Job ({job.Hours} hrs)").Contains("fake 4+"),
+                    "Each schedule must retain its own working hours, monthly salary and identity requirement.");
+            Require(Effect("In Debt").Contains("150%") && Effect("In Debt").Contains("10% monthly")
+                && Effect("In Debt").Contains("unhealable until paid")
+                && Effect("In Debt").Contains("Repayment is required in both cases")
+                && Effect("Incomplete Deprogramming").Contains("Composure (4)")
+                && Effect("Incomplete Deprogramming").Contains("1D6 minutes")
+                && Effect("Incomplete Deprogramming").Contains("skills become unavailable"),
+                "Debts need ongoing obligations, and identity switches must not be described as permanent skill loss.");
+            Require(new[] { "Oblivious I", "Oblivious II" }.All(name => Effect(name).Contains("astral and Matrix"))
+                && Effect("Oblivious I").Contains("does not raise")
+                && Effect("Oblivious II").Contains("thresholds by 1")
+                && Effect("Pacifist I").Contains("ongoing attack")
+                && Effect("Pacifist II").Contains("(20, daily)")
+                && Effect("Pacifist II").Contains("weekly recovery"),
+                "Higher grades must preserve their distinct thresholds and recovery intervals rather than copying the lower-grade effect.");
+            Require(Effect("Records on File").Contains("Its agents gain 2 dice")
+                && Effect("Records on File").Contains("security zones C or better")
+                && Effect("Records on File").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && Effect("Sensory Overload Syndrome").Contains("Willpower + Edge (4)")
+                && Effect("Sensory Overload Syndrome").Contains("5 − hits minutes")
+                && Effect("Wanted").Contains("¥25,000")
+                && Effect("Wanted").Contains("buy it off with Karma"),
+                "Investigators' advantages, unresolved corporation choices, timed overload and continuing bounty obligations must remain explicit.");
             Require(Effect("Asthma").Contains("twice as often")
                 && Effect("Asthma").Contains("Effects accumulate")
                 && Effect("Asthma").Contains("at 4, resist further Fatigue using only Willpower")
