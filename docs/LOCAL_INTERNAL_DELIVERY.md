@@ -110,8 +110,13 @@ existing upload key, verified and accepted on the unchanged Internal track on
 2 October. It includes short original quality/ordinary-spell explanations,
 attribute/Karma-quality improvements and the sealed Tradition correction.
 Descriptions remain incomplete; editorial brevity is not copyright clearance.
-Physical Preview 73 installation and changed-route execution are not yet verified.
-Preview 72 remains the latest bounded physical evidence:
+The normal physical Play update from 72 to 73, installed base-APK signature,
+first launch, Mystic Adept/Acid Stream help, bold attribute values and reopening
+the existing Magic allocation after verified process death passed on 2 October.
+See the separate [Preview 73 physical observation](../play/evidence/preview73-physical-observation.md).
+This was read-only navigation, not a new physical save transaction or full catalog
+qualification. Existing saved source settings and font scale 1.3 were preserved.
+Preview 72 retains the separate allocation/undo observation:
 The normal physical Play update from 52 to 72, base-APK signature, first launch,
 special-attribute navigation, unsaved Magic 4 → 5 → 4 adjustment/undo and reopening
 the existing allocation after verified process death passed on 2 October.
