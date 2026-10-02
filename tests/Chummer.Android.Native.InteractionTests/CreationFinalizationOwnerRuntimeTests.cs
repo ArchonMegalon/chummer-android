@@ -944,6 +944,7 @@ internal static partial class AfterRunAuthorityHarness
             .Concat(supplements)
             .Concat(allOptions.Where(item => item.SourceBook == "SG" && item.Category == "Manipulation"))
             .Concat(allOptions.Where(item => item.SourceBook == "SSP" && item.Category != "Rituals"))
+            .Concat(allOptions.Where(item => CreationMagicNativeRuntimeTests.HasOrdinaryArcanaSummary(item.SourceBook, item.Name)))
             .Distinct())
         {
             Search(spell.Name);
