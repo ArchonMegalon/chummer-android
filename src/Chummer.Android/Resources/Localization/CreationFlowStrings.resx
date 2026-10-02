@@ -1772,4 +1772,23 @@
   <data name="Spells.Sensing.Extended Area" xml:space="preserve"><value>Sensing: extended area.</value></data>
   <data name="Spells.Sensing.Directional" xml:space="preserve"><value>Sensing: directional.</value></data>
   <data name="Spells.Sensing.Psychic" xml:space="preserve"><value>Sensing: psychic.</value></data>
+  <!-- SR5 core Health effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.92fe97e1-2f16-4398-b12b-b29bfa23c75d" xml:space="preserve"><value>Adds hits to the upcoming poison-resistance test.</value></data>
+  <data name="Spells.SummarySource.92fe97e1-2f16-4398-b12b-b29bfa23c75d" xml:space="preserve"><value>881270F87E0DC141D3719D33865985045A8CF25A007905A523E3E26EAFEB1004</value></data>
+  <data name="Spells.Summary.13999091-25c8-4b72-add4-bff3b97eb0a6" xml:space="preserve"><value>Boosts disease resistance, without healing existing damage.</value></data>
+  <data name="Spells.SummarySource.13999091-25c8-4b72-add4-bff3b97eb0a6" xml:space="preserve"><value>C6C5AC2FBCF233991E5A0885179A22D85FF0C7DECF556CAF3E39D885B5409028</value></data>
+  <data name="Spells.Summary.31e68920-f354-4d38-b008-87f843957bba" xml:space="preserve"><value>Reduces one Physical or Mental attribute.</value></data>
+  <data name="Spells.SummarySource.31e68920-f354-4d38-b008-87f843957bba" xml:space="preserve"><value>2615FB2F240858024B6F871846BA5B21404E2F920802F13AA9514D08EEF2982C</value></data>
+  <data name="Spells.Summary.3d019dea-b5ae-4f9c-ab14-eb8a329ed9ba" xml:space="preserve"><value>Removes drug/poison symptoms, not damage.</value></data>
+  <data name="Spells.SummarySource.3d019dea-b5ae-4f9c-ab14-eb8a329ed9ba" xml:space="preserve"><value>3C6E9C360F4E29B905BBD58D1684989F9ECF3489C753725AE069D00EFA616A2F</value></data>
+  <data name="Spells.Summary.c72c3fe1-61b1-4a5d-8c15-2bca2c6c904d" xml:space="preserve"><value>Raises one Physical or Mental attribute.</value></data>
+  <data name="Spells.SummarySource.c72c3fe1-61b1-4a5d-8c15-2bca2c6c904d" xml:space="preserve"><value>9952393BE2E20789ADA7BC92663A32ECDD0F6875B554F992D6524ABE7DA7A2AD</value></data>
+  <data name="Spells.Summary.5ac26e0f-3c01-43a7-a6d4-46f9193851ea" xml:space="preserve"><value>Counters oxygen deprivation; permits underwater breathing.</value></data>
+  <data name="Spells.SummarySource.5ac26e0f-3c01-43a7-a6d4-46f9193851ea" xml:space="preserve"><value>97033A5ACE13E0388EAA4E855F2456EA3C7531A6CF3152599F4AAAD41FF81766</value></data>
+  <data name="Spells.Summary.0d0e3e2d-5223-4258-b885-12848833eb08" xml:space="preserve"><value>Boosts disease/toxin resistance; also weakens beneficial drugs.</value></data>
+  <data name="Spells.SummarySource.0d0e3e2d-5223-4258-b885-12848833eb08" xml:space="preserve"><value>2EDB6356728364CABE935DE3528FBD0C9862A1A3E04EC0A473E2860BBF4C5A77</value></data>
+  <data name="Spells.Summary.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>Reduces wound penalties without healing.</value></data>
+  <data name="Spells.SummarySource.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>D658288734CB7606534C23EB6005156C48CC97346F1539DF65201BB40337D83E</value></data>
+  <data name="Spells.Summary.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>Stops further overflow deterioration, without repairing injuries.</value></data>
+  <data name="Spells.SummarySource.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>AF353E244F31FB2DCA58059DE4FE11AAFDCA460A36645A04EAD0B9094048F628</value></data>
 </root>

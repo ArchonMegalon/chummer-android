@@ -1280,4 +1280,14 @@
   <data name="Spells.Sensing.Extended Area" xml:space="preserve"><value>Percepción: zona ampliada.</value></data>
   <data name="Spells.Sensing.Directional" xml:space="preserve"><value>Percepción: direccional.</value></data>
   <data name="Spells.Sensing.Psychic" xml:space="preserve"><value>Percepción: psíquica.</value></data>
+  <!-- SR5 core Health effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.92fe97e1-2f16-4398-b12b-b29bfa23c75d" xml:space="preserve"><value>Añade éxitos a la próxima prueba contra venenos.</value></data>
+  <data name="Spells.Summary.13999091-25c8-4b72-add4-bff3b97eb0a6" xml:space="preserve"><value>Refuerza resistencia a enfermedades, sin curar daños.</value></data>
+  <data name="Spells.Summary.31e68920-f354-4d38-b008-87f843957bba" xml:space="preserve"><value>Reduce un atributo físico o mental.</value></data>
+  <data name="Spells.Summary.3d019dea-b5ae-4f9c-ab14-eb8a329ed9ba" xml:space="preserve"><value>Elimina síntomas de drogas/venenos, no daños.</value></data>
+  <data name="Spells.Summary.c72c3fe1-61b1-4a5d-8c15-2bca2c6c904d" xml:space="preserve"><value>Aumenta un atributo físico o mental.</value></data>
+  <data name="Spells.Summary.5ac26e0f-3c01-43a7-a6d4-46f9193851ea" xml:space="preserve"><value>Combate la falta de oxígeno; permite respirar bajo agua.</value></data>
+  <data name="Spells.Summary.0d0e3e2d-5223-4258-b885-12848833eb08" xml:space="preserve"><value>Refuerza la resistencia a enfermedades/toxinas; atenúa también efectos medicinales.</value></data>
+  <data name="Spells.Summary.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>Reduce penalizaciones por heridas, sin curarlas.</value></data>
+  <data name="Spells.Summary.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>Detiene el deterioro por desbordamiento, sin curar heridas.</value></data>
 </root>
