@@ -18,6 +18,13 @@ using System.Text.Json;
 /// phone draft and Presentation projection. This is not an Android handler or device proof.</summary>
 internal static class CreationMagicNativeRuntimeTests
 {
+    internal static bool HasNewSupplementSummary(string book, string category, string name) =>
+        book is "SS" or "CA"
+        || book == "HT" && (category is "Combat" or "Manipulation")
+        || book == "SG" && new[] { "Bind", "Net Bind", "Mana Bind", "Mana Net", "Bug Zapper",
+            "Calm Animal", "Calm Pack", "Catfall", "Clean [Element]", "Compel Truth",
+            "Control Animal", "Control Pack", "Deflection" }.Contains(name);
+
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
     public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
     public static void RunMagicReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, magicReReview: true);
@@ -65,7 +72,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 155, $"Expected 155 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 186, $"Expected 186 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -173,6 +180,31 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(summary.Contains(CreationFlowStrings.Get("Spells.Duration." + expectedDuration, "missing")),
                         "Illusion help lost its accepted duration: " + spell.Name + "/" + locale);
                 }
+                var supplementSpells = authority.Spells.Where(spell =>
+                    HasNewSupplementSummary(spell.SourceBook, spell.Category, spell.Name)).ToArray();
+                Require(supplementSpells.Length == 31
+                    && supplementSpells.Count(spell => spell.SourceBook == "SS") == 8
+                    && supplementSpells.Count(spell => spell.SourceBook == "CA") == 4
+                    && supplementSpells.Count(spell => spell.SourceBook == "HT") == 6
+                    && supplementSpells.Count(spell => spell.SourceBook == "SG") == 13,
+                    "Expected the complete selected supplement catalogs, without including rituals.");
+                foreach (var spell in supplementSpells)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && !summary.Contains("Damage: 0."),
+                        "A supplement spell lacks its own effect: " + spell.Name + "/" + spell.SourceBook + "/" + locale);
+                    foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
+                    {
+                        string expected = CreationFlowStrings.Get("Spells." + field + "." + xml.Element(element)!.Value, "missing");
+                        Require(expected != "missing" && summary.Contains(expected),
+                            "Supplement help lost its localized accepted profile: " + spell.Name + "/" + field + "/" + locale);
+                    }
+                    Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
+                        "Supplement help replaced accepted Drain: " + spell.Name + "/" + locale);
+                }
                 foreach (var (normalName, extendedName) in new[] {
                     ("Mindnet", "Mindnet Extended"), ("Spatial Sense", "Spatial Sense, Extended") })
                 {
@@ -227,6 +259,51 @@ internal static class CreationMagicNativeRuntimeTests
                 "Attribute spell help must retain opposite effects and distinct costs.");
             string SpellHelp(string name, string? book = null) => CreationSpellInfo.Summary(
                 authority.Spells.Single(spell => spell.Name == name && (book is null || spell.SourceBook == book)));
+            foreach (var (single, area) in new[] { ("Bind", "Net Bind"), ("Mana Bind", "Mana Net"),
+                ("Calm Animal", "Calm Pack"), ("Control Animal", "Control Pack"), ("Incubus", "Incubus Shroud") })
+                Require(SpellHelp(single).Contains("Target within line of sight.")
+                    && SpellHelp(area).Contains("Area within line of sight."),
+                    "Supplement single/area variants lost their source targeting: " + single);
+            Require(SpellHelp("Bind").Contains("Physical spell.") && SpellHelp("Mana Bind").Contains("Mana spell.")
+                && SpellHelp("Calm Animal").Contains("self-defense remains")
+                && SpellHelp("Control Animal").Contains("Commands non-sapient")
+                && SpellHelp("Compel Truth").Contains("not silence")
+                && SpellHelp("Compel Truth").Contains("Special duration.")
+                && SpellHelp("Catfall").Contains("Reduces falling damage"),
+                "Binding, calming, commanding and protection must retain distinct effects and limits.");
+            foreach (string name in new[] { "Sound Barrier", "Vehicle Mask" })
+                Require(SpellHelp(name, "SS").Contains("Drain: F-2")
+                    && !SpellHelp(name, "SS").Contains("Drain: F-3")
+                    && SpellHelp(name, "SG").Contains("Drain: F-3")
+                    && !SpellHelp(name, "SG").Contains("Drain: F-2"),
+                    "Same-name source variants were conflated: " + name);
+            Require(SpellHelp("Interference", "SS").Contains("radio and wireless")
+                && SpellHelp("Interference", "SS").Contains("Drain: F-2")
+                && SpellHelp("Interference", "SG").Contains("Drain: F-1")
+                && !SpellHelp("Interference", "SG").Contains("Jams radio")
+                && SpellHelp("Fashion", "SS").Contains("without improving protection")
+                && !SpellHelp("Fashion", "SG").Contains("Restyles clothing"),
+                "A localized effect must not leak to an unreviewed same-name source definition.");
+            Require(SpellHelp("Hibernate").Contains("does not maintain unconsciousness")
+                && SpellHelp("Nutrition").Contains("risks addiction")
+                && SpellHelp("Intoxication").Contains("drunkenness and fatigue")
+                && SpellHelp("Rewind").Contains("recent memories permanently")
+                && SpellHelp("Consistency").Contains("telepathic message or image")
+                && SpellHelp("Consistency").Contains("Instant effect.")
+                && !SpellHelp("Consistency").Contains("Touch casting"),
+                "Supplement help must distinguish its real effect from a similar name or symptom.");
+            Require(SpellHelp("Catch").Contains("unattended object")
+                && SpellHelp("Snakeblood").Contains("thermal detection")
+                && SpellHelp("Conceal Scent").Contains("object's scent")
+                && SpellHelp("Recharge Potency").Contains("preparation once")
+                && SpellHelp("Recharge Potency").Contains("Must be sustained.")
+                && !SpellHelp("Recharge Potency").Contains("Becomes permanent"),
+                "Hard Targets effects must not rewrite the accepted Core profile from another source.");
+            Require(SpellHelp("Manablade").Contains("bypasses armor, not for physical parries")
+                && SpellHelp("Powerblade").Contains("can parry, armor resists")
+                && new[] { "Manablade", "Powerblade" }.All(name => SpellHelp(name).Contains("Caster-only")
+                    && SpellHelp(name).Contains("Special range.") && SpellHelp(name).Contains("Must be sustained.")),
+                "The two caster-only weapon spells must retain their different defenses and special range.");
             Require(SpellHelp("Astral Message").Contains("messages")
                 && SpellHelp("Astral Clairvoyance").Contains("distant auras")
                 && new[] { "Astral Clairvoyance", "Mana Window", "Astral Window", "[Sense] Cryptesthesia" }
