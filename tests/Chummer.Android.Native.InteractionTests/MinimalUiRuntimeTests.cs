@@ -162,6 +162,48 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Solid Rep", ["reputation", "one chosen group", "neither universal", "every social test"],
+            ["Ruf", "gewählten Gruppe", "kein allgemeiner Straßenruf", "jede soziale Probe"],
+            ["reputación", "grupo elegido", "no concede", "todas las pruebas sociales"]),
+        ("Legendary Rep", ["exceptional reputation", "one chosen group", "stronger than Solid Rep", "not universal"],
+            ["gewählten Gruppe", "mehr Ansehen als Solid Rep", "keine weltweite", "kein allgemeiner"],
+            ["más prestigio que Solid Rep", "grupo elegido", "no ofrece fama universal", "bono social general"]),
+        ("Jack of All Trades Master of None", ["After creation", "Active and Knowledge", "less Karma", "higher ranks costs more"],
+            ["Nach der Erschaffung", "Aktions- und Wissensfertigkeiten", "günstiger", "höhere Stufen werden teurer"],
+            ["Después de la creación", "activas y de conocimiento", "menos Karma", "altos cuestan más"]),
+        ("Day Job (10 hrs)", ["10 weekly work hours", "¥1,000 monthly", "fake rating four or higher", "absence risks job, pay and reputation"],
+            ["10 Wochenstunden", "1.000 ¥ monatlich", "gefälscht mindestens Stufe vier", "Fehlen gefährdet Job, Gehalt und Ruf"],
+            ["10 horas semanales", "1.000 ¥ mensuales", "falso de nivel cuatro o superior", "ausencias reiteradas", "empleo, salario y reputación"]),
+        ("Day Job (20 hrs)", ["20 weekly work hours", "¥2,500 monthly", "fake rating four or higher", "absence risks job, pay and reputation"],
+            ["20 Wochenstunden", "2.500 ¥ monatlich", "gefälscht mindestens Stufe vier", "Fehlen gefährdet Job, Gehalt und Ruf"],
+            ["20 horas semanales", "2.500 ¥ mensuales", "falso de nivel cuatro o superior", "ausencias reiteradas", "empleo, salario y reputación"]),
+        ("Day Job (40 hrs)", ["40 weekly work hours", "¥5,000 monthly", "fake rating four or higher", "absence risks job, pay and reputation"],
+            ["40 Wochenstunden", "5.000 ¥ monatlich", "gefälscht mindestens Stufe vier", "Fehlen gefährdet Job, Gehalt und Ruf"],
+            ["40 horas semanales", "5.000 ¥ mensuales", "falso de nivel cuatro o superior", "ausencias reiteradas", "empleo, salario y reputación"]),
+        ("Scent Glands", ["smell aids tracking", "unmasked", "hinders social tests", "stress worsens both", "perfume only", "ordinary smell"],
+            ["Aufspüren", "unverdeckt Sozialproben", "Stress verstärkt beides", "Parfüm", "nur den gewöhnlichen"],
+            ["rastrearte", "pruebas Sociales si no se disimula", "estrés empeora ambos", "perfume solo", "olor habitual"]),
+        ("Spirit Champion", ["Extra reagents", "beyond those setting limits", "improve Summoning", "Binding", "fewer reagents", "gains dice"],
+            ["Zusätzliche Reagenzien", "neben denen fürs Limit", "verbessern Herbeirufen", "Binden", "weniger Reagenzien", "mehr Würfel"],
+            ["adicionales", "destinados al límite", "mejoran Invocación", "Vinculación", "menos reactivos", "gana dados"]),
+        ("Spirit Pariah", ["Summoning fails without", "extra reagents", "beyond those setting limits", "Binding", "more reagents", "loses dice"],
+            ["Ohne zusätzliche Reagenzien", "scheitert Herbeirufen", "Limit-Reagenzien zählen dafür nicht", "Binden", "mehr Reagenzien", "weniger Würfeln"],
+            ["Invocación falla sin", "reactivos extra", "aparte", "al límite", "Vinculación", "más reactivos", "pierde dados"]),
+        ("Superhuman Psychosis", ["Better melee", "fewer suppression penalties", "worse Etiquette/Leadership", "harder retreat", "elite foes", "incompatible", "Code of Honor"],
+            ["Besserer Nahkampf", "geringere Sperrfeuerabzüge", "schwächere Gebräuche/Führung", "erschwerter Rückzug", "Elitegegnern", "Ehrenkodex unvereinbar"],
+            ["Mejora el combate cercano", "reduce penalizadores por supresión", "empeora Etiqueta/Liderazgo", "retiradas ante élites", "incompatible", "Código de Honor"]),
+        ("Fame: Local", ["Local fame", "social skills", "Social limit", "one chosen sprawl", "Public Awareness", "anonymity harder"],
+            ["Lokaler Ruhm", "soziale Fertigkeiten", "Soziale Limit", "gewählten Sprawl", "Prominenz", "erschwert Anonymität"],
+            ["fama local", "habilidades sociales", "límite Social", "conurbación elegida", "notoriedad pública", "dificulta el anonimato"]),
+        ("Fame: National", ["National fame", "social skills", "sufficient national-language", "Social limit", "Public Awareness", "anonymity harder"],
+            ["Nationaler Ruhm", "soziale Fertigkeiten", "ausreichender Landessprache", "Soziale Limit", "Prominenz", "erschwert Anonymität"],
+            ["fama nacional", "habilidades sociales", "suficiente dominio del idioma nacional", "límite Social", "notoriedad pública", "dificulta el anonimato"]),
+        ("Fame: Megacorporate", ["Corporate fame", "social skills", "Social limit", "one chosen megacorporation", "Public Awareness", "anonymity harder"],
+            ["Konzernruhm", "soziale Fertigkeiten", "Soziale Limit", "gewählten Megakonzerns", "Prominenz", "erschwert Anonymität"],
+            ["fama corporativa", "habilidades sociales", "límite Social", "megacorporación elegida", "notoriedad pública", "dificulta el anonimato"]),
+        ("Fame: Global", ["Worldwide fame", "strongly", "social skills", "Social limit", "Public Awareness", "anonymity much harder"],
+            ["Weltweiter Ruhm", "soziale Fertigkeiten", "Soziales Limit deutlich", "hohe Prominenz", "schwerer, anonym"],
+            ["fama mundial", "mejora mucho", "habilidades sociales", "límite Social", "alta notoriedad pública", "más difícil", "anonimato"]),
         ("Focused Concentration", ["one spell or complex form","up to this quality's rating","sustaining penalty","Drain and Fading still apply"],
             ["einen Zauber oder eine komplexe Form","bis zur Vorteilsstufe","Aufrechterhaltungsabzug","Entzug und Schwund bleiben"],
             ["un hechizo o forma compleja","hasta el nivel","mantenimiento","Drenaje y Desvanecimiento"]),
@@ -919,7 +961,9 @@ internal static partial class AfterRunAuthorityHarness
                     string[] scope = locale == "de-AT" ? rule.German : locale == "es-MX" ? rule.Spanish : rule.English;
                     Require(summary.Length > 0 && summary.Length <= 180
                         && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 25
-                        && !Regex.IsMatch(summary, @"\d")
+                        // Hours and income distinguish the three jobs; short help may retain those facts.
+                        && (rule.Name is "Day Job (10 hrs)" or "Day Job (20 hrs)" or "Day Job (40 hrs)"
+                            || !Regex.IsMatch(summary, @"\d"))
                         && scope.All(term => summary.Contains(term, StringComparison.OrdinalIgnoreCase))
                         && CreationQualityInfo.Effects(quality.ToString())[0] == summary,
                         "Brief help must retain the benefit and important drawback without a numeric procedure: " + rule.Name);
@@ -1078,7 +1122,7 @@ internal static partial class AfterRunAuthorityHarness
                         "Translation dropped a combat or Matrix qualifier: " + rule.Name);
                 foreach (var rule in new[] { (Name: "My Country, Right or Wrong", Numbers: ""),
                     (Name: "Cyber-snob", Numbers: "1"), (Name: "Implant-induced Immune Deficiency", Numbers: "5,−2"),
-                    (Name: "Superhuman Psychosis", Numbers: "+1,−2,5,3"), (Name: "Metahuman Traits", Numbers: "+1") })
+                    (Name: "Superhuman Psychosis", Numbers: ""), (Name: "Metahuman Traits", Numbers: "+1") })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
@@ -1142,7 +1186,7 @@ internal static partial class AfterRunAuthorityHarness
                         .Contains(rule.Scope, StringComparison.Ordinal),
                         "A conditional quality lost its exception or limitation: " + rule.Name);
                 foreach (var rule in new[] { (Name: "Tattoo Magic", Numbers: "2"),
-                    (Name: "Spirit Champion", Numbers: "5,+1,20,+1"), (Name: "Spirit Pariah", Numbers: "5,30,1"),
+                    (Name: "Spirit Champion", Numbers: ""), (Name: "Spirit Pariah", Numbers: ""),
                     (Name: "Gifted Healer", Numbers: ""),
                     (Name: "Strive For Perfection", Numbers: ""), (Name: "Barrens Rat", Numbers: "−1"),
                     (Name: "Elemental Focus", Numbers: "+2"), (Name: "Poisoner", Numbers: "+1") })
@@ -1272,7 +1316,7 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Deformity (Quasimodo)", Numbers: "−2"), (Name: "Feathers", Numbers: "1"),
                     (Name: "Insectoid Features", Numbers: "1"), (Name: "Mood Hair", Numbers: "2"),
                     (Name: "Nocturnal", Numbers: "1"), (Name: "Scales", Numbers: ""),
-                    (Name: "Scent Glands", Numbers: "1,2,1,2"), (Name: "Striking Skin Pigmentation", Numbers: "2"),
+                    (Name: "Scent Glands", Numbers: ""), (Name: "Striking Skin Pigmentation", Numbers: "2"),
                     (Name: "Third Eye", Numbers: "2"), (Name: "Unusual Hair", Numbers: "1"),
                     (Name: "Vestigial Tail", Numbers: "1") })
                 {
@@ -1622,8 +1666,8 @@ internal static partial class AfterRunAuthorityHarness
                 && !inspiredExpertise.Contains("Street Cred"),
                 "The two Inspired definitions share a name but not their skill choice, reputation or expertise benefits.");
             Require(Effect("Jack of All Trades Master of None").Contains("After creation")
-                && Effect("Jack of All Trades Master of None").Contains("rating 5 or lower costs 1 less Karma, minimum 1")
-                && Effect("Jack of All Trades Master of None").Contains("rating 6 or higher cost 2 extra Karma")
+                && Effect("Jack of All Trades Master of None").Contains("lower Active and Knowledge skill ranks cost less Karma")
+                && Effect("Jack of All Trades Master of None").Contains("higher ranks costs more")
                 && Effect("Linguist").Contains("half as long")
                 && Effect("Linguist").Contains("At creation, language points buy twice as much")
                 && Effect("Linguist").Contains("rating 3 or higher costs 1 less Karma"),
@@ -1694,9 +1738,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Poor Link").Contains("including beneficial rituals")
                 && Effect("Privileged Family Name").Contains("minor local figures but makes you identifiable")
                 && Effect("Privileged Family Name").Contains("national or full corporate SIN")
-                && Effect("Solid Rep").Contains("improves by 1")
-                && Effect("Legendary Rep").Contains("improves by 2"),
-                "Ritual resistance and local reputation benefits must preserve their directions, identity requirements and distinct values.");
+                && Effect("Solid Rep").Contains("one chosen group")
+                && Effect("Legendary Rep").Contains("stronger than Solid Rep"),
+                "Ritual resistance and local reputation must preserve their directions, identity requirements and distinct strengths.");
             Require(Effect("Speed Reading").Contains("Read quickly for general meaning")
                 && Effect("Speed Reading").Contains("do not gain perfect recall")
                 && Effect("Spike Resistance").Contains("one extra die per level")
@@ -1717,9 +1761,10 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Amnesia (Neural Deletion)").Contains("story progress and a Karma buyoff"),
                 "Variant help must distinguish reduced symptoms and GM-mediated memory recovery without promising automatic app behavior.");
             foreach (var job in new[] { (Hours: 10, Pay: "1,000"), (Hours: 20, Pay: "2,500"), (Hours: 40, Pay: "5,000") })
-                Require(Effect($"Day Job ({job.Hours} hrs)").Contains($"{job.Hours} hours/week, ¥{job.Pay}/month")
-                    && Effect($"Day Job ({job.Hours} hrs)").Contains("fake 4+"),
-                    "Each schedule must retain its own working hours, monthly salary and identity requirement.");
+                Require(Effect($"Day Job ({job.Hours} hrs)").Contains($"{job.Hours} weekly work hours earn ¥{job.Pay} monthly")
+                    && Effect($"Day Job ({job.Hours} hrs)").Contains("fake rating four or higher")
+                    && Effect($"Day Job ({job.Hours} hrs)").Contains("absence risks job, pay and reputation"),
+                    "Short job help must retain its hours, salary, identity requirement and absence consequences.");
             Require(Effect("In Debt").Contains("150%") && Effect("In Debt").Contains("10% monthly")
                 && Effect("In Debt").Contains("Missed payments cause lasting injury")
                 && Effect("In Debt").Contains("still requires repayment")
@@ -1859,11 +1904,20 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Made Man").Contains("group contact with Loyalty fixed at 3")
                 && Effect("Ex-Con").Contains("also gain SINner (Criminal)"),
                 "Contact and criminal-SIN explanations must retain their exact category, fixed Loyalty and grant boundaries.");
-            Require(Effect("Fame: Local").Contains("+1 to your Social limit in one chosen sprawl")
-                && Effect("Fame: National").Contains("national-language rating is at least 4")
-                && Effect("Fame: Megacorporate").Contains("+2 to your Social limit in one chosen megacorporation")
-                && Effect("Fame: Global").Contains("Public Awareness also increases by 8"),
-                "Fame variants must retain their distinct Social-limit scopes and reputation penalties.");
+            foreach (var fame in new[] {
+                (Name: "Fame: Local", Dice: 1, Limit: 1, Awareness: 2, Condition: "One chosen sprawl"),
+                (Name: "Fame: National", Dice: 2, Limit: 1, Awareness: 3, Condition: "National language rating 4 or higher"),
+                (Name: "Fame: Megacorporate", Dice: 2, Limit: 2, Awareness: 5, Condition: "One chosen megacorporation"),
+                (Name: "Fame: Global", Dice: 3, Limit: 3, Awareness: 8, Condition: "") })
+            {
+                var quality = catalog.Single(q => q.Element("name")!.Value == fame.Name);
+                var details = CreationQualityInfo.Effects(quality.ToString()).Skip(1).ToArray();
+                Require(details.Contains($"Skill category · Social skills · Bonus: {fame.Dice}")
+                    && details.Contains($"Public awareness: {fame.Awareness}")
+                    && details.Contains($"Limit · Limit: Social · Modifier: {fame.Limit}"
+                        + (fame.Condition.Length > 0 ? $" · When: {fame.Condition}" : "")),
+                    "Short Fame prose must retain exact Core modifiers and conditional limits in its supporting profile: " + fame.Name);
+            }
             Require(Effect("Quick Healer").Contains("Heal") && Effect("Quick Healer").Contains("Modifier: 2"),
                 "Spell-specific healing modifier was lost.");
             Require(Effect("Uneducated").Contains("Cannot default")
@@ -1873,6 +1927,11 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Jack of All Trades Master of None").Contains("After character creation")
                 && Effect("Jack of All Trades Master of None").Contains("Maximum: 5")
                 && Effect("Jack of All Trades Master of None").Contains("Minimum: 6")
+                && Effect("Jack of All Trades Master of None").Contains("Active-skill Karma cost change · Modifier: -1 · Maximum: 5")
+                && Effect("Jack of All Trades Master of None").Contains("Active-skill Karma cost change · Modifier: 2 · Minimum: 6")
+                && Effect("Jack of All Trades Master of None").Contains("Knowledge-skill Karma cost change · Modifier: -1 · Maximum: 5")
+                && Effect("Jack of All Trades Master of None").Contains("Knowledge-skill Karma cost change · Modifier: 2 · Minimum: 6")
+                && Effect("Jack of All Trades Master of None").Contains("Minimum Knowledge-skill Karma cost · Modifier: 1 · Maximum: 5")
                 && !Effect("Jack of All Trades Master of None").Contains("/character/"),
                 "Karma cost conditions and rating boundaries must be retained in readable language.");
             Require(Effect("Sensitive System").Contains("Cyberware Essence cost (% of normal): 200")
