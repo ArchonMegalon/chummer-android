@@ -3008,4 +3008,40 @@
   <data name="Qualities.SummarySource.cc967d0f-6b7a-4c62-b202-37f94242169c" xml:space="preserve"><value>A9FFFED0540B7C7029C38885C3A2DDC17269775C253FDC7389AF9C77DE31D5B2</value></data>
   <data name="Qualities.Summary.ad8d9751-d82f-4d80-b351-c102cd60c2b1" xml:space="preserve"><value>Consecutive persona knockouts build your next Matrix attack bonus; it resets on a non-knockout attack or any other action.</value></data>
   <data name="Qualities.SummarySource.ad8d9751-d82f-4d80-b351-c102cd60c2b1" xml:space="preserve"><value>775C0C5A3839FBABDBEF04B4E508F234528541676BD16300169BD08CD93B0A9C</value></data>
+  <data name="Qualities.Summary.8f18e68a-fbaf-46b6-bf00-c99910292c20" xml:space="preserve"><value>Raises the total focus rating you can use before risking focus addiction; it does not increase Magic for other purposes.</value></data>
+  <data name="Qualities.SummarySource.8f18e68a-fbaf-46b6-bf00-c99910292c20" xml:space="preserve"><value>EABAAAB7AD867454894209BC3D5B3864DEEB450CB6241B8BDB3E1CB65357BA6F</value></data>
+  <data name="Qualities.Summary.c6ceed11-802c-4ff6-a636-4213663fcf21" xml:space="preserve"><value>Your Combat spells can accept extra Drain to weaken opposing Counterspelling.</value></data>
+  <data name="Qualities.SummarySource.c6ceed11-802c-4ff6-a636-4213663fcf21" xml:space="preserve"><value>2DADF709EAFFA8A841AE03498CD5E1475883C77F7A24F870C5C07CE2B95B4AC1</value></data>
+  <data name="Qualities.Summary.79ed28ba-fab7-4fc3-b4c1-5c177a92f9a6" xml:space="preserve"><value>Further weakens opposing Counterspelling when you accept extra Drain for Combat spells.</value></data>
+  <data name="Qualities.SummarySource.79ed28ba-fab7-4fc3-b4c1-5c177a92f9a6" xml:space="preserve"><value>8CF99FD7FF91A1C06B38C6C4579BA0949FA98DCD71EF5536EAEC0A88098B9B6B</value></data>
+  <data name="Qualities.Summary.1126c856-7e2e-43de-91ce-8ff70f2368a4" xml:space="preserve"><value>Offers the strongest reduction of opposing Counterspelling by accepting extra Drain for Combat spells.</value></data>
+  <data name="Qualities.SummarySource.1126c856-7e2e-43de-91ce-8ff70f2368a4" xml:space="preserve"><value>4AF707E5D65B23B4789018CB0066CB502CF3ECC81C9EF3146D2B6620A45CB4D0</value></data>
+  <data name="Qualities.Summary.530062d2-6dbe-4e19-b16a-82953c72745d" xml:space="preserve"><value>Before Data Spike or Resonance Spike, a Free Action lets you trade attack dice for greater damage.</value></data>
+  <data name="Qualities.SummarySource.530062d2-6dbe-4e19-b16a-82953c72745d" xml:space="preserve"><value>76ED62DC3281FF07CBB7418982745224E97C9251D89445C5A63710655F9FB244</value></data>
+  <data name="Qualities.Summary.ca9b24ba-3a2e-41cd-8434-b33f91d691aa" xml:space="preserve"><value>Gain Matrix initiative while working without allies; your own sprites do not cancel the bonus.</value></data>
+  <data name="Qualities.SummarySource.ca9b24ba-3a2e-41cd-8434-b33f91d691aa" xml:space="preserve"><value>4B75415CB440E0695709069428B915EB6C0679E6B1560AA1FEDD000C791B1E75</value></data>
+  <data name="Qualities.Summary.adf86253-baaf-4c03-87fe-aba3a453b3b5" xml:space="preserve"><value>Lead Brute Force or Hack on the Fly teamwork: share marks and failure risks, but agents, sprites and Resonance constructs cannot help.</value></data>
+  <data name="Qualities.SummarySource.adf86253-baaf-4c03-87fe-aba3a453b3b5" xml:space="preserve"><value>E8D083FFE854ABB5030138FB292E4E65A81AA1ABB11ABD88C9FADA2EF4868800</value></data>
+  <data name="Qualities.Summary.0d5e6819-ac41-4700-ac7d-58fa957b328c" xml:space="preserve"><value>Shed biological traces soon decay beyond use for DNA identification or ritual samples; protection is not immediate.</value></data>
+  <data name="Qualities.SummarySource.0d5e6819-ac41-4700-ac7d-58fa957b328c" xml:space="preserve"><value>D65DAB1B4256415E6B8CEF164C7159BFB26F4DF76DCA71ADFC03220A9C2D1526</value></data>
+  <data name="Qualities.Summary.13edde6a-f920-4665-9e65-53a20b30c2a3" xml:space="preserve"><value>Ordinary DNA searches find no match; advanced scanners notice missing markers and request other identification.</value></data>
+  <data name="Qualities.SummarySource.13edde6a-f920-4665-9e65-53a20b30c2a3" xml:space="preserve"><value>7D9BD93C4C1021FE2A842E393B6481D3D479B04891CFB884AA0735ED7DDD79F4</value></data>
+  <data name="Qualities.Summary.eac42e74-2f7b-418d-bd38-c1cdd56ceec4" xml:space="preserve"><value>A new genetic identity prevents reliable DNA matching to your old profile, but does not conceal other identifying features.</value></data>
+  <data name="Qualities.SummarySource.eac42e74-2f7b-418d-bd38-c1cdd56ceec4" xml:space="preserve"><value>8FCE16DECE0EB3D5051A67A0A62A619D93703542546D801B808C307047660A58</value></data>
+  <data name="Qualities.Summary.ee6703a8-f613-43e0-b2e6-c502af7e82dc" xml:space="preserve"><value>Studying someone's dossier improves social dice and limits with them; without preparation, your Social limit suffers.</value></data>
+  <data name="Qualities.SummarySource.ee6703a8-f613-43e0-b2e6-c502af7e82dc" xml:space="preserve"><value>55D5ADD11ECEEFC28F799BD9E9537EF84F3C7096772B18D2957E1909782AFCAE</value></data>
+  <data name="Qualities.Summary.7ba73ee6-ab20-4384-9980-b8d4d3e24374" xml:space="preserve"><value>Reconfigure two cyberdeck programs or attribute pairs per Free Action, mixing both if desired; each attribute can change only once.</value></data>
+  <data name="Qualities.SummarySource.7ba73ee6-ab20-4384-9980-b8d4d3e24374" xml:space="preserve"><value>5C0ABD63D25CE56EB4DDB6EFD506B3B12D4DBDABAA1B1F3EDF747A3C77B24554</value></data>
+  <data name="Qualities.Summary.263c4fc6-65b1-4d10-b1aa-5cccaefa26f3" xml:space="preserve"><value>Cracking files gains dice, but protected files demand Composure to resist cracking and downloading them, even during danger.</value></data>
+  <data name="Qualities.SummarySource.263c4fc6-65b1-4d10-b1aa-5cccaefa26f3" xml:space="preserve"><value>3C5E57773A52C9565587E1C6D8B615A44140B7359E6DC95376F4E7655C5F6F96</value></data>
+  <data name="Qualities.Summary.9b441cbf-538d-4a75-bc7d-b1c9b6be0f9d" xml:space="preserve"><value>Exposed, mobile limbs let quills injure grapplers or serve as melee weapons using the dedicated Quills skill.</value></data>
+  <data name="Qualities.SummarySource.9b441cbf-538d-4a75-bc7d-b1c9b6be0f9d" xml:space="preserve"><value>AF494378F6B9572C6797E85A6ADC3F7AD27E611D77F74C3786FBA1AB794B229B</value></data>
+  <data name="Qualities.Summary.f46d91ad-8b3c-4bd7-bc5b-85ab7bb36d78" xml:space="preserve"><value>Your patterned fur helps Sneaking in dim light and suitable surroundings; it conflicts with other hair or skin modifications.</value></data>
+  <data name="Qualities.SummarySource.f46d91ad-8b3c-4bd7-bc5b-85ab7bb36d78" xml:space="preserve"><value>FE3E3FB427E66011882E32E3CEE8DF30442FC2CEA3DD18D5881BA304FA4397B5</value></data>
+  <data name="Qualities.Summary.912bef16-2f72-45e2-95bb-96ef7eea4811" xml:space="preserve"><value>Sense nearby magical activity using Intuition and Willpower, even without a Magic rating; stronger Magic extends range.</value></data>
+  <data name="Qualities.SummarySource.912bef16-2f72-45e2-95bb-96ef7eea4811" xml:space="preserve"><value>ABBE8D8683AB57440E97A85CFFA7CEED4C62B252EDD99B75AC7318DAC85FFAA2</value></data>
+  <data name="Qualities.Summary.ef40cac3-d81e-4c7f-b14d-46abfd2f9dff" xml:space="preserve"><value>Unless surprised, take one opening Brute Force, Data Spike, Hack on the Fly or Matrix Perception action before combat initiative.</value></data>
+  <data name="Qualities.SummarySource.ef40cac3-d81e-4c7f-b14d-46abfd2f9dff" xml:space="preserve"><value>05F7B3044182D6C690A2C403389DC95D73F60EA1FD5F96CC6B0096CC5BD07755</value></data>
+  <data name="Qualities.Summary.f6387f9d-c177-4c9b-a141-af2d17ea6317" xml:space="preserve"><value>With gamemaster approval, a mundane character can take another Special Modifications rank beyond the normal maximum.</value></data>
+  <data name="Qualities.SummarySource.f6387f9d-c177-4c9b-a141-af2d17ea6317" xml:space="preserve"><value>3E6002C3DD1B6538FF39F3D6BE0AB7209C89FFD4521C03AB38155AE69B1034B9</value></data>
 </root>
