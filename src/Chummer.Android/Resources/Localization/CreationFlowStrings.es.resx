@@ -1317,4 +1317,16 @@
   <data name="Spells.Summary.1e1e488d-d727-43f8-900d-5c171c320d1d" xml:space="preserve"><value>Crea una pared translúcida; pasan gases.</value></data>
   <data name="Spells.Summary.d7d6bbf6-6855-47ce-9865-5a01db507d71" xml:space="preserve"><value>Arremolina objetos, golpeando objetivos cercanos.</value></data>
   <data name="Spells.Summary.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>Oscurece una zona.</value></data>
+  <!-- Street Grimoire Health effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.a5096a06-4dee-40f6-879b-b88616cdb728" xml:space="preserve"><value>Despierta temporalmente; recuperación del aturdimiento más lenta.</value></data>
+  <data name="Spells.Summary.f7ad9877-1f67-40a0-9813-ba53db664833" xml:space="preserve"><value>Otorga ambidestreza temporal.</value></data>
+  <data name="Spells.Summary.ff90355c-5eba-4a35-8bf9-66afff9075ad" xml:space="preserve"><value>Alivia adicción, salvo a focos; sin curarla.</value></data>
+  <data name="Spells.Summary.fd407eeb-103e-4bef-a719-1098d8387536" xml:space="preserve"><value>Alivia una alergia sin curarla.</value></data>
+  <data name="Spells.Summary.e0ea86bc-06df-4edc-bee1-03b6a2733675" xml:space="preserve"><value>Suprime fatiga por sueño; uso prolongado arriesga adicción.</value></data>
+  <data name="Spells.Summary.3c2d97b8-4761-4e5a-ba61-ff4b7a403ead" xml:space="preserve"><value>Reduce Iniciativa, no sus dados.</value></data>
+  <data name="Spells.Summary.a547f08e-0822-4a1c-968a-a2d6c249572c" xml:space="preserve"><value>Debilita resistencia a drogas/toxinas.</value></data>
+  <data name="Spells.Summary.8c6ce834-d47a-40a6-9e4c-57a1030ce57e" xml:space="preserve"><value>Oculta hambre/sed, sin nutrir.</value></data>
+  <data name="Spells.Summary.b1347682-58ad-4684-a93a-3f7703f1b4bf" xml:space="preserve"><value>Fuerza Defensa Total; permite retirarse.</value></data>
+  <data name="Spells.Summary.80704822-953b-45c5-aa8e-77ca26e6cef7" xml:space="preserve"><value>Aumenta un límite Físico/Mental/Social.</value></data>
+  <data name="Spells.Summary.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>Reduce un límite Físico/Mental/Social.</value></data>
 </root>
