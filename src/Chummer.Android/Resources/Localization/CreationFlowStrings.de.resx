@@ -1346,4 +1346,27 @@
   <data name="Spells.Summary.b1347682-58ad-4684-a93a-3f7703f1b4bf" xml:space="preserve"><value>Erzwingt Volle Abwehr; Rückzug bleibt möglich.</value></data>
   <data name="Spells.Summary.80704822-953b-45c5-aa8e-77ca26e6cef7" xml:space="preserve"><value>Erhöht ein körperliches/geistiges/soziales Limit.</value></data>
   <data name="Spells.Summary.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>Senkt ein körperliches/geistiges/soziales Limit.</value></data>
+  <!-- Street Grimoire Combat effects; profiles and admission remain Core-owned. -->
+  <data name="Spells.Summary.45d775c9-d12f-4416-a45a-88922ec3c2fd" xml:space="preserve"><value>Zersetzt die gewählte Objektart.</value></data>
+  <data name="Spells.Summary.7a2101ff-6606-4b3e-b1c1-2f7ea74679dd" xml:space="preserve"><value>Zersetzt die gewählte Objektart.</value></data>
+  <data name="Spells.Summary.6b12c245-ab52-49df-93fe-670841cb9e3d" xml:space="preserve"><value>Zersetzt die gewählte Objektart.</value></data>
+  <data name="Spells.Summary.5c9218f6-bdb4-46a5-89ce-00b4adfe0429" xml:space="preserve"><value>Stört vorübergehend einen aktiven Fokus.</value></data>
+  <data name="Spells.Summary.a6f43dcf-c0cc-4da9-af25-1516f2564200" xml:space="preserve"><value>Greift einen bestimmten Freigeist an.</value></data>
+  <data name="Spells.Summary.51f04999-1173-43da-94b6-af3749cb3156" xml:space="preserve"><value>Beschädigt die gewählte Fahrzeugklasse.</value></data>
+  <data name="Spells.Summary.d3bf1bfc-e104-4b22-a1fe-0aae0ef0b35b" xml:space="preserve"><value>Verursacht Feuer- und Wasserschaden.</value></data>
+  <data name="Spells.Summary.577871f2-f294-4db9-94f0-5790d0576a4b" xml:space="preserve"><value>Verursacht Feuer- und Wasserschaden.</value></data>
+  <data name="Spells.Summary.ea47eaaf-80e4-4c89-a108-6d2fb3e376dd" xml:space="preserve"><value>Greift die gewählte Insektengeistart an.</value></data>
+  <data name="Spells.Summary.bba17f26-7b83-4904-a5fa-a21ef7cacaa7" xml:space="preserve"><value>Eissplitter verursachen Kälteschaden.</value></data>
+  <data name="Spells.Summary.2c2ad94e-3dd5-40e3-a4e0-74668dae1b48" xml:space="preserve"><value>Verletzende Eissplitter; rutschiger Boden.</value></data>
+  <data name="Spells.Summary.894e4bea-883e-421b-8a6f-6ca61274cca3" xml:space="preserve"><value>Trifft den gewählten Metatyp/die Spezies.</value></data>
+  <data name="Spells.Summary.50f1bfce-a64d-4fac-b25d-d870e7ff312f" xml:space="preserve"><value>Trifft den gewählten Metatyp/die Spezies.</value></data>
+  <data name="Spells.Summary.06d5a10b-b353-44bc-936a-4d6c08ebeaf8" xml:space="preserve"><value>Trifft den gewählten Metatyp/die Spezies.</value></data>
+  <data name="Spells.Summary.f883ce3d-a3a9-4021-b4f3-7812d6a5f7f1" xml:space="preserve"><value>Beschädigt die gewählte Objektart; keine Fahrzeuge.</value></data>
+  <data name="Spells.Summary.f7494736-bf1f-4d2f-a137-6f43a0248d36" xml:space="preserve"><value>Beschädigt die gewählte Objektart; keine Fahrzeuge.</value></data>
+  <data name="Spells.Summary.da0462d4-f068-449d-a3c3-4678dc0adade" xml:space="preserve"><value>Beschädigt die gewählte Objektart; keine Fahrzeuge.</value></data>
+  <data name="Spells.Summary.f20e3789-0333-4243-b31c-0dc07f1d8736" xml:space="preserve"><value>Trifft mit schädlicher Strahlung.</value></data>
+  <data name="Spells.Summary.793736ac-c4a4-408c-824e-6cc5689622a3" xml:space="preserve"><value>Trifft mit schädlicher Strahlung.</value></data>
+  <data name="Spells.Summary.e0b3608a-cf54-4a1d-a99a-a4cd513c5e8a" xml:space="preserve"><value>Greift mit giftigen Chemikalien an.</value></data>
+  <data name="Spells.Summary.7a6579fa-4eda-47e4-96d2-59f4e1f9f567" xml:space="preserve"><value>Greift mit giftigen Chemikalien an.</value></data>
+  <data name="Spells.Summary.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>Greift Manabarrieren an.</value></data>
 </root>

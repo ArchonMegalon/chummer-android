@@ -1866,4 +1866,49 @@
   <data name="Spells.SummarySource.80704822-953b-45c5-aa8e-77ca26e6cef7" xml:space="preserve"><value>7CF2671EF117E23CBF2F05AA9B81100F787F068DA3BE3AD0485D7F3977F85870</value></data>
   <data name="Spells.Summary.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>Lowers one Physical/Mental/Social limit.</value></data>
   <data name="Spells.SummarySource.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>E1507E43BEECA81AE1F49CA83B6723204BC72745F3B9B368DB57164B2D5FF752</value></data>
+  <!-- Street Grimoire Combat effects; profiles and admission remain Core-owned. -->
+  <data name="Spells.Summary.45d775c9-d12f-4416-a45a-88922ec3c2fd" xml:space="preserve"><value>Corrodes the chosen object type.</value></data>
+  <data name="Spells.SummarySource.45d775c9-d12f-4416-a45a-88922ec3c2fd" xml:space="preserve"><value>83E353091F222D87F02CADC496C7522900FFE2A18635C9F2737B3E1A0A5AB06B</value></data>
+  <data name="Spells.Summary.7a2101ff-6606-4b3e-b1c1-2f7ea74679dd" xml:space="preserve"><value>Corrodes the chosen object type.</value></data>
+  <data name="Spells.SummarySource.7a2101ff-6606-4b3e-b1c1-2f7ea74679dd" xml:space="preserve"><value>869F099CBB717DB99A2494C4CE6296065A31F4EA922B3D3D53B7C7C40FE8882A</value></data>
+  <data name="Spells.Summary.6b12c245-ab52-49df-93fe-670841cb9e3d" xml:space="preserve"><value>Corrodes the chosen object type.</value></data>
+  <data name="Spells.SummarySource.6b12c245-ab52-49df-93fe-670841cb9e3d" xml:space="preserve"><value>F73276AB612E50748D5CDFEBCA90E5DDBEC1B6D3B3ACFB0B0A677660CBB97044</value></data>
+  <data name="Spells.Summary.5c9218f6-bdb4-46a5-89ce-00b4adfe0429" xml:space="preserve"><value>Temporarily disrupts an active focus.</value></data>
+  <data name="Spells.SummarySource.5c9218f6-bdb4-46a5-89ce-00b4adfe0429" xml:space="preserve"><value>437311185262EC7196D716B0C300A5B02AC82F10A26F8392927DC7DDD367CF6D</value></data>
+  <data name="Spells.Summary.a6f43dcf-c0cc-4da9-af25-1516f2564200" xml:space="preserve"><value>Attacks one designated free spirit.</value></data>
+  <data name="Spells.SummarySource.a6f43dcf-c0cc-4da9-af25-1516f2564200" xml:space="preserve"><value>0B600E7C9A369E8BA737FD11B09588BBE158D659E66A67C2AC2670A568ED197F</value></data>
+  <data name="Spells.Summary.51f04999-1173-43da-94b6-af3749cb3156" xml:space="preserve"><value>Damages the chosen vehicle class.</value></data>
+  <data name="Spells.SummarySource.51f04999-1173-43da-94b6-af3749cb3156" xml:space="preserve"><value>795E0774B3FCABC84E1FF2E4BBFD198E42727ED1D672E2A7829B27AA599FADDE</value></data>
+  <data name="Spells.Summary.d3bf1bfc-e104-4b22-a1fe-0aae0ef0b35b" xml:space="preserve"><value>Combines fire and water damage.</value></data>
+  <data name="Spells.SummarySource.d3bf1bfc-e104-4b22-a1fe-0aae0ef0b35b" xml:space="preserve"><value>0A2A14C1ECD5DC87B3F91A23FD424F70F0213513F5983BAC90A5A5F74C5E7717</value></data>
+  <data name="Spells.Summary.577871f2-f294-4db9-94f0-5790d0576a4b" xml:space="preserve"><value>Combines fire and water damage.</value></data>
+  <data name="Spells.SummarySource.577871f2-f294-4db9-94f0-5790d0576a4b" xml:space="preserve"><value>BB01DF471C6B0BB77FE359DE4A96458C644B91C18235B87588ED59F38E517DB0</value></data>
+  <data name="Spells.Summary.ea47eaaf-80e4-4c89-a108-6d2fb3e376dd" xml:space="preserve"><value>Attacks the chosen insect-spirit type.</value></data>
+  <data name="Spells.SummarySource.ea47eaaf-80e4-4c89-a108-6d2fb3e376dd" xml:space="preserve"><value>F166B54E633403FA570EB48CDEF582FF715E3AA79852CE3F16B673D6F322524B</value></data>
+  <data name="Spells.Summary.bba17f26-7b83-4904-a5fa-a21ef7cacaa7" xml:space="preserve"><value>Ice shards inflict cold damage.</value></data>
+  <data name="Spells.SummarySource.bba17f26-7b83-4904-a5fa-a21ef7cacaa7" xml:space="preserve"><value>F7F691FA4F56B2478CB5F304FC69CE9CE471B4E984C0E7CAB85437E096ADAD8D</value></data>
+  <data name="Spells.Summary.2c2ad94e-3dd5-40e3-a4e0-74668dae1b48" xml:space="preserve"><value>Damaging ice shards; slippery ground.</value></data>
+  <data name="Spells.SummarySource.2c2ad94e-3dd5-40e3-a4e0-74668dae1b48" xml:space="preserve"><value>4D072CD024327CA5D58F80807DFDFB333283F5F86728A5463BD2FE0E9ADDFC9C</value></data>
+  <data name="Spells.Summary.894e4bea-883e-421b-8a6f-6ca61274cca3" xml:space="preserve"><value>Targets the chosen metatype/species.</value></data>
+  <data name="Spells.SummarySource.894e4bea-883e-421b-8a6f-6ca61274cca3" xml:space="preserve"><value>3C9F478C393E0DFA1039651292F25ACF180A0649182411B11787A0DED6B55991</value></data>
+  <data name="Spells.Summary.50f1bfce-a64d-4fac-b25d-d870e7ff312f" xml:space="preserve"><value>Targets the chosen metatype/species.</value></data>
+  <data name="Spells.SummarySource.50f1bfce-a64d-4fac-b25d-d870e7ff312f" xml:space="preserve"><value>E788D63BF9A69AB7BC282312316FF162EF3C2DDEF7FCDC0BEA3C7B8818206C59</value></data>
+  <data name="Spells.Summary.06d5a10b-b353-44bc-936a-4d6c08ebeaf8" xml:space="preserve"><value>Targets the chosen metatype/species.</value></data>
+  <data name="Spells.SummarySource.06d5a10b-b353-44bc-936a-4d6c08ebeaf8" xml:space="preserve"><value>6FE2E669D5150B9D798DDF8DDEA10FFD645A370A01A196C44C24F466E496A166</value></data>
+  <data name="Spells.Summary.f883ce3d-a3a9-4021-b4f3-7812d6a5f7f1" xml:space="preserve"><value>Damages the chosen object type; excludes vehicles.</value></data>
+  <data name="Spells.SummarySource.f883ce3d-a3a9-4021-b4f3-7812d6a5f7f1" xml:space="preserve"><value>5A1EE9D7F2105A3A170B577B3BFD01B137849AE6D614D918433D534477CFDC69</value></data>
+  <data name="Spells.Summary.f7494736-bf1f-4d2f-a137-6f43a0248d36" xml:space="preserve"><value>Damages the chosen object type; excludes vehicles.</value></data>
+  <data name="Spells.SummarySource.f7494736-bf1f-4d2f-a137-6f43a0248d36" xml:space="preserve"><value>3AE9CC0BEA119B63108284E4CC33EC39096D83CC73A8FEC97734C5266CE8B80B</value></data>
+  <data name="Spells.Summary.da0462d4-f068-449d-a3c3-4678dc0adade" xml:space="preserve"><value>Damages the chosen object type; excludes vehicles.</value></data>
+  <data name="Spells.SummarySource.da0462d4-f068-449d-a3c3-4678dc0adade" xml:space="preserve"><value>95637864044D82D9E39B41275847F4C96D21678723EA90ED723AEA4AAAC0F889</value></data>
+  <data name="Spells.Summary.f20e3789-0333-4243-b31c-0dc07f1d8736" xml:space="preserve"><value>Blasts with harmful radiation.</value></data>
+  <data name="Spells.SummarySource.f20e3789-0333-4243-b31c-0dc07f1d8736" xml:space="preserve"><value>E4021C2AADDBD139B97DAD849BCFA5FB4607F2FC52426D4832A56F87400449CD</value></data>
+  <data name="Spells.Summary.793736ac-c4a4-408c-824e-6cc5689622a3" xml:space="preserve"><value>Blasts with harmful radiation.</value></data>
+  <data name="Spells.SummarySource.793736ac-c4a4-408c-824e-6cc5689622a3" xml:space="preserve"><value>69D8EEC2824E15C2C5EC04EA20133FCE66C1CA56A59CFD13B732D2F9726514D4</value></data>
+  <data name="Spells.Summary.e0b3608a-cf54-4a1d-a99a-a4cd513c5e8a" xml:space="preserve"><value>Attacks with toxic chemicals.</value></data>
+  <data name="Spells.SummarySource.e0b3608a-cf54-4a1d-a99a-a4cd513c5e8a" xml:space="preserve"><value>8EA69387C74D703692BD1B3D3E487A0E90D4A2286577FAE5D053B3303FB33D7D</value></data>
+  <data name="Spells.Summary.7a6579fa-4eda-47e4-96d2-59f4e1f9f567" xml:space="preserve"><value>Attacks with toxic chemicals.</value></data>
+  <data name="Spells.SummarySource.7a6579fa-4eda-47e4-96d2-59f4e1f9f567" xml:space="preserve"><value>B9FC40406EA88753D52E9F7053AAFC2F76C801BDF975B06C8EAF0548D9C77D5D</value></data>
+  <data name="Spells.Summary.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>Attacks mana barriers.</value></data>
+  <data name="Spells.SummarySource.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>64B9D76B47A3936DF291725EE7BC8CEFB5ADB0131988A43442B7F65DFFC57452</value></data>
 </root>
