@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 32, $"Expected 32 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 50, $"Expected 50 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -74,6 +74,32 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
                         "A core combat spell still has only a numeric profile: " + spell.Name + "/" + locale);
                 }
+                var coreDetection = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Detection").ToArray();
+                Require(coreDetection.Length == 18, "Expected the complete SR5 core detection catalog.");
+                foreach (var spell in coreDetection)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && summary.Contains(CreationFlowStrings.Get("Spells.Detection.Touch", "missing"))
+                        && !summary.Contains(CreationFlowStrings.Get("Spells.Range.T", "missing")),
+                        "Detection help must explain the effect and distinguish casting from sensing: " + spell.Name + "/" + locale);
+                }
+                foreach (string name in new[] { "Detect Enemies", "Detect Life", "Detect [Life Form]", "Detect Magic" })
+                {
+                    string normal = CreationSpellInfo.Summary(coreDetection.Single(spell => spell.Name == name));
+                    string extended = CreationSpellInfo.Summary(coreDetection.Single(spell => spell.Name == name + ", Extended"));
+                    string area = CreationFlowStrings.Get("Spells.Sensing.Area", "missing");
+                    string extendedArea = CreationFlowStrings.Get("Spells.Sensing.Extended Area", "missing");
+                    Require(normal.Contains(area) && !normal.Contains(extendedArea)
+                        && extended.Contains(extendedArea) && !extended.Contains(area),
+                        "Normal and extended senses need distinct source-derived profiles: " + name + "/" + locale);
+                }
+                Require(CreationSpellInfo.Summary(coreDetection.Single(spell => spell.Name == "Mind Probe"))
+                        .Contains(CreationFlowStrings.Get("Spells.Sensing.Directional", "missing"))
+                    && CreationSpellInfo.Summary(coreDetection.Single(spell => spell.Name == "Mindlink"))
+                        .Contains(CreationFlowStrings.Get("Spells.Sensing.Psychic", "missing")),
+                    "Directional and psychic spells must retain their actual sensing descriptors.");
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -103,6 +129,24 @@ internal static class CreationMagicNativeRuntimeTests
                 && knockout.Contains("Requires touch.") && stunball.Contains("Area within line of sight")
                 && !knockout.Contains("Physical damage") && !stunball.Contains("Physical damage"),
                 "Shared effect prose must preserve each spell's actual range and damage type.");
+            var detection = authority.Spells.Single(spell => spell.Name == "Detect Enemies, Extended");
+            foreach (string descriptor in new[] { "Active, Area", "Active, Directional", "Active, Unknown", string.Empty })
+            {
+                var xml = System.Xml.Linq.XElement.Parse(detection.CanonicalSourceXml);
+                xml.Element("descriptor")!.Value = descriptor;
+                string changed = xml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+                string summary = CreationSpellInfo.Summary(detection with { CanonicalSourceXml = changed,
+                    CanonicalSourceXmlDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8(changed) });
+                Require(summary.Contains("Definition changed;") && !summary.Contains("Senses hostile intentions.")
+                    && !summary.Contains("Sensing: extended area.")
+                    && (summary.Contains("Sensing: surrounding area.") == (descriptor == "Active, Area"))
+                    && (summary.Contains("Sensing: directional.") == (descriptor == "Active, Directional")),
+                    "Custom detection sensing must follow the accepted descriptor, never the name or stale help.");
+                if (descriptor is "Active, Unknown" or "")
+                    Require(!summary.Contains("Sensing:"), "Unknown/missing detection descriptors invented a sense.");
+            }
+            Require(heal.Contains("Requires touch.") && !heal.Contains("separate sensing range"),
+                "Detection wording leaked into an ordinary touch-range health spell.");
             Require(JsonSerializer.Serialize(authority) == before, "Reading spell help mutated the rules catalog.");
         }
         finally { System.Globalization.CultureInfo.CurrentUICulture = previous; }

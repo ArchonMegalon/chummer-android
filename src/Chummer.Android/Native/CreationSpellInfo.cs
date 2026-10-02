@@ -50,7 +50,18 @@ internal static class CreationSpellInfo
             }
             // Catalog zero is a non-damaging spell, not a useful damage rule.
             if (Value("damage") != "0") Add("Damage", Value("damage"));
-            Add("Range", Value("range"));
+            if (Value("category") == "Detection" && Value("range") == "T")
+                parts.Add(Text("Detection.Touch", "Touch casting; separate sensing range."));
+            else
+                Add("Range", Value("range"));
+            if (Value("category") == "Detection")
+            {
+                // Sensing mode is a source descriptor, not the spell's casting range.
+                // Never infer it from a name (including a custom spell named Extended).
+                foreach (string descriptor in Value("descriptor").Split(',', StringSplitOptions.TrimEntries))
+                    if (descriptor is "Area" or "Extended Area" or "Directional" or "Psychic")
+                        Add("Sensing", descriptor);
+            }
             Add("Duration", Value("duration"));
             Add("Type", Value("type"));
             string drain = Value("dv");
