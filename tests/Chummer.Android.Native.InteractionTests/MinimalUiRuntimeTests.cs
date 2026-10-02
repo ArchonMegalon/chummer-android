@@ -44,7 +44,19 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 259, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 274, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Adrenaline Surge", "Common Sense", "Daredevil",
+                    "Digital Doppelganger", "Disgraced", "Night Vision", "Perfect Time", "Poor Link",
+                    "Privileged Family Name", "Solid Rep", "Legendary Rep", "Speed Reading",
+                    "Spike Resistance", "Spirit Whisperer", "Steely Eyed Wheelman" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Run Faster benefits need translated, definition-bound explanations, not empty bonus nodes or prompts: " + name);
+                }
                 foreach (var quality in catalog.Where(quality => quality.Element("source")?.Value == "SR5"))
                 {
                     string name = quality.Element("name")!.Value;
@@ -207,6 +219,37 @@ internal static partial class AfterRunAuthorityHarness
                 "Moral restrictions and neurological aftereffects need actual consequences beyond their selection prompt or reputation.");
             Require(Effect("Catlike").Contains("Sneaking") && Effect("Catlike").Contains("Bonus: 2"),
                 "Specific-skill modifiers must be shown, not silently replaced by generic copy.");
+            Require(Effect("Adrenaline Surge").Contains("first Initiative Pass of a new combat")
+                && Effect("Adrenaline Surge").Contains("Being surprised still prevents")
+                && Effect("Common Sense").Contains("Edge rating in warnings per session")
+                && Effect("Daredevil").Contains("recover 2 points instead of 1"),
+                "Initiative priority must not remove surprise, warnings need their session cap, and recovered Edge is not maximum Edge.");
+            Require(Effect("Digital Doppelganger").Contains("fake SIN rated at least 4")
+                && Effect("Digital Doppelganger").Contains("raising the threshold")
+                && Effect("Digital Doppelganger").Contains("Other identities are not protected")
+                && Effect("Disgraced").Contains("2 dice to Intimidation against criminals")
+                && Effect("Disgraced").Contains("prejudiced attitude toward you"),
+                "Identity-scoped searches and intimidation benefits must retain their targets and social downside.");
+            Require(Effect("Night Vision").Contains("moderate glare on overcast days")
+                && Effect("Night Vision").Contains("without a Karma refund")
+                && Effect("Perfect Time").Contains("Free Action each Action Phase")
+                && Effect("Perfect Time").Contains("not a Simple or Complex Action"),
+                "Night Vision needs its glare/loss drawbacks, and Perfect Time must not grant a full attack action.");
+            Require(Effect("Poor Link").Contains("Both effects apply to friendly rituals too")
+                && Effect("Privileged Family Name").Contains("Minor local NPCs lose 2 dice")
+                && Effect("Privileged Family Name").Contains("national or full corporate SIN")
+                && Effect("Solid Rep").Contains("improves by 1")
+                && Effect("Legendary Rep").Contains("improves by 2"),
+                "Ritual resistance and local reputation benefits must preserve their directions, identity requirements and distinct values.");
+            Require(Effect("Speed Reading").Contains("800 words in five seconds")
+                && Effect("Speed Reading").Contains("does not automatically memorize")
+                && Effect("Spike Resistance").Contains("Each level adds 1 die")
+                && Effect("Spike Resistance").Contains("up to 3 levels"),
+                "Reading speed must not become perfect recall, and biofeedback resistance is per level, not extra Matrix armor.");
+            Require(Effect("Spirit Whisperer").Contains("Spirits gain 1 extra die to resist your Summoning")
+                && Effect("Spirit Whisperer").Contains("the summoning itself still uses the declared Force")
+                && Effect("Steely Eyed Wheelman").Contains("by 1, never below 0"),
+                "The spirit's resistance bonus must not be given to its summoner, and reduced terrain penalties cannot become a bonus.");
             Require(Effect("Exceptional Attribute").Contains("Maximum change: 1")
                 && Effect("Exceptional Attribute").Contains("Except: Edge"),
                 "Nested attribute choice must retain its maximum and Edge exclusion.");
