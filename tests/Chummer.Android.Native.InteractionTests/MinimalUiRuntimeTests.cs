@@ -44,7 +44,38 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 401, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 406, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in new[] { (Name: "Deus Vult!", Numbers: ""),
+                    (Name: "Code of Honor: Avenging Angel", Numbers: "1,−1,24"),
+                    (Name: "Faceless", Numbers: "−2"),
+                    (Name: "Illness", Numbers: "3,2,−1,1000,−2,500,−3,100,12"),
+                    (Name: "Pregnant", Numbers: "−1,1,1,1,−1,9") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Codes and conditional drawbacks need translated inline explanations: " + rule.Name);
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Translation changed a conditional drawback's modifier, interval or cost: " + rule.Name);
+                }
+                var conditionScope = locale switch
+                {
+                    "de-AT" => (Faith: "nächsten Kampf", Trust: "vertrauten", Illness: "Spielleitung kann",
+                        Pregnancy: "Trimesterfolgen summieren sich"),
+                    "es-MX" => (Faith: "siguiente combate", Trust: "confianza", Illness: "DJ puede",
+                        Pregnancy: "Efectos acumulativos"),
+                    _ => (Faith: "next combat", Trust: "trusted", Illness: "GM may",
+                        Pregnancy: "Cumulative trimester effects")
+                };
+                foreach (var rule in new[] { (Name: "Deus Vult!", Scope: conditionScope.Faith),
+                    (Name: "Faceless", Scope: conditionScope.Trust), (Name: "Illness", Scope: conditionScope.Illness),
+                    (Name: "Pregnant", Scope: conditionScope.Pregnancy) })
+                    Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "")
+                        .Contains(rule.Scope, StringComparison.Ordinal),
+                        "A conditional quality lost its exception or limitation: " + rule.Name);
                 foreach (var rule in new[] { (Name: "Tattoo Magic", Numbers: "2"),
                     (Name: "Spirit Champion", Numbers: "5,+1,20,+1"), (Name: "Spirit Pariah", Numbers: "5,30,1"),
                     (Name: "Gifted Healer", Numbers: "+1"), (Name: "Aged", Numbers: "5,1,3"),
