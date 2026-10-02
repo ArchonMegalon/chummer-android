@@ -44,7 +44,40 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 368, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 374, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Astral Hazing", "Berserker", "Bioluminescence", "Cephalopod Skull",
+                    "Cold-Blooded", "Symbiosis", "Adiposis", "Neoteny", "Slow Healer", "Stubby Arms" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Conditional metagenic effects need translated, definition-bound explanations: " + name);
+                }
+                foreach (var rule in new[] { (Name: "Astral Hazing", Numbers: "3,1,4"),
+                    (Name: "Berserker", Numbers: "3,1,6,+1,−1,1"), (Name: "Bioluminescence", Numbers: "1,1"),
+                    (Name: "Cephalopod Skull", Numbers: "3"), (Name: "Cold-Blooded", Numbers: "30,−1,20,−3,10,−5,0,2"),
+                    (Name: "Symbiosis", Numbers: "100,3,−1,+1,+1"), (Name: "Adiposis", Numbers: "1,2,0.5,1"),
+                    (Name: "Neoteny", Numbers: "2,10"), (Name: "Slow Healer", Numbers: "2"),
+                    (Name: "Stubby Arms", Numbers: "1,1") })
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "");
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+(?:[.,]\d+)?")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", "").Replace(',', '.'))) == rule.Numbers,
+                        "Translation changed a conditional penalty, threshold, interval or movement rate: " + rule.Name);
+                }
+                var clarification = locale switch
+                {
+                    "de-AT" => (Astral: "Obergrenze ist unklar", Social: "Sozialmodifikator vor Ort unbestimmt"),
+                    "es-MX" => (Astral: "límite de expansión no está claro", Social: "Modificador Social local sin especificar"),
+                    _ => (Astral: "expansion cap is unclear", Social: "Local Social modifier unspecified")
+                };
+                Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Astral Hazing")), "")
+                    .Contains(clarification.Astral, StringComparison.Ordinal)
+                    && CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Symbiosis")), "")
+                    .Contains(clarification.Social, StringComparison.Ordinal),
+                    "Unresolved source values must stay explicit, not become invented numeric rules.");
                 foreach (string name in new[] { "Critter Spook", "Cyclopean Eye", "Deformity (Picasso)",
                     "Deformity (Quasimodo)", "Feathers", "Insectoid Features", "Mood Hair", "Nocturnal",
                     "Scales", "Scent Glands", "Striking Skin Pigmentation", "Third Eye", "Unusual Hair", "Vestigial Tail" })
@@ -856,15 +889,18 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Raptor Beak").Contains("attack details are not yet described here")
                 && Effect("Raptor Beak").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Digestion bonuses must retain their cost/resistance differences, and weapon references stay incomplete.");
-            Require(Effect("Adiposis").Contains("replacement multipliers of 1 for walking and 2 for running")
-                && Effect("Adiposis").Contains("0.5 meters per hit")
-                && Effect("Adiposis").Contains("Physical Active skill tests also lose one die")
+            Require(Effect("Adiposis").Contains("walk at Agility × 1, run at Agility × 2")
+                && Effect("Adiposis").Contains("0.5 metres per hit")
+                && Effect("Adiposis").Contains("Physical activities, including combat, lose 1 die")
+                && Effect("Adiposis").Contains("double fatigue damage, with half the time")
                 && Effect("Thorns").Contains("unarmed damage by 1, but Physical Active skill tests lose one die"),
                 "Replacement movement rates and damage bonuses must not hide their skill penalties.");
             Require(Effect("Deformity (Quasimodo)").Contains("except Perception")
-                && Effect("Neoteny").Contains("Physical condition monitor has two fewer boxes")
-                && Effect("Neoteny").Contains("lifestyle costs increase by 10%")
-                && Effect("Slow Healer").Contains("do not add both penalties to one recovery test"),
+                && Effect("Neoteny").Contains("Physical condition monitor: 2 fewer boxes; Stun is unchanged")
+                && Effect("Neoteny").Contains("increase lifestyle costs by 10%")
+                && Effect("Slow Healer").Contains("including magical healing")
+                && Effect("Slow Healer").Contains("do not combine Physical and Stun penalties")
+                && Effect("Stubby Arms").Contains("Non-Combat tests requiring arm or hand dexterity lose 1 die"),
                 "Physical drawbacks must preserve exclusions, monitor type and alternative healing rolls.");
             Require(Effect("Social Appearance Anxiety").Contains("one die per quality level, up to three levels")
                 && Effect("Social Appearance Anxiety").Contains("When you are not looking your best")
