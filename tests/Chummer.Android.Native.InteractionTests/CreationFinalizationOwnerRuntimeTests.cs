@@ -943,6 +943,7 @@ internal static partial class AfterRunAuthorityHarness
             .Concat(options.Where(item => item.SourceBook == "SG" && item.Category == "Illusion"))
             .Concat(supplements)
             .Concat(allOptions.Where(item => item.SourceBook == "SG" && item.Category == "Manipulation"))
+            .Concat(allOptions.Where(item => item.SourceBook == "SSP" && item.Category != "Rituals"))
             .Distinct())
         {
             Search(spell.Name);
