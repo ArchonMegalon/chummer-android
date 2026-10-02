@@ -118,7 +118,55 @@ internal static partial class AfterRunAuthorityHarness
             ["amenaza a aliados", "mejora atributos físicos", "empeora los mentales", "bomba de adrenalina implantada"]),
         ("Pacifist II", ["all violence", "mental performance", "lasting consequences", "Believing you killed"],
             ["jede Gewalt", "geistige Leistungen", "dauerhaft", "Glaubst du"],
-            ["toda violencia", "rendimiento mental", "duradera", "Creer que has matado"])
+            ["toda violencia", "rendimiento mental", "duradera", "Creer que has matado"]),
+        ("Insomnia (Basic)", ["can slow Stun recovery", "delay Edge refresh", "normal recovery"],
+            ["Betäubungsschaden verlangsamen", "Edge-Regeneration verzögern", "normale Erholung"],
+            ["puede retrasar", "Aturdimiento y de Edge", "normalmente"]),
+        ("Insomnia (Full)", ["Failed rest blocks Stun recovery", "delays Edge refresh", "normal recovery"],
+            ["verhindert die Erholung von Betäubungsschaden", "Edge-Regeneration", "normale Erholung"],
+            ["falla el descanso", "no recuperas Aturdimiento", "Edge se retrasa", "normalmente"]),
+        ("Amnesia (Surface Loss)", ["retain practical abilities", "GM holds", "Knowledge skills", "cost Karma"],
+            ["praktische Fähigkeiten erhalten", "Wissensfertigkeiten", "Spielleitung", "kostet Karma"],
+            ["Conservas capacidades prácticas", "DJ guarda", "conocimiento", "cuesta Karma"]),
+        ("Amnesia (Neural Deletion)", ["GM controls", "hidden character details", "story progress", "Karma buyoff"],
+            ["Spielleitung", "verborgene Charakterdetails", "erzählerischen Fortschritt", "Abbau mit Karma"],
+            ["DJ controla", "detalles ocultos", "progreso narrativo", "desventaja con Karma"]),
+        ("Flashbacks I", ["roughly every other run", "temporary incapacitation", "unless resisted"],
+            ["ungefähr bei jedem zweiten Run", "vorübergehend handlungsunfähig", "nicht widerstehst"],
+            ["aproximadamente cada dos trabajos", "no los resistes", "incapacitan temporalmente"]),
+        ("Flashbacks II", ["at least once per session", "temporary incapacitation", "unless resisted"],
+            ["mindestens einmal je Spielsitzung", "vorübergehend handlungsunfähig", "nicht widerstehst"],
+            ["al menos una vez por sesión", "no los resistes", "incapacitan temporalmente"]),
+        ("Phobia (Uncommon, Mild)", ["Exposure", "rare trigger", "mildly", "all actions"],
+            ["seltener Auslöser", "alle Handlungen leicht", "ausgesetzt"],
+            ["Ante", "desencadenante raro", "levemente", "todas las acciones"]),
+        ("Phobia (Common, Mild)", ["Exposure", "frequent trigger", "mildly", "all actions"],
+            ["häufiger Auslöser", "alle Handlungen leicht", "ausgesetzt"],
+            ["Ante", "desencadenante frecuente", "levemente", "todas las acciones"]),
+        ("Phobia (Uncommon, Moderate)", ["rare trigger", "strongly", "all actions", "flee unless you resist"],
+            ["seltener Auslöser", "alle Handlungen deutlich", "Selbstbeherrschung", "Fluchtimpuls"],
+            ["desencadenante raro", "bastante", "todas las acciones", "resistir el miedo evita la huida"]),
+        ("Phobia (Common, Moderate)", ["frequent trigger", "strongly", "all actions", "flee unless you resist"],
+            ["häufiger Auslöser", "alle Handlungen deutlich", "Selbstbeherrschung", "Fluchtimpuls"],
+            ["desencadenante frecuente", "bastante", "todas las acciones", "resistir el miedo evita la huida"]),
+        ("Phobia (Uncommon, Severe)", ["rare trigger", "severely", "all actions", "failed resistance", "sustained flight"],
+            ["seltener Auslöser", "alle Handlungen massiv", "scheitert", "anhaltender Flucht"],
+            ["desencadenante raro", "gravemente", "todas las acciones", "no resistes", "huir durante un tiempo"]),
+        ("Phobia (Common, Severe)", ["frequent trigger", "severely", "all actions", "failed resistance", "sustained flight"],
+            ["häufiger Auslöser", "alle Handlungen massiv", "scheitert", "anhaltender Flucht"],
+            ["desencadenante frecuente", "gravemente", "todas las acciones", "no resistes", "huir durante un tiempo"]),
+        ("Poor Self Control (Braggart)", ["struggle to stop boasting", "prove exaggerated achievements"],
+            ["Prahlerei schwer unterdrücken", "übertriebenen Erfolge beweisen"],
+            ["Te cuesta dejar de presumir", "demostrar tus logros exagerados"]),
+        ("Poor Self Control (Thrill Seeker)", ["riskiest choice", "briefly", "Initiative score", "not your Initiative dice"],
+            ["größte Risiko", "kurz deinen Initiativewert", "nicht deine Initiativewürfel"],
+            ["opción más peligrosa", "brevemente", "puntuación de Iniciativa", "no tus dados"]),
+        ("Poor Self Control (Vindictive)", ["delaying retaliation", "does not remove", "harsher revenge"],
+            ["aufgeschobene Vergeltung", "überzogener Rache nicht"],
+            ["posponer la represalia", "no elimina", "venganza desmedida"]),
+        ("Poor Self Control (Combat Monster)", ["retreat takes self-control", "opponents remain able", "losing"],
+            ["Gegner noch kämpfen", "Rückzug schwer", "Niederlage"],
+            ["Retirarte exige autocontrol", "rivales capaces de luchar", "perdiendo"])
     ];
 
     private static readonly string[] FreeInsectSpiritSpecies =
@@ -682,17 +730,20 @@ internal static partial class AfterRunAuthorityHarness
                         && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
                         "Fear and impulse variants need translated, definition-bound consequences: " + name);
                 }
-                foreach (string frequency in new[] { "Common", "Uncommon" })
+                var frequencyWords = locale switch
                 {
-                    foreach (var grade in new[] { (Name: "Mild", Numbers: "1"),
-                        (Name: "Moderate", Numbers: "3,2"), (Name: "Severe", Numbers: "6,5,5") })
-                    {
-                        var quality = catalog.Single(q => q.Element("name")!.Value == $"Phobia ({frequency}, {grade.Name})");
-                        string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
-                        string numbers = string.Join(",", Regex.Matches(summary, @"\d+").Select(match => match.Value));
-                        Require(numbers == grade.Numbers,
-                            "Frequency must not change severity or lose the translated fear penalty, threshold or duration.");
-                    }
+                    "de-AT" => (Common: "häufiger", Uncommon: "seltener"),
+                    "es-MX" => (Common: "frecuente", Uncommon: "raro"),
+                    _ => (Common: "frequent", Uncommon: "rare")
+                };
+                foreach (string grade in new[] { "Mild", "Moderate", "Severe" })
+                {
+                    string common = CreationFlowStrings.Get(SummaryKey(catalog.Single(
+                        q => q.Element("name")!.Value == $"Phobia (Common, {grade})")), "");
+                    string uncommon = CreationFlowStrings.Get(SummaryKey(catalog.Single(
+                        q => q.Element("name")!.Value == $"Phobia (Uncommon, {grade})")), "");
+                    Require(common != uncommon && common.Replace(frequencyWords.Common, frequencyWords.Uncommon) == uncommon,
+                        "Changing trigger frequency must not change the severity of the described fear response.");
                 }
                 foreach (string name in new[] { "Albinism I", "Albinism II",
                     "Amnesia (Surface Loss)", "Amnesia (Neural Deletion)",
@@ -982,9 +1033,10 @@ internal static partial class AfterRunAuthorityHarness
                 "The spirit's resistance bonus must not be given to its summoner, and reduced terrain penalties cannot become a bonus.");
             Require(Effect("Albinism I").Contains("Cybereye-compatible")
                 && Effect("Albinism II").Contains("before other Karma spending")
-                && Effect("Amnesia (Surface Loss)").Contains("2 Karma and adds one rank")
-                && Effect("Amnesia (Neural Deletion)").Contains("GM-led play")
-                && Effect("Amnesia (Neural Deletion)").Contains("Karma buyoff and the GM's story goals"),
+                && Effect("Amnesia (Surface Loss)").Contains("retain practical abilities")
+                && Effect("Amnesia (Surface Loss)").Contains("Knowledge skills, which cost Karma")
+                && Effect("Amnesia (Neural Deletion)").Contains("GM controls")
+                && Effect("Amnesia (Neural Deletion)").Contains("story progress and a Karma buyoff"),
                 "Variant help must distinguish reduced symptoms and GM-mediated memory recovery without promising automatic app behavior.");
             foreach (var job in new[] { (Hours: 10, Pay: "1,000"), (Hours: 20, Pay: "2,500"), (Hours: 40, Pay: "5,000") })
                 Require(Effect($"Day Job ({job.Hours} hrs)").Contains($"{job.Hours} hours/week, ¥{job.Pay}/month")
@@ -1018,24 +1070,24 @@ internal static partial class AfterRunAuthorityHarness
                 string mild = Effect($"Phobia ({frequency}, Mild)");
                 string moderate = Effect($"Phobia ({frequency}, Moderate)");
                 string severe = Effect($"Phobia ({frequency}, Severe)");
-                Require(mild.Contains("While exposed") && mild.Contains("all actions lose 1 die")
-                    && !mild.Contains("Composure (") && moderate.Contains("while exposed")
-                    && moderate.Contains("all actions lose 3 dice") && moderate.Contains("Composure (2)")
-                    && severe.Contains("while exposed") && severe.Contains("all actions lose 6 dice")
-                    && severe.Contains("Composure (5)") && severe.Contains("at least 5 − hits Combat Turns"),
+                Require(mild.Contains("Exposure") && mild.Contains("mildly hinders all actions")
+                    && !mild.Contains("flee") && !mild.Contains("flight")
+                    && moderate.Contains("strongly hinders all actions") && moderate.Contains("flee unless you resist")
+                    && severe.Contains("severely hinders all actions")
+                    && severe.Contains("failed resistance forces sustained flight"),
                     "Fear penalties apply only in the trigger's presence; each grade has distinct resistance and flight behavior.");
                 Require(mild.Contains(frequency == "Common" ? "frequent trigger" : "rare trigger"),
                     "Phobia frequency must remain distinct from severity.");
             }
-            Require(Effect("Poor Self Control (Braggart)").Contains("Composure (3)")
-                && Effect("Poor Self Control (Thrill Seeker)").Contains("Composure (2)")
-                && Effect("Poor Self Control (Thrill Seeker)").Contains("+1 Initiative Score for 5 Combat Turns")
-                && Effect("Poor Self Control (Thrill Seeker)").Contains("not an extra die or +1 each turn")
-                && Effect("Poor Self Control (Vindictive)").Contains("Composure (2)")
-                && Effect("Poor Self Control (Vindictive)").Contains("still plan to settle the score later")
-                && Effect("Poor Self Control (Combat Monster)").Contains("Composure (3)")
-                && Effect("Poor Self Control (Combat Monster)").Contains("every opponent is incapacitated"),
-                "Impulse help must distinguish thresholds, retained grudges, withdrawal and a temporary initiative-score bonus.");
+            Require(Effect("Poor Self Control (Braggart)").Contains("struggle to stop boasting")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("riskiest choice")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("briefly improves your Initiative score")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("not your Initiative dice")
+                && Effect("Poor Self Control (Vindictive)").Contains("delaying retaliation does not remove")
+                && Effect("Poor Self Control (Vindictive)").Contains("harsher revenge")
+                && Effect("Poor Self Control (Combat Monster)").Contains("retreat takes self-control")
+                && Effect("Poor Self Control (Combat Monster)").Contains("opponents remain able to fight"),
+                "Impulse help must distinguish retained grudges, difficult withdrawal and a temporary initiative-score bonus.");
             Require(Effect("Asthma").Contains("twice as quickly")
                 && Effect("Asthma").Contains("Accumulating fatigue")
                 && Effect("Asthma").Contains("resistance to further exhaustion")
@@ -1064,11 +1116,11 @@ internal static partial class AfterRunAuthorityHarness
                 "Social glitches, conditional obsession benefits and lasting equipment loss need their actual consequences.");
             Require(Effect("Ex-Con").Contains("regular check-ins, police scrutiny")
                 && Effect("Ex-Con").Contains("restrictions on implants and contacts")
-                && Effect("Flashbacks I").Contains("about every other run")
-                && Effect("Flashbacks II").Contains("at least once each session")
+                && Effect("Flashbacks I").Contains("roughly every other run")
+                && Effect("Flashbacks II").Contains("at least once per session")
                 && new[] { "Flashbacks I", "Flashbacks II" }.All(name =>
-                    Effect(name).Contains("Composure (5)") && Effect(name).Contains("5 − hits Combat Turns")),
-                "Parole requires real obligations, and flashback grades change frequency rather than the same resistance test.");
+                    Effect(name).Contains("temporary incapacitation unless resisted")),
+                "Parole requires real obligations; flashback grades change frequency, not the shared temporary incapacity and resistance.");
             Require(Effect("Hobo with a Shotgun").Contains("every Mental attribute by 2")
                 && Effect("Hobo with a Shotgun").Contains("full day at Squatter or Street")
                 && Effect("Paraplegic").Contains("costlier living or vehicle adaptations")
@@ -1466,8 +1518,10 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Combat Paralysis").Contains("Surprise and composure")
                 && Effect("Combat Paralysis").Contains("under fire also suffer"),
                 "Combat Paralysis must retain opening-score, Surprise and Composure effects without halving all later Initiative.");
-            Require(Effect("Insomnia (Basic)").Contains("doubles each recovery interval")
-                && Effect("Insomnia (Full)").Contains("prevents any healing from that rest attempt")
+            Require(Effect("Insomnia (Basic)").Contains("can slow Stun recovery")
+                && Effect("Insomnia (Full)").Contains("Failed rest blocks Stun recovery")
+                && new[] { "Insomnia (Basic)", "Insomnia (Full)" }.All(name =>
+                    Effect(name).Contains("Edge refresh") && Effect(name).Contains("normal recovery"))
                 && Effect("Insomnia (Basic)") != Effect("Insomnia (Full)"),
                 "The two sleep-related drawbacks must distinguish slower recovery from a failed recovery attempt.");
             Require(Effect("Codeblock").Contains("one Matrix action that requires a test")
