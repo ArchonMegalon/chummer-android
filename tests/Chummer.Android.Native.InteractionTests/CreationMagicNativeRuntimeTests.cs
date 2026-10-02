@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 95, $"Expected 95 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 117, $"Expected 117 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -144,6 +144,14 @@ internal static class CreationMagicNativeRuntimeTests
                         && !summary.Contains("Damage: 0."),
                         "A Street Grimoire health spell lacks its source-bound touch effect: " + spell.Name + "/" + locale);
                 }
+                var grimoireCombat = authority.Spells.Where(spell => spell.SourceBook == "SG" && spell.Category == "Combat").ToArray();
+                Require(grimoireCombat.Length == 22, "Expected the complete Street Grimoire combat catalog.");
+                foreach (var spell in grimoireCombat)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
+                        "A Street Grimoire combat spell still has only its profile: " + spell.Name + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -184,6 +192,46 @@ internal static class CreationMagicNativeRuntimeTests
                 && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
                 "Attribute spell help must retain opposite effects and distinct costs.");
             string SpellHelp(string name) => CreationSpellInfo.Summary(authority.Spells.Single(spell => spell.Name == name));
+            foreach (var (touch, single, area) in new[] {
+                ("Corrode [Object]", "Melt [Object]", "Sludge [Object]"),
+                ("Ram [Object]", "Wreck [Object]", "Demolish [Object]"),
+                ("One Less [Metatype/Species]", "Slay [Metatype/Species]", "Slaughter [Metatype/Species]") })
+                Require(SpellHelp(touch).Contains("Requires touch.")
+                    && SpellHelp(single).Contains("Target within line of sight.")
+                    && SpellHelp(area).Contains("Area within line of sight."),
+                    "Specialized combat variants lost their exact targeting profiles: " + touch);
+            foreach (var (single, area) in new[] { ("Firewater", "Napalm"), ("Ice Spear", "Ice Storm"),
+                ("Radiation Beam", "Radiation Burst"), ("Pollutant Stream", "Pollutant Wave") })
+                Require(SpellHelp(single).Contains("Target within line of sight.")
+                    && SpellHelp(area).Contains("Area within line of sight.")
+                    && SpellHelp(single).Contains("Indirect magical attack.")
+                    && SpellHelp(area).Contains("Indirect magical attack."),
+                    "Elemental help changed the accepted single/area or indirect profile: " + single);
+            Require(SpellHelp("Corrode [Object]").Contains("Corrodes")
+                && SpellHelp("Corrode [Object]").Contains("Drain: F-5")
+                && SpellHelp("Melt [Object]").Contains("Drain: F-3")
+                && new[] { "Ram [Object]", "Wreck [Object]", "Demolish [Object]" }
+                    .All(name => SpellHelp(name).Contains("excludes vehicles"))
+                && SpellHelp("Destroy [Vehicle]").Contains("vehicle class")
+                && SpellHelp("Destroy [Vehicle]").Contains("Physical spell."),
+                "Object-specific effects must not replace the accepted object/vehicle profiles with another printing.");
+            Require(SpellHelp("Disrupt [Focus]").Contains("Temporarily")
+                && SpellHelp("Disrupt [Focus]").Contains("active focus")
+                && SpellHelp("Destroy [Free Spirit]").Contains("one designated")
+                && SpellHelp("Insecticide [Insect Spirit]").Contains("insect-spirit type")
+                && SpellHelp("Insecticide [Insect Spirit]").Contains("Mana spell.")
+                && SpellHelp("Insecticide [Insect Spirit]").Contains("Area within line of sight."),
+                "Focus disruption and spirit-specific attacks lost their restrictions or accepted profiles.");
+            Require(new[] { "Firewater", "Napalm" }.All(name => SpellHelp(name).Contains("fire and water"))
+                && SpellHelp("Napalm").Contains("Drain: F (F = Force).")
+                && SpellHelp("Ice Spear").Contains("cold damage")
+                && !SpellHelp("Ice Spear").Contains("slippery")
+                && SpellHelp("Ice Storm").Contains("slippery")
+                && SpellHelp("Ice Storm").Contains("Drain: F+1")
+                && SpellHelp("Slaughter [Metatype/Species]").Contains("Drain: F-2")
+                && SpellHelp("Shattershield").Contains("mana barriers")
+                && SpellHelp("Shattershield").Contains("Requires touch."),
+                "Combat explanations lost distinct elemental/barrier effects or replaced current Core values.");
             Require(SpellHelp("Awaken").Contains("temporarily") && SpellHelp("Awaken").Contains("afterward")
                 && SpellHelp("Awaken").Contains("Must be sustained.")
                 && SpellHelp("Alleviate Addiction").Contains("not Focus")
