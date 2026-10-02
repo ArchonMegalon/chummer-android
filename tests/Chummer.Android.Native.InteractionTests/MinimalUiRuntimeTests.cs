@@ -162,6 +162,33 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Biosonar", ["Ultrasonic pulses", "snapshots", "aiming and perception", "hearing improves", "sonic attacks hurt more"],
+            ["Ultraschallimpulse", "Momentaufnahmen", "Zielen und Wahrnehmen", "Gehör wird besser", "Schallangriffe", "mehr Schaden"],
+            ["pulsos ultrasónicos", "apuntar y percibir", "imágenes instantáneas", "mejora tu oído", "ataques sónicos", "más daño"]),
+        ("Frog Tongue", ["light objects", "cannot operate tools", "requires Natural Venom", "successful tongue attack"],
+            ["leichte Dinge", "keine Werkzeuge", "erfordert Natürliches Gift", "erfolgreichen Zungenangriff"],
+            ["objetos ligeros", "no maneja herramientas", "requiere Veneno Natural", "acertar un ataque"]),
+        ("Greasy Skin", ["Stress or exertion", "grapples", "mostly uncovered", "incompatible", "heavy body hair", "skin alterations"],
+            ["Stress oder Anstrengung", "überwiegend freier Haut", "Haltegriffe", "unvereinbar", "Behaarung", "Hautveränderungen"],
+            ["Estrés o esfuerzo", "agarres", "mayormente descubierta", "incompatible", "vello abundante", "alteraciones cutáneas"]),
+        ("Data Anomaly", ["Running silent", "harder to spot", "sprites", "not hidden"],
+            ["Schleichfahrt", "erschwert", "Sprites", "nicht verborgen"],
+            ["modo silencioso", "cuesta más detectar", "sprites", "no estuviera oculto"]),
+        ("Fade to Black", ["every mark on you", "attempt to hide", "same action", "partial removal does not"],
+            ["alle Marken auf dir", "derselben Handlung", "Verbergen versuchen", "verbleibenden Marken"],
+            ["todas las marcas sobre ti", "intentar Ocultarte", "misma acción", "no basta", "solo algunas"]),
+        ("Ninja Vanish", ["Edge", "Free Action", "an opponent's marks on you", "shared copies", "other opponents' marks remain"],
+            ["Edge", "Freien Handlung", "eines Gegners auf dir", "geteilten Kopien", "andere gegnerische Marken bleiben"],
+            ["Edge", "acción gratuita", "un rival sobre ti", "copias compartidas", "las demás permanecen"]),
+        ("Antipathy", ["opposed social tests", "harder", "not a penalty to every social action"],
+            ["vergleichende Sozialproben", "erschweren", "nicht pauschal"],
+            ["pruebas sociales enfrentadas", "dificulta", "no todas las acciones sociales"]),
+        ("Lightweight", ["higher Addiction Rating", "risk", "without automatically"],
+            ["höheren Suchtwert", "Suchtrisiko", "ohne", "automatisch"],
+            ["mayor nivel de adicción", "riesgo", "no te vuelves adicto automáticamente"]),
+        ("Lack of Focus", ["Repeated tests", "extended work", "over five minutes", "under a day", "escalating Composure", "failure forces breaks"],
+            ["Wiederholte oder ausgedehnte Proben", "über fünf Minuten", "unter einem Tag", "zunehmend erschwerte Selbstbeherrschung", "Misslingen erzwingt Pausen"],
+            ["repetidas o extendidas", "más de cinco minutos", "menos de un día", "Compostura progresivamente más difícil", "fallar fuerza pausas"]),
         ("Aware", ["Perceive astral", "no projection", "spellcasting, summoning, enchanting or adept powers"],
             ["Astralwahrnehmung", "weder Projektion", "Zauberei, Beschwörung, Verzauberung", "Adeptenkräfte"],
             ["percibir el espacio astral", "no proyectarse", "hechizos, invocar, encantar", "poderes de adepto"]),
@@ -959,7 +986,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 593, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 602, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -982,6 +1009,22 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
+                }
+                foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    Require(quality.Element("metagenic")?.Value == "True"
+                        && quality.Element("required")!.Element("oneof")!.Elements("quality")
+                            .Select(q => q.Value).SequenceEqual(new[] { "Changeling (Class I SURGE)",
+                                "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" }),
+                        "Sensory/morphology help must preserve its accepted SURGE prerequisite: " + name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("required")!.Remove();
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Source-bound SURGE help must not survive removal of its prerequisite: " + name);
                 }
                 foreach (var aptitude in new[] { (Name: "Aware", Skills: "Aware"),
                     (Name: "Explorer", Skills: "Explorer"), (Name: "Enchanter", Skills: "Enchanting") })

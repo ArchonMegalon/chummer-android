@@ -2866,4 +2866,22 @@
   <data name="Qualities.SummarySource.2f20c108-d724-4684-a642-d40ffe7c51e1" xml:space="preserve"><value>8F73D5257FE7995EA6E844D7B7D067A1C8EE5437D1ACF9F20967670C813CE75C</value></data>
   <data name="Qualities.Summary.a2484390-c4ea-4013-b007-4dc5d3a5c85b" xml:space="preserve"><value>Create magical items and perceive astral space; this aptitude grants no spellcasting, summoning, astral projection or adept powers.</value></data>
   <data name="Qualities.SummarySource.a2484390-c4ea-4013-b007-4dc5d3a5c85b" xml:space="preserve"><value>09329414573109BB3E359DCF0CC7E5F487731890927EBBFE81EC3C149A31B0F6</value></data>
+  <data name="Qualities.Summary.79c42549-0ebd-48f9-9e1d-1215ab07bd47" xml:space="preserve"><value>Ultrasonic pulses provide snapshots for aiming and perception; hearing improves, but sonic attacks hurt more.</value></data>
+  <data name="Qualities.SummarySource.79c42549-0ebd-48f9-9e1d-1215ab07bd47" xml:space="preserve"><value>084B30EA3DBE853BE5631D5F77435619FD4876EB6E2075C67CB3DDA23ABAEE5D</value></data>
+  <data name="Qualities.Summary.ef0e9191-c931-4d41-986f-ed1ad0092a65" xml:space="preserve"><value>Your tongue grabs light objects but cannot operate tools; applying poison requires Natural Venom and a successful tongue attack.</value></data>
+  <data name="Qualities.SummarySource.ef0e9191-c931-4d41-986f-ed1ad0092a65" xml:space="preserve"><value>2E19F352093FDA38D2E40527F24DE17C91C214E859982DEBF87C36E94B39F55B</value></data>
+  <data name="Qualities.Summary.3f96728d-9309-4335-9712-a568b61a8983" xml:space="preserve"><value>Stress or exertion makes skin slippery, hindering grapples when mostly uncovered; incompatible with heavy body hair or skin alterations.</value></data>
+  <data name="Qualities.SummarySource.3f96728d-9309-4335-9712-a568b61a8983" xml:space="preserve"><value>2AB6B40DCC7BBED8F133859A7A061E5BB528D6EC112B6E9322919DE5D24727CE</value></data>
+  <data name="Qualities.Summary.2e3e5050-c77b-4ad8-8f7a-eff1b94b64a0" xml:space="preserve"><value>Running silent makes your icon harder to spot, but sprites still see it as though it were not hidden.</value></data>
+  <data name="Qualities.SummarySource.2e3e5050-c77b-4ad8-8f7a-eff1b94b64a0" xml:space="preserve"><value>F04405EF196A96AF083FB58207FD15CC0E05A3B4E4ADC9A20E4E2456A9A9F527</value></data>
+  <data name="Qualities.Summary.72190f27-8bcf-48c4-bdbd-72bb91aa0dcf" xml:space="preserve"><value>Erasing every mark on you lets you attempt to hide within the same action; partial removal does not.</value></data>
+  <data name="Qualities.SummarySource.72190f27-8bcf-48c4-bdbd-72bb91aa0dcf" xml:space="preserve"><value>92F9669CCA831D478525FA87BF1A45312E5296707AD3232A6E8B15D40C42FE06</value></data>
+  <data name="Qualities.Summary.ffa26ef9-e2d3-47c2-8fb7-43ad27e85b62" xml:space="preserve"><value>Spend Edge and a Free Action to erase an opponent's marks on you, including shared copies; other opponents' marks remain.</value></data>
+  <data name="Qualities.SummarySource.ffa26ef9-e2d3-47c2-8fb7-43ad27e85b62" xml:space="preserve"><value>9CFF70801CB3936938286339D43CB99CDFBDA994117A82174DF5299A981E26B2</value></data>
+  <data name="Qualities.Summary.b9afa9de-39c0-4e49-8271-f76910352ec2" xml:space="preserve"><value>Difficulty understanding others makes opposed social tests harder; this is not a penalty to every social action.</value></data>
+  <data name="Qualities.SummarySource.b9afa9de-39c0-4e49-8271-f76910352ec2" xml:space="preserve"><value>C148F4F5A3E0786CF7558487953E7D31F05F741635D4EBA659EF92F5D24DF481</value></data>
+  <data name="Qualities.Summary.8e176d15-e646-4aed-824c-171c6bd9e4bc" xml:space="preserve"><value>Substances have a higher Addiction Rating for you, increasing addiction risk without automatically creating a dependency.</value></data>
+  <data name="Qualities.SummarySource.8e176d15-e646-4aed-824c-171c6bd9e4bc" xml:space="preserve"><value>934A0D5BF7BAA4BD5EA23ADC08202520C4AEE5D59FF0BDF012964A3E3B25F2F1</value></data>
+  <data name="Qualities.Summary.06078d89-0f12-4f57-99d0-e088847dec7e" xml:space="preserve"><value>Repeated tests and extended work (intervals over five minutes, under a day) require escalating Composure checks; failure forces breaks.</value></data>
+  <data name="Qualities.SummarySource.06078d89-0f12-4f57-99d0-e088847dec7e" xml:space="preserve"><value>755ABBA73BEF4682ACF91261BCB09C826D1576F1968AC15066EA719A86A103DF</value></data>
 </root>
