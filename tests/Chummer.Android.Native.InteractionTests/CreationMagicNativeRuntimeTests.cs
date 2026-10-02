@@ -69,6 +69,8 @@ internal static class CreationMagicNativeRuntimeTests
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+            Require(!CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Levitate"))
+                .Contains("Damage: 0."), "Non-damaging spell help exposes a zero-value placeholder.");
             string fireball = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Fireball"));
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");

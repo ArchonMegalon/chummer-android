@@ -48,7 +48,8 @@ internal static class CreationSpellInfo
                 if (descriptors.Contains("Direct", StringComparer.Ordinal)) parts.Add(Text("Direct", "Direct magical attack."));
                 if (descriptors.Contains("Indirect", StringComparer.Ordinal)) parts.Add(Text("Indirect", "Indirect magical attack."));
             }
-            Add("Damage", Value("damage"));
+            // Catalog zero is a non-damaging spell, not a useful damage rule.
+            if (Value("damage") != "0") Add("Damage", Value("damage"));
             Add("Range", Value("range"));
             Add("Duration", Value("duration"));
             Add("Type", Value("type"));
