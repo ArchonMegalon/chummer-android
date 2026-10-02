@@ -162,6 +162,45 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Dry Addict (Mild)", ["abstinence", "Composure", "relapse"],
+            ["Abstinenzabzüge", "Selbstbeherrschung", "leicht"],
+            ["abstinencia", "Compostura", "ligeramente"]),
+        ("Dry Addict (Moderate)", ["Abstinence", "Composure", "greater"],
+            ["Abstinenz", "Selbstbeherrschung", "stärker"],
+            ["abstinencia", "Compostura", "más"]),
+        ("Dry Addict (Severe)", ["abstinence", "Composure", "severe"],
+            ["Abstinenz", "Selbstbeherrschung", "hohen"],
+            ["abstinencia", "Compostura", "grave"]),
+        ("Dry Addict (Burnout)", ["Abstinence", "Composure", "strongest"],
+            ["Abstinenz", "Selbstbeherrschung", "stärksten"],
+            ["abstinencia", "Compostura", "mayor"]),
+        ("Favored (Specific Target, Biased)", ["specific", "negotiating"],
+            ["bestimmten", "Verhandlungsposition"],
+            ["específico", "negociaciones"]),
+        ("Favored (Specific Target, Outspoken)", ["specific", "further"],
+            ["bestimmten", "erhöht"],
+            ["específico", "empeora"]),
+        ("Favored (Specific Target, Fanatic)", ["specific", "greatest"],
+            ["bestimmten", "stärkste"],
+            ["específico", "maximiza"]),
+        ("Flesh Sculpter", ["rank", "Body", "willing"],
+            ["Stufe", "Konstitutionsspanne", "freiwilliger"],
+            ["nivel", "Constitución", "voluntarios"]),
+        ("Healer", ["Health", "net hits", "Essence"],
+            ["Nettoerfolge", "Gesundheitszauber", "Essenz"],
+            ["éxitos netos", "Salud", "Esencia"]),
+        ("Illusionist", ["rank", "Physical", "Mana", "exceed"],
+            ["Stufe", "Physisch", "Mana", "übersteigen"],
+            ["nivel", "Físico", "Maná", "superar"]),
+        ("Brilliant Heuristics", ["Data Processing", "half", "compatible"],
+            ["Datenverarbeitung", "halb", "weitere"],
+            ["Procesamiento", "mitad", "compatibles"]),
+        ("Groveler", ["datachips", "next", "Fading"],
+            ["Datenchips", "nächsten", "Schwund"],
+            ["chips", "siguiente", "Desvanecimiento"]),
+        ("Hold the Door", ["Consecutive", "resets", "other action"],
+            ["Aufeinanderfolgend", "verfällt", "anderen"],
+            ["consecutivamente", "pierde", "otra acción"]),
         ("One of Them", ["CFD", "fail"],
             ["CFD", "misslungener"],
             ["CFD", "fallen"]),
@@ -1133,7 +1172,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 651, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 664, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1160,12 +1199,17 @@ internal static partial class AfterRunAuthorityHarness
                 foreach (string name in new[] { "Adept Healer", "Apt Pupil", "Arcane Bodyguard",
                     "Animal Familiar", "Astral Bouncer", "Astral Infiltrator", "Mnemonic Vault",
                     "Alchemical Bomb Maker", "Arcane Improviser", "Archivist",
-                    "Dual-Natured Defender", "Durable Preparations", "Elemental Master" })
+                    "Dual-Natured Defender", "Durable Preparations", "Elemental Master",
+                    "Flesh Sculpter", "Healer", "Illusionist",
+                    "Brilliant Heuristics", "Groveler", "Hold the Door" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Memory Palace",
                             "Memory help must retain its prerequisite quality.");
+                    else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door")
+                        Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
+                            "Resonance help must retain technomancer admission: " + name);
                     else
                         Require(quality.Element("required")!.Element("allof")!.Element("magenabled") is not null,
                             "Mastery help must retain magical admission: " + name);
@@ -1178,7 +1222,10 @@ internal static partial class AfterRunAuthorityHarness
                         "Bound help must reject a definition without its prerequisites: " + name);
                 }
                 foreach (string name in new[] { "Dead Emotion", "Favored (Common Target, Biased)",
-                    "Favored (Common Target, Outspoken)", "Favored (Common Target, Fanatic)" })
+                    "Favored (Common Target, Outspoken)", "Favored (Common Target, Fanatic)",
+                    "Favored (Specific Target, Biased)", "Favored (Specific Target, Outspoken)",
+                    "Favored (Specific Target, Fanatic)", "Illusionist",
+                    "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)" })
                 {
                     var selected = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(selected.Element("bonus")!.Element("selecttext") is not null,
