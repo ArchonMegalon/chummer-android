@@ -1273,4 +1273,28 @@
   <data name="Spells.Summary.6cbe13c4-ef28-43b7-9715-bccb7c153999" xml:space="preserve"><value>Betäubt das Ziel direkt.</value></data>
   <data name="Spells.Summary.47423962-6b73-4cc3-ad4e-e8d037cf9507" xml:space="preserve"><value>Betäubt das Ziel direkt.</value></data>
   <data name="Spells.Summary.e9f1e14b-1f59-46d6-9e9f-e808d7316d76" xml:space="preserve"><value>Betäubt das Ziel direkt.</value></data>
+  <!-- SR5 core Detection effects; exact definitions are bound below in the invariant resource. -->
+  <data name="Spells.Summary.e81dda32-1c97-482b-a6a5-ddd12eded03a" xml:space="preserve"><value>Erklärt die Gerätebedienung.</value></data>
+  <data name="Spells.Summary.4828522d-848c-4ebe-850e-fa3f3babf241" xml:space="preserve"><value>Analysiert magische Objekte.</value></data>
+  <data name="Spells.Summary.933a534c-ad50-4c87-be65-2230d56f5fcd" xml:space="preserve"><value>Erkennt bewusste Lügen.</value></data>
+  <data name="Spells.Summary.fb44d690-17c0-4d22-819e-8b7b463b2599" xml:space="preserve"><value>Ermöglicht entferntes Hören.</value></data>
+  <data name="Spells.Summary.d82c56f8-9231-48a9-9dea-dea6c513caad" xml:space="preserve"><value>Ermöglicht entfernte Sicht.</value></data>
+  <data name="Spells.Summary.a6bd05ed-b72f-4886-bb8b-6aba947e8cf5" xml:space="preserve"><value>Verbessert Überraschungs- und Verteidigungsproben.</value></data>
+  <data name="Spells.Summary.e343f716-a5b6-46a7-8bff-60b6c175db60" xml:space="preserve"><value>Spürt feindliche Absichten.</value></data>
+  <data name="Spells.Summary.fff36d4c-1462-4795-80ec-fe58132e027e" xml:space="preserve"><value>Spürt feindliche Absichten.</value></data>
+  <data name="Spells.Summary.410dd014-d849-42d7-834b-76912579ee72" xml:space="preserve"><value>Ortet eine bekannte Person.</value></data>
+  <data name="Spells.Summary.7231e696-8839-4ec8-b12e-213b79bb643d" xml:space="preserve"><value>Spürt Lebewesen auf.</value></data>
+  <data name="Spells.Summary.9bcd193f-b149-4c04-bb0e-8b2d66dae241" xml:space="preserve"><value>Spürt Lebewesen auf.</value></data>
+  <data name="Spells.Summary.f43c484c-a98a-4831-8ead-adb4216a7c30" xml:space="preserve"><value>Ortet eine bestimmte Lebensform.</value></data>
+  <data name="Spells.Summary.88c5059f-8f53-4910-9873-b5a5f87850e3" xml:space="preserve"><value>Ortet eine bestimmte Lebensform.</value></data>
+  <data name="Spells.Summary.9d2a045b-11b6-4385-a851-30b8ba9c2e7f" xml:space="preserve"><value>Spürt magische Präsenzen.</value></data>
+  <data name="Spells.Summary.96fdf1da-d4e7-460c-a172-3f7a7b56ac67" xml:space="preserve"><value>Spürt magische Präsenzen.</value></data>
+  <data name="Spells.Summary.5574e0a7-d089-4c6d-a033-a157fbe681c0" xml:space="preserve"><value>Ortet einen Gegenstandstyp.</value></data>
+  <data name="Spells.Summary.7c4a2ba3-3ee3-4f34-bb16-17645ef90932" xml:space="preserve"><value>Ermöglicht telepathische Verständigung.</value></data>
+  <data name="Spells.Summary.fc5bf8bd-1c7e-4093-bd86-4d9943aafbd4" xml:space="preserve"><value>Erforscht Gedanken und Erinnerungen.</value></data>
+  <data name="Spells.Detection.Touch" xml:space="preserve"><value>Berührungszauber; separate Sinnesreichweite.</value></data>
+  <data name="Spells.Sensing.Area" xml:space="preserve"><value>Wahrnehmung: Umgebung.</value></data>
+  <data name="Spells.Sensing.Extended Area" xml:space="preserve"><value>Wahrnehmung: erweiterter Bereich.</value></data>
+  <data name="Spells.Sensing.Directional" xml:space="preserve"><value>Wahrnehmung: gerichtet.</value></data>
+  <data name="Spells.Sensing.Psychic" xml:space="preserve"><value>Wahrnehmung: übersinnlich.</value></data>
 </root>
