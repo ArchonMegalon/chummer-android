@@ -57,7 +57,29 @@ internal static partial class AfterRunAuthorityHarness
         ("Resonant Stream: Machinist", "Selected complex forms", "Bestimmte komplexe Formen", "Ciertas formas complejas"),
         ("Resonant Stream: Sourceror", "Sourcerer Daemon", "Sourcerer Daemon", "Sourcerer Daemon"),
         ("Quadriplegic", "to zero", "auf null", "en cero"),
-        ("Black Forest Native", "Black Forest", "Schwarzwald", "Selva Negra")
+        ("Black Forest Native", "Black Forest", "Schwarzwald", "Selva Negra"),
+        ("Crystal Breath", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Eye (One Eye)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Eye (Two Eyes)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Kidneys)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Stomach)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Kidneys)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Stomach)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Kidneys, Stomach)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Kidneys, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Stomach, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Kidneys, Stomach)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Kidneys, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Stomach, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Kidneys, Stomach, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Gut (Liver, Kidneys, Stomach, Intestines)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Jaw", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Limb (Arm)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Limb (Leg)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("Crystal Spine", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia")
     ];
 
     private static void VerifyQualitySummaryContent(string contentRoot)
@@ -98,7 +120,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 467, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 489, "Localized source-identity summaries were not loaded from the real catalog.");
                 foreach (var rule in SourceEffectQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
@@ -115,6 +137,46 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Authored help must not survive a changed rule definition: " + rule.Name);
+                }
+                var crystalScope = locale switch
+                {
+                    "de-AT" => (Essence: "Essenz", Monitors: "beiden Zustandsmonitoren", Fatigue: "Erschöpfung",
+                        Ingested: "geschluckte", Injected: "injizierte", Inhaled: "eingeatmete",
+                        Lifestyle: "Lebensstilkosten", Armor: "Panzerung", Initiative: "Initiative"),
+                    "es-MX" => (Essence: "Esencia", Monitors: "ambos monitores", Fatigue: "fatiga",
+                        Ingested: "ingeridas", Injected: "inyectadas", Inhaled: "inhaladas",
+                        Lifestyle: "costes de vida", Armor: "armadura", Initiative: "Iniciativa"),
+                    _ => (Essence: "Essence", Monitors: "both condition monitors", Fatigue: "fatigue",
+                        Ingested: "swallowed", Injected: "injected", Inhaled: "inhaled",
+                        Lifestyle: "lifestyle costs", Armor: "armor", Initiative: "Initiative")
+                };
+                var crystalQualities = catalog.Where(q => q.Element("name")!.Value.StartsWith("Crystal ", StringComparison.Ordinal)).ToArray();
+                Require(crystalQualities.Length == 22, "Review new crystal variants rather than silently omitting their help.");
+                foreach (var quality in crystalQualities)
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var bonus = quality.Element("bonus")!;
+                    Require(summary.Contains(crystalScope.Essence) && summary.Contains(crystalScope.Monitors),
+                        "Crystal help must disclose Essence and both condition-monitor costs.");
+                    Require(bonus.Element("conditionmonitor")!.Element("physical")!.Value == "-1"
+                        && bonus.Element("conditionmonitor")!.Element("stun")!.Value == "-1"
+                        && decimal.Parse(bonus.Element("essencepenaltyt100")!.Value, CultureInfo.InvariantCulture)
+                            + decimal.Parse(bonus.Element("essencepenaltymagonlyt100")!.Value, CultureInfo.InvariantCulture) == 0,
+                        "Crystal source no longer supports the stated condition-monitor/Magic trade-off.");
+                    foreach (var effect in new[]
+                    {
+                        (Tag: "fatigueresist", Token: crystalScope.Fatigue),
+                        (Tag: "toxiningestionresist", Token: crystalScope.Ingested),
+                        (Tag: "toxininjectionresist", Token: crystalScope.Injected),
+                        (Tag: "toxininhalationresist", Token: crystalScope.Inhaled),
+                        (Tag: "lifestylecost", Token: crystalScope.Lifestyle),
+                        (Tag: "armor", Token: crystalScope.Armor),
+                        (Tag: "initiative", Token: crystalScope.Initiative)
+                    })
+                        Require(summary.Contains(effect.Token, StringComparison.OrdinalIgnoreCase)
+                            == (bonus.Element(effect.Tag) is not null),
+                            "Crystal summary dropped a benefit or borrowed another variant's effect: "
+                            + quality.Element("name")!.Value + "/" + effect.Tag);
                 }
                 var contactScope = locale switch
                 {
