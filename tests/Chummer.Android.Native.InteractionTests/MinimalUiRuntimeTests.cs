@@ -44,7 +44,39 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 332, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 347, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "360-degree Eyesight", "Bicardiac",
+                    "Broadened Auditory System (Infrasound)", "Broadened Auditory System (Ultrasound)",
+                    "Camouflage", "Dynamic Coloration", "Gills (Air)", "Gills (Aqua)", "Gills (Full)",
+                    "Glamour", "Keen-Eared", "Low-Light Vision (Changeling)", "Low-Light Vision (Feline)",
+                    "Thermographic Vision (SURGE)", "Underwater Vision" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Metagenic senses need translated, exact-definition explanations, including their limitations: " + name);
+                }
+                foreach (var group in new[] {
+                    new[] { "Gills (Air)", "Gills (Aqua)", "Gills (Full)" },
+                    new[] { "Camouflage", "Dynamic Coloration" },
+                    new[] { "Broadened Auditory System (Infrasound)", "Broadened Auditory System (Ultrasound)" },
+                    new[] { "Low-Light Vision (Changeling)", "Low-Light Vision (Feline)" } })
+                {
+                    Require(group.Select(name => CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == name)), ""))
+                        .Distinct().Count() == group.Length,
+                        "Sensory variants must not share misleading generic copy.");
+                }
+                foreach (var rule in new[] { (Name: "360-degree Eyesight", Numbers: "1,1,10,1"),
+                    (Name: "Camouflage", Numbers: "1,2,4,10"), (Name: "Dynamic Coloration", Numbers: "2,4"),
+                    (Name: "Glamour", Numbers: "2,1"), (Name: "Keen-Eared", Numbers: "1") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    Require(string.Join(",", Regex.Matches(summary, @"\d+").Select(m => m.Value)) == rule.Numbers,
+                        "Translation changed a sensory bonus, penalty, distance or duration: " + rule.Name);
+                }
                 foreach (string name in new[] { "Hung Out to Dry", "Night Blindness", "Paranoia",
                     "Vendetta", "Pie Iesu Domine. Dona Eis Requiem.",
                     "Carrier (HMHVV Strain II)", "Carrier (HMHVV Strain III)" })
