@@ -162,6 +162,60 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Items of Power", ["focus addiction", "other purposes"],
+            ["Fokusabhängigkeit", "andere Zwecke"],
+            ["adicción", "otros fines"]),
+        ("Mage Hunter I", ["Combat", "extra Drain"],
+            ["Kampfzauber", "Entzug"],
+            ["Combate", "Drenaje"]),
+        ("Mage Hunter II", ["Further", "Counterspelling", "Drain"],
+            ["stärker", "Antimagie", "Entzug"],
+            ["más", "Contrahechicería", "Drenaje"]),
+        ("Mage Hunter III", ["strongest", "Counterspelling", "Drain"],
+            ["stärkste", "Antimagie", "Entzug"],
+            ["mayor", "Contrahechicería", "Drenaje"]),
+        ("Fractal Punch", ["Data Spike", "Resonance Spike", "trade"],
+            ["Datenstachel", "Resonanzstachel", "tauschen"],
+            ["datos", "Resonancia", "sacrificar"]),
+        ("Lone Wolf", ["initiative", "allies", "own sprites"],
+            ["Matrixinitiative", "eigene Sprites", "Verbündete"],
+            ["Iniciativa", "aliados", "propios sprites"]),
+        ("Team Player", ["Brute Force", "Hack on the Fly", "failure", "cannot"],
+            ["Brute Force", "Eiliges Hacken", "Fehlschlagsrisiken", "nicht"],
+            ["Fuerza bruta", "Hackeo al vuelo", "riesgos", "excluidos"]),
+        ("Phenotypic Variation - Genewipe", ["decay", "ritual", "not immediate"],
+            ["zerfallen", "Ritualproben", "nicht sofort"],
+            ["rastros", "rituales", "no es inmediata"]),
+        ("Phenotypic Variation - Masque", ["no match", "advanced", "other identification"],
+            ["keinen Treffer", "Scanner", "andere"],
+            ["ADN", "avanzados", "otra identificación"]),
+        ("Phenotypic Variation - Reprint", ["new genetic", "old profile", "other"],
+            ["genetische", "alten Profil", "anderen"],
+            ["genética", "anterior", "otros"]),
+        ("Profiler", ["dossier", "without preparation"],
+            ["Personendossier", "unvorbereitet"],
+            ["expediente", "sin preparación"]),
+        ("Quick Config", ["two", "Free Action", "only once"],
+            ["zwei", "Freie Handlung", "einmal"],
+            ["dos", "Acción gratuita", "una sola vez"]),
+        ("Curiosity Killed the Cat", ["gains dice", "Composure", "downloading"],
+            ["Bonuswürfel", "Selbstbeherrschung", "herunterzuladen"],
+            ["dados", "Compostura", "descargarlos"]),
+        ("Animal Pelage (Quills)", ["Exposed", "mobile", "Quills skill"],
+            ["freien", "beweglichen", "Waffenfertigkeit"],
+            ["descubiertas", "móviles", "arma exótica"]),
+        ("Animal Pelage (Camo Fur)", ["dim light", "suitable", "modifications"],
+            ["schwachem Licht", "passender Umgebung", "unvereinbar"],
+            ["poca luz", "entorno adecuado", "incompatible"]),
+        ("Magic Sense", ["Intuition", "Willpower", "without"],
+            ["Intuition", "Willenskraft", "ohne"],
+            ["Intuición", "Voluntad", "sin"]),
+        ("Instinctive Hack", ["Unless surprised", "one opening", "initiative"],
+            ["Ohne Überraschung", "ersten", "Kampfinitiative"],
+            ["Sin sorpresa", "inicial", "Percepción matricial"]),
+        ("Prototype Materials", ["approval", "mundane", "maximum"],
+            ["Spielleitungsfreigabe", "mundaner", "Maximum"],
+            ["aprobación", "mundano", "máximo"]),
         ("Dry Addict (Mild)", ["abstinence", "Composure", "relapse"],
             ["Abstinenzabzüge", "Selbstbeherrschung", "leicht"],
             ["abstinencia", "Compostura", "ligeramente"]),
@@ -1172,7 +1226,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 664, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 682, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1201,13 +1255,16 @@ internal static partial class AfterRunAuthorityHarness
                     "Alchemical Bomb Maker", "Arcane Improviser", "Archivist",
                     "Dual-Natured Defender", "Durable Preparations", "Elemental Master",
                     "Flesh Sculpter", "Healer", "Illusionist",
-                    "Brilliant Heuristics", "Groveler", "Hold the Door" })
+                    "Items of Power", "Mage Hunter I", "Mage Hunter II", "Mage Hunter III",
+                    "Brilliant Heuristics", "Groveler", "Hold the Door",
+                    "Fractal Punch", "Lone Wolf", "Team Player" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Memory Palace",
                             "Memory help must retain its prerequisite quality.");
-                    else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door")
+                    else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door"
+                        or "Fractal Punch" or "Lone Wolf" or "Team Player")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1245,7 +1302,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(!CreationQualityInfo.Effects(changedFrostbite.ToString()).Contains(
                     CreationFlowStrings.Get(SummaryKey(frostbite), "")),
                     "Changing the eligible skills must invalidate the bound explanation.");
-                foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin" })
+                foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin",
+                    "Animal Pelage (Quills)", "Animal Pelage (Camo Fur)", "Magic Sense" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(quality.Element("metagenic")?.Value == "True"
@@ -1253,6 +1311,9 @@ internal static partial class AfterRunAuthorityHarness
                             .Select(q => q.Value).SequenceEqual(new[] { "Changeling (Class I SURGE)",
                                 "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" }),
                         "Sensory/morphology help must preserve its accepted SURGE prerequisite: " + name);
+                    Require((quality.Element("required")!.Element("oneof")!.Element("metatype")?.Value == "Centaur")
+                        == (name == "Magic Sense"),
+                        "Magic Sense also admits centaurs; do not replace this quality with the same-named adept power.");
                     var changed = new System.Xml.Linq.XElement(quality);
                     changed.Element("required")!.Remove();
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
@@ -1260,6 +1321,26 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Source-bound SURGE help must not survive removal of its prerequisite: " + name);
+                }
+                foreach (string name in new[] { "Phenotypic Variation - Genewipe",
+                    "Phenotypic Variation - Masque", "Phenotypic Variation - Reprint", "Prototype Materials" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string admission = name == "Prototype Materials" ? "forbidden" : "chargenonly";
+                    Require(quality.Element(admission) is not null,
+                        "Natural phenotype and mundane prototype help must retain their admission boundary: " + name);
+                    if (name == "Prototype Materials")
+                        Require(quality.Element("forbidden")!.Element("oneof")!.Element("magenabled") is not null
+                            && quality.Element("forbidden")!.Element("oneof")!.Element("resenabled") is not null
+                            && quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Special Modifications",
+                            "Prototype Materials expands Special Modifications only for mundane characters.");
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element(admission)!.Remove();
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Removing admission restrictions must reject old source-bound help: " + name);
                 }
                 foreach (var aptitude in new[] { (Name: "Aware", Skills: "Aware"),
                     (Name: "Explorer", Skills: "Explorer"), (Name: "Enchanter", Skills: "Enchanting") })
