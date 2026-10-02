@@ -718,6 +718,59 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void VerifyTradeoffQualitySummaries(System.Xml.Linq.XElement[] catalog, string locale)
+    {
+        // Original brief copy: Data Trails p46, Forbidden Arcana p182 and
+        // No Future p177. No tabletop procedures or edition-specific bounty tables.
+        var cases = new (string Name, string[] English, string[] German, string[] Spanish)[]
+        {
+            ("Code of Honor: Like a Boss", ["Deliberate direct Matrix damage", "costs Karma", "data-bomb traps", "exempt"],
+                ["Absichtlicher direkter Matrixschaden", "kostet Karma", "Datenbombenfallen", "ausgenommen"],
+                ["daño directo intencional", "cuesta Karma", "bombas de datos", "exentas"]),
+            ("Mentor's Mask", ["Drain or", "adept power", "more noticeable", "cannot switch"],
+                ["Entzug oder", "Adeptenkraft", "leichter bemerkt", "nicht abschalten"],
+                ["Drenaje o", "poder de adepto", "más perceptible", "no puede desactivarse"]),
+            ("Stolen Gear", ["starting equipment", "theft", "bounty", "hunters"],
+                ["beginnst", "gestohlener Ausrüstung", "Kopfgeld", "Jäger"],
+                ["Empiezas", "equipo robado", "recompensa", "cazadores"])
+        };
+        foreach (var rule in cases)
+        {
+            var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+            string summary = CreationFlowStrings.Get("Qualities.Summary."
+                + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            string[] scope = locale == "de-AT" ? rule.German : locale == "es-MX" ? rule.Spanish : rule.English;
+            Require(summary.Length > 0 && summary.Length <= 160
+                && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 25
+                && !Regex.IsMatch(summary, @"\d")
+                && scope.All(term => summary.Contains(term, StringComparison.OrdinalIgnoreCase))
+                && CreationQualityInfo.Effects(quality.ToString())[0] == summary,
+                "Trade-off help must preserve its restriction in concise localized copy: " + rule.Name);
+            var changed = new System.Xml.Linq.XElement(quality);
+            changed.SetElementValue("karma", "999");
+            var changedLines = CreationQualityInfo.Effects(changed.ToString());
+            Require(!changedLines.Contains(summary)
+                && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                "Trade-off help must reject amended definitions with the same ID: " + rule.Name);
+        }
+        var code = catalog.Single(q => q.Element("name")!.Value == "Code of Honor: Like a Boss");
+        Require(code.Element("karma")?.Value == "-15"
+            && code.Element("required")!.Element("oneof")!.Element("quality")?.Value == "Technomancer"
+            && code.Element("required")!.Element("oneof")!.Element("skill")!.Element("name")?.Value == "Hacking"
+            && code.Element("required")!.Element("oneof")!.Element("skill")!.Element("val")?.Value == "3",
+            "Code-of-Honor help must retain its original eligibility.");
+        var mask = catalog.Single(q => q.Element("name")!.Value == "Mentor's Mask");
+        Require(mask.Element("bonus")!.Element("drainvalue")?.Value == "-1"
+            && mask.Element("bonus")!.Element("adeptpowerpoints")?.Value == "1"
+            && mask.Element("required")!.Element("oneof")!.Element("quality")?.Value == "Mentor Spirit",
+            "Mentor's Mask help must remain bound to its mentor and source benefits.");
+        var gear = catalog.Single(q => q.Element("name")!.Value == "Stolen Gear");
+        Require(gear.Element("contributetobp")?.Value == "False"
+            && gear.Element("bonus")!.Element("nuyenamt")?.Value == "10000"
+            && (string?)gear.Element("bonus")!.Element("nuyenamt")!.Attribute("condition") == "Stolen",
+            "Stolen Gear must not be described as free Karma or unrestricted income.");
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -758,7 +811,8 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 563, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 566, "Localized source-identity summaries were not loaded from the real catalog.");
+                VerifyTradeoffQualitySummaries(catalog, locale);
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
