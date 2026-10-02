@@ -1678,4 +1678,70 @@
   <data name="Qualities.Summary.f9b746ae-9112-4b84-ba8d-e0a852678a20" xml:space="preserve">
     <value>Gewährt Vertrautes Terrain für örtliche Kontakte und Straßenpolitik im Schwarzwald.</value>
   </data>
+  <data name="Qualities.Summary.c2b4f018-7b14-4e04-aab9-71c891dd0a18" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und eingeatmete Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.1abbf9a5-af57-4e9f-af7a-05872ae8ddad" xml:space="preserve">
+    <value>Ersetzt ein Auge durch Kristall; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.6b669cf8-ef03-49c1-8e42-b16e0daea0bc" xml:space="preserve">
+    <value>Ersetzt zwei Augen durch Kristall; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.82ad9ac5-5ff7-4ea6-9925-a4012af6fe50" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.40f0ec08-0948-41dc-b0a2-2804ae913936" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und injizierte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.1ca531dc-8d76-42aa-a667-874c94166f0e" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.c3c759fd-4b38-46d9-bccc-64ceb1e0247b" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.35e38f80-6054-4f2d-9da7-13dc8e95e923" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte und injizierte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.3f17850d-5d1c-4dc3-8bb2-09614dd15862" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.aafc734a-91f9-4b40-af9b-5f771e5dcf37" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.5d155e0a-b7fa-4047-8a50-43e9616cb354" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und injizierte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.e3613a3d-31c9-40db-a54c-154130ddafe2" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und injizierte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.84e80b32-52b7-4fc0-a990-5a74fb5d497c" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.d635f134-3b02-45eb-96d2-e42e100b47cc" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte und injizierte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.5093e803-da71-4d8c-acb0-22e9ecae3112" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte und injizierte Gifte; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.9e390ad1-a8cb-4fbd-a0bb-cf2f3b56dfc1" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.d62eadf5-071e-4270-86c7-d4fb299ff440" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und injizierte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.9c8e4825-507f-4683-a477-bf7d895b75b1" xml:space="preserve">
+    <value>Verbessert Widerstand gegen Erschöpfung und geschluckte und injizierte Gifte; senkt Lebensstilkosten; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.11001f88-572a-4818-97fd-e78c8bc8f619" xml:space="preserve">
+    <value>Gewährt einen natürlichen Bissangriff; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.350844b9-db9f-4cce-83c3-e8965511e928" xml:space="preserve">
+    <value>Ein Kristallarm erhöht die Panzerung; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.834b6e22-5fb3-4a44-a54e-b70729cdb87e" xml:space="preserve">
+    <value>Ein Kristallbein erhöht die Panzerung; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
+  <data name="Qualities.Summary.a054e8a5-f09b-46a6-8c69-5b6b44ddd312" xml:space="preserve">
+    <value>Erhöht Panzerung und Initiative; kostet Essenz und Kästchen auf beiden Zustandsmonitoren, ohne Magie zu senken.</value>
+  </data>
 </root>

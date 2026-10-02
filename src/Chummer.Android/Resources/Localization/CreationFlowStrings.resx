@@ -2524,4 +2524,136 @@
   <data name="Qualities.SummarySource.f9b746ae-9112-4b84-ba8d-e0a852678a20" xml:space="preserve">
     <value>A98730939F7B1681F7ACB84F73C7724F8B8DEA65EA1C2B43B53F590D5C4FBB8F</value>
   </data>
+  <data name="Qualities.Summary.c2b4f018-7b14-4e04-aab9-71c891dd0a18" xml:space="preserve">
+    <value>Improves resistance to fatigue and inhaled toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.c2b4f018-7b14-4e04-aab9-71c891dd0a18" xml:space="preserve">
+    <value>0FF19DE33203D64C98D6F7EA2EB7007FF8B60D3DCC0B054BEC62FE988AF641C7</value>
+  </data>
+  <data name="Qualities.Summary.1abbf9a5-af57-4e9f-af7a-05872ae8ddad" xml:space="preserve">
+    <value>Replaces one eye with crystal; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.1abbf9a5-af57-4e9f-af7a-05872ae8ddad" xml:space="preserve">
+    <value>EEFAFB5B774097542C13AC718B3D220B980DDE8663D5FBB1FF62358347442CB2</value>
+  </data>
+  <data name="Qualities.Summary.6b669cf8-ef03-49c1-8e42-b16e0daea0bc" xml:space="preserve">
+    <value>Replaces two eyes with crystal; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.6b669cf8-ef03-49c1-8e42-b16e0daea0bc" xml:space="preserve">
+    <value>9B63B2460DD0CA19082B6EF557579A1686E59BE92271003103E7589307D6225F</value>
+  </data>
+  <data name="Qualities.Summary.82ad9ac5-5ff7-4ea6-9925-a4012af6fe50" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.82ad9ac5-5ff7-4ea6-9925-a4012af6fe50" xml:space="preserve">
+    <value>A284482820E023387F925155AAAF04DE48305A5DA62C396D54D51284709767D5</value>
+  </data>
+  <data name="Qualities.Summary.40f0ec08-0948-41dc-b0a2-2804ae913936" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to injected toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.40f0ec08-0948-41dc-b0a2-2804ae913936" xml:space="preserve">
+    <value>B4F9541528B7A1B5C359CBB7F6257AE15D683700F821236C53ACBC07240A9590</value>
+  </data>
+  <data name="Qualities.Summary.1ca531dc-8d76-42aa-a667-874c94166f0e" xml:space="preserve">
+    <value>Improves fatigue resistance; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.1ca531dc-8d76-42aa-a667-874c94166f0e" xml:space="preserve">
+    <value>89E94AFCE89C44AEE0D358B41923A53D3026406FF431C9BADE1611FC358FD6B5</value>
+  </data>
+  <data name="Qualities.Summary.c3c759fd-4b38-46d9-bccc-64ceb1e0247b" xml:space="preserve">
+    <value>Improves fatigue resistance; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.c3c759fd-4b38-46d9-bccc-64ceb1e0247b" xml:space="preserve">
+    <value>49B8DD682AE18807CC000D5E8E4C8CBBAF878BB35BF49D6EDD51F97996E3DE76</value>
+  </data>
+  <data name="Qualities.Summary.35e38f80-6054-4f2d-9da7-13dc8e95e923" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed and injected toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.35e38f80-6054-4f2d-9da7-13dc8e95e923" xml:space="preserve">
+    <value>5459B9D228A4982680D20C10BCE895354F6DD3A35DBA799E5700F11AC28E5D0A</value>
+  </data>
+  <data name="Qualities.Summary.3f17850d-5d1c-4dc3-8bb2-09614dd15862" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.3f17850d-5d1c-4dc3-8bb2-09614dd15862" xml:space="preserve">
+    <value>63A97A98831AFEB5410E9A3A0B59B7AE87111EB1B302034CF1D63D6A86D09B9E</value>
+  </data>
+  <data name="Qualities.Summary.aafc734a-91f9-4b40-af9b-5f771e5dcf37" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.aafc734a-91f9-4b40-af9b-5f771e5dcf37" xml:space="preserve">
+    <value>378668A1F1193F5BA5B268AEC1E6E2B97FD546C9E584BCF2E2A57D8744319766</value>
+  </data>
+  <data name="Qualities.Summary.5d155e0a-b7fa-4047-8a50-43e9616cb354" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to injected toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.5d155e0a-b7fa-4047-8a50-43e9616cb354" xml:space="preserve">
+    <value>9D89BD83E54FFEC5124C7B77961F6DF31D29FB6A401A514F700E17E0E4E3D7AD</value>
+  </data>
+  <data name="Qualities.Summary.e3613a3d-31c9-40db-a54c-154130ddafe2" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to injected toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.e3613a3d-31c9-40db-a54c-154130ddafe2" xml:space="preserve">
+    <value>1AEE05C67D97B595609E12A985317F1D26B4A5405C77707F43A5C46EAC381868</value>
+  </data>
+  <data name="Qualities.Summary.84e80b32-52b7-4fc0-a990-5a74fb5d497c" xml:space="preserve">
+    <value>Improves fatigue resistance; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.84e80b32-52b7-4fc0-a990-5a74fb5d497c" xml:space="preserve">
+    <value>61BB9403FE58C2D77B42CAF84DCB1ED972DA51A10FFA42FEB2875061105AF916</value>
+  </data>
+  <data name="Qualities.Summary.d635f134-3b02-45eb-96d2-e42e100b47cc" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed and injected toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.d635f134-3b02-45eb-96d2-e42e100b47cc" xml:space="preserve">
+    <value>2BA9D8A7A490E09AAA71B9110D390E7E7912B581CACC19C7DC6B035CE911E817</value>
+  </data>
+  <data name="Qualities.Summary.5093e803-da71-4d8c-acb0-22e9ecae3112" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed and injected toxins; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.5093e803-da71-4d8c-acb0-22e9ecae3112" xml:space="preserve">
+    <value>C83B0B0155CE8F19B629BEF92F2C0E177A7AA3AB00F19CD71165B4D5F4713E20</value>
+  </data>
+  <data name="Qualities.Summary.9e390ad1-a8cb-4fbd-a0bb-cf2f3b56dfc1" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.9e390ad1-a8cb-4fbd-a0bb-cf2f3b56dfc1" xml:space="preserve">
+    <value>17A15D0DAC629EC63A22D90D12B412F9EC939C2D9829C3E98EA7209074A25D5D</value>
+  </data>
+  <data name="Qualities.Summary.d62eadf5-071e-4270-86c7-d4fb299ff440" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to injected toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.d62eadf5-071e-4270-86c7-d4fb299ff440" xml:space="preserve">
+    <value>ADA5C79A4C2022EBDB1312C7308C77C6554BAF73BDB163524B2DDC84DE1C17F3</value>
+  </data>
+  <data name="Qualities.Summary.9c8e4825-507f-4683-a477-bf7d895b75b1" xml:space="preserve">
+    <value>Improves fatigue resistance and resistance to swallowed and injected toxins; lowers lifestyle costs; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.9c8e4825-507f-4683-a477-bf7d895b75b1" xml:space="preserve">
+    <value>9E14FDB075D45C21008A9474D01E591CA2E4443486FA807EE651E909E52EA1E3</value>
+  </data>
+  <data name="Qualities.Summary.11001f88-572a-4818-97fd-e78c8bc8f619" xml:space="preserve">
+    <value>Grants a natural bite attack; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.11001f88-572a-4818-97fd-e78c8bc8f619" xml:space="preserve">
+    <value>C25A7383ECF5F72D37112C29BF922D0227CA482662FD94D19ED0E545EE683BFD</value>
+  </data>
+  <data name="Qualities.Summary.350844b9-db9f-4cce-83c3-e8965511e928" xml:space="preserve">
+    <value>A crystal arm increases armor; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.350844b9-db9f-4cce-83c3-e8965511e928" xml:space="preserve">
+    <value>6AD7D75BF5789E9F66EFC5B3BEAA3E899457C4E85C247D4C8056524D7C8B56FD</value>
+  </data>
+  <data name="Qualities.Summary.834b6e22-5fb3-4a44-a54e-b70729cdb87e" xml:space="preserve">
+    <value>A crystal leg increases armor; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.834b6e22-5fb3-4a44-a54e-b70729cdb87e" xml:space="preserve">
+    <value>A6BE38A9114E70A16D1E4F92A2486A54959F56D972E240D6A9CF0F19F275C1B4</value>
+  </data>
+  <data name="Qualities.Summary.a054e8a5-f09b-46a6-8c69-5b6b44ddd312" xml:space="preserve">
+    <value>Increases armor and Initiative; costs Essence and boxes on both condition monitors, without reducing Magic.</value>
+  </data>
+  <data name="Qualities.SummarySource.a054e8a5-f09b-46a6-8c69-5b6b44ddd312" xml:space="preserve">
+    <value>FBF7D353B68E890CAFA62F8B9A7B993D8F2D1F59041FE75FCF61EA394CC6B20A</value>
+  </data>
 </root>
