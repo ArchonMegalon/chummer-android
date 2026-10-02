@@ -771,6 +771,56 @@ internal static partial class AfterRunAuthorityHarness
             "Stolen Gear must not be described as free Karma or unrestricted income.");
     }
 
+    private static void VerifyCompulsionQualitySummaries(System.Xml.Linq.XElement[] catalog, string locale)
+    {
+        // Run Faster p158: summarize the chosen scope and resistance, not its
+        // examples or a tabletop procedure. Roman grades are distinct catalog
+        // definitions, not purchased levels of one definition.
+        string[] grades = ["I", "II", "III", "IV"];
+        string[] scopes = ["Personal", "Public Single Aspect", "Public Broad Aspect"];
+        string[] degreeWords = locale == "de-AT" ? ["leichter", "mäßiger", "starker", "sehr starker"]
+            : locale == "es-MX" ? ["leve", "moderada", "fuerte", "muy fuerte"]
+            : ["mild", "moderate", "strong", "very strong"];
+        string[] scopeWords = locale == "de-AT"
+            ? ["dein persönliches Umfeld", "einen einzelnen Aspekt deines öffentlichen Umfelds", "weite Bereiche deines öffentlichen Umfelds"]
+            : locale == "es-MX" ? ["tu entorno privado", "un aspecto concreto de tu entorno público", "aspectos amplios de tu entorno público"]
+            : ["your private surroundings", "one aspect of your public surroundings", "broad aspects of your public surroundings"];
+        string resistance = locale == "de-AT" ? "Selbstbeherrschungsprobe" : locale == "es-MX" ? "prueba de Compostura" : "Composure test";
+        var summaries = new HashSet<string>(StringComparer.Ordinal);
+        Require(catalog.Count(q => q.Element("name")!.Value.StartsWith("Poor Self Control (Compulsive ", StringComparison.Ordinal)) == 12,
+            "The compulsion family must include every scope and grade, not an assumed subset.");
+        for (int scope = 0; scope < scopes.Length; scope++)
+        for (int grade = 0; grade < grades.Length; grade++)
+        {
+            string name = $"Poor Self Control (Compulsive {grades[grade]}, {scopes[scope]})";
+            var quality = catalog.Single(q => q.Element("name")!.Value == name);
+            Require(quality.Element("karma")!.Value == (-(2 * (grade + 1) + scope + 2)).ToString(CultureInfo.InvariantCulture)
+                && quality.Element("category")?.Value == "Negative"
+                && quality.Element("bonus")!.Element("selecttext") is not null,
+                "Compulsion help must retain its scope/grade cost and user-chosen context: " + name);
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            var effects = CreationQualityInfo.Effects(quality.ToString());
+            Require(summary.Length > 0 && summary.Length <= 160
+                && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 25
+                && !Regex.IsMatch(summary, @"\d") && summaries.Add(summary)
+                && summary.Contains(degreeWords[grade], StringComparison.Ordinal)
+                && summary.Contains(scopeWords[scope], StringComparison.Ordinal)
+                && summary.Contains(resistance, StringComparison.Ordinal)
+                && effects[0] == summary
+                && !effects.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                "Every compulsion variant needs distinct short localized help, not a missing-description notice: " + name);
+            foreach (string field in new[] { "name", "karma" })
+            {
+                var changed = new System.Xml.Linq.XElement(quality);
+                changed.SetElementValue(field, field == "name" ? "Different compulsion scope" : "-999");
+                var changedEffects = CreationQualityInfo.Effects(changed.ToString());
+                Require(!changedEffects.Contains(summary)
+                    && changedEffects.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                    "A retained ID must not transfer compulsion copy to a changed scope or cost.");
+            }
+        }
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -811,8 +861,9 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 566, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 578, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
+                VerifyCompulsionQualitySummaries(catalog, locale);
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
