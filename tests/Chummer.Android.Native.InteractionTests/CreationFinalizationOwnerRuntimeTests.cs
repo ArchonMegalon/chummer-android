@@ -554,9 +554,15 @@ internal static partial class AfterRunAuthorityHarness
                 foreach (var tradition in retainedEditor.Traditions.Where(item => item.IsEnabled && item.Blockers.Count == 0))
                     Require(CreationMagicResonancePhoneAuthority.IsOptionConfigurable(retainedEditor, tradition),
                         "Core-enabled tradition was rejected by the phone: " + tradition.Name);
-                foreach (string name in new[] { "Hermetic", "Shamanic" })
+                // Exercise real source-defined Possession/Inhabitation choices as
+                // well as the absent-field Materialization defaults. Core still
+                // owns admission; do not manufacture an enabled phone snapshot.
+                foreach (string name in new[] { "Hermetic", "Shamanic", "Qabbalism", "Vodou",
+                    "Insect Shaman", "Egyptian", "Psionic", "Santeria", "Svetoid" })
                 {
                     var tradition = retainedEditor.Traditions.Single(item => item.Name == name);
+                    Require(tradition.IsEnabled && tradition.Blockers.Count == 0,
+                        "Source-admitted spirit-form tradition is unavailable: " + name);
                     var choicePage = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor, tradition, retainedDraft);
                     await (Task)typeof(CreationMagicResonanceOptionPage).GetMethod("PrepareForAppearanceRefreshAsync",
                         BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(choicePage, [CancellationToken.None])!;
