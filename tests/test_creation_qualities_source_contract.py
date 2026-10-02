@@ -8,6 +8,21 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_authored_quality_summaries_remain_short_in_every_locale(self) -> None:
+        # A copy-editing guard, not evidence of original authorship or permission.
+        # Rules still come from Core; summaries are not full rulebook substitutes.
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            for row in ET.parse(path).getroot().findall("data"):
+                if not row.attrib["name"].startswith("Qualities.Summary."):
+                    continue
+                with self.subTest(locale=locale, key=row.attrib["name"]):
+                    summary = row.findtext("value") or ""
+                    self.assertTrue(summary.strip())
+                    self.assertEqual(summary, " ".join(summary.split()))
+                    self.assertLessEqual(len(summary.split()), 50)
+                    self.assertLessEqual(len(summary), 320)
+
     def test_catalog_hides_diagnostics_without_changing_admission(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         catalog = page[:page.index("public sealed class CreationQualityConfigurePage")]
