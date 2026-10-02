@@ -104,7 +104,14 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 72 is the latest [observed Internal availability](../play/evidence/preview72-internal-observation.md).
+Preview 73 is the latest [observed Internal availability](../play/evidence/preview73-internal-observation.md).
+Its exact local ARM64 AAB was independently inspected, separately signed with the
+existing upload key, verified and accepted on the unchanged Internal track on
+2 October. It includes short original quality/ordinary-spell explanations,
+attribute/Karma-quality improvements and the sealed Tradition correction.
+Descriptions remain incomplete; editorial brevity is not copyright clearance.
+Physical Preview 73 installation and changed-route execution are not yet verified.
+Preview 72 remains the latest bounded physical evidence:
 The normal physical Play update from 52 to 72, base-APK signature, first launch,
 special-attribute navigation, unsaved Magic 4 → 5 → 4 adjustment/undo and reopening
 the existing allocation after verified process death passed on 2 October.
