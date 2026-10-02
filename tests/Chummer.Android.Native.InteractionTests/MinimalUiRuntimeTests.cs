@@ -79,7 +79,13 @@ internal static partial class AfterRunAuthorityHarness
         ("Crystal Jaw", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
         ("Crystal Limb (Arm)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
         ("Crystal Limb (Leg)", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
-        ("Crystal Spine", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia")
+        ("Crystal Spine", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia"),
+        ("The Artisan's Way", "selected skills", "bestimmte Fertigkeiten", "ciertas habilidades"),
+        ("The Artist's Way", "improve Artisan", "für Kunsthandwerk", "mejoran Artesanía"),
+        ("The Athlete's Way", "athletic skills", "athletische Fertigkeiten", "habilidades atléticas"),
+        ("The Invisible Way", "selected stealth, movement and awareness", "bestimmter Qi-Foki", "ciertos focos Qi"),
+        ("The Speaker's Way", "social skills", "soziale Fertigkeiten", "habilidades sociales"),
+        ("The Warrior's Way", "weapon foci", "Waffenfoki", "focos de arma")
     ];
 
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
@@ -269,7 +275,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 514, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 520, "Localized source-identity summaries were not loaded from the real catalog.");
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
@@ -2010,12 +2016,31 @@ internal static partial class AfterRunAuthorityHarness
                             && !helpText.Contains("página", StringComparison.OrdinalIgnoreCase),
                             "Quality help must contain the localized inline explanation, not a book citation.");
                         MinimalRequireNoMachineValues(help);
+                        VerifyQualityHelpEffects(help, helpOption);
                     }
+                    // Display-only malformed/custom definitions must keep their
+                    // caveats visible even when the numeric detail list is folded.
+                    var artisanOption = state.Authority.Options.First(item => item.Name == "The Artisan's Way");
+                    var altered = System.Xml.Linq.XElement.Parse(artisanOption.SourceNodeXml);
+                    altered.SetElementValue("karma", "999");
+                    altered.Element("bonus")!.Add(new System.Xml.Linq.XElement("unknown-test-effect"));
+                    var changedOption = artisanOption with { SourceNodeXml = altered.ToString() };
+                    var changedHelp = new CreationQualityInfoPage(coordinator, original, changedOption);
+                    VerifyQualityHelpEffects(changedHelp, changedOption);
+                    Require(MinimalVisibleText(changedHelp).Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", ""))
+                        && MinimalVisibleText(changedHelp).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                        "Changed/partial definition warnings must stay visible with details collapsed.");
+                    var missingHelp = new CreationQualityInfoPage(coordinator, original,
+                        artisanOption with { SourceNodeXml = "<quality><name>Unexplained fixture</name></quality>" });
+                    Require(MinimalVisibleText(missingHelp).Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                        && !MinimalVisible(missingHelp).OfType<Button>().Any(button => button.AutomationId == "creation-quality-info-effects-toggle"),
+                        "Missing help must be honest and must not offer an empty disclosure.");
                     var ratedOption = state.Authority.Options.First(item => item.Name == "Will to Live" && item.Rating == 3);
                     string levelNotice = CreationFlowStrings.Format("Qualities.Info.BaseEffects", "missing", ratedOption.Rating);
                     var ratedHelp = new CreationQualityInfoPage(coordinator, original, ratedOption);
                     Require(MinimalVisibleText(ratedHelp).Contains(levelNotice),
                         "The catalog help page must pass the accepted option's level to the description.");
+                    VerifyQualityHelpEffects(ratedHelp, ratedOption);
                     // Presentation-only grant fixture: no grant is persisted or
                     // admitted. Both help constructors must preserve the level.
                     var grant = new CharacterCreationGrantedQuality("help-grant-fixture", ratedOption.SourceId,
@@ -2031,6 +2056,13 @@ internal static partial class AfterRunAuthorityHarness
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 Require(store.TryRead(out var unchanged, out blocker) && unchanged.CheckpointDigest == checkpoint.CheckpointDigest,
                     "Rendering/disclosure mutated the durable review.");
+
+                var retainedHelp = new CreationQualityInfoPage(coordinator, original,
+                    state.Authority.Options.First(item => item.Name == "The Artisan's Way"));
+                var retainedHelpBody = (VerticalStackLayout)((ScrollView)retainedHelp.Content!).Content!;
+                var retainedHelpDetails = retainedHelpBody.Children.OfType<VerticalStackLayout>().Single();
+                var retainedHelpToggle = retainedHelpBody.Children.OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-quality-info-effects-toggle");
 
                 Require(store.TryBeginApply(CharacterCreationQualitiesCheckpointCas.From(checkpoint), out var applying, out blocker), blocker);
                 var result = await coordinator.ConfirmCreationQualitiesAsync(applying, display: original);
@@ -2074,7 +2106,9 @@ internal static partial class AfterRunAuthorityHarness
                 ((ISearchBarController)staleSearch).OnSearchButtonPressed();
                 Require(MinimalVisibleText(catalogPage) == staleCatalog,
                     "A search callback admitted catalog work across an owner A→B→A transition.");
-                foreach (NativePageBase stale in new NativePageBase[] { configure, review, receipt })
+                ((IButtonController)retainedHelpToggle).SendClicked();
+                Require(!retainedHelpDetails.IsVisible, "An expired help disclosure reopened old effect data.");
+                foreach (NativePageBase stale in new NativePageBase[] { configure, review, receipt, retainedHelp })
                 {
                     MinimalRender(stale);
                     Require(!MinimalVisible(stale).OfType<Button>().Any(), "Stale owner generation still exposes quality actions or diagnostics.");
@@ -2132,6 +2166,53 @@ internal static partial class AfterRunAuthorityHarness
         await ui.DrainDispatchedAsyncVoidAsync();
         Require(observed.Count == 1, "A later catalog render replayed the help scroll restoration.");
         IssuedPageLifecycle(page, "OnDisappearing");
+    }
+
+    private static void VerifyQualityHelpEffects(CreationQualityInfoPage page, CharacterCreationQualityCatalogOption option)
+    {
+        string[] effects = CreationQualityInfo.Effects(option.SourceNodeXml, option.Rating).ToArray();
+        string[] notices =
+        [
+            CreationFlowStrings.Get("Qualities.Info.Manual", ""),
+            CreationFlowStrings.Get("Qualities.Info.Additional", ""),
+            CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", ""),
+            CreationFlowStrings.Format("Qualities.Info.BaseEffects", "", option.Rating)
+        ];
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var details = body.Children.OfType<VerticalStackLayout>().SingleOrDefault();
+        var toggle = body.Children.OfType<Button>().SingleOrDefault(button =>
+            button.AutomationId == "creation-quality-info-effects-toggle");
+        string[] folded = effects.Skip(1).Where(line => !notices.Contains(line)).ToArray();
+        string visible = MinimalVisibleText(page);
+        Require(visible.Contains(option.Name) && visible.Contains(effects[0])
+            && visible.Contains(CreationFlowStrings.Format("Qualities.Info.Cost", "", option.Rating,
+                CreationQualitiesPage.Signed(option.KarmaCost)))
+            && (string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel) || visible.Contains(option.FollowUpChoiceLabel))
+            && effects.Where(notices.Contains).All(visible.Contains),
+            "Concise help hid the summary, exact cost, chosen follow-up or a completeness/level warning.");
+        if (folded.Length == 0)
+        {
+            Require(details is null && toggle is null, "A prose-only explanation has an empty detail toggle.");
+            return;
+        }
+        Require(details is { IsVisible: false } && toggle is not null
+            && toggle.Text == CreationFlowStrings.Get("Qualities.Info.ShowEffects", "")
+            && details.Children.OfType<Label>().Select(label => label.Text).SequenceEqual(folded),
+            "Effect details must default to folded and retain every exact source-derived row in order.");
+        Require(!MinimalVisible(page).Contains(details!), "Folded rules leaked into the accessible visual tree.");
+        ((IButtonController)toggle!).SendClicked();
+        Require(details!.IsVisible && effects.All(MinimalVisibleText(page).Contains)
+            && toggle!.Text == CreationFlowStrings.Get("Qualities.Info.HideEffects", ""),
+            "Opening details lost effects, caveats or localized disclosure state.");
+        MinimalRequireNoMachineValues(page);
+        ((IButtonController)toggle!).SendClicked();
+        Require(!details.IsVisible && toggle!.Text == CreationFlowStrings.Get("Qualities.Info.ShowEffects", ""),
+            "Closing details did not restore concise help.");
+        MinimalRender(page);
+        ((IButtonController)toggle!).SendClicked();
+        Require(!details.IsVisible && !ReferenceEquals(toggle!.Parent, body)
+            && !body.Children.OfType<VerticalStackLayout>().Single().IsVisible,
+            "A detached callback reopened its old details or changed a refreshed explanation.");
     }
 
     private static void VerifyQualityDisclosure(NativePageBase page, string panelId, string actionId, params string[] exactValues)

@@ -2706,4 +2706,18 @@
   <data name="Qualities.SummarySource.f34b7ccf-5624-492a-938e-fd39a8887a54" xml:space="preserve"><value>BF00F059558C06167A53FFCD4112DC15AE011983FD1D0B5D5028F4BAB7F306DD</value></data>
   <data name="Qualities.Summary.fe67d03c-1394-41e0-a82a-532f5fe85d2e" xml:space="preserve"><value>Dual-natured insect spirit with aura masking and protection against ordinary weapons. Mild insecticide allergy; no Conjuring. Its diet requires sugar.</value></data>
   <data name="Qualities.SummarySource.fe67d03c-1394-41e0-a82a-532f5fe85d2e" xml:space="preserve"><value>5BC96244FBECA1ADB0A74B09BB6BBB6DB1D56FBE3824ACB0F3F55D4ECF0860F9</value></data>
+  <data name="Qualities.Info.ShowEffects" xml:space="preserve"><value>Show effect details</value></data>
+  <data name="Qualities.Info.HideEffects" xml:space="preserve"><value>Hide effect details</value></data>
+  <data name="Qualities.Summary.15b8fbbd-9d6f-43e4-acf3-97badf073ac4" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding Qi foci for selected skills costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.15b8fbbd-9d6f-43e4-acf3-97badf073ac4" xml:space="preserve"><value>DCFB1D5C028F2A41C3BF33F2971F7CB76CFF74B6D748B75D01CD166E91784978</value></data>
+  <data name="Qualities.Summary.a61e2873-fe15-40f5-9ce3-07caa1f824d2" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding Qi foci that improve Artisan costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.a61e2873-fe15-40f5-9ce3-07caa1f824d2" xml:space="preserve"><value>D5F65F8DE7DFFCEEE1400B85A592A2DA5B20C20139FF8866A22953710C11134E</value></data>
+  <data name="Qualities.Summary.3f536570-2f0c-40b1-a056-d310e29e983d" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding Qi foci for athletic skills costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.3f536570-2f0c-40b1-a056-d310e29e983d" xml:space="preserve"><value>6745E060DD8B9EACFB849BB846D3C1CADF0B6FA6C211BC990F70359CA2F538FD</value></data>
+  <data name="Qualities.Summary.01181bb0-2a94-43f1-8a97-41347eac3843" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding Qi foci for selected stealth, movement and awareness skills costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.01181bb0-2a94-43f1-8a97-41347eac3843" xml:space="preserve"><value>43506818E49FFE8A462465F9DA3C5DDFB9CF23AD13846F3D43C0EC0BE4BE76F9</value></data>
+  <data name="Qualities.Summary.88dd98ab-2f09-4ba9-b5c1-ff788c31fbac" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding Qi foci for social skills costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.88dd98ab-2f09-4ba9-b5c1-ff788c31fbac" xml:space="preserve"><value>FAFF676077EB61D5E6E4294B9006685BBDBF200ABF7084BDDAF58CE02428EB6E</value></data>
+  <data name="Qualities.Summary.32d0d753-9dad-4074-ab38-2d1ff5069a6a" xml:space="preserve"><value>Eligible adept powers receive limited Power Point discounts. Binding weapon foci costs less Karma.</value></data>
+  <data name="Qualities.SummarySource.32d0d753-9dad-4074-ab38-2d1ff5069a6a" xml:space="preserve"><value>8DC11BAC4A0288BC0F738570B86016ED528CD677F392319A4164B04E9A5F9333</value></data>
 </root>

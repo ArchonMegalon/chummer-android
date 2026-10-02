@@ -1769,4 +1769,12 @@
   <data name="Qualities.Summary.20543040-e552-4894-ba3b-f05eabcf58ab" xml:space="preserve"><value>Dualer Insektengeist mit Auramaskierung und Schutz vor normalen Waffen. Leichte Insektizidallergie; keine Beschwörung. Kann fliegen und mit seinem angeborenen Zauber Furcht auslösen.</value></data>
   <data name="Qualities.Summary.f34b7ccf-5624-492a-938e-fd39a8887a54" xml:space="preserve"><value>Dualer Insektengeist mit Auramaskierung und Schutz vor normalen Waffen. Leichte Insektizidallergie; keine Beschwörung. Ist außerdem blind.</value></data>
   <data name="Qualities.Summary.fe67d03c-1394-41e0-a82a-532f5fe85d2e" xml:space="preserve"><value>Dualer Insektengeist mit Auramaskierung und Schutz vor normalen Waffen. Leichte Insektizidallergie; keine Beschwörung. Benötigt Zucker als Nahrung.</value></data>
+  <data name="Qualities.Info.ShowEffects" xml:space="preserve"><value>Wirkungsdetails anzeigen</value></data>
+  <data name="Qualities.Info.HideEffects" xml:space="preserve"><value>Wirkungsdetails ausblenden</value></data>
+  <data name="Qualities.Summary.15b8fbbd-9d6f-43e4-acf3-97badf073ac4" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden von Qi-Foki für bestimmte Fertigkeiten kostet weniger Karma.</value></data>
+  <data name="Qualities.Summary.a61e2873-fe15-40f5-9ce3-07caa1f824d2" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden von Qi-Foki für Kunsthandwerk kostet weniger Karma.</value></data>
+  <data name="Qualities.Summary.3f536570-2f0c-40b1-a056-d310e29e983d" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden von Qi-Foki für athletische Fertigkeiten kostet weniger Karma.</value></data>
+  <data name="Qualities.Summary.01181bb0-2a94-43f1-8a97-41347eac3843" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden bestimmter Qi-Foki für Heimlichkeit, Bewegung und Wahrnehmung kostet weniger Karma.</value></data>
+  <data name="Qualities.Summary.88dd98ab-2f09-4ba9-b5c1-ff788c31fbac" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden von Qi-Foki für soziale Fertigkeiten kostet weniger Karma.</value></data>
+  <data name="Qualities.Summary.32d0d753-9dad-4074-ab38-2d1ff5069a6a" xml:space="preserve"><value>Für passende Adeptenkräfte gibt es begrenzte Kraftpunkt-Rabatte. Das Binden von Waffenfoki kostet weniger Karma.</value></data>
 </root>

@@ -913,8 +913,7 @@ public sealed class CreationQualityInfoPage : NativePageBase
         if (!string.IsNullOrWhiteSpace(_followUp))
             _body.Add(NativeTheme.Body(_followUp));
         if (_sourceXml is not null)
-            foreach (string effect in CreationQualityInfo.Effects(_sourceXml, _rating))
-                _body.Add(NativeTheme.Body(effect));
+            AddEffects(CreationQualityInfo.Effects(_sourceXml, _rating));
         else
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.MissingSource",
                 "The description for this granted quality is not available yet.")));
@@ -922,6 +921,44 @@ public sealed class CreationQualityInfoPage : NativePageBase
         back.AutomationId = "creation-quality-info-back";
         back.Clicked += async (_, _) => await Navigation.PopAsync();
         _body.Add(back);
+    }
+
+    private void AddEffects(IReadOnlyList<string> effects)
+    {
+        // Keep the concise explanation (or first known effect) and every
+        // completeness/level warning visible. Only the supporting values fold.
+        var notices = new HashSet<string>(StringComparer.Ordinal)
+        {
+            CreationFlowStrings.Get("Qualities.Info.Manual", "A description of this quality is not available yet."),
+            CreationFlowStrings.Get("Qualities.Info.Additional", "Some additional effects are not yet described here."),
+            CreationFlowStrings.Get("Qualities.Info.ChangedDefinition",
+                "This quality uses a different definition. Its full explanation is not available yet; any effects below come from this version."),
+            CreationFlowStrings.Format("Qualities.Info.BaseEffects",
+                "Selected level: {0}. The values below are base effects, not the combined total for this level. One-time effects are marked separately.", _rating)
+        };
+        var details = new VerticalStackLayout
+        {
+            AutomationId = "creation-quality-info-effects", Spacing = 10, IsVisible = false
+        };
+        for (int i = 0; i < effects.Count; i++)
+        {
+            var label = NativeTheme.Body(effects[i]);
+            if (i == 0 || notices.Contains(effects[i])) _body.Add(label);
+            else details.Add(label);
+        }
+        if (details.Count == 0) return;
+        Button toggle = NativeTheme.ReadingButton(CreationFlowStrings.Get("Qualities.Info.ShowEffects", "Show effect details"));
+        toggle.AutomationId = "creation-quality-info-effects-toggle";
+        toggle.Clicked += (_, _) =>
+        {
+            if (!ReferenceEquals(toggle.Parent, _body) || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            details.IsVisible = !details.IsVisible;
+            toggle.Text = details.IsVisible
+                ? CreationFlowStrings.Get("Qualities.Info.HideEffects", "Hide effect details")
+                : CreationFlowStrings.Get("Qualities.Info.ShowEffects", "Show effect details");
+        };
+        _body.Add(toggle);
+        _body.Add(details);
     }
 }
 
