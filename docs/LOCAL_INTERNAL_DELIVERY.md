@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 76 is the latest [observed Internal availability](../play/evidence/preview76-internal-observation.md),
+Preview 77 is the latest [observed Internal availability](../play/evidence/preview77-internal-observation.md),
+confirmed on 2 October at 22:12 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+It shortens 32 existing EN/DE/ES Quality explanations, preserving important
+benefits, drawbacks and scopes without changing rules. Physical Preview 77
+installation is not yet verified. Authored coverage remains 563/803 Qualities
+and 292 ordinary spells; 240 Quality and 71 ritual/enchantment prose gaps remain.
+No legal clearance, full-book, all-method or public-beta completion is claimed.
+
+Preview 76's [observed Internal availability](../play/evidence/preview76-internal-observation.md),
 confirmed on 2 October at approximately 20:55 Europe/Vienna. Its exact locally built ARM64 AAB
 was separately signed with the existing upload key and independently verified.
 It adds 43 short original EN/DE/ES Quality summaries and shortens 57 existing ones.
