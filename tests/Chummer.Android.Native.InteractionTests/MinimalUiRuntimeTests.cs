@@ -44,7 +44,43 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 347, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 355, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Climate Adaptation (Arctic)", "Climate Adaptation (Desert)",
+                    "Setae", "Monkey Paws", "Marsupial Pouch", "Electroception (Electrosense)",
+                    "Electroception (Technosense)", "Proboscis", "Photometabolism" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Body adaptations need translated, definition-bound benefits and limitations: " + name);
+                }
+                foreach (var pair in new[] {
+                    new[] { "Climate Adaptation (Arctic)", "Climate Adaptation (Desert)" },
+                    new[] { "Electroception (Electrosense)", "Electroception (Technosense)" } })
+                {
+                    Require(pair.Select(name => CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == name)), ""))
+                        .Distinct().Count() == pair.Length,
+                        "Environmental and electrical-sense variants must retain distinct explanations.");
+                }
+                foreach (var rule in new[] { (Name: "Climate Adaptation (Arctic)", Numbers: "1,1"),
+                    (Name: "Climate Adaptation (Desert)", Numbers: "1,1"), (Name: "Monkey Paws", Numbers: "+2,+1"),
+                    (Name: "Marsupial Pouch", Numbers: "−6"), (Name: "Proboscis", Numbers: "2,−1,+1"),
+                    (Name: "Photometabolism", Numbers: "10,1") })
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "");
+                    string numbers = string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", "")));
+                    Require(numbers == rule.Numbers,
+                        "Translation lost or changed a body adaptation's signed value: " + rule.Name);
+                }
+                foreach (string name in new[] { "Electroception (Electrosense)", "Electroception (Technosense)" })
+                    Require(CreationQualityInfo.Effects(catalog.Single(q => q.Element("name")!.Value == name).ToString())
+                        .Any(line => line.Contains(CreationFlowStrings.Get(
+                            "Qualities.Effect.Additional specialization option, not automatically learned", ""), StringComparison.Ordinal)
+                            && line.Contains(CreationFlowStrings.Get("Qualities.Value.Electroception", ""), StringComparison.Ordinal)),
+                        "An electrical-sense explanation must retain the distinction between an available and a learned specialization.");
                 foreach (string name in new[] { "360-degree Eyesight", "Bicardiac",
                     "Broadened Auditory System (Infrasound)", "Broadened Auditory System (Ultrasound)",
                     "Camouflage", "Dynamic Coloration", "Gills (Air)", "Gills (Aqua)", "Gills (Full)",
