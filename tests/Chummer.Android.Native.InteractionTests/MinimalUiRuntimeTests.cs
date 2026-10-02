@@ -91,6 +91,126 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Metagenic Improvement (Body)", ["Body", "SURGE", "minimum and maximum", "by one"],
+            ["Konstitution", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Constitución", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Agility)", ["Agility", "SURGE", "minimum and maximum", "by one"],
+            ["Geschicklichkeit", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Agilidad", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Reaction)", ["Reaction", "SURGE", "minimum and maximum", "by one"],
+            ["Reaktion", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Reacción", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Strength)", ["Strength", "SURGE", "minimum and maximum", "by one"],
+            ["Stärke", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Fuerza", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Charisma)", ["Charisma", "SURGE", "minimum and maximum", "by one"],
+            ["Charisma", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Carisma", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Intuition)", ["Intuition", "SURGE", "minimum and maximum", "by one"],
+            ["Intuition", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Intuición", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Logic)", ["Logic", "SURGE", "minimum and maximum", "by one"],
+            ["Logik", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Lógica", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Metagenic Improvement (Willpower)", ["Willpower", "SURGE", "minimum and maximum", "by one"],
+            ["Willenskraft", "SURGE", "Minimum und Maximum", "um eins"],
+            ["Voluntad", "SURGE", "mínimo y máximo", "en uno"]),
+        ("Dermal Alteration (Bark Skin)", ["SURGE", "armor", "not Body or condition boxes", "incompatible"],
+            ["SURGE", "Panzerung", "nicht Konstitution oder Zustandskästchen", "unvereinbar"],
+            ["SURGE", "armadura", "no Constitución ni casillas", "Incompatible"]),
+        ("Dermal Alteration (Granite Shell)", ["SURGE", "armor", "not Body or condition boxes", "incompatible"],
+            ["SURGE", "Panzerung", "nicht Konstitution oder Zustandskästchen", "unvereinbar"],
+            ["SURGE", "armadura", "no Constitución ni casillas", "Incompatible"]),
+        ("Dermal Alteration (Rhino Hide)", ["SURGE", "armor", "not Body or condition boxes", "incompatible"],
+            ["SURGE", "Panzerung", "nicht Konstitution oder Zustandskästchen", "unvereinbar"],
+            ["SURGE", "armadura", "no Constitución ni casillas", "Incompatible"]),
+        ("Dermal Alteration (Blubber)", ["SURGE", "against cold only", "not general armor", "incompatible"],
+            ["SURGE", "nur Panzerung gegen Kälte", "nicht allgemeine", "unvereinbar"],
+            ["SURGE", "solo contra frío", "no armadura general", "Incompatible"]),
+        ("Dermal Alteration (Dragon Skin)", ["SURGE", "against fire only", "not general armor", "incompatible"],
+            ["SURGE", "nur Panzerung gegen Feuer", "nicht allgemeine", "unvereinbar"],
+            ["SURGE", "solo contra fuego", "no armadura general", "Incompatible"]),
+        ("Functional Tail (Balance)", ["SURGE", "balancing", "Gymnastics", "Incompatible", "Vestigial Tail"],
+            ["SURGE", "balancierender", "Akrobatik", "Unvereinbar", "verkümmerten"],
+            ["SURGE", "para equilibrarte", "Gimnasia", "Incompatible", "Vestigial"]),
+        ("Functional Tail (Paddle)", ["SURGE", "paddle-shaped", "Swimming", "Incompatible", "Vestigial Tail"],
+            ["SURGE", "paddelförmiger", "Schwimm", "Unvereinbar", "verkümmerten"],
+            ["SURGE", "en forma de remo", "Natación", "Incompatible", "Vestigial"]),
+        ("Functional Tail (Prehensile)", ["SURGE", "grasping", "Gymnastics", "Incompatible", "Vestigial Tail"],
+            ["SURGE", "greiffähiger", "Akrobatik", "Unvereinbar", "verkümmerten"],
+            ["SURGE", "prensil", "Gimnasia", "Incompatible", "Vestigial"]),
+        ("Trust Fund I", ["Medium", "assigned", "not free starting money", "not explained"],
+            ["Mittelschicht", "zugewiesenen", "kein kostenloses Startgeld", "nicht erklärt"],
+            ["Medio", "asignado", "no dinero inicial gratis", "no se explican"]),
+        ("Trust Fund II", ["Low", "assigned", "not free starting money", "not explained"],
+            ["Unterschicht", "zugewiesenen", "kein kostenloses Startgeld", "nicht erklärt"],
+            ["Bajo", "asignado", "no dinero inicial gratis", "no se explican"]),
+        ("Trust Fund III", ["High", "assigned", "not free starting money", "not explained"],
+            ["Oberschicht", "zugewiesenen", "kein kostenloses Startgeld", "nicht erklärt"],
+            ["Alto", "asignado", "no dinero inicial gratis", "no se explican"]),
+        ("Trust Fund IV", ["Medium", "assigned", "not free starting money", "not explained"],
+            ["Mittelschicht", "zugewiesenen", "kein kostenloses Startgeld", "nicht erklärt"],
+            ["Medio", "asignado", "no dinero inicial gratis", "no se explican"]),
+        ("Changeling (Class I SURGE)", ["I", "metagenic traits", "separate thirty-Karma", "not extra general Karma", "Only one"],
+            ["I", "metagenische", "eigenem Dreißig-Karma", "kein zusätzliches", "Nur eine"],
+            ["I", "metagénicos", "separado de treinta", "no Karma general", "Solo una"]),
+        ("Changeling (Class II SURGE)", ["II", "metagenic traits", "separate thirty-Karma", "not extra general Karma", "Only one"],
+            ["II", "metagenische", "eigenem Dreißig-Karma", "kein zusätzliches", "Nur eine"],
+            ["II", "metagénicos", "separado de treinta", "no Karma general", "Solo una"]),
+        ("Changeling (Class III SURGE)", ["III", "metagenic traits", "separate thirty-Karma", "not extra general Karma", "Only one"],
+            ["III", "metagenische", "eigenem Dreißig-Karma", "kein zusätzliches", "Nur eine"],
+            ["III", "metagénicos", "separado de treinta", "no Karma general", "Solo una"]),
+        ("Arcane Arrester", ["SURGE", "each level", "two spell-resistance", "two levels", "Incompatible", "no spellcasting"],
+            ["SURGE", "Jede Stufe", "zwei Zauberwiderstand", "zwei Stufen", "Unvereinbar", "kein Zauberbonus"],
+            ["SURGE", "dos dados", "por nivel", "dos niveles", "Incompatible", "no mejora"]),
+        ("Balance Receptor", ["Gymnastics", "without raising", "SURGE"],
+            ["Akrobatik", "ohne", "SURGE"],
+            ["Gimnasia", "sin aumentar", "SURGE"]),
+        ("Beak", ["living costs", "swallowed toxins only", "SURGE"],
+            ["Lebensstilkosten", "nur Widerstand gegen geschluckte Gifte", "SURGE"],
+            ["costes de vida", "solo a toxinas ingeridas", "SURGE"]),
+        ("Raptor Beak", ["SURGE", "living costs", "swallowed toxins", "beak weapon", "not yet explained"],
+            ["SURGE", "Lebensstilkosten", "geschluckte Gifte", "Schnabelwaffe", "noch nicht erklärt"],
+            ["SURGE", "costes de vida", "toxinas ingeridas", "arma de pico", "no está explicado"]),
+        ("Ogre Stomach", ["living costs", "swallowed toxins only", "SURGE"],
+            ["Lebensstilkosten", "nur Widerstand gegen geschluckte Gifte", "SURGE"],
+            ["costes de vida", "solo a toxinas ingeridas", "SURGE"]),
+        ("Dermal Deposits", ["armor", "not Body or condition boxes", "SURGE"],
+            ["Panzerung", "nicht Konstitution oder Zustandskästchen", "SURGE"],
+            ["armadura", "no Constitución ni casillas", "SURGE"]),
+        ("Magnetoception", ["Navigation", "without raising", "SURGE"],
+            ["Navigation", "ohne", "SURGE"],
+            ["Navegación", "sin aumentar", "SURGE"]),
+        ("Thorns", ["unarmed damage", "not attack dice", "penalizes Physical Active", "SURGE"],
+            ["waffenlosen Schaden", "nicht Angriffswürfel", "erschwert", "körperliche", "SURGE"],
+            ["daño sin armas", "no dados de ataque", "penaliza", "físicas activas", "SURGE"]),
+        ("Vomeronasal Organ", ["smell-based Perception only", "other senses", "SURGE"],
+            ["nur geruchsbasierte Wahrnehmung", "nicht andere Sinne", "SURGE"],
+            ["solo Percepción", "olfato", "no otros sentidos", "SURGE"]),
+        ("Webbed Digits", ["Swimming", "not skill rating or underwater breathing", "SURGE"],
+            ["Schwimmproben", "nicht Fertigkeitswert oder Unterwasseratmung", "SURGE"],
+            ["Natación", "no el nivel aprendido", "respirar bajo el agua", "SURGE"]),
+        ("Will to Live", ["one overflow box per level", "Physical", "does not prevent unconsciousness or heal"],
+            ["Überlaufbox je Stufe", "körperlichem", "weder Bewusstlosigkeit", "Verletzungen"],
+            ["casilla de desbordamiento por nivel", "físico", "no evita inconsciencia ni cura"]),
+        ("Infirm", ["Each level", "all natural physical-attribute maxima", "cannot exceed", "first level"],
+            ["Jede Stufe", "körperlichen Attributmaxima", "ersten Stufe", "nicht überschreiten"],
+            ["Cada nivel", "máximos físicos naturales", "primer nivel", "no pueden superar"]),
+        ("Elevated Stress", ["Addiction", "toxin", "dependence type or exposure route", "only the relevant", "not every"],
+            ["Sucht", "Gift", "Abhängigkeitstyp oder Aufnahmeweg", "nur der passende", "nicht alle"],
+            ["adicción y toxinas", "dependencia o exposición", "solo la penalización", "sin acumular"]),
+        ("Resistance to Pathogens/Toxins", ["Add two", "pathogens or toxins", "once", "never combine"],
+            ["zwei Würfel", "Krankheitserreger oder Gifte", "einmal", "nicht addiert"],
+            ["dos dados", "patógenos o toxinas", "una vez", "nunca acumules"]),
+        ("Resistance to Pathogens and Toxins", ["Add one", "pathogens or toxins", "once", "never combine"],
+            ["einen Würfel", "Krankheitserreger oder Gifte", "einmal", "nicht addiert"],
+            ["un dado", "patógenos o toxinas", "una vez", "nunca acumules"]),
+        ("Cyber-Singularity Seeker", ["pairs", "Willpower by one each", "up to two", "settings", "not unrelated"],
+            ["paare", "Willenskraft um je eins", "höchstens zwei", "Einstellungen", "nicht beliebige"],
+            ["par válido", "Voluntad en uno", "hasta dos", "configuración", "no otros"]),
+        ("Dimmer Bulb", ["Each level", "Logic/Intuition", "defense", "Surprise", "memory", "intentions", "listed magical and addiction"],
+            ["Jede Stufe", "Logik-/Intuition", "Abwehr", "Überraschung", "Gedächtnis", "Absichten", "Magie- und Sucht"],
+            ["Cada nivel", "Lógica/Intuición", "defensa", "Sorpresa", "memoria", "intenciones", "mágicas y a adicción"]),
         ("Disgraced", ["GM", "criminals", "prejudice", "Etiquette"],
             ["Spielleitung", "Kriminelle", "Etikette", "Vorurteilen"],
             ["DJ", "criminales", "prejuicios", "Etiqueta"]),
@@ -1422,7 +1542,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Magic Resistance needs a per-level spell-resistance explanation, not a spellcasting bonus.");
             Require(Effect("Resistance to Pathogens/Toxins").StartsWith("Add two dice", StringComparison.Ordinal)
                 && Effect("Resistance to Pathogens and Toxins").StartsWith("Add one die", StringComparison.Ordinal)
-                && Effect("Resistance to Pathogens and Toxins").Contains("not the sum of all listed routes"),
+                && Effect("Resistance to Pathogens and Toxins").Contains("never combine bonuses for alternative routes"),
                 "The two distinct resistance sources must keep their exact values and must not sum alternative exposure routes.");
             Require(Effect("Born Rich").Contains("increases by 30") && Effect("Born Rich").Contains("still pay the Karma")
                 && Effect("Out For Myself").Contains("three extra dice on Surprise tests"),
@@ -1455,7 +1575,11 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("The Magician's Way").Contains("excluded powers do not qualify"),
                 "Adept Ways must not invent a blanket money or Power Point discount.");
             foreach (string name in new[] { "Changeling (Class I SURGE)", "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" })
-                Require(Effect(name).Contains("separate 30-Karma limit") && Effect(name).Contains("not 30 extra Karma"),
+                Require(Effect(name).Contains("separate thirty-Karma limit")
+                    && Effect(name).Contains("not extra general Karma")
+                    && Effect(name).Contains("Only one SURGE class")
+                    && catalog.Single(q => q.Element("name")!.Value == name)
+                        .Element("bonus")!.Element("metageniclimit")!.Value == "30",
                     "The metagenic allowance must not be presented as general-purpose bonus Karma.");
             Require(Effect("Black Market Pipeline").Contains("Eligible purchases in that category receive a 10% price discount")
                 && Effect("Made Man").Contains("group contact with Loyalty fixed at 3")
@@ -1549,9 +1673,10 @@ internal static partial class AfterRunAuthorityHarness
                 Require(metagenic.Element("bonus")!.Element("specificattribute")!.Element("max")!.Value == "1"
                     && metagenic.Element("bonus")!.Element("specificattribute")!.Element("min")!.Value == "1"
                     && metagenic.Element("required")!.Descendants("quality").Count() == 3
-                    && inspired(metagenicId).StartsWith($"Your natural {name} range shifts up by 1:", StringComparison.Ordinal)
-                    && inspired(metagenicId).Contains("both its minimum and maximum increase")
-                    && inspired(metagenicId).Contains("requires a SURGE changeling trait"),
+                    && inspired(metagenicId).StartsWith("SURGE changeling:", StringComparison.Ordinal)
+                    && inspired(metagenicId).Contains($"natural minimum and maximum of {name} by one")
+                    && inspired(metagenicId).Contains("Minimum change: 1")
+                    && inspired(metagenicId).Contains("Maximum change: 1"),
                     "Metagenic Improvement raises both bounds and retains the changeling prerequisite.");
                 Require(optimized.Element("bonus")!.Element("specificattribute")!.Element("max")!.Value == "1"
                     && optimized.Element("bonus")!.Element("specificattribute")!.Element("min") is null
@@ -1657,8 +1782,10 @@ internal static partial class AfterRunAuthorityHarness
                 }
             }
             Require(Effect("Animal Pelage (Insulating Pelt)").Contains("4 to armor against cold")
-                && Effect("Dermal Alteration (Blubber)").Contains("2 to armor against cold")
-                && Effect("Dermal Alteration (Dragon Skin)").Contains("2 to armor against fire"),
+                && Effect("Dermal Alteration (Blubber)").Contains("armor against cold only, not general armor")
+                && Effect("Dermal Alteration (Blubber)").Contains("Cold resistance armor: 2")
+                && Effect("Dermal Alteration (Dragon Skin)").Contains("armor against fire only, not general armor")
+                && Effect("Dermal Alteration (Dragon Skin)").Contains("Fire resistance armor: 2"),
                 "Cold and fire armor must not become universal armor or interchangeable elemental protection.");
             foreach (var (name, value) in new[] { ("Dermal Alteration (Bark Skin)", "2"),
                 ("Dermal Alteration (Granite Shell)", "4"), ("Dermal Alteration (Rhino Hide)", "3") })
@@ -1666,29 +1793,36 @@ internal static partial class AfterRunAuthorityHarness
                 var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
                 Require(quality.Element("bonus")!.Element("armor")!.Value == value
                     && quality.Element("bonus")!.Element("armor")!.Attribute("group")!.Value == "0"
-                    && Effect(name).Contains($"{value}-point armor modifier")
+                    && Effect(name).Contains("adds armor, not Body or condition boxes")
+                    && Effect(name).Contains("Other Dermal Alteration variants are incompatible")
+                    && Effect(name).Contains("Armor: " + value)
                     && Effect(name).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                     "Grouped armor may be explained, but its unexpanded stacking flag must still be marked partial.");
             }
-            Require(Effect("Arcane Arrester").Contains("Each level adds two dice when resisting spells, up to two levels")
-                && Effect("Arcane Arrester").Contains("cannot be combined with Magic Resistance")
-                && Effect("Functional Tail (Balance)").Contains("one die to Gymnastics")
-                && Effect("Functional Tail (Paddle)").Contains("two dice to Swimming")
-                && Effect("Functional Tail (Prehensile)").Contains("one die to Gymnastics")
-                && Effect("Vomeronasal Organ").Contains("based on smell"),
+            Require(Effect("Arcane Arrester").Contains("each level adds two spell-resistance dice, up to two levels")
+                && Effect("Arcane Arrester").Contains("Incompatible with Magic Resistance")
+                && Effect("Arcane Arrester").Contains("Spell resistance: 2")
+                && Effect("Functional Tail (Balance)").Contains("Skill · Gymnastics · Bonus: 1")
+                && Effect("Functional Tail (Paddle)").Contains("Skill · Swimming · Bonus: 2")
+                && Effect("Functional Tail (Prehensile)").Contains("Skill · Gymnastics · Bonus: 1")
+                && Effect("Vomeronasal Organ").Contains("smell-based Perception only"),
                 "Spell resistance, alternative tail variants and scent bonuses must retain their distinct scopes.");
-            Require(Effect("Beak").Contains("lifestyle costs by 10%")
-                && Effect("Beak").Contains("one die when resisting ingested toxins")
-                && Effect("Ogre Stomach").Contains("lifestyle costs by 20%")
-                && Effect("Ogre Stomach").Contains("two dice when resisting ingested toxins")
-                && Effect("Raptor Beak").Contains("attack details are not yet described here")
+            Require(Effect("Beak").Contains("Lifestyle cost change (%): -10")
+                && Effect("Beak").Contains("Ingested toxin resistance: 1")
+                && Effect("Ogre Stomach").Contains("Lifestyle cost change (%): -20")
+                && Effect("Ogre Stomach").Contains("Ingested toxin resistance: 2")
+                && Effect("Raptor Beak").Contains("attack profile is not yet explained")
                 && Effect("Raptor Beak").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Digestion bonuses must retain their cost/resistance differences, and weapon references stay incomplete.");
             Require(Effect("Adiposis").Contains("slows movement")
                 && Effect("Adiposis").Contains("faster and more severe fatigue")
                 && Effect("Adiposis").Contains("penalizes physical activities, including combat")
                 && Effect("Adiposis").Contains("Exertion causes")
-                && Effect("Thorns").Contains("unarmed damage by 1, but Physical Active skill tests lose one die"),
+                && Effect("Thorns").Contains("unarmed damage, not attack dice")
+                && Effect("Thorns").Contains("penalizes Physical Active tests")
+                && Effect("Thorns").Contains("Unarmed damage change: 1")
+                && catalog.Single(q => q.Element("name")!.Value == "Thorns")
+                    .Element("bonus")!.Element("skillcategory")!.Element("bonus")!.Value == "-1",
                 "Replacement movement rates and damage bonuses must not hide their skill penalties.");
             Require(Effect("Deformity (Quasimodo)").Contains("except Perception")
                 && Effect("Neoteny").Contains("Physical condition monitor: 2 fewer boxes; Stun is unchanged")
@@ -1699,7 +1833,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Physical drawbacks must preserve exclusions, monitor type and alternative healing rolls.");
             Require(Effect("Social Appearance Anxiety").Contains("one die per quality level, up to three levels")
                 && Effect("Social Appearance Anxiety").Contains("When you are not looking your best")
-                && Effect("Elevated Stress").Contains("alternative situations, not eight penalties to combine")
+                && Effect("Elevated Stress").Contains("only the relevant penalty, not every listed case together")
                 && Effect("Sloppy Code").StartsWith("While inside a Matrix host,", StringComparison.Ordinal),
                 "Conditional and rated penalties must not be advertised as unconditional combined totals.");
             var prototype = catalog.Single(quality => quality.Element("name")!.Value == "Prototype Transhuman");
