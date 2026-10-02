@@ -82,6 +82,68 @@ internal static partial class AfterRunAuthorityHarness
         ("Crystal Spine", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia")
     ];
 
+    private static readonly string[] FreeInsectSpiritSpecies =
+    [
+        "Cutter Ant", "Fire Ant", "Desert Locust", "Mole Cricket", "Subterranean Termite",
+        "Hunter Wasp", "Bee", "Goliath Beetle", "Water Beetle", "House Centipede",
+        "Tropical Centipede", "Century Cicada", "Trapdoor Spider", "Black Widow",
+        "Burster Firefly", "Botfly", "Dragonfly", "Mimic Mantis", "Orchid Mantis",
+        "Vampire Mosquito", "Tick", "Death's Head Moth", "Cryptid Moth", "Cave Roach", "Silverfish"
+    ];
+
+    private static void VerifyInsectSpiritSummaries(System.Xml.Linq.XElement[] catalog, string locale)
+    {
+        var qualities = catalog.Where(q => q.Element("name")!.Value.StartsWith("Free Insect Spirit: ", StringComparison.Ordinal)).ToArray();
+        Require(qualities.Select(q => q.Element("name")!.Value["Free Insect Spirit: ".Length..]).Order()
+            .SequenceEqual(FreeInsectSpiritSpecies.Order()), "Review every current insect-spirit variant, not only common powers.");
+        var terms = locale switch
+        {
+            "de-AT" => new[] { "Auramaskierung", "normalen Waffen", "Leichte Insektizidallergie", "keine Beschwörung",
+                "Feuer", "kälteempfindlich", "fliegen", "blind", "Schaden", "nur auf ihn selbst", "Gift",
+                "Befehl der Königin", "festhalten", "Wände", "Sicht", "Sturzangriff", "Empathie", "Essenzverlust",
+                "Essenz entziehen", "Krankheiten", "Furcht", "Zucker" },
+            "es-MX" => new[] { "enmascaramiento", "armas normales", "Alergia leve a insecticidas", "sin Conjuración",
+                "fuego", "frío", "volar", "ciego", "daño", "solo le afecta a él", "veneno",
+                "orden de la reina", "inmovilizar", "paredes", "vista", "Ataque en Picado", "Empatía", "Pérdida de Esencia",
+                "drenar Esencia", "enfermedades", "temor", "azúcar" },
+            _ => new[] { "aura masking", "ordinary weapons", "Mild insecticide allergy", "no Conjuring",
+                "fire", "cold", "flight", "blind", "damage", "only itself", "venom",
+                "queen's command", "immobilize", "walls", "sight", "Dive Attack", "Empathy", "Essence Loss",
+                "drain Essence", "disease", "dread", "sugar" }
+        };
+        foreach (var quality in qualities)
+        {
+            string name = quality.Element("name")!.Value;
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            var lines = CreationQualityInfo.Effects(quality.ToString());
+            var bonus = quality.Element("bonus")!;
+            bool Power(string power, string selection = "") => bonus.Element("critterpowers")!.Elements("power")
+                .Any(p => p.Value == power && ((string?)p.Attribute("select") ?? "") == selection);
+            bool Text(int index) => summary.Contains(terms[index], StringComparison.OrdinalIgnoreCase);
+            Require(new[] { "Dual Natured", "Aura Masking", "Realistic Form" }.All(p => Power(p))
+                && Power("Immunity", "Normal Weapons") && Power("Allergy", "Insecticides, Mild")
+                && bonus.Element("skillgroupdisable")?.Value == "Conjuring"
+                && bonus.Element("enableattribute")?.Element("name")?.Value == "MAG",
+                "Shared insect-spirit help no longer matches the consumed capability and drawback scope: " + name);
+            Require(summary.Length > 0 && lines[0] == summary && Enumerable.Range(0, 4).All(Text)
+                && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", ""))
+                && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
+                "Short spirit help must retain its allergy, unavailable skill group and unresolved external-power notice: " + name);
+            foreach (var scope in new (int Index, bool Present)[] { (4, Power("Immunity", "Fire")),
+                (5, Power("Vulnerability", "Cold")),
+                (6, bonus.Elements("movementreplace").Any(m => m.Element("category")?.Value == "Fly")),
+                (7, Power("Reduced Sense", "Blind")), (8, bonus.Element("damageresistance") is not null),
+                (9, Power("Movement", "Self Only")), (10, Power("Venom")),
+                (11, Power("Induced Dormancy", "Queen's Command")), (12, Power("Binding")),
+                (13, Power("Wall Walking")), (14, Power("Innate Spell", "Mass Sight Removal")),
+                (15, Power("Dive Attack")), (16, Power("Empathy")), (17, Power("Essence Loss")),
+                (18, Power("Essence Drain")), (19, Power("Pestilence")),
+                (20, Power("Innate Spell", "Foreboding")), (21, Power("Dietary Requirement", "Sugar")) })
+                Require(Text(scope.Index) == scope.Present,
+                    "A translated spirit summary lost or borrowed another variant's effect: " + name + " / " + terms[scope.Index]);
+        }
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -120,7 +182,8 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 489, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 514, "Localized source-identity summaries were not loaded from the real catalog.");
+                VerifyInsectSpiritSummaries(catalog, locale);
                 foreach (var rule in SourceEffectQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
@@ -1821,7 +1884,8 @@ internal static partial class AfterRunAuthorityHarness
                         "An empty valid review must explain that no additional qualities are selected.");
                     MinimalRequireNoMachineValues(empty);
                     foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased", "Animal Empathy" }
-                        .Concat(SourceEffectQualitySummaries.Select(rule => rule.Name)))
+                        .Concat(SourceEffectQualitySummaries.Select(rule => rule.Name))
+                        .Concat(FreeInsectSpiritSpecies.Select(species => "Free Insect Spirit: " + species)))
                     {
                         var helpOption = state.Authority.Options.First(item => item.Name == name);
                         var help = new CreationQualityInfoPage(coordinator, original, helpOption);
