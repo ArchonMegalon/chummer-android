@@ -44,7 +44,43 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 411, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 421, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in new[] { (Name: "Natural Leader", Numbers: "+1"),
+                    (Name: "Observant", Numbers: ""), (Name: "Battle Hardened", Numbers: "+1,3"),
+                    (Name: "Thousand-Yard Stare", Numbers: "−1,3"),
+                    (Name: "Go Big or Go Home", Numbers: "3,−6,−10"), (Name: "I C U", Numbers: "+2"),
+                    (Name: "Otaku to Technomancer", Numbers: "+2"), (Name: "Deck Builder", Numbers: "1"),
+                    (Name: "Impenetrable Logic", Numbers: ""), (Name: "Silence is Golden", Numbers: "2,10") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 35 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Combat and Matrix qualities need their own inline explanation: " + rule.Name);
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Translation changed a combat or Matrix quality's numeric scope: " + rule.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.SetElementValue("karma", "999");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "A combat or Matrix explanation must not survive changed source bytes: " + rule.Name);
+                }
+                var combatMatrixScope = locale switch
+                {
+                    "de-AT" => (Teamwork: "Teamwork", Action: "Freien Handlung", Outside: "außerhalb", Physical: "sichtbar"),
+                    "es-MX" => (Teamwork: "Trabajo en equipo", Action: "Acción Gratuita", Outside: "fuera", Physical: "físicamente"),
+                    _ => (Teamwork: "Teamwork", Action: "Free Action", Outside: "outside", Physical: "physically")
+                };
+                foreach (var rule in new[] { (Name: "Natural Leader", Scope: combatMatrixScope.Teamwork),
+                    (Name: "Observant", Scope: combatMatrixScope.Action),
+                    (Name: "Silence is Golden", Scope: combatMatrixScope.Outside),
+                    (Name: "I C U", Scope: combatMatrixScope.Physical) })
+                    Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "")
+                        .Contains(rule.Scope, StringComparison.Ordinal),
+                        "Translation dropped a combat or Matrix qualifier: " + rule.Name);
                 foreach (var rule in new[] { (Name: "My Country, Right or Wrong", Numbers: ""),
                     (Name: "Cyber-snob", Numbers: "1"), (Name: "Implant-induced Immune Deficiency", Numbers: "5,−2"),
                     (Name: "Superhuman Psychosis", Numbers: "+1,−2,5,3"), (Name: "Metahuman Traits", Numbers: "+1") })

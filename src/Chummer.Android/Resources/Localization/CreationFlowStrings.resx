@@ -1609,4 +1609,24 @@
   <data name="Qualities.SummarySource.37129686-fe48-4374-acca-7b06d1373db0" xml:space="preserve"><value>CB3CF5D55689F345CDE1E35F5A5821137D06F05A0B25C42DEFB55AC12480A2DD</value></data>
   <data name="Qualities.SummarySource.6b9c009f-613b-4d3f-82c6-53e191c4e095" xml:space="preserve"><value>8FC13C8FC00C8D7AE439B12212F8FD69A3D2E9F0C6E07DA30D7DD6F6B4D1CA77</value></data>
   <data name="Qualities.SummarySource.dc510f9d-0648-474b-8016-11a810ada098" xml:space="preserve"><value>BC2732AA8B7FBAD6F5914AB1DEA2F9A7B22DDE522B76DDD700C6553F3D6DD267</value></data>
+  <data name="Qualities.Summary.52d00c91-76d5-4b06-b475-f49637ea9763" xml:space="preserve"><value>Leadership and Teamwork gain +1 die for combat maneuvers.</value></data>
+  <data name="Qualities.Summary.e9a11971-48a2-4c9a-89b4-16c844e197ba" xml:space="preserve"><value>Observe in Detail becomes a Free Action.</value></data>
+  <data name="Qualities.Summary.8d9cc4fa-ce95-423a-8db8-724372903b3d" xml:space="preserve"><value>+1 Composure die per rank in hostile situations, maximum 3 ranks; not against spells/critter powers.</value></data>
+  <data name="Qualities.Summary.0f9a0d45-a3c5-454d-8581-a5a1804e522e" xml:space="preserve"><value>−1 Social die per rank with non-combat personnel; maximum 3 ranks.</value></data>
+  <data name="Qualities.Summary.64876d0b-bfa6-45df-b8c8-caf6385306c6" xml:space="preserve"><value>Placing 3 marks with one Brute Force or Hack on the Fly action incurs −6 dice instead of −10.</value></data>
+  <data name="Qualities.Summary.ea23db09-759b-4e49-a7e9-34a232ff558d" xml:space="preserve"><value>+2 Matrix Perception dice to detect silent icons when you physically see the target or the person carrying its devices.</value></data>
+  <data name="Qualities.Summary.d62880dd-3e28-4b0c-8c71-dc0e4b72397b" xml:space="preserve"><value>Former otaku: +2 dice resisting Fading from any source. Requires Technomancer; this quality does not grant Resonance.</value></data>
+  <data name="Qualities.Summary.d85c6437-7611-47d3-b4c7-4e581e5349a4" xml:space="preserve"><value>Your hardware expertise allows 1 extra cyberdeck module. This quality cannot be taken again; it does not supply the module.</value></data>
+  <data name="Qualities.Summary.7ac54323-a913-4a8e-803e-c6ac2d4ba359" xml:space="preserve"><value>For Matrix Full Defense, use Logic instead of Willpower. This does not replace Willpower on other tests.</value></data>
+  <data name="Qualities.Summary.eefe6c28-5d7b-403d-8c24-5bc26536b52b" xml:space="preserve"><value>Reduce Noise penalties by 2 for you and anyone within 10 meters. Connections from outside that radius gain no benefit.</value></data>
+  <data name="Qualities.SummarySource.52d00c91-76d5-4b06-b475-f49637ea9763" xml:space="preserve"><value>023F950633503FB882F95E27650B665EB1F9AB94D1238943BDBE11C952E3F5AD</value></data>
+  <data name="Qualities.SummarySource.e9a11971-48a2-4c9a-89b4-16c844e197ba" xml:space="preserve"><value>7815E757890C8C5AB039A8C52836B7B26EC227A9713E7B33A2027D886304F625</value></data>
+  <data name="Qualities.SummarySource.8d9cc4fa-ce95-423a-8db8-724372903b3d" xml:space="preserve"><value>28110DC20D691AC36549941001EEE6C405401F0B16B926C0A49748005816CD57</value></data>
+  <data name="Qualities.SummarySource.0f9a0d45-a3c5-454d-8581-a5a1804e522e" xml:space="preserve"><value>E930DF04C7E15A9324150ED0FB74C255C7DAAC2428F9EEF7D78BEFF9E44BC5BC</value></data>
+  <data name="Qualities.SummarySource.64876d0b-bfa6-45df-b8c8-caf6385306c6" xml:space="preserve"><value>1CE93A21E9CEF36126056FABA72F18E053F57CB64E54B0DCB0514354EC75AF85</value></data>
+  <data name="Qualities.SummarySource.ea23db09-759b-4e49-a7e9-34a232ff558d" xml:space="preserve"><value>1F094CE3DF79914414061B850B9F99F84E6BC1F69EE641ABCCD74A105B773D8D</value></data>
+  <data name="Qualities.SummarySource.d62880dd-3e28-4b0c-8c71-dc0e4b72397b" xml:space="preserve"><value>8D9B9FA89E97241BC274BBE1CACDD426D1462319D9978C83336A3AF8FF253DD4</value></data>
+  <data name="Qualities.SummarySource.d85c6437-7611-47d3-b4c7-4e581e5349a4" xml:space="preserve"><value>3BE640836CE07FE7C0F83C8EAD1C29EE9E7AE1861F50134B33E373BF5EF60A9F</value></data>
+  <data name="Qualities.SummarySource.7ac54323-a913-4a8e-803e-c6ac2d4ba359" xml:space="preserve"><value>85D5B6E961C8925B956376134CE54B510ED6D48193B0AAD16FCB1D1C5338DC68</value></data>
+  <data name="Qualities.SummarySource.eefe6c28-5d7b-403d-8c24-5bc26536b52b" xml:space="preserve"><value>8543422A445D4D0019B3155C2ECAC6B59B23552183F2483B4F63FD66E0B5AA90</value></data>
 </root>
