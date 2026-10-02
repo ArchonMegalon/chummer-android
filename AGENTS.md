@@ -19,6 +19,17 @@ For codebase discovery, run the workspace vexp pipeline first. If this new repo
 is not indexed yet, use targeted reads and commands only until indexing catches
 up.
 
+## Short, original spell summaries
+
+User decision, 2026-10-02: spell help must summarize the practical effect in
+independently written, plain language, usually one sentence. Do not copy or
+closely rephrase rulebook paragraphs, distinctive flavor text or examples, or
+replace useful help with a book referral. Keep each localized `Spells.Summary.*`
+entry within 25 words and 160 characters, without paragraph breaks. Preserve
+important distinctions; show accepted Core numbers separately through the
+existing profile. These are editorial limits, not copyright clearance: review
+original wording as well as length. Do not claim legal approval from a test pass.
+
 ## Local execution is the default
 
 User decision, 2026-09-19: build locally and host locally. Use the existing
