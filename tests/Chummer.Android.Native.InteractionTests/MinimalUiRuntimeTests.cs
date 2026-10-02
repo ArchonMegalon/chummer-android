@@ -44,7 +44,23 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 325, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 332, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Hung Out to Dry", "Night Blindness", "Paranoia",
+                    "Vendetta", "Pie Iesu Domine. Dona Eis Requiem.",
+                    "Carrier (HMHVV Strain II)", "Carrier (HMHVV Strain III)" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Conditional drawbacks need translated explanations bound to the consumed definition: " + name);
+                }
+                var carrierSummaries = catalog.Where(q => q.Element("name")!.Value.StartsWith("Carrier (HMHVV", StringComparison.Ordinal))
+                    .Select(q => CreationFlowStrings.Get(SummaryKey(q), "")).ToArray();
+                Require(carrierSummaries.Length == 2 && carrierSummaries.Distinct().Count() == 2
+                    && carrierSummaries.All(text => Regex.Matches(text, @"\d+").Select(m => m.Value).SequenceEqual(new[] { "2", "1" })),
+                    "Carrier strains must remain distinct without losing their translated dice and reputation values.");
                 foreach (string name in new[] { "Hawk Eye", "Jack of All Trades Master of None",
                     "Lightning Reflexes", "Linguist", "Sensei", "Trustworthy", "Witness My Hate",
                     "Illiterate", "Deaf" })
@@ -265,6 +281,26 @@ internal static partial class AfterRunAuthorityHarness
                 catalog.Single(quality => quality.Element("name")!.Value == name).ToString()));
             string EffectById(string id) => string.Join(" ", CreationQualityInfo.Effects(
                 catalog.Single(quality => quality.Element("id")!.Value == id).ToString()));
+            Require(Effect("Night Blindness").Contains("one category worse")
+                && Effect("Night Blindness").Contains("full light without glare remains penalty-free")
+                && Effect("Night Blindness").Contains("buying off this drawback first"),
+                "Night blindness needs its lighting exception and correction restriction.");
+            Require(Effect("Paranoia").Contains("Loyalty is below 4")
+                && Effect("Paranoia").Contains("relocate every few months")
+                && Effect("Vendetta").Contains("Composure (3)")
+                && Effect("Vendetta").Contains("buy it off, or a new enemy"),
+                "Conditional social and feud drawbacks must retain thresholds, obligations and exit conditions.");
+            Require(Effect("Hung Out to Dry").Contains("equal value")
+                && Effect("Pie Iesu Domine. Dona Eis Requiem.").Contains("High Pain Tolerance 1")
+                && Effect("Pie Iesu Domine. Dona Eis Requiem.").Contains("1 Physical damage box")
+                && Effect("Pie Iesu Domine. Dona Eis Requiem.").Contains("compulsion"),
+                "Removing a social drawback has a cost, and a granted benefit must not hide its recurring cost.");
+            foreach (string strain in new[] { "II", "III" })
+                Require(Effect($"Carrier (HMHVV Strain {strain})").StartsWith($"HMHVV-{strain} carrier:", StringComparison.Ordinal)
+                    && Effect($"Carrier (HMHVV Strain {strain})").Contains("requires disease resistance")
+                    && Effect($"Carrier (HMHVV Strain {strain})").Contains("Immune only")
+                    && Effect($"Carrier (HMHVV Strain {strain})").Contains("aware of your status"),
+                    "Carrier status is neither automatic infection, universal immunity nor a blanket social penalty.");
             Require(Effect("Hawk Eye").Contains("range penalties as one category nearer")
                 && Effect("Hawk Eye").Contains("Incompatible with electronic vision enhancements")
                 && Effect("Lightning Reflexes").Contains("+1 Initiative rating, +1 Initiative die")
