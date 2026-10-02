@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 138, $"Expected 138 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 155, $"Expected 155 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -160,6 +160,19 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
                         "A Street Grimoire detection spell still has only its profile: " + spell.Name + "/" + locale);
                 }
+                var grimoireIllusion = authority.Spells.Where(spell => spell.SourceBook == "SG" && spell.Category == "Illusion").ToArray();
+                Require(grimoireIllusion.Length == 17, "Expected the complete Street Grimoire illusion catalog.");
+                foreach (var spell in grimoireIllusion)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && !summary.Contains("Damage: 0."),
+                        "A Street Grimoire illusion lacks its source-bound effect: " + spell.Name + "/" + locale);
+                    string expectedDuration = spell.Name == "Switch Vehicle Signature" ? "Special" : "S";
+                    Require(summary.Contains(CreationFlowStrings.Get("Spells.Duration." + expectedDuration, "missing")),
+                        "Illusion help lost its accepted duration: " + spell.Name + "/" + locale);
+                }
                 foreach (var (normalName, extendedName) in new[] {
                     ("Mindnet", "Mindnet Extended"), ("Spatial Sense", "Spatial Sense, Extended") })
                 {
@@ -212,7 +225,8 @@ internal static class CreationMagicNativeRuntimeTests
                 && decrease.StartsWith("Reduces one Physical or Mental attribute.", StringComparison.Ordinal)
                 && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
                 "Attribute spell help must retain opposite effects and distinct costs.");
-            string SpellHelp(string name) => CreationSpellInfo.Summary(authority.Spells.Single(spell => spell.Name == name));
+            string SpellHelp(string name, string? book = null) => CreationSpellInfo.Summary(
+                authority.Spells.Single(spell => spell.Name == name && (book is null || spell.SourceBook == book)));
             Require(SpellHelp("Astral Message").Contains("messages")
                 && SpellHelp("Astral Clairvoyance").Contains("distant auras")
                 && new[] { "Astral Clairvoyance", "Mana Window", "Astral Window", "[Sense] Cryptesthesia" }
@@ -249,6 +263,20 @@ internal static class CreationMagicNativeRuntimeTests
                 && !SpellHelp("Area Thought Recognition").Contains("Touch casting")
                 && SpellHelp("Translate").Contains("one speaker's intent, not exact wording"),
                 "Thought recognition must not imply unrestricted mind probing, and translation must not promise exact wording.");
+            foreach (var (single, area) in new[] { ("Decoy", "Chaff"), ("Euphoria", "Opium Den"),
+                ("[Sense] Removal", "Mass [Sense] Removal"), ("Stink", "Stench") })
+                Require(SpellHelp(single, "SG").Contains("Target within line of sight.")
+                    && SpellHelp(area, "SG").Contains("Area within line of sight."),
+                    "Illusion variants lost their actual single/area casting profiles: " + single);
+            Require(SpellHelp("Camouflage", "SG").Contains("Mana spell.")
+                && SpellHelp("Camouflage", "SG").Contains("Drain: F-2")
+                && SpellHelp("Physical Camouflage", "SG").Contains("Physical spell.")
+                && SpellHelp("Physical Camouflage", "SG").Contains("Drain: F (F = Force).")
+                && SpellHelp("Double Image", "SG").Contains("Requires touch.")
+                && SpellHelp("Double Image", "SG").Contains("Drain: F-1")
+                && SpellHelp("Switch Vehicle Signature", "SG").Contains("Drain: F+1")
+                && SpellHelp("Vehicle Mask", "SG").Contains("Drain: F-3"),
+                "Illusion summaries must retain the actual Core profiles rather than values from another printing.");
             foreach (var (touch, single, area) in new[] {
                 ("Corrode [Object]", "Melt [Object]", "Sludge [Object]"),
                 ("Ram [Object]", "Wreck [Object]", "Demolish [Object]"),

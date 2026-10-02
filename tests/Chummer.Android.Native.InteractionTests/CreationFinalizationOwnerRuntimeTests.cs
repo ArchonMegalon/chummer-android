@@ -916,14 +916,15 @@ internal static partial class AfterRunAuthorityHarness
             ((ISearchBarController)search).OnSearchButtonPressed();
         }
         if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
-        foreach (string spellName in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
+        foreach (var spell in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
             "Antidote", "Detox", "Resist Pain", "Phantasm", "Trid Phantasm", "Silence",
             "Animate", "Mana Barrier", "Physical Barrier", "Awaken", "Fast", "Enabler", "Forced Defense",
             "Firewater", "Napalm", "Ice Spear", "Ice Storm", "Shattershield", "Diagnose", "Mana Window",
             "Astral Window", "Mindnet", "Mindnet Extended", "Night Vision", "Spatial Sense, Extended",
-            "Thought Recognition", "Area Thought Recognition", "Translate" })
+            "Thought Recognition", "Area Thought Recognition", "Translate" }
+            .Select(name => options.Single(item => item.Name == name))
+            .Concat(options.Where(item => item.SourceBook == "SG" && item.Category == "Illusion")))
         {
-            var spell = options.Single(item => item.Name == spellName);
             Search(spell.Name);
             string help = CreationSpellInfo.Summary(CreationSpellInfo.Resolve(coordinator.State.CreationMagicResonance, spell));
             Require(MinimalVisibleText(catalog).Contains(help), "The actual spell list omitted its inline description.");
