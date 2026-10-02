@@ -44,7 +44,43 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 392, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 401, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in new[] { (Name: "Tattoo Magic", Numbers: "2"),
+                    (Name: "Spirit Champion", Numbers: "5,+1,20,+1"), (Name: "Spirit Pariah", Numbers: "5,30,1"),
+                    (Name: "Gifted Healer", Numbers: "+1"), (Name: "Aged", Numbers: "5,1,3"),
+                    (Name: "Strive For Perfection", Numbers: ""), (Name: "Barrens Rat", Numbers: "−1"),
+                    (Name: "Elemental Focus", Numbers: "+2"), (Name: "Poisoner", Numbers: "+1") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Magic and specialist qualities need translated inline explanations: " + rule.Name);
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Translation changed a specialist's modifier, reagent cost or level limit: " + rule.Name);
+                }
+                var specialistScope = locale switch
+                {
+                    "de-AT" => (Tattoo: "weder diese Fertigkeiten oder Metamagien", Healer: "Nur eine Aufgabe",
+                        Aged: "natürlichen Maxima", Perfection: "außer bei Deckungsfeuer", Element: "Sekundäreffekte",
+                        Conceal: "halbe Geschicklichkeit aufgerundet", Poison: "Giftresistenz steigt dadurch nicht"),
+                    "es-MX" => (Tattoo: "no otorga esas habilidades, metamagias", Healer: "Solo una tarea",
+                        Aged: "máximos naturales", Perfection: "salvo en fuego de cobertura", Element: "efectos secundarios",
+                        Conceal: "mitad de tu Agilidad redondeada hacia arriba", Poison: "No aumenta tu resistencia"),
+                    _ => (Tattoo: "does not grant those skills or metamagics", Healer: "Choose only one task",
+                        Aged: "natural maximum", Perfection: "except for covering fire", Element: "secondary effects",
+                        Conceal: "half your Agility rounded up", Poison: "does not increase your resistance")
+                };
+                foreach (var rule in new[] { (Name: "Tattoo Magic", Scope: specialistScope.Tattoo),
+                    (Name: "Gifted Healer", Scope: specialistScope.Healer), (Name: "Aged", Scope: specialistScope.Aged),
+                    (Name: "Strive For Perfection", Scope: specialistScope.Perfection),
+                    (Name: "Elemental Focus", Scope: specialistScope.Element),
+                    (Name: "Barrens Rat", Scope: specialistScope.Conceal), (Name: "Poisoner", Scope: specialistScope.Poison) })
+                    Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "")
+                        .Contains(rule.Scope, StringComparison.Ordinal),
+                        "A specialist explanation lost its conditional scope: " + rule.Name);
                 foreach (var quality in catalog.Where(q => q.Element("source")!.Value is "RG" or "R5"))
                 {
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
