@@ -109,8 +109,11 @@ confirmed on 2 October at 16:53 Europe/Vienna. Its exact locally built ARM64 AAB
 was separately signed with the existing upload key and independently verified.
 It adds 65 short original EN/DE/ES Quality summaries: 489/803 are authored;
 314 Quality summaries and the ritual/enchantment explanations remain open.
-Ordinary-spell coverage remains 292. Physical Play74 installation is not yet
-verified; the latest completed physical observation is Preview73. Existing
+Ordinary-spell coverage remains 292. The normal physical Play update73→74,
+installed base-APK signature, Gearhead help, special-attribute jump and reopening
+the existing allocation after verified process death passed on 2 October.
+See the separate [Preview 74 physical observation](../play/evidence/preview74-physical-observation.md).
+No new saved mutation or exhaustive physical catalog check is claimed. Existing
 audience and other release surfaces were unchanged. No copyright clearance,
 full-book, all-method or public-beta completion is claimed.
 
