@@ -172,7 +172,45 @@ internal static partial class AfterRunAuthorityHarness
             ["posponer la represalia", "no elimina", "venganza desmedida"]),
         ("Poor Self Control (Combat Monster)", ["retreat takes self-control", "opponents remain able", "losing"],
             ["Gegner noch kämpfen", "Rückzug schwer", "Niederlage"],
-            ["Retirarte exige autocontrol", "rivales capaces de luchar", "perdiendo"])
+            ["Retirarte exige autocontrol", "rivales capaces de luchar", "perdiendo"]),
+        ("The Beast's Way", ["Animal Handling","eligible","Choosing Mentor Spirit","quality budget"],
+            ["Tierführung","begrenzte","Wahl eines Schutzgeists","Vorteilslimit"], ["Trato con Animales","limitados","Elegir Espíritu Mentor","límite de cualidades"]),
+        ("The Spiritual Way", ["Conjuring","eligible","Choosing Mentor Spirit","quality budget"],
+            ["Beschwören","begrenzte","Wahl eines Schutzgeists","Vorteilslimit"], ["Conjuración","limitados","Elegir Espíritu Mentor","límite de cualidades"]),
+        ("The Magician's Way", ["individual","excluded","no power"],
+            ["jeweiligen","ausgeschlossene","keine Kraft"], ["propio","excluidos","ninguno"]),
+        ("Aged", ["per level","natural physical-attribute maxima","not a general dice penalty"],
+            ["Jede Stufe","Attributmaxima","kein allgemeiner Würfelabzug"], ["Cada nivel","máximos naturales","no es una penalización general"]),
+        ("Inherent Program", ["one eligible","that program","not yet explained here"],
+            ["ein passendes","gewählten Programm","noch nicht erklärt"], ["un programa","programa elegido","aún no se explican"]),
+        ("Mentor Spirit", ["Choose","benefits and demands","not yet explained here"],
+            ["Wähle","Vorteilen und Anforderungen","noch nicht erklärt"], ["Elige","beneficios y exigencias","aún no se explica"]),
+        ("Paragon", ["technomancer","benefits and drawbacks","not yet explained here"],
+            ["Technomancer","Vor- und Nachteilen","noch nicht erklärt"], ["tecnomantes","ventajas y desventajas","aún no se explica"]),
+        ("Crystalline Blade", ["Unarmed Combat","extra reach","not extra attack dice"],
+            ["Waffenlosem Kampf","Reichweite","keine zusätzlichen Angriffswürfel"], ["combate sin armas","alcance adicional","no dados adicionales"]),
+        ("Crystalline Shards", ["Throwing Weapons","positive armor modifier helps the target"],
+            ["Wurfwaffen","stärkt die Zielpanzerung"], ["Armas Arrojadizas","refuerza la armadura"]),
+        ("Spike Resistance", ["biofeedback","one extra die per level","does not increase Matrix armor"],
+            ["Biofeedback","je Stufe","Matrixpanzerung steigt nicht"], ["biofeedback","por nivel","No aumenta la armadura"]),
+        ("Low Pain Tolerance", ["Physical and Stun","sooner","without reducing"],
+            ["Körperlicher und Betäubungsschaden","früher","ohne"], ["físico y de Aturdimiento","antes","sin reducir"]),
+        ("Phenotypic Variation - Genetic Optimization (Body)", ["Body","natural maximum","cost points","Creation only","same attribute"],
+            ["Konstitution","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Constitución","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Agility)", ["Agility","natural maximum","cost points","Creation only","same attribute"],
+            ["Geschicklichkeit","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Agilidad","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Reaction)", ["Reaction","natural maximum","cost points","Creation only","same attribute"],
+            ["Reaktion","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Reacción","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Strength)", ["Strength","natural maximum","cost points","Creation only","same attribute"],
+            ["Stärke","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Fuerza","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Charisma)", ["Charisma","natural maximum","cost points","Creation only","same attribute"],
+            ["Charisma","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Carisma","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Intuition)", ["Intuition","natural maximum","cost points","Creation only","same attribute"],
+            ["Intuition","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Intuición","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Logic)", ["Logic","natural maximum","cost points","Creation only","same attribute"],
+            ["Logik","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Lógica","máximo natural","sin puntos gratis","Solo al crear","ese atributo"]),
+        ("Phenotypic Variation - Genetic Optimization (Willpower)", ["Willpower","natural maximum","cost points","Creation only","same attribute"],
+            ["Willenskraft","natürliche Maximum","keine Gratispunkte","Nur bei Erschaffung","dasselbe Attribut"], ["Voluntad","máximo natural","sin puntos gratis","Solo al crear","ese atributo"])
     ];
 
     private static readonly string[] FreeInsectSpiritSpecies =
@@ -485,7 +523,7 @@ internal static partial class AfterRunAuthorityHarness
                         "A conditional quality lost its exception or limitation: " + rule.Name);
                 foreach (var rule in new[] { (Name: "Tattoo Magic", Numbers: "2"),
                     (Name: "Spirit Champion", Numbers: "5,+1,20,+1"), (Name: "Spirit Pariah", Numbers: "5,30,1"),
-                    (Name: "Gifted Healer", Numbers: "+1"), (Name: "Aged", Numbers: "5,1,3"),
+                    (Name: "Gifted Healer", Numbers: "+1"),
                     (Name: "Strive For Perfection", Numbers: ""), (Name: "Barrens Rat", Numbers: "−1"),
                     (Name: "Elemental Focus", Numbers: "+2"), (Name: "Poisoner", Numbers: "+1") })
                 {
@@ -499,16 +537,25 @@ internal static partial class AfterRunAuthorityHarness
                         .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
                         "Translation changed a specialist's modifier, reagent cost or level limit: " + rule.Name);
                 }
+                var aged = catalog.Single(q => q.Element("name")!.Value == "Aged");
+                var agedLines = CreationQualityInfo.Effects(aged.ToString());
+                Require(aged.Element("limit")!.Value == "3"
+                    && aged.Element("bonus")!.Element("knowledgeskillpoints")!.Element("val")!.Value == "5"
+                    && agedLines.Contains(CreationFlowStrings.Get("Qualities.Effect.Knowledge skill points", "")
+                        + " · " + CreationFlowStrings.Get("Qualities.Effect.Modifier", "") + ": 5")
+                    && agedLines.Count(line => line.Contains(
+                        CreationFlowStrings.Get("Qualities.Effect.Maximum change", "") + ": -1")) == 4,
+                    "Short Aged prose must retain the exact per-level values in the supporting source effects.");
                 var specialistScope = locale switch
                 {
                     "de-AT" => (Tattoo: "weder diese Fertigkeiten oder Metamagien", Healer: "Nur eine Aufgabe",
-                        Aged: "natürlichen Maxima", Perfection: "außer bei Deckungsfeuer", Element: "Sekundäreffekte",
+                        Aged: "Attributmaxima", Perfection: "außer bei Deckungsfeuer", Element: "Sekundäreffekte",
                         Conceal: "halbe Geschicklichkeit aufgerundet", Poison: "Giftresistenz steigt dadurch nicht"),
                     "es-MX" => (Tattoo: "no otorga esas habilidades, metamagias", Healer: "Solo una tarea",
                         Aged: "máximos naturales", Perfection: "salvo en fuego de cobertura", Element: "efectos secundarios",
                         Conceal: "mitad de tu Agilidad redondeada hacia arriba", Poison: "No aumenta tu resistencia"),
                     _ => (Tattoo: "does not grant those skills or metamagics", Healer: "Choose only one task",
-                        Aged: "natural maximum", Perfection: "except for covering fire", Element: "secondary effects",
+                        Aged: "natural physical-attribute maxima", Perfection: "except for covering fire", Element: "secondary effects",
                         Conceal: "half your Agility rounded up", Poison: "does not increase your resistance")
                 };
                 foreach (var rule in new[] { (Name: "Tattoo Magic", Scope: specialistScope.Tattoo),
@@ -1030,8 +1077,9 @@ internal static partial class AfterRunAuthorityHarness
                 "Ritual resistance and local reputation benefits must preserve their directions, identity requirements and distinct values.");
             Require(Effect("Speed Reading").Contains("Read quickly for general meaning")
                 && Effect("Speed Reading").Contains("do not gain perfect recall")
-                && Effect("Spike Resistance").Contains("Each level adds 1 die")
-                && Effect("Spike Resistance").Contains("up to 3 levels"),
+                && Effect("Spike Resistance").Contains("one extra die per level")
+                && Effect("Spike Resistance").Contains("does not increase Matrix armor")
+                && catalog.Single(q => q.Element("name")!.Value == "Spike Resistance").Element("limit")!.Value == "3",
                 "Reading speed must not become perfect recall, and biofeedback resistance is per level, not extra Matrix armor.");
             Require(Effect("Spirit Whisperer").Contains("Spirits gain 1 extra die to resist your Summoning")
                 && Effect("Spirit Whisperer").Contains("the summoning itself still uses the declared Force")
@@ -1162,13 +1210,19 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Erased").StartsWith("Your total Public Awareness is capped at 1.", StringComparison.Ordinal)
                 && Effect("Erased").Contains("A lower value stays lower"),
                 "Erased caps Public Awareness; it does not set it to one or reset all reputation.");
-            Require(Effect("The Beast's Way").Contains("If you choose Mentor Spirit")
-                && Effect("The Beast's Way").Contains("one die to Animal Handling")
-                && Effect("The Spiritual Way").Contains("one die to tests using the Conjuring skill group"),
+            Require(new[] { "The Beast's Way", "The Spiritual Way" }.All(name =>
+                    Effect(name).Contains("Choosing Mentor Spirit costs no Karma")
+                    && Effect(name).Contains("does not use the quality budget")
+                    && Effect(name).Contains("eligible powers have limited discounts"))
+                && Effect("The Beast's Way").Contains("Improve Animal Handling")
+                && Effect("The Beast's Way").Contains("Skill · Animal Handling · Bonus: 1")
+                && Effect("The Spiritual Way").Contains("Improve Conjuring")
+                && Effect("The Spiritual Way").Contains("Skill group · Conjuring · Bonus: 1"),
                 "A free-quality cost waiver is not an automatic mentor grant, and the two Ways have different skill bonuses.");
             Require(Effect("The Burnout's Way").Contains("Standard-grade implants cost less Essence")
                 && Effect("The Burnout's Way").Contains("nuyen price is unchanged")
-                && Effect("The Magician's Way").Contains("amount belongs to each power"),
+                && Effect("The Magician's Way").Contains("individual Power Point discounts")
+                && Effect("The Magician's Way").Contains("excluded powers do not qualify"),
                 "Adept Ways must not invent a blanket money or Power Point discount.");
             foreach (string name in new[] { "Changeling (Class I SURGE)", "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" })
                 Require(Effect(name).Contains("separate 30-Karma limit") && Effect(name).Contains("not 30 extra Karma"),
@@ -1273,9 +1327,9 @@ internal static partial class AfterRunAuthorityHarness
                     && optimized.Element("bonus")!.Element("specificattribute")!.Element("min") is null
                     && optimized.Element("chargenonly") is not null
                     && optimized.Element("forbidden")!.Descendants("bioware").Single().Value == $"Genetic Optimization ({name})"
-                    && inspired(optimizedId).StartsWith($"Your natural maximum for {name} increases by 1.", StringComparison.Ordinal)
-                    && inspired(optimizedId).Contains("not a free attribute point")
-                    && inspired(optimizedId).Contains("during creation only")
+                    && inspired(optimizedId).StartsWith($"Creation only: {name}'s natural maximum increases;", StringComparison.Ordinal)
+                    && inspired(optimizedId).Contains("higher ratings still cost points")
+                    && inspired(optimizedId).Contains("No Genetic Optimization bioware")
                     && inspired(optimizedId).Contains("same attribute"),
                     "Genetic Optimization raises only the ceiling, costs points to use, and keeps creation/bioware restrictions.");
             }
@@ -1533,7 +1587,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Codeblock").Contains("one Matrix action that requires a test")
                 && Effect("Codeblock").Contains("Other Matrix actions are unaffected")
                 && Effect("Simsense Vertigo").Contains("smartlinks, simrigs and image links")
-                && Effect("Low Pain Tolerance").Contains("every two filled boxes instead of every three"),
+                && Effect("Low Pain Tolerance").Contains("Physical and Stun injuries impose wound penalties sooner")
+                && Effect("Low Pain Tolerance").Contains("without reducing either condition monitor")
+                && Effect("Low Pain Tolerance").Contains("Wound-penalty interval change: -1"),
                 "Interface penalties and earlier wound penalties must not become universal test penalties or smaller monitors.");
             Require(Effect("Elf Poser").Contains("human-only")
                 && Effect("Ork Poser").Contains("human or elf")
@@ -1651,7 +1707,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Natural Hardening").Contains("not ordinary physical attacks"),
                 "Appearance and biofeedback protection must not imply altered metatype or general armor.");
             foreach (string name in new[] { "Mentor Spirit", "Paragon", "Inherent Program" })
-                Require(Effect(name).Contains("not yet fully described here")
+                Require(Effect(name).Contains("not yet explained here")
                     && Effect(name).Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                     "A guide/program choice is useful partial help, not the selected profile's full mechanics.");
             string infirm = Effect("Infirm");
@@ -1699,7 +1755,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Unresolved weapon identities must not leak into help.");
             Require(Effect("Crystalline Shards").Contains("Armor penetration: 4")
                 && Effect("Crystalline Shards").Contains("Skill: Throwing Weapons")
-                && Effect("Crystalline Shards").Contains("four more armor")
+                && Effect("Crystalline Shards").Contains("positive armor modifier helps the target")
                 && !Effect("Crystalline Shards").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "The shards' positive armor modifier must not be inverted or confused with a damage bonus.");
             Require(Effect("Crystalline Blade").Contains("Reach: 1") && Effect("Crystalline Blade").Contains("Armor penetration: -2")
