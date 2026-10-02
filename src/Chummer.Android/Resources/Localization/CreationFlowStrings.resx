@@ -1791,4 +1791,31 @@
   <data name="Spells.SummarySource.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>D658288734CB7606534C23EB6005156C48CC97346F1539DF65201BB40337D83E</value></data>
   <data name="Spells.Summary.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>Stops further overflow deterioration, without repairing injuries.</value></data>
   <data name="Spells.SummarySource.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>AF353E244F31FB2DCA58059DE4FE11AAFDCA460A36645A04EAD0B9094048F628</value></data>
+  <!-- SR5 core Illusion effects; each numeric profile remains Core-owned. -->
+  <data name="Spells.Summary.b11af57e-bacc-4f13-8d75-d1201ec6f4f5" xml:space="preserve"><value>Causes illusory pain across an area.</value></data>
+  <data name="Spells.SummarySource.b11af57e-bacc-4f13-8d75-d1201ec6f4f5" xml:space="preserve"><value>4110E93448678AB99075B1067C1DC4434F055594F616D82C0E053FB71FD459B5</value></data>
+  <data name="Spells.Summary.5ab4bf6b-9c90-4fbb-9005-b9545a51bec1" xml:space="preserve"><value>Illusory insects reduce Initiative.</value></data>
+  <data name="Spells.SummarySource.5ab4bf6b-9c90-4fbb-9005-b9545a51bec1" xml:space="preserve"><value>CD2EE507A57C5304B400A4A1D5E6D386FA77AB7C4808723D7C764C6106C3C76D</value></data>
+  <data name="Spells.Summary.d6725f7f-8084-4f36-8b46-e37e1c329af6" xml:space="preserve"><value>Illusory insects reduce Initiative.</value></data>
+  <data name="Spells.SummarySource.d6725f7f-8084-4f36-8b46-e37e1c329af6" xml:space="preserve"><value>40E78F22FA9131A3B7E5F7B0EE46AB5C1AB7067094C64D03928D89C6E83F88F0</value></data>
+  <data name="Spells.Summary.4268d83b-c208-4aa3-8924-5620516f8434" xml:space="preserve"><value>Disorients senses, including technological sensors.</value></data>
+  <data name="Spells.SummarySource.4268d83b-c208-4aa3-8924-5620516f8434" xml:space="preserve"><value>B6E75465716AE6A0E1F3CA589BDE82582C6CAEF56B75B0533A2D9E89E92D1AAE</value></data>
+  <data name="Spells.Summary.075f38b3-8d65-44c0-8492-4d4e992e6b80" xml:space="preserve"><value>Disorients senses, including technological sensors.</value></data>
+  <data name="Spells.SummarySource.075f38b3-8d65-44c0-8492-4d4e992e6b80" xml:space="preserve"><value>F62AE6270BF706713661445E568BEE4B188409AF8E1C4C43712D98790157D7D1</value></data>
+  <data name="Spells.Summary.1041d1cb-bbc2-4718-ae56-3d8c4276b77b" xml:space="preserve"><value>Confuses senses, reducing dice pools.</value></data>
+  <data name="Spells.SummarySource.1041d1cb-bbc2-4718-ae56-3d8c4276b77b" xml:space="preserve"><value>D6CD772F4F861E1BC0DD260F0F56B1B3DE192528BFF94E69F41CBC2A9BC58EA6</value></data>
+  <data name="Spells.Summary.d4e9d465-160f-4148-a755-27b50616f240" xml:space="preserve"><value>Obvious illusions; invisible to sensors.</value></data>
+  <data name="Spells.SummarySource.d4e9d465-160f-4148-a755-27b50616f240" xml:space="preserve"><value>6B69D03A354433678B37A9B55CA4E7E958ED820EADCB8B42E79FD4DBC780E483</value></data>
+  <data name="Spells.Summary.56be1e57-eca7-4253-970a-b561e23b1e8d" xml:space="preserve"><value>Obvious illusions, also perceived by sensors.</value></data>
+  <data name="Spells.SummarySource.56be1e57-eca7-4253-970a-b561e23b1e8d" xml:space="preserve"><value>8C48C32C7B770BA34CB83C228F631375AC888BCB6188D39F9D18AE3E4F52C283</value></data>
+  <data name="Spells.Summary.52acdeb6-3ec4-417c-a768-e6a445117f69" xml:space="preserve"><value>Convincing illusions for living observers.</value></data>
+  <data name="Spells.SummarySource.52acdeb6-3ec4-417c-a768-e6a445117f69" xml:space="preserve"><value>F556B633A611C497163BD42AC43F2D2C882C287F828923B20DAFFA0564500F88</value></data>
+  <data name="Spells.Summary.444adc27-26c7-4ff1-894f-a55fea22e24a" xml:space="preserve"><value>Convincing illusions, also affecting sensors.</value></data>
+  <data name="Spells.SummarySource.444adc27-26c7-4ff1-894f-a55fea22e24a" xml:space="preserve"><value>73843AA59F0B1DC6A9B6AED2D74E97EC3E7E270CD062E33774C2312A623EBC27</value></data>
+  <data name="Spells.Summary.4ba6626f-4109-4451-ab0a-e659752ab15e" xml:space="preserve"><value>Quiets sound for living listeners.</value></data>
+  <data name="Spells.SummarySource.4ba6626f-4109-4451-ab0a-e659752ab15e" xml:space="preserve"><value>6F266E6138048F2F940E83F5060E679AE77A42BA81B65555D6A4A6BEC23166ED</value></data>
+  <data name="Spells.Summary.c307d243-669b-47d0-9642-aee7f9207e63" xml:space="preserve"><value>Quiets sound, including for microphones.</value></data>
+  <data name="Spells.SummarySource.c307d243-669b-47d0-9642-aee7f9207e63" xml:space="preserve"><value>81E312F3FD2A85FE54C926F0835C2BDE490B0845771C54EAD8733B17CF947CFF</value></data>
+  <data name="Spells.Summary.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>Quiets the subject's own noises.</value></data>
+  <data name="Spells.SummarySource.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>49049EED39816C132F2368BCD36A35843B1E8C3F1DBB849011007F2C5D0101F5</value></data>
 </root>

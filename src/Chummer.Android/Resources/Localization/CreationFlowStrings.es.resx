@@ -1290,4 +1290,18 @@
   <data name="Spells.Summary.0d0e3e2d-5223-4258-b885-12848833eb08" xml:space="preserve"><value>Refuerza la resistencia a enfermedades/toxinas; atenúa también efectos medicinales.</value></data>
   <data name="Spells.Summary.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>Reduce penalizaciones por heridas, sin curarlas.</value></data>
   <data name="Spells.Summary.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>Detiene el deterioro por desbordamiento, sin curar heridas.</value></data>
+  <!-- SR5 core Illusion effects; each numeric profile remains Core-owned. -->
+  <data name="Spells.Summary.b11af57e-bacc-4f13-8d75-d1201ec6f4f5" xml:space="preserve"><value>Causa dolor ilusorio en una zona.</value></data>
+  <data name="Spells.Summary.5ab4bf6b-9c90-4fbb-9005-b9545a51bec1" xml:space="preserve"><value>Insectos ilusorios reducen la Iniciativa.</value></data>
+  <data name="Spells.Summary.d6725f7f-8084-4f36-8b46-e37e1c329af6" xml:space="preserve"><value>Insectos ilusorios reducen la Iniciativa.</value></data>
+  <data name="Spells.Summary.4268d83b-c208-4aa3-8924-5620516f8434" xml:space="preserve"><value>Desorienta sentidos, incluidos sensores tecnológicos.</value></data>
+  <data name="Spells.Summary.075f38b3-8d65-44c0-8492-4d4e992e6b80" xml:space="preserve"><value>Desorienta sentidos, incluidos sensores tecnológicos.</value></data>
+  <data name="Spells.Summary.1041d1cb-bbc2-4718-ae56-3d8c4276b77b" xml:space="preserve"><value>Confunde sentidos, reduciendo reservas de dados.</value></data>
+  <data name="Spells.Summary.d4e9d465-160f-4148-a755-27b50616f240" xml:space="preserve"><value>Ilusiones evidentes; invisibles para sensores.</value></data>
+  <data name="Spells.Summary.56be1e57-eca7-4253-970a-b561e23b1e8d" xml:space="preserve"><value>Ilusiones evidentes, también para sensores.</value></data>
+  <data name="Spells.Summary.52acdeb6-3ec4-417c-a768-e6a445117f69" xml:space="preserve"><value>Ilusiones convincentes para observadores vivos.</value></data>
+  <data name="Spells.Summary.444adc27-26c7-4ff1-894f-a55fea22e24a" xml:space="preserve"><value>Ilusiones convincentes, también para sensores.</value></data>
+  <data name="Spells.Summary.4ba6626f-4109-4451-ab0a-e659752ab15e" xml:space="preserve"><value>Atenúa sonidos para oyentes vivos.</value></data>
+  <data name="Spells.Summary.c307d243-669b-47d0-9642-aee7f9207e63" xml:space="preserve"><value>Atenúa sonidos, incluso para micrófonos.</value></data>
+  <data name="Spells.Summary.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>Atenúa los ruidos del objetivo.</value></data>
 </root>
