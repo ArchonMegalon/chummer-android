@@ -44,7 +44,20 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 274, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 289, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Asthma", "Big Regret", "Blind", "Borrowed Time",
+                    "Computer Illiterate", "Creature of Comfort (Middle)", "Creature of Comfort (High)",
+                    "Creature of Comfort (Luxury)", "Did You Just Call Me Dumb?", "Driven",
+                    "Emotional Attachment", "Ex-Con", "Flashbacks I", "Flashbacks II",
+                    "Hobo with a Shotgun", "Paraplegic", "Signature" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Run Faster drawbacks need translated, definition-bound consequences beyond names and selection prompts: " + name);
+                }
                 foreach (string name in new[] { "Adrenaline Surge", "Common Sense", "Daredevil",
                     "Digital Doppelganger", "Disgraced", "Night Vision", "Perfect Time", "Poor Link",
                     "Privileged Family Name", "Solid Rep", "Legendary Rep", "Speed Reading",
@@ -250,6 +263,46 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Spirit Whisperer").Contains("the summoning itself still uses the declared Force")
                 && Effect("Steely Eyed Wheelman").Contains("by 1, never below 0"),
                 "The spirit's resistance bonus must not be given to its summoner, and reduced terrain penalties cannot become a bonus.");
+            Require(Effect("Asthma").Contains("twice as often")
+                && Effect("Asthma").Contains("Effects accumulate")
+                && Effect("Asthma").Contains("at 4, resist further Fatigue using only Willpower")
+                && Effect("Asthma").Contains("at 8, another −1"),
+                "Asthma needs cumulative thresholds, not a permanent generic penalty or doubled damage amount.");
+            Require(Effect("Big Regret").Contains("Social Limit drops by 3")
+                && Effect("Big Regret").Contains("cannot buy this quality off while it stays secret")
+                && Effect("Blind").Contains("general Perception loses 4 dice and Surprise loses 3")
+                && Effect("Blind").Contains("Cybereyes cannot fix")
+                && Effect("Blind").Contains("−2 dice for physical-plane actions"),
+                "A secret's conditional social limit and blindness's distinct perception/astral consequences must remain clear.");
+            Require(Effect("Borrowed Time").Contains("any triple")
+                && Effect("Borrowed Time").Contains("permanently burning all current Edge")
+                && Effect("Computer Illiterate").Contains("electronic devices or Matrix-connected systems")
+                && Effect("Computer Illiterate").Contains("does not take the same penalty twice"),
+                "Unavoidable mortality must not become ordinary Edge spending, and electronic penalties must not stack twice.");
+            foreach (string tier in new[] { "Middle", "High", "Luxury" })
+                Require(Effect($"Creature of Comfort ({tier})").Contains($"Below {tier} Lifestyle")
+                    && Effect($"Creature of Comfort ({tier})").Contains($"per tier below {tier}"),
+                    "Each comfort variant needs its own lifestyle baseline, not an accumulating per-day modifier.");
+            Require(Effect("Did You Just Call Me Dumb?").Contains("critical glitch, even if the roll also has hits")
+                && Effect("Driven").Contains("Willpower + Logic (4)")
+                && Effect("Driven").Contains("While actively following a lead, Willpower increases by 1")
+                && Effect("Emotional Attachment").Contains("six months")
+                && Effect("Emotional Attachment").Contains("attachment transfers to replacement gear"),
+                "Social glitches, conditional obsession benefits and lasting equipment loss need their actual consequences.");
+            Require(Effect("Ex-Con").Contains("two Matrix check-ins and one personal visit weekly")
+                && Effect("Ex-Con").Contains("Corporate contacts need Loyalty 4+, police contacts 5+")
+                && Effect("Flashbacks I").Contains("about every other run")
+                && Effect("Flashbacks II").Contains("at least once each session")
+                && new[] { "Flashbacks I", "Flashbacks II" }.All(name =>
+                    Effect(name).Contains("Composure (5)") && Effect(name).Contains("5 − hits Combat Turns")),
+                "Parole requires real obligations, and flashback grades change frequency rather than the same resistance test.");
+            Require(Effect("Hobo with a Shotgun").Contains("every Mental attribute by 2")
+                && Effect("Hobo with a Shotgun").Contains("full day at Squatter or Street")
+                && Effect("Paraplegic").Contains("10%; vehicles need 5% modifications or a rigger interface")
+                && Effect("Paraplegic").Contains("Astral and Matrix abilities are unaffected")
+                && Effect("Signature").Contains("Investigators")
+                && Effect("Signature").Contains("Street Cred plus Public Awareness"),
+                "Lifestyle discomfort, mobility costs and identification modifiers must retain their affected actors and recovery conditions.");
             Require(Effect("Exceptional Attribute").Contains("Maximum change: 1")
                 && Effect("Exceptional Attribute").Contains("Except: Edge"),
                 "Nested attribute choice must retain its maximum and Edge exclusion.");
