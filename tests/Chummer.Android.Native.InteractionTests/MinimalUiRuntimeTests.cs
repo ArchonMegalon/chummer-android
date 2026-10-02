@@ -91,6 +91,57 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Disgraced", ["GM", "criminals", "prejudice", "Etiquette"],
+            ["Spielleitung", "Kriminelle", "Etikette", "Vorurteilen"],
+            ["DJ", "criminales", "prejuicios", "Etiqueta"]),
+        ("Elf Poser", ["Humans", "metatype or attributes", "hostility"],
+            ["Menschen", "Metatyp oder Attribute", "Feindseligkeit"],
+            ["humanos", "metatipo ni atributos", "hostilidad"]),
+        ("Night Blindness", ["light/glare", "normal lighting", "buying off", "incompatible"],
+            ["Blendungsabzüge", "normales Licht", "Nachteilsabbau", "unvereinbar"],
+            ["deslumbramiento", "normal", "eliminar antes", "excluye"]),
+        ("Juryrigger", ["temporary", "GM approval", "Gearhead", "burns out"],
+            ["provisorische", "Spielleitung", "Gearhead", "zerstört"],
+            ["provisionales", "DJ", "Gearhead", "quema"]),
+        ("360-degree Eyesight", ["visual", "Surprise", "tests while moving", "distant shots", "remove", "prejudice"],
+            ["Wahrnehmung", "Überraschung", "Proben in Bewegung", "Fernschüsse", "entfernen", "Vorurteile"],
+            ["percepción", "Sorpresa", "pruebas en movimiento", "lejanos", "elimina", "prejuicios"]),
+        ("Subtle Pilot", ["chosen Pilot", "directly controlled", "autonomous"],
+            ["gewählten Pilotfertigkeit", "direkt gesteuerte", "autonome"],
+            ["Pilotaje elegida", "directamente", "autónomos"]),
+        ("Motion Sickness", ["acceleration", "speed", "passengers", "recovery takes time"],
+            ["Beschleunigung", "Fahrzeugtempo", "Mitfahrenden", "Erholung Zeit"],
+            ["aceleración", "velocidad", "pasajero", "lleva tiempo"]),
+        ("Camouflage", ["slowly", "still and uncovered", "movement", "changed surroundings", "Excludes"],
+            ["langsamer", "still und unbedeckt", "Bewegung", "Umgebungswechsel", "Keine weiteren"],
+            ["lentamente", "inmóvil y descubierto", "moverte", "entorno", "Excluye"]),
+        ("Radiation Sponge", ["less fatigue", "not slower deadly", "twice", "others", "Incompatible"],
+            ["ermüdet weniger", "keine tödlichen", "doppelt", "andere", "Unvereinbar"],
+            ["fatiga menos", "sin alargar", "doble", "otros", "Incompatible"]),
+        ("Spirit Affinity", ["chosen spirit type", "extra service", "Binding", "outside", "no guaranteed", "Excludes"],
+            ["gewählte Geisterart", "Zusatzdienst", "Binden", "außerhalb", "kein garantierter", "Keine Watcher"],
+            ["tipo de espíritu", "servicio adicional", "Vinculación", "fuera", "no garantiza", "Excluye"]),
+        ("Hobo with a Shotgun", ["Squatter", "temporarily", "all Mental", "full day", "Street"],
+            ["Squatter", "vorübergehend", "alle geistigen", "ganzen Tag", "Straßenniveau"],
+            ["Ocupa", "temporalmente", "todos los atributos mentales", "día entero", "Calle"]),
+        ("Albinism II", ["glare", "sunlight", "Cybereyes", "prior Karma downgrade", "other Karma"],
+            ["Blendung", "Sonne", "Cyberaugen", "mildere Stufe", "anderen Karmaausgaben"],
+            ["deslumbramiento", "sol", "Ciberojos", "reducir primero", "otros gastos"]),
+        ("Proboscis", ["awkwardly", "physical melee", "without extra attacks", "prejudice"],
+            ["ungeschickt", "körperliche Nahkampfwaffe", "ohne zusätzliche Angriffe", "Vorurteile"],
+            ["torpemente", "daño físico", "sin ataques extra", "prejuicios"]),
+        ("Spirit Whisperer", ["resist", "one Force stronger", "on success", "declared Force"],
+            ["widerstehen", "bei Erfolg", "eine Kraftstufe", "angesagte Kraftstufe"],
+            ["resisten", "punto más de Fuerza", "si funciona", "Fuerza declarada"]),
+        ("Scales", ["no armor", "identification or tracking", "prejudice", "Incompatible", "bioware"],
+            ["Identifikation", "Suche", "nicht als Panzerung", "Vorurteile", "Unvereinbar", "Hautbioware"],
+            ["identificarte o rastrearte", "sin dar armadura", "prejuicios", "Incompatibles", "cutáneo"]),
+        ("Computer Illiterate", ["Computer", "electronics", "Matrix", "without lowering skill ratings", "double-counting", "Stress"],
+            ["Computer", "Elektronik", "Matrix", "ohne Fertigkeitswerte", "doppelt", "Stress"],
+            ["informáticas", "electrónicas", "Matriz", "sin bajar", "duplicar", "estrés"]),
+        ("Glamour", ["Non-hostile", "social tests and limits", "except Intimidation tests", "Distinctive Style", "identify and track"],
+            ["Nichtfeindselige", "Sozialproben und -limit", "außer Einschüchterungsproben", "Auffälliger Stil", "erkennbar und auffindbar"],
+            ["no hostil", "pruebas y límite sociales", "excepto Intimidación", "Estilo Distintivo", "identificarte y rastrearte"]),
         ("Adrenaline Surge", ["opening Initiative Pass", "surprise", "compete"],
             ["ersten Initiativedurchgang", "Überraschung", "konkurrierende"],
             ["primera pasada", "sorpresa", "otros efectos"]),
@@ -751,12 +802,12 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 foreach (var rule in new[] { (Name: "Brand Loyalty (Manufacturer)", Numbers: "1,1"),
                     (Name: "Brand Loyalty (Product)", Numbers: "1,1"), (Name: "Sharpshooter", Numbers: "2,1"),
-                    (Name: "Radiation Sponge", Numbers: "1"), (Name: "Rad-Tolerant", Numbers: "1"),
+                    (Name: "Radiation Sponge", Numbers: ""), (Name: "Rad-Tolerant", Numbers: "1"),
                     (Name: "Spacer", Numbers: "1"), (Name: "Earther", Numbers: "2"),
                     (Name: "Combat Junkie", Numbers: "4,4"), (Name: "Chaser", Numbers: "2"),
                     (Name: "Dealer Connection", Numbers: "10,4"), (Name: "Grease Monkey", Numbers: "1"),
                     (Name: "Speed Demon", Numbers: "1,3,4"), (Name: "Stunt Driver", Numbers: "2"),
-                    (Name: "Subtle Pilot", Numbers: "2"), (Name: "Motion Sickness", Numbers: "3,4,12"),
+                    (Name: "Subtle Pilot", Numbers: ""), (Name: "Motion Sickness", Numbers: ""),
                     (Name: "Too Much Data", Numbers: "4,2"), (Name: "Accident Prone", Numbers: "2"),
                     (Name: "Blighted (6 Months)", Numbers: "3,−1"),
                     (Name: "Blighted (12 Months)", Numbers: "3,−1"), (Name: "Blighted (24 Months)", Numbers: "3,−2,−1") })
@@ -826,7 +877,7 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Cyclopean Eye", Numbers: ""), (Name: "Deformity (Picasso)", Numbers: "−2"),
                     (Name: "Deformity (Quasimodo)", Numbers: "−2"), (Name: "Feathers", Numbers: "1"),
                     (Name: "Insectoid Features", Numbers: "1"), (Name: "Mood Hair", Numbers: "2"),
-                    (Name: "Nocturnal", Numbers: "1"), (Name: "Scales", Numbers: "2"),
+                    (Name: "Nocturnal", Numbers: "1"), (Name: "Scales", Numbers: ""),
                     (Name: "Scent Glands", Numbers: "1,2,1,2"), (Name: "Striking Skin Pigmentation", Numbers: "2"),
                     (Name: "Third Eye", Numbers: "2"), (Name: "Unusual Hair", Numbers: "1"),
                     (Name: "Vestigial Tail", Numbers: "1") })
@@ -857,7 +908,7 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 foreach (var rule in new[] { (Name: "Climate Adaptation (Arctic)", Numbers: "1,1"),
                     (Name: "Climate Adaptation (Desert)", Numbers: "1,1"), (Name: "Monkey Paws", Numbers: "+2,+1"),
-                    (Name: "Marsupial Pouch", Numbers: "−6"), (Name: "Proboscis", Numbers: "2,−1,+1"),
+                    (Name: "Marsupial Pouch", Numbers: "−6"), (Name: "Proboscis", Numbers: ""),
                     (Name: "Photometabolism", Numbers: "10,1") })
                 {
                     string summary = CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "");
@@ -895,9 +946,9 @@ internal static partial class AfterRunAuthorityHarness
                         .Distinct().Count() == group.Length,
                         "Sensory variants must not share misleading generic copy.");
                 }
-                foreach (var rule in new[] { (Name: "360-degree Eyesight", Numbers: "1,1,10,1"),
-                    (Name: "Camouflage", Numbers: "1,2,4,10"), (Name: "Dynamic Coloration", Numbers: "2,4"),
-                    (Name: "Glamour", Numbers: "2,1"), (Name: "Keen-Eared", Numbers: "1") })
+                foreach (var rule in new[] { (Name: "360-degree Eyesight", Numbers: ""),
+                    (Name: "Camouflage", Numbers: ""), (Name: "Dynamic Coloration", Numbers: "2,4"),
+                    (Name: "Glamour", Numbers: ""), (Name: "Keen-Eared", Numbers: "1") })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
@@ -1143,9 +1194,9 @@ internal static partial class AfterRunAuthorityHarness
                 catalog.Single(quality => quality.Element("name")!.Value == name).ToString()));
             string EffectById(string id) => string.Join(" ", CreationQualityInfo.Effects(
                 catalog.Single(quality => quality.Element("id")!.Value == id).ToString()));
-            Require(Effect("Night Blindness").Contains("one category worse")
-                && Effect("Night Blindness").Contains("full light without glare remains penalty-free")
-                && Effect("Night Blindness").Contains("buying off this drawback first"),
+            Require(Effect("Night Blindness").Contains("Worsens light/glare penalties, not normal lighting")
+                && Effect("Night Blindness").Contains("Corrective implants require buying off this drawback")
+                && Effect("Night Blindness").Contains("other eye-related qualities are incompatible"),
                 "Night blindness needs its lighting exception and correction restriction.");
             Require(Effect("Paranoia").Contains("Loyalty is below 4")
                 && Effect("Paranoia").Contains("relocate every few months")
@@ -1216,8 +1267,9 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Thermographic Vision").Contains("by one step")
                 && Effect("Thermographic Vision").Contains("not a flat Perception bonus"),
                 "Low-light and heat vision must retain distinct environmental limits.");
-            Require(Effect("Spirit Affinity").Contains("one extra service")
-                && Effect("Spirit Affinity").Contains("one die on Binding")
+            Require(Effect("Spirit Affinity").Contains("extra service")
+                && Effect("Spirit Affinity").Contains("easier Binding")
+                && Effect("Spirit Affinity").Contains("no guaranteed obedience")
                 && Effect("Infected Advanced Optional Power: Mimicry").Contains("voices or sounds, not appearances")
                 && Effect("Infected Advanced Optional Power: Psychokinesis").Contains("hand's Strength and Agility, not your own attributes"),
                 "Spirit and infected-power help must distinguish services, imitation and a telekinetic hand from personal attribute bonuses.");
@@ -1236,8 +1288,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Digital Doppelganger").Contains("chosen real or eligible fake SIN")
                 && Effect("Digital Doppelganger").Contains("Matrix searches struggle to trace")
                 && Effect("Digital Doppelganger").Contains("other identities remain unprotected")
-                && Effect("Disgraced").Contains("2 dice to Intimidation against criminals")
-                && Effect("Disgraced").Contains("prejudiced attitude toward you"),
+                && Effect("Disgraced").Contains("Criminals the GM considers susceptible")
+                && Effect("Disgraced").Contains("easier to intimidate")
+                && Effect("Disgraced").Contains("prejudice during Etiquette tests"),
                 "Identity-scoped searches and intimidation benefits must retain their targets and social downside.");
             Require(Effect("Night Vision").Contains("daylight glare")
                 && Effect("Night Vision").Contains("without a Karma refund")
@@ -1256,12 +1309,14 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Spike Resistance").Contains("does not increase Matrix armor")
                 && catalog.Single(q => q.Element("name")!.Value == "Spike Resistance").Element("limit")!.Value == "3",
                 "Reading speed must not become perfect recall, and biofeedback resistance is per level, not extra Matrix armor.");
-            Require(Effect("Spirit Whisperer").Contains("Spirits gain 1 extra die to resist your Summoning")
-                && Effect("Spirit Whisperer").Contains("the summoning itself still uses the declared Force")
+            Require(Effect("Spirit Whisperer").Contains("Spirits resist summoning more strongly")
+                && Effect("Spirit Whisperer").Contains("one Force stronger on success")
+                && Effect("Spirit Whisperer").Contains("the summoning itself uses the declared Force")
                 && Effect("Steely Eyed Wheelman").Contains("by 1, never below 0"),
                 "The spirit's resistance bonus must not be given to its summoner, and reduced terrain penalties cannot become a bonus.");
             Require(Effect("Albinism I").Contains("Cybereye-compatible")
-                && Effect("Albinism II").Contains("before other Karma spending")
+                && Effect("Albinism II").Contains("prior Karma downgrade")
+                && Effect("Albinism II").Contains("precedence over other Karma spending")
                 && Effect("Amnesia (Surface Loss)").Contains("retain practical abilities")
                 && Effect("Amnesia (Surface Loss)").Contains("Knowledge skills, which cost Karma")
                 && Effect("Amnesia (Neural Deletion)").Contains("GM controls")
@@ -1330,8 +1385,8 @@ internal static partial class AfterRunAuthorityHarness
                 "A secret's conditional social limit and blindness's distinct perception/astral consequences must remain clear.");
             Require(Effect("Borrowed Time").Contains("unpredictable death each session")
                 && Effect("Borrowed Time").Contains("permanently sacrificing all current Edge")
-                && Effect("Computer Illiterate").Contains("electronic devices or Matrix-connected systems")
-                && Effect("Computer Illiterate").Contains("does not take the same penalty twice"),
+                && Effect("Computer Illiterate").Contains("Computer, electronics and Matrix tests")
+                && Effect("Computer Illiterate").Contains("double-counting penalties"),
                 "Unavoidable mortality must not become ordinary Edge spending, and electronic penalties must not stack twice.");
             foreach (string tier in new[] { "Middle", "High", "Luxury" })
                 Require(Effect($"Creature of Comfort ({tier})").Contains($"Below {tier} Lifestyle")
@@ -1350,8 +1405,8 @@ internal static partial class AfterRunAuthorityHarness
                 && new[] { "Flashbacks I", "Flashbacks II" }.All(name =>
                     Effect(name).Contains("temporary incapacitation unless resisted")),
                 "Parole requires real obligations; flashback grades change frequency, not the shared temporary incapacity and resistance.");
-            Require(Effect("Hobo with a Shotgun").Contains("every Mental attribute by 2")
-                && Effect("Hobo with a Shotgun").Contains("full day at Squatter or Street")
+            Require(Effect("Hobo with a Shotgun").Contains("temporarily lowers all Mental attributes")
+                && Effect("Hobo with a Shotgun").Contains("full day back at Squatter or Street")
                 && Effect("Paraplegic").Contains("costlier living or vehicle adaptations")
                 && Effect("Paraplegic").Contains("Astral and Matrix abilities are unaffected")
                 && Effect("Signature").Contains("investigators")
@@ -1714,7 +1769,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Water Sprite").Contains("two dice to Diving tests and two dice to Swimming tests")
                 && Effect("Loss of Confidence").Contains("rating of at least 4")
                 && Effect("Loss of Confidence").Contains("specialization bonuses do not apply")
-                && Effect("Computer Illiterate").Contains("skill ratings stay unchanged"),
+                && Effect("Computer Illiterate").Contains("without lowering skill ratings"),
                 "Skill help must preserve exclusions, selection restrictions and dice versus learned ratings.");
             Require(Effect("Alibi").Contains("plausible-seeming evidence")
                 && Effect("Closer").Contains("life or death") && Effect("Innocuous").Contains("hiding in a crowd")
@@ -1766,7 +1821,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Low Pain Tolerance").Contains("without reducing either condition monitor")
                 && Effect("Low Pain Tolerance").Contains("Wound-penalty interval change: -1"),
                 "Interface penalties and earlier wound penalties must not become universal test penalties or smaller monitors.");
-            Require(Effect("Elf Poser").Contains("human-only")
+            Require(Effect("Elf Poser").Contains("Humans can pose as elves")
+                && Effect("Elf Poser").Contains("without changing metatype or attributes")
                 && Effect("Ork Poser").Contains("human or elf")
                 && Effect("Ork Poser").Contains("does not change your metatype or attributes")
                 && Effect("Spirit Bane").Contains("One chosen spirit type")
@@ -1874,8 +1930,8 @@ internal static partial class AfterRunAuthorityHarness
                 "Mental-discipline help must not grant unlimited sustaining, fear immunity or attack bonuses.");
             Require(Effect("Gearhead").Contains("20% more Speed or +1 Handling")
                 && Effect("Gearhead").Contains("Extending the boost damages the vehicle")
-                && Effect("Juryrigger").Contains("Results are temporary")
-                && Effect("Juryrigger").Contains("burns out its critical components"),
+                && Effect("Juryrigger").Contains("temporary improvised repairs")
+                && Effect("Juryrigger").Contains("burns out critical components"),
                 "Technical tricks must retain their alternatives, temporary duration and damage risk.");
             Require(Effect("Human-Looking").Contains("actual metatype and its attributes do not change")
                 && Effect("Natural Hardening").Contains("one point of natural biofeedback filtering")
