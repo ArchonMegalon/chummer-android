@@ -2266,4 +2266,106 @@
   <data name="Spells.SummarySource.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>172A27F44CC8D92A3AB62E02BFFE92CFD2E5E353978EAD9E81D2047378D989C1</value></data>
   <data name="Spells.Summary.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>Injures and anchors victim.</value></data>
   <data name="Spells.SummarySource.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>3B7BF64B215AF3C816CB0199BECC13BF17D7298459E4D3BA17B5CBCFC626F060</value></data>
+  <data name="Qualities.Summary.397eee55-11eb-4ede-bede-a8a13befa21c" xml:space="preserve">
+    <value>Community connections lower the cost of one Low or Squatter lifestyle.</value>
+  </data>
+  <data name="Qualities.SummarySource.397eee55-11eb-4ede-bede-a8a13befa21c" xml:space="preserve">
+    <value>4FCD73B1ECA86F0B2351A6BBA8472E491766F238636339D42042C4104A8F8CD5</value>
+  </data>
+  <data name="Qualities.Summary.3a5b909e-7b37-471d-a24a-3fda7c18d837" xml:space="preserve">
+    <value>Intimidation is easier against people who are neither orks nor trolls.</value>
+  </data>
+  <data name="Qualities.SummarySource.3a5b909e-7b37-471d-a24a-3fda7c18d837" xml:space="preserve">
+    <value>56F1DBAE7E9C24625572791804C3AB8ED8294FA5C5BD5530B64FFF42AC53480D</value>
+  </data>
+  <data name="Qualities.Summary.8d8dee2e-868b-4eda-87b5-959dd55304e0" xml:space="preserve">
+    <value>You craft items more effectively when they are specifically intended for orks or trolls.</value>
+  </data>
+  <data name="Qualities.SummarySource.8d8dee2e-868b-4eda-87b5-959dd55304e0" xml:space="preserve">
+    <value>EA4A2F19E6C60168AC68756DA4A800A1ED702607B1C5406EE93776BFD9E7C0ED</value>
+  </data>
+  <data name="Qualities.Summary.94d14ec2-7bcf-4728-8ff6-ef315da4c80c" xml:space="preserve">
+    <value>Your knowledge tests improve when significant events in ork or troll history are involved.</value>
+  </data>
+  <data name="Qualities.SummarySource.94d14ec2-7bcf-4728-8ff6-ef315da4c80c" xml:space="preserve">
+    <value>AA98E00FCAC0021E1A7274E084AD7B2DE676875A2C74A6A8C1C4CE1025EA2626</value>
+  </data>
+  <data name="Qualities.Summary.ac24ddb3-5e35-486c-a899-5b1bd11e9d86" xml:space="preserve">
+    <value>You lead groups more effectively when every member is an ork or troll.</value>
+  </data>
+  <data name="Qualities.SummarySource.ac24ddb3-5e35-486c-a899-5b1bd11e9d86" xml:space="preserve">
+    <value>9C152E50CB23AA5B5F12C0ABAA0A35BEF7C034E8A5F450B90AFB2E09C9AF751C</value>
+  </data>
+  <data name="Qualities.Summary.14b5b9c0-5180-47ec-8bf9-f422d3196744" xml:space="preserve">
+    <value>Etiquette and Navigation improve in communities where orks and trolls form the majority.</value>
+  </data>
+  <data name="Qualities.SummarySource.14b5b9c0-5180-47ec-8bf9-f422d3196744" xml:space="preserve">
+    <value>A22D5467081579ECB7BE465D10E07B9C415C12B0A5225900368A7E8091D3DA3C</value>
+  </data>
+  <data name="Qualities.Summary.e4bceac5-8f1d-4090-90fc-ad5e94bca8d7" xml:space="preserve">
+    <value>Poor credit raises lifestyle costs and makes gear harder to obtain during your career.</value>
+  </data>
+  <data name="Qualities.SummarySource.e4bceac5-8f1d-4090-90fc-ad5e94bca8d7" xml:space="preserve">
+    <value>1A62B21232B6BFC0B51433630D273FEC3CC0E7CE445F9CB27456C4702284C43B</value>
+  </data>
+  <data name="Qualities.Summary.0d1d5e5d-5a11-4dff-9776-3cf088ab8ea7" xml:space="preserve">
+    <value>Choose a corporation; social dealings with its members become harder.</value>
+  </data>
+  <data name="Qualities.SummarySource.0d1d5e5d-5a11-4dff-9776-3cf088ab8ea7" xml:space="preserve">
+    <value>A55C211A76F0AF505006F3DD0FD19388876DAE401557F5EBD41D93303D17C547</value>
+  </data>
+  <data name="Qualities.Summary.7bce4053-611b-4b58-8e1d-fc9dde20fd9f" xml:space="preserve">
+    <value>Choose a corporation; social dealings with former co-workers or its Johnsons are penalized.</value>
+  </data>
+  <data name="Qualities.SummarySource.7bce4053-611b-4b58-8e1d-fc9dde20fd9f" xml:space="preserve">
+    <value>6FDB6F2ACCD1A782AAF5F59A9C370D33AFD4CC78636943A9BEE5DD5496D3C093</value>
+  </data>
+  <data name="Qualities.Summary.19042705-1c57-4973-bf2e-45186ea2b8d5" xml:space="preserve">
+    <value>Your social skills suffer when meeting someone for the first time.</value>
+  </data>
+  <data name="Qualities.SummarySource.19042705-1c57-4973-bf2e-45186ea2b8d5" xml:space="preserve">
+    <value>4753311B7DD4952D3B729DB3E07E7EF74B063BA2113F131BEA133FDFDDF745EC</value>
+  </data>
+  <data name="Qualities.Summary.f4a052dc-17ca-4bec-a9bf-30e6da80285e" xml:space="preserve">
+    <value>Malware interferes with your Matrix Perception.</value>
+  </data>
+  <data name="Qualities.SummarySource.f4a052dc-17ca-4bec-a9bf-30e6da80285e" xml:space="preserve">
+    <value>A128CE43634ED8B6D24FAC138A8E2AC726B25AB9BE1293CB5EF99224DF927390</value>
+  </data>
+  <data name="Qualities.Summary.2509cf19-002f-4f24-a52f-f1441dd4d614" xml:space="preserve">
+    <value>Cyberware and bioware cost you more Essence.</value>
+  </data>
+  <data name="Qualities.SummarySource.2509cf19-002f-4f24-a52f-f1441dd4d614" xml:space="preserve">
+    <value>1F8A9846230FDC37B9B933A83AD91CDC6032E1757A04D80E877BA692DB459D64</value>
+  </data>
+  <data name="Qualities.Summary.1118c31d-521b-46c3-ba82-04123c1303be" xml:space="preserve">
+    <value>Your social skills work better on crowds of at least ten people.</value>
+  </data>
+  <data name="Qualities.SummarySource.1118c31d-521b-46c3-ba82-04123c1303be" xml:space="preserve">
+    <value>925547C0BFC616652DDA6473F0DFC9E2B5574FDC883CBB3B2B552B0684992394</value>
+  </data>
+  <data name="Qualities.Summary.a766e0d9-954e-4738-88f2-bde4f4e89880" xml:space="preserve">
+    <value>Improved Etiquette helps you adapt to social situations.</value>
+  </data>
+  <data name="Qualities.SummarySource.a766e0d9-954e-4738-88f2-bde4f4e89880" xml:space="preserve">
+    <value>7A961E387F7BDCECDAB315B6CF07E454EBB3EF674675CEA230E46D76FA56CC31</value>
+  </data>
+  <data name="Qualities.Summary.eb3b2334-29f3-4bd5-a9cc-817672b28d6e" xml:space="preserve">
+    <value>In hot-sim, you compile and decompile sprites and thread complex forms more effectively.</value>
+  </data>
+  <data name="Qualities.SummarySource.eb3b2334-29f3-4bd5-a9cc-817672b28d6e" xml:space="preserve">
+    <value>32E181EB8D2BDDB063F00E16EFF2E73B1CCE308211AA3C61F71C3676119EEFBB</value>
+  </data>
+  <data name="Qualities.Summary.0dd183a3-85ce-4029-9de5-9b6aa1eb539c" xml:space="preserve">
+    <value>Raises your special-modification allowance; requires that you have neither Magic nor Resonance.</value>
+  </data>
+  <data name="Qualities.SummarySource.0dd183a3-85ce-4029-9de5-9b6aa1eb539c" xml:space="preserve">
+    <value>AAABAB35C66E13D08918467E4B0F6099B017256E33D932FC70CEE2391CA05266</value>
+  </data>
+  <data name="Qualities.Summary.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
+    <value>Raises your special-modification allowance with Prototype Materials; requires that you have neither Magic nor Resonance.</value>
+  </data>
+  <data name="Qualities.SummarySource.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
+    <value>DF026C66F6FBF7F1D6CF8DF754CE6856B1252736AD449F824D416C02C4553BF2</value>
+  </data>
 </root>
