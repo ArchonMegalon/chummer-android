@@ -1549,4 +1549,55 @@
   <data name="Spells.Summary.8a096951-d2ee-4c46-9c64-9e9a7f218c03" xml:space="preserve"><value>Erschafft Peitsche; verletzt Zaubernden.</value></data>
   <data name="Spells.Summary.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>Formt Blutklingen.</value></data>
   <data name="Spells.Summary.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>Verletzt und fixiert Opfer.</value></data>
+  <data name="Qualities.Summary.397eee55-11eb-4ede-bede-a8a13befa21c" xml:space="preserve">
+    <value>Deine Gemeinschaft senkt die Kosten für einen Unterschicht- oder Squatter-Lebensstil.</value>
+  </data>
+  <data name="Qualities.Summary.3a5b909e-7b37-471d-a24a-3fda7c18d837" xml:space="preserve">
+    <value>Du schüchterst Personen leichter ein, die weder Orks noch Trolle sind.</value>
+  </data>
+  <data name="Qualities.Summary.8d8dee2e-868b-4eda-87b5-959dd55304e0" xml:space="preserve">
+    <value>Du fertigst Gegenstände erfolgreicher an, wenn sie speziell für Orks oder Trolle bestimmt sind.</value>
+  </data>
+  <data name="Qualities.Summary.94d14ec2-7bcf-4728-8ff6-ef315da4c80c" xml:space="preserve">
+    <value>Deine Wissensproben profitieren, wenn es um bedeutende Ereignisse der Ork- oder Trollgeschichte geht.</value>
+  </data>
+  <data name="Qualities.Summary.ac24ddb3-5e35-486c-a899-5b1bd11e9d86" xml:space="preserve">
+    <value>Du führst Gruppen erfolgreicher, wenn alle Mitglieder Orks oder Trolle sind.</value>
+  </data>
+  <data name="Qualities.Summary.14b5b9c0-5180-47ec-8bf9-f422d3196744" xml:space="preserve">
+    <value>Etikette und Navigation fallen dir in überwiegend von Orks und Trollen bewohnten Gemeinschaften leichter.</value>
+  </data>
+  <data name="Qualities.Summary.e4bceac5-8f1d-4090-90fc-ad5e94bca8d7" xml:space="preserve">
+    <value>Schlechte Kreditwürdigkeit erhöht deine Lebensstilkosten und erschwert die Beschaffung von Ausrüstung während der Karriere.</value>
+  </data>
+  <data name="Qualities.Summary.0d1d5e5d-5a11-4dff-9776-3cf088ab8ea7" xml:space="preserve">
+    <value>Wähle einen Konzern; soziale Kontakte mit seinen Angehörigen werden schwieriger.</value>
+  </data>
+  <data name="Qualities.Summary.7bce4053-611b-4b58-8e1d-fc9dde20fd9f" xml:space="preserve">
+    <value>Wähle einen Konzern; soziale Kontakte mit früheren Kollegen oder seinen Johnsons werden erschwert.</value>
+  </data>
+  <data name="Qualities.Summary.19042705-1c57-4973-bf2e-45186ea2b8d5" xml:space="preserve">
+    <value>Deine sozialen Fertigkeiten sind beim ersten Kennenlernen einer Person eingeschränkt.</value>
+  </data>
+  <data name="Qualities.Summary.f4a052dc-17ca-4bec-a9bf-30e6da80285e" xml:space="preserve">
+    <value>Schadsoftware beeinträchtigt deine Matrixwahrnehmung.</value>
+  </data>
+  <data name="Qualities.Summary.2509cf19-002f-4f24-a52f-f1441dd4d614" xml:space="preserve">
+    <value>Cyberware und Bioware kosten dich mehr Essenz.</value>
+  </data>
+  <data name="Qualities.Summary.1118c31d-521b-46c3-ba82-04123c1303be" xml:space="preserve">
+    <value>Deine sozialen Fertigkeiten wirken besser auf Menschenmengen von mindestens zehn Personen.</value>
+  </data>
+  <data name="Qualities.Summary.a766e0d9-954e-4738-88f2-bde4f4e89880" xml:space="preserve">
+    <value>Bessere Etikette hilft dir, dich in sozialen Situationen zurechtzufinden.</value>
+  </data>
+  <data name="Qualities.Summary.eb3b2334-29f3-4bd5-a9cc-817672b28d6e" xml:space="preserve">
+    <value>Im Hot-Sim kompilierst und dekompilierst du Sprites und webst komplexe Formen erfolgreicher.</value>
+  </data>
+  <data name="Qualities.Summary.0dd183a3-85ce-4029-9de5-9b6aa1eb539c" xml:space="preserve">
+    <value>Erhöht dein Limit für Spezialmodifikationen; du darfst weder Magie noch Resonanz besitzen.</value>
+  </data>
+  <data name="Qualities.Summary.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
+    <value>Erhöht mit Prototype Materials dein Limit für Spezialmodifikationen; du darfst weder Magie noch Resonanz besitzen.</value>
+  </data>
 </root>

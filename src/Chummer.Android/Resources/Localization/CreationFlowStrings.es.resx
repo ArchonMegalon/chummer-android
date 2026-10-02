@@ -1532,4 +1532,55 @@
   <data name="Spells.Summary.8a096951-d2ee-4c46-9c64-9e9a7f218c03" xml:space="preserve"><value>Crea látigo; hiere al lanzador.</value></data>
   <data name="Spells.Summary.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>Forma hojas sanguíneas.</value></data>
   <data name="Spells.Summary.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>Hiere e inmoviliza víctima.</value></data>
+  <data name="Qualities.Summary.397eee55-11eb-4ede-bede-a8a13befa21c" xml:space="preserve">
+    <value>Tu comunidad reduce el coste de un estilo de vida bajo o de ocupa.</value>
+  </data>
+  <data name="Qualities.Summary.3a5b909e-7b37-471d-a24a-3fda7c18d837" xml:space="preserve">
+    <value>Intimidas con más facilidad a personas que no sean orkos ni trolls.</value>
+  </data>
+  <data name="Qualities.Summary.8d8dee2e-868b-4eda-87b5-959dd55304e0" xml:space="preserve">
+    <value>Creas objetos con más facilidad cuando están destinados específicamente a orkos o trolls.</value>
+  </data>
+  <data name="Qualities.Summary.94d14ec2-7bcf-4728-8ff6-ef315da4c80c" xml:space="preserve">
+    <value>Mejoran tus pruebas de conocimientos sobre acontecimientos importantes de la historia orka o troll.</value>
+  </data>
+  <data name="Qualities.Summary.ac24ddb3-5e35-486c-a899-5b1bd11e9d86" xml:space="preserve">
+    <value>Diriges grupos con más eficacia cuando todos sus miembros son orkos o trolls.</value>
+  </data>
+  <data name="Qualities.Summary.14b5b9c0-5180-47ec-8bf9-f422d3196744" xml:space="preserve">
+    <value>Mejoran Etiqueta y Navegación en comunidades donde predominan los orkos y los trolls.</value>
+  </data>
+  <data name="Qualities.Summary.e4bceac5-8f1d-4090-90fc-ad5e94bca8d7" xml:space="preserve">
+    <value>Tu mal crédito encarece el estilo de vida y dificulta conseguir equipo durante la carrera.</value>
+  </data>
+  <data name="Qualities.Summary.0d1d5e5d-5a11-4dff-9776-3cf088ab8ea7" xml:space="preserve">
+    <value>Elige una corporación; las interacciones sociales con sus miembros se vuelven más difíciles.</value>
+  </data>
+  <data name="Qualities.Summary.7bce4053-611b-4b58-8e1d-fc9dde20fd9f" xml:space="preserve">
+    <value>Elige una corporación; sufres una penalización social con antiguos compañeros de trabajo o sus Johnsons.</value>
+  </data>
+  <data name="Qualities.Summary.19042705-1c57-4973-bf2e-45186ea2b8d5" xml:space="preserve">
+    <value>Tus habilidades sociales empeoran cuando conoces a alguien por primera vez.</value>
+  </data>
+  <data name="Qualities.Summary.f4a052dc-17ca-4bec-a9bf-30e6da80285e" xml:space="preserve">
+    <value>El malware dificulta tu Percepción de la Matriz.</value>
+  </data>
+  <data name="Qualities.Summary.2509cf19-002f-4f24-a52f-f1441dd4d614" xml:space="preserve">
+    <value>El ciberware y el bioware te cuestan más Esencia.</value>
+  </data>
+  <data name="Qualities.Summary.1118c31d-521b-46c3-ba82-04123c1303be" xml:space="preserve">
+    <value>Tus habilidades sociales mejoran ante grupos de al menos diez personas.</value>
+  </data>
+  <data name="Qualities.Summary.a766e0d9-954e-4738-88f2-bde4f4e89880" xml:space="preserve">
+    <value>Una mejor Etiqueta te ayuda a adaptarte a situaciones sociales.</value>
+  </data>
+  <data name="Qualities.Summary.eb3b2334-29f3-4bd5-a9cc-817672b28d6e" xml:space="preserve">
+    <value>En hot-sim compilas y descompilas sprites y tejes formas complejas con más eficacia.</value>
+  </data>
+  <data name="Qualities.Summary.0dd183a3-85ce-4029-9de5-9b6aa1eb539c" xml:space="preserve">
+    <value>Aumenta tu límite de modificaciones especiales; no puedes tener Magia ni Resonancia.</value>
+  </data>
+  <data name="Qualities.Summary.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
+    <value>Aumenta tu límite de modificaciones especiales con Prototype Materials; no puedes tener Magia ni Resonancia.</value>
+  </data>
 </root>

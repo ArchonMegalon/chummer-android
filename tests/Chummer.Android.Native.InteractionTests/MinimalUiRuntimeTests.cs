@@ -13,6 +13,27 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    private static readonly (string Name, string English, string German, string Spanish)[] SourceEffectQualitySummaries =
+    [
+        ("Community Connection", "one Low or Squatter", "einen Unterschicht- oder Squatter", "un estilo de vida bajo o de ocupa"),
+        ("Nasty Trog", "neither orks nor trolls", "weder Orks noch Trolle", "no sean orkos ni trolls"),
+        ("Trog Artisan", "specifically intended", "speziell", "específicamente"),
+        ("Trog Historian", "significant events", "bedeutende Ereignisse", "acontecimientos importantes"),
+        ("Trog Leader", "every member", "alle Mitglieder", "todos sus miembros"),
+        ("Trog Networker", "the majority", "überwiegend", "predominan"),
+        ("Bad Credit", "during your career", "während der Karriere", "durante la carrera"),
+        ("Corporate Pariah I", "with its members", "mit seinen Angehörigen", "con sus miembros"),
+        ("Corporate Pariah II", "former co-workers or its Johnsons", "früheren Kollegen oder seinen Johnsons", "antiguos compañeros de trabajo o sus Johnsons"),
+        ("Basement Dweller", "for the first time", "ersten Kennenlernen", "por primera vez"),
+        ("Malware Infection", "Matrix Perception", "Matrixwahrnehmung", "Percepción de la Matriz"),
+        ("'Ware Intolerance", "Cyberware and bioware", "Cyberware und Bioware", "ciberware y el bioware"),
+        ("Rabble Rouser", "at least ten", "mindestens zehn", "al menos diez"),
+        ("Social Chameleon", "Etiquette", "Etikette", "Etiqueta"),
+        ("Resonant Discordance", "hot-sim", "Hot-Sim", "hot-sim"),
+        ("Special Modifications", "neither Magic nor Resonance", "weder Magie noch Resonanz", "no puedes tener Magia ni Resonancia"),
+        ("Special Modifications (Prototype Materials)", "with Prototype Materials", "mit Prototype Materials", "con Prototype Materials")
+    ];
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -51,7 +72,24 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 424, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 441, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in SourceEffectQualitySummaries)
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    string scope = locale == "de-AT" ? rule.German : locale == "es-MX" ? rule.Spanish : rule.English;
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 0 && summary.Contains(scope, StringComparison.Ordinal)
+                        && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Short source-effect help lost its localized scope: " + rule.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.SetElementValue("karma", "999");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Authored help must not survive a changed rule definition: " + rule.Name);
+                }
                 var contactScope = locale switch
                 {
                     "de-AT" => (Minimum: "mindestens", Recovery: "Wiedergutmachung"),
@@ -1694,7 +1732,8 @@ internal static partial class AfterRunAuthorityHarness
                         && MinimalVisible(empty).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").IsEnabled,
                         "An empty valid review must explain that no additional qualities are selected.");
                     MinimalRequireNoMachineValues(empty);
-                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased", "Animal Empathy" })
+                    foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased", "Animal Empathy" }
+                        .Concat(SourceEffectQualitySummaries.Select(rule => rule.Name)))
                     {
                         var helpOption = state.Authority.Options.First(item => item.Name == name);
                         var help = new CreationQualityInfoPage(coordinator, original, helpOption);
