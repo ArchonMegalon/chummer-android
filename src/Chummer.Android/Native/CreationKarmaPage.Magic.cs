@@ -85,6 +85,8 @@ internal sealed partial class CreationKarmaPage
         foreach (var option in rows.Skip(_page * PageSize).Take(PageSize))
         {
             _body.Add(NativeTheme.Body(option.Name));
+            if (option.Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
+                _body.Add(NativeTheme.Body(CreationSpellInfo.Summary(option), NativeTheme.Text));
             _body.Add(NativeTheme.Body(option.SourceBook + " · " + option.Page, NativeTheme.Muted));
             if (!option.IsEnabled)
             {

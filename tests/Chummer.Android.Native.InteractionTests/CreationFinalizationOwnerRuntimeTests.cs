@@ -549,6 +549,23 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_editor", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
             var retainedDraft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
                 .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            if (retainedEditor.Talent.RequiresTradition)
+            {
+                foreach (var tradition in retainedEditor.Traditions.Where(item => item.IsEnabled && item.Blockers.Count == 0))
+                    Require(CreationMagicResonancePhoneAuthority.IsOptionConfigurable(retainedEditor, tradition),
+                        "Core-enabled tradition was rejected by the phone: " + tradition.Name);
+                foreach (string name in new[] { "Hermetic", "Shamanic" })
+                {
+                    var tradition = retainedEditor.Traditions.Single(item => item.Name == name);
+                    var choicePage = new CreationMagicResonanceOptionPage(runtime.Coordinator, retainedEditor, tradition, retainedDraft);
+                    await (Task)typeof(CreationMagicResonanceOptionPage).GetMethod("PrepareForAppearanceRefreshAsync",
+                        BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(choicePage, [CancellationToken.None])!;
+                    MinimalRender(choicePage);
+                    Require(MinimalVisible(choicePage).OfType<Button>().Single(button =>
+                        button.AutomationId == "creation-magic-resonance-option-toggle").IsEnabled,
+                        "Actual native tradition page disabled " + name);
+                }
+            }
             foreach (string message in retainedEditor.Budgets.SelectMany(budget => budget.Blockers)
                          .Concat(retainedEditor.Blockers).Concat(retainedEditor.Talent.Blockers)
                          .Select(CreationFlowStrings.MagicBlocker).Distinct(StringComparer.Ordinal))
@@ -769,11 +786,13 @@ internal static partial class AfterRunAuthorityHarness
         foreach (string key in new[] { "Search", "NoMatches", "Showing", "Previous", "Next" })
             Require(CreationFlowStrings.Get("Magic.Catalog." + key, "missing",
                     System.Globalization.CultureInfo.GetCultureInfo(locale)) != "missing", "Missing Magic search translation.");
-        var options = editor.Spells.Count > 20 ? editor.Spells : editor.AdeptPowers;
-        Require(options.Count > 20, "SETUP: the actual Magic catalog must exercise multiple pages.");
+        var allOptions = editor.Spells.Count > 20 ? editor.Spells : editor.AdeptPowers;
+        var options = allOptions.Where(option => option.IsEnabled && option.Blockers.Count == 0
+            || draft.IsSelected(option.Identity)).ToArray();
+        Require(options.Length > 20, "SETUP: the actual Magic catalog must exercise multiple pages.");
         string beforeSelections = JsonSerializer.Serialize(draft.Selections);
         var catalog = new CreationMagicResonanceCatalogPage(coordinator, editor,
-            options[0].Identity.Kind, options, draft);
+            options[0].Identity.Kind, allOptions, draft);
         var navigation = new NavigationPage(catalog);
         _ = new Window(navigation);
         await ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalog, "OnAppearing"));
@@ -783,8 +802,8 @@ internal static partial class AfterRunAuthorityHarness
             button.AutomationId == "creation-magic-resonance-catalog-" + direction);
         string Id(CharacterCreationMagicResonanceOptionProjection option) =>
             $"creation-magic-resonance-option-{CreationMagicResonancePage.Token(option.Identity.Kind)}-{CreationMagicResonancePage.Token(option.Identity.SourceId)}";
-        Require(Rows().Length == 20, $"Magic must render a bounded catalog page, not all {options.Count} rows (rendered {Rows().Length}).");
-        var disabled = options.First(item => item.Blockers.Count > 0);
+        Require(Rows().Length == 20, $"Magic must render a bounded catalog page, not all {options.Length} rows (rendered {Rows().Length}).");
+        var disabled = allOptions.First(item => item.Blockers.Count > 0);
         var oldCulture = System.Globalization.CultureInfo.CurrentUICulture;
         try
         {
@@ -809,9 +828,9 @@ internal static partial class AfterRunAuthorityHarness
                 MinimalRender(detail);
                 Require(!MinimalVisibleText(detail).Contains("creation-magic-resonance-", StringComparison.Ordinal),
                     "A disabled Magic choice exposes raw blocker codes instead of readable guidance: " + locale);
-                Require(disabled.Blockers.All(code => MinimalVisibleText(detail).Contains(CreationFlowStrings.MagicBlocker(code))),
+                Require(disabled.Blockers.All(code => MinimalVisibleText(detail).Contains(CreationFlowStrings.MagicCatalogBlocker(code))),
                     "Disabled choices need the exact localized reason, not a blank or generic summary.");
-                foreach (string message in disabled.Blockers.Select(CreationFlowStrings.MagicBlocker).Distinct(StringComparer.Ordinal))
+                foreach (string message in disabled.Blockers.Select(CreationFlowStrings.MagicCatalogBlocker).Distinct(StringComparer.Ordinal))
                     Require(MinimalVisible(detail).OfType<Label>().Count(label =>
                         label.Text.TrimStart('•', ' ') == message) == 1,
                         "A blocked Magic choice repeats the same guidance: " + locale);
@@ -888,12 +907,28 @@ internal static partial class AfterRunAuthorityHarness
             visited.AddRange(Rows().Select(button => button.AutomationId));
             if (!Pager("next").IsEnabled) break;
             ((IButtonController)Pager("next")).SendClicked();
-        } while (visited.Count <= options.Count);
+        } while (visited.Count <= options.Length);
         Require(visited.SequenceEqual(options.Select(Id)), "Paging omitted, repeated or reordered a Core option.");
+        Require(!visited.Contains(Id(disabled)), "An unavailable choice was offered by default.");
         void Search(string query)
         {
             search.Text = query;
             ((ISearchBarController)search).OnSearchButtonPressed();
+        }
+        if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
+        {
+            var spell = options.Single(item => item.Name == "Levitate");
+            Search(spell.Name);
+            string help = CreationSpellInfo.Summary(CreationSpellInfo.Resolve(coordinator.State.CreationMagicResonance, spell));
+            Require(MinimalVisibleText(catalog).Contains(help), "The actual spell list omitted its inline description.");
+            var spellPage = new CreationMagicResonanceOptionPage(coordinator, editor, spell, draft);
+            await (Task)typeof(CreationMagicResonanceOptionPage).GetMethod("PrepareForAppearanceRefreshAsync",
+                BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(spellPage, [CancellationToken.None])!;
+            MinimalRender(spellPage);
+            var summary = MinimalVisible(spellPage).OfType<Label>().Single(label =>
+                label.AutomationId == "creation-magic-resonance-spell-summary");
+            Require(summary.Text == help && summary.TextColor.Equals(NativeTheme.Text)
+                && summary.LineBreakMode == LineBreakMode.WordWrap, "Spell details are missing, clipped or unreadable.");
         }
         Search("  " + options.Last().Name.ToUpperInvariant() + "  ");
         Require(Rows().Select(button => button.AutomationId).Contains(Id(options.Last())),
@@ -915,7 +950,7 @@ internal static partial class AfterRunAuthorityHarness
         Search(options.Last().Name);
         Require(Rows().Select(button => button.AutomationId).SequenceEqual(first), "A detached search changed a newer render.");
         Require(JsonSerializer.Serialize(draft.Selections) == beforeSelections, "Browsing edited the Magic draft.");
-        Console.WriteLine($"PASS Magic catalog {options.Count} exact options, bounded pages, search, readable colors, detached controls and unchanged draft");
+        Console.WriteLine($"PASS Magic catalog {options.Length} available exact options, bounded pages, search, readable colors, detached controls and unchanged draft");
         return (catalog, Rows()[0], MinimalVisible(catalog).OfType<SearchBar>().Single(), navigation);
     }
 

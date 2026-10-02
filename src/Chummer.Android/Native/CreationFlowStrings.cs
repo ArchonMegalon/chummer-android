@@ -61,6 +61,13 @@ public static class CreationFlowStrings
         _ => code
     };
 
+    // Core's catalog projector emits OptionDisabled for a disabled source book.
+    // Do not use this interpretation for generic mutation/admission failures.
+    internal static string MagicCatalogBlocker(string code)
+        => code == "creation-magic-resonance-option-disabled"
+            ? Get("Magic.Blocker.SourceDisabled", "This source is disabled in this runner's saved rule settings. New runners enable all sources by default.")
+            : MagicBlocker(code);
+
     // Display-only translation. Admission and diagnostics retain the original code.
     // Never echo arbitrary exceptions or invent readiness for an unknown reason.
     internal static string MagicBlocker(string code) => code switch

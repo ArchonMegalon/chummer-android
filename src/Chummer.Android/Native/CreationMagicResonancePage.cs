@@ -747,9 +747,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
     }
 
     internal static void AddBlocker(VerticalStackLayout layout, string code, VerticalStackLayout diagnostics,
-        ISet<string>? shownMessages = null)
+        ISet<string>? shownMessages = null, bool catalogReason = false)
     {
-        string message = CreationFlowStrings.MagicBlocker(code);
+        string message = catalogReason ? CreationFlowStrings.MagicCatalogBlocker(code) : CreationFlowStrings.MagicBlocker(code);
         if (shownMessages is null || shownMessages.Add(message))
             layout.Add(NativeTheme.Body($"• {message}", NativeTheme.Danger));
         // Different exact codes can share a readable explanation. Keep every
@@ -937,12 +937,16 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         bool CanUseRows() => catalogGeneration == _catalogGeneration && isCurrent();
         // Filter the retained, validated projection only. Browsing neither reads
         // Core again nor edits selections; option actions still preview through Core.
-        var matches = _options.Where(option => string.IsNullOrEmpty(_filter)
+        var matches = _options.Where(option => (option.IsEnabled && option.Blockers.Count == 0 || _draft.IsSelected(option.Identity))
+            && (string.IsNullOrEmpty(_filter)
             || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
-            || option.SourceBook.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)).ToArray();
+            || option.SourceBook.Contains(_filter, StringComparison.CurrentCultureIgnoreCase))).ToArray();
         _catalogOffset = Math.Min(_catalogOffset, Math.Max(0, matches.Length - 1) / CatalogPageSize * CatalogPageSize);
         int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
         rows.Clear();
+        if (_options.Any(option => !option.IsEnabled || option.Blockers.Count > 0))
+            rows.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Catalog.AvailableOnly",
+                "Showing available choices. Existing runners keep their saved source settings."), NativeTheme.Muted));
         Label range = NativeTheme.Body(matches.Length == 0
             ? CreationFlowStrings.Get("Magic.Catalog.NoMatches", "No matching choices")
             : CreationFlowStrings.Format("Magic.Catalog.Showing", "Showing {0}–{1} of {2}",
@@ -983,7 +987,9 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
                 option.SourceBook,
                 option.Page);
             if (!option.IsEnabled || option.Blockers.Count > 0)
-                detail += $" · {CreationFlowStrings.MagicBlocker(option.Blockers.FirstOrDefault() ?? CharacterCreationMagicResonanceBlockers.OptionDisabled)}";
+                detail += $" · {CreationFlowStrings.MagicCatalogBlocker(option.Blockers.FirstOrDefault() ?? CharacterCreationMagicResonanceBlockers.OptionDisabled)}";
+            if (_kind == CharacterCreationMagicResonanceKinds.Spell)
+                detail += "\n" + CreationSpellInfo.Summary(CreationSpellInfo.Resolve(_display?.CreationMagicResonance, option));
             Border row = NativeTheme.NavigationRow(
                 option.Name,
                 detail,
@@ -1088,6 +1094,14 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
             "Magic.Option.Eyebrow",
             "SR5 · Draft · Choice")));
         _body.Add(NativeTheme.Title(_option.Name));
+        if (_option.Identity.Kind == CharacterCreationMagicResonanceKinds.Spell
+            && _display is not null && Coordinator.IsCreationCatalogDisplayCurrent(_display))
+        {
+            Label summary = NativeTheme.Body(CreationSpellInfo.Summary(
+                CreationSpellInfo.Resolve(_display.CreationMagicResonance, _option)), NativeTheme.Text);
+            summary.AutomationId = "creation-magic-resonance-spell-summary";
+            _body.Add(summary);
+        }
         VerticalStackLayout details = new() { Spacing = 6 };
         VerticalStackLayout diagnostics = new() { Spacing = 6 };
         diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
@@ -1159,10 +1173,11 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         VerticalStackLayout notices = new() { Spacing = 6 };
         HashSet<string> shownMessages = new(StringComparer.Ordinal);
         foreach (string blocker in _option.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
-            CreationMagicResonancePage.AddBlocker(notices, blocker, diagnostics, shownMessages);
+            CreationMagicResonancePage.AddBlocker(notices, blocker, diagnostics, shownMessages,
+                catalogReason: _option.Blockers.Contains(blocker));
         if (!exact && notices.Children.Count == 0)
             CreationMagicResonancePage.AddBlocker(notices,
-                CharacterCreationMagicResonanceBlockers.OptionDisabled, diagnostics, shownMessages);
+                CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision, diagnostics, shownMessages);
         if (!exact && notices.Children.OfType<Label>().FirstOrDefault() is { } disabled)
             disabled.AutomationId = "creation-magic-resonance-option-disabled-reason";
         if (notices.Children.Count > 0)

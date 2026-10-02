@@ -1629,4 +1629,60 @@
   <data name="Qualities.SummarySource.d85c6437-7611-47d3-b4c7-4e581e5349a4" xml:space="preserve"><value>3BE640836CE07FE7C0F83C8EAD1C29EE9E7AE1861F50134B33E373BF5EF60A9F</value></data>
   <data name="Qualities.SummarySource.7ac54323-a913-4a8e-803e-c6ac2d4ba359" xml:space="preserve"><value>85D5B6E961C8925B956376134CE54B510ED6D48193B0AAD16FCB1D1C5338DC68</value></data>
   <data name="Qualities.SummarySource.eefe6c28-5d7b-403d-8c24-5bc26536b52b" xml:space="preserve"><value>8543422A445D4D0019B3155C2ECAC6B59B23552183F2483B4F63FD66E0B5AA90</value></data>
+  <data name="Qualities.Summary.7d1bedb9-5d27-419f-bc15-0a39d9b67516" xml:space="preserve"><value>Your contacts count Loyalty +2 while you honor your Code of Honor; after breaking it, −1 until you make amends.</value></data>
+  <data name="Qualities.Summary.f8384574-ce99-4e33-8a94-b5aea7ddf4bd" xml:space="preserve"><value>Each contact costs 2 points less, minimum 2. Incompatible with Networker.</value></data>
+  <data name="Qualities.Summary.fc195df5-83f6-4aff-aca8-4287a56e4d4c" xml:space="preserve"><value>Each contact costs 1 point less, minimum 1. Incompatible with Massive Network.</value></data>
+  <data name="Qualities.SummarySource.7d1bedb9-5d27-419f-bc15-0a39d9b67516" xml:space="preserve"><value>638B9DFD343F6AE418728A78725AADF241DF80D7099F7B114C8C06712E224708</value></data>
+  <data name="Qualities.SummarySource.f8384574-ce99-4e33-8a94-b5aea7ddf4bd" xml:space="preserve"><value>4DA8B57A54C1111E61B33F75D9F38858264FAC377FA45FFB74870792C4CC810E</value></data>
+  <data name="Qualities.SummarySource.fc195df5-83f6-4aff-aca8-4287a56e4d4c" xml:space="preserve"><value>5F94A2C7EB1FEBF6E5679297FF5A3F770EB90F369605611CB32D97FDE22945D7</value></data>
+  <data name="Spells.Unavailable" xml:space="preserve"><value>The spell description could not be loaded. Reopen the magic choices.</value></data>
+  <data name="Spells.Changed" xml:space="preserve"><value>Definition changed; showing this version's spell profile.</value></data>
+  <data name="Spells.Category.Combat" xml:space="preserve"><value>Combat spell.</value></data>
+  <data name="Spells.Category.Detection" xml:space="preserve"><value>Detection spell.</value></data>
+  <data name="Spells.Category.Health" xml:space="preserve"><value>Health spell.</value></data>
+  <data name="Spells.Category.Illusion" xml:space="preserve"><value>Illusion spell.</value></data>
+  <data name="Spells.Category.Manipulation" xml:space="preserve"><value>Manipulation spell.</value></data>
+  <data name="Spells.Category.Rituals" xml:space="preserve"><value>Ritual magic.</value></data>
+  <data name="Spells.Category.Enchantments" xml:space="preserve"><value>Enchantment.</value></data>
+  <data name="Spells.Direct" xml:space="preserve"><value>Direct magical attack.</value></data>
+  <data name="Spells.Indirect" xml:space="preserve"><value>Indirect magical attack.</value></data>
+  <data name="Spells.Damage.P" xml:space="preserve"><value>Inflicts Physical damage.</value></data>
+  <data name="Spells.Damage.S" xml:space="preserve"><value>Inflicts Stun damage.</value></data>
+  <data name="Spells.Range.T" xml:space="preserve"><value>Requires touch.</value></data>
+  <data name="Spells.Range.LOS" xml:space="preserve"><value>Target within line of sight.</value></data>
+  <data name="Spells.Range.LOS (A)" xml:space="preserve"><value>Area within line of sight.</value></data>
+  <data name="Spells.Range.T (A)" xml:space="preserve"><value>Touch; area effect.</value></data>
+  <data name="Spells.Range.Self" xml:space="preserve"><value>Affects the caster.</value></data>
+  <data name="Spells.Duration.I" xml:space="preserve"><value>Instant effect.</value></data>
+  <data name="Spells.Duration.S" xml:space="preserve"><value>Must be sustained.</value></data>
+  <data name="Spells.Duration.P" xml:space="preserve"><value>Becomes permanent after completion.</value></data>
+  <data name="Spells.Type.M" xml:space="preserve"><value>Mana spell.</value></data>
+  <data name="Spells.Type.P" xml:space="preserve"><value>Physical spell.</value></data>
+  <data name="Spells.Drain" xml:space="preserve"><value>Drain: {0} (F = Force).</value></data>
+  <data name="Spells.Raw.Damage" xml:space="preserve"><value>Damage: {0}.</value></data>
+  <data name="Spells.Raw.Range" xml:space="preserve"><value>Range: {0}.</value></data>
+  <data name="Spells.Raw.Duration" xml:space="preserve"><value>Duration: {0}.</value></data>
+  <data name="Spells.Raw.Type" xml:space="preserve"><value>Type: {0}.</value></data>
+  <data name="Spells.Summary.1d9430e9-3ae9-4c0a-ba60-ee92c245ee08" xml:space="preserve"><value>Conceals from living sight and cameras.</value></data>
+  <data name="Spells.Summary.4b929a2d-908e-40ab-babc-e262b7f69a28" xml:space="preserve"><value>Conceals from living sight, not cameras.</value></data>
+  <data name="Spells.Summary.435ba03c-2b21-4bcb-858a-cc175f7b41d7" xml:space="preserve"><value>Disguises your appearance.</value></data>
+  <data name="Spells.Summary.af339680-1d73-44b8-a2aa-7d9b7630a647" xml:space="preserve"><value>Disguises your appearance, including on cameras.</value></data>
+  <data name="Spells.Summary.794f21eb-dc8d-45e8-b9b0-b85b810437f3" xml:space="preserve"><value>Adds magical armor.</value></data>
+  <data name="Spells.Summary.ee7c25c2-77af-4c08-827c-9e0f39af9bd4" xml:space="preserve"><value>Creates slippery ice.</value></data>
+  <data name="Spells.Summary.600a7cce-effd-4bd3-8d20-0f840cd1bf22" xml:space="preserve"><value>Plants a suggestion.</value></data>
+  <data name="Spells.Summary.8be2c62c-b2c9-435e-8721-dfad01f5161a" xml:space="preserve"><value>Makes people or objects float.</value></data>
+  <data name="Spells.Summary.70db860e-f66f-411d-bab4-d1dccbc0ce9f" xml:space="preserve"><value>Illuminates an area.</value></data>
+  <data name="Spells.Summary.036b3b19-caa7-4da1-b2de-f887ac3a6d20" xml:space="preserve"><value>Manipulates objects remotely.</value></data>
+  <data name="Spells.SummarySource.1d9430e9-3ae9-4c0a-ba60-ee92c245ee08" xml:space="preserve"><value>634AF071EA49665DC3EC7F2BEE1F8B552DC92AB784957E0D2054A3C203673B54</value></data>
+  <data name="Spells.SummarySource.4b929a2d-908e-40ab-babc-e262b7f69a28" xml:space="preserve"><value>F1EC4244896DD3B564CE1E6711AF7B49842ECF98974B46949252D185394BBB64</value></data>
+  <data name="Spells.SummarySource.435ba03c-2b21-4bcb-858a-cc175f7b41d7" xml:space="preserve"><value>E251B93C1065C6E0FBDCED1A0D41C98B4C8E271356F22D4265DD0EC0B53891A2</value></data>
+  <data name="Spells.SummarySource.af339680-1d73-44b8-a2aa-7d9b7630a647" xml:space="preserve"><value>D99A5FAEE90C7C63689D1370B43C0B58B167D7B4977F2ABC5DF91245ED2B3E59</value></data>
+  <data name="Spells.SummarySource.794f21eb-dc8d-45e8-b9b0-b85b810437f3" xml:space="preserve"><value>204B906A8D911FEFC2EAA491825A6E1BD66604841802C26A9A15CDC4E2B45048</value></data>
+  <data name="Spells.SummarySource.ee7c25c2-77af-4c08-827c-9e0f39af9bd4" xml:space="preserve"><value>C9BF9F4626D5B959966B96B2910E1A8BFFA66F67EDBAE2BD86F98073E4870DE3</value></data>
+  <data name="Spells.SummarySource.600a7cce-effd-4bd3-8d20-0f840cd1bf22" xml:space="preserve"><value>2DC13488350F79BF7FD7564D84A3D2799111D08575F788582E6CD0D4E44FCC39</value></data>
+  <data name="Spells.SummarySource.8be2c62c-b2c9-435e-8721-dfad01f5161a" xml:space="preserve"><value>396F00DC0E9BC417340402B39A7323B31190E7CB12014E838B72EB891FD14CDE</value></data>
+  <data name="Spells.SummarySource.70db860e-f66f-411d-bab4-d1dccbc0ce9f" xml:space="preserve"><value>EFAE3260A9481173525A81B2BD77B8776561F08DDB46CE574C88E3175A428F0B</value></data>
+  <data name="Spells.SummarySource.036b3b19-caa7-4da1-b2de-f887ac3a6d20" xml:space="preserve"><value>EB86857D7FBE33E3D7A9289998F5BB1C6F32121EE4597E82DDD2594FE5DA8153</value></data>
+  <data name="Magic.Blocker.SourceDisabled" xml:space="preserve"><value>This source is disabled in this runner's saved rule settings. New runners enable all sources by default.</value></data>
+  <data name="Magic.Catalog.AvailableOnly" xml:space="preserve"><value>Showing available choices. Existing runners keep their saved source settings.</value></data>
 </root>

@@ -1207,4 +1207,47 @@
   <data name="Qualities.Summary.d85c6437-7611-47d3-b4c7-4e581e5349a4" xml:space="preserve"><value>Dein Hardwarewissen erlaubt 1 zusätzliches Cyberdeck-Modul. Der Vorteil ist nicht mehrfach wählbar; das Modul selbst erhältst du dadurch nicht.</value></data>
   <data name="Qualities.Summary.7ac54323-a913-4a8e-803e-c6ac2d4ba359" xml:space="preserve"><value>Bei Voller Matrixabwehr verwendest du Logik statt Willenskraft. Andere Proben verwenden weiterhin ihr normales Attribut.</value></data>
   <data name="Qualities.Summary.eefe6c28-5d7b-403d-8c24-5bc26536b52b" xml:space="preserve"><value>Rauschabzüge sinken um 2 für dich und Personen innerhalb von 10 Metern. Verbindungen von außerhalb profitieren nicht.</value></data>
+  <data name="Qualities.Summary.7d1bedb9-5d27-419f-bc15-0a39d9b67516" xml:space="preserve"><value>Deine Kontakte zählen mit Loyalität +2, solange du deinen Ehrenkodex einhältst; nach einem Verstoß gilt −1 bis zur Wiedergutmachung.</value></data>
+  <data name="Qualities.Summary.f8384574-ce99-4e33-8a94-b5aea7ddf4bd" xml:space="preserve"><value>Jeder Kontakt kostet 2 Punkte weniger, mindestens 2. Nicht mit Networker kombinierbar.</value></data>
+  <data name="Qualities.Summary.fc195df5-83f6-4aff-aca8-4287a56e4d4c" xml:space="preserve"><value>Jeder Kontakt kostet 1 Punkt weniger, mindestens 1. Nicht mit Massive Network kombinierbar.</value></data>
+  <data name="Spells.Unavailable" xml:space="preserve"><value>Die Zauberbeschreibung konnte nicht geladen werden. Öffne die Magieauswahl erneut.</value></data>
+  <data name="Spells.Changed" xml:space="preserve"><value>Geänderte Definition; angezeigt werden die Daten dieser Zauberversion.</value></data>
+  <data name="Spells.Category.Combat" xml:space="preserve"><value>Kampfzauber.</value></data>
+  <data name="Spells.Category.Detection" xml:space="preserve"><value>Wahrnehmungszauber.</value></data>
+  <data name="Spells.Category.Health" xml:space="preserve"><value>Heilzauber.</value></data>
+  <data name="Spells.Category.Illusion" xml:space="preserve"><value>Illusionszauber.</value></data>
+  <data name="Spells.Category.Manipulation" xml:space="preserve"><value>Manipulationszauber.</value></data>
+  <data name="Spells.Category.Rituals" xml:space="preserve"><value>Ritualmagie.</value></data>
+  <data name="Spells.Category.Enchantments" xml:space="preserve"><value>Verzauberung.</value></data>
+  <data name="Spells.Direct" xml:space="preserve"><value>Direkter magischer Angriff.</value></data>
+  <data name="Spells.Indirect" xml:space="preserve"><value>Indirekter magischer Angriff.</value></data>
+  <data name="Spells.Damage.P" xml:space="preserve"><value>Verursacht körperlichen Schaden.</value></data>
+  <data name="Spells.Damage.S" xml:space="preserve"><value>Verursacht geistigen Schaden.</value></data>
+  <data name="Spells.Range.T" xml:space="preserve"><value>Erfordert Berührung.</value></data>
+  <data name="Spells.Range.LOS" xml:space="preserve"><value>Ziel in Sichtweite.</value></data>
+  <data name="Spells.Range.LOS (A)" xml:space="preserve"><value>Flächenwirkung in Sichtweite.</value></data>
+  <data name="Spells.Range.T (A)" xml:space="preserve"><value>Berührung; Flächenwirkung.</value></data>
+  <data name="Spells.Range.Self" xml:space="preserve"><value>Wirkt auf den Zaubernden.</value></data>
+  <data name="Spells.Duration.I" xml:space="preserve"><value>Sofortige Wirkung.</value></data>
+  <data name="Spells.Duration.S" xml:space="preserve"><value>Muss aufrechterhalten werden.</value></data>
+  <data name="Spells.Duration.P" xml:space="preserve"><value>Wird nach Abschluss permanent.</value></data>
+  <data name="Spells.Type.M" xml:space="preserve"><value>Manazauber.</value></data>
+  <data name="Spells.Type.P" xml:space="preserve"><value>Physischer Zauber.</value></data>
+  <data name="Spells.Drain" xml:space="preserve"><value>Entzug: {0} (F = Kraftstufe).</value></data>
+  <data name="Spells.Raw.Damage" xml:space="preserve"><value>Schaden: {0}.</value></data>
+  <data name="Spells.Raw.Range" xml:space="preserve"><value>Reichweite: {0}.</value></data>
+  <data name="Spells.Raw.Duration" xml:space="preserve"><value>Dauer: {0}.</value></data>
+  <data name="Spells.Raw.Type" xml:space="preserve"><value>Typ: {0}.</value></data>
+  <data name="Spells.Summary.1d9430e9-3ae9-4c0a-ba60-ee92c245ee08" xml:space="preserve"><value>Verbirgt vor Augen und Kameras.</value></data>
+  <data name="Spells.Summary.4b929a2d-908e-40ab-babc-e262b7f69a28" xml:space="preserve"><value>Verbirgt vor Augen, nicht vor Kameras.</value></data>
+  <data name="Spells.Summary.435ba03c-2b21-4bcb-858a-cc175f7b41d7" xml:space="preserve"><value>Tarnt dein Aussehen.</value></data>
+  <data name="Spells.Summary.af339680-1d73-44b8-a2aa-7d9b7630a647" xml:space="preserve"><value>Tarnt dein Aussehen, auch auf Kameras.</value></data>
+  <data name="Spells.Summary.794f21eb-dc8d-45e8-b9b0-b85b810437f3" xml:space="preserve"><value>Gewährt magische Panzerung.</value></data>
+  <data name="Spells.Summary.ee7c25c2-77af-4c08-827c-9e0f39af9bd4" xml:space="preserve"><value>Erzeugt rutschiges Eis.</value></data>
+  <data name="Spells.Summary.600a7cce-effd-4bd3-8d20-0f840cd1bf22" xml:space="preserve"><value>Pflanzt eine Suggestion ein.</value></data>
+  <data name="Spells.Summary.8be2c62c-b2c9-435e-8721-dfad01f5161a" xml:space="preserve"><value>Lässt Personen oder Gegenstände schweben.</value></data>
+  <data name="Spells.Summary.70db860e-f66f-411d-bab4-d1dccbc0ce9f" xml:space="preserve"><value>Erhellt einen Bereich.</value></data>
+  <data name="Spells.Summary.036b3b19-caa7-4da1-b2de-f887ac3a6d20" xml:space="preserve"><value>Bewegt Gegenstände aus der Ferne.</value></data>
+  <data name="Magic.Blocker.SourceDisabled" xml:space="preserve"><value>Diese Quelle ist im gespeicherten Regelprofil dieses Runners deaktiviert. Neue Runner aktivieren standardmäßig alle Quellen.</value></data>
+  <data name="Magic.Catalog.AvailableOnly" xml:space="preserve"><value>Es werden verfügbare Optionen angezeigt. Bestehende Runner behalten ihre gespeicherten Quellen.</value></data>
 </root>

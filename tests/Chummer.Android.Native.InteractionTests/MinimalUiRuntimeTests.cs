@@ -44,7 +44,37 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 421, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 424, "Localized source-identity summaries were not loaded from the real catalog.");
+                var contactScope = locale switch
+                {
+                    "de-AT" => (Minimum: "mindestens", Recovery: "Wiedergutmachung"),
+                    "es-MX" => (Minimum: "mínimo", Recovery: "reparar"),
+                    _ => (Minimum: "minimum", Recovery: "amends")
+                };
+                foreach (var rule in new[] { (Name: "Candle in the Darkness", Numbers: "+2,−1", Scope: contactScope.Recovery),
+                    (Name: "Massive Network", Numbers: "2,2", Scope: contactScope.Minimum),
+                    (Name: "Networker", Numbers: "1,1", Scope: contactScope.Minimum) })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 35 && lines[0] == summary && summary.Contains(rule.Scope)
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Contact qualities need complete localized inline help: " + rule.Name);
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "A contact translation changed its numbers: " + rule.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.SetElementValue("karma", "999");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Contact help must reject changed definitions: " + rule.Name);
+                }
+                foreach (var pair in new[] { (Name: "Massive Network", Other: "Networker"),
+                    (Name: "Networker", Other: "Massive Network") })
+                    Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == pair.Name)), "")
+                        .Contains(pair.Other), "Contact help lost the excluded counterpart.");
                 foreach (var rule in new[] { (Name: "Natural Leader", Numbers: "+1"),
                     (Name: "Observant", Numbers: ""), (Name: "Battle Hardened", Numbers: "+1,3"),
                     (Name: "Thousand-Yard Stare", Numbers: "−1,3"),
