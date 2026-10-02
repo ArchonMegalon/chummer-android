@@ -1515,4 +1515,21 @@
   <data name="Spells.Summary.1cbb5f25-7ce7-4347-bea6-764da9ee6e18" xml:space="preserve"><value>Abre temporalmente el tejido, reduciendo el daño quirúrgico.</value></data>
   <data name="Spells.Summary.89046778-a77a-4f21-a448-a750af0898eb" xml:space="preserve"><value>Suprime ciertos poderes de criaturas o la visión astral de seres duales.</value></data>
   <data name="Spells.Summary.4c595074-add0-40da-a707-598d2b94ae4f" xml:space="preserve"><value>Suprime ciertos poderes de criaturas o la visión astral de seres duales.</value></data>
+  <data name="Spells.Summary.80688ffa-82e6-4db2-a12d-9dd0a6603a3f" xml:space="preserve"><value>Provoca quemaduras internas.</value></data>
+  <data name="Spells.Summary.a9b72b69-a7f0-4f58-a13e-a9227e9d51de" xml:space="preserve"><value>Detona cadáveres.</value></data>
+  <data name="Spells.Summary.6ff4ad6b-9883-46c7-bbcd-51511b34e9c9" xml:space="preserve"><value>Lesiona e incapacita partes corporales.</value></data>
+  <data name="Spells.Summary.8b50b92c-a8d3-4682-83fc-68ea654d78a5" xml:space="preserve"><value>Ataque ácido; hiere al lanzador.</value></data>
+  <data name="Spells.Summary.2c22bc40-1eee-48e5-83e4-84960e621a3d" xml:space="preserve"><value>Enfría, daña y obstaculiza.</value></data>
+  <data name="Spells.Summary.ed093fec-e0ac-4627-a81c-264162e13f47" xml:space="preserve"><value>Ataque ígneo; hiere al lanzador.</value></data>
+  <data name="Spells.Summary.59aa2e30-c0f5-4340-97b6-adfe4e609756" xml:space="preserve"><value>Provoca pérdida de sangre.</value></data>
+  <data name="Spells.Summary.22579211-45f0-493b-9c71-29f159ceb120" xml:space="preserve"><value>Mitiga nuevas heridas; facilita estabilización.</value></data>
+  <data name="Spells.Summary.ffd492e3-0b04-447f-95f3-4b686a9be37b" xml:space="preserve"><value>Comparte heridas físicas nuevas con participantes voluntarios.</value></data>
+  <data name="Spells.Summary.a856169f-fdb0-4117-a82d-ef0eefa04e95" xml:space="preserve"><value>Absorbe heridas; curación sin magia.</value></data>
+  <data name="Spells.Summary.8d1c08f2-fe77-4a11-ab5f-dca8a7e0a7d9" xml:space="preserve"><value>Devuelve heridas cuerpo a cuerpo al atacante.</value></data>
+  <data name="Spells.Summary.55f4619b-07a1-4a18-9f8d-3b9a587ffd9a" xml:space="preserve"><value>Controla acciones, no pensamientos.</value></data>
+  <data name="Spells.Summary.fb3d0fd7-058f-4ebf-86be-7863d7a5820b" xml:space="preserve"><value>Cadáver genera hielo peligroso.</value></data>
+  <data name="Spells.Summary.b09723b8-d83e-4377-826d-4b286958d5e3" xml:space="preserve"><value>Cadáver atrapa objetivos cercanos.</value></data>
+  <data name="Spells.Summary.8a096951-d2ee-4c46-9c64-9e9a7f218c03" xml:space="preserve"><value>Crea látigo; hiere al lanzador.</value></data>
+  <data name="Spells.Summary.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>Forma hojas sanguíneas.</value></data>
+  <data name="Spells.Summary.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>Hiere e inmoviliza víctima.</value></data>
 </root>
