@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 73 is the latest [observed Internal availability](../play/evidence/preview73-internal-observation.md).
+Preview 74 is the latest [observed Internal availability](../play/evidence/preview74-internal-observation.md),
+confirmed on 2 October at 16:53 Europe/Vienna. Its exact locally built ARM64 AAB
+was separately signed with the existing upload key and independently verified.
+It adds 65 short original EN/DE/ES Quality summaries: 489/803 are authored;
+314 Quality summaries and the ritual/enchantment explanations remain open.
+Ordinary-spell coverage remains 292. Physical Play74 installation is not yet
+verified; the latest completed physical observation is Preview73. Existing
+audience and other release surfaces were unchanged. No copyright clearance,
+full-book, all-method or public-beta completion is claimed.
+
+Preview 73's [observed Internal availability](../play/evidence/preview73-internal-observation.md)
+remains historical evidence.
 Its exact local ARM64 AAB was independently inspected, separately signed with the
 existing upload key, verified and accepted on the unchanged Internal track on
 2 October. It includes short original quality/ordinary-spell explanations,
