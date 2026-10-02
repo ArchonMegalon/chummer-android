@@ -162,6 +162,45 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("One of Them", ["CFD", "fail"],
+            ["CFD", "misslungener"],
+            ["CFD", "fallen"]),
+        ("Poor Self Control (Sadistic)", ["Composure", "jeopardize"],
+            ["Selbstbeherrschung", "gefährden"],
+            ["Compostura", "arruinar"]),
+        ("Tough and Targeted", ["Monthly", "overflow", "Notoriety"],
+            ["Monatliche", "Schadensüberlauf", "Schlechten"],
+            ["mensuales", "desbordamiento", "Notoriedad"]),
+        ("The Goat", ["Strangers", "initial"],
+            ["Anfängliches", "Kennenlernen"],
+            ["inicial", "desconocidos"]),
+        ("Favored (Common Target, Biased)", ["chosen", "negotiations"],
+            ["Gruppe", "Verhandlungsposition"],
+            ["elegido", "negociaciones"]),
+        ("Favored (Common Target, Outspoken)", ["further", "negotiating"],
+            ["erhöht", "Verhandlungsvorteil"],
+            ["empeora", "negociadora"]),
+        ("Favored (Common Target, Fanatic)", ["greatest", "chosen"],
+            ["stärkste", "gewählten"],
+            ["maximiza", "elegido"]),
+        ("Dual-Natured Defender", ["penalties", "permanently"],
+            ["Probenabzügen", "dauerhaft"],
+            ["penalizaciones", "permanentemente"]),
+        ("Durable Preparations", ["longer", "unchanged"],
+            ["länger", "unverändert"],
+            ["tardan", "sin"]),
+        ("Elemental Master", ["chosen", "secondary"],
+            ["gewähltes", "Nebeneffekte"],
+            ["elegido", "secundarios"]),
+        ("Echo Chamber", ["Extended", "glitches"],
+            ["Ausgedehnte", "patzen"],
+            ["extendidas", "pifias"]),
+        ("Frostbite", ["trained", "non-Patrol", "unchanged"],
+            ["erlernte", "Patrouillen", "unverändert"],
+            ["aprendido", "Patrulla", "no cambia"]),
+        ("Information Auctioneer", ["income", "recognize"],
+            ["Zusatzeinnahmen", "erkennen"],
+            ["ingresos", "reconocer"]),
         ("Better to be Feared Than Loved", ["blackmailed", "retaliation"],
             ["erpresste", "Vergeltung"],
             ["chantaje", "represalia"]),
@@ -1094,7 +1133,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 638, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 651, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1120,7 +1159,8 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 foreach (string name in new[] { "Adept Healer", "Apt Pupil", "Arcane Bodyguard",
                     "Animal Familiar", "Astral Bouncer", "Astral Infiltrator", "Mnemonic Vault",
-                    "Alchemical Bomb Maker", "Arcane Improviser", "Archivist" })
+                    "Alchemical Bomb Maker", "Arcane Improviser", "Archivist",
+                    "Dual-Natured Defender", "Durable Preparations", "Elemental Master" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
@@ -1137,14 +1177,27 @@ internal static partial class AfterRunAuthorityHarness
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Bound help must reject a definition without its prerequisites: " + name);
                 }
-                var emotion = catalog.Single(q => q.Element("name")!.Value == "Dead Emotion");
-                Require(emotion.Element("bonus")!.Element("selecttext") is not null,
-                    "Emotion help must preserve the player's specific selection.");
-                var changedEmotion = new System.Xml.Linq.XElement(emotion);
-                changedEmotion.Element("bonus")!.Element("selecttext")!.Remove();
-                Require(!CreationQualityInfo.Effects(changedEmotion.ToString()).Contains(
-                    CreationFlowStrings.Get(SummaryKey(emotion), "")),
-                    "Emotion help must not survive removal of its choice.");
+                foreach (string name in new[] { "Dead Emotion", "Favored (Common Target, Biased)",
+                    "Favored (Common Target, Outspoken)", "Favored (Common Target, Fanatic)" })
+                {
+                    var selected = catalog.Single(q => q.Element("name")!.Value == name);
+                    Require(selected.Element("bonus")!.Element("selecttext") is not null,
+                        "Choice-bound help must preserve the player's specific selection: " + name);
+                    var changed = new System.Xml.Linq.XElement(selected);
+                    changed.Element("bonus")!.Element("selecttext")!.Remove();
+                    Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
+                        CreationFlowStrings.Get(SummaryKey(selected), "")),
+                        "Choice-bound help must not survive removal of its choice: " + name);
+                }
+                var frostbite = catalog.Single(q => q.Element("name")!.Value == "Frostbite");
+                Require(frostbite.Element("bonus")!.Element("selectskill")!.Attribute("limittoskill")!.Value
+                    == "Compiling,Computer,Cybercombat,Decompiling,Electronic Warfare,Hacking,Registering,Software",
+                    "Conditional skill help must retain its accepted selection scope.");
+                var changedFrostbite = new System.Xml.Linq.XElement(frostbite);
+                changedFrostbite.Element("bonus")!.Element("selectskill")!.SetAttributeValue("limittoskill", "Running");
+                Require(!CreationQualityInfo.Effects(changedFrostbite.ToString()).Contains(
+                    CreationFlowStrings.Get(SummaryKey(frostbite), "")),
+                    "Changing the eligible skills must invalidate the bound explanation.");
                 foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
@@ -2452,8 +2505,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Reduced Sense (Sight)").Contains("rely on sight")
                 && Effect("Reduced Sense (Astral Sight)").Contains("Assensing tests"),
                 "Physical versus Stun boxes and visual versus astral perception must stay distinct.");
-            Require(Effect("Frostbite") == CreationFlowStrings.Get("Qualities.Info.Manual", "")
-                && Describe("<selectskill limittoskill='Hacking' />") == CreationFlowStrings.Get("Qualities.Info.Manual", "")
+            Require(Describe("<selectskill limittoskill='Hacking' />") == CreationFlowStrings.Get("Qualities.Info.Manual", "")
                 && Describe("<selectskill><val> </val></selectskill>") == CreationFlowStrings.Get("Qualities.Info.Manual", ""),
                 "A skill-selection prompt with no modifier must not pass for a rule explanation.");
             Require(Effect("Aptitude").Contains("Maximum change: 1")
