@@ -941,7 +941,9 @@ internal static partial class AfterRunAuthorityHarness
             "Thought Recognition", "Area Thought Recognition", "Translate" }
             .Select(name => options.Single(item => item.Name == name))
             .Concat(options.Where(item => item.SourceBook == "SG" && item.Category == "Illusion"))
-            .Concat(supplements))
+            .Concat(supplements)
+            .Concat(allOptions.Where(item => item.SourceBook == "SG" && item.Category == "Manipulation"))
+            .Distinct())
         {
             Search(spell.Name);
             string help = CreationSpellInfo.Summary(CreationSpellInfo.Resolve(coordinator.State.CreationMagicResonance, spell));

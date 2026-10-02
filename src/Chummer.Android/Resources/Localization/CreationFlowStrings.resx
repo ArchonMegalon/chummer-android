@@ -2052,4 +2052,62 @@
   <data name="Spells.SummarySource.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>1B213F9452FD452E96831522DA19451314E1462433012A6B3D08B13390B8B7C3</value></data>
   <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Sends a brief telepathic message or image.</value></data>
   <data name="Spells.SummarySource.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>6D600A583E7BAA1B4203E469C1FD1A1D1AB601A9F736D8C8460C803C86FC676C</value></data>
+  <data name="Spells.Summary.90b5f888-bc04-45c2-9b5e-11d95b787c6e" xml:space="preserve"><value>Elemental melee boost and contact damage around a willing subject.</value></data>
+  <data name="Spells.SummarySource.90b5f888-bc04-45c2-9b5e-11d95b787c6e" xml:space="preserve"><value>FE3FF66CD0121B8D4683E706F19CAD3A58D0F2862605EFE0DD72494581D11271</value></data>
+  <data name="Spells.Summary.ac8c938d-3aa1-4911-a812-c770e858de92" xml:space="preserve"><value>Elemental wall; contact is harmful, solidity depends on the element.</value></data>
+  <data name="Spells.SummarySource.ac8c938d-3aa1-4911-a812-c770e858de92" xml:space="preserve"><value>508D195707A9F47C4E839AE7048BC95394CC5AB80DA8B8AFB6740CD4D8AC49E8</value></data>
+  <data name="Spells.Summary.0a52251a-8b85-4814-8645-b929182274db" xml:space="preserve"><value>Restyles existing clothing without improving protection.</value></data>
+  <data name="Spells.SummarySource.0a52251a-8b85-4814-8645-b929182274db" xml:space="preserve"><value>528375B906B30C058DDDB862112D5FACD1E3537FC4CA58563F3FE194FBE41707</value></data>
+  <data name="Spells.Summary.33d35d53-5f71-435d-9bbd-913a5ffc35e1" xml:space="preserve"><value>Repairs damaged objects once; missing parts cannot be recreated.</value></data>
+  <data name="Spells.SummarySource.33d35d53-5f71-435d-9bbd-913a5ffc35e1" xml:space="preserve"><value>69918D63EFBED8D23154232E257CDD7AA275C1A415C46F2CB570C0A62F20DA62</value></data>
+  <data name="Spells.Summary.d9b045d9-1320-4ae9-98d4-c67b1d681719" xml:space="preserve"><value>Lets a willing subject cling to walls and ceilings.</value></data>
+  <data name="Spells.SummarySource.d9b045d9-1320-4ae9-98d4-c67b1d681719" xml:space="preserve"><value>64DB001D2B2CCAB83852F7B01E01BD73B07E9A01705ABC40A3DE7C10C681CA6B</value></data>
+  <data name="Spells.Summary.9b996aac-6bc6-4781-9a57-61ce33a4cd20" xml:space="preserve"><value>Bonds one target to a touching surface; forced separation can injure.</value></data>
+  <data name="Spells.SummarySource.9b996aac-6bc6-4781-9a57-61ce33a4cd20" xml:space="preserve"><value>8070ECB368014A5917B056A3EB7D9E5E9F1882FC5B74753319C9DBCFFDAEF27A</value></data>
+  <data name="Spells.Summary.0f725e2e-2389-4aa4-99f9-da26275080bf" xml:space="preserve"><value>Bonds targets across an area to touching surfaces; forced separation can injure.</value></data>
+  <data name="Spells.SummarySource.0f725e2e-2389-4aa4-99f9-da26275080bf" xml:space="preserve"><value>1C64A108178636120611F278A29B9E849425B71393EF4C4AF4207CA7EF8DB8EF</value></data>
+  <data name="Spells.Summary.785b5b5e-500f-40a2-9b25-b90f3dde7c26" xml:space="preserve"><value>Worsens local Matrix reception; strong changes risk Overwatch attention.</value></data>
+  <data name="Spells.SummarySource.785b5b5e-500f-40a2-9b25-b90f3dde7c26" xml:space="preserve"><value>3ABC977C7AF0C038D14D80AA6E6FCEE7DF20F14A679F762E35DA8781BE045926</value></data>
+  <data name="Spells.Summary.243c19b9-3555-4257-bca0-a7e7f0fff6bf" xml:space="preserve"><value>Improves local Matrix reception; strong changes risk Overwatch attention.</value></data>
+  <data name="Spells.SummarySource.243c19b9-3555-4257-bca0-a7e7f0fff6bf" xml:space="preserve"><value>65C9E0CD6C5733159B553D420872C435ED4B1591F9560FB46DFB2A3130459DAA</value></data>
+  <data name="Spells.Summary.93237162-228a-4073-b798-f1b0605388a9" xml:space="preserve"><value>Raises one limit of an equipment item, such as Accuracy.</value></data>
+  <data name="Spells.SummarySource.93237162-228a-4073-b798-f1b0605388a9" xml:space="preserve"><value>62B62AF83394197CEF16F9495E030E5F4793E541421BAFB2BE76F25561FE44B7</value></data>
+  <data name="Spells.Summary.35ba4222-4e7b-4862-a767-42c5d3dfe2cb" xml:space="preserve"><value>Lowers one limit of an equipment item, such as Accuracy.</value></data>
+  <data name="Spells.SummarySource.35ba4222-4e7b-4862-a767-42c5d3dfe2cb" xml:space="preserve"><value>650CBC7CB9098429D675F72A2D532C358D4BFE6B5A5D95EBE61459545D4793DB</value></data>
+  <data name="Spells.Summary.3f40c2bb-e66f-44dc-b801-d459a8d3a2b4" xml:space="preserve"><value>Jams nearby radio and wireless signals.</value></data>
+  <data name="Spells.SummarySource.3f40c2bb-e66f-44dc-b801-d459a8d3a2b4" xml:space="preserve"><value>80E8D88D40723D01CAACCD6CADDB226D17B33AB54DCA2945725A2404C8265B45</value></data>
+  <data name="Spells.Summary.403e9895-9772-4d2d-9cec-aee93a65794f" xml:space="preserve"><value>Magically braces a door or hatch against opening.</value></data>
+  <data name="Spells.SummarySource.403e9895-9772-4d2d-9cec-aee93a65794f" xml:space="preserve"><value>BD207E0B0901122F3813C4310929FF8098EB4EE267E84BAF712893CE048B8AB6</value></data>
+  <data name="Spells.Summary.37ac2ee9-24ed-4d06-8c99-6295e5438ecb" xml:space="preserve"><value>Creates fading magical interference that also hinders the caster.</value></data>
+  <data name="Spells.SummarySource.37ac2ee9-24ed-4d06-8c99-6295e5438ecb" xml:space="preserve"><value>4C6BBBDB606B30ECF54ADD1A67E301414A8CBE24A90FE7C0A2DEDA0FAA6C07FE</value></data>
+  <data name="Spells.Summary.7152a1f0-6b8f-4ca8-8885-2f5eb5853d73" xml:space="preserve"><value>Gives a willing subject cosmetic grooming, not a new body.</value></data>
+  <data name="Spells.SummarySource.7152a1f0-6b8f-4ca8-8885-2f5eb5853d73" xml:space="preserve"><value>3CD6901F80B9054366D1D6823B120DEF3068A5DF476D9B875E05BBC06CBF74BE</value></data>
+  <data name="Spells.Summary.091a0669-f0d2-4633-8cfa-06c25986da7c" xml:space="preserve"><value>Produces obscuring fog that disperses naturally.</value></data>
+  <data name="Spells.SummarySource.091a0669-f0d2-4633-8cfa-06c25986da7c" xml:space="preserve"><value>CB1E1B307A9484FBB67CA01976FDB100010AC2B563E5D300733E38731885C30B</value></data>
+  <data name="Spells.Summary.ccc4fc17-0c10-4ac5-8a60-d31b0f330b8b" xml:space="preserve"><value>Mana barrier that injures spirits, dual beings and astral forms.</value></data>
+  <data name="Spells.SummarySource.ccc4fc17-0c10-4ac5-8a60-d31b0f330b8b" xml:space="preserve"><value>82CDBA6056DFA858C8C39089FC5C4F781E8F42FC8DB23FC0B84552D4B3672927</value></data>
+  <data name="Spells.Summary.bed82cc3-80f9-48e5-b7a3-63e176eb6a71" xml:space="preserve"><value>Slows decay in food, samples and other nonliving organic matter.</value></data>
+  <data name="Spells.SummarySource.bed82cc3-80f9-48e5-b7a3-63e176eb6a71" xml:space="preserve"><value>CCE5BE0DB7F46DAE96BD322B8A3BA883A6610F33998BFFC01D7977C8BB569D7B</value></data>
+  <data name="Spells.Summary.e748de46-a314-4fc5-a7b1-4cdb16c59637" xml:space="preserve"><value>Strengthens a vehicle against magic; lets occupants share spell defense.</value></data>
+  <data name="Spells.SummarySource.e748de46-a314-4fc5-a7b1-4cdb16c59637" xml:space="preserve"><value>59FE44D5B8037D0FD57FE46A2F13EC69E739F141611507F27D46A83C84E3729A</value></data>
+  <data name="Spells.Summary.02b38262-db06-4698-b4b2-7a9e7f2452a9" xml:space="preserve"><value>Disrupts vulnerable electronics and erases ordinary RFID tags.</value></data>
+  <data name="Spells.SummarySource.02b38262-db06-4698-b4b2-7a9e7f2452a9" xml:space="preserve"><value>F780DA2F8B71E8D3335F2FAA4D96393AE3574E905E87CB29C8DF322748EA2DEF</value></data>
+  <data name="Spells.Summary.e520af8e-e06d-494e-ab4c-f89e9f9df192" xml:space="preserve"><value>Strengthens an object's Armor and Structure.</value></data>
+  <data name="Spells.SummarySource.e520af8e-e06d-494e-ab4c-f89e9f9df192" xml:space="preserve"><value>34D36373F8A51C8E0CCDB214A81BF602B353A5F5875F4E3AE92E51D83DA497F3</value></data>
+  <data name="Spells.Summary.603e63a2-1caa-4860-9344-88cbb2df10a2" xml:space="preserve"><value>Reduces vehicle speed; abrupt slowing can upset control.</value></data>
+  <data name="Spells.SummarySource.603e63a2-1caa-4860-9344-88cbb2df10a2" xml:space="preserve"><value>D3988914735AB88060E4DBFAC01CBBCDB7FA29DBF5D81109DE5778B9B9502A5D</value></data>
+  <data name="Spells.Summary.54e25153-07a4-4f52-8cb6-de8e00e4ac91" xml:space="preserve"><value>Moves and reshapes one specified material, without creating more.</value></data>
+  <data name="Spells.SummarySource.54e25153-07a4-4f52-8cb6-de8e00e4ac91" xml:space="preserve"><value>5E75B4BD9B189346C235969D51C1CC06AF494DF163C7B47E4CD1A13B2BD49957</value></data>
+  <data name="Spells.Summary.d4bac5a3-8793-43be-a831-da7e299acd3c" xml:space="preserve"><value>Gives a willing subject an ordinary animal body; mind and equipment stay unchanged.</value></data>
+  <data name="Spells.SummarySource.d4bac5a3-8793-43be-a831-da7e299acd3c" xml:space="preserve"><value>C52895F6AFB0CFFC9214C18ECEF9A3029562DD4B9E4518C9F48EF5C4F83DB73F</value></data>
+  <data name="Spells.Summary.03b3daef-040d-4377-baf6-9b1919f48050" xml:space="preserve"><value>One specific ordinary animal form for a willing subject; mind and equipment stay unchanged.</value></data>
+  <data name="Spells.SummarySource.03b3daef-040d-4377-baf6-9b1919f48050" xml:space="preserve"><value>A2FAAA3B9B0A6FC9387A3BB4C809EC80D46F4AA4B20999E245CBF81833313A96</value></data>
+  <data name="Spells.Summary.8e341753-a4e1-41af-ba05-66daa90194a6" xml:space="preserve"><value>Barrier against spirits and their powers, not other magic.</value></data>
+  <data name="Spells.SummarySource.8e341753-a4e1-41af-ba05-66daa90194a6" xml:space="preserve"><value>5B9E16F8D77D52F317597C99EAFE02E4F7E2AC057F9AC6AE4E31B753DACF26FC</value></data>
+  <data name="Spells.Summary.5b3c8f11-37a8-4090-a332-969d6ea1adb6" xml:space="preserve"><value>Barrier against spirits and their powers, including materialized spirits.</value></data>
+  <data name="Spells.SummarySource.5b3c8f11-37a8-4090-a332-969d6ea1adb6" xml:space="preserve"><value>84B04C19191DA15088C4E044F9ED199BB6C85AAD3CCB412395772E1065A51497</value></data>
+  <data name="Spells.Summary.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>Destroys loose biological traces, not microbes inside living bodies.</value></data>
+  <data name="Spells.SummarySource.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>2A311FA4DEC6EE444C7D43C1A81B3C3EBEF12EDE2DD511DBD1F6E41B7A5A2CBF</value></data>
+  <data name="Spells.Summary.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>Liquefies living tissue and incapacitates; equipment and implants remain intact.</value></data>
+  <data name="Spells.SummarySource.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>D7DC3E8E5DF6F1343EB9A1AF8D061E4E185184448A2F487B91AF6CC3285D809C</value></data>
 </root>

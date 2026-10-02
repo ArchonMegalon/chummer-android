@@ -72,7 +72,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 186, $"Expected 186 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 215, $"Expected 215 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -180,6 +180,25 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(summary.Contains(CreationFlowStrings.Get("Spells.Duration." + expectedDuration, "missing")),
                         "Illusion help lost its accepted duration: " + spell.Name + "/" + locale);
                 }
+                var grimoireManipulation = authority.Spells.Where(spell => spell.SourceBook == "SG" && spell.Category == "Manipulation").ToArray();
+                Require(grimoireManipulation.Length == 42, "Expected the complete Street Grimoire manipulation catalog.");
+                foreach (var spell in grimoireManipulation)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && !summary.Contains("Damage: 0."),
+                        "A Street Grimoire manipulation lacks its own source-bound effect: " + spell.Name + "/" + locale);
+                    foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
+                        Require(summary.Contains(CreationFlowStrings.Get("Spells." + field + "." + xml.Element(element)!.Value, "missing")),
+                            "Manipulation help lost its accepted profile: " + spell.Name + "/" + field + "/" + locale);
+                    Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
+                        "Manipulation help replaced the accepted Drain: " + spell.Name + "/" + locale);
+                }
+                Require(grimoireCombat.Length + grimoireDetection.Length + grimoireHealth.Length
+                    + grimoireIllusion.Length + grimoireManipulation.Length == 113,
+                    "All 113 ordinary Street Grimoire spells need effect summaries; rituals are separate.");
                 var supplementSpells = authority.Spells.Where(spell =>
                     HasNewSupplementSummary(spell.SourceBook, spell.Category, spell.Name)).ToArray();
                 Require(supplementSpells.Length == 31
@@ -280,10 +299,34 @@ internal static class CreationMagicNativeRuntimeTests
             Require(SpellHelp("Interference", "SS").Contains("radio and wireless")
                 && SpellHelp("Interference", "SS").Contains("Drain: F-2")
                 && SpellHelp("Interference", "SG").Contains("Drain: F-1")
-                && !SpellHelp("Interference", "SG").Contains("Jams radio")
+                && SpellHelp("Interference", "SG").Contains("radio and wireless")
                 && SpellHelp("Fashion", "SS").Contains("without improving protection")
-                && !SpellHelp("Fashion", "SG").Contains("Restyles clothing"),
-                "A localized effect must not leak to an unreviewed same-name source definition.");
+                && SpellHelp("Fashion", "SG").Contains("without improving protection"),
+                "Reviewed same-name effects must preserve their separate accepted source profiles.");
+            Require(SpellHelp("Glue", "SG").Contains("one target")
+                && SpellHelp("Glue Strip", "SG").Contains("across an area")
+                && SpellHelp("Glue", "SG").Contains("Target within line of sight.")
+                && SpellHelp("Glue Strip", "SG").Contains("Area within line of sight.")
+                && SpellHelp("Fix", "SG").Contains("missing parts cannot be recreated")
+                && SpellHelp("Reinforce", "SG").Contains("Armor and Structure"),
+                "Binding, repair and reinforcement must preserve their different effects and limits.");
+            Require(SpellHelp("Increase Noise", "SG").Contains("Worsens local Matrix reception")
+                && SpellHelp("Decrease Noise", "SG").Contains("Improves local Matrix reception")
+                && SpellHelp("Increase Gear Limits", "SG").Contains("Raises one limit")
+                && SpellHelp("Decrease Gear Limits", "SG").Contains("Lowers one limit"),
+                "Noise is Matrix interference, not audio; gear spells change one equipment limit, not every attribute.");
+            Require(new[] { "Shapechange", "[Critter] Form" }.All(name =>
+                    SpellHelp(name, "SG").Contains("willing subject")
+                    && SpellHelp(name, "SG").Contains("mind and equipment stay unchanged"))
+                && SpellHelp("Shape [Material]", "SG").Contains("without creating more")
+                && SpellHelp("Turn To Goo", "SG").Contains("equipment and implants remain intact"),
+                "Body and material changes must not promise equipment transformation or material creation.");
+            Require(SpellHelp("Spirit Barrier", "SG").Contains("not other magic")
+                && SpellHelp("Spirit Zapper", "SG").StartsWith("Barrier against spirits and their powers", StringComparison.Ordinal)
+                && SpellHelp("Offensive Mana Barrier", "SG").Contains("injures spirits, dual beings and astral forms")
+                && SpellHelp("Pulse", "SG").Contains("RFID tags")
+                && !SpellHelp("Pulse", "SSP").Contains("RFID tags"),
+                "Defensive/offensive barriers and same-name Pulse definitions must not borrow unsupported effects.");
             Require(SpellHelp("Hibernate").Contains("does not maintain unconsciousness")
                 && SpellHelp("Nutrition").Contains("risks addiction")
                 && SpellHelp("Intoxication").Contains("drunkenness and fatigue")

@@ -1424,4 +1424,33 @@
   <data name="Spells.Summary.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>Disfraz idealizado colectivo que inspira simpatía.</value></data>
   <data name="Spells.Summary.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>Borra permanentemente los recuerdos más recientes.</value></data>
   <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Envía un breve mensaje o imagen telepática.</value></data>
+  <data name="Spells.Summary.90b5f888-bc04-45c2-9b5e-11d95b787c6e" xml:space="preserve"><value>Potencia el cuerpo a cuerpo elemental y daña al contacto alrededor de un objetivo voluntario.</value></data>
+  <data name="Spells.Summary.ac8c938d-3aa1-4911-a812-c770e858de92" xml:space="preserve"><value>Muro elemental: el contacto daña; su solidez depende del elemento.</value></data>
+  <data name="Spells.Summary.0a52251a-8b85-4814-8645-b929182274db" xml:space="preserve"><value>Rediseña ropa existente sin mejorar su protección.</value></data>
+  <data name="Spells.Summary.33d35d53-5f71-435d-9bbd-913a5ffc35e1" xml:space="preserve"><value>Repara objetos dañados una sola vez; no repone piezas ausentes.</value></data>
+  <data name="Spells.Summary.d9b045d9-1320-4ae9-98d4-c67b1d681719" xml:space="preserve"><value>Permite a un objetivo voluntario adherirse a paredes y techos.</value></data>
+  <data name="Spells.Summary.9b996aac-6bc6-4781-9a57-61ce33a4cd20" xml:space="preserve"><value>Adhiere un objetivo a una superficie en contacto; separarlo por fuerza puede dañar.</value></data>
+  <data name="Spells.Summary.0f725e2e-2389-4aa4-99f9-da26275080bf" xml:space="preserve"><value>Adhiere objetivos en un área a superficies en contacto; separarlos por fuerza puede dañar.</value></data>
+  <data name="Spells.Summary.785b5b5e-500f-40a2-9b25-b90f3dde7c26" xml:space="preserve"><value>Empeora la recepción local de la Matriz; cambios intensos pueden aumentar Overwatch.</value></data>
+  <data name="Spells.Summary.243c19b9-3555-4257-bca0-a7e7f0fff6bf" xml:space="preserve"><value>Mejora la recepción local de la Matriz; cambios intensos pueden aumentar Overwatch.</value></data>
+  <data name="Spells.Summary.93237162-228a-4073-b798-f1b0605388a9" xml:space="preserve"><value>Eleva un límite de un equipo, como su Precisión.</value></data>
+  <data name="Spells.Summary.35ba4222-4e7b-4862-a767-42c5d3dfe2cb" xml:space="preserve"><value>Reduce un límite de un equipo, como su Precisión.</value></data>
+  <data name="Spells.Summary.3f40c2bb-e66f-44dc-b801-d459a8d3a2b4" xml:space="preserve"><value>Interfiere las señales de radio e inalámbricas del área.</value></data>
+  <data name="Spells.Summary.403e9895-9772-4d2d-9cec-aee93a65794f" xml:space="preserve"><value>Mantiene cerrada una puerta o escotilla mediante magia.</value></data>
+  <data name="Spells.Summary.37ac2ee9-24ed-4d06-8c99-6295e5438ecb" xml:space="preserve"><value>Crea interferencia mágica que se disipa y también dificulta al lanzador.</value></data>
+  <data name="Spells.Summary.7152a1f0-6b8f-4ca8-8885-2f5eb5853d73" xml:space="preserve"><value>Arregla cosméticamente a un objetivo voluntario, sin transformar su cuerpo.</value></data>
+  <data name="Spells.Summary.091a0669-f0d2-4633-8cfa-06c25986da7c" xml:space="preserve"><value>Produce niebla que dificulta la visión y se dispersa naturalmente.</value></data>
+  <data name="Spells.Summary.ccc4fc17-0c10-4ac5-8a60-d31b0f330b8b" xml:space="preserve"><value>Barrera de maná que hiere a espíritus, seres duales y formas astrales.</value></data>
+  <data name="Spells.Summary.bed82cc3-80f9-48e5-b7a3-63e176eb6a71" xml:space="preserve"><value>Retrasa la descomposición de alimentos, muestras y otra materia orgánica inerte.</value></data>
+  <data name="Spells.Summary.e748de46-a314-4fc5-a7b1-4cdb16c59637" xml:space="preserve"><value>Protege un vehículo contra magia; permite compartir defensa mágica con los ocupantes.</value></data>
+  <data name="Spells.Summary.02b38262-db06-4698-b4b2-7a9e7f2452a9" xml:space="preserve"><value>Perturba electrónica vulnerable y borra etiquetas RFID comunes.</value></data>
+  <data name="Spells.Summary.e520af8e-e06d-494e-ab4c-f89e9f9df192" xml:space="preserve"><value>Refuerza la Armadura y Estructura de un objeto.</value></data>
+  <data name="Spells.Summary.603e63a2-1caa-4860-9344-88cbb2df10a2" xml:space="preserve"><value>Reduce la velocidad de un vehículo; frenar bruscamente puede dificultar el control.</value></data>
+  <data name="Spells.Summary.54e25153-07a4-4f52-8cb6-de8e00e4ac91" xml:space="preserve"><value>Mueve y remodela un material específico sin crear más.</value></data>
+  <data name="Spells.Summary.d4bac5a3-8793-43be-a831-da7e299acd3c" xml:space="preserve"><value>Da cuerpo de animal común a un objetivo voluntario; mente y equipo no cambian.</value></data>
+  <data name="Spells.Summary.03b3daef-040d-4377-baf6-9b1919f48050" xml:space="preserve"><value>Una forma animal común específica para un objetivo voluntario; mente y equipo no cambian.</value></data>
+  <data name="Spells.Summary.8e341753-a4e1-41af-ba05-66daa90194a6" xml:space="preserve"><value>Barrera contra espíritus y sus poderes, no contra otra magia.</value></data>
+  <data name="Spells.Summary.5b3c8f11-37a8-4090-a332-969d6ea1adb6" xml:space="preserve"><value>Barrera contra espíritus y sus poderes, incluidos los espíritus materializados.</value></data>
+  <data name="Spells.Summary.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>Destruye rastros biológicos sueltos, no microbios dentro de cuerpos vivos.</value></data>
+  <data name="Spells.Summary.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>Licúa tejido vivo e incapacita; equipo e implantes permanecen intactos.</value></data>
 </root>
