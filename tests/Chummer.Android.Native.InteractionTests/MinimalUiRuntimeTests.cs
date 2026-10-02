@@ -340,10 +340,118 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void VerifyOptionalPowerAndDrakeSummaries(System.Xml.Linq.XElement[] catalog,
+        System.Xml.Linq.XElement[] powers, string locale)
+    {
+        int language = locale == "de-AT" ? 1 : locale == "es-MX" ? 2 : 0;
+        string eligible = new[] { "only to eligible Infected", "nur für passende Infiziertenformen",
+            "solo para formas de infectado compatibles" }[language];
+        var cases = new (string Suffix, string Power, string Selection, string[] Scope)[]
+        {
+            ("Armor", "Armor", "", ["natural armor", "natürliche Panzerung", "armadura natural"]),
+            ("Compulsion", "Compulsion", "", ["perform an action", "Handlung zu zwingen", "obligar"]),
+            ("Enhanced Sense (Hearing)", "Enhanced Senses", "Hearing", ["hearing", "Gehör", "oído"]),
+            ("Enhanced Sense (Low-Light Vision)", "Enhanced Senses", "Low-Light Vision", ["dim light", "schwachem Licht", "poca luz"]),
+            ("Enhanced Sense (Smell)", "Enhanced Senses", "Smell", ["smell", "Geruchssinn", "olfato"]),
+            ("Enhanced Sense (Taste)", "Enhanced Senses", "Taste", ["taste", "Geschmackssinn", "gusto"]),
+            ("Enhanced Sense (Thermographic Vision)", "Enhanced Senses", "Thermographic Vision", ["heat differences", "Wärmeunterschiede", "temperatura"]),
+            ("Enhanced Sense (Visual Acuity)", "Enhanced Senses", "Visual Acuity", ["visual details", "optischer Details", "detalles visuales"]),
+            ("Fear", "Fear", "", ["fear", "Furcht", "miedo"]),
+            ("Immunity (Fire)", "Immunity", "Fire", ["against fire", "gegen Feuer", "contra el fuego"]),
+            ("Immunity (Pathogens)", "Immunity", "Pathogens", ["disease-causing", "Krankheitserreger", "patógenos"]),
+            ("Immunity (Toxins)", "Immunity", "Toxins", ["toxins", "Toxine", "toxinas"]),
+            ("Influence", "Influence", "", ["suggestion", "Gedanken einzugeben", "sugerencia"]),
+            ("Magical Guard", "Magical Guard", "", ["Counterspelling", "Antimagie", "Contraconjuros"]),
+            ("Mist Form", "Mist Form", "", ["body into mist", "Körper in Nebel", "cuerpo en niebla"]),
+            ("Paralyzing Howl", "Paralyzing Howl", "", ["howl can paralyze", "Heulen", "aullido puede paralizar"]),
+            ("Regeneration", "Regeneration", "", ["implant grades", "Implantatgrade", "grados de implantes"])
+        };
+        Require(catalog.Count(q => q.Element("name")!.Value.StartsWith("Infected Optional Power: ", StringComparison.Ordinal)) == cases.Length,
+            "Review any newly added optional power instead of silently leaving its help behind.");
+        void VerifyBoundHelp(System.Xml.Linq.XElement quality, string summary)
+        {
+            var lines = CreationQualityInfo.Effects(quality.ToString());
+            Require(summary.Length > 0 && summary.Length <= 240 && lines[0] == summary
+                && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                "Brief power help must precede effects without hiding unresolved external rules.");
+            var changed = new System.Xml.Linq.XElement(quality);
+            changed.SetElementValue("karma", "999");
+            var changedLines = CreationQualityInfo.Effects(changed.ToString());
+            Require(!changedLines.Contains(summary)
+                && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                "Power help must reject a changed definition, even with the same ID.");
+        }
+        foreach (var rule in cases)
+        {
+            var quality = catalog.Single(q => q.Element("name")!.Value == "Infected Optional Power: " + rule.Suffix);
+            var power = quality.Element("bonus")!.Element("critterpowers")!.Elements("power").Single();
+            Require(power.Value == rule.Power && ((string?)power.Attribute("select") ?? "") == rule.Selection,
+                "Optional power help no longer describes the source-selected capability: " + rule.Suffix);
+            var required = quality.Element("required")!.Element("oneof")!.Elements("quality").ToArray();
+            Require(required.Length > 0 && required.All(q => q.Value.StartsWith("Infected: ", StringComparison.Ordinal)),
+                "Optional powers must retain their form-specific admission.");
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            Require(summary.Contains(eligible, StringComparison.OrdinalIgnoreCase)
+                && summary.Contains(rule.Scope[language], StringComparison.OrdinalIgnoreCase),
+                "Localized optional-power help lost its effect or eligibility restriction: " + rule.Suffix);
+            VerifyBoundHelp(quality, summary);
+        }
+        // Check the external capability facts used by these two short descriptions.
+        var guard = powers.Single(p => p.Element("id")!.Value == "f5a654a0-91e3-4555-aa22-792d012348b8");
+        Require(guard.Element("bonus")!.Element("unlockskills")?.Value == "Name"
+            && (string?)guard.Element("bonus")!.Element("unlockskills")!.Attribute("name") == "Counterspelling",
+            "Magical Guard help must agree with its actual skill unlock.");
+        var regeneration = powers.Single(p => p.Element("id")!.Value == "244ccf0f-fc77-4690-9441-1cfeb7a6dc2a");
+        Require(new[] { "disablecyberwaregrade", "disablebiowaregrade" }.All(tag =>
+            regeneration.Element("bonus")!.Elements(tag).Any(e => e.Value == "Standard")),
+            "Regeneration help must retain the real implant-grade restriction.");
+
+        var drakes = catalog.Where(q => q.Element("name")!.Value.StartsWith("Dracoform (", StringComparison.Ordinal)).ToArray();
+        Require(drakes.Length == 4, "Review new Drake forms before asserting complete form help.");
+        var words = language switch
+        {
+            1 => new[] { "dual", "Gesucht", "Panzerung", "Feuer", "Flügel", "Wasseranpassung",
+                "Konstitution", "Stärke", "Geschicklichkeit", "Logik", "Charisma", "Reaktion", "Willenskraft", "Intuition",
+                "Krallen", "Hörner", "Schwanz", "Fangzähnen" },
+            2 => new[] { "dual", "Buscado", "armadura", "fuego", "alas", "adaptación acuática",
+                "Cuerpo", "Fuerza", "Agilidad", "Lógica", "Carisma", "Reacción", "Voluntad", "Intuición",
+                "garras", "cuernos", "cola", "colmillos" },
+            _ => new[] { "dual", "Wanted", "armor", "fire", "wings", "aquatic adaptation",
+                "Body", "Strength", "Agility", "Logic", "Charisma", "Reaction", "Willpower", "Intuition",
+                "claws", "horns", "tail", "fangs" }
+        };
+        foreach (var quality in drakes)
+        {
+            var bonus = quality.Element("bonus")!;
+            var names = bonus.Element("critterpowers")!.Elements("power").Select(p => p.Value).ToArray();
+            Require(new[] { "Dual Natured", "Shift (Dracoform)", "Hardened Armor", "Hardened Mystic Armor" }.All(names.Contains)
+                && bonus.Element("critterpowers")!.Elements("power").Any(p => p.Value == "Elemental Attack" && (string?)p.Attribute("select") == "Fire")
+                && bonus.Element("addqualities")!.Element("addquality")?.Value == "Wanted",
+                "Drake help must preserve its actual form capabilities and granted drawback.");
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            bool Text(int index) => summary.Contains(words[index], StringComparison.OrdinalIgnoreCase);
+            Require(Enumerable.Range(0, 4).All(Text) && Text(4) == names.Contains("Vestigial Wings")
+                && Text(5) == names.Contains("Underwater Adaptation"),
+                "Drake help lost its Wanted drawback or borrowed another form's adaptation.");
+            foreach (var (attribute, index) in new[] { ("BOD", 6), ("STR", 7), ("AGI", 8), ("LOG", 9),
+                ("CHA", 10), ("REA", 11), ("WIL", 12), ("INT", 13) })
+                Require(Text(index) == bonus.Elements("specificattribute").Any(a => a.Element("name")?.Value == attribute),
+                    "Drake attribute summary differs from its exact form: " + quality.Element("name")!.Value);
+            var weapon = quality.Element("naturalweapons")!.Element("naturalweapon")!.Element("name")!.Value;
+            foreach (var (name, index) in new[] { ("Dracoform Claws", 14), ("Dracoform Horns", 15),
+                ("Dracoform Tail", 16), ("Dracoform Fangs", 17) })
+                Require(Text(index) == (weapon == name), "Drake help borrowed another form's natural attack.");
+            VerifyBoundHelp(quality, summary);
+        }
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
             .Root!.Element("qualities")!.Elements("quality").ToArray();
+        var critterPowerDefinitions = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "critterpowers.xml"))
+            .Root!.Element("powers")!.Elements("power").ToArray();
         static string SummaryKey(System.Xml.Linq.XElement quality)
             => "Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D");
         var oldCulture = CultureInfo.CurrentUICulture;
@@ -378,7 +486,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 542, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 563, "Localized source-identity summaries were not loaded from the real catalog.");
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
@@ -399,6 +507,7 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 VerifyInsectSpiritSummaries(catalog, locale);
                 VerifyInfectedSummaries(catalog, locale);
+                VerifyOptionalPowerAndDrakeSummaries(catalog, critterPowerDefinitions, locale);
                 foreach (var rule in SourceEffectQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);

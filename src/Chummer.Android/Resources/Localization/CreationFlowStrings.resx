@@ -2764,4 +2764,46 @@
   <data name="Qualities.SummarySource.735aee59-2236-43e4-b618-9b9923513597" xml:space="preserve"><value>0BE61F6F59BEE6C61926E0922953D9675EDBAC203FB56A92849ACFC13C38F8F4</value></data>
   <data name="Qualities.Summary.652948f9-e629-4dea-bd13-776dd41ca6a1" xml:space="preserve"><value>Ageless dual spellcaster with Essence drain, but ongoing Essence loss; needs metahuman flesh and has a moderate ferrous-metal allergy and severe sunlight allergy. Can transmit the infection.</value></data>
   <data name="Qualities.SummarySource.652948f9-e629-4dea-bd13-776dd41ca6a1" xml:space="preserve"><value>9B0EAA6BC88DE1AA862F7FB3781C0C0B31D060265A5B55A3425E0FAA400BAB80</value></data>
+  <data name="Qualities.Summary.f466b913-5df0-4370-abf0-fad4ab380d19" xml:space="preserve"><value>Adds natural armor to help resist damage; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.f466b913-5df0-4370-abf0-fad4ab380d19" xml:space="preserve"><value>474831A1F31AE0E4223BCBBA92DA4BE6BF488750C3A25125AC613BA2273E27B6</value></data>
+  <data name="Qualities.Summary.62d59650-f889-4599-9700-60829d50887e" xml:space="preserve"><value>Lets you compel a target to perform an action; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.62d59650-f889-4599-9700-60829d50887e" xml:space="preserve"><value>2FB8311E5DD5D62370E93E3384CA252A08B3FF4EB15A6E3E927B7A42AB4E58C3</value></data>
+  <data name="Qualities.Summary.ae0312ad-acb2-4ae8-974e-99af82e81211" xml:space="preserve"><value>Sharpens your hearing; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.ae0312ad-acb2-4ae8-974e-99af82e81211" xml:space="preserve"><value>58C95A95ADFE88F723F68273BF603A28F2EA91D8A445B57D763138B2BBA69EC8</value></data>
+  <data name="Qualities.Summary.3ec5c096-322a-4342-a4fb-4c2ffda565f7" xml:space="preserve"><value>Improves vision in dim light; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.3ec5c096-322a-4342-a4fb-4c2ffda565f7" xml:space="preserve"><value>4C978002F9921199081EC37606B5BBE3E32BDB0FA380698392EE7C6309216965</value></data>
+  <data name="Qualities.Summary.c0e9082b-4930-4f0a-8d84-090878a28a7b" xml:space="preserve"><value>Sharpens your sense of smell; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.c0e9082b-4930-4f0a-8d84-090878a28a7b" xml:space="preserve"><value>B11DF47A89465C035D928F7B11E0B2727FE2B67C9EA8AD02FD5B58B005AC222E</value></data>
+  <data name="Qualities.Summary.11f49fab-be66-4679-bc23-b08cf5742cac" xml:space="preserve"><value>Sharpens your sense of taste; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.11f49fab-be66-4679-bc23-b08cf5742cac" xml:space="preserve"><value>085EEE8990398B089973245BF96297BF641A7CA67FDD3D39FBA94DEF70B6A7DE</value></data>
+  <data name="Qualities.Summary.0baaaa57-d738-448e-8f0f-cdb96357c4ef" xml:space="preserve"><value>Lets you see heat differences; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.0baaaa57-d738-448e-8f0f-cdb96357c4ef" xml:space="preserve"><value>132DB42F29B5E7415ACD52F5B5D5D440DCF741BC41A2B03E04CDD0CAC2769A75</value></data>
+  <data name="Qualities.Summary.28d06111-33e6-4260-a4f3-bca94d3b5afa" xml:space="preserve"><value>Makes fine visual details easier to distinguish; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.28d06111-33e6-4260-a4f3-bca94d3b5afa" xml:space="preserve"><value>17373789C34100159465A6B206231309F2EBC6DF0930832E155E3FA8FD30584C</value></data>
+  <data name="Qualities.Summary.d5de8180-d8b7-48ab-8a1d-878f1c2736af" xml:space="preserve"><value>Lets you inflict fear on a target; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.d5de8180-d8b7-48ab-8a1d-878f1c2736af" xml:space="preserve"><value>C94A9BA2D5065F4E2D83B8CB9F7B7D8644BE28A60B53E87FD2DB585C645E955F</value></data>
+  <data name="Qualities.Summary.a85e0a7e-cfb5-4b51-8eb5-f2775cba303a" xml:space="preserve"><value>Adds supernatural protection against fire; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.a85e0a7e-cfb5-4b51-8eb5-f2775cba303a" xml:space="preserve"><value>C0C03EA6A59E35CA7F13BF6DB45D07A2623D2049B3543C072AFF98964E5C8A37</value></data>
+  <data name="Qualities.Summary.b0460fde-7bf8-4e77-b402-6fe7143aa590" xml:space="preserve"><value>Adds supernatural protection against disease-causing agents; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.b0460fde-7bf8-4e77-b402-6fe7143aa590" xml:space="preserve"><value>62189474CFB68CD742BA629E6CCE30EFDE222E405443122514C1BDED93258501</value></data>
+  <data name="Qualities.Summary.ad81bcdf-2f45-4ca3-ab46-c766fd734800" xml:space="preserve"><value>Adds supernatural protection against toxins; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.ad81bcdf-2f45-4ca3-ab46-c766fd734800" xml:space="preserve"><value>CB655C0940C985A22703F1A594D250436836A456FE0D9089C066ECB514DACEC0</value></data>
+  <data name="Qualities.Summary.e3ed1dec-9e91-4dbf-ac5c-30bd6d9900a4" xml:space="preserve"><value>Lets you plant a suggestion in a target's mind; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.e3ed1dec-9e91-4dbf-ac5c-30bd6d9900a4" xml:space="preserve"><value>822731F6931EE4138DE6EA70218D978F80074696159374944EC0C1A2BA5F2082</value></data>
+  <data name="Qualities.Summary.630fd84e-553d-4faf-a271-9148b717d226" xml:space="preserve"><value>Enables Counterspelling to defend against spells; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.630fd84e-553d-4faf-a271-9148b717d226" xml:space="preserve"><value>198E986E8F365BD7F59AD3C9DFA3093CCCEE0A3689CC37DABC6D778233AB8EEF</value></data>
+  <data name="Qualities.Summary.7843087c-30a3-4d87-aaa2-5ebdb90cccd8" xml:space="preserve"><value>Lets you transform your body into mist; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.7843087c-30a3-4d87-aaa2-5ebdb90cccd8" xml:space="preserve"><value>343DD580FEC9B614D2FFC2DF151A4ADC0EC2E77760A4E87B9304DFAACA8566D1</value></data>
+  <data name="Qualities.Summary.6d9f205e-52a0-4bb2-a4c2-e49232dd8346" xml:space="preserve"><value>Your howl can paralyze those who hear it; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.6d9f205e-52a0-4bb2-a4c2-e49232dd8346" xml:space="preserve"><value>6960B2EDA96AC4BFF2AAEA8A0AA6B26CEEB20A5782789FBCDC0997EBF481AD66</value></data>
+  <data name="Qualities.Summary.311ebb96-bf65-483e-86b7-62702a43aae3" xml:space="preserve"><value>Rapidly repairs injuries, with limits on what heals and which implant grades are allowed; available only to eligible Infected.</value></data>
+  <data name="Qualities.SummarySource.311ebb96-bf65-483e-86b7-62702a43aae3" xml:space="preserve"><value>C5DE96DE4034A490A75213462A4EC68E360DE43C4549F3C53B3970AAAF499756</value></data>
+  <data name="Qualities.Summary.3a8006d6-72c2-4655-9200-45ec21cad760" xml:space="preserve"><value>Dual-natured drake form with claws, fire attacks, hardened physical and astral armor, and rudimentary wings. Improves Body, Strength, Agility and Logic, but also makes you Wanted.</value></data>
+  <data name="Qualities.SummarySource.3a8006d6-72c2-4655-9200-45ec21cad760" xml:space="preserve"><value>FB588D9714627D1C7EA6E48B407FBB23EB3D1D6F15646A5D6466CF0D912D33CB</value></data>
+  <data name="Qualities.Summary.f257ce85-fc27-4fa1-8d34-6eb4102e7614" xml:space="preserve"><value>Dual-natured drake form with horns, fire attacks, hardened physical and astral armor, and rudimentary wings. Improves Body, Strength and Charisma, but also makes you Wanted.</value></data>
+  <data name="Qualities.SummarySource.f257ce85-fc27-4fa1-8d34-6eb4102e7614" xml:space="preserve"><value>D1A642CC730B52CABFEFCF991A2D08A7855D5FC48FF5DCDD7AE7ACD8DCD2DDC8</value></data>
+  <data name="Qualities.Summary.90a7cc01-ee0f-4d60-aeb9-05752e68ddf9" xml:space="preserve"><value>Dual-natured drake form with a striking tail, fire attacks, hardened physical and astral armor, and rudimentary wings. Improves Body, Strength, Agility, Reaction and Willpower, but also makes you Wanted.</value></data>
+  <data name="Qualities.SummarySource.90a7cc01-ee0f-4d60-aeb9-05752e68ddf9" xml:space="preserve"><value>A88CA9BC4CA5F363C088F259E600D739A0647746A3B51B4B37B07CC82376C955</value></data>
+  <data name="Qualities.Summary.c284e172-1d20-4844-b24c-e094d2588b72" xml:space="preserve"><value>Dual-natured drake form with fangs, fire attacks, hardened physical and astral armor, and aquatic adaptation. Improves Body, Strength, Reaction and Intuition, but also makes you Wanted.</value></data>
+  <data name="Qualities.SummarySource.c284e172-1d20-4844-b24c-e094d2588b72" xml:space="preserve"><value>EF037E36A4EB689B801CAC445B645B47B5869E974078A420BD7EB109001CDFAA</value></data>
 </root>
