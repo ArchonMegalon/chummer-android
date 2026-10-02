@@ -162,6 +162,15 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Aware", ["Perceive astral", "no projection", "spellcasting, summoning, enchanting or adept powers"],
+            ["Astralwahrnehmung", "weder Projektion", "Zauberei, Beschwörung, Verzauberung", "Adeptenkräfte"],
+            ["percibir el espacio astral", "no proyectarse", "hechizos, invocar, encantar", "poderes de adepto"]),
+        ("Explorer", ["perception and projection", "neither spells, spirits, enchanting nor adept powers"],
+            ["Astralwahrnehmung und Astralprojektion", "weder Zauberei, Beschwörung, Verzauberung", "Adeptenkräfte"],
+            ["percepción y proyección astrales", "no otorga hechizos, espíritus, encantamiento", "poderes de adepto"]),
+        ("Enchanter", ["Create magical items", "perceive astral", "no spellcasting, summoning, astral projection or adept powers"],
+            ["Verzauberung und Astralwahrnehmung", "weder Zauberei, Beschwörung, Astralprojektion", "Adeptenkräfte"],
+            ["encantar objetos", "percibir el espacio astral", "no lanzar hechizos, invocar, proyectarse", "poderes de adepto"]),
         ("Solid Rep", ["reputation", "one chosen group", "neither universal", "every social test"],
             ["Ruf", "gewählten Gruppe", "kein allgemeiner Straßenruf", "jede soziale Probe"],
             ["reputación", "grupo elegido", "no concede", "todas las pruebas sociales"]),
@@ -950,7 +959,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 590, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 593, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -973,6 +982,24 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
+                }
+                foreach (var aptitude in new[] { (Name: "Aware", Skills: "Aware"),
+                    (Name: "Explorer", Skills: "Explorer"), (Name: "Enchanter", Skills: "Enchanting") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == aptitude.Name);
+                    Require(quality.Element("onlyprioritygiven") is not null
+                        && quality.Element("bonus")!.Element("enableattribute")!.Element("name")!.Value == "MAG"
+                        && quality.Element("bonus")!.Element("unlockskills")!.Value == aptitude.Skills
+                        && quality.Element("forbidden")!.Element("oneof")!.Elements("quality")
+                            .Any(q => q.Value == "Magician"),
+                        "Aptitude help must not turn an exclusive creation grant into a purchasable full-magician upgrade.");
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("bonus")!.Element("unlockskills")!.Value = "Magician";
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Aptitude restrictions must not describe a custom source that grants different magical skills.");
                 }
                 VerifyInsectSpiritSummaries(catalog, locale);
                 foreach (var rule in BriefDrawbackSummaries)
