@@ -1250,4 +1250,10 @@
   <data name="Spells.Summary.036b3b19-caa7-4da1-b2de-f887ac3a6d20" xml:space="preserve"><value>Bewegt Gegenstände aus der Ferne.</value></data>
   <data name="Magic.Blocker.SourceDisabled" xml:space="preserve"><value>Diese Quelle ist im gespeicherten Regelprofil dieses Runners deaktiviert. Neue Runner aktivieren standardmäßig alle Quellen.</value></data>
   <data name="Magic.Catalog.AvailableOnly" xml:space="preserve"><value>Es werden verfügbare Optionen angezeigt. Bestehende Runner behalten ihre gespeicherten Quellen.</value></data>
+  <data name="Spells.Summary.241b9811-e7d8-41d5-b4cc-444e599599fc" xml:space="preserve"><value>Trifft ein Ziel mit einem betäubenden magischen Schlag.</value></data>
+  <data name="Spells.Summary.85c12bae-3954-483c-a211-d8ee43a1c65e" xml:space="preserve"><value>Verletzt ein Ziel direkt mit Mana; Rüstung fängt den Schaden nicht ab.</value></data>
+  <data name="Spells.Summary.c09e8bb5-4bed-44f9-a41c-bed6a4deb871" xml:space="preserve"><value>Heilt körperliche Verletzungen, keinen Betäubungsschaden.</value></data>
+  <data name="Spells.Summary.37b3d6ac-624a-42d4-bd6e-a12142dc5725" xml:space="preserve"><value>Verbessert die Initiative und gewährt zusätzliche Initiativewürfel.</value></data>
+  <data name="Spells.Summary.46b12a6a-9d9d-4176-bfd6-80e8e21cb0e4" xml:space="preserve"><value>Verursacht vorübergehende, illusionäre Schmerzen.</value></data>
+  <data name="Spells.Summary.5636bbee-fadd-4f5c-bf77-c15b05e8d265" xml:space="preserve"><value>Verwirrt das Ziel und verringert seine Würfelpools.</value></data>
 </root>
