@@ -2836,4 +2836,28 @@
   <data name="Qualities.SummarySource.cd39499d-ec05-44ec-b13f-fc66e11f686c" xml:space="preserve"><value>CF6682B3AAC037B7B8F565421D595D28501F552DEDD1D554A0BA1946F764284C</value></data>
   <data name="Qualities.Summary.3039da6f-ad92-4082-bcf1-f2b400323679" xml:space="preserve"><value>A very strong compulsion affects broad aspects of your public surroundings; resisting the urge takes a Composure test.</value></data>
   <data name="Qualities.SummarySource.3039da6f-ad92-4082-bcf1-f2b400323679" xml:space="preserve"><value>E1F5FCB723105D434D221A8CC0A70C61F7E3042857330B302365609ADE3E3784</value></data>
+  <data name="Qualities.Summary.05113ce9-0255-4753-b467-569564f6a60d" xml:space="preserve"><value>Exhaled venom can cause Stun damage and disorientation; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.05113ce9-0255-4753-b467-569564f6a60d" xml:space="preserve"><value>DF7E1236C5478FE36CAD0363D26F99156B8FE5D4EE537E62514F3C3B0D4D5FF0</value></data>
+  <data name="Qualities.Summary.280af894-df4f-451c-874d-71c4b3db1580" xml:space="preserve"><value>Exhaled venom can cause Stun damage, disorientation and nausea; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.280af894-df4f-451c-874d-71c4b3db1580" xml:space="preserve"><value>642C843D4775633540C815A893587190B35C9A67EF7F269858775DEFFA8ADD51</value></data>
+  <data name="Qualities.Summary.0d416e3e-2f90-4a33-8277-d58af5e42de5" xml:space="preserve"><value>Exhaled venom can cause Physical damage, disorientation and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.0d416e3e-2f90-4a33-8277-d58af5e42de5" xml:space="preserve"><value>76BEAA8DEC2B720E1A9E0635FA481C44B5A3418CC8FE4E71B8E3BCB43D83F3E0</value></data>
+  <data name="Qualities.Summary.3a627958-3dc8-4db9-8672-3c4f343f484b" xml:space="preserve"><value>Exhaled venom can cause Physical damage, nausea and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.3a627958-3dc8-4db9-8672-3c4f343f484b" xml:space="preserve"><value>3501380D0FAF52D174CDB9A72B7DA5FBD96C93D326E58027A2E1186812A6E937</value></data>
+  <data name="Qualities.Summary.51d327e7-e5f7-4972-a9f8-836bb555f53d" xml:space="preserve"><value>Spat contact venom can cause Stun damage and disorientation; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.51d327e7-e5f7-4972-a9f8-836bb555f53d" xml:space="preserve"><value>2DDA080F271CFCF2AF46127253025DF58AA02329A091DC706FF65E3759AEDB3B</value></data>
+  <data name="Qualities.Summary.c5552f98-af9d-413e-ba81-4d42dc9d0770" xml:space="preserve"><value>Spat contact venom can cause Stun damage, disorientation and nausea; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.c5552f98-af9d-413e-ba81-4d42dc9d0770" xml:space="preserve"><value>710AA8F5D8554590220455A6D95ECA028994488B1DF372358777C50BE2C183C8</value></data>
+  <data name="Qualities.Summary.a31a80cb-d05b-40ff-849e-37d2d9856225" xml:space="preserve"><value>Spat contact venom can cause Physical damage, disorientation and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.a31a80cb-d05b-40ff-849e-37d2d9856225" xml:space="preserve"><value>EE9DD98E535E5C776B1650A10A7207645E934DB7269A024C10FA8318345719EE</value></data>
+  <data name="Qualities.Summary.19901576-8376-439a-9070-0a2df09c6baf" xml:space="preserve"><value>Spat contact venom can cause Physical damage, nausea and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.19901576-8376-439a-9070-0a2df09c6baf" xml:space="preserve"><value>CE423254B1DFF785B92B573CCB2A7CAFA2FA4E504DD60992891DCFFD00977326</value></data>
+  <data name="Qualities.Summary.827a22bc-43ea-4f17-bf81-f68e289ea623" xml:space="preserve"><value>Fangs let you inject venom that can cause Stun damage and disorientation; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.827a22bc-43ea-4f17-bf81-f68e289ea623" xml:space="preserve"><value>7772388D1CCA89EB1CEB8E530DFA09211BFF9E3659403D9E4E66AC8859DF585A</value></data>
+  <data name="Qualities.Summary.be99a6f3-e1f2-4abe-afae-34a7dadb0b8f" xml:space="preserve"><value>Fangs let you inject venom that can cause Stun damage, disorientation and nausea; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.be99a6f3-e1f2-4abe-afae-34a7dadb0b8f" xml:space="preserve"><value>F815C79576B3B2889B64736F8E08E6C37182514FB8E96F7537A4CBFE196935CA</value></data>
+  <data name="Qualities.Summary.4d6208c5-5b00-440c-a720-20f41d54410c" xml:space="preserve"><value>Fangs let you inject venom that can cause Physical damage, disorientation and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.4d6208c5-5b00-440c-a720-20f41d54410c" xml:space="preserve"><value>E6E43D06C95DC0D20A4AEBACD7E18930E7B45D2497D78C3FA63BD85E0A967F96</value></data>
+  <data name="Qualities.Summary.2291b5e9-ebec-4a8f-96ae-e2539501ba72" xml:space="preserve"><value>Fangs let you inject venom that can cause Physical damage, nausea and paralysis; you are immune to your own venom.</value></data>
+  <data name="Qualities.SummarySource.2291b5e9-ebec-4a8f-96ae-e2539501ba72" xml:space="preserve"><value>25D9CC7F1A22BE3DF60A9D5419088F63AE9EBFC6721B29BB2F39EADF356BC5B0</value></data>
 </root>

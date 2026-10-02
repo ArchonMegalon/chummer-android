@@ -821,6 +821,53 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void VerifyNaturalVenomQualitySummaries(System.Xml.Linq.XElement[] catalog, string locale)
+    {
+        // Run Faster p117. Summaries explain delivery and possible effects,
+        // not dose/resistance procedures. Immunity applies to one's own venom.
+        string[] vectors = ["Exhaled", "Spat", "Injected"];
+        string[] severities = ["Mild", "Moderate", "Serious", "Deadly"];
+        string[] words = locale == "de-AT"
+            ? ["Ausgeatmetes", "Gespucktes Kontaktgift", "Fangzähnen", "Betäubungsschaden", "körperlichen Schaden", "Desorientierung", "Übelkeit", "Lähmung", "gegen dein eigenes Gift bist du immun"]
+            : locale == "es-MX"
+                ? ["exhalado", "contacto escupido", "Necesitas colmillos", "Aturdimiento", "Físico", "desorientación", "náuseas", "parálisis", "inmune a tu propio veneno"]
+                : ["Exhaled", "Spat contact", "Fangs let you inject", "Stun damage", "Physical damage", "disorientation", "nausea", "paralysis", "immune to your own venom"];
+        var summaries = new HashSet<string>(StringComparer.Ordinal);
+        Require(catalog.Count(q => q.Element("name")!.Value.StartsWith("Natural Venom (", StringComparison.Ordinal)) == 12,
+            "All Natural Venom delivery/severity variants need help.");
+        for (int vector = 0; vector < vectors.Length; vector++)
+        for (int severity = 0; severity < severities.Length; severity++)
+        {
+            string name = $"Natural Venom ({vectors[vector]}, {severities[severity]})";
+            var quality = catalog.Single(q => q.Element("name")!.Value == name);
+            bool needsFangs = quality.Element("required")!.Element("allof")?.Elements("quality").Any(q => q.Value == "Fangs") == true;
+            Require(needsFangs == (vector == 2)
+                && quality.Element("required")!.Element("oneof")!.Elements("quality").Count() == 3
+                && quality.Element("forbidden")!.Element("oneof")!.Elements("quality").Any(q => q.Value == "Corrosive Spit")
+                && quality.Element("metagenic")?.Value == "True",
+                "Venom copy must remain bound to actual Fangs, changeling and incompatibility restrictions: " + name);
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            bool Has(int index) => summary.Contains(words[index], StringComparison.OrdinalIgnoreCase);
+            var effects = CreationQualityInfo.Effects(quality.ToString());
+            Require(summary.Length > 0 && summary.Length <= 180
+                && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 25
+                && !Regex.IsMatch(summary, @"\d") && summaries.Add(summary)
+                && Enumerable.Range(0, 3).All(i => Has(i) == (i == vector))
+                && Has(3) == (severity < 2) && Has(4) == (severity >= 2)
+                && Has(5) == (severity != 3) && Has(6) == (severity == 1 || severity == 3)
+                && Has(7) == (severity >= 2) && Has(8)
+                && effects[0] == summary
+                && !effects.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                "Venom summary mixed delivery, symptoms, damage kind or immunity scope: " + name);
+            var changed = new System.Xml.Linq.XElement(quality);
+            changed.Element("required")!.Remove();
+            var changedEffects = CreationQualityInfo.Effects(changed.ToString());
+            Require(!changedEffects.Contains(summary)
+                && changedEffects.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                "Removing a prerequisite must reject the old venom description even with the same ID.");
+        }
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -861,9 +908,10 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 578, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 590, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
+                VerifyNaturalVenomQualitySummaries(catalog, locale);
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
