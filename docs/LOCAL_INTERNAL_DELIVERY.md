@@ -105,14 +105,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 ## Current evidence boundary
 
 Preview 72 is the latest [observed Internal availability](../play/evidence/preview72-internal-observation.md).
-It is available on Play Internal; physical Play installation of 72 is not yet
-verified. Special Attribute Points now jumps to its allocation group with explicit
+The normal physical Play update from 52 to 72, base-APK signature, first launch,
+special-attribute navigation, unsaved Magic 4 → 5 → 4 adjustment/undo and reopening
+the existing allocation after verified process death passed on 2 October.
+See the separate [physical observation](../play/evidence/preview72-physical-observation.md).
+This is not a new physical save transaction, all-workspace byte comparison,
+all-method qualification or full-book pass. Special Attribute Points now jumps
+to its allocation group with explicit
 EN/DE/ES special-point controls. Actual-Core Priority/Sum-to-Ten checks and native
 Priority allocation/save/new-process reopen passed; the other 31 workspace files stayed
 unchanged. Pending Magic-choice feedback and guarded early-Back behavior from
 PR 258 are included. Preview 71 was uploaded but held, then removed only from the
 unpublished draft; it remains in the artifact library and was never released.
-Existing technical attribute-review text, physical testing and full polish remain
+Existing technical attribute-review text, broader physical coverage and full polish remain
 open. Prior Preview 70 evidence remains immutable: static Magic saving feedback
 replaces the animated spinner, with short
 EN/DE/ES actions and unchanged owner/review/mutation guards. Focused managed checks
@@ -192,8 +197,10 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 52](../play/evidence/preview52-internal-observation.md) remains the latest
-physically verified version. Its normal Play update from 51, first launch and saved-runner process
+[Preview 72](../play/evidence/preview72-physical-observation.md) is now the latest
+physically observed Play version, with the bounded affected-route coverage above.
+[Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
+its normal Play update from 51, first launch and saved-runner process
 restart passed. The observed unlinked account route settled without a stale
 waiting notice; this is not a new account-login or full-book reader pass. The
 installed base-APK certificate matched Preview 50/51 but was not independently
