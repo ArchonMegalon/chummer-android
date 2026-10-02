@@ -2884,4 +2884,28 @@
   <data name="Qualities.SummarySource.8e176d15-e646-4aed-824c-171c6bd9e4bc" xml:space="preserve"><value>934A0D5BF7BAA4BD5EA23ADC08202520C4AEE5D59FF0BDF012964A3E3B25F2F1</value></data>
   <data name="Qualities.Summary.06078d89-0f12-4f57-99d0-e088847dec7e" xml:space="preserve"><value>Repeated tests and extended work (intervals over five minutes, under a day) require escalating Composure checks; failure forces breaks.</value></data>
   <data name="Qualities.SummarySource.06078d89-0f12-4f57-99d0-e088847dec7e" xml:space="preserve"><value>755ABBA73BEF4682ACF91261BCB09C826D1576F1968AC15066EA719A86A103DF</value></data>
+  <data name="Qualities.Summary.b8f8799f-b89b-462e-9e8c-e47cdd965587" xml:space="preserve"><value>Entering a spam zone impairs Perception according to its Noise; the gamemaster may also require Composure outside stressful situations.</value></data>
+  <data name="Qualities.SummarySource.b8f8799f-b89b-462e-9e8c-e47cdd965587" xml:space="preserve"><value>CB1B86FDC933FB9B97D600297FDE2E3F3C2E25F191C00DAE3E09C8ECEA9AB5BE</value></data>
+  <data name="Qualities.Summary.af6974ba-43fe-4a6e-97f7-82df2bbb97f9" xml:space="preserve"><value>Without a personasoft, you lack an independent personality and are easily influenced; memory loss is a separate condition.</value></data>
+  <data name="Qualities.SummarySource.af6974ba-43fe-4a6e-97f7-82df2bbb97f9" xml:space="preserve"><value>DAB3A2E34D412262978DEDEB8B330F6434C99DD1561C834287303FBD3E3ACF1A</value></data>
+  <data name="Qualities.Summary.425fbcac-53a5-4788-a80c-0dc788e883b0" xml:space="preserve"><value>You cannot feel one chosen emotion; agree its roleplaying consequences with the gamemaster.</value></data>
+  <data name="Qualities.SummarySource.425fbcac-53a5-4788-a80c-0dc788e883b0" xml:space="preserve"><value>C1B7D94020C728CC6184E2CB53ECE73C732527418C65DA6AD6424D081B8AF74B</value></data>
+  <data name="Qualities.Summary.d11a5ccd-f48b-46ed-89cc-4580a62c63ad" xml:space="preserve"><value>Others lose dice on Social tests against you; this does not improve your own social skills.</value></data>
+  <data name="Qualities.SummarySource.d11a5ccd-f48b-46ed-89cc-4580a62c63ad" xml:space="preserve"><value>6755BBBDEEBA78A773DC67059D5F1F5117949A27A42ABB7D0D9F03BFD0FEFEE2</value></data>
+  <data name="Qualities.Summary.38bb885a-0cb4-43f2-a3a0-3d46a87455d0" xml:space="preserve"><value>Full days immersed in one role improve its Impersonation dice and Social limit; Willpower caps the bonus.</value></data>
+  <data name="Qualities.SummarySource.38bb885a-0cb4-43f2-a3a0-3d46a87455d0" xml:space="preserve"><value>2D0D1979DD3A21A466650971539B4376716E040E666586DF23EF20BDA0201864</value></data>
+  <data name="Qualities.Summary.8e0dd838-dbc4-4e5c-a0f1-e3ade21338a6" xml:space="preserve"><value>Stun damage leaves you presentable, avoiding related Etiquette penalties and suspicion; Physical injuries still show.</value></data>
+  <data name="Qualities.SummarySource.8e0dd838-dbc4-4e5c-a0f1-e3ade21338a6" xml:space="preserve"><value>7C7C2FE7418FB0B5D6373CD59E1E9C723717E52C2B632C55DF5EAA97158C1DE4</value></data>
+  <data name="Qualities.Summary.dcba5a01-849b-412c-83ba-f0ac5aa46e71" xml:space="preserve"><value>Empathic Healing heals more per hit than usual, but still transfers part of the patient's damage to you.</value></data>
+  <data name="Qualities.SummarySource.dcba5a01-849b-412c-83ba-f0ac5aa46e71" xml:space="preserve"><value>E7E3865BA5D9F3237E85AD85F215D451EB38C220BE97E36943F01BE1106F1BED</value></data>
+  <data name="Qualities.Summary.79c1be77-1da7-405e-8b2b-99a06abc4327" xml:space="preserve"><value>Magical training takes less time; Karma costs are unchanged.</value></data>
+  <data name="Qualities.SummarySource.79c1be77-1da7-405e-8b2b-99a06abc4327" xml:space="preserve"><value>38DDA8BCBF7DAC501925944B89CB32A58A334BE8CE79C700F11C799FDBA200AF</value></data>
+  <data name="Qualities.Summary.9f02d7f6-6fe3-4a9c-8c0e-83ae788f1985" xml:space="preserve"><value>Spell defense covers twice as many people with twice the dice; at most a third of those dice can protect you, even alone.</value></data>
+  <data name="Qualities.SummarySource.9f02d7f6-6fe3-4a9c-8c0e-83ae788f1985" xml:space="preserve"><value>A0893860613202E33CB9019BC69A19073276ED3956B7F2C0DA10F4C874010050</value></data>
+  <data name="Qualities.Summary.8e16f569-a1b1-499c-8046-85d25fb00041" xml:space="preserve"><value>VR actions are harder unless you believe your physical location is accessible only to you and trusted allies.</value></data>
+  <data name="Qualities.SummarySource.8e16f569-a1b1-499c-8046-85d25fb00041" xml:space="preserve"><value>225266C7BFDBC523317B4B5DC59CDFE33565E9BC16A9477ED88CEAC2D5186813</value></data>
+  <data name="Qualities.Summary.6bbeb733-a7cc-4427-924b-8c6174399051" xml:space="preserve"><value>Without teammates, most Matrix actions suffer; an agent or sprite only reduces the penalty, while Matrix Perception and Hide remain unaffected.</value></data>
+  <data name="Qualities.SummarySource.6bbeb733-a7cc-4427-924b-8c6174399051" xml:space="preserve"><value>5345F2C451CD7CB660E5A8835347B31D57FEA0056283FC6C3DFD17CF4ED74B7A</value></data>
+  <data name="Qualities.Summary.a3d131f2-5ed9-42d0-86c2-396e50a9117d" xml:space="preserve"><value>Without AR or VR, every test is harder; either interface avoids this penalty.</value></data>
+  <data name="Qualities.SummarySource.a3d131f2-5ed9-42d0-86c2-396e50a9117d" xml:space="preserve"><value>FCC5D80B57932727C0ED19BCAFB010DC5EAA740D376018E918270D541BFD1C69</value></data>
 </root>
