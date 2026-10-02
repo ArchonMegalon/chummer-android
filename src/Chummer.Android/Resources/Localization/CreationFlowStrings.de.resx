@@ -1600,4 +1600,82 @@
   <data name="Qualities.Summary.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
     <value>Erhöht mit Prototype Materials dein Limit für Spezialmodifikationen; du darfst weder Magie noch Resonanz besitzen.</value>
   </data>
+  <data name="Qualities.Summary.f9cdcb14-7181-4105-b59a-3628663f3be7" xml:space="preserve">
+    <value>Dein Zentaurenkörper verleiht dir einen natürlichen Trittangriff.</value>
+  </data>
+  <data name="Qualities.Summary.efc80d70-30ec-4460-bddb-f6006333dd3b" xml:space="preserve">
+    <value>Dein Nagakörper verleiht dir einen natürlichen Bissangriff.</value>
+  </data>
+  <data name="Qualities.Summary.7d6e068b-0d9d-47d5-b175-6785b50eeb2b" xml:space="preserve">
+    <value>Deine Grabklauen dienen auch als natürliche Nahkampfwaffen.</value>
+  </data>
+  <data name="Qualities.Summary.72a6fe4e-056d-4f04-872d-d911f2e66946" xml:space="preserve">
+    <value>Scharfe Klauen ermöglichen dir einen natürlichen Nahkampfangriff.</value>
+  </data>
+  <data name="Qualities.Summary.d45602d8-6c15-476b-8f91-adb35c8804ec" xml:space="preserve">
+    <value>Einziehbare Klauen ermöglichen dir einen natürlichen Nahkampfangriff.</value>
+  </data>
+  <data name="Qualities.Summary.27209cc3-756b-4cb2-b6fe-ffec5bd6a072" xml:space="preserve">
+    <value>Deine Fangzähne ermöglichen dir einen natürlichen Bissangriff.</value>
+  </data>
+  <data name="Qualities.Summary.c4324d55-2914-4b5c-9586-19f5515da5d7" xml:space="preserve">
+    <value>Dein stachelbesetzter Schwanz dient als natürliche Nahkampfwaffe.</value>
+  </data>
+  <data name="Qualities.Summary.556c2599-ae97-44ff-98aa-442af1c9c6d4" xml:space="preserve">
+    <value>Deine Hörner ermöglichen dir Stoßangriffe im Nahkampf.</value>
+  </data>
+  <data name="Qualities.Summary.9885823f-d80f-45dc-b379-1b3f55cd6aa3" xml:space="preserve">
+    <value>Deine vergrößerten Hauer dienen als natürliche Nahkampfwaffen.</value>
+  </data>
+  <data name="Qualities.Summary.bf50a6c9-f165-451c-8d38-89240f39bb44" xml:space="preserve">
+    <value>Deine Proben auf soziale Fertigkeiten werden erschwert.</value>
+  </data>
+  <data name="Qualities.Summary.bd64ccab-5138-475d-8eb1-400ae4a11ac2" xml:space="preserve">
+    <value>Einschüchtern fällt dir leichter; andere soziale Fertigkeiten werden außerhalb der Matrix erschwert.</value>
+  </data>
+  <data name="Qualities.Summary.d9f0f912-fc95-4267-bed2-8d3fcc67846b" xml:space="preserve">
+    <value>Proben auf Führung fallen dir schwerer.</value>
+  </data>
+  <data name="Qualities.Summary.106cc6bf-ba42-457e-9451-92ea2da38fbd" xml:space="preserve">
+    <value>Senkt sowohl den Mindestwert als auch den Höchstwert deines Charismas.</value>
+  </data>
+  <data name="Qualities.Summary.829568f2-509f-40a3-a16a-a5994ae8a037" xml:space="preserve">
+    <value>Deine KI hat beim Kommunizieren über AR oder VR ein höheres soziales Limit.</value>
+  </data>
+  <data name="Qualities.Summary.364cdb2a-c405-488c-8e08-631ef02ebcf2" xml:space="preserve">
+    <value>Deine KI erhält zusätzliche Kästchen auf ihrem Zustandsmonitor.</value>
+  </data>
+  <data name="Qualities.Summary.40ceda2d-b7d1-44c2-80f0-a26ea96dcbe2" xml:space="preserve">
+    <value>Die maximale Essenz deiner KI wird verringert.</value>
+  </data>
+  <data name="Qualities.Summary.36464d0b-2f7d-439c-8ae1-7678e530fda1" xml:space="preserve">
+    <value>Erhöht die Grenzen der geistigen Attribute und Tiefe deiner KI, besonders eines gewählten geistigen Attributs.</value>
+  </data>
+  <data name="Qualities.Summary.36e76b70-bf6a-4e66-8dac-13cd529b9274" xml:space="preserve">
+    <value>Kampfzauber verursachen mehr Schaden, aber auch mehr Entzug.</value>
+  </data>
+  <data name="Qualities.Summary.9ff65ab9-7a3c-490d-ad73-789999ab60e2" xml:space="preserve">
+    <value>Du erhältst einen Bonus auf Verteidigungsproben.</value>
+  </data>
+  <data name="Qualities.Summary.e24b86ad-004b-4252-8383-3ca4aad53a26" xml:space="preserve">
+    <value>Deine Kristallaugen schalten die Fertigkeit Askennen frei.</value>
+  </data>
+  <data name="Qualities.Summary.90691f29-5b81-4a81-9ebc-21f2f5da1d55" xml:space="preserve">
+    <value>Tauscht Fertigkeiten aus Hexerei, Beschwören und Verzaubern gegen Psychometrie und Sensibilisierung.</value>
+  </data>
+  <data name="Qualities.Summary.ecb5ab50-68c9-45ee-9fb4-c2f0b3051096" xml:space="preserve">
+    <value>Gewährt Spiegelung und Magieresistenz; sperrt Binden, Spruchzauberei, Ritualzauberei, Alchemie und Fokusherstellung.</value>
+  </data>
+  <data name="Qualities.Summary.e3d04705-b90a-4d94-90d0-4ad2c7adfa79" xml:space="preserve">
+    <value>Bestimmte komplexe Formen verursachen weniger Schwund; Maschinen- oder Generalisten-Sprites lassen sich leichter kompilieren und dekompilieren.</value>
+  </data>
+  <data name="Qualities.Summary.11d6c3b6-47c4-4765-a625-7a5907ba1b4a" xml:space="preserve">
+    <value>Senkt den Schwund und gewährt das Echo Sourcerer Daemon.</value>
+  </data>
+  <data name="Qualities.Summary.39803e82-d85a-4da1-9637-fdd3249f2f21" xml:space="preserve">
+    <value>Setzt Geschicklichkeit, Reaktion und Stärke auf null und erhöht die Lebensstilkosten.</value>
+  </data>
+  <data name="Qualities.Summary.f9b746ae-9112-4b84-ba8d-e0a852678a20" xml:space="preserve">
+    <value>Gewährt Vertrautes Terrain für örtliche Kontakte und Straßenpolitik im Schwarzwald.</value>
+  </data>
 </root>
