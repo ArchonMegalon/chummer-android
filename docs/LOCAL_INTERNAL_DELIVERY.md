@@ -209,7 +209,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 72](../play/evidence/preview72-physical-observation.md) is now the latest
+[Preview 73](../play/evidence/preview73-physical-observation.md) is now the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
