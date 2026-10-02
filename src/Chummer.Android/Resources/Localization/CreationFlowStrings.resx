@@ -1843,4 +1843,27 @@
   <data name="Spells.SummarySource.d7d6bbf6-6855-47ce-9865-5a01db507d71" xml:space="preserve"><value>DC064D10306861A89EEAFDDF2334561DC93083D8F0019F57972661A99521C119</value></data>
   <data name="Spells.Summary.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>Darkens an area.</value></data>
   <data name="Spells.SummarySource.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>DB9EDA0C52F3B8F04E8699E6EE4E2EC253CF9A96B194A46703D746CC5C9F6596</value></data>
+  <!-- Street Grimoire Health effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.a5096a06-4dee-40f6-879b-b88616cdb728" xml:space="preserve"><value>Wakes temporarily; Stun recovery slows afterward.</value></data>
+  <data name="Spells.SummarySource.a5096a06-4dee-40f6-879b-b88616cdb728" xml:space="preserve"><value>B46DA1A22ABF61C9CC8881AE948B6F03156DB05020546F45AF0BA7332B69BEE8</value></data>
+  <data name="Spells.Summary.f7ad9877-1f67-40a0-9813-ba53db664833" xml:space="preserve"><value>Temporarily grants ambidexterity.</value></data>
+  <data name="Spells.SummarySource.f7ad9877-1f67-40a0-9813-ba53db664833" xml:space="preserve"><value>5AB491BC0FDCD154EF1F9ABE3BA2F31129CCC3B4F3B4C21AA114150400AD6195</value></data>
+  <data name="Spells.Summary.ff90355c-5eba-4a35-8bf9-66afff9075ad" xml:space="preserve"><value>Eases addiction, not Focus addiction; no cure.</value></data>
+  <data name="Spells.SummarySource.ff90355c-5eba-4a35-8bf9-66afff9075ad" xml:space="preserve"><value>C4E5D039AB073F288AC400989B66FA4C37DE177B6E0253A044AFFF1D7D5BEE66</value></data>
+  <data name="Spells.Summary.fd407eeb-103e-4bef-a719-1098d8387536" xml:space="preserve"><value>Eases one allergy without curing it.</value></data>
+  <data name="Spells.SummarySource.fd407eeb-103e-4bef-a719-1098d8387536" xml:space="preserve"><value>5B822A21DE7494E96E2B40E68C6208A3ABAF8D03489972B5B8AF4897850AB43B</value></data>
+  <data name="Spells.Summary.e0ea86bc-06df-4edc-bee1-03b6a2733675" xml:space="preserve"><value>Suppresses sleep fatigue; prolonged use risks addiction.</value></data>
+  <data name="Spells.SummarySource.e0ea86bc-06df-4edc-bee1-03b6a2733675" xml:space="preserve"><value>F9D87E53BF99CB710BBC97527B451682FEC0450933AB43649FDF250F2539C4DF</value></data>
+  <data name="Spells.Summary.3c2d97b8-4761-4e5a-ba61-ff4b7a403ead" xml:space="preserve"><value>Lowers Initiative, not Initiative dice.</value></data>
+  <data name="Spells.SummarySource.3c2d97b8-4761-4e5a-ba61-ff4b7a403ead" xml:space="preserve"><value>676A28858A9D153BD00CDE7674502DE5891E76F53682376A8AAA8CE08395BB85</value></data>
+  <data name="Spells.Summary.a547f08e-0822-4a1c-968a-a2d6c249572c" xml:space="preserve"><value>Weakens resistance to drugs/toxins.</value></data>
+  <data name="Spells.SummarySource.a547f08e-0822-4a1c-968a-a2d6c249572c" xml:space="preserve"><value>9A3699A6D2D2C89D9E3992D01483DC99A2D7268ACAAB7F80D0C90B9658FD4335</value></data>
+  <data name="Spells.Summary.8c6ce834-d47a-40a6-9e4c-57a1030ce57e" xml:space="preserve"><value>Masks hunger/thirst, without nourishing.</value></data>
+  <data name="Spells.SummarySource.8c6ce834-d47a-40a6-9e4c-57a1030ce57e" xml:space="preserve"><value>4A9843556BFD184BFBBAFF103D518FE44547E43E060FE5287DEBA84B0FA5A826</value></data>
+  <data name="Spells.Summary.b1347682-58ad-4684-a93a-3f7703f1b4bf" xml:space="preserve"><value>Forces Full Defense; retreat remains possible.</value></data>
+  <data name="Spells.SummarySource.b1347682-58ad-4684-a93a-3f7703f1b4bf" xml:space="preserve"><value>AC6DEAB2573C8AEC210C539F40C3DB3A0BEA15A81BE2C087A29921D8983B17FD</value></data>
+  <data name="Spells.Summary.80704822-953b-45c5-aa8e-77ca26e6cef7" xml:space="preserve"><value>Raises one Physical/Mental/Social limit.</value></data>
+  <data name="Spells.SummarySource.80704822-953b-45c5-aa8e-77ca26e6cef7" xml:space="preserve"><value>7CF2671EF117E23CBF2F05AA9B81100F787F068DA3BE3AD0485D7F3977F85870</value></data>
+  <data name="Spells.Summary.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>Lowers one Physical/Mental/Social limit.</value></data>
+  <data name="Spells.SummarySource.4fbbaf9c-15fb-46ec-b899-5fc48829e52a" xml:space="preserve"><value>E1507E43BEECA81AE1F49CA83B6723204BC72745F3B9B368DB57164B2D5FF752</value></data>
 </root>

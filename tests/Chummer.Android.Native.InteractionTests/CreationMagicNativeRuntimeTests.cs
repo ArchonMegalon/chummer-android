@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 84, $"Expected 84 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 95, $"Expected 95 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -133,6 +133,17 @@ internal static class CreationMagicNativeRuntimeTests
                 Require(coreCombat.Length + coreDetection.Length + coreHealth.Length
                     + coreIllusion.Length + coreManipulation.Length == 84,
                     "The five ordinary SR5 core spell categories must retain all 84 definitions; rituals are separate.");
+                var grimoireHealth = authority.Spells.Where(spell => spell.SourceBook == "SG" && spell.Category == "Health").ToArray();
+                Require(grimoireHealth.Length == 11, "Expected the complete Street Grimoire health catalog.");
+                foreach (var spell in grimoireHealth)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && summary.Contains(CreationFlowStrings.Get("Spells.Range.T", "missing"))
+                        && !summary.Contains("Damage: 0."),
+                        "A Street Grimoire health spell lacks its source-bound touch effect: " + spell.Name + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -173,6 +184,30 @@ internal static class CreationMagicNativeRuntimeTests
                 && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
                 "Attribute spell help must retain opposite effects and distinct costs.");
             string SpellHelp(string name) => CreationSpellInfo.Summary(authority.Spells.Single(spell => spell.Name == name));
+            Require(SpellHelp("Awaken").Contains("temporarily") && SpellHelp("Awaken").Contains("afterward")
+                && SpellHelp("Awaken").Contains("Must be sustained.")
+                && SpellHelp("Alleviate Addiction").Contains("not Focus")
+                && SpellHelp("Alleviate Addiction").Contains("no cure")
+                && SpellHelp("Alleviate [Allergy]").Contains("without curing")
+                && SpellHelp("Alleviate [Allergy]").Contains("Physical spell."),
+                "Temporary relief must retain its limits and the accepted catalog type.");
+            Require(SpellHelp("Crank").Contains("risks addiction")
+                && SpellHelp("Fast").Contains("without nourishing")
+                && SpellHelp("Enabler").Contains("Weakens resistance")
+                && SpellHelp("Ambidexterity").Contains("Temporarily")
+                && new[] { "Crank", "Fast", "Enabler", "Ambidexterity" }
+                    .All(name => SpellHelp(name).Contains("Must be sustained.") && SpellHelp(name).Contains("Drain: F-3")),
+                "Grimoire health help must preserve side effects and accepted sustained profiles.");
+            Require(SpellHelp("Decrease Reflexes").Contains("not Initiative dice")
+                && SpellHelp("Decrease Reflexes").Contains("Becomes permanent after completion.")
+                && SpellHelp("Forced Defense").Contains("retreat remains possible")
+                && SpellHelp("Forced Defense").Contains("Instant effect."),
+                "Grimoire timing profiles and defensive choice limits must remain distinct.");
+            Require(SpellHelp("Increase Inherent Limits").StartsWith("Raises one", StringComparison.Ordinal)
+                && SpellHelp("Decrease Inherent Limits").StartsWith("Lowers one", StringComparison.Ordinal)
+                && new[] { "Increase Inherent Limits", "Decrease Inherent Limits" }
+                    .All(name => SpellHelp(name).Contains("Physical/Mental/Social") && SpellHelp(name).Contains("Drain: F-1")),
+                "Opposite limit effects must not change every limit or inherit another spell profile.");
             foreach (var (single, area) in new[] { ("Agony", "Mass Agony"), ("Bugs", "Swarm"),
                 ("Confusion", "Mass Confusion"), ("Chaos", "Chaotic World") })
                 Require(SpellHelp(single).Contains("Target within line of sight.")
