@@ -6,8 +6,10 @@ one version code, released at 22:12 Europe/Vienna. This is browser readback,
 not Publisher API proof. [Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
 
 Version 77 is consumed; never rebuild or re-upload it to change producer metadata.
-Preview 76 and earlier evidence remain unchanged. Physical Preview 77 installation
-is not yet verified by this record; availability is not public-beta readiness.
+Preview 76 and earlier evidence remain unchanged. The subsequent normal physical
+Play update, installed signature, changed-help and existing-state restart passed;
+see the separate [physical observation](preview77-physical-observation.md).
+This bounded Internal delivery is not public-beta readiness.
 
 ## Changed scope
 

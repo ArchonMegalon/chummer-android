@@ -108,8 +108,12 @@ Preview 77 is the latest [observed Internal availability](../play/evidence/previ
 confirmed on 2 October at 22:12 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 It shortens 32 existing EN/DE/ES Quality explanations, preserving important
-benefits, drawbacks and scopes without changing rules. Physical Preview 77
-installation is not yet verified. Authored coverage remains 563/803 Qualities
+benefits, drawbacks and scopes without changing rules. The normal physical
+Play76-to-77 update, installed base-APK signature, shortened Simsense Vertigo
+help at font scale 1.3 and existing-state process restart passed.
+See the separate [physical observation](../play/evidence/preview77-physical-observation.md);
+no new saved mutation or exhaustive physical catalog check is claimed.
+Authored coverage remains 563/803 Qualities
 and 292 ordinary spells; 240 Quality and 71 ritual/enchantment prose gaps remain.
 No legal clearance, full-book, all-method or public-beta completion is claimed.
 
