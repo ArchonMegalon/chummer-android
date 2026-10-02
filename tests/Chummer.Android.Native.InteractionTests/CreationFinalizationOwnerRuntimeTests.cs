@@ -931,6 +931,10 @@ internal static partial class AfterRunAuthorityHarness
             Require(blocked.SourceBook == "SG" && blocked.Name == "Clean [Element]"
                 && blocked.Blockers.Contains(CharacterCreationMagicResonanceBlockers.OptionSemanticsUnsupported),
                 "Adding help must not enable an unsupported parameterized spell or hide an ordinary choice.");
+            var bloodSpells = allOptions.Where(item =>
+                CreationMagicNativeRuntimeTests.HasBloodSpellSummary(item.SourceBook, item.Name)).ToArray();
+            Require(bloodSpells.Length == 17 && bloodSpells.All(item => !options.Contains(item)),
+                "Explanations must not admit blood spells into this ordinary Creation fixture.");
         }
         if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
         foreach (var spell in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
@@ -945,6 +949,7 @@ internal static partial class AfterRunAuthorityHarness
             .Concat(allOptions.Where(item => item.SourceBook == "SG" && item.Category == "Manipulation"))
             .Concat(allOptions.Where(item => item.SourceBook == "SSP" && item.Category != "Rituals"))
             .Concat(allOptions.Where(item => CreationMagicNativeRuntimeTests.HasOrdinaryArcanaSummary(item.SourceBook, item.Name)))
+            .Concat(allOptions.Where(item => CreationMagicNativeRuntimeTests.HasBloodSpellSummary(item.SourceBook, item.Name)))
             .Distinct())
         {
             Search(spell.Name);

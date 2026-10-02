@@ -18,6 +18,12 @@ using System.Text.Json;
 /// phone draft and Presentation projection. This is not an Android handler or device proof.</summary>
 internal static class CreationMagicNativeRuntimeTests
 {
+    internal static bool HasBloodSpellSummary(string book, string name) =>
+        book == "FA" && new[] { "Boil Blood", "Corpse Explosion", "Embolism", "Giger Spit",
+            "Ice Veins", "Pyrohemetics", "Rupture", "Clot", "Share Damage", "Somatic Healing",
+            "Sympathetic Reprisal", "Blood Puppet", "Corpse Spikes", "Corpse Lash",
+            "Blood Whip", "Blood Blade", "Viscera Web" }.Contains(name);
+
     internal static bool HasOrdinaryArcanaSummary(string book, string name) =>
         book is "BB" or "BTB"
         || book == "FA" && new[] { "Branch", "Vines", "Thorn", "Rosebush", "Growth",
@@ -78,7 +84,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 275, $"Expected 275 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 292, $"Expected 292 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -239,24 +245,29 @@ internal static class CreationMagicNativeRuntimeTests
                     && ordinaryArcana.Count(spell => spell.SourceBook == "BB") == 2
                     && ordinaryArcana.Count(spell => spell.SourceBook == "BTB") == 2,
                     "Expected all 19 selected ordinary spells; blood spells and rituals remain separate.");
-                foreach (var spell in ordinaryArcana)
+                var bloodSpells = authority.Spells.Where(spell =>
+                    HasBloodSpellSummary(spell.SourceBook, spell.Name)).ToArray();
+                Require(bloodSpells.Length == 17 && bloodSpells.All(spell =>
+                    System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml).Element("required") is not null),
+                    "Expected all 17 blood spells with their original prerequisites.");
+                foreach (var spell in ordinaryArcana.Concat(bloodSpells))
                 {
                     string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
                     string summary = CreationSpellInfo.Summary(spell);
                     var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
                     Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
                         && !summary.Contains("Damage: 0."),
-                        "An ordinary supplement spell lacks its exact-source effect: " + spell.Name + "/" + locale);
+                        "A supplement spell lacks its exact-source effect: " + spell.Name + "/" + locale);
                     foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
                     {
                         string key = field == "Range" && spell.Category == "Detection" && xml.Element(element)!.Value == "T"
                             ? "Spells.Detection.Touch" : "Spells." + field + "." + xml.Element(element)!.Value;
                         string expected = CreationFlowStrings.Get(key, "missing");
                         Require(expected != "missing" && summary.Contains(expected),
-                            "Ordinary supplement help lost its Core profile: " + spell.Name + "/" + field + "/" + locale);
+                            "Supplement help lost its Core profile: " + spell.Name + "/" + field + "/" + locale);
                     }
                     Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
-                        "Ordinary supplement help replaced accepted Drain: " + spell.Name + "/" + locale);
+                        "Supplement help replaced accepted Drain: " + spell.Name + "/" + locale);
                 }
                 var supplementSpells = authority.Spells.Where(spell =>
                     HasNewSupplementSummary(spell.SourceBook, spell.Category, spell.Name)).ToArray();

@@ -2232,4 +2232,38 @@
   <data name="Spells.SummarySource.89046778-a77a-4f21-a448-a750af0898eb" xml:space="preserve"><value>26217A73ADF2F8F4F23B803FB47718D99A0DA23A00D3EC125599ECCB1E7ECB2B</value></data>
   <data name="Spells.Summary.4c595074-add0-40da-a707-598d2b94ae4f" xml:space="preserve"><value>Suppresses selected creature powers or a dual-natured creature's astral sight.</value></data>
   <data name="Spells.SummarySource.4c595074-add0-40da-a707-598d2b94ae4f" xml:space="preserve"><value>AD9E2304DE8D156E1F5D5C156611CFFCAFC288D378AA65DA1D31DD8885E1D74A</value></data>
+  <data name="Spells.Summary.80688ffa-82e6-4db2-a12d-9dd0a6603a3f" xml:space="preserve"><value>Burns internally.</value></data>
+  <data name="Spells.SummarySource.80688ffa-82e6-4db2-a12d-9dd0a6603a3f" xml:space="preserve"><value>9941D12E3CC9C70672B0974306AEACA7A8761519FF3089363CC7B949605E9FA0</value></data>
+  <data name="Spells.Summary.a9b72b69-a7f0-4f58-a13e-a9227e9d51de" xml:space="preserve"><value>Detonates corpses.</value></data>
+  <data name="Spells.SummarySource.a9b72b69-a7f0-4f58-a13e-a9227e9d51de" xml:space="preserve"><value>2CD7E65BD670BF500E8CAD9C2A8554AE089FFBFFD8D504DDACCABCB4E500B32B</value></data>
+  <data name="Spells.Summary.6ff4ad6b-9883-46c7-bbcd-51511b34e9c9" xml:space="preserve"><value>Damages and impairs body parts.</value></data>
+  <data name="Spells.SummarySource.6ff4ad6b-9883-46c7-bbcd-51511b34e9c9" xml:space="preserve"><value>3F8B5BDD287D42311D43B0C1F8349725F25F214842830F3AD249E729694BD0BE</value></data>
+  <data name="Spells.Summary.8b50b92c-a8d3-4682-83fc-68ea654d78a5" xml:space="preserve"><value>Acid attack; injures caster.</value></data>
+  <data name="Spells.SummarySource.8b50b92c-a8d3-4682-83fc-68ea654d78a5" xml:space="preserve"><value>4F7AD5DAD5F3D6347D7AE9BEFDC748BD0FA220DFC111F4FDB7C195144B94288F</value></data>
+  <data name="Spells.Summary.2c22bc40-1eee-48e5-83e4-84960e621a3d" xml:space="preserve"><value>Chills, harms and hinders.</value></data>
+  <data name="Spells.SummarySource.2c22bc40-1eee-48e5-83e4-84960e621a3d" xml:space="preserve"><value>8403BDE91A9ABBF45CE346353D1B458D200614960A8DC63967E02834276FB4CD</value></data>
+  <data name="Spells.Summary.ed093fec-e0ac-4627-a81c-264162e13f47" xml:space="preserve"><value>Fire attack; injures caster.</value></data>
+  <data name="Spells.SummarySource.ed093fec-e0ac-4627-a81c-264162e13f47" xml:space="preserve"><value>1E7C8D7862E106B99F912EDF06DE2F639EE1AE53496F7704FBE25BA2EE45E1F7</value></data>
+  <data name="Spells.Summary.59aa2e30-c0f5-4340-97b6-adfe4e609756" xml:space="preserve"><value>Causes blood loss.</value></data>
+  <data name="Spells.SummarySource.59aa2e30-c0f5-4340-97b6-adfe4e609756" xml:space="preserve"><value>C0593F516388E6ED8B1CB52BE5627C93ACB99E2D0F534907BC293A2BA6A269DB</value></data>
+  <data name="Spells.Summary.22579211-45f0-493b-9c71-29f159ceb120" xml:space="preserve"><value>Lessens new wounds; aids stabilization.</value></data>
+  <data name="Spells.SummarySource.22579211-45f0-493b-9c71-29f159ceb120" xml:space="preserve"><value>8EB44BB9B06E2F31D60AEB3A551A8C5EB5CE2CEB538F03485A72A80AEC42D189</value></data>
+  <data name="Spells.Summary.ffd492e3-0b04-447f-95f3-4b686a9be37b" xml:space="preserve"><value>Shares new Physical injuries with willing participants.</value></data>
+  <data name="Spells.SummarySource.ffd492e3-0b04-447f-95f3-4b686a9be37b" xml:space="preserve"><value>012A83EFEA7E4B67B7B3422EF25A46A5DBD90F40F75FD29E9E55AD8177891C14</value></data>
+  <data name="Spells.Summary.a856169f-fdb0-4117-a82d-ef0eefa04e95" xml:space="preserve"><value>Takes injuries; no magical recovery.</value></data>
+  <data name="Spells.SummarySource.a856169f-fdb0-4117-a82d-ef0eefa04e95" xml:space="preserve"><value>64E145200AA06841DEA1DB50F6FF839C436471971EB83EEC104681EAE993D164</value></data>
+  <data name="Spells.Summary.8d1c08f2-fe77-4a11-ab5f-dca8a7e0a7d9" xml:space="preserve"><value>Returns melee injuries to attacker.</value></data>
+  <data name="Spells.SummarySource.8d1c08f2-fe77-4a11-ab5f-dca8a7e0a7d9" xml:space="preserve"><value>6E8C9D0DAA09194DA7CF99B39CB895EFD548E921A945B06FB88F74F899E89CF0</value></data>
+  <data name="Spells.Summary.55f4619b-07a1-4a18-9f8d-3b9a587ffd9a" xml:space="preserve"><value>Controls actions, not thoughts.</value></data>
+  <data name="Spells.SummarySource.55f4619b-07a1-4a18-9f8d-3b9a587ffd9a" xml:space="preserve"><value>1611480B4146E96C53065A21A4001CF640B3BEEEA9998D9458267EB411CF5906</value></data>
+  <data name="Spells.Summary.fb3d0fd7-058f-4ebf-86be-7863d7a5820b" xml:space="preserve"><value>Corpse creates hazardous ice.</value></data>
+  <data name="Spells.SummarySource.fb3d0fd7-058f-4ebf-86be-7863d7a5820b" xml:space="preserve"><value>2645BEB3AAB9224A56D5F0E3F1E3B6C5137DA789261D501E8E8D081A77718636</value></data>
+  <data name="Spells.Summary.b09723b8-d83e-4377-826d-4b286958d5e3" xml:space="preserve"><value>Corpse restrains nearby targets.</value></data>
+  <data name="Spells.SummarySource.b09723b8-d83e-4377-826d-4b286958d5e3" xml:space="preserve"><value>3305BBFDEBC210B807005F201B4C7B578506BC59526C0AACAD716B78243F52DF</value></data>
+  <data name="Spells.Summary.8a096951-d2ee-4c46-9c64-9e9a7f218c03" xml:space="preserve"><value>Conjures whip; injures caster.</value></data>
+  <data name="Spells.SummarySource.8a096951-d2ee-4c46-9c64-9e9a7f218c03" xml:space="preserve"><value>2E24740B77DFEE65D9A606410C75813977EA8D1DEAACFC2FA94DCCB68266B6A6</value></data>
+  <data name="Spells.Summary.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>Forms blood blades.</value></data>
+  <data name="Spells.SummarySource.664fd84a-35c3-4309-9fb8-2ac8d8ba4f30" xml:space="preserve"><value>172A27F44CC8D92A3AB62E02BFFE92CFD2E5E353978EAD9E81D2047378D989C1</value></data>
+  <data name="Spells.Summary.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>Injures and anchors victim.</value></data>
+  <data name="Spells.SummarySource.c55c32d8-52e2-4cdd-94b4-83c7566cbfaf" xml:space="preserve"><value>3B7BF64B215AF3C816CB0199BECC13BF17D7298459E4D3BA17B5CBCFC626F060</value></data>
 </root>
