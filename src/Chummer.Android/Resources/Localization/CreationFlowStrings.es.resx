@@ -1453,4 +1453,47 @@
   <data name="Spells.Summary.5b3c8f11-37a8-4090-a332-969d6ea1adb6" xml:space="preserve"><value>Barrera contra espíritus y sus poderes, incluidos los espíritus materializados.</value></data>
   <data name="Spells.Summary.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>Destruye rastros biológicos sueltos, no microbios dentro de cuerpos vivos.</value></data>
   <data name="Spells.Summary.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>Licúa tejido vivo e incapacita; equipo e implantes permanecen intactos.</value></data>
+  <data name="Spells.Summary.3374e604-a947-43fa-a493-ea7c244e5559" xml:space="preserve"><value>El aire helado causa daño de Aturdimiento y reduce la Iniciativa.</value></data>
+  <data name="Spells.Summary.7a30952b-063d-4921-b05e-b438b8913519" xml:space="preserve"><value>El aire helado causa daño de Aturdimiento y reduce la Iniciativa en un área.</value></data>
+  <data name="Spells.Summary.bd49cb38-6f42-479a-b256-d6753b7717e4" xml:space="preserve"><value>Oleadas de fuego repetidas respetan al lanzador, pero pueden quemar a sus aliados.</value></data>
+  <data name="Spells.Summary.1ddf48f9-8fd3-4c47-a8d7-5ff5770a863c" xml:space="preserve"><value>Solo daña a seres Despertados, seres duales y espíritus.</value></data>
+  <data name="Spells.Summary.de6a72c9-d70f-4bec-a5ef-232a78526707" xml:space="preserve"><value>Lanza un explosivo elemental que rebota; la explosión puede alcanzar a aliados cercanos.</value></data>
+  <data name="Spells.Summary.79fb3fcb-9cc0-4993-8594-badace575372" xml:space="preserve"><value>La luz solar causa daño Físico a quienes son alérgicos, Aturdimiento menor a otros; el deslumbramiento dificulta ataques.</value></data>
+  <data name="Spells.Summary.aace66b8-a856-461f-9506-f0d7c05da1ba" xml:space="preserve"><value>Permite al lanzador experimentar todos los sentidos del objetivo.</value></data>
+  <data name="Spells.Summary.25679580-3324-44a0-ba31-d6013f1cf372" xml:space="preserve"><value>Captura una habitación para observarla desde distintos ángulos; el texto tapado sigue oculto.</value></data>
+  <data name="Spells.Summary.2d776604-c664-452b-bb7b-0ff5d6468c57" xml:space="preserve"><value>Detecta hechizos cercanos que usan la misma fórmula secreta.</value></data>
+  <data name="Spells.Summary.40f96beb-53d7-43cb-b345-b4f4ffb1151c" xml:space="preserve"><value>Envía pensamientos en una sola dirección a mentes cercanas, no solo a aliados.</value></data>
+  <data name="Spells.Summary.af1681a1-b511-42da-9a8b-2bd26f3a08ca" xml:space="preserve"><value>Envía pensamientos en una sola dirección por un área ampliada, no solo a aliados.</value></data>
+  <data name="Spells.Summary.ef4204e5-d39c-41a1-9485-82aeb7ea499b" xml:space="preserve"><value>Permite al lanzador compartir un sentido concreto del objetivo.</value></data>
+  <data name="Spells.Summary.8074c89c-172d-413a-a8a3-bc39b35f5e73" xml:space="preserve"><value>Transforma sangre en un fluido dañino; causa daño Físico decreciente durante varios turnos.</value></data>
+  <data name="Spells.Summary.5233fa7b-cd0c-49e0-9e8b-4b587036f8ec" xml:space="preserve"><value>Mejora la resistencia a la radiación sin curar lesiones existentes.</value></data>
+  <data name="Spells.Summary.f626c8cc-4798-4b93-9cde-048a55a4682d" xml:space="preserve"><value>Provoca náuseas y desorientación mientras se mantiene.</value></data>
+  <data name="Spells.Summary.49c69c23-0416-4022-b5b0-685284da94d7" xml:space="preserve"><value>Aumenta la Fuerza únicamente en sujetos infectados por HMHVV.</value></data>
+  <data name="Spells.Summary.f9864d0e-ab96-48cf-8947-a4834577dc97" xml:space="preserve"><value>Mejora el aspecto; el límite Social y la ayuda a la curación mejoran durante un día.</value></data>
+  <data name="Spells.Summary.489c0eea-5d18-4e35-ba74-1d76fae320b5" xml:space="preserve"><value>Alivia la fatiga por deshidratación y contrarresta Dehydrate.</value></data>
+  <data name="Spells.Summary.2d3ce706-8baa-4e05-a9b4-51a811fbc647" xml:space="preserve"><value>Provoca una enfermedad común, nunca una infección mágica.</value></data>
+  <data name="Spells.Summary.aef23c55-c9b6-4534-8c11-41593b4500c0" xml:space="preserve"><value>Causa náuseas incapacitantes sin daño directo.</value></data>
+  <data name="Spells.Summary.f3f5512d-b323-421d-ac12-9eb7403d4160" xml:space="preserve"><value>Alivia temporalmente las náuseas; los síntomas pueden volver al terminar el hechizo.</value></data>
+  <data name="Spells.Summary.59933987-6438-40fb-8325-268959b888c3" xml:space="preserve"><value>Mantiene el calor corporal, pero no protege de ataques de frío.</value></data>
+  <data name="Spells.Summary.d9b376d9-f826-4138-9c8d-e0dcf1a0ae4c" xml:space="preserve"><value>Destruye tejido vivo; el hechizo de curación no puede repararlo.</value></data>
+  <data name="Spells.Summary.8e0cbba7-efa2-4dca-99e4-9d0eb1decf13" xml:space="preserve"><value>Mejora movimiento e Iniciativa solo para seres cercanos infectados por HMHVV.</value></data>
+  <data name="Spells.Summary.56a474f0-142f-41cf-a130-feb26b96e3b0" xml:space="preserve"><value>Disfraza una imagen astral existente; no crea un aura nueva.</value></data>
+  <data name="Spells.Summary.b6c1c8d6-da46-41a7-8693-6f582adf50c1" xml:space="preserve"><value>Disfraza imágenes astrales existentes en un área; no crea auras nuevas.</value></data>
+  <data name="Spells.Summary.82b6ce21-1b48-485c-b856-03513a22f260" xml:space="preserve"><value>Mejora el Sigilo solo para un lanzador infectado por HMHVV.</value></data>
+  <data name="Spells.Summary.df65b87a-e386-46f5-b8ad-21ce4b08dc09" xml:space="preserve"><value>Permite respirar bajo el agua o estando sepultado.</value></data>
+  <data name="Spells.Summary.f7354160-896e-40ab-91e6-673af95cf516" xml:space="preserve"><value>Modifica un recuerdo; el original puede acabar regresando.</value></data>
+  <data name="Spells.Summary.31217b77-f149-403d-91bb-cd24542051b2" xml:space="preserve"><value>Calienta o enfría el ambiente de un área.</value></data>
+  <data name="Spells.Summary.419f63a8-534a-4971-9481-0b44d0acd9e3" xml:space="preserve"><value>Aporta armadura contra el combate astral, no contra ataques físicos.</value></data>
+  <data name="Spells.Summary.8917fc0d-649a-4231-bae6-7b34ce417263" xml:space="preserve"><value>Provoca una emoción intensa; actuar contra ella resulta más difícil.</value></data>
+  <data name="Spells.Summary.6befcc1b-9a2b-4a52-a45e-1de1e38d90e7" xml:space="preserve"><value>Impone la misma emoción en un área; actuar contra ella resulta más difícil.</value></data>
+  <data name="Spells.Summary.e6799bf0-ab6f-4adf-8591-f3a0acd123c0" xml:space="preserve"><value>Reduce el enfriamiento por sudor y facilita sobrevivir al frío ártico.</value></data>
+  <data name="Spells.Summary.c4758634-2c63-4b77-a439-51811b326e8b" xml:space="preserve"><value>Vuelve transparente un material sólido para poder ver a través de él.</value></data>
+  <data name="Spells.Summary.8dc8b22e-fe26-4b9f-b816-c4b6b3e1a813" xml:space="preserve"><value>Aísla un área fija frente a diferencias moderadas de temperatura, sin alterar objetos.</value></data>
+  <data name="Spells.Summary.bd2a6ecf-75e8-4948-a939-430c3ca78002" xml:space="preserve"><value>Crea un muro dañino que combina efectos de fuego y agua.</value></data>
+  <data name="Spells.Summary.c6995b10-5fff-44c2-8182-0a0a1b30cc6b" xml:space="preserve"><value>Convierte carne en piedra; el objetivo inconsciente aún puede sufrir heridas.</value></data>
+  <data name="Spells.Summary.65a02e9c-6472-406e-b5d1-17ec184c8ed2" xml:space="preserve"><value>Interrumpe brevemente la radio, borra etiquetas RFID comunes y puede dañar electrónica antigua no óptica.</value></data>
+  <data name="Spells.Summary.48f38481-6ece-4157-8594-d49a86eeb91a" xml:space="preserve"><value>Reduce el daño por radiación al objetivo protegido.</value></data>
+  <data name="Spells.Summary.8689fa5c-5965-4230-9706-245be36b242c" xml:space="preserve"><value>Reduce el daño por radiación a todos dentro de una cúpula protectora.</value></data>
+  <data name="Spells.Range.S" xml:space="preserve"><value>Afecta al lanzador.</value></data>
+  <data name="Spells.Range.S (A)" xml:space="preserve"><value>Área centrada en el lanzador.</value></data>
 </root>

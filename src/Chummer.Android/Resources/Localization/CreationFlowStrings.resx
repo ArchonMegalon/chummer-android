@@ -2110,4 +2110,88 @@
   <data name="Spells.SummarySource.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>2A311FA4DEC6EE444C7D43C1A81B3C3EBEF12EDE2DD511DBD1F6E41B7A5A2CBF</value></data>
   <data name="Spells.Summary.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>Liquefies living tissue and incapacitates; equipment and implants remain intact.</value></data>
   <data name="Spells.SummarySource.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>D7DC3E8E5DF6F1343EB9A1AF8D061E4E185184448A2F487B91AF6CC3285D809C</value></data>
+  <data name="Spells.Summary.3374e604-a947-43fa-a493-ea7c244e5559" xml:space="preserve"><value>Freezing air causes Stun damage and lowers Initiative.</value></data>
+  <data name="Spells.SummarySource.3374e604-a947-43fa-a493-ea7c244e5559" xml:space="preserve"><value>C52756CF222B0158CF6210111D9169C3D7467D32AAC029E09D6B2B4F927DD389</value></data>
+  <data name="Spells.Summary.7a30952b-063d-4921-b05e-b438b8913519" xml:space="preserve"><value>Freezing air causes Stun damage and lowers Initiative across an area.</value></data>
+  <data name="Spells.SummarySource.7a30952b-063d-4921-b05e-b438b8913519" xml:space="preserve"><value>5D154C945A974F70220CDD76BB8809FF2A4EA4EB15FE871CDF8973AC79509793</value></data>
+  <data name="Spells.Summary.bd49cb38-6f42-479a-b256-d6753b7717e4" xml:space="preserve"><value>Repeated flame waves spare the caster, but can burn allies.</value></data>
+  <data name="Spells.SummarySource.bd49cb38-6f42-479a-b256-d6753b7717e4" xml:space="preserve"><value>B4DD249C0C47A9E994CF06DB7B2919216404DFD0C936A80A31181B79BAF162C3</value></data>
+  <data name="Spells.Summary.1ddf48f9-8fd3-4c47-a8d7-5ff5770a863c" xml:space="preserve"><value>Injures only Awakened or dual-natured beings and spirits.</value></data>
+  <data name="Spells.SummarySource.1ddf48f9-8fd3-4c47-a8d7-5ff5770a863c" xml:space="preserve"><value>00C4D65E96B1DDCE9D81F14413CD1AEB6F482C7881E29F1A0A85FA8E765337FC</value></data>
+  <data name="Spells.Summary.de6a72c9-d70f-4bec-a5ef-232a78526707" xml:space="preserve"><value>Launches a bouncing elemental explosive; its blast can hit nearby allies.</value></data>
+  <data name="Spells.SummarySource.de6a72c9-d70f-4bec-a5ef-232a78526707" xml:space="preserve"><value>4CDE661FAD656363186AA32AB852AC428B62C1E2D9A3458F9F62ADAEFEB47469</value></data>
+  <data name="Spells.Summary.79fb3fcb-9cc0-4993-8594-badace575372" xml:space="preserve"><value>Sunlight deals Physical damage to sunlight-allergic targets, weaker Stun to others; glare can hinder attacks.</value></data>
+  <data name="Spells.SummarySource.79fb3fcb-9cc0-4993-8594-badace575372" xml:space="preserve"><value>D26575996CBCB50624657067926A0844DFA1FC4E64141EC4CBC04D89D03578C5</value></data>
+  <data name="Spells.Summary.aace66b8-a856-461f-9506-f0d7c05da1ba" xml:space="preserve"><value>Lets the caster experience all of the target's senses.</value></data>
+  <data name="Spells.SummarySource.aace66b8-a856-461f-9506-f0d7c05da1ba" xml:space="preserve"><value>617DE70D3976417DA9DF1C2B962534F75EA340085AC40F39840E89687D78AB74</value></data>
+  <data name="Spells.Summary.25679580-3324-44a0-ba31-d6013f1cf372" xml:space="preserve"><value>Captures a room for viewing from different angles; covered text stays hidden.</value></data>
+  <data name="Spells.SummarySource.25679580-3324-44a0-ba31-d6013f1cf372" xml:space="preserve"><value>5FDAB05E41BC8E3E4291663788D0D3E74228C301BA40E8B533A5400535E24A5E</value></data>
+  <data name="Spells.Summary.2d776604-c664-452b-bb7b-0ff5d6468c57" xml:space="preserve"><value>Detects nearby castings that use the same secret formula.</value></data>
+  <data name="Spells.SummarySource.2d776604-c664-452b-bb7b-0ff5d6468c57" xml:space="preserve"><value>846F6950A869B509B128C797746C0C5470F70D5D9717FA847E0B2C7745E05238</value></data>
+  <data name="Spells.Summary.40f96beb-53d7-43cb-b345-b4f4ffb1151c" xml:space="preserve"><value>Sends one-way thoughts to nearby minds, not just allies.</value></data>
+  <data name="Spells.SummarySource.40f96beb-53d7-43cb-b345-b4f4ffb1151c" xml:space="preserve"><value>166F7402BD60CA70B3A83FB4CC1DCC89A28E1F9AE5330276C748A3B3EFC5381C</value></data>
+  <data name="Spells.Summary.af1681a1-b511-42da-9a8b-2bd26f3a08ca" xml:space="preserve"><value>Sends one-way thoughts across an extended area, not just to allies.</value></data>
+  <data name="Spells.SummarySource.af1681a1-b511-42da-9a8b-2bd26f3a08ca" xml:space="preserve"><value>E2904E4B95AABA913EF7A3EDEEE3B5DA38813EA53D9171572C866938F68E9E26</value></data>
+  <data name="Spells.Summary.ef4204e5-d39c-41a1-9485-82aeb7ea499b" xml:space="preserve"><value>Lets the caster borrow one specified sense from the target.</value></data>
+  <data name="Spells.SummarySource.ef4204e5-d39c-41a1-9485-82aeb7ea499b" xml:space="preserve"><value>3AFBC4D2E423A2A061A1115BDEC51E65C57E41132BED83394BEB856208D648D8</value></data>
+  <data name="Spells.Summary.8074c89c-172d-413a-a8a3-bc39b35f5e73" xml:space="preserve"><value>Transforms blood into harmful fluid, causing diminishing Physical damage over several turns.</value></data>
+  <data name="Spells.SummarySource.8074c89c-172d-413a-a8a3-bc39b35f5e73" xml:space="preserve"><value>7BCE5768A9DF8DBBFF77747FD4609B514F5F0ED702197338A36981A16210E434</value></data>
+  <data name="Spells.Summary.5233fa7b-cd0c-49e0-9e8b-4b587036f8ec" xml:space="preserve"><value>Improves radiation resistance without repairing existing injuries.</value></data>
+  <data name="Spells.SummarySource.5233fa7b-cd0c-49e0-9e8b-4b587036f8ec" xml:space="preserve"><value>EDB6177B598D0319325277088ED20A50B1BFA62AE93D05B3EEC450CC6E468951</value></data>
+  <data name="Spells.Summary.f626c8cc-4798-4b93-9cde-048a55a4682d" xml:space="preserve"><value>Inflicts nausea and disorientation while sustained.</value></data>
+  <data name="Spells.SummarySource.f626c8cc-4798-4b93-9cde-048a55a4682d" xml:space="preserve"><value>89A79E3DE270E22B5107AF056550D91265D5ED349C57809449AE73B4FF965574</value></data>
+  <data name="Spells.Summary.49c69c23-0416-4022-b5b0-685284da94d7" xml:space="preserve"><value>Raises Strength only for HMHVV-infected subjects.</value></data>
+  <data name="Spells.SummarySource.49c69c23-0416-4022-b5b0-685284da94d7" xml:space="preserve"><value>4E36C403DEAA563C2CD0269D7FE5E1657254DE95435381F0CBD39D7AC63FF69A</value></data>
+  <data name="Spells.Summary.f9864d0e-ab96-48cf-8947-a4834577dc97" xml:space="preserve"><value>Improves appearance; the Social limit and healing assistance improve for one day.</value></data>
+  <data name="Spells.SummarySource.f9864d0e-ab96-48cf-8947-a4834577dc97" xml:space="preserve"><value>5EB91FEBCE11F2E3BD39B2897768E213B274944AD487478C3D32B4A54E4D8B5D</value></data>
+  <data name="Spells.Summary.489c0eea-5d18-4e35-ba74-1d76fae320b5" xml:space="preserve"><value>Relieves dehydration fatigue and counters Dehydrate.</value></data>
+  <data name="Spells.SummarySource.489c0eea-5d18-4e35-ba74-1d76fae320b5" xml:space="preserve"><value>17D8E6F22173FF9CAE8A59EA8069849C4CF9E9CE78F3BC9FE0E7585183F73E1B</value></data>
+  <data name="Spells.Summary.2d3ce706-8baa-4e05-a9b4-51a811fbc647" xml:space="preserve"><value>Inflicts an ordinary disease, never a magical infection.</value></data>
+  <data name="Spells.SummarySource.2d3ce706-8baa-4e05-a9b4-51a811fbc647" xml:space="preserve"><value>62E1EB8F2AB8CB95F543E6B38A1AB9306A669BBE5B9F02FE86CF9C035ABF2E55</value></data>
+  <data name="Spells.Summary.aef23c55-c9b6-4534-8c11-41593b4500c0" xml:space="preserve"><value>Causes incapacitating nausea without direct damage.</value></data>
+  <data name="Spells.SummarySource.aef23c55-c9b6-4534-8c11-41593b4500c0" xml:space="preserve"><value>2888603500085C616D1792CB5D619D39233B5273B50E42B31A35CCABB3F019EF</value></data>
+  <data name="Spells.Summary.f3f5512d-b323-421d-ac12-9eb7403d4160" xml:space="preserve"><value>Temporarily eases nausea; symptoms can return when the spell ends.</value></data>
+  <data name="Spells.SummarySource.f3f5512d-b323-421d-ac12-9eb7403d4160" xml:space="preserve"><value>8361B6E46E49E5631C238CB973DBFAF122DD8BE599A18672C6737CEBE4773585</value></data>
+  <data name="Spells.Summary.59933987-6438-40fb-8325-268959b888c3" xml:space="preserve"><value>Maintains body warmth, without protection against cold attacks.</value></data>
+  <data name="Spells.SummarySource.59933987-6438-40fb-8325-268959b888c3" xml:space="preserve"><value>6218E6FAF189A4055CC020FBC5E6659D4CBDC71AF4F2A9EB0291854565572446</value></data>
+  <data name="Spells.Summary.d9b376d9-f826-4138-9c8d-e0dcf1a0ae4c" xml:space="preserve"><value>Destroys living tissue; magical Heal cannot repair it.</value></data>
+  <data name="Spells.SummarySource.d9b376d9-f826-4138-9c8d-e0dcf1a0ae4c" xml:space="preserve"><value>E5FD1CDEF475560FE40ED4E1D5E46F265080DF7353F44807EE9BD8B847FECD92</value></data>
+  <data name="Spells.Summary.8e0cbba7-efa2-4dca-99e4-9d0eb1decf13" xml:space="preserve"><value>Boosts movement and Initiative only for nearby HMHVV-infected beings.</value></data>
+  <data name="Spells.SummarySource.8e0cbba7-efa2-4dca-99e4-9d0eb1decf13" xml:space="preserve"><value>4317642ACE874FAF89AA86F93BDC84FEDC7510752094C50FB4DE883BC0E48212</value></data>
+  <data name="Spells.Summary.56a474f0-142f-41cf-a130-feb26b96e3b0" xml:space="preserve"><value>Disguises an existing astral image; cannot create a new aura.</value></data>
+  <data name="Spells.SummarySource.56a474f0-142f-41cf-a130-feb26b96e3b0" xml:space="preserve"><value>903256E95C764264E998E806CF94757816452C3BA6BD10672E5008312983DD69</value></data>
+  <data name="Spells.Summary.b6c1c8d6-da46-41a7-8693-6f582adf50c1" xml:space="preserve"><value>Disguises existing astral images across an area; cannot create new auras.</value></data>
+  <data name="Spells.SummarySource.b6c1c8d6-da46-41a7-8693-6f582adf50c1" xml:space="preserve"><value>287F909A7E787AB0C48FBE2451A3FFFA5A125CD4F061626EAB71B35216F04ECA</value></data>
+  <data name="Spells.Summary.82b6ce21-1b48-485c-b856-03513a22f260" xml:space="preserve"><value>Improves Sneaking only for an HMHVV-infected caster.</value></data>
+  <data name="Spells.SummarySource.82b6ce21-1b48-485c-b856-03513a22f260" xml:space="preserve"><value>D5930495B61B58F81C8389ED711F82A4E198D4816CE26A5D2B0F23CA00EB31A2</value></data>
+  <data name="Spells.Summary.df65b87a-e386-46f5-b8ad-21ce4b08dc09" xml:space="preserve"><value>Allows breathing underwater or while buried.</value></data>
+  <data name="Spells.SummarySource.df65b87a-e386-46f5-b8ad-21ce4b08dc09" xml:space="preserve"><value>390A1E7BC400E15AF2AD3460D4B65646500B9A489827AE20D85C513268D305A9</value></data>
+  <data name="Spells.Summary.f7354160-896e-40ab-91e6-673af95cf516" xml:space="preserve"><value>Rewrites one memory; the original can eventually return.</value></data>
+  <data name="Spells.SummarySource.f7354160-896e-40ab-91e6-673af95cf516" xml:space="preserve"><value>952B0526297491266E70D05A47E61812B90D4CD570A5C3449D7A51134C75D3D7</value></data>
+  <data name="Spells.Summary.31217b77-f149-403d-91bb-cd24542051b2" xml:space="preserve"><value>Warms or cools the surroundings in an area.</value></data>
+  <data name="Spells.SummarySource.31217b77-f149-403d-91bb-cd24542051b2" xml:space="preserve"><value>9A0161325958D5151869A41CB80F7D7D1433BF2640D91AC85A79B2313DD80D6D</value></data>
+  <data name="Spells.Summary.419f63a8-534a-4971-9481-0b44d0acd9e3" xml:space="preserve"><value>Provides armor against astral combat, not physical attacks.</value></data>
+  <data name="Spells.SummarySource.419f63a8-534a-4971-9481-0b44d0acd9e3" xml:space="preserve"><value>AAF7F73C5B3B12B5076DF7435405CD3D8C4A104BAB86DA7E006CD16EAC55E542</value></data>
+  <data name="Spells.Summary.8917fc0d-649a-4231-bae6-7b34ce417263" xml:space="preserve"><value>Induces one strong emotion; opposing actions become harder.</value></data>
+  <data name="Spells.SummarySource.8917fc0d-649a-4231-bae6-7b34ce417263" xml:space="preserve"><value>F7D14905799F24BA3BDABF3C26589B6EF7BCA4BF8A7B075CA48ACF714CA56955</value></data>
+  <data name="Spells.Summary.6befcc1b-9a2b-4a52-a45e-1de1e38d90e7" xml:space="preserve"><value>Imposes the same emotion throughout an area; opposing actions become harder.</value></data>
+  <data name="Spells.SummarySource.6befcc1b-9a2b-4a52-a45e-1de1e38d90e7" xml:space="preserve"><value>3CB6083AB3A7C42E04D68A036969A475314BC2927AADC47B6BABDAD1637FE70E</value></data>
+  <data name="Spells.Summary.e6799bf0-ab6f-4adf-8591-f3a0acd123c0" xml:space="preserve"><value>Limits cooling from sweat, helping survival in arctic conditions.</value></data>
+  <data name="Spells.SummarySource.e6799bf0-ab6f-4adf-8591-f3a0acd123c0" xml:space="preserve"><value>2974D6FF1DF36514207807E3B2B458A3F4EC1CDB8A3B8E02554FF5C848E229D5</value></data>
+  <data name="Spells.Summary.c4758634-2c63-4b77-a439-51811b326e8b" xml:space="preserve"><value>Makes solid material transparent, allowing sight through it.</value></data>
+  <data name="Spells.SummarySource.c4758634-2c63-4b77-a439-51811b326e8b" xml:space="preserve"><value>CD510CDE7CE1EF5285F226F1829DAB236340869CEF6615C106092E8E1EBDF266</value></data>
+  <data name="Spells.Summary.8dc8b22e-fe26-4b9f-b816-c4b6b3e1a813" xml:space="preserve"><value>Insulates a fixed area against moderate temperature differences, without changing objects.</value></data>
+  <data name="Spells.SummarySource.8dc8b22e-fe26-4b9f-b816-c4b6b3e1a813" xml:space="preserve"><value>21976DD66CB6438450C4ABDFAFFE7547D6E26296A3AC3FDCDCAF1AE8242AD66B</value></data>
+  <data name="Spells.Summary.bd2a6ecf-75e8-4948-a939-430c3ca78002" xml:space="preserve"><value>Creates a damaging wall combining fire and water effects.</value></data>
+  <data name="Spells.SummarySource.bd2a6ecf-75e8-4948-a939-430c3ca78002" xml:space="preserve"><value>5487479992B3FF20AB368845330CAAD86DD249D871DB3DA68DD248352FE1A459</value></data>
+  <data name="Spells.Summary.c6995b10-5fff-44c2-8182-0a0a1b30cc6b" xml:space="preserve"><value>Turns flesh to stone; the unconscious subject can still be injured.</value></data>
+  <data name="Spells.SummarySource.c6995b10-5fff-44c2-8182-0a0a1b30cc6b" xml:space="preserve"><value>4535668B362178A9FF8C14F778DFEC15733F10424A27459220F1472C0D160308</value></data>
+  <data name="Spells.Summary.65a02e9c-6472-406e-b5d1-17ec184c8ed2" xml:space="preserve"><value>Briefly interrupts radio, erases standard RFID tags, and may damage older non-optical electronics.</value></data>
+  <data name="Spells.SummarySource.65a02e9c-6472-406e-b5d1-17ec184c8ed2" xml:space="preserve"><value>EA0B8456163B0E76AE151F37F7B312D5921F642EE9CE7A363F6A9DD0A22F17D5</value></data>
+  <data name="Spells.Summary.48f38481-6ece-4157-8594-d49a86eeb91a" xml:space="preserve"><value>Reduces radiation harm to the protected target.</value></data>
+  <data name="Spells.SummarySource.48f38481-6ece-4157-8594-d49a86eeb91a" xml:space="preserve"><value>59077AA389308A5EA276903B50508DCBAB5EACF799C504DA6EBF9425D8F802A8</value></data>
+  <data name="Spells.Summary.8689fa5c-5965-4230-9706-245be36b242c" xml:space="preserve"><value>Reduces radiation harm for everyone inside a protective dome.</value></data>
+  <data name="Spells.SummarySource.8689fa5c-5965-4230-9706-245be36b242c" xml:space="preserve"><value>8DDE0018B9C941951A7115E947E96C8A8BA528EA342488F9FFBD2B26F43A593F</value></data>
+  <data name="Spells.Range.S" xml:space="preserve"><value>Affects the caster.</value></data>
+  <data name="Spells.Range.S (A)" xml:space="preserve"><value>Area centered on the caster.</value></data>
 </root>

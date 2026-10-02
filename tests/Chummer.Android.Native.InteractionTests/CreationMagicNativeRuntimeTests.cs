@@ -72,7 +72,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 215, $"Expected 215 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 256, $"Expected 256 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -199,6 +199,33 @@ internal static class CreationMagicNativeRuntimeTests
                 Require(grimoireCombat.Length + grimoireDetection.Length + grimoireHealth.Length
                     + grimoireIllusion.Length + grimoireManipulation.Length == 113,
                     "All 113 ordinary Street Grimoire spells need effect summaries; rituals are separate.");
+                var shadowSpells = authority.Spells.Where(spell => spell.SourceBook == "SSP" && spell.Category != "Rituals").ToArray();
+                Require(shadowSpells.Length == 41
+                    && shadowSpells.Count(spell => spell.Category == "Combat") == 6
+                    && shadowSpells.Count(spell => spell.Category == "Detection") == 6
+                    && shadowSpells.Count(spell => spell.Category == "Health") == 12
+                    && shadowSpells.Count(spell => spell.Category == "Illusion") == 3
+                    && shadowSpells.Count(spell => spell.Category == "Manipulation") == 14,
+                    "Expected all 41 ordinary Shadow Spells definitions; rituals remain separate.");
+                foreach (var spell in shadowSpells)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && !summary.Contains("Damage: 0."),
+                        "Shadow Spells help lacks its own exact-source effect: " + spell.Name + "/" + locale);
+                    foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
+                    {
+                        string key = field == "Range" && spell.Category == "Detection" && xml.Element(element)!.Value == "T"
+                            ? "Spells.Detection.Touch" : "Spells." + field + "." + xml.Element(element)!.Value;
+                        string expected = CreationFlowStrings.Get(key, "missing");
+                        Require(expected != "missing" && summary.Contains(expected),
+                            "Shadow Spells help lost its localized Core profile: " + spell.Name + "/" + field + "/" + locale);
+                    }
+                    Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
+                        "Shadow Spells help replaced accepted Drain: " + spell.Name + "/" + locale);
+                }
                 var supplementSpells = authority.Spells.Where(spell =>
                     HasNewSupplementSummary(spell.SourceBook, spell.Category, spell.Name)).ToArray();
                 Require(supplementSpells.Length == 31
@@ -325,8 +352,51 @@ internal static class CreationMagicNativeRuntimeTests
                 && SpellHelp("Spirit Zapper", "SG").StartsWith("Barrier against spirits and their powers", StringComparison.Ordinal)
                 && SpellHelp("Offensive Mana Barrier", "SG").Contains("injures spirits, dual beings and astral forms")
                 && SpellHelp("Pulse", "SG").Contains("RFID tags")
-                && !SpellHelp("Pulse", "SSP").Contains("RFID tags"),
+                && SpellHelp("Pulse", "SSP").Contains("standard RFID tags")
+                && SpellHelp("Pulse", "SG").Contains("Drain: F+3")
+                && SpellHelp("Pulse", "SSP").Contains("Drain: F-4"),
                 "Defensive/offensive barriers and same-name Pulse definitions must not borrow unsupported effects.");
+            Require(SpellHelp("Passenger", "SSP").Contains("all of the target's senses")
+                && SpellHelp("Passenger", "SSP").Contains("Must be sustained.")
+                && SpellHelp("Passenger", "SSP").Contains("Drain: F (F = Force).")
+                && SpellHelp("Inflict Disease", "SSP").Contains("never a magical infection")
+                && SpellHelp("Inflict Disease", "SSP").Contains("Mana spell.")
+                && SpellHelp("Inflict Disease", "SSP").Contains("Becomes permanent after completion.")
+                && SpellHelp("Inflict Disease", "SSP").Contains("Drain: F-3")
+                && SpellHelp("Secret Handshake", "SSP").Contains("Physical spell."),
+                "Independently authored effects must not import another printing's numeric/type/duration profile.");
+            Require(SpellHelp("Sunbeam", "SSP").Contains("sunlight-allergic")
+                && SpellHelp("Sunbeam", "SSP").Contains("weaker Stun")
+                && SpellHelp("Flame Burst", "SSP").Contains("can burn allies")
+                && SpellHelp("Flame Burst", "SSP").Contains("Area centered on the caster.")
+                && SpellHelp("Chill", "SSP").Contains("lowers Initiative")
+                && SpellHelp("Frigid", "SSP").Contains("Area within line of sight."),
+                "Combat summaries must retain conditional damage, friendly-fire and exact area limits.");
+            Require(new[] { "Ghoulish Strength", "Vampiric Speed", "Vampiric Stealth" }
+                    .All(name => SpellHelp(name, "SSP").Contains("only") && SpellHelp(name, "SSP").Contains("HMHVV-infected"))
+                && SpellHelp("Vampiric Stealth", "SSP").Contains("Affects the caster.")
+                && SpellHelp("Vampiric Speed", "SSP").Contains("Area centered on the caster.")
+                && SpellHelp("Decontamination", "SSP").Contains("without repairing existing injuries")
+                && SpellHelp("Alleviate Nausea", "SSP").Contains("symptoms can return")
+                && SpellHelp("Personal Warmth", "SSP").Contains("without protection against cold attacks")
+                && SpellHelp("Rot", "SSP").Contains("Heal cannot repair"),
+                "Infected-only bonuses and symptom relief must not promise universal benefits or injury healing.");
+            Require(SpellHelp("Broadcast", "SSP").Contains("one-way")
+                && SpellHelp("Broadcast", "SSP").Contains("not just allies")
+                && SpellHelp("Sending", "SSP").Contains("Sensing: extended area.")
+                && SpellHelp("False Impression", "SSP").Contains("cannot create a new aura")
+                && SpellHelp("Manascape", "SSP").Contains("cannot create new auras")
+                && SpellHelp("Recorded Room", "SSP").Contains("covered text stays hidden"),
+                "Perception and illusion help must preserve their scope instead of inventing unrestricted sensing.");
+            Require(SpellHelp("Air Filter", "SSP").Contains("underwater or while buried")
+                && SpellHelp("Air Filter", "SSP").Contains("Mana spell.")
+                && SpellHelp("Evaporate", "SSP").Contains("cooling from sweat")
+                && SpellHelp("Astral Armor", "SSP").Contains("not physical attacks")
+                && SpellHelp("Insulate", "SSP").Contains("fixed area")
+                && SpellHelp("Insulate", "SSP").Contains("moderate temperature differences")
+                && SpellHelp("Petrify", "SSP").Contains("can still be injured")
+                && SpellHelp("Alter Memory", "SSP").Contains("original can eventually return"),
+                "Environmental, astral, bodily and memory effects must retain their practical limitations.");
             Require(SpellHelp("Hibernate").Contains("does not maintain unconsciousness")
                 && SpellHelp("Nutrition").Contains("risks addiction")
                 && SpellHelp("Intoxication").Contains("drunkenness and fatigue")
