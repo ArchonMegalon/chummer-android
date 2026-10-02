@@ -9,6 +9,28 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationMagicResonanceSourceContractTests(unittest.TestCase):
+    def test_authored_spell_effects_remain_short_in_every_locale(self) -> None:
+        # Editorial guard only. Length does not establish original authorship
+        # or copyright clearance; wording still needs human/editorial review.
+        expected_keys = None
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            rows = [row for row in ET.parse(path).getroot().findall("data")
+                    if row.attrib["name"].startswith("Spells.Summary.")]
+            keys = [row.attrib["name"] for row in rows]
+            self.assertTrue(keys, locale)
+            self.assertEqual(len(keys), len(set(keys)), locale)
+            if expected_keys is None:
+                expected_keys = set(keys)
+            self.assertEqual(expected_keys, set(keys), locale)
+            for row in rows:
+                with self.subTest(locale=locale, key=row.attrib["name"]):
+                    summary = row.findtext("value") or ""
+                    self.assertTrue(summary.strip())
+                    self.assertEqual(summary, " ".join(summary.split()))
+                    self.assertLessEqual(len(summary.split()), 25)
+                    self.assertLessEqual(len(summary), 160)
+
     def test_save_feedback_has_short_actions_and_translated_detail(self) -> None:
         for locale in ("", ".de", ".es"):
             path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
