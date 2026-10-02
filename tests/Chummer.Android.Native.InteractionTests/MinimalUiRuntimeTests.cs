@@ -91,6 +91,36 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Focused Concentration", ["one spell or complex form","up to this quality's rating","sustaining penalty","Drain and Fading still apply"],
+            ["einen Zauber oder eine komplexe Form","bis zur Vorteilsstufe","Aufrechterhaltungsabzug","Entzug und Schwund bleiben"],
+            ["un hechizo o forma compleja","hasta el nivel","mantenimiento","Drenaje y Desvanecimiento"]),
+        ("Outdoorsman", ["Outdoors","natural environments","without stacking","urban Perception and Survival"],
+            ["Naturproben","natürlichen Umgebungen","ohne Geländeboni zu stapeln","Wahrnehmung und Überleben in Städten"],
+            ["grupo Supervivencia","entornos naturales","sin acumular","Percepción y Supervivencia en ciudades"]),
+        ("Did You Just Call Me Dumb?", ["Social tests","critical glitches","even with hits","ordinary failed rolls","non-social"],
+            ["sozialen Proben","mit Erfolgen kritisch","gewöhnlich misslungene Würfe","nichtsoziale"],
+            ["pifias sociales","críticas","incluso con éxitos","fallos normales","no sociales"]),
+        ("Simsense Vertigo", ["AR, VR and simsense","tests using those interfaces","smartlinks, simrigs and image links"],
+            ["AR, VR und Simsinn","Proben bei ihrer Nutzung","Smartlinks, Simrigs und Bildverbindungen"],
+            ["RA, RV y simsense","pruebas que los usan","smartlinks, simrigs y enlaces de imagen"]),
+        ("Gifted Healer", ["one task","Stabilization, Diagnosis or Treatment","optional advanced","mundane or magical","Not repeatable"],
+            ["eine Aufgabe","Stabilisierung, Diagnose oder Behandlung","optionalen erweiterten","weltlicher oder magischer","Nicht mehrfach"],
+            ["una tarea","estabilización, diagnóstico o tratamiento","avanzadas opcionales","mundana o mágica","No repetible"]),
+        ("Combat Junkie", ["Under stress","plans go wrong","start a fight","requires a test"],
+            ["Stress","unerwarteten Planänderungen","Probe","Drang zur Gewalt"],
+            ["estrés","imprevistos en el plan","iniciar una pelea","requiere una prueba"]),
+        ("Poor Link", ["harder to seal","easier to resist","including beneficial","does not affect ordinary spells"],
+            ["Erschwert das Versiegeln","erleichtert den Widerstand","hilfreichen Ritualen","gewöhnliche Zauber bleiben unverändert"],
+            ["Dificulta sellar","facilita resistirlos","incluidos los beneficiosos","no afecta a hechizos ordinarios"]),
+        ("Dealer Connection", ["one chosen vehicle class","once per class","Availability restrictions and price adjustments"],
+            ["gewählten Fahrzeugklasse","einmal je Klasse","Verfügbarkeitsbeschränkungen","Preisanpassungen"],
+            ["clase de vehículo elegida","una vez por clase","restricciones de Disponibilidad","ajustes de precio"]),
+        ("Codeblock", ["one chosen","realistically used","requires a test","other Matrix actions are unaffected"],
+            ["eine gewählte","mit Probe","tatsächlich nutzen würdest","andere Matrixhandlungen bleiben unverändert"],
+            ["una acción matricial elegida","usarías realmente","requiere prueba","demás acciones de la Matriz no cambian"]),
+        ("Astral Beacon", ["astral signatures","last longer","Assensing","requires Magic","without changing","dice pool"],
+            ["astralen Signaturen","halten länger","askennen","Magie voraus","nicht den Würfelpool"],
+            ["firmas astrales","duran más","Percepción Astral","requiere Magia","sin cambiar los dados"]),
         ("Metagenic Improvement (Body)", ["Body", "SURGE", "minimum and maximum", "by one"],
             ["Konstitution", "SURGE", "Minimum und Maximum", "um eins"],
             ["Constitución", "SURGE", "mínimo y máximo", "en uno"]),
@@ -869,7 +899,7 @@ internal static partial class AfterRunAuthorityHarness
                         "A conditional quality lost its exception or limitation: " + rule.Name);
                 foreach (var rule in new[] { (Name: "Tattoo Magic", Numbers: "2"),
                     (Name: "Spirit Champion", Numbers: "5,+1,20,+1"), (Name: "Spirit Pariah", Numbers: "5,30,1"),
-                    (Name: "Gifted Healer", Numbers: "+1"),
+                    (Name: "Gifted Healer", Numbers: ""),
                     (Name: "Strive For Perfection", Numbers: ""), (Name: "Barrens Rat", Numbers: "−1"),
                     (Name: "Elemental Focus", Numbers: "+2"), (Name: "Poisoner", Numbers: "+1") })
                 {
@@ -894,13 +924,13 @@ internal static partial class AfterRunAuthorityHarness
                     "Short Aged prose must retain the exact per-level values in the supporting source effects.");
                 var specialistScope = locale switch
                 {
-                    "de-AT" => (Tattoo: "weder diese Fertigkeiten oder Metamagien", Healer: "Nur eine Aufgabe",
+                    "de-AT" => (Tattoo: "weder diese Fertigkeiten oder Metamagien", Healer: "eine Aufgabe",
                         Aged: "Attributmaxima", Perfection: "außer bei Deckungsfeuer", Element: "Sekundäreffekte",
                         Conceal: "halbe Geschicklichkeit aufgerundet", Poison: "Giftresistenz steigt dadurch nicht"),
-                    "es-MX" => (Tattoo: "no otorga esas habilidades, metamagias", Healer: "Solo una tarea",
+                    "es-MX" => (Tattoo: "no otorga esas habilidades, metamagias", Healer: "una tarea",
                         Aged: "máximos naturales", Perfection: "salvo en fuego de cobertura", Element: "efectos secundarios",
                         Conceal: "mitad de tu Agilidad redondeada hacia arriba", Poison: "No aumenta tu resistencia"),
-                    _ => (Tattoo: "does not grant those skills or metamagics", Healer: "Choose only one task",
+                    _ => (Tattoo: "does not grant those skills or metamagics", Healer: "one task",
                         Aged: "natural physical-attribute maxima", Perfection: "except for covering fire", Element: "secondary effects",
                         Conceal: "half your Agility rounded up", Poison: "does not increase your resistance")
                 };
@@ -924,8 +954,8 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Brand Loyalty (Product)", Numbers: "1,1"), (Name: "Sharpshooter", Numbers: "2,1"),
                     (Name: "Radiation Sponge", Numbers: ""), (Name: "Rad-Tolerant", Numbers: "1"),
                     (Name: "Spacer", Numbers: "1"), (Name: "Earther", Numbers: "2"),
-                    (Name: "Combat Junkie", Numbers: "4,4"), (Name: "Chaser", Numbers: "2"),
-                    (Name: "Dealer Connection", Numbers: "10,4"), (Name: "Grease Monkey", Numbers: "1"),
+                    (Name: "Combat Junkie", Numbers: ""), (Name: "Chaser", Numbers: "2"),
+                    (Name: "Dealer Connection", Numbers: ""), (Name: "Grease Monkey", Numbers: "1"),
                     (Name: "Speed Demon", Numbers: "1,3,4"), (Name: "Stunt Driver", Numbers: "2"),
                     (Name: "Subtle Pilot", Numbers: ""), (Name: "Motion Sickness", Numbers: ""),
                     (Name: "Too Much Data", Numbers: "4,2"), (Name: "Accident Prone", Numbers: "2"),
@@ -1417,7 +1447,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Perfect Time").Contains("Free Action each Action Phase")
                 && Effect("Perfect Time").Contains("not an extra attack"),
                 "Night Vision needs its glare/loss drawbacks, and Perfect Time must not grant a full attack action.");
-            Require(Effect("Poor Link").Contains("Both effects apply to friendly rituals too")
+            Require(Effect("Poor Link").Contains("including beneficial rituals")
                 && Effect("Privileged Family Name").Contains("minor local figures but makes you identifiable")
                 && Effect("Privileged Family Name").Contains("national or full corporate SIN")
                 && Effect("Solid Rep").Contains("improves by 1")
@@ -1512,7 +1542,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(Effect($"Creature of Comfort ({tier})").Contains($"Below {tier} Lifestyle")
                     && Effect($"Creature of Comfort ({tier})").Contains($"per tier below {tier}"),
                     "Each comfort variant needs its own lifestyle baseline, not an accumulating per-day modifier.");
-            Require(Effect("Did You Just Call Me Dumb?").Contains("critical glitch, even if the roll also has hits")
+            Require(Effect("Did You Just Call Me Dumb?").Contains("critical glitches, even with hits")
                 && Effect("Driven").Contains("temporarily strengthens Willpower")
                 && Effect("Driven").Contains("endangers allies")
                 && Effect("Emotional Attachment").Contains("permanent loss temporarily impairs related tests")
@@ -1897,7 +1927,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("City Slicker").Contains("other than Survival")
                 && Effect("City Slicker").Contains("general one-die penalty")
                 && Effect("City Slicker").Contains("Outside urban areas, Perception loses one die")
-                && Effect("Outdoorsman").Contains("alternative environments, not six bonuses added together"),
+                && Effect("Outdoorsman").Contains("without stacking terrain bonuses"),
                 "Environmental bonuses must retain their exceptions and penalties, not stack alternative conditions.");
             Require(Effect("Vehicle Empathy").Contains("except Gunnery")
                 && Effect("Water Sprite").Contains("two dice to Diving tests and two dice to Swimming tests")
@@ -1931,9 +1961,9 @@ internal static partial class AfterRunAuthorityHarness
                 && Describe("<publicawareness>2</publicawareness>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
                 && Describe("<astralreputation>1</astralreputation><selectskill />").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Reputation side effects must remain visible but must not masquerade as the full quality rules.");
-            Require(Effect("Astral Beacon").Contains("linger twice as long")
-                && Effect("Astral Beacon").Contains("one fewer hit")
-                && Effect("Astral Beacon").Contains("not their dice pool")
+            Require(Effect("Astral Beacon").Contains("last longer")
+                && Effect("Astral Beacon").Contains("easier to read with Assensing")
+                && Effect("Astral Beacon").Contains("without changing the observer's dice pool")
                 && Effect("Distinctive Style").Contains("easier to remember, identify and track")
                 && Effect("Distinctive Style").Contains("Astral searches are unaffected"),
                 "Astral and physical identifiability must keep their scopes and thresholds distinct from dice modifiers.");
@@ -1948,8 +1978,8 @@ internal static partial class AfterRunAuthorityHarness
                     Effect(name).Contains("Edge refresh") && Effect(name).Contains("normal recovery"))
                 && Effect("Insomnia (Basic)") != Effect("Insomnia (Full)"),
                 "The two sleep-related drawbacks must distinguish slower recovery from a failed recovery attempt.");
-            Require(Effect("Codeblock").Contains("one Matrix action that requires a test")
-                && Effect("Codeblock").Contains("Other Matrix actions are unaffected")
+            Require(Effect("Codeblock").Contains("one chosen, realistically used Matrix action that requires a test")
+                && Effect("Codeblock").Contains("other Matrix actions are unaffected")
                 && Effect("Simsense Vertigo").Contains("smartlinks, simrigs and image links")
                 && Effect("Low Pain Tolerance").Contains("Physical and Stun injuries impose wound penalties sooner")
                 && Effect("Low Pain Tolerance").Contains("without reducing either condition monitor")
@@ -2057,8 +2087,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Blandness").Contains("standing out removes the benefit"),
                 "Concealment explanations must retain their different scopes and exceptions.");
             Require(Effect("Focused Concentration").Contains("one spell or complex form")
-                && Effect("Focused Concentration").Contains("does not exceed this quality's rating")
-                && Effect("Focused Concentration").Contains("does not waive Drain or Fading")
+                && Effect("Focused Concentration").Contains("up to this quality's rating")
+                && Effect("Focused Concentration").Contains("Drain and Fading still apply")
                 && Effect("Guts").Contains("resisting fear or intimidation")
                 && Effect("Guts").Contains("does not make you immune"),
                 "Mental-discipline help must not grant unlimited sustaining, fear immunity or attack bonuses.");
