@@ -10,7 +10,7 @@ public static class AndroidBundledContentMaterializer
     internal const string PackagedContentRoot = "chummer-content";
     internal const string ManifestAssetPath = $"{PackagedContentRoot}/manifest.json";
     internal const string ManifestSchema = "chummer.android.content-bundle/v1";
-    internal const string CanonicalCoreRevision = "0d021aae7cb24870d3b3e28f28082c7323c9d1ea";
+    internal const string CanonicalCoreRevision = "bf392562c2c7c61404a3f1c911d800d538dff068";
     private const string MaterializedContentDirectory = "canonical-content";
 
     public static string Materialize()
