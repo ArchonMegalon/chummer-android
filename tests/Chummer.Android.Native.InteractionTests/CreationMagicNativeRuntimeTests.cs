@@ -65,7 +65,15 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 16, "Expected all sixteen reviewed spell summaries in each locale.");
+                Require(authored == 32, $"Expected 32 reviewed spell summaries; got {authored} in {locale}.");
+                var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
+                Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
+                foreach (var spell in coreCombat)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
+                        "A core combat spell still has only a numeric profile: " + spell.Name + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -82,6 +90,19 @@ internal static class CreationMagicNativeRuntimeTests
                 "Effect prose must not replace this definition's Drain with quick-start values.");
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
+            string acid = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Acid Stream"));
+            string lightning = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Lightning Bolt"));
+            string knockout = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Knockout"));
+            string stunball = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Stunball"));
+            Require(acid.StartsWith("Burns with corrosive acid.", StringComparison.Ordinal)
+                && lightning.StartsWith("Strikes with magical lightning.", StringComparison.Ordinal)
+                && fireball.StartsWith("Burns with magical flames.", StringComparison.Ordinal),
+                "Elemental spell explanations lost their distinguishing effects.");
+            Require(knockout.StartsWith("Directly stuns the target.", StringComparison.Ordinal)
+                && stunball.StartsWith("Directly stuns the target.", StringComparison.Ordinal)
+                && knockout.Contains("Requires touch.") && stunball.Contains("Area within line of sight")
+                && !knockout.Contains("Physical damage") && !stunball.Contains("Physical damage"),
+                "Shared effect prose must preserve each spell's actual range and damage type.");
             Require(JsonSerializer.Serialize(authority) == before, "Reading spell help mutated the rules catalog.");
         }
         finally { System.Globalization.CultureInfo.CurrentUICulture = previous; }

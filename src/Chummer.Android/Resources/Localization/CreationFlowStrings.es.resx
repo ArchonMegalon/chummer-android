@@ -1239,4 +1239,21 @@
   <data name="Spells.Summary.37b3d6ac-624a-42d4-bd6e-a12142dc5725" xml:space="preserve"><value>Mejora la iniciativa y añade dados de iniciativa.</value></data>
   <data name="Spells.Summary.46b12a6a-9d9d-4176-bfd6-80e8e21cb0e4" xml:space="preserve"><value>Provoca dolor ilusorio temporal.</value></data>
   <data name="Spells.Summary.5636bbee-fadd-4f5c-bf77-c15b05e8d265" xml:space="preserve"><value>Confunde al objetivo y reduce sus reservas de dados.</value></data>
+  <!-- Reviewed SR5 core combat effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.c78d91cc-fa02-48c3-a243-28823a2038ef" xml:space="preserve"><value>Quema con ácido corrosivo.</value></data>
+  <data name="Spells.Summary.87cb3685-22e8-46fa-890f-f3cfef10a71f" xml:space="preserve"><value>Quema con ácido corrosivo.</value></data>
+  <data name="Spells.Summary.10dd2924-36c6-42a3-8715-694c29c1fd48" xml:space="preserve"><value>Impacto mágico aturdidor.</value></data>
+  <data name="Spells.Summary.187b1ffe-470c-4672-ba9d-376ee1856a1c" xml:space="preserve"><value>Impacto mágico aturdidor.</value></data>
+  <data name="Spells.Summary.9baed162-5e84-4f19-9b94-d543a560c067" xml:space="preserve"><value>Hiere mediante maná.</value></data>
+  <data name="Spells.Summary.d866f612-7160-41d2-8ce9-b64262327559" xml:space="preserve"><value>Hiere mediante maná.</value></data>
+  <data name="Spells.Summary.02de7f2a-3c8e-48a5-b7d1-0bf9854271aa" xml:space="preserve"><value>Quema con llamas mágicas.</value></data>
+  <data name="Spells.Summary.9ce1e699-3c30-4184-858b-d5539935ef96" xml:space="preserve"><value>Quema con llamas mágicas.</value></data>
+  <data name="Spells.Summary.b39ec682-8409-4546-be00-7615583e6541" xml:space="preserve"><value>Golpea con rayos mágicos.</value></data>
+  <data name="Spells.Summary.9b5c1538-d66b-4b71-9953-78817aaef6e4" xml:space="preserve"><value>Golpea con rayos mágicos.</value></data>
+  <data name="Spells.Summary.92467147-ce2c-480e-b4e0-f4a269c2ad86" xml:space="preserve"><value>Daña seres u objetos.</value></data>
+  <data name="Spells.Summary.a7f17805-3e3e-4a12-8580-b9de0d7499ef" xml:space="preserve"><value>Daña seres u objetos.</value></data>
+  <data name="Spells.Summary.1e25e684-9eec-4d1a-acac-488c8c00c24f" xml:space="preserve"><value>Daña seres u objetos.</value></data>
+  <data name="Spells.Summary.6cbe13c4-ef28-43b7-9715-bccb7c153999" xml:space="preserve"><value>Aturde directamente al objetivo.</value></data>
+  <data name="Spells.Summary.47423962-6b73-4cc3-ad4e-e8d037cf9507" xml:space="preserve"><value>Aturde directamente al objetivo.</value></data>
+  <data name="Spells.Summary.e9f1e14b-1f59-46d6-9e9f-e808d7316d76" xml:space="preserve"><value>Aturde directamente al objetivo.</value></data>
 </root>

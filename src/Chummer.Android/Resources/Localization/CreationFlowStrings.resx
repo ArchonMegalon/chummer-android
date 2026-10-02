@@ -1697,4 +1697,37 @@
   <data name="Spells.SummarySource.37b3d6ac-624a-42d4-bd6e-a12142dc5725" xml:space="preserve"><value>C6C06EC4D502E9ACC9F67D393BECD4CA52D68146AB67AD23FD4E5EA7FC926E78</value></data>
   <data name="Spells.SummarySource.46b12a6a-9d9d-4176-bfd6-80e8e21cb0e4" xml:space="preserve"><value>0F6E6570EC49108A400F5465EBA799D64B3335BC4ACD714D720425489EB8A01E</value></data>
   <data name="Spells.SummarySource.5636bbee-fadd-4f5c-bf77-c15b05e8d265" xml:space="preserve"><value>CFE51BA5711EB996CAAF4BD16028F5D21B8454400CB82496F410BE577BD9B731</value></data>
+  <!-- Reviewed SR5 core combat effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.c78d91cc-fa02-48c3-a243-28823a2038ef" xml:space="preserve"><value>Burns with corrosive acid.</value></data>
+  <data name="Spells.SummarySource.c78d91cc-fa02-48c3-a243-28823a2038ef" xml:space="preserve"><value>D75D9D48FC2AB8C6E42CCF2825259E50E7E82C51A75B6FFC1E1294157435DDF5</value></data>
+  <data name="Spells.Summary.87cb3685-22e8-46fa-890f-f3cfef10a71f" xml:space="preserve"><value>Burns with corrosive acid.</value></data>
+  <data name="Spells.SummarySource.87cb3685-22e8-46fa-890f-f3cfef10a71f" xml:space="preserve"><value>88327E0A687ED501E2139FA521E89692EC40CBFDCCDF862648570EB999C801B8</value></data>
+  <data name="Spells.Summary.10dd2924-36c6-42a3-8715-694c29c1fd48" xml:space="preserve"><value>Stunning magical impact.</value></data>
+  <data name="Spells.SummarySource.10dd2924-36c6-42a3-8715-694c29c1fd48" xml:space="preserve"><value>3ECFE8D9B1AAF5B56AFCA7460C67DF80C7DEA1F723D2ECC8BCE94C77BB93A157</value></data>
+  <data name="Spells.Summary.187b1ffe-470c-4672-ba9d-376ee1856a1c" xml:space="preserve"><value>Stunning magical impact.</value></data>
+  <data name="Spells.SummarySource.187b1ffe-470c-4672-ba9d-376ee1856a1c" xml:space="preserve"><value>76E23B094CBB774855A60524CE240347ADA83C57371844C1A2384543DBD41D16</value></data>
+  <data name="Spells.Summary.9baed162-5e84-4f19-9b94-d543a560c067" xml:space="preserve"><value>Wounds through mana.</value></data>
+  <data name="Spells.SummarySource.9baed162-5e84-4f19-9b94-d543a560c067" xml:space="preserve"><value>EF1DA11B3D34E8B5BB95C98F3D5B237A4F9A6FC1DC27053F4B75175C488EAAE5</value></data>
+  <data name="Spells.Summary.d866f612-7160-41d2-8ce9-b64262327559" xml:space="preserve"><value>Wounds through mana.</value></data>
+  <data name="Spells.SummarySource.d866f612-7160-41d2-8ce9-b64262327559" xml:space="preserve"><value>BA4517567995213771D6AB47EF9AC9364F2ECFA00087B5B4DFD7F2A4B3744235</value></data>
+  <data name="Spells.Summary.02de7f2a-3c8e-48a5-b7d1-0bf9854271aa" xml:space="preserve"><value>Burns with magical flames.</value></data>
+  <data name="Spells.SummarySource.02de7f2a-3c8e-48a5-b7d1-0bf9854271aa" xml:space="preserve"><value>A5D45B8E2FF47B70464C84AE873BF1165D0CD7A0A92F907E40A2C3D3033F9C43</value></data>
+  <data name="Spells.Summary.9ce1e699-3c30-4184-858b-d5539935ef96" xml:space="preserve"><value>Burns with magical flames.</value></data>
+  <data name="Spells.SummarySource.9ce1e699-3c30-4184-858b-d5539935ef96" xml:space="preserve"><value>6C4A8899F61D33C0FBBDFB580C52B2E62EA9880B611E1ACE72925796B3C0299E</value></data>
+  <data name="Spells.Summary.b39ec682-8409-4546-be00-7615583e6541" xml:space="preserve"><value>Strikes with magical lightning.</value></data>
+  <data name="Spells.SummarySource.b39ec682-8409-4546-be00-7615583e6541" xml:space="preserve"><value>A834EFA5D08488A6B565A400DC24B425BB18F7856E61B4D33A597D6253994620</value></data>
+  <data name="Spells.Summary.9b5c1538-d66b-4b71-9953-78817aaef6e4" xml:space="preserve"><value>Strikes with magical lightning.</value></data>
+  <data name="Spells.SummarySource.9b5c1538-d66b-4b71-9953-78817aaef6e4" xml:space="preserve"><value>BA9DCEDFEC190ADDE9B4A3217EED71DDD4BD9F03D4FF8D559CF91083BCD514A2</value></data>
+  <data name="Spells.Summary.92467147-ce2c-480e-b4e0-f4a269c2ad86" xml:space="preserve"><value>Damages flesh or objects.</value></data>
+  <data name="Spells.SummarySource.92467147-ce2c-480e-b4e0-f4a269c2ad86" xml:space="preserve"><value>BEEFC95C6E7834C67DFD2295C439DDD3A5204384B1E23831FAA0711AD912E85F</value></data>
+  <data name="Spells.Summary.a7f17805-3e3e-4a12-8580-b9de0d7499ef" xml:space="preserve"><value>Damages flesh or objects.</value></data>
+  <data name="Spells.SummarySource.a7f17805-3e3e-4a12-8580-b9de0d7499ef" xml:space="preserve"><value>C7CB43B2926583C640DB54611990D93B03D97DC53A0A6450997CF911C81B116E</value></data>
+  <data name="Spells.Summary.1e25e684-9eec-4d1a-acac-488c8c00c24f" xml:space="preserve"><value>Damages flesh or objects.</value></data>
+  <data name="Spells.SummarySource.1e25e684-9eec-4d1a-acac-488c8c00c24f" xml:space="preserve"><value>16C79AF40934972DDC7873F298E573037C54D8C85CFB51A423721ED24D5CDD14</value></data>
+  <data name="Spells.Summary.6cbe13c4-ef28-43b7-9715-bccb7c153999" xml:space="preserve"><value>Directly stuns the target.</value></data>
+  <data name="Spells.SummarySource.6cbe13c4-ef28-43b7-9715-bccb7c153999" xml:space="preserve"><value>6FB815DF84A9A72EBCD96F8E9443D1A33262CB44AD0AE3A356AC83553168A7A3</value></data>
+  <data name="Spells.Summary.47423962-6b73-4cc3-ad4e-e8d037cf9507" xml:space="preserve"><value>Directly stuns the target.</value></data>
+  <data name="Spells.SummarySource.47423962-6b73-4cc3-ad4e-e8d037cf9507" xml:space="preserve"><value>F1F723F0AE1D7B2D3645754475C5C5929F6DB00C43B2797B489590363BE0D404</value></data>
+  <data name="Spells.Summary.e9f1e14b-1f59-46d6-9e9f-e808d7316d76" xml:space="preserve"><value>Directly stuns the target.</value></data>
+  <data name="Spells.SummarySource.e9f1e14b-1f59-46d6-9e9f-e808d7316d76" xml:space="preserve"><value>E2092F0AD35E56D07898ED5C6BA0FD92E99E7A2A4DC9779BAFAF0E8CCF113464</value></data>
 </root>

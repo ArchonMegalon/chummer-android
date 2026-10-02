@@ -916,8 +916,9 @@ internal static partial class AfterRunAuthorityHarness
             ((ISearchBarController)search).OnSearchButtonPressed();
         }
         if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
+        foreach (string spellName in new[] { "Levitate", "Lightning Bolt" })
         {
-            var spell = options.Single(item => item.Name == "Levitate");
+            var spell = options.Single(item => item.Name == spellName);
             Search(spell.Name);
             string help = CreationSpellInfo.Summary(CreationSpellInfo.Resolve(coordinator.State.CreationMagicResonance, spell));
             Require(MinimalVisibleText(catalog).Contains(help), "The actual spell list omitted its inline description.");
