@@ -1397,4 +1397,24 @@
   <data name="Qualities.SummarySource.ce01db25-465b-4d13-b091-055496f3a5c4" xml:space="preserve"><value>58B841674F8C34967F7EF25FE6CA82F69EC4DE0A34E114AC5CC35A5E6D89C986</value></data>
   <data name="Qualities.SummarySource.04b68abc-0f9d-4fe9-8b41-82d7b9c95e2e" xml:space="preserve"><value>09D4E5F86BE2E0C33023A8186CCA860FEDAB6049D03907668FB9D17953562CA2</value></data>
   <data name="Qualities.SummarySource.1e3d8aff-c31c-41f9-8c62-e3332cac79fa" xml:space="preserve"><value>CB95ABC586A35BC8AE1A66AF2E62CC7F82E6AA1CD0BEE876197701AC7717A9DD</value></data>
+  <data name="Qualities.Summary.3659b016-5511-4cdb-a9f3-ce2ecfba4513" xml:space="preserve"><value>A rare trigger frightens you. While exposed, all actions lose 1 die.</value></data>
+  <data name="Qualities.Summary.255ba2d3-6fbd-4b89-8131-c10f96e70d32" xml:space="preserve"><value>Rare trigger: all actions lose 3 dice while exposed. Composure (2) is needed to avoid fleeing.</value></data>
+  <data name="Qualities.Summary.e929cc4a-0973-4c55-9ca9-a925b0d7d463" xml:space="preserve"><value>Rare trigger: all actions lose 6 dice while exposed. Failed Composure (5) forces flight for at least 5 − hits Combat Turns.</value></data>
+  <data name="Qualities.Summary.ff42593b-e1da-406e-aa10-cd90ef2629f5" xml:space="preserve"><value>A frequent trigger frightens you. While exposed, all actions lose 1 die.</value></data>
+  <data name="Qualities.Summary.1c293ee1-c2e3-4e82-9ee6-91425955f250" xml:space="preserve"><value>Frequent trigger: all actions lose 3 dice while exposed. Composure (2) is needed to avoid fleeing.</value></data>
+  <data name="Qualities.Summary.10b0e391-6cb4-46ba-a357-570ffa2eba69" xml:space="preserve"><value>Frequent trigger: all actions lose 6 dice while exposed. Failed Composure (5) forces flight for at least 5 − hits Combat Turns.</value></data>
+  <data name="Qualities.Summary.5adbea9d-7b48-4bc9-9941-31df54b02804" xml:space="preserve"><value>You exaggerate to outdo others' achievements. Composure (3) lets you stop boasting before someone demands proof.</value></data>
+  <data name="Qualities.Summary.68399920-e3ff-4d17-a69a-0265c57422ab" xml:space="preserve"><value>Composure (2) lets you reject the riskiest option. The rush grants +1 Initiative Score for 5 Combat Turns, not an extra die or +1 each turn.</value></data>
+  <data name="Qualities.Summary.62de8226-b9a9-4065-9e82-b9ac4d4d027a" xml:space="preserve"><value>Slights demand escalating revenge. Composure (2) prevents immediate retaliation, but you still plan to settle the score later.</value></data>
+  <data name="Qualities.Summary.83e2a9b7-e06e-494e-95d3-c6e554d9928e" xml:space="preserve"><value>Once fighting, you keep going until every opponent is incapacitated. Composure (3) lets you withdraw even when outnumbered or losing.</value></data>
+  <data name="Qualities.SummarySource.3659b016-5511-4cdb-a9f3-ce2ecfba4513" xml:space="preserve"><value>C655EA698C0405E24AEB3AEE822694FE72F1DDA0F97B3086E143965559B339F8</value></data>
+  <data name="Qualities.SummarySource.255ba2d3-6fbd-4b89-8131-c10f96e70d32" xml:space="preserve"><value>4CF3673FABC1F34AA67C1C6A3AA91A15305FF42D490E1800CECBD6928BF40337</value></data>
+  <data name="Qualities.SummarySource.e929cc4a-0973-4c55-9ca9-a925b0d7d463" xml:space="preserve"><value>53442411879DC363E910AB23755D9F0614325439C6F5115BD06C6A8F1EDCCFF2</value></data>
+  <data name="Qualities.SummarySource.ff42593b-e1da-406e-aa10-cd90ef2629f5" xml:space="preserve"><value>F93C6E7E69FC2FAF15CF4BAEFE07B8D6F008EFE350CB631897D5305CDE25FD2E</value></data>
+  <data name="Qualities.SummarySource.1c293ee1-c2e3-4e82-9ee6-91425955f250" xml:space="preserve"><value>67461AD26E80B7C22FE8499578F290F1B898EA224780EE66C2BE71E588A41E46</value></data>
+  <data name="Qualities.SummarySource.10b0e391-6cb4-46ba-a357-570ffa2eba69" xml:space="preserve"><value>6E9D3B48920E4DBC66F30AF6E411AA798A1C9E297CBAE80C349A37AC2EF298DC</value></data>
+  <data name="Qualities.SummarySource.5adbea9d-7b48-4bc9-9941-31df54b02804" xml:space="preserve"><value>79C6CE3C4B70497D4D8598FEFD4A10A2977C90AFF50AA7B87B5042B646A0602E</value></data>
+  <data name="Qualities.SummarySource.68399920-e3ff-4d17-a69a-0265c57422ab" xml:space="preserve"><value>6197305604F87251F1E72355B6CB820D45451B790A91C21F7CE417421EA6D81F</value></data>
+  <data name="Qualities.SummarySource.62de8226-b9a9-4065-9e82-b9ac4d4d027a" xml:space="preserve"><value>324828CBA3A1837687708A196D7D678D0B9191B8C60E85CE0E9D9AE941FCA9A5</value></data>
+  <data name="Qualities.SummarySource.83e2a9b7-e06e-494e-95d3-c6e554d9928e" xml:space="preserve"><value>BAF0C71B6E13B17261318B6558F6B49692954E906EE96B7FD864D3452C2E0071</value></data>
 </root>

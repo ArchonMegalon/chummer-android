@@ -44,7 +44,32 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 305, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 315, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Phobia (Uncommon, Mild)", "Phobia (Uncommon, Moderate)",
+                    "Phobia (Uncommon, Severe)", "Phobia (Common, Mild)", "Phobia (Common, Moderate)",
+                    "Phobia (Common, Severe)", "Poor Self Control (Braggart)",
+                    "Poor Self Control (Thrill Seeker)", "Poor Self Control (Vindictive)",
+                    "Poor Self Control (Combat Monster)" })
+                {
+                    var quality = catalog.Single(quality => quality.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Fear and impulse variants need translated, definition-bound consequences: " + name);
+                }
+                foreach (string frequency in new[] { "Common", "Uncommon" })
+                {
+                    foreach (var grade in new[] { (Name: "Mild", Numbers: "1"),
+                        (Name: "Moderate", Numbers: "3,2"), (Name: "Severe", Numbers: "6,5,5") })
+                    {
+                        var quality = catalog.Single(q => q.Element("name")!.Value == $"Phobia ({frequency}, {grade.Name})");
+                        string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                        string numbers = string.Join(",", Regex.Matches(summary, @"\d+").Select(match => match.Value));
+                        Require(numbers == grade.Numbers,
+                            "Frequency must not change severity or lose the translated fear penalty, threshold or duration.");
+                    }
+                }
                 foreach (string name in new[] { "Albinism I", "Albinism II",
                     "Amnesia (Surface Loss)", "Amnesia (Neural Deletion)",
                     "Day Job (10 hrs)", "Day Job (20 hrs)", "Day Job (40 hrs)", "In Debt",
@@ -308,6 +333,29 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Wanted").Contains("¥25,000")
                 && Effect("Wanted").Contains("buy it off with Karma"),
                 "Investigators' advantages, unresolved corporation choices, timed overload and continuing bounty obligations must remain explicit.");
+            foreach (string frequency in new[] { "Common", "Uncommon" })
+            {
+                string mild = Effect($"Phobia ({frequency}, Mild)");
+                string moderate = Effect($"Phobia ({frequency}, Moderate)");
+                string severe = Effect($"Phobia ({frequency}, Severe)");
+                Require(mild.Contains("While exposed") && mild.Contains("all actions lose 1 die")
+                    && !mild.Contains("Composure (") && moderate.Contains("while exposed")
+                    && moderate.Contains("all actions lose 3 dice") && moderate.Contains("Composure (2)")
+                    && severe.Contains("while exposed") && severe.Contains("all actions lose 6 dice")
+                    && severe.Contains("Composure (5)") && severe.Contains("at least 5 − hits Combat Turns"),
+                    "Fear penalties apply only in the trigger's presence; each grade has distinct resistance and flight behavior.");
+                Require(mild.Contains(frequency == "Common" ? "frequent trigger" : "rare trigger"),
+                    "Phobia frequency must remain distinct from severity.");
+            }
+            Require(Effect("Poor Self Control (Braggart)").Contains("Composure (3)")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("Composure (2)")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("+1 Initiative Score for 5 Combat Turns")
+                && Effect("Poor Self Control (Thrill Seeker)").Contains("not an extra die or +1 each turn")
+                && Effect("Poor Self Control (Vindictive)").Contains("Composure (2)")
+                && Effect("Poor Self Control (Vindictive)").Contains("still plan to settle the score later")
+                && Effect("Poor Self Control (Combat Monster)").Contains("Composure (3)")
+                && Effect("Poor Self Control (Combat Monster)").Contains("every opponent is incapacitated"),
+                "Impulse help must distinguish thresholds, retained grudges, withdrawal and a temporary initiative-score bonus.");
             Require(Effect("Asthma").Contains("twice as often")
                 && Effect("Asthma").Contains("Effects accumulate")
                 && Effect("Asthma").Contains("at 4, resist further Fatigue using only Willpower")
