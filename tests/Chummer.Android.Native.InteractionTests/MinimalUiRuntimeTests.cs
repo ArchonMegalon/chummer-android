@@ -275,6 +275,71 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void VerifyInfectedSummaries(System.Xml.Linq.XElement[] catalog, string locale)
+    {
+        var qualities = catalog.Where(q => q.Element("name")!.Value.StartsWith("Infected: ", StringComparison.Ordinal)).ToArray();
+        Require(qualities.Length == 22, "Review each infected variant when the consumed catalog changes.");
+        var terms = locale switch
+        {
+            "de-AT" => new[] { "Dual", "Alterung", "metahumanes Fleisch", "metahumanes Blut", "metahumane Knochen",
+                "Salz", "Essenzentzug", "laufend", "Ruhezustand", "Infektion übertragen", "Adeptenfähigkeiten",
+                "Zauberer", "Sonnenlicht", "Ungeziefer", "ätzendem Sekret", "Geruchssinn", "Eisenhut",
+                "gegen Eisen verwundbar", "gegen Feuer verwundbar", "gegen Holz verwundbar", "gegen Silber und Holz verwundbar" },
+            "es-MX" => new[] { "dual", "no envejece", "carne metahumana", "sangre metahumana", "huesos metahumanos",
+                "sal,", "drena", "continua", "letargo", "transmitir la infección", "capacidades de adepto",
+                "Hechicero", "luz solar", "alimañas", "secreciones corrosivas", "olfato", "acónito",
+                "vulnerable al hierro", "vulnerable al fuego", "vulnerable a la madera", "vulnerable a plata y madera" },
+            _ => new[] { "dual", "ageless", "metahuman flesh", "metahuman blood", "metahuman bone",
+                "salt", "Essence drain", "ongoing Essence loss", "dormancy", "transmit the infection", "adept abilities",
+                "spellcaster", "sunlight", "vermin", "corrosive secretions", "smell", "wolfsbane",
+                "vulnerable to iron", "vulnerable to fire", "vulnerable to wood", "vulnerable to silver and wood" }
+        };
+        foreach (var quality in qualities)
+        {
+            string name = quality.Element("name")!.Value;
+            string summary = CreationFlowStrings.Get("Qualities.Summary." + Guid.Parse(quality.Element("id")!.Value).ToString("D"), "");
+            var bonus = quality.Element("bonus")!;
+            bool Power(string power, string selection = "") => bonus.Element("critterpowers")!.Elements("power")
+                .Any(p => p.Value == power && ((string?)p.Attribute("select") ?? "") == selection);
+            bool Text(int index) => summary.Contains(terms[index], StringComparison.OrdinalIgnoreCase);
+            // Plain-language alternatives for the same mandatory power, not optional powers.
+            bool EssenceDrainText() => Text(6) || (locale == "de-AT" && summary.Contains("Essenz entziehen"))
+                || (locale == "es-MX" && summary.Contains("drenaje de Esencia"))
+                || (locale == "en-GB" && summary.Contains("Essence-draining"));
+            var lines = CreationQualityInfo.Effects(quality.ToString());
+            Require(summary.Length > 0 && summary.Length <= 240 && lines[0] == summary
+                && lines.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
+                && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                "Brief infected help must stay source-bound and retain the incomplete external-power notice: " + name);
+            foreach (var scope in new (int Index, bool Present)[] { (0, Power("Dual Natured")),
+                (1, Power("Immunity", "Age")), (2, Power("Dietary Requirement", "Metahuman Flesh")),
+                (3, Power("Dietary Requirement", "Metahuman Blood")), (4, Power("Dietary Requirement", "Metahuman Bone")),
+                (5, Power("Dietary Requirement", "Salt")), (7, Power("Essence Loss")),
+                (8, Power("Induced Dormancy", "Lack of Air (Essence) Minutes")), (9, Power("Infection")),
+                (10, bonus.Element("unlockskills")?.Value == "Adept"), (11, bonus.Element("unlockskills")?.Value == "Magician"),
+                (12, bonus.Element("critterpowers")!.Elements("power").Any(p => p.Value == "Allergy"
+                    && ((string?)p.Attribute("select") ?? "").StartsWith("Sunlight, ", StringComparison.Ordinal))),
+                (13, Power("Animal Control", "Vermin")), (14, Power("Secretion/Substance Extrusion", "Corrosive")),
+                (15, Power("Enhanced Senses", "Smell") && name.Contains("Ghoul")),
+                (16, Power("Allergy", "Aconite a.k.a. Wolf's Bane, Moderate")),
+                (17, Power("Vulnerability", "Iron")), (18, Power("Vulnerability", "Fire")),
+                (19, Power("Vulnerability", "Wood") && !Power("Vulnerability", "Silver")),
+                (20, Power("Vulnerability", "Silver") && Power("Vulnerability", "Wood")) })
+                Require(Text(scope.Index) == scope.Present,
+                    "An infected summary lost or borrowed another variant's benefit or drawback: " + name + " / " + terms[scope.Index]);
+            Require(EssenceDrainText() == Power("Essence Drain"),
+                "Essence drain must not be borrowed by variants that only pay a fixed Essence cost: " + name);
+            // A source ID alone must never admit prose after a custom-data change.
+            var changed = new System.Xml.Linq.XElement(quality);
+            changed.Element("bonus")!.Element("critterpowers")!.Add(
+                new System.Xml.Linq.XElement("power", "Regeneration"));
+            var changedLines = CreationQualityInfo.Effects(changed.ToString());
+            Require(!changedLines.Contains(summary)
+                && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                "Infected help must reject changed source powers: " + name);
+        }
+    }
+
     private static void VerifyQualitySummaryContent(string contentRoot)
     {
         var catalog = System.Xml.Linq.XDocument.Load(Path.Combine(contentRoot, "data", "qualities.xml"))
@@ -313,7 +378,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 520, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 542, "Localized source-identity summaries were not loaded from the real catalog.");
                 foreach (var rule in ConciseQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
@@ -333,6 +398,7 @@ internal static partial class AfterRunAuthorityHarness
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
                 }
                 VerifyInsectSpiritSummaries(catalog, locale);
+                VerifyInfectedSummaries(catalog, locale);
                 foreach (var rule in SourceEffectQualitySummaries)
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
