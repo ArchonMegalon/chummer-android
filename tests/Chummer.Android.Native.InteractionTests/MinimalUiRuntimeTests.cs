@@ -13,6 +13,77 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    // Short effect summaries, not complete tabletop procedures or legal clearance.
+    private static readonly (string Name, string Numbers, string[] English, string[] German, string[] Spanish)[] BriefDrawbackSummaries =
+    [
+        ("Addiction (Mild)", "-2,-2", ["Monthly", "unresisted withdrawal", "mental-based tests", "psychological dependence", "physical-based tests", "physical dependence", "No persistent social penalty"],
+            ["Monatliches", "nicht widerstandenem Entzug", "geistig basierte Proben", "psychischer", "körperlich basierte", "körperlicher Abhängigkeit", "Kein dauerhafter Sozialabzug"],
+            ["Ansia mensual", "abstinencia no resistida", "pruebas basadas en atributos mentales", "dependencia psicológica", "basadas en atributos físicos", "dependencia física", "Sin penalización social permanente"]),
+        ("Addiction (Moderate)", "-4,-4", ["Fortnightly", "unresisted withdrawal", "mental-based tests", "psychological dependence", "physical-based tests", "physical dependence", "No persistent social penalty"],
+            ["Zweiwöchentliches", "nicht widerstandenem Entzug", "geistig basierte Proben", "psychischer", "körperlich basierte", "körperlicher Abhängigkeit", "Kein dauerhafter Sozialabzug"],
+            ["Ansia quincenal", "abstinencia no resistida", "pruebas basadas en atributos mentales", "dependencia psicológica", "basadas en atributos físicos", "dependencia física", "Sin penalización social permanente"]),
+        ("Addiction (Severe)", "-4,-4,-2", ["Weekly", "unresisted withdrawal", "mental-based tests", "psychological dependence", "physical-based tests", "physical dependence", "Social tests always"],
+            ["Wöchentliches", "nicht widerstandenem Entzug", "geistig basierte Proben", "psychischer", "körperlich basierte", "körperlicher Abhängigkeit", "Sozialproben immer"],
+            ["Ansia semanal", "abstinencia no resistida", "pruebas basadas en atributos mentales", "dependencia psicológica", "basadas en atributos físicos", "dependencia física", "Pruebas sociales siempre"]),
+        ("Addiction (Burnout)", "-6,-6,-3", ["Daily", "unresisted withdrawal", "mental-based tests", "psychological dependence", "physical-based tests", "physical dependence", "Social tests always"],
+            ["Tägliches", "nicht widerstandenem Entzug", "geistig basierte Proben", "psychischer", "körperlich basierte", "körperlicher Abhängigkeit", "Sozialproben immer"],
+            ["Ansia diaria", "abstinencia no resistida", "pruebas basadas en atributos mentales", "dependencia psicológica", "basadas en atributos físicos", "dependencia física", "Pruebas sociales siempre"]),
+        ("Allergy (Common, Mild)", "-2,-1", ["Physical tests", "resist attacks using it", "no ongoing damage"],
+            ["körperliche Proben", "Angriffe mit dem Allergen", "kein fortlaufender Schaden"],
+            ["pruebas Físicas", "resistir ataques con él", "sin daño continuo"]),
+        ("Allergy (Common, Moderate)", "-4,-2", ["Physical tests", "resist attacks using it", "no ongoing damage"],
+            ["körperliche Proben", "Angriffe mit dem Allergen", "kein fortlaufender Schaden"],
+            ["pruebas Físicas", "resistir ataques con él", "sin daño continuo"]),
+        ("Allergy (Common, Severe)", "-4,-3", ["all tests", "to resist allergen attacks", "ongoing unresisted Physical damage"],
+            ["alle Proben", "Widerstand gegen Allergenangriffe", "fortlaufender körperlicher Schaden ohne Widerstand"],
+            ["todas las pruebas", "resistencia a sus ataques", "daño Físico continuo sin resistencia"]),
+        ("Allergy (Common, Extreme)", "-6,-4", ["actions", "resistance to allergen attacks", "faster unresisted Physical damage", "First Aid, Medicine or magic can stop shock"],
+            ["Handlungen", "Widerstand gegen Allergenangriffe", "schneller körperlicher Schaden ohne Widerstand", "Erste Hilfe, Medizin oder Magie können den Schock stoppen"],
+            ["acciones", "resistencia a sus ataques", "daño Físico acelerado sin resistencia", "primeros auxilios, Medicina o magia pueden detener el shock"]),
+        ("Allergy (Uncommon, Mild)", "-2,-1", ["Physical tests", "resist attacks using it", "no ongoing damage"],
+            ["körperliche Proben", "Angriffe mit dem Allergen", "kein fortlaufender Schaden"],
+            ["pruebas Físicas", "resistir ataques con él", "sin daño continuo"]),
+        ("Allergy (Uncommon, Moderate)", "-4,-2", ["Physical tests", "resist attacks using it", "no ongoing damage"],
+            ["körperliche Proben", "Angriffe mit dem Allergen", "kein fortlaufender Schaden"],
+            ["pruebas Físicas", "resistir ataques con él", "sin daño continuo"]),
+        ("Allergy (Uncommon, Severe)", "-4,-3", ["all tests", "to resist allergen attacks", "ongoing unresisted Physical damage"],
+            ["alle Proben", "Widerstand gegen Allergenangriffe", "fortlaufender körperlicher Schaden ohne Widerstand"],
+            ["todas las pruebas", "resistencia a sus ataques", "daño Físico continuo sin resistencia"]),
+        ("Allergy (Uncommon, Extreme)", "-6,-4", ["actions", "resistance to allergen attacks", "faster unresisted Physical damage", "First Aid, Medicine or magic can stop shock"],
+            ["Handlungen", "Widerstand gegen Allergenangriffe", "schneller körperlicher Schaden ohne Widerstand", "Erste Hilfe, Medizin oder Magie können den Schock stoppen"],
+            ["acciones", "resistencia a sus ataques", "daño Físico acelerado sin resistencia", "primeros auxilios, Medicina o magia pueden detener el shock"]),
+        ("Prejudiced (Common, Biased)", "-2,+2", ["Bias", "common group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Vorurteil", "häufige Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Sesgo", "grupo frecuente", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("Prejudiced (Common, Outspoken)", "-4,+4", ["Open prejudice", "common group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Offenes Vorurteil", "häufige Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Prejuicio manifiesto", "grupo frecuente", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("Prejudiced (Common, Radical)", "-6,+6", ["Radical hostility", "common group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Radikale Feindseligkeit", "häufige Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Hostilidad radical", "grupo frecuente", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("Prejudiced (Specific, Biased)", "-2,+2", ["Bias", "narrowly defined group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Vorurteil", "eng eingegrenzte Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Sesgo", "grupo específico", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("Prejudiced (Specific, Outspoken)", "-4,+4", ["Open prejudice", "narrowly defined group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Offenes Vorurteil", "eng eingegrenzte Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Prejuicio manifiesto", "grupo específico", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("Prejudiced (Specific, Radical)", "-6,+6", ["Radical hostility", "narrowly defined group", "social tests with its members", "their Negotiation against you", "Other groups are unaffected"],
+            ["Radikale Feindseligkeit", "eng eingegrenzte Gruppe", "Sozialproben mit ihren Mitgliedern", "deren Verhandlungen mit dir", "Andere Gruppen bleiben unbeeinflusst"],
+            ["Hostilidad radical", "grupo específico", "pruebas sociales con sus miembros", "sus negociaciones contigo", "Otros grupos no cambian"]),
+        ("SINner (National)", "15", ["National SIN", "gross-income tax", "mandatory broadcast", "police access", "identity and biometrics", "false identities do not erase"],
+            ["Nationale SIN", "Bruttoeinkommen", "Sendepflicht", "Behördenzugriff", "Identität und Biometrie", "falsche Identitäten löschen"],
+            ["SIN nacional", "ingresos brutos", "emisión obligatoria", "acceso policial", "identidad y biometría", "identidades falsas no borran"]),
+        ("SINner (Criminal)", "15", ["replaces your former identity", "mandatory broadcast", "gross-income tax", "police scrutiny", "restricted employment and access"],
+            ["ersetzt deine alte Identität", "Sendepflicht", "Bruttoeinkommen", "Polizeikontrollen", "eingeschränkter Zugang zu Arbeit"],
+            ["sustituye tu identidad anterior", "emisión obligatoria", "ingresos brutos", "vigilancia policial", "restricciones laborales y de acceso"]),
+        ("SINner (Corporate Limited)", "20", ["Limited corporate SIN", "gross-income tax", "extraction risk", "distrust", "without leadership privileges"],
+            ["Eingeschränkte Konzern-SIN", "Bruttoeinkommen", "Extraktionsrisiko", "Misstrauen", "ohne Führungsprivilegien"],
+            ["SIN corporativa limitada", "ingresos brutos", "riesgo de extracción", "desconfianza", "sin privilegios directivos"]),
+        ("SINner (Corporate)", "10", ["Full corporate SIN", "gross-income tax", "corporate records", "hostility in the shadows", "no free corporate resources"],
+            ["Volle Konzern-SIN", "Bruttoeinkommen", "Konzerneinträge", "Feindseligkeit in den Schatten", "keine kostenlosen Konzernressourcen"],
+            ["SIN corporativa plena", "ingresos brutos", "registros corporativos", "hostilidad en las sombras", "sin recursos corporativos gratuitos"]),
+    ];
+
     private static readonly (string Name, string English, string German, string Spanish)[] SourceEffectQualitySummaries =
     [
         ("Community Connection", "one Low or Squatter", "einen Unterschicht- oder Squatter", "un estilo de vida bajo o de ocupa"),
@@ -707,6 +778,26 @@ internal static partial class AfterRunAuthorityHarness
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
                 }
                 VerifyInsectSpiritSummaries(catalog, locale);
+                foreach (var rule in BriefDrawbackSummaries)
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    string[] scope = locale == "de-AT" ? rule.German : locale == "es-MX" ? rule.Spanish : rule.English;
+                    // Keep attribute-based versus skill-category scope explicit in every language.
+                    bool addiction = rule.Name.StartsWith("Addiction (", StringComparison.Ordinal);
+                    Require(summary.Length > 0 && summary.Length <= (addiction ? 220 : 180)
+                        && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= (addiction ? 30 : 25)
+                        && scope.All(term => summary.Contains(term, StringComparison.OrdinalIgnoreCase))
+                        && string.Join(",", Regex.Matches(summary, @"[+−-]?\d+").Select(m => m.Value)) == rule.Numbers
+                        && CreationQualityInfo.Effects(quality.ToString())[0] == summary,
+                        "Brief drawback help lost its localized grade, scope or modifier: " + rule.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.SetElementValue("karma", "999");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Brief drawback help must reject changed source definitions: " + rule.Name);
+                }
                 VerifyInfectedSummaries(catalog, locale);
                 VerifyOptionalPowerAndDrakeSummaries(catalog, critterPowerDefinitions, locale);
                 foreach (var rule in SourceEffectQualitySummaries)
@@ -1999,60 +2090,62 @@ internal static partial class AfterRunAuthorityHarness
                 string moderate = Effect($"Allergy ({frequency}, Moderate)");
                 string severe = Effect($"Allergy ({frequency}, Severe)");
                 string extreme = Effect($"Allergy ({frequency}, Extreme)");
-                Require(mild.Contains("Physical tests lose two dice")
-                    && mild.Contains("using that allergen loses one die")
-                    && moderate.Contains("Physical tests lose four dice")
-                    && moderate.Contains("using that allergen loses two dice"),
+                Require(mild.Contains("-2 dice on Physical tests")
+                    && mild.Contains("-1 to resist attacks using it")
+                    && moderate.Contains("-4 dice on Physical tests")
+                    && moderate.Contains("-2 to resist attacks using it"),
                     "Mild/moderate allergies affect Physical tests and retain separate allergen-attack resistance penalties.");
-                Require(severe.Contains("all tests lose four dice")
-                    && severe.Contains("each minute causes one unresisted Physical damage box")
-                    && severe.Contains("using the allergen loses three dice")
-                    && extreme.Contains("all actions lose six dice")
-                    && extreme.Contains("every 30 seconds")
-                    && extreme.Contains("resistance loses four dice")
-                    && extreme.Contains("First Aid, Medicine or magic"),
-                    "Higher allergy grades must retain all-test scope, unresisted damage intervals and extreme-shock treatment.");
+                Require(severe.Contains("-4 dice on all tests")
+                    && severe.Contains("ongoing unresisted Physical damage")
+                    && severe.Contains("-3 to resist allergen attacks")
+                    && extreme.Contains("actions -6 dice")
+                    && extreme.Contains("faster unresisted Physical damage")
+                    && extreme.Contains("resistance to allergen attacks -4")
+                    && extreme.Contains("First Aid, Medicine or magic can stop shock"),
+                    "Higher allergy summaries retain all-test scope, ongoing versus faster damage and shock treatment, not a full damage procedure.");
                 Require(!mild.Contains("unresisted") && !moderate.Contains("unresisted")
-                    && !severe.Contains("30 seconds") && !extreme.Contains("each minute"),
-                    "Lower allergy grades must not borrow ongoing damage or another grade's interval.");
+                    && mild.Contains("no ongoing damage") && moderate.Contains("no ongoing damage")
+                    && !severe.Contains("faster"),
+                    "Lower allergy grades must not borrow ongoing damage or the extreme grade's faster damage.");
             }
-            Require(Effect("Addiction (Mild)").Contains("Monthly craving: one dose or one hour")
-                && Effect("Addiction (Mild)").Contains("lose two dice on Mental-based tests for psychological dependence")
-                && Effect("Addiction (Moderate)").Contains("every two weeks: one dose or one hour")
-                && Effect("Addiction (Moderate)").Contains("four dice on Mental-based tests for psychological dependence")
-                && Effect("Addiction (Moderate)").Contains("successful withdrawal test avoids those symptoms"),
-                "Mild/moderate addiction help must preserve craving frequency, conditional withdrawal and dependency scope.");
-            Require(Effect("Addiction (Severe)").Contains("Weekly craving: two doses or two hours")
-                && Effect("Addiction (Severe)").Contains("Social tests always lose two dice, even outside withdrawal")
-                && Effect("Addiction (Burnout)").Contains("Daily craving: at least three doses or three hours")
-                && Effect("Addiction (Burnout)").Contains("six fewer dice on Mental-based tests")
-                && Effect("Addiction (Burnout)").Contains("Social tests always lose three dice"),
+            Require(Effect("Addiction (Mild)").Contains("Monthly cravings")
+                && Effect("Addiction (Mild)").Contains("unresisted withdrawal: mental-based tests -2 dice for psychological dependence")
+                && Effect("Addiction (Moderate)").Contains("Fortnightly cravings")
+                && Effect("Addiction (Moderate)").Contains("unresisted withdrawal: mental-based tests -4 dice for psychological dependence")
+                && new[] { "Mild", "Moderate" }.All(grade =>
+                    Effect($"Addiction ({grade})").Contains("No persistent social penalty")),
+                "Mild/moderate help preserves frequency, resisted-withdrawal distinction and dependence scope without doses or full procedures.");
+            Require(Effect("Addiction (Severe)").Contains("Weekly cravings")
+                && Effect("Addiction (Severe)").Contains("Social tests always -2")
+                && Effect("Addiction (Burnout)").Contains("Daily cravings")
+                && Effect("Addiction (Burnout)").Contains("mental-based tests -6 dice")
+                && Effect("Addiction (Burnout)").Contains("Social tests always -3"),
                 "Severe/burnout addiction help must distinguish withdrawal penalties from the persistent social penalty.");
             foreach (string frequency in new[] { "Common", "Specific" })
             {
                 foreach (var (degree, dice) in new[] { ("Biased", 2), ("Outspoken", 4), ("Radical", 6) })
                 {
                     string prejudice = Effect($"Prejudiced ({frequency}, {degree})");
-                    Require(prejudice.Contains($"Social tests with its members take -{dice} dice")
-                        && prejudice.Contains($"when negotiating with you, they gain +{dice} dice")
-                        && prejudice.Contains("not a penalty to every social interaction"),
+                    Require(prejudice.Contains($"social tests with its members -{dice} dice")
+                        && prejudice.Contains($"their Negotiation against you +{dice}")
+                        && prejudice.Contains("Other groups are unaffected"),
                         "Prejudice severity must change both opponents' rolls only when interacting with the chosen group.");
-                    Require(prejudice.Contains(frequency == "Common" ? "commonly encountered" : "more narrowly defined"),
+                    Require(prejudice.Contains(frequency == "Common" ? "common group" : "narrowly defined group"),
                         "Target prevalence must remain distinct from the severity's dice modifiers.");
                 }
             }
-            Require(Effect("SINner (National)").Contains("15% of gross income")
+            Require(Effect("SINner (National)").Contains("15% gross-income tax")
                 && Effect("SINner (National)").Contains("identity and biometrics")
-                && Effect("SINner (National)").Contains("fake identity does not erase this record")
-                && Effect("SINner (Criminal)").Contains("15% income tax")
-                && Effect("SINner (Criminal)").Contains("replaces your previous identity")
+                && Effect("SINner (National)").Contains("false identities do not erase the record")
+                && Effect("SINner (Criminal)").Contains("15% gross-income tax")
+                && Effect("SINner (Criminal)").Contains("replaces your former identity")
                 && Effect("SINner (Criminal)").Contains("police scrutiny")
                 && Effect("SINner (Criminal)").Contains("Notoriety: 1"),
                 "National/criminal SINs need their registry, replacement and oversight consequences beyond the encoded reputation modifier.");
-            Require(Effect("SINner (Corporate Limited)").Contains("20% of gross income")
-                && Effect("SINner (Corporate Limited)").Contains("no leadership privileges")
-                && Effect("SINner (Corporate Limited)").Contains("extraction attempts")
-                && Effect("SINner (Corporate)").Contains("10% of gross income")
+            Require(Effect("SINner (Corporate Limited)").Contains("20% gross-income tax")
+                && Effect("SINner (Corporate Limited)").Contains("without leadership privileges")
+                && Effect("SINner (Corporate Limited)").Contains("extraction risk")
+                && Effect("SINner (Corporate)").Contains("10% gross-income tax")
                 && Effect("SINner (Corporate)").Contains("corporate records")
                 && Effect("SINner (Corporate)").Contains("no free corporate resources"),
                 "Corporate SIN variants must not swap tax rates, disclose the same registry detail or imply free corporate equipment.");
