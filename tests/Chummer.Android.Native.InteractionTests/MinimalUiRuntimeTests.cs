@@ -162,6 +162,42 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Cyberpsychosis", ["social", "temporarily", "gamemaster"],
+            ["Soziale", "vorübergehend", "Spielleitung"],
+            ["sociales", "temporalmente", "dirección"]),
+        ("So Jacked Up", ["Generic", "switching", "unsuitable"],
+            ["Standard", "Wechsel", "unpassende"],
+            ["genéricos", "cambiar", "inadecuado"]),
+        ("TLE-X", ["stress", "failing", "minutes"],
+            ["Stress", "misslungene", "minutenlange"],
+            ["estrés", "fallar", "minutos"]),
+        ("Good Looking and Knows It", ["penalties", "Notoriety", "remember"],
+            ["Abzüge", "Ruf", "wiedererkennbar"],
+            ["penalizaciones", "Notoriedad", "recuerden"]),
+        ("Groupthink", ["assisting", "sacrifice", "glitch"],
+            ["Helfer", "opfern", "Helferpatzers"],
+            ["ayudar", "sacrifica", "fallo"]),
+        ("Mnemonic Vault", ["Palace", "yourself", "interrogation"],
+            ["Gedächtnispalast", "selbst", "Verhören"],
+            ["Palacio", "voluntariamente", "interrogatorios"]),
+        ("Animal Familiar", ["one", "not its senses", "again"],
+            ["ein", "nicht dessen Sinne", "erneut"],
+            ["un", "no sus sentidos", "vuelve"]),
+        ("Astral Bouncer", ["Assensing", "additional", "living"],
+            ["Askennen", "zusätzliche", "Lebewesens"],
+            ["auras", "adicionales", "vivos"]),
+        ("Astral Infiltrator", ["Successful", "once", "alerts"],
+            ["Erfolgreiches", "einmal", "alarmiert"],
+            ["cruzarla", "una vez", "alerta"]),
+        ("Rootkit", ["accuracy", "successful", "that turn"],
+            ["erschwert", "Treffern", "dieser Runde"],
+            ["dificulta", "acertar", "este turno"]),
+        ("Big Baby", ["Physical", "overcome", "Stun"],
+            ["Körperliche", "überwunden", "Betäubung"],
+            ["Físico", "superar", "Aturdimiento"]),
+        ("Well, Actually...", ["Disagreements", "distracting", "friends"],
+            ["Meinungsverschiedenheiten", "ablenkende", "Freunden"],
+            ["discrepancias", "distracción", "amigos"]),
         ("AIPS", ["spam zone", "Noise", "outside stressful"],
             ["Spamzonen", "Rauschen", "außerhalb"],
             ["spam", "Ruido", "sin estrés"]),
@@ -1022,7 +1058,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 614, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 626, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1046,18 +1082,23 @@ internal static partial class AfterRunAuthorityHarness
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
                 }
-                foreach (string name in new[] { "Adept Healer", "Apt Pupil", "Arcane Bodyguard" })
+                foreach (string name in new[] { "Adept Healer", "Apt Pupil", "Arcane Bodyguard",
+                    "Animal Familiar", "Astral Bouncer", "Astral Infiltrator", "Mnemonic Vault" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
-                    Require(quality.Element("required")!.Element("allof")!.Element("magenabled") is not null,
-                        "Mastery help must retain magical admission: " + name);
+                    if (name == "Mnemonic Vault")
+                        Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Memory Palace",
+                            "Memory help must retain its prerequisite quality.");
+                    else
+                        Require(quality.Element("required")!.Element("allof")!.Element("magenabled") is not null,
+                            "Mastery help must retain magical admission: " + name);
                     var changed = new System.Xml.Linq.XElement(quality);
                     changed.Element("required")!.Remove();
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
                     var changedLines = CreationQualityInfo.Effects(changed.ToString());
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
-                        "Mastery help must reject a definition without its prerequisites: " + name);
+                        "Bound help must reject a definition without its prerequisites: " + name);
                 }
                 var emotion = catalog.Single(q => q.Element("name")!.Value == "Dead Emotion");
                 Require(emotion.Element("bonus")!.Element("selecttext") is not null,

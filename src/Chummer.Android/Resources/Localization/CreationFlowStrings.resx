@@ -2908,4 +2908,28 @@
   <data name="Qualities.SummarySource.6bbeb733-a7cc-4427-924b-8c6174399051" xml:space="preserve"><value>5345F2C451CD7CB660E5A8835347B31D57FEA0056283FC6C3DFD17CF4ED74B7A</value></data>
   <data name="Qualities.Summary.a3d131f2-5ed9-42d0-86c2-396e50a9117d" xml:space="preserve"><value>Without AR or VR, every test is harder; either interface avoids this penalty.</value></data>
   <data name="Qualities.SummarySource.a3d131f2-5ed9-42d0-86c2-396e50a9117d" xml:space="preserve"><value>FCC5D80B57932727C0ED19BCAFB010DC5EAA740D376018E918270D541BFD1C69</value></data>
+  <data name="Qualities.Summary.01cd8471-224e-4ffe-9d89-79f565d78e29" xml:space="preserve"><value>Social glitches cause inappropriate reactions; critical glitches temporarily transfer control of your character to the gamemaster.</value></data>
+  <data name="Qualities.SummarySource.01cd8471-224e-4ffe-9d89-79f565d78e29" xml:space="preserve"><value>CFFBA5B205B9AEA5DC95102D1509DCB5929EF1AB97EC8CA1B0B684C0F21CE484</value></data>
+  <data name="Qualities.Summary.21c98d92-0a8b-454b-8623-b99480f3a518" xml:space="preserve"><value>Generic mood drugs trade Reaction against Logic; switching takes half an hour, and unsuitable moods hinder social tests.</value></data>
+  <data name="Qualities.SummarySource.21c98d92-0a8b-454b-8623-b99480f3a518" xml:space="preserve"><value>2BF25075A57A538CAB450A24F7E3144B1F5C2972167EDE13A99C5B0DDE121E86</value></data>
+  <data name="Qualities.Summary.262bb242-69eb-41fc-b751-e6fdeac3f071" xml:space="preserve"><value>Under stress, failing a Body and Willpower test risks seizures that leave you unable to act for minutes.</value></data>
+  <data name="Qualities.SummarySource.262bb242-69eb-41fc-b751-e6fdeac3f071" xml:space="preserve"><value>62BF13AF0CF3334E3DB015A8E2E4DAA5AB28FDB66E4E5D2C4C51CC271B56C07B</value></data>
+  <data name="Qualities.Summary.42664f89-f8f1-4ccb-bd95-06ef0e451d47" xml:space="preserve"><value>Reduce social penalties, but gain Notoriety and become easier for witnesses to remember.</value></data>
+  <data name="Qualities.SummarySource.42664f89-f8f1-4ccb-bd95-06ef0e451d47" xml:space="preserve"><value>D82FA07F4EB51539B2E30515BC9FD9B6A58272C160915B41ADADDA2DD6FE5875</value></data>
+  <data name="Qualities.Summary.96ab453c-6a4a-4f53-8553-1b9cf272af72" xml:space="preserve"><value>Improve dice and limits when assisting social teamwork; as leader, sacrifice dice to soften an assistant's glitch.</value></data>
+  <data name="Qualities.SummarySource.96ab453c-6a4a-4f53-8553-1b9cf272af72" xml:space="preserve"><value>0DF5B968DC9BA621627111F6959541D99CEB7D8CF1D0DA6391B781089E0B4F3D</value></data>
+  <data name="Qualities.Summary.1ef1c539-9873-4bcb-bbb0-cff114e02375" xml:space="preserve"><value>With Memory Palace, hide memories even from yourself until deliberately retrieved, and better resist interrogation or forced disclosure.</value></data>
+  <data name="Qualities.SummarySource.1ef1c539-9873-4bcb-bbb0-cff114e02375" xml:space="preserve"><value>16C0D07A7115849858ECF8EC9F8E6051E427C38FBC5E7547382E0D7A1DB8DBF7</value></data>
+  <data name="Qualities.Summary.3e9881c4-6556-4df1-8e9c-bc839ba683b2" xml:space="preserve"><value>Bond with one mundane animal, sharing emotions and mental commands, not its senses; replacing a dead familiar costs Karma again.</value></data>
+  <data name="Qualities.SummarySource.3e9881c4-6556-4df1-8e9c-bc839ba683b2" xml:space="preserve"><value>BAAC014B7A65699BCE92BD7441E56C02CB120BB64EDAD259F7398B146FB24F0B</value></data>
+  <data name="Qualities.Summary.f5e31754-4270-43a0-8dbf-528dd7274afb" xml:space="preserve"><value>Strong Assensing results reveal additional traits or abilities of living beings.</value></data>
+  <data name="Qualities.SummarySource.f5e31754-4270-43a0-8dbf-528dd7274afb" xml:space="preserve"><value>0E85B60BBC5A3A4FAFEAD68E07453F679299ED04F08E3D2E8BBB0FD81F011208</value></data>
+  <data name="Qualities.Summary.0591e06b-4465-47fe-875a-89d4b52d4f61" xml:space="preserve"><value>Successful crossing weakens each astral barrier once per character; you may spare it, since destroying it alerts its creator.</value></data>
+  <data name="Qualities.SummarySource.0591e06b-4465-47fe-875a-89d4b52d4f61" xml:space="preserve"><value>5B6B8A034D98D3C7F52468466DCFF69CAC6BE0030579A5EB20CDFB0DBA9CD8D2</value></data>
+  <data name="Qualities.Summary.fb8bce41-05ea-48af-a45b-dc80dc392f23" xml:space="preserve"><value>A Free Action trades accuracy for extra damage based on your device with successful Data Spike or Resonance Spike hits that turn.</value></data>
+  <data name="Qualities.SummarySource.fb8bce41-05ea-48af-a45b-dc80dc392f23" xml:space="preserve"><value>E2B1A7D625261E1349B4D6B956C8815582529FF2D2F99204B71B9B3C534203FB</value></data>
+  <data name="Qualities.Summary.2c3a3f51-53c5-4d47-b991-0c64f31472d3" xml:space="preserve"><value>Physical wounds hinder combat until you overcome whatever hurt you; Stun damage alone does not trigger this penalty.</value></data>
+  <data name="Qualities.SummarySource.2c3a3f51-53c5-4d47-b991-0c64f31472d3" xml:space="preserve"><value>264030DEB739303C588F2615A7927F5BC69133686948F83FB0BFA43D51449392</value></data>
+  <data name="Qualities.Summary.b45b2d09-80d4-4e24-b96c-1e1f3665dee3" xml:space="preserve"><value>Disagreements compel distracting Matrix fact-checking for up to half an hour, even when arguing with friends.</value></data>
+  <data name="Qualities.SummarySource.b45b2d09-80d4-4e24-b96c-1e1f3665dee3" xml:space="preserve"><value>0EC78599DBCF0788BA2C980E66E1EC7252C43EC14B029F2E4453C419AA87E3CD</value></data>
 </root>
