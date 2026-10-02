@@ -1441,4 +1441,33 @@
   <data name="Spells.Summary.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>Wunschbild im Bereich fördert Freundlichkeit.</value></data>
   <data name="Spells.Summary.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>Löscht die jüngsten Erinnerungen dauerhaft.</value></data>
   <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Sendet eine kurze telepathische Nachricht oder ein Bild.</value></data>
+  <data name="Spells.Summary.90b5f888-bc04-45c2-9b5e-11d95b787c6e" xml:space="preserve"><value>Verstärkt den Nahkampf eines freiwilligen Ziels elementar und schädigt Angreifer bei Kontakt.</value></data>
+  <data name="Spells.Summary.ac8c938d-3aa1-4911-a812-c770e858de92" xml:space="preserve"><value>Elementare Wand; Kontakt schadet, ihre Festigkeit hängt vom Element ab.</value></data>
+  <data name="Spells.Summary.0a52251a-8b85-4814-8645-b929182274db" xml:space="preserve"><value>Gestaltet vorhandene Kleidung um, ohne ihren Schutz zu verbessern.</value></data>
+  <data name="Spells.Summary.33d35d53-5f71-435d-9bbd-913a5ffc35e1" xml:space="preserve"><value>Repariert beschädigte Gegenstände einmalig; fehlende Teile werden nicht ersetzt.</value></data>
+  <data name="Spells.Summary.d9b045d9-1320-4ae9-98d4-c67b1d681719" xml:space="preserve"><value>Lässt ein freiwilliges Ziel an Wänden und Decken haften.</value></data>
+  <data name="Spells.Summary.9b996aac-6bc6-4781-9a57-61ce33a4cd20" xml:space="preserve"><value>Verklebt ein Ziel mit einer berührten Fläche; gewaltsames Ablösen kann verletzen.</value></data>
+  <data name="Spells.Summary.0f725e2e-2389-4aa4-99f9-da26275080bf" xml:space="preserve"><value>Verklebt Ziele im Gebiet mit berührten Flächen; gewaltsames Ablösen kann verletzen.</value></data>
+  <data name="Spells.Summary.785b5b5e-500f-40a2-9b25-b90f3dde7c26" xml:space="preserve"><value>Verschlechtert den örtlichen Matrixempfang; starke Änderungen können Overwatch erhöhen.</value></data>
+  <data name="Spells.Summary.243c19b9-3555-4257-bca0-a7e7f0fff6bf" xml:space="preserve"><value>Verbessert den örtlichen Matrixempfang; starke Änderungen können Overwatch erhöhen.</value></data>
+  <data name="Spells.Summary.93237162-228a-4073-b798-f1b0605388a9" xml:space="preserve"><value>Erhöht ein einzelnes Ausrüstungslimit, etwa die Präzision.</value></data>
+  <data name="Spells.Summary.35ba4222-4e7b-4862-a767-42c5d3dfe2cb" xml:space="preserve"><value>Senkt ein einzelnes Ausrüstungslimit, etwa die Präzision.</value></data>
+  <data name="Spells.Summary.3f40c2bb-e66f-44dc-b801-d459a8d3a2b4" xml:space="preserve"><value>Stört Funk- und Drahtlossignale im Gebiet.</value></data>
+  <data name="Spells.Summary.403e9895-9772-4d2d-9cec-aee93a65794f" xml:space="preserve"><value>Hält eine Tür oder Luke magisch geschlossen.</value></data>
+  <data name="Spells.Summary.37ac2ee9-24ed-4d06-8c99-6295e5438ecb" xml:space="preserve"><value>Erzeugt abklingende magische Störungen, die auch den Zaubernden behindern.</value></data>
+  <data name="Spells.Summary.7152a1f0-6b8f-4ca8-8885-2f5eb5853d73" xml:space="preserve"><value>Verschönert ein freiwilliges Ziel kosmetisch, ohne seinen Körper zu verwandeln.</value></data>
+  <data name="Spells.Summary.091a0669-f0d2-4633-8cfa-06c25986da7c" xml:space="preserve"><value>Erzeugt sichtbehindernden Nebel, der sich natürlich auflöst.</value></data>
+  <data name="Spells.Summary.ccc4fc17-0c10-4ac5-8a60-d31b0f330b8b" xml:space="preserve"><value>Manabarriere, die Geister, Dualwesen und astrale Gestalten verletzt.</value></data>
+  <data name="Spells.Summary.bed82cc3-80f9-48e5-b7a3-63e176eb6a71" xml:space="preserve"><value>Verlangsamt den Verfall von Nahrung, Proben und anderem unbelebtem organischem Material.</value></data>
+  <data name="Spells.Summary.e748de46-a314-4fc5-a7b1-4cdb16c59637" xml:space="preserve"><value>Schützt ein Fahrzeug gegen Magie; Insassen können Zauberabwehr mitnutzen.</value></data>
+  <data name="Spells.Summary.02b38262-db06-4698-b4b2-7a9e7f2452a9" xml:space="preserve"><value>Stört anfällige Elektronik und löscht gewöhnliche RFID-Chips.</value></data>
+  <data name="Spells.Summary.e520af8e-e06d-494e-ab4c-f89e9f9df192" xml:space="preserve"><value>Erhöht Panzerung und Struktur eines Gegenstands.</value></data>
+  <data name="Spells.Summary.603e63a2-1caa-4860-9344-88cbb2df10a2" xml:space="preserve"><value>Senkt die Fahrzeuggeschwindigkeit; abruptes Abbremsen kann die Kontrolle erschweren.</value></data>
+  <data name="Spells.Summary.54e25153-07a4-4f52-8cb6-de8e00e4ac91" xml:space="preserve"><value>Bewegt und formt ein bestimmtes Material, ohne neues zu erschaffen.</value></data>
+  <data name="Spells.Summary.d4bac5a3-8793-43be-a831-da7e299acd3c" xml:space="preserve"><value>Verwandelt ein freiwilliges Ziel in ein gewöhnliches Tier; Geist und Ausrüstung bleiben unverändert.</value></data>
+  <data name="Spells.Summary.03b3daef-040d-4377-baf6-9b1919f48050" xml:space="preserve"><value>Eine bestimmte gewöhnliche Tiergestalt für ein freiwilliges Ziel; Geist und Ausrüstung bleiben unverändert.</value></data>
+  <data name="Spells.Summary.8e341753-a4e1-41af-ba05-66daa90194a6" xml:space="preserve"><value>Barriere gegen Geister und ihre Kräfte, nicht gegen andere Magie.</value></data>
+  <data name="Spells.Summary.5b3c8f11-37a8-4090-a332-969d6ea1adb6" xml:space="preserve"><value>Barriere gegen Geister und ihre Kräfte, auch gegen materialisierte Geister.</value></data>
+  <data name="Spells.Summary.f1ed2b18-e50c-4c00-8fb5-ebf9bff9828a" xml:space="preserve"><value>Vernichtet lose biologische Spuren, nicht Mikroben in lebenden Körpern.</value></data>
+  <data name="Spells.Summary.621b881e-5486-4dcb-a26e-2ad66bba09e8" xml:space="preserve"><value>Verflüssigt lebendes Gewebe und macht handlungsunfähig; Ausrüstung und Implantate bleiben unverändert.</value></data>
 </root>
