@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 117, $"Expected 117 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 138, $"Expected 138 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -152,6 +152,27 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
                         "A Street Grimoire combat spell still has only its profile: " + spell.Name + "/" + locale);
                 }
+                var grimoireDetection = authority.Spells.Where(spell => spell.SourceBook == "SG" && spell.Category == "Detection").ToArray();
+                Require(grimoireDetection.Length == 21, "Expected the complete Street Grimoire detection catalog.");
+                foreach (var spell in grimoireDetection)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
+                        "A Street Grimoire detection spell still has only its profile: " + spell.Name + "/" + locale);
+                }
+                foreach (var (normalName, extendedName) in new[] {
+                    ("Mindnet", "Mindnet Extended"), ("Spatial Sense", "Spatial Sense, Extended") })
+                {
+                    string normal = CreationSpellInfo.Summary(grimoireDetection.Single(spell => spell.Name == normalName));
+                    string extended = CreationSpellInfo.Summary(grimoireDetection.Single(spell => spell.Name == extendedName));
+                    string normalSense = CreationFlowStrings.Get("Spells.Sensing.Area", "missing");
+                    string extendedSense = CreationFlowStrings.Get("Spells.Sensing.Extended Area", "missing");
+                    Require(normal.Contains(normalSense) && !normal.Contains(extendedSense)
+                        && extended.Contains(extendedSense) && !extended.Contains(normalSense)
+                        && new[] { normal, extended }.All(summary =>
+                            summary.Contains(CreationFlowStrings.Get("Spells.Range.T (A)", "missing"))),
+                        "Grimoire area casting and normal/extended sensing profiles were conflated: " + normalName + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -192,6 +213,42 @@ internal static class CreationMagicNativeRuntimeTests
                 && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
                 "Attribute spell help must retain opposite effects and distinct costs.");
             string SpellHelp(string name) => CreationSpellInfo.Summary(authority.Spells.Single(spell => spell.Name == name));
+            Require(SpellHelp("Astral Message").Contains("messages")
+                && SpellHelp("Astral Clairvoyance").Contains("distant auras")
+                && new[] { "Astral Clairvoyance", "Mana Window", "Astral Window", "[Sense] Cryptesthesia" }
+                    .All(name => SpellHelp(name).Contains("no spell targeting"))
+                && SpellHelp("Mana Window").StartsWith("Physical remote sight", StringComparison.Ordinal)
+                && SpellHelp("Astral Window").StartsWith("Remote assensing", StringComparison.Ordinal),
+                "Remote physical/astral senses must not promise line-of-sight spell targeting.");
+            Require(SpellHelp("Borrow Sense").Contains("one sense, not control")
+                && SpellHelp("Animal Sense").Contains("mundane, non-sapient")
+                && SpellHelp("Eyes of the Pack").Contains("sight from willing")
+                && SpellHelp("Night Vision").Contains("low-light")
+                && SpellHelp("Hawkeye").Contains("visual Perception")
+                && SpellHelp("Enhance Aim").Contains("distance penalties"),
+                "Borrowed senses, enhanced vision and aiming must keep their distinct effects and limits.");
+            Require(SpellHelp("Catalog").Contains("nonliving items")
+                && SpellHelp("Diagnose").Contains("without healing")
+                && SpellHelp("Diagnose").Contains("Instant effect.")
+                && !SpellHelp("Diagnose").Contains("Must be sustained.")
+                && SpellHelp("Dragon Astral Signature").Contains("lingering magic")
+                && SpellHelp("Dragon Astral Signature").Contains("Drain: F+5"),
+                "Inventory, diagnosis and dragon detection must retain their distinct accepted profiles.");
+            Require(new[] { "Mindnet", "Mindnet Extended" }.All(name => SpellHelp(name).Contains("willing minds"))
+                && SpellHelp("Mindnet").Contains("Drain: F (F = Force).")
+                && SpellHelp("Mindnet Extended").Contains("Drain: F+1")
+                && new[] { "Spatial Sense", "Spatial Sense, Extended" }
+                    .All(name => SpellHelp(name).Contains("not creatures/security"))
+                && SpellHelp("Spatial Sense").Contains("Drain: F-3")
+                && SpellHelp("Spatial Sense, Extended").Contains("Drain: F-1"),
+                "Group telepathy and spatial layout must preserve scope limits and exact variant costs.");
+            Require(new[] { "Thought Recognition", "Area Thought Recognition" }
+                    .All(name => SpellHelp(name).Contains("chosen surface thought"))
+                && SpellHelp("Thought Recognition").Contains("Touch casting; separate sensing range.")
+                && SpellHelp("Area Thought Recognition").Contains("Area within line of sight.")
+                && !SpellHelp("Area Thought Recognition").Contains("Touch casting")
+                && SpellHelp("Translate").Contains("one speaker's intent, not exact wording"),
+                "Thought recognition must not imply unrestricted mind probing, and translation must not promise exact wording.");
             foreach (var (touch, single, area) in new[] {
                 ("Corrode [Object]", "Melt [Object]", "Sludge [Object]"),
                 ("Ram [Object]", "Wreck [Object]", "Demolish [Object]"),
