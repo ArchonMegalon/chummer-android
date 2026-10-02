@@ -29,7 +29,14 @@ internal static partial class AfterRunAuthorityHarness
                 foreach (var quality in catalog)
                 {
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
-                    if (summary.Length > 0) authored++;
+                    if (summary.Length > 0)
+                    {
+                        authored++;
+                        Require(summary.Length <= 320 && summary.Split((char[]?)null,
+                                StringSplitOptions.RemoveEmptyEntries).Length <= 50
+                            && !summary.Contains('\n') && !summary.Contains('\r'),
+                            "Quality help must remain a short summary, not a full tabletop procedure.");
+                    }
                     var lines = CreationQualityInfo.Effects(quality.ToString());
                     Require(lines.Count > 0 && lines.All(line => !string.IsNullOrWhiteSpace(line)),
                         "Every catalog entry needs an explanation or an honest missing-description state.");
@@ -148,8 +155,8 @@ internal static partial class AfterRunAuthorityHarness
                 foreach (var rule in new[] { (Name: "Deus Vult!", Numbers: ""),
                     (Name: "Code of Honor: Avenging Angel", Numbers: "1,−1,24"),
                     (Name: "Faceless", Numbers: "−2"),
-                    (Name: "Illness", Numbers: "3,2,−1,1000,−2,500,−3,100,12"),
-                    (Name: "Pregnant", Numbers: "−1,1,1,1,−1,9") })
+                    (Name: "Illness", Numbers: ""),
+                    (Name: "Pregnant", Numbers: "9") })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
                     string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
@@ -259,7 +266,7 @@ internal static partial class AfterRunAuthorityHarness
                 foreach (var rule in new[] { (Name: "Astral Hazing", Numbers: "3,1,4"),
                     (Name: "Berserker", Numbers: "3,1,6,+1,−1,1"), (Name: "Bioluminescence", Numbers: "1,1"),
                     (Name: "Cephalopod Skull", Numbers: "3"), (Name: "Cold-Blooded", Numbers: "30,−1,20,−3,10,−5,0,2"),
-                    (Name: "Symbiosis", Numbers: "100,3,−1,+1,+1"), (Name: "Adiposis", Numbers: "1,2,0.5,1"),
+                    (Name: "Symbiosis", Numbers: ""), (Name: "Adiposis", Numbers: ""),
                     (Name: "Neoteny", Numbers: "2,10"), (Name: "Slow Healer", Numbers: "2"),
                     (Name: "Stubby Arms", Numbers: "1,1") })
                 {
@@ -270,15 +277,15 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 var clarification = locale switch
                 {
-                    "de-AT" => (Astral: "Obergrenze ist unklar", Social: "Sozialmodifikator vor Ort unbestimmt"),
-                    "es-MX" => (Astral: "límite de expansión no está claro", Social: "Modificador Social local sin especificar"),
-                    _ => (Astral: "expansion cap is unclear", Social: "Local Social modifier unspecified")
+                    "de-AT" => (Astral: "Obergrenze ist unklar", Social: "allergieartige Symptome"),
+                    "es-MX" => (Astral: "límite de expansión no está claro", Social: "síntomas alérgicos"),
+                    _ => (Astral: "expansion cap is unclear", Social: "allergy-like symptoms")
                 };
                 Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Astral Hazing")), "")
                     .Contains(clarification.Astral, StringComparison.Ordinal)
                     && CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Symbiosis")), "")
                     .Contains(clarification.Social, StringComparison.Ordinal),
-                    "Unresolved source values must stay explicit, not become invented numeric rules.");
+                    "Brief help must retain uncertainty and conditional drawbacks without inventing numeric rules.");
                 foreach (string name in new[] { "Critter Spook", "Cyclopean Eye", "Deformity (Picasso)",
                     "Deformity (Quasimodo)", "Feathers", "Insectoid Features", "Mood Hair", "Nocturnal",
                     "Scales", "Scent Glands", "Striking Skin Pigmentation", "Third Eye", "Unusual Hair", "Vestigial Tail" })
@@ -295,7 +302,7 @@ internal static partial class AfterRunAuthorityHarness
                     .Distinct().Count() == 2,
                     "Facial and physical deformities affect different tests and must retain distinct explanations.");
                 foreach (var rule in new[] { (Name: "Critter Spook", Numbers: "5,2"),
-                    (Name: "Cyclopean Eye", Numbers: "1"), (Name: "Deformity (Picasso)", Numbers: "−2"),
+                    (Name: "Cyclopean Eye", Numbers: ""), (Name: "Deformity (Picasso)", Numbers: "−2"),
                     (Name: "Deformity (Quasimodo)", Numbers: "−2"), (Name: "Feathers", Numbers: "1"),
                     (Name: "Insectoid Features", Numbers: "1"), (Name: "Mood Hair", Numbers: "2"),
                     (Name: "Nocturnal", Numbers: "1"), (Name: "Scales", Numbers: "2"),
@@ -661,15 +668,15 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Witness My Hate").Contains("Single-target direct combat spells")
                 && Effect("Witness My Hate").Contains("2 more damage but cause 2 more Drain")
                 && Effect("Witness My Hate").Contains("does not improve indirect or area spells")
-                && Effect("Illiterate").Contains("others' electronics, not your own")
-                && Effect("Illiterate").Contains("cost double Karma afterward until you learn to read and buy off")
+                && Effect("Illiterate").Contains("social, device and knowledge-skill use")
+                && Effect("Illiterate").Contains("until you learn to read and buy off")
                 && Effect("Deaf").Contains("audio-only Perception automatically fails")
                 && Effect("Deaf").Contains("General Perception loses 2 dice; Surprise loses 3"),
                 "Spell damage needs its Drain tradeoff; sensory drawbacks must retain their affected tests and recovery requirements.");
             Require(Effect("Codeslinger").Contains("one Matrix action that requires a test")
                 && Effect("Codeslinger").Contains("two dice")
                 && Effect("Home Ground").Contains("Only the selected benefit applies")
-                && Effect("Home Ground").Contains("+2 Street Cred"),
+                && Effect("Home Ground").Contains("not every local bonus"),
                 "Conditional action and home-ground benefits must not turn into blanket bonuses or bonus Karma.");
             foreach (string name in new[] { "Natural Immunity (Natural)", "Natural Immunity (Synthetic)" })
                 Require(Effect(name).Contains("One exposure per 6 hours")
@@ -680,7 +687,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Aspected Magician").Contains("Choose exactly one group")
                 && Effect("Aspected Magician").Contains("cannot project")
                 && Effect("Astral Perception").Contains("mundane physical tasks lose two dice")
-                && Effect("Astral Perception").Contains("not a free adept-power purchase"),
+                && Effect("Astral Perception").Contains("pixie trait"),
                 "Magic aptitude, an aspected skill group and a granted astral sense have different capabilities and costs.");
             Require(Effect("Low-Light Vision").Contains("total darkness still blocks")
                 && Effect("Thermographic Vision").Contains("by one step")
@@ -688,13 +695,13 @@ internal static partial class AfterRunAuthorityHarness
                 "Low-light and heat vision must retain distinct environmental limits.");
             Require(Effect("Spirit Affinity").Contains("one extra service")
                 && Effect("Spirit Affinity").Contains("one die on Binding")
-                && Effect("Infected Advanced Optional Power: Mimicry").Contains("imitates sound, not the speaker's appearance")
+                && Effect("Infected Advanced Optional Power: Mimicry").Contains("voices or sounds, not appearances")
                 && Effect("Infected Advanced Optional Power: Psychokinesis").Contains("hand's Strength and Agility, not your own attributes"),
                 "Spirit and infected-power help must distinguish services, imitation and a telekinetic hand from personal attribute bonuses.");
-            Require(Effect("Code of Honor").Contains("each protected death costs 1 adventure Karma")
-                && Effect("Scorched").Contains("Body + Willpower (4)")
-                && Effect("Scorched").Contains("6 hours, a glitch for 24")
-                && Effect("Scorched").Contains("−2 dice to resist its damage"),
+            Require(Effect("Code of Honor").Contains("violations can cost Karma")
+                && Effect("Scorched").Contains("neurological aftereffects")
+                && Effect("Scorched").Contains("can trigger symptoms")
+                && Effect("Scorched").Contains("medical treatment"),
                 "Moral restrictions and neurological aftereffects need actual consequences beyond their selection prompt or reputation.");
             Require(Effect("Catlike").Contains("Sneaking") && Effect("Catlike").Contains("Bonus: 2"),
                 "Specific-skill modifiers must be shown, not silently replaced by generic copy.");
@@ -709,13 +716,13 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Disgraced").Contains("2 dice to Intimidation against criminals")
                 && Effect("Disgraced").Contains("prejudiced attitude toward you"),
                 "Identity-scoped searches and intimidation benefits must retain their targets and social downside.");
-            Require(Effect("Night Vision").Contains("moderate glare on overcast days")
+            Require(Effect("Night Vision").Contains("daylight glare")
                 && Effect("Night Vision").Contains("without a Karma refund")
                 && Effect("Perfect Time").Contains("Free Action each Action Phase")
                 && Effect("Perfect Time").Contains("not a Simple or Complex Action"),
                 "Night Vision needs its glare/loss drawbacks, and Perfect Time must not grant a full attack action.");
             Require(Effect("Poor Link").Contains("Both effects apply to friendly rituals too")
-                && Effect("Privileged Family Name").Contains("Minor local NPCs lose 2 dice")
+                && Effect("Privileged Family Name").Contains("minor local figures but makes you identifiable")
                 && Effect("Privileged Family Name").Contains("national or full corporate SIN")
                 && Effect("Solid Rep").Contains("improves by 1")
                 && Effect("Legendary Rep").Contains("improves by 2"),
@@ -740,10 +747,10 @@ internal static partial class AfterRunAuthorityHarness
                     && Effect($"Day Job ({job.Hours} hrs)").Contains("fake 4+"),
                     "Each schedule must retain its own working hours, monthly salary and identity requirement.");
             Require(Effect("In Debt").Contains("150%") && Effect("In Debt").Contains("10% monthly")
-                && Effect("In Debt").Contains("unhealable until paid")
-                && Effect("In Debt").Contains("Repayment is required in both cases")
-                && Effect("Incomplete Deprogramming").Contains("Composure (4)")
-                && Effect("Incomplete Deprogramming").Contains("1D6 minutes")
+                && Effect("In Debt").Contains("Missed payments cause lasting injury")
+                && Effect("In Debt").Contains("still requires repayment")
+                && Effect("Incomplete Deprogramming").Contains("Stress can reactivate")
+                && Effect("Incomplete Deprogramming").Contains("During an episode")
                 && Effect("Incomplete Deprogramming").Contains("skills become unavailable"),
                 "Debts need ongoing obligations, and identity switches must not be described as permanent skill loss.");
             Require(new[] { "Oblivious I", "Oblivious II" }.All(name => Effect(name).Contains("astral and Matrix"))
@@ -753,11 +760,11 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Pacifist II").Contains("(20, daily)")
                 && Effect("Pacifist II").Contains("weekly recovery"),
                 "Higher grades must preserve their distinct thresholds and recovery intervals rather than copying the lower-grade effect.");
-            Require(Effect("Records on File").Contains("Its agents gain 2 dice")
-                && Effect("Records on File").Contains("security zones C or better")
+            Require(Effect("Records on File").Contains("Their investigators gain advantages")
+                && Effect("Records on File").Contains("identifying or locating you")
                 && Effect("Records on File").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
-                && Effect("Sensory Overload Syndrome").Contains("Willpower + Edge (4)")
-                && Effect("Sensory Overload Syndrome").Contains("5 − hits minutes")
+                && Effect("Sensory Overload Syndrome").Contains("sensory enhancements")
+                && Effect("Sensory Overload Syndrome").Contains("temporary seizures")
                 && Effect("Wanted").Contains("¥25,000")
                 && Effect("Wanted").Contains("buy it off with Karma"),
                 "Investigators' advantages, unresolved corporation choices, timed overload and continuing bounty obligations must remain explicit.");
@@ -784,19 +791,19 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Poor Self Control (Combat Monster)").Contains("Composure (3)")
                 && Effect("Poor Self Control (Combat Monster)").Contains("every opponent is incapacitated"),
                 "Impulse help must distinguish thresholds, retained grudges, withdrawal and a temporary initiative-score bonus.");
-            Require(Effect("Asthma").Contains("twice as often")
-                && Effect("Asthma").Contains("Effects accumulate")
-                && Effect("Asthma").Contains("at 4, resist further Fatigue using only Willpower")
-                && Effect("Asthma").Contains("at 8, another −1"),
-                "Asthma needs cumulative thresholds, not a permanent generic penalty or doubled damage amount.");
-            Require(Effect("Big Regret").Contains("Social Limit drops by 3")
-                && Effect("Big Regret").Contains("cannot buy this quality off while it stays secret")
-                && Effect("Blind").Contains("general Perception loses 4 dice and Surprise loses 3")
-                && Effect("Blind").Contains("Cybereyes cannot fix")
-                && Effect("Blind").Contains("−2 dice for physical-plane actions"),
+            Require(Effect("Asthma").Contains("twice as quickly")
+                && Effect("Asthma").Contains("Accumulating fatigue")
+                && Effect("Asthma").Contains("resistance to further exhaustion")
+                && Effect("Asthma").Contains("action penalties, Social Limit"),
+                "Asthma needs cumulative fatigue consequences, not an unconditional penalty or doubled damage claim.");
+            Require(Effect("Big Regret").Contains("interactions with those who know it")
+                && Effect("Big Regret").Contains("Exposure adds Notoriety and forces a Karma buyoff")
+                && Effect("Blind").Contains("impairs perception and combat")
+                && Effect("Blind").Contains("cybereyes cannot fix")
+                && Effect("Blind").Contains("usual physical-action penalties"),
                 "A secret's conditional social limit and blindness's distinct perception/astral consequences must remain clear.");
-            Require(Effect("Borrowed Time").Contains("any triple")
-                && Effect("Borrowed Time").Contains("permanently burning all current Edge")
+            Require(Effect("Borrowed Time").Contains("unpredictable death each session")
+                && Effect("Borrowed Time").Contains("permanently sacrificing all current Edge")
                 && Effect("Computer Illiterate").Contains("electronic devices or Matrix-connected systems")
                 && Effect("Computer Illiterate").Contains("does not take the same penalty twice"),
                 "Unavoidable mortality must not become ordinary Edge spending, and electronic penalties must not stack twice.");
@@ -810,8 +817,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Emotional Attachment").Contains("six months")
                 && Effect("Emotional Attachment").Contains("attachment transfers to replacement gear"),
                 "Social glitches, conditional obsession benefits and lasting equipment loss need their actual consequences.");
-            Require(Effect("Ex-Con").Contains("two Matrix check-ins and one personal visit weekly")
-                && Effect("Ex-Con").Contains("Corporate contacts need Loyalty 4+, police contacts 5+")
+            Require(Effect("Ex-Con").Contains("regular check-ins, police scrutiny")
+                && Effect("Ex-Con").Contains("restrictions on implants and contacts")
                 && Effect("Flashbacks I").Contains("about every other run")
                 && Effect("Flashbacks II").Contains("at least once each session")
                 && new[] { "Flashbacks I", "Flashbacks II" }.All(name =>
@@ -819,7 +826,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Parole requires real obligations, and flashback grades change frequency rather than the same resistance test.");
             Require(Effect("Hobo with a Shotgun").Contains("every Mental attribute by 2")
                 && Effect("Hobo with a Shotgun").Contains("full day at Squatter or Street")
-                && Effect("Paraplegic").Contains("10%; vehicles need 5% modifications or a rigger interface")
+                && Effect("Paraplegic").Contains("costlier living or vehicle adaptations")
                 && Effect("Paraplegic").Contains("Astral and Matrix abilities are unaffected")
                 && Effect("Signature").Contains("Investigators")
                 && Effect("Signature").Contains("Street Cred plus Public Awareness"),
@@ -856,8 +863,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("The Beast's Way").Contains("one die to Animal Handling")
                 && Effect("The Spiritual Way").Contains("one die to tests using the Conjuring skill group"),
                 "A free-quality cost waiver is not an automatic mentor grant, and the two Ways have different skill bonuses.");
-            Require(Effect("The Burnout's Way").Contains("80% of their normal Essence")
-                && Effect("The Burnout's Way").Contains("not a price discount")
+            Require(Effect("The Burnout's Way").Contains("Standard-grade implants cost less Essence")
+                && Effect("The Burnout's Way").Contains("nuyen price is unchanged")
                 && Effect("The Magician's Way").Contains("amount belongs to each power"),
                 "Adept Ways must not invent a blanket money or Power Point discount.");
             foreach (string name in new[] { "Changeling (Class I SURGE)", "Changeling (Class II SURGE)", "Changeling (Class III SURGE)" })
@@ -973,9 +980,9 @@ internal static partial class AfterRunAuthorityHarness
                     "Your Mental limit increases by 1 for Academic Knowledge tests.", StringComparison.Ordinal)
                 && !inspired("4e2ddf3d-802f-4206-85ce-81f1defa528f").Contains("half")
                 && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").StartsWith(
-                    "During creation, Academic Knowledge skills use half the normal point cost;", StringComparison.Ordinal)
-                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("Karma specialization costs are also halved")
-                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("rating 3 or higher costs 1 less Karma per advancement")
+                    "Academic Knowledge costs half the normal points and Karma during creation,", StringComparison.Ordinal)
+                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("including Karma specializations")
+                && inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("Career advances to rating 3+ cost 1 less Karma")
                 && !inspired("604aea10-3f13-4f28-a87b-25b8bf677276").Contains("Mental limit increases"),
                 "The two College Education identities have distinct limit versus training-cost rules.");
             foreach (string name in new[] { "School of Hard Knocks", "Technical School Education" })
@@ -988,8 +995,8 @@ internal static partial class AfterRunAuthorityHarness
                     && bonus.Element("skillcategorykarmacost")!.Element("condition")!.Value == "/character/created"
                     && bonus.Element("skillcategorykarmacostmultiplier") is null
                     && bonus.Element("skillcategoryspecializationkarmacostmultiplier") is null
-                    && Effect(name).Contains("rating 3 or higher costs 1 less Karma per advancement")
-                    && Effect(name).Contains("does not halve creation-time Karma purchases or Karma specialization costs"),
+                    && Effect(name).Contains("Career advances to rating 3+ cost 1 less Karma")
+                    && Effect(name).Contains("not half the Karma"),
                     "Street/Professional discounts must not inherit the different Academic Karma discounts.");
             }
             Require(Effect("Incompetent").StartsWith("Choose one skill group that is unavailable to you.", StringComparison.Ordinal)
@@ -1090,10 +1097,10 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Raptor Beak").Contains("attack details are not yet described here")
                 && Effect("Raptor Beak").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Digestion bonuses must retain their cost/resistance differences, and weapon references stay incomplete.");
-            Require(Effect("Adiposis").Contains("walk at Agility × 1, run at Agility × 2")
-                && Effect("Adiposis").Contains("0.5 metres per hit")
-                && Effect("Adiposis").Contains("Physical activities, including combat, lose 1 die")
-                && Effect("Adiposis").Contains("double fatigue damage, with half the time")
+            Require(Effect("Adiposis").Contains("slows movement")
+                && Effect("Adiposis").Contains("faster and more severe fatigue")
+                && Effect("Adiposis").Contains("penalizes physical activities, including combat")
+                && Effect("Adiposis").Contains("Exertion causes")
                 && Effect("Thorns").Contains("unarmed damage by 1, but Physical Active skill tests lose one die"),
                 "Replacement movement rates and damage bonuses must not hide their skill penalties.");
             Require(Effect("Deformity (Quasimodo)").Contains("except Perception")
@@ -1113,19 +1120,19 @@ internal static partial class AfterRunAuthorityHarness
                 && prototype.Element("bonus")!.Element("prototypetranshuman")!.Value == "1"
                 && prototype.Element("bonus")!.Element("selectquality")!.Elements("quality").Select(choice => choice.Value)
                     .SequenceEqual(new[] { "Wanted", "Allergy (Common, Mild)", "Astral Beacon", "Insomnia (Basic)" })
-                && Effect("Prototype Transhuman").Contains("Up to 1 Essence worth of bioware")
-                && Effect("Prototype Transhuman").Contains("bioware still costs nuyen")
-                && Effect("Prototype Transhuman").Contains("without gaining extra Karma")
-                && Effect("Prototype Transhuman").Contains("not a general Essence discount"),
+                && Effect("Prototype Transhuman").Contains("Creation only: up to 1 Essence of prototype bioware")
+                && Effect("Prototype Transhuman").Contains("still costs nuyen")
+                && Effect("Prototype Transhuman").Contains("required drawback grants no extra Karma")
+                && Effect("Prototype Transhuman").Contains("avoids Essence loss"),
                 "Prototype help must preserve the creation-only allowance and mandatory drawback, not free augmentation purchases.");
             var chimera = catalog.Single(quality => quality.Element("name")!.Value == "Wildcard Chimera");
             var chimeraChoices = chimera.Element("bonus")!.Element("selectquality")!;
             Require(chimeraChoices.Elements("quality").Count() == 17
                 && chimeraChoices.Element("discountqualities")!.Elements("quality").Count() == 13
                 && chimera.Element("required")!.Descendants("quality").All(quality => quality.Value.StartsWith("Infected:", StringComparison.Ordinal))
-                && Effect("Wildcard Chimera").Contains("choice of one optional infected power")
-                && Effect("Wildcard Chimera").Contains("alternatives, not powers you receive together")
-                && Effect("Wildcard Chimera").Contains("zero cost does not promise a free power"),
+                && Effect("Wildcard Chimera").Contains("Choose one optional infected power")
+                && Effect("Wildcard Chimera").Contains("possible drawback discount")
+                && Effect("Wildcard Chimera").Contains("zero listed cost does not mean free"),
                 "Chimera help must distinguish one referenced power, optional drawbacks and unresolved final cost.");
             var technoshaman = catalog.Single(quality => quality.Element("name")!.Value == "Resonant Stream: Technoshaman");
             var cyberadept = catalog.Single(quality => quality.Element("name")!.Value == "Resonant Stream: Cyberadept");
@@ -1135,8 +1142,8 @@ internal static partial class AfterRunAuthorityHarness
                     "Stream explanations must retain the technomancer prerequisite and incompatible streams.");
             Require(technoshaman.Element("bonus")!.Elements().Single().Name.LocalName == "allowspritefettering"
                 && Effect("Resonant Stream: Technoshaman").Contains("permanently fetter one sprite")
-                && Effect("Resonant Stream: Technoshaman").Contains("does not grant a free sprite")
-                && Effect("Resonant Stream: Technoshaman").Contains("In Career, fettering costs Karma equal to the sprite's rating"),
+                && Effect("Resonant Stream: Technoshaman").Contains("grants no free sprite")
+                && Effect("Resonant Stream: Technoshaman").Contains("Career cost equals its rating in Karma"),
                 "Fettering permission must not be advertised as unlimited free sprites.");
             var cyberadeptSkills = cyberadept.Element("bonus")!.Elements("specificskill").ToArray();
             Require(cyberadept.Element("bonus")!.Element("cyberadeptdaemon") is not null
@@ -1145,9 +1152,9 @@ internal static partial class AfterRunAuthorityHarness
                     .SequenceEqual(new[] { "Companion Sprite", "Fault Sprite" })
                 && cyberadeptSkills.Select(skill => skill.Element("name")!.Value).Distinct().OrderBy(value => value)
                     .SequenceEqual(new[] { "Compiling", "Decompiling" })
-                && Effect("Resonant Stream: Cyberadept").Contains("not a four-die bonus")
-                && Effect("Resonant Stream: Cyberadept").Contains("subject to the character's current limits and rules settings")
-                && Effect("Resonant Stream: Cyberadept").Contains("does not refund Essence or undo bioware loss"),
+                && Effect("Resonant Stream: Cyberadept").Contains("Fault or Companion")
+                && Effect("Resonant Stream: Cyberadept").Contains("conditionally recover")
+                && Effect("Resonant Stream: Cyberadept").Contains("not Essence or losses from bioware"),
                 "Cyberadept help must preserve alternative sprite targets and conditional Resonance recovery.");
             string Describe(string bonus) => string.Join(" ", CreationQualityInfo.Effects("<quality><bonus>" + bonus + "</bonus></quality>"));
             foreach (string effect in new[] { "<allowspritefettering />", "<cyberadeptdaemon />",
@@ -1194,9 +1201,9 @@ internal static partial class AfterRunAuthorityHarness
                 && Describe("<selectskill><disablespecializationeffects /></selectskill>").Contains("Specialization bonuses do not apply"),
                 "Maximum-only and specialization-only changes are real effects even without bonus dice.");
             Require(Effect("Bad Luck").Contains("Notoriety: 1")
-                && Effect("Bad Luck").Contains("Whenever you spend Edge")
+                && Effect("Bad Luck").Contains("Spending Edge can backfire")
                 && Effect("Bad Luck").Contains("only once per session")
-                && Effect("Bad Luck").Contains("stop making this check")
+                && Effect("Bad Luck").Contains("still consuming it")
                 && !Effect("Bad Luck").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Bad Luck must explain its limited Edge reversal as well as its reputation effect.");
             Require(Describe("<notoriety>1</notoriety>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
@@ -1206,13 +1213,13 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Astral Beacon").Contains("linger twice as long")
                 && Effect("Astral Beacon").Contains("one fewer hit")
                 && Effect("Astral Beacon").Contains("not their dice pool")
-                && Effect("Distinctive Style").Contains("minimum one")
+                && Effect("Distinctive Style").Contains("easier to remember, identify and track")
                 && Effect("Distinctive Style").Contains("Astral searches are unaffected"),
                 "Astral and physical identifiability must keep their scopes and thresholds distinct from dice modifiers.");
-            Require(Effect("Combat Paralysis").Contains("halve your first Initiative score, rounding up")
-                && Effect("Combat Paralysis").Contains("Later Initiative tests are normal")
-                && Effect("Combat Paralysis").Contains("Surprise tests lose three dice")
-                && Effect("Combat Paralysis").Contains("Composure tests under fire or in combat need one extra hit"),
+            Require(Effect("Combat Paralysis").Contains("half your opening Initiative score")
+                && Effect("Combat Paralysis").Contains("later Initiative rolls are normal")
+                && Effect("Combat Paralysis").Contains("Surprise and composure")
+                && Effect("Combat Paralysis").Contains("under fire also suffer"),
                 "Combat Paralysis must retain opening-score, Surprise and Composure effects without halving all later Initiative.");
             Require(Effect("Insomnia (Basic)").Contains("doubles each recovery interval")
                 && Effect("Insomnia (Full)").Contains("prevents any healing from that rest attempt")
@@ -1225,10 +1232,10 @@ internal static partial class AfterRunAuthorityHarness
                 "Interface penalties and earlier wound penalties must not become universal test penalties or smaller monitors.");
             Require(Effect("Elf Poser").Contains("human-only")
                 && Effect("Ork Poser").Contains("human or elf")
-                && Effect("Ork Poser").Contains("do not gain ork attributes")
-                && Effect("Spirit Bane").Contains("one spirit type")
-                && Effect("Spirit Bane").Contains("it gains two dice against your Banishing")
-                && Effect("Spirit Bane").Contains("Watchers and other constructs do not count"),
+                && Effect("Ork Poser").Contains("does not change your metatype or attributes")
+                && Effect("Spirit Bane").Contains("One chosen spirit type")
+                && Effect("Spirit Bane").Contains("it resists your banishing more strongly")
+                && Effect("Spirit Bane").Contains("Summoning and binding it become harder"),
                 "Imitating a metatype must not grant attributes; spirit hostility must retain type scope and who rolls the bonus.");
             foreach (string frequency in new[] { "Uncommon", "Common" })
             {
@@ -1281,24 +1288,24 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("SINner (National)").Contains("15% of gross income")
                 && Effect("SINner (National)").Contains("identity and biometrics")
                 && Effect("SINner (National)").Contains("fake identity does not erase this record")
-                && Effect("SINner (Criminal)").Contains("15% of gross income")
-                && Effect("SINner (Criminal)").Contains("replaces any previous SIN")
-                && Effect("SINner (Criminal)").Contains("Registered magic users also face checks")
+                && Effect("SINner (Criminal)").Contains("15% income tax")
+                && Effect("SINner (Criminal)").Contains("replaces your previous identity")
+                && Effect("SINner (Criminal)").Contains("police scrutiny")
                 && Effect("SINner (Criminal)").Contains("Notoriety: 1"),
                 "National/criminal SINs need their registry, replacement and oversight consequences beyond the encoded reputation modifier.");
             Require(Effect("SINner (Corporate Limited)").Contains("20% of gross income")
-                && Effect("SINner (Corporate Limited)").Contains("not leadership or special-forces privileges")
-                && Effect("SINner (Corporate Limited)").Contains("target you for extraction")
+                && Effect("SINner (Corporate Limited)").Contains("no leadership privileges")
+                && Effect("SINner (Corporate Limited)").Contains("extraction attempts")
                 && Effect("SINner (Corporate)").Contains("10% of gross income")
-                && Effect("SINner (Corporate)").Contains("global registry only confirms SIN validity")
-                && Effect("SINner (Corporate)").Contains("does not grant free corporate resources"),
+                && Effect("SINner (Corporate)").Contains("corporate records")
+                && Effect("SINner (Corporate)").Contains("no free corporate resources"),
                 "Corporate SIN variants must not swap tax rates, disclose the same registry detail or imply free corporate equipment.");
             Require(!Describe("<notoriety>1</notoriety><memory>1</memory>").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "A reputation modifier alongside a described primary effect is not a reputation-only explanation.");
             string gremlins = Effect("Gremlins");
             Require(gremlins.Contains("Once, at the first level only: Notoriety: 1")
-                && gremlins.Contains("minimum of one") && gremlins.Contains("Implants are unaffected")
-                && gremlins.Contains("cannot be used to sabotage")
+                && gremlins.Contains("glitches more easily with each level") && gremlins.Contains("Implants are unaffected")
+                && gremlins.Contains("cannot sabotage others")
                 && !gremlins.Contains(CreationFlowStrings.Get("Qualities.Info.Additional", "")),
                 "Gremlins needs its glitch rule and scope, not just a one-time reputation modifier.");
             string ratedGremlins = string.Join(" ", CreationQualityInfo.Effects(
@@ -1321,7 +1328,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(Effect("Astral Chameleon").Contains("twice as quickly")
                 && Effect("Astral Chameleon").Contains("not your physical presence")
                 && Effect("Blandness").Contains("Magical and Matrix searches are unaffected")
-                && Effect("Blandness").Contains("stand out can remove the benefit"),
+                && Effect("Blandness").Contains("standing out removes the benefit"),
                 "Concealment explanations must retain their different scopes and exceptions.");
             Require(Effect("Focused Concentration").Contains("one spell or complex form")
                 && Effect("Focused Concentration").Contains("does not exceed this quality's rating")
@@ -1330,7 +1337,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Guts").Contains("does not make you immune"),
                 "Mental-discipline help must not grant unlimited sustaining, fear immunity or attack bonuses.");
             Require(Effect("Gearhead").Contains("20% more Speed or +1 Handling")
-                && Effect("Gearhead").Contains("per extra minute")
+                && Effect("Gearhead").Contains("Extending the boost damages the vehicle")
                 && Effect("Juryrigger").Contains("Results are temporary")
                 && Effect("Juryrigger").Contains("burns out its critical components"),
                 "Technical tricks must retain their alternatives, temporary duration and damage risk.");

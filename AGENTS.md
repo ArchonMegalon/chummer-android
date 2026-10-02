@@ -19,16 +19,20 @@ For codebase discovery, run the workspace vexp pipeline first. If this new repo
 is not indexed yet, use targeted reads and commands only until indexing catches
 up.
 
-## Short, original spell summaries
+## Short, original quality and spell summaries
 
-User decision, 2026-10-02: spell help must summarize the practical effect in
+User decision, 2026-10-02: quality and spell help must summarize the practical effect in
 independently written, plain language, usually one sentence. Do not copy or
 closely rephrase rulebook paragraphs, distinctive flavor text or examples, or
 replace useful help with a book referral. Keep each localized `Spells.Summary.*`
-entry within 25 words and 160 characters, without paragraph breaks. Preserve
-important distinctions; show accepted Core numbers separately through the
-existing profile. These are editorial limits, not copyright clearance: review
-original wording as well as length. Do not claim legal approval from a test pass.
+entry within 25 words and 160 characters, without paragraph breaks. Quality
+summaries may need a benefit plus a drawback: keep `Qualities.Summary.*` within
+50 words and 320 characters, and prefer substantially less. Do not reproduce
+step-by-step tabletop procedures, exhaustive exceptions or flavor examples.
+Preserve important distinctions; show accepted Core numbers separately through
+the existing profile. These are editorial limits, not copyright clearance:
+review original wording as well as length. Do not claim legal approval from a
+test pass. These caps are not a target length or a legal safe-harbor threshold.
 
 ## Local execution is the default
 
