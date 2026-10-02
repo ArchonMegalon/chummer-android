@@ -919,7 +919,9 @@ internal static partial class AfterRunAuthorityHarness
         foreach (string spellName in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
             "Antidote", "Detox", "Resist Pain", "Phantasm", "Trid Phantasm", "Silence",
             "Animate", "Mana Barrier", "Physical Barrier", "Awaken", "Fast", "Enabler", "Forced Defense",
-            "Firewater", "Napalm", "Ice Spear", "Ice Storm", "Shattershield" })
+            "Firewater", "Napalm", "Ice Spear", "Ice Storm", "Shattershield", "Diagnose", "Mana Window",
+            "Astral Window", "Mindnet", "Mindnet Extended", "Night Vision", "Spatial Sense, Extended",
+            "Thought Recognition", "Area Thought Recognition", "Translate" })
         {
             var spell = options.Single(item => item.Name == spellName);
             Search(spell.Name);

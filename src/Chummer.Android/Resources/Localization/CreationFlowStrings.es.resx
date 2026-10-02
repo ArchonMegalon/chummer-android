@@ -1352,4 +1352,26 @@
   <data name="Spells.Summary.e0b3608a-cf54-4a1d-a99a-a4cd513c5e8a" xml:space="preserve"><value>Ataca con sustancias tóxicas.</value></data>
   <data name="Spells.Summary.7a6579fa-4eda-47e4-96d2-59f4e1f9f567" xml:space="preserve"><value>Ataca con sustancias tóxicas.</value></data>
   <data name="Spells.Summary.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>Ataca barreras de maná.</value></data>
+  <!-- Street Grimoire Detection effects; profiles and admission remain Core-owned. -->
+  <data name="Spells.Summary.87c6046a-1f20-4b64-9e89-aec583254a3e" xml:space="preserve"><value>Envía mensajes breves por el espacio astral.</value></data>
+  <data name="Spells.Summary.c68f9aeb-e7b2-4b2a-9ce4-1ee306412ef7" xml:space="preserve"><value>Percibe auras lejanas; no permite apuntar hechizos.</value></data>
+  <data name="Spells.Summary.3e350a47-4b06-48b1-94ef-fe00c3b86757" xml:space="preserve"><value>Toma prestado un sentido, sin controlar.</value></data>
+  <data name="Spells.Summary.2e4c9b88-2203-4ab9-842b-e3c373db6982" xml:space="preserve"><value>Toma un sentido de un animal no sapiente ni paranormal.</value></data>
+  <data name="Spells.Summary.2f4d4afa-f94a-4659-be2a-9ffbd3589e44" xml:space="preserve"><value>Ve por los ojos de compañeros voluntarios.</value></data>
+  <data name="Spells.Summary.d6157db4-8957-4160-ab47-3ded6c4be07c" xml:space="preserve"><value>Inventaría objetos inertes cercanos.</value></data>
+  <data name="Spells.Summary.fdbb2c8e-453b-46cf-8dcd-522c6d3aa3e0" xml:space="preserve"><value>Detecta problemas médicos, sin curarlos.</value></data>
+  <data name="Spells.Summary.0b2bd31a-09b2-40b8-a4ab-7c776ef33268" xml:space="preserve"><value>Detecta dragones y sus rastros mágicos.</value></data>
+  <data name="Spells.Summary.96859e68-4051-4805-8de6-4f15ea4dee66" xml:space="preserve"><value>Reduce penalizaciones de distancia al disparar.</value></data>
+  <data name="Spells.Summary.ba3a8f58-8eeb-49de-97ac-b68ec67b85f5" xml:space="preserve"><value>Mejora la Percepción visual.</value></data>
+  <data name="Spells.Summary.35d509e2-f0c7-432f-919a-34e526079097" xml:space="preserve"><value>Visión física remota a través de barreras de maná; sin apuntar hechizos.</value></data>
+  <data name="Spells.Summary.237ee405-062f-4e11-96a8-78336e1d6a0a" xml:space="preserve"><value>Percepción astral remota a través de barreras de maná; sin apuntar hechizos.</value></data>
+  <data name="Spells.Summary.1a3b7121-ab36-4796-9ac8-2bae53491c5e" xml:space="preserve"><value>Conecta mentes voluntarias para comunicación grupal.</value></data>
+  <data name="Spells.Summary.4af09e0f-93a5-43f5-badb-9f070d574417" xml:space="preserve"><value>Conecta mentes voluntarias para comunicación grupal.</value></data>
+  <data name="Spells.Summary.06a54506-0b09-4e5a-91f3-e29b20c8c224" xml:space="preserve"><value>Otorga visión con poca luz.</value></data>
+  <data name="Spells.Summary.b2851e5f-76b8-42a7-8e74-11c0b4b7b67f" xml:space="preserve"><value>Proyecta un sentido mejorado; sin apuntar hechizos.</value></data>
+  <data name="Spells.Summary.31a6e1bf-403d-47e4-a6dc-fe113fd875f1" xml:space="preserve"><value>Revela la distribución del entorno, no seres vivos ni seguridad.</value></data>
+  <data name="Spells.Summary.5b72a202-0dcc-44e8-b7ae-f508b7f5319f" xml:space="preserve"><value>Revela la distribución del entorno, no seres vivos ni seguridad.</value></data>
+  <data name="Spells.Summary.ab70d6c1-60e8-4475-87ee-16790cb9ff68" xml:space="preserve"><value>Busca un pensamiento superficial concreto.</value></data>
+  <data name="Spells.Summary.575e98fc-a165-403c-aef0-4877fb75845a" xml:space="preserve"><value>Busca un pensamiento superficial concreto.</value></data>
+  <data name="Spells.Summary.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>Interpreta la intención de un interlocutor, no sus palabras exactas.</value></data>
 </root>

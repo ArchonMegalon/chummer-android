@@ -1911,4 +1911,47 @@
   <data name="Spells.SummarySource.7a6579fa-4eda-47e4-96d2-59f4e1f9f567" xml:space="preserve"><value>B9FC40406EA88753D52E9F7053AAFC2F76C801BDF975B06C8EAF0548D9C77D5D</value></data>
   <data name="Spells.Summary.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>Attacks mana barriers.</value></data>
   <data name="Spells.SummarySource.0c0c34cb-5df3-4928-8e81-b794ee2fb47c" xml:space="preserve"><value>64B9D76B47A3936DF291725EE7BC8CEFB5ADB0131988A43442B7F65DFFC57452</value></data>
+  <!-- Street Grimoire Detection effects; profiles and admission remain Core-owned. -->
+  <data name="Spells.Summary.87c6046a-1f20-4b64-9e89-aec583254a3e" xml:space="preserve"><value>Delivers short messages through astral space.</value></data>
+  <data name="Spells.SummarySource.87c6046a-1f20-4b64-9e89-aec583254a3e" xml:space="preserve"><value>4F5512141B7EF03845EC3D564E43E12683DA0431EC16000A05CC5D89E8A15AAA</value></data>
+  <data name="Spells.Summary.c68f9aeb-e7b2-4b2a-9ce4-1ee306412ef7" xml:space="preserve"><value>Views distant auras; no spell targeting.</value></data>
+  <data name="Spells.SummarySource.c68f9aeb-e7b2-4b2a-9ce4-1ee306412ef7" xml:space="preserve"><value>A60FBB5C9F18CFDBED2A88DCD3D412F0B45A9CDE41D961A5943806F8BBEC2A43</value></data>
+  <data name="Spells.Summary.3e350a47-4b06-48b1-94ef-fe00c3b86757" xml:space="preserve"><value>Borrows one sense, not control.</value></data>
+  <data name="Spells.SummarySource.3e350a47-4b06-48b1-94ef-fe00c3b86757" xml:space="preserve"><value>F9938406128E3CCD24B8CEA605477DC9D56722FE60A54DC90500E3A302B3F5F3</value></data>
+  <data name="Spells.Summary.2e4c9b88-2203-4ab9-842b-e3c373db6982" xml:space="preserve"><value>Borrows a mundane, non-sapient animal's sense.</value></data>
+  <data name="Spells.SummarySource.2e4c9b88-2203-4ab9-842b-e3c373db6982" xml:space="preserve"><value>0408E6C9365A12C3AFD90972C18692721A7809689EE7AC15EF141F39CADCD140</value></data>
+  <data name="Spells.Summary.2f4d4afa-f94a-4659-be2a-9ffbd3589e44" xml:space="preserve"><value>Borrows sight from willing pack members.</value></data>
+  <data name="Spells.SummarySource.2f4d4afa-f94a-4659-be2a-9ffbd3589e44" xml:space="preserve"><value>3D258C352BCA107995AF3B1423A1D99FCB47CC0DCA89596031C2238908965BFF</value></data>
+  <data name="Spells.Summary.d6157db4-8957-4160-ab47-3ded6c4be07c" xml:space="preserve"><value>Inventories nearby nonliving items.</value></data>
+  <data name="Spells.SummarySource.d6157db4-8957-4160-ab47-3ded6c4be07c" xml:space="preserve"><value>DFAC45BA57BDD2B1D6A02E41F3EDDA09E52DDD0F4CB16C9EC9ABC0F2254927E6</value></data>
+  <data name="Spells.Summary.fdbb2c8e-453b-46cf-8dcd-522c6d3aa3e0" xml:space="preserve"><value>Reveals medical problems, without healing.</value></data>
+  <data name="Spells.SummarySource.fdbb2c8e-453b-46cf-8dcd-522c6d3aa3e0" xml:space="preserve"><value>4DA8F40948E9A67A6CA20BBD975CEE8A9DE81D5F4C8714EDB2333C74BE41F67C</value></data>
+  <data name="Spells.Summary.0b2bd31a-09b2-40b8-a4ab-7c776ef33268" xml:space="preserve"><value>Detects dragons and their lingering magic.</value></data>
+  <data name="Spells.SummarySource.0b2bd31a-09b2-40b8-a4ab-7c776ef33268" xml:space="preserve"><value>A52C3D5DEAC558DE67BDC684A956B4F47B6D7AC04CE9C2FB5F8B929983D124AF</value></data>
+  <data name="Spells.Summary.96859e68-4051-4805-8de6-4f15ea4dee66" xml:space="preserve"><value>Reduces ranged-attack distance penalties.</value></data>
+  <data name="Spells.SummarySource.96859e68-4051-4805-8de6-4f15ea4dee66" xml:space="preserve"><value>8439A8E2537F9C34A871F77CD36FEFDDBF9EBA4F6684A3DAC78FFBADB89858A5</value></data>
+  <data name="Spells.Summary.ba3a8f58-8eeb-49de-97ac-b68ec67b85f5" xml:space="preserve"><value>Improves visual Perception.</value></data>
+  <data name="Spells.SummarySource.ba3a8f58-8eeb-49de-97ac-b68ec67b85f5" xml:space="preserve"><value>DF86B6F23B8AB15E6FC15C99741AE935ECECBA65875EDFA1284A4E5095758096</value></data>
+  <data name="Spells.Summary.35d509e2-f0c7-432f-919a-34e526079097" xml:space="preserve"><value>Physical remote sight through mana barriers; no spell targeting.</value></data>
+  <data name="Spells.SummarySource.35d509e2-f0c7-432f-919a-34e526079097" xml:space="preserve"><value>AE01B205025A38302CC16D6B2E531333412EE34B8BCB936CCEBA7E67CDAF559B</value></data>
+  <data name="Spells.Summary.237ee405-062f-4e11-96a8-78336e1d6a0a" xml:space="preserve"><value>Remote assensing through mana barriers; no spell targeting.</value></data>
+  <data name="Spells.SummarySource.237ee405-062f-4e11-96a8-78336e1d6a0a" xml:space="preserve"><value>A77B67EEB5351B886BA55BD4063368EECBE50AEEFA3A087787ED7ED5E87086D9</value></data>
+  <data name="Spells.Summary.1a3b7121-ab36-4796-9ac8-2bae53491c5e" xml:space="preserve"><value>Links willing minds for group communication.</value></data>
+  <data name="Spells.SummarySource.1a3b7121-ab36-4796-9ac8-2bae53491c5e" xml:space="preserve"><value>FC0D941ABADDE38F3F111F1FD1E49E36F721239162133740985B0EAD63CEEA3A</value></data>
+  <data name="Spells.Summary.4af09e0f-93a5-43f5-badb-9f070d574417" xml:space="preserve"><value>Links willing minds for group communication.</value></data>
+  <data name="Spells.SummarySource.4af09e0f-93a5-43f5-badb-9f070d574417" xml:space="preserve"><value>6C42A707CB1E5B9CD180BE1962EEE164EFA44C83D69F04852D046914EAFDB1B9</value></data>
+  <data name="Spells.Summary.06a54506-0b09-4e5a-91f3-e29b20c8c224" xml:space="preserve"><value>Grants low-light vision.</value></data>
+  <data name="Spells.SummarySource.06a54506-0b09-4e5a-91f3-e29b20c8c224" xml:space="preserve"><value>05E54B323A2E3BB0036AB6497B846B7C7DD12B2007345331207EBE566581D9D3</value></data>
+  <data name="Spells.Summary.b2851e5f-76b8-42a7-8e74-11c0b4b7b67f" xml:space="preserve"><value>Projects one enhanced sense; no spell targeting.</value></data>
+  <data name="Spells.SummarySource.b2851e5f-76b8-42a7-8e74-11c0b4b7b67f" xml:space="preserve"><value>3E52F805646A5B0950B61DD42CF7689257FAF479E6C477ED738CD3E89E90AA43</value></data>
+  <data name="Spells.Summary.31a6e1bf-403d-47e4-a6dc-fe113fd875f1" xml:space="preserve"><value>Reveals surrounding layout, not creatures/security.</value></data>
+  <data name="Spells.SummarySource.31a6e1bf-403d-47e4-a6dc-fe113fd875f1" xml:space="preserve"><value>DD799A49B36086C28DECD655ECCE80FDF906F43C27F0268105F05BAE54CA8A39</value></data>
+  <data name="Spells.Summary.5b72a202-0dcc-44e8-b7ae-f508b7f5319f" xml:space="preserve"><value>Reveals surrounding layout, not creatures/security.</value></data>
+  <data name="Spells.SummarySource.5b72a202-0dcc-44e8-b7ae-f508b7f5319f" xml:space="preserve"><value>BF7924A54D0A0DAEE7F5B3A92D25C991AF5D68EA1D1E0CE5CE181DCD9A1EF665</value></data>
+  <data name="Spells.Summary.ab70d6c1-60e8-4475-87ee-16790cb9ff68" xml:space="preserve"><value>Checks for a chosen surface thought.</value></data>
+  <data name="Spells.SummarySource.ab70d6c1-60e8-4475-87ee-16790cb9ff68" xml:space="preserve"><value>75B44EB99F2253B4A4F6B51FEA131572A79F0C6EE413B05EE70AF31678493CD8</value></data>
+  <data name="Spells.Summary.575e98fc-a165-403c-aef0-4877fb75845a" xml:space="preserve"><value>Checks for a chosen surface thought.</value></data>
+  <data name="Spells.SummarySource.575e98fc-a165-403c-aef0-4877fb75845a" xml:space="preserve"><value>DDF34B181A13B8AAB6CACB1F2F26CDDA165881F8D267D29EE55CC1FFB4A0134D</value></data>
+  <data name="Spells.Summary.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>Interprets one speaker's intent, not exact wording.</value></data>
+  <data name="Spells.SummarySource.aaebe992-95e0-4607-a3b4-256455e67791" xml:space="preserve"><value>FA5EA294741C8E001986F2073B7C4A2EBE5E6AE66D231E1C7CC2297472E47475</value></data>
 </root>
