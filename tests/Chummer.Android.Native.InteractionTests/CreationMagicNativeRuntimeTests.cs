@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 72, $"Expected 72 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 84, $"Expected 84 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -122,6 +122,17 @@ internal static class CreationMagicNativeRuntimeTests
                         && !summary.Contains("Damage: 0."),
                         "A core illusion lacks its source-bound effect/sustained profile: " + spell.Name + "/" + locale);
                 }
+                var coreManipulation = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Manipulation").ToArray();
+                Require(coreManipulation.Length == 18, "Expected the complete SR5 core manipulation catalog.");
+                foreach (var spell in coreManipulation)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    Require(prose.Length > 0 && CreationSpellInfo.Summary(spell).StartsWith(prose, StringComparison.Ordinal),
+                        "A core manipulation spell still has only its profile: " + spell.Name + "/" + locale);
+                }
+                Require(coreCombat.Length + coreDetection.Length + coreHealth.Length
+                    + coreIllusion.Length + coreManipulation.Length == 84,
+                    "The five ordinary SR5 core spell categories must retain all 84 definitions; rituals are separate.");
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -194,6 +205,33 @@ internal static class CreationMagicNativeRuntimeTests
             Require(customPhysical.Contains("Definition changed;") && customPhysical.Contains("Physical spell.")
                 && !customPhysical.Contains("living observers") && !customPhysical.Contains("Mana spell."),
                 "Changing an illusion's type retained stale authored sensor semantics.");
+            foreach (var (single, area) in new[] { ("Animate", "Mass Animate"),
+                ("Control Actions", "Mob Control"), ("Control Thoughts", "Mob Mind") })
+                Require(SpellHelp(single).Contains("Target within line of sight.")
+                    && SpellHelp(single).Contains("Drain: F-1")
+                    && SpellHelp(area).Contains("Area within line of sight.")
+                    && SpellHelp(area).Contains("Drain: F+1"),
+                    "Manipulation variants lost the accepted source range or Drain: " + single);
+            Require(SpellHelp("Animate").Contains("without fine control")
+                && SpellHelp("Mass Animate").Contains("without fine control")
+                && SpellHelp("Control Actions").Contains("body, not thoughts")
+                && SpellHelp("Mob Control").Contains("body, not thoughts")
+                && SpellHelp("Control Thoughts").Contains("commands seem self-chosen")
+                && SpellHelp("Mob Mind").Contains("commands seem self-chosen"),
+                "Object movement, body control and mental commands must remain distinct.");
+            Require(SpellHelp("Mana Barrier").Contains("not ordinary matter")
+                && SpellHelp("Mana Barrier").Contains("Mana spell.")
+                && SpellHelp("Physical Barrier").Contains("gases pass")
+                && SpellHelp("Physical Barrier").Contains("Physical spell."),
+                "Mana and physical barriers must not be described as the same obstruction.");
+            Require(SpellHelp("Fling").Contains("Instant effect.")
+                && !SpellHelp("Fling").Contains("Damage: 0.")
+                && SpellHelp("Poltergeist").Contains("battering nearby targets")
+                && !SpellHelp("Poltergeist").Contains("Damage: 0.")
+                && SpellHelp("Ignite").Contains("after completion")
+                && SpellHelp("Ignite").Contains("Becomes permanent after completion.")
+                && !SpellHelp("Ignite").Contains("Instant effect."),
+                "Zero catalog placeholders or timing must not misrepresent damaging manipulation effects.");
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
             string acid = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Acid Stream"));

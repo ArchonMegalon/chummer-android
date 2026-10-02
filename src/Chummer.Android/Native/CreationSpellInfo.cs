@@ -48,7 +48,8 @@ internal static class CreationSpellInfo
                 if (descriptors.Contains("Direct", StringComparer.Ordinal)) parts.Add(Text("Direct", "Direct magical attack."));
                 if (descriptors.Contains("Indirect", StringComparer.Ordinal)) parts.Add(Text("Indirect", "Indirect magical attack."));
             }
-            // Catalog zero is a non-damaging spell, not a useful damage rule.
+            // Zero is a catalog placeholder, not a useful damage rule. Effects
+            // such as Fling and Poltergeist can still cause damage via prose rules.
             if (Value("damage") != "0") Add("Damage", Value("damage"));
             if (Value("category") == "Detection" && Value("range") == "T")
                 parts.Add(Text("Detection.Touch", "Touch casting; separate sensing range."));
