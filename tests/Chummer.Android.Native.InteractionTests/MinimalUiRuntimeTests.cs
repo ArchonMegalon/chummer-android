@@ -44,7 +44,41 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 406, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 411, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in new[] { (Name: "My Country, Right or Wrong", Numbers: ""),
+                    (Name: "Cyber-snob", Numbers: "1"), (Name: "Implant-induced Immune Deficiency", Numbers: "5,−2"),
+                    (Name: "Superhuman Psychosis", Numbers: "+1,−2,5,3"), (Name: "Metahuman Traits", Numbers: "+1") })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Implant, identity and loyalty qualities need translated inline explanations: " + rule.Name);
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Translation changed an implant, identity or loyalty quality's numeric scope: " + rule.Name);
+                }
+                var implantScope = locale switch
+                {
+                    "de-AT" => (Country: "Deinem Land", Snob: "Erschaffungsbeschränkungen", Immune: "körperliche",
+                        Psychosis: "Ehrenkodex", Traits: "Attributsgrenzen"),
+                    "es-MX" => (Country: "al país", Snob: "restricciones de creación", Immune: "física",
+                        Psychosis: "Código de Honor", Traits: "límites de atributos"),
+                    _ => (Country: "your country", Snob: "Creation restrictions", Immune: "physical",
+                        Psychosis: "Code of Honor", Traits: "attribute limits")
+                };
+                foreach (var rule in new[] { (Name: "My Country, Right or Wrong", Scope: implantScope.Country),
+                    (Name: "Cyber-snob", Scope: implantScope.Snob),
+                    (Name: "Implant-induced Immune Deficiency", Scope: implantScope.Immune),
+                    (Name: "Superhuman Psychosis", Scope: implantScope.Psychosis),
+                    (Name: "Metahuman Traits", Scope: implantScope.Traits) })
+                    Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "")
+                        .Contains(rule.Scope, StringComparison.Ordinal),
+                        "A translated implant, identity or loyalty limitation disappeared: " + rule.Name);
+                Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "My Country, Right or Wrong")), "")
+                    != CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Deus Vult!")), ""),
+                    "Shared wound mechanics must not collapse distinct loyalty obligations into one explanation.");
                 foreach (var rule in new[] { (Name: "Deus Vult!", Numbers: ""),
                     (Name: "Code of Honor: Avenging Angel", Numbers: "1,−1,24"),
                     (Name: "Faceless", Numbers: "−2"),
