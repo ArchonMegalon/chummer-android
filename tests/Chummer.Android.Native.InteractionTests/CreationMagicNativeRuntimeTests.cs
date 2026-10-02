@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 59, $"Expected 59 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 72, $"Expected 72 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -111,6 +111,17 @@ internal static class CreationMagicNativeRuntimeTests
                         && !summary.Contains(CreationFlowStrings.Get("Spells.Detection.Touch", "missing")),
                         "A core health spell lacks its own source-bound, ordinary touch-range explanation: " + spell.Name + "/" + locale);
                 }
+                var coreIllusion = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Illusion").ToArray();
+                Require(coreIllusion.Length == 19, "Expected the complete SR5 core illusion catalog.");
+                foreach (var spell in coreIllusion)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && summary.Contains(CreationFlowStrings.Get("Spells.Duration.S", "missing"))
+                        && !summary.Contains("Damage: 0."),
+                        "A core illusion lacks its source-bound effect/sustained profile: " + spell.Name + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -150,6 +161,39 @@ internal static class CreationMagicNativeRuntimeTests
                 && decrease.StartsWith("Reduces one Physical or Mental attribute.", StringComparison.Ordinal)
                 && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
                 "Attribute spell help must retain opposite effects and distinct costs.");
+            string SpellHelp(string name) => CreationSpellInfo.Summary(authority.Spells.Single(spell => spell.Name == name));
+            foreach (var (single, area) in new[] { ("Agony", "Mass Agony"), ("Bugs", "Swarm"),
+                ("Confusion", "Mass Confusion"), ("Chaos", "Chaotic World") })
+                Require(SpellHelp(single).Contains("Target within line of sight.")
+                    && !SpellHelp(single).Contains("Area within line of sight.")
+                    && SpellHelp(area).Contains("Area within line of sight."),
+                    "Individual and area illusion variants lost distinct target profiles: " + single);
+            Require(SpellHelp("Bugs").Contains("Initiative") && SpellHelp("Swarm").Contains("Initiative")
+                && SpellHelp("Mass Confusion").Contains("dice pools")
+                && SpellHelp("Chaos").Contains("technological sensors")
+                && SpellHelp("Chaotic World").Contains("technological sensors")
+                && SpellHelp("Chaotic World").Contains("Drain: F (F = Force)."),
+                "Illusion effects or the accepted Core Drain were replaced by another spell/printing.");
+            Require(SpellHelp("Entertainment").Contains("Obvious illusions; invisible to sensors.")
+                && SpellHelp("Trid Entertainment").Contains("Obvious illusions, also perceived by sensors.")
+                && SpellHelp("Phantasm").Contains("Convincing illusions for living observers.")
+                && SpellHelp("Trid Phantasm").Contains("Convincing illusions, also affecting sensors."),
+                "Obvious/realistic and living/sensor illusion variants must remain distinct.");
+            Require(SpellHelp("Hush").Contains("living listeners") && SpellHelp("Hush").Contains("Mana spell.")
+                && SpellHelp("Silence").Contains("microphones") && SpellHelp("Silence").Contains("Physical spell.")
+                && SpellHelp("Stealth").Contains("subject's own noises")
+                && SpellHelp("Stealth").Contains("Target within line of sight.")
+                && !SpellHelp("Stealth").Contains("Area within line of sight."),
+                "Sound masking must distinguish listeners, sensors and the subject from an area.");
+            var phantasm = authority.Spells.Single(spell => spell.Name == "Phantasm");
+            var physicalXml = System.Xml.Linq.XElement.Parse(phantasm.CanonicalSourceXml);
+            physicalXml.Element("type")!.Value = "P";
+            string physicalSource = physicalXml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+            string customPhysical = CreationSpellInfo.Summary(phantasm with { CanonicalSourceXml = physicalSource,
+                CanonicalSourceXmlDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8(physicalSource) });
+            Require(customPhysical.Contains("Definition changed;") && customPhysical.Contains("Physical spell.")
+                && !customPhysical.Contains("living observers") && !customPhysical.Contains("Mana spell."),
+                "Changing an illusion's type retained stale authored sensor semantics.");
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
             string acid = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Acid Stream"));
