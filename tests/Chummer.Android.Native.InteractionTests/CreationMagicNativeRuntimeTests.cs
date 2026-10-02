@@ -65,7 +65,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 50, $"Expected 50 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 59, $"Expected 59 reviewed spell summaries; got {authored} in {locale}.");
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
@@ -100,6 +100,17 @@ internal static class CreationMagicNativeRuntimeTests
                     && CreationSpellInfo.Summary(coreDetection.Single(spell => spell.Name == "Mindlink"))
                         .Contains(CreationFlowStrings.Get("Spells.Sensing.Psychic", "missing")),
                     "Directional and psychic spells must retain their actual sensing descriptors.");
+                var coreHealth = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Health").ToArray();
+                Require(coreHealth.Length == 11, "Expected the complete SR5 core health catalog.");
+                foreach (var spell in coreHealth)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal)
+                        && summary.Contains(CreationFlowStrings.Get("Spells.Range.T", "missing"))
+                        && !summary.Contains(CreationFlowStrings.Get("Spells.Detection.Touch", "missing")),
+                        "A core health spell lacks its own source-bound, ordinary touch-range explanation: " + spell.Name + "/" + locale);
+                }
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
@@ -114,6 +125,31 @@ internal static class CreationMagicNativeRuntimeTests
             Require(reflexes.StartsWith("Improves Initiative and adds Initiative dice.", StringComparison.Ordinal)
                 && reflexes.Contains("Drain: F (F = Force).") && !reflexes.Contains("F-1"),
                 "Effect prose must not replace this definition's Drain with quick-start values.");
+            string antidote = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Antidote"));
+            string detox = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Detox"));
+            string disease = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Cure Disease"));
+            string pain = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Resist Pain"));
+            string stabilize = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Stabilize"));
+            Require(antidote.StartsWith("Adds hits to the upcoming poison-resistance test.", StringComparison.Ordinal)
+                && antidote.Contains("Drain: F-3")
+                && detox.StartsWith("Removes drug/poison symptoms, not damage.", StringComparison.Ordinal)
+                && detox.Contains("Drain: F-6"),
+                "Poison resistance and symptom relief must not be confused or inherit each other's profile.");
+            Require(disease.StartsWith("Boosts disease resistance, without healing existing damage.", StringComparison.Ordinal)
+                && pain.StartsWith("Reduces wound penalties without healing.", StringComparison.Ordinal)
+                && stabilize.StartsWith("Stops further overflow deterioration, without repairing injuries.", StringComparison.Ordinal)
+                && new[] { disease, pain, stabilize }.All(summary => summary.Contains("Drain: F-4")),
+                "Resistance, wound modifiers and overflow stabilization must not promise wound repair.");
+            string prophylaxis = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Prophylaxis"));
+            Require(prophylaxis.StartsWith("Boosts disease/toxin resistance; also weakens beneficial drugs.", StringComparison.Ordinal)
+                && prophylaxis.Contains("Must be sustained.") && prophylaxis.Contains("Drain: F-4"),
+                "Preventive resistance must retain the medicine tradeoff and actual sustained profile.");
+            string increase = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Increase [Attribute]"));
+            string decrease = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Decrease [Attribute]"));
+            Require(increase.StartsWith("Raises one Physical or Mental attribute.", StringComparison.Ordinal)
+                && decrease.StartsWith("Reduces one Physical or Mental attribute.", StringComparison.Ordinal)
+                && increase.Contains("Drain: F-3") && decrease.Contains("Drain: F-2"),
+                "Attribute spell help must retain opposite effects and distinct costs.");
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
             string acid = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Acid Stream"));

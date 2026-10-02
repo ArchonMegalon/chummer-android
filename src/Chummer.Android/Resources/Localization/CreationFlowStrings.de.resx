@@ -1297,4 +1297,14 @@
   <data name="Spells.Sensing.Extended Area" xml:space="preserve"><value>Wahrnehmung: erweiterter Bereich.</value></data>
   <data name="Spells.Sensing.Directional" xml:space="preserve"><value>Wahrnehmung: gerichtet.</value></data>
   <data name="Spells.Sensing.Psychic" xml:space="preserve"><value>Wahrnehmung: übersinnlich.</value></data>
+  <!-- SR5 core Health effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.92fe97e1-2f16-4398-b12b-b29bfa23c75d" xml:space="preserve"><value>Gibt zusätzliche Erfolge bei der nächsten Giftwiderstandsprobe.</value></data>
+  <data name="Spells.Summary.13999091-25c8-4b72-add4-bff3b97eb0a6" xml:space="preserve"><value>Stärkt Krankheitswiderstand, heilt aber keinen bestehenden Schaden.</value></data>
+  <data name="Spells.Summary.31e68920-f354-4d38-b008-87f843957bba" xml:space="preserve"><value>Senkt ein körperliches oder geistiges Attribut.</value></data>
+  <data name="Spells.Summary.3d019dea-b5ae-4f9c-ab14-eb8a329ed9ba" xml:space="preserve"><value>Beseitigt Drogen-/Giftsymptome, nicht den Schaden.</value></data>
+  <data name="Spells.Summary.c72c3fe1-61b1-4a5d-8c15-2bca2c6c904d" xml:space="preserve"><value>Erhöht ein körperliches oder geistiges Attribut.</value></data>
+  <data name="Spells.Summary.5ac26e0f-3c01-43a7-a6d4-46f9193851ea" xml:space="preserve"><value>Hilft gegen Sauerstoffmangel; ermöglicht Unterwasseratmung.</value></data>
+  <data name="Spells.Summary.0d0e3e2d-5223-4258-b885-12848833eb08" xml:space="preserve"><value>Stärkt Krankheits-/Giftwiderstand; schwächt auch nützliche Medikamente.</value></data>
+  <data name="Spells.Summary.0556d652-82ef-43be-a800-0d9335dbae4c" xml:space="preserve"><value>Verringert Verletzungsabzüge, ohne zu heilen.</value></data>
+  <data name="Spells.Summary.6f9b1dd2-b0e7-4e3f-a140-72c987b77705" xml:space="preserve"><value>Stoppt weitere Überlaufschäden, ohne Verletzungen zu heilen.</value></data>
 </root>

@@ -916,7 +916,8 @@ internal static partial class AfterRunAuthorityHarness
             ((ISearchBarController)search).OnSearchButtonPressed();
         }
         if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
-        foreach (string spellName in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended" })
+        foreach (string spellName in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
+            "Antidote", "Detox", "Resist Pain" })
         {
             var spell = options.Single(item => item.Name == spellName);
             Search(spell.Name);
