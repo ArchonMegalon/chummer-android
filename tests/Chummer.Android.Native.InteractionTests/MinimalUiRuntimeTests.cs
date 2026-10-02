@@ -82,6 +82,45 @@ internal static partial class AfterRunAuthorityHarness
         ("Crystal Spine", "without reducing Magic", "ohne Magie zu senken", "sin reducir la Magia")
     ];
 
+    // Editorial checks protect concise, useful help; they do not establish copyright clearance.
+    private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
+    [
+        ("Adrenaline Surge", ["opening Initiative Pass", "surprise", "compete"],
+            ["ersten Initiativedurchgang", "Überraschung", "konkurrierende"],
+            ["primera pasada", "sorpresa", "otros efectos"]),
+        ("Signature", ["investigators", "track"], ["Ermittlern", "aufzuspüren"], ["investigadores", "rastrearte"]),
+        ("Digital Doppelganger", ["chosen", "eligible fake SIN", "other identities"],
+            ["gewählte", "geeignete gefälschte SIN", "andere Identitäten"],
+            ["elegida", "falsa válida", "demás identidades"]),
+        ("Perfect Time", ["rhythmic Performance", "Free Action", "not an extra attack"],
+            ["rhythmische Darbietung", "Freie Handlung", "kein zusätzlicher Angriff"],
+            ["Interpretación rítmica", "Acción Gratuita", "no otro ataque"]),
+        ("Cold-Blooded", ["Cold", "coma", "thermal-only", "attacking"],
+            ["Kälte", "Koma", "nur Wärmesicht", "angreifen"], ["frío", "coma", "solo mediante visión térmica", "atacarte"]),
+        ("Speed Reading", ["general meaning", "details", "not gain perfect recall"],
+            ["Überblick", "Details", "kein perfektes Gedächtnis"], ["sentido general", "detalles", "no obtienes memoria perfecta"]),
+        ("Emotional Attachment", ["risk", "permanent loss", "temporarily", "buy off"],
+            ["riskierst", "endgültiger Verlust", "vorübergehend", "Nachteil nicht abbaust"],
+            ["Arriesgas", "perderlo definitivamente", "temporalmente", "Karma"]),
+        ("Wanted", ["bounty", "hunters", "Karma buyoff"], ["Kopfgeld", "Jäger", "Karma"],
+            ["recompensa", "cazadores", "Karma"]),
+        ("Sensei", ["free teaching", "one chosen", "not free skill ranks"],
+            ["unterrichtet kostenlos", "gewählte", "nicht geschenkt"],
+            ["enseña gratis", "elegido", "no concede niveles"]),
+        ("Driven", ["temporarily", "Willpower", "resisting", "endangers allies"],
+            ["vorübergehend", "Willenskraft", "widerstehen", "Verbündete gefährdet"],
+            ["temporalmente", "Voluntad", "resistirse", "peligro a tus aliados"]),
+        ("Astral Hazing", ["including your own", "lingering", "GM agreement"],
+            ["auch deine eigene", "längeres Verweilen", "Spielleitung"],
+            ["incluida la propia", "permanecer", "Acuerda su alcance"]),
+        ("Berserker", ["endangers allies", "boosts physical", "impairs mental", "implanted adrenaline pump"],
+            ["Verbündete sind gefährdet", "körperliche Attribute steigen", "geistige sinken", "implantierte Adrenalinpumpe"],
+            ["amenaza a aliados", "mejora atributos físicos", "empeora los mentales", "bomba de adrenalina implantada"]),
+        ("Pacifist II", ["all violence", "mental performance", "lasting consequences", "Believing you killed"],
+            ["jede Gewalt", "geistige Leistungen", "dauerhaft", "Glaubst du"],
+            ["toda violencia", "rendimiento mental", "duradera", "Creer que has matado"])
+    ];
+
     private static readonly string[] FreeInsectSpiritSpecies =
     [
         "Cutter Ant", "Fire Ant", "Desert Locust", "Mole Cricket", "Subterranean Termite",
@@ -183,6 +222,24 @@ internal static partial class AfterRunAuthorityHarness
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
                 Require(authored >= 514, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (var rule in ConciseQualitySummaries)
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == rule.Name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    string[] scope = locale == "de-AT" ? rule.German : locale == "es-MX" ? rule.Spanish : rule.English;
+                    Require(summary.Length > 0 && summary.Length <= 180
+                        && summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 25
+                        && !Regex.IsMatch(summary, @"\d")
+                        && scope.All(term => summary.Contains(term, StringComparison.OrdinalIgnoreCase))
+                        && CreationQualityInfo.Effects(quality.ToString())[0] == summary,
+                        "Brief help must retain the benefit and important drawback without a numeric procedure: " + rule.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.SetElementValue("karma", "999");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Shortening copy must not detach it from its source definition: " + rule.Name);
+                }
                 VerifyInsectSpiritSummaries(catalog, locale);
                 foreach (var rule in SourceEffectQualitySummaries)
                 {
@@ -452,9 +509,8 @@ internal static partial class AfterRunAuthorityHarness
                         && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
                         "Conditional metagenic effects need translated, definition-bound explanations: " + name);
                 }
-                foreach (var rule in new[] { (Name: "Astral Hazing", Numbers: "3,1,4"),
-                    (Name: "Berserker", Numbers: "3,1,6,+1,−1,1"), (Name: "Bioluminescence", Numbers: "1,1"),
-                    (Name: "Cephalopod Skull", Numbers: "3"), (Name: "Cold-Blooded", Numbers: "30,−1,20,−3,10,−5,0,2"),
+                foreach (var rule in new[] { (Name: "Bioluminescence", Numbers: "1,1"),
+                    (Name: "Cephalopod Skull", Numbers: "3"),
                     (Name: "Symbiosis", Numbers: ""), (Name: "Adiposis", Numbers: ""),
                     (Name: "Neoteny", Numbers: "2,10"), (Name: "Slow Healer", Numbers: "2"),
                     (Name: "Stubby Arms", Numbers: "1,1") })
@@ -466,9 +522,9 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 var clarification = locale switch
                 {
-                    "de-AT" => (Astral: "Obergrenze ist unklar", Social: "allergieartige Symptome"),
-                    "es-MX" => (Astral: "límite de expansión no está claro", Social: "síntomas alérgicos"),
-                    _ => (Astral: "expansion cap is unclear", Social: "allergy-like symptoms")
+                    "de-AT" => (Astral: "Ausdehnung klärst du mit der Spielleitung", Social: "allergieartige Symptome"),
+                    "es-MX" => (Astral: "Acuerda su alcance con el DJ", Social: "síntomas alérgicos"),
+                    _ => (Astral: "extent requiring GM agreement", Social: "allergy-like symptoms")
                 };
                 Require(CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == "Astral Hazing")), "")
                     .Contains(clarification.Astral, StringComparison.Ordinal)
@@ -848,10 +904,9 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Linguist").Contains("At creation, language points buy twice as much")
                 && Effect("Linguist").Contains("rating 3 or higher costs 1 less Karma"),
                 "Training discounts must keep creation/Career boundaries and the higher-rating surcharge.");
-            Require(Effect("Sensei").Contains("Connection 3+")
-                && Effect("Sensei").Contains("teacher rating 13; Instruction 10 dice, limit 7")
-                && Effect("Sensei").Contains("rating 12; Instruction 12 dice, limit 8")
-                && Effect("Sensei").Contains("not free ranks for you")
+            Require(Effect("Sensei").Contains("free teaching")
+                && Effect("Sensei").Contains("one chosen skill or skill group")
+                && Effect("Sensei").Contains("not free skill ranks")
                 && Effect("Trustworthy").Contains("only when the situation involves trusting you"),
                 "A teacher's skill ratings are not the runner's, and a trust-based limit is not a blanket social modifier.");
             Require(Effect("Witness My Hate").Contains("Single-target direct combat spells")
@@ -894,21 +949,21 @@ internal static partial class AfterRunAuthorityHarness
                 "Moral restrictions and neurological aftereffects need actual consequences beyond their selection prompt or reputation.");
             Require(Effect("Catlike").Contains("Sneaking") && Effect("Catlike").Contains("Bonus: 2"),
                 "Specific-skill modifiers must be shown, not silently replaced by generic copy.");
-            Require(Effect("Adrenaline Surge").Contains("first Initiative Pass of a new combat")
-                && Effect("Adrenaline Surge").Contains("Being surprised still prevents")
+            Require(Effect("Adrenaline Surge").Contains("opening Initiative Pass")
+                && Effect("Adrenaline Surge").Contains("surprise still applies")
                 && Effect("Common Sense").Contains("Edge rating in warnings per session")
                 && Effect("Daredevil").Contains("recover 2 points instead of 1"),
                 "Initiative priority must not remove surprise, warnings need their session cap, and recovered Edge is not maximum Edge.");
-            Require(Effect("Digital Doppelganger").Contains("fake SIN rated at least 4")
-                && Effect("Digital Doppelganger").Contains("raising the threshold")
-                && Effect("Digital Doppelganger").Contains("Other identities are not protected")
+            Require(Effect("Digital Doppelganger").Contains("chosen real or eligible fake SIN")
+                && Effect("Digital Doppelganger").Contains("Matrix searches struggle to trace")
+                && Effect("Digital Doppelganger").Contains("other identities remain unprotected")
                 && Effect("Disgraced").Contains("2 dice to Intimidation against criminals")
                 && Effect("Disgraced").Contains("prejudiced attitude toward you"),
                 "Identity-scoped searches and intimidation benefits must retain their targets and social downside.");
             Require(Effect("Night Vision").Contains("daylight glare")
                 && Effect("Night Vision").Contains("without a Karma refund")
                 && Effect("Perfect Time").Contains("Free Action each Action Phase")
-                && Effect("Perfect Time").Contains("not a Simple or Complex Action"),
+                && Effect("Perfect Time").Contains("not an extra attack"),
                 "Night Vision needs its glare/loss drawbacks, and Perfect Time must not grant a full attack action.");
             Require(Effect("Poor Link").Contains("Both effects apply to friendly rituals too")
                 && Effect("Privileged Family Name").Contains("minor local figures but makes you identifiable")
@@ -916,8 +971,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Solid Rep").Contains("improves by 1")
                 && Effect("Legendary Rep").Contains("improves by 2"),
                 "Ritual resistance and local reputation benefits must preserve their directions, identity requirements and distinct values.");
-            Require(Effect("Speed Reading").Contains("800 words in five seconds")
-                && Effect("Speed Reading").Contains("does not automatically memorize")
+            Require(Effect("Speed Reading").Contains("Read quickly for general meaning")
+                && Effect("Speed Reading").Contains("do not gain perfect recall")
                 && Effect("Spike Resistance").Contains("Each level adds 1 die")
                 && Effect("Spike Resistance").Contains("up to 3 levels"),
                 "Reading speed must not become perfect recall, and biofeedback resistance is per level, not extra Matrix armor.");
@@ -946,16 +1001,17 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Oblivious I").Contains("does not raise")
                 && Effect("Oblivious II").Contains("thresholds by 1")
                 && Effect("Pacifist I").Contains("ongoing attack")
-                && Effect("Pacifist II").Contains("(20, daily)")
-                && Effect("Pacifist II").Contains("weekly recovery"),
-                "Higher grades must preserve their distinct thresholds and recovery intervals rather than copying the lower-grade effect.");
+                && Effect("Pacifist II").Contains("Reject all violence")
+                && Effect("Pacifist II").Contains("lasting consequences")
+                && Effect("Pacifist II").Contains("Believing you killed"),
+                "Higher grades must preserve their stricter commitment and consequences without reproducing recovery procedures.");
             Require(Effect("Records on File").Contains("Their investigators gain advantages")
                 && Effect("Records on File").Contains("identifying or locating you")
                 && Effect("Records on File").Contains(CreationFlowStrings.Get("Qualities.Info.Additional", ""))
                 && Effect("Sensory Overload Syndrome").Contains("sensory enhancements")
                 && Effect("Sensory Overload Syndrome").Contains("temporary seizures")
-                && Effect("Wanted").Contains("¥25,000")
-                && Effect("Wanted").Contains("buy it off with Karma"),
+                && Effect("Wanted").Contains("bounty attracts hunters")
+                && Effect("Wanted").Contains("Karma buyoff"),
                 "Investigators' advantages, unresolved corporation choices, timed overload and continuing bounty obligations must remain explicit.");
             foreach (string frequency in new[] { "Common", "Uncommon" })
             {
@@ -1001,10 +1057,10 @@ internal static partial class AfterRunAuthorityHarness
                     && Effect($"Creature of Comfort ({tier})").Contains($"per tier below {tier}"),
                     "Each comfort variant needs its own lifestyle baseline, not an accumulating per-day modifier.");
             Require(Effect("Did You Just Call Me Dumb?").Contains("critical glitch, even if the roll also has hits")
-                && Effect("Driven").Contains("Willpower + Logic (4)")
-                && Effect("Driven").Contains("While actively following a lead, Willpower increases by 1")
-                && Effect("Emotional Attachment").Contains("six months")
-                && Effect("Emotional Attachment").Contains("attachment transfers to replacement gear"),
+                && Effect("Driven").Contains("temporarily strengthens Willpower")
+                && Effect("Driven").Contains("endangers allies")
+                && Effect("Emotional Attachment").Contains("permanent loss temporarily impairs related tests")
+                && Effect("Emotional Attachment").Contains("buy off this drawback"),
                 "Social glitches, conditional obsession benefits and lasting equipment loss need their actual consequences.");
             Require(Effect("Ex-Con").Contains("regular check-ins, police scrutiny")
                 && Effect("Ex-Con").Contains("restrictions on implants and contacts")
@@ -1017,8 +1073,8 @@ internal static partial class AfterRunAuthorityHarness
                 && Effect("Hobo with a Shotgun").Contains("full day at Squatter or Street")
                 && Effect("Paraplegic").Contains("costlier living or vehicle adaptations")
                 && Effect("Paraplegic").Contains("Astral and Matrix abilities are unaffected")
-                && Effect("Signature").Contains("Investigators")
-                && Effect("Signature").Contains("Street Cred plus Public Awareness"),
+                && Effect("Signature").Contains("investigators")
+                && Effect("Signature").Contains("connect you to jobs and track you"),
                 "Lifestyle discomfort, mobility costs and identification modifiers must retain their affected actors and recovery conditions.");
             Require(Effect("Exceptional Attribute").Contains("Maximum change: 1")
                 && Effect("Exceptional Attribute").Contains("Except: Edge"),
@@ -1885,6 +1941,7 @@ internal static partial class AfterRunAuthorityHarness
                     MinimalRequireNoMachineValues(empty);
                     foreach (string name in new[] { "Analytical Mind", "Catlike", "Unsteady Hands", "Aptitude", "Erased", "Animal Empathy" }
                         .Concat(SourceEffectQualitySummaries.Select(rule => rule.Name))
+                        .Concat(ConciseQualitySummaries.Select(rule => rule.Name))
                         .Concat(FreeInsectSpiritSpecies.Select(species => "Free Insect Spirit: " + species)))
                     {
                         var helpOption = state.Authority.Options.First(item => item.Name == name);
