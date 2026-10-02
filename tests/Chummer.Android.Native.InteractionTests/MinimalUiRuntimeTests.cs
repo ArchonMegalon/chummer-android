@@ -44,7 +44,36 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 355, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 368, "Localized source-identity summaries were not loaded from the real catalog.");
+                foreach (string name in new[] { "Critter Spook", "Cyclopean Eye", "Deformity (Picasso)",
+                    "Deformity (Quasimodo)", "Feathers", "Insectoid Features", "Mood Hair", "Nocturnal",
+                    "Scales", "Scent Glands", "Striking Skin Pigmentation", "Third Eye", "Unusual Hair", "Vestigial Tail" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var lines = CreationQualityInfo.Effects(quality.ToString());
+                    Require(summary.Length > 40 && lines[0] == summary
+                        && !lines.Contains(CreationFlowStrings.Get("Qualities.Info.Manual", "")),
+                        "Metagenic drawbacks need translated, definition-bound consequences: " + name);
+                }
+                Require(new[] { "Deformity (Picasso)", "Deformity (Quasimodo)" }
+                    .Select(name => CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == name)), ""))
+                    .Distinct().Count() == 2,
+                    "Facial and physical deformities affect different tests and must retain distinct explanations.");
+                foreach (var rule in new[] { (Name: "Critter Spook", Numbers: "5,2"),
+                    (Name: "Cyclopean Eye", Numbers: "1"), (Name: "Deformity (Picasso)", Numbers: "−2"),
+                    (Name: "Deformity (Quasimodo)", Numbers: "−2"), (Name: "Feathers", Numbers: "1"),
+                    (Name: "Insectoid Features", Numbers: "1"), (Name: "Mood Hair", Numbers: "2"),
+                    (Name: "Nocturnal", Numbers: "1"), (Name: "Scales", Numbers: "2"),
+                    (Name: "Scent Glands", Numbers: "1,2,1,2"), (Name: "Striking Skin Pigmentation", Numbers: "2"),
+                    (Name: "Third Eye", Numbers: "2"), (Name: "Unusual Hair", Numbers: "1"),
+                    (Name: "Vestigial Tail", Numbers: "1") })
+                {
+                    string summary = CreationFlowStrings.Get(SummaryKey(catalog.Single(q => q.Element("name")!.Value == rule.Name)), "");
+                    Require(string.Join(",", Regex.Matches(summary, @"[+−-]?\s*\d+")
+                        .Select(m => Regex.Replace(m.Value, @"\s+", ""))) == rule.Numbers,
+                        "Translation changed a metagenic drawback's value or conditional penalty: " + rule.Name);
+                }
                 foreach (string name in new[] { "Climate Adaptation (Arctic)", "Climate Adaptation (Desert)",
                     "Setae", "Monkey Paws", "Marsupial Pouch", "Electroception (Electrosense)",
                     "Electroception (Technosense)", "Proboscis", "Photometabolism" })
