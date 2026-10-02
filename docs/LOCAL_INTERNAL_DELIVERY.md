@@ -104,18 +104,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 74 is the latest [observed Internal availability](../play/evidence/preview74-internal-observation.md),
-confirmed on 2 October at 16:53 Europe/Vienna. Its exact locally built ARM64 AAB
+Preview 75 is the latest [observed Internal availability](../play/evidence/preview75-internal-observation.md),
+confirmed on 2 October at 19:03 Europe/Vienna. Its exact locally built ARM64 AAB
 was separately signed with the existing upload key and independently verified.
-It adds 65 short original EN/DE/ES Quality summaries: 489/803 are authored;
-314 Quality summaries and the ritual/enchantment explanations remain open.
-Ordinary-spell coverage remains 292. The normal physical Play update73→74,
-installed base-APK signature, Gearhead help, special-attribute jump and reopening
-the existing allocation after verified process death passed on 2 October.
-See the separate [Preview 74 physical observation](../play/evidence/preview74-physical-observation.md).
+It adds 31 short original EN/DE/ES Quality summaries, shortens 48 existing ones
+and folds supporting effects behind a disclosure while keeping warnings visible.
+520/803 are authored; 283 Quality summaries and ritual/enchantment help remain open.
+Ordinary-spell coverage remains 292. The normal physical Play update74→75,
+installed base-APK signature, Gearhead help, Mystic Adept effect disclosure,
+special-attribute jump and existing-state process-restart observation passed.
+See the separate [Preview 75 physical observation](../play/evidence/preview75-physical-observation.md).
 No new saved mutation or exhaustive physical catalog check is claimed. Existing
 audience and other release surfaces were unchanged. No copyright clearance,
 full-book, all-method or public-beta completion is claimed.
+
+Preview 74's [Internal availability](../play/evidence/preview74-internal-observation.md)
+and [physical observation](../play/evidence/preview74-physical-observation.md)
+remain unchanged historical evidence.
 
 Preview 73's [observed Internal availability](../play/evidence/preview73-internal-observation.md)
 remains historical evidence.
@@ -223,7 +228,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 73](../play/evidence/preview73-physical-observation.md) is now the latest
+[Preview 75](../play/evidence/preview75-physical-observation.md) is now the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
