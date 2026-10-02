@@ -2932,4 +2932,28 @@
   <data name="Qualities.SummarySource.2c3a3f51-53c5-4d47-b991-0c64f31472d3" xml:space="preserve"><value>264030DEB739303C588F2615A7927F5BC69133686948F83FB0BFA43D51449392</value></data>
   <data name="Qualities.Summary.b45b2d09-80d4-4e24-b96c-1e1f3665dee3" xml:space="preserve"><value>Disagreements compel distracting Matrix fact-checking for up to half an hour, even when arguing with friends.</value></data>
   <data name="Qualities.SummarySource.b45b2d09-80d4-4e24-b96c-1e1f3665dee3" xml:space="preserve"><value>0EC78599DBCF0788BA2C980E66E1EC7252C43EC14B029F2E4453C419AA87E3CD</value></data>
+  <data name="Qualities.Summary.32a4d207-a67b-4cdb-a0c8-731320f85ffc" xml:space="preserve"><value>Street Cred strengthens leverage over blackmailed contacts without further evidence, but also strengthens their retaliation if they betray you.</value></data>
+  <data name="Qualities.SummarySource.32a4d207-a67b-4cdb-a0c8-731320f85ffc" xml:space="preserve"><value>5762253B68FE0D04DDF82A97CE6A144A4D167D3163FBEFA6EAB0C767F3F3EC77</value></data>
+  <data name="Qualities.Summary.999fd139-d2c7-42ba-8ff8-cd9cbe65711c" xml:space="preserve"><value>Your attack refunds its spent Edge if an unwilling, danger-aware metahuman enters Physical overflow; other creatures do not qualify.</value></data>
+  <data name="Qualities.SummarySource.999fd139-d2c7-42ba-8ff8-cd9cbe65711c" xml:space="preserve"><value>DE3DB00408F790E9FC1E2B2ACA06856EF4D27B8EC4DC0E5EB7CF310656A38305</value></data>
+  <data name="Qualities.Summary.4765ff9e-90f4-4783-b0cc-826419fafade" xml:space="preserve"><value>A failed Composure test forces attention-seeking whenever possible; the gamemaster decides whether that includes combat.</value></data>
+  <data name="Qualities.SummarySource.4765ff9e-90f4-4783-b0cc-826419fafade" xml:space="preserve"><value>BDC5B5A2221032ACA2D8699441BBFFB2F556492631538D3745B369EFC30F285E</value></data>
+  <data name="Qualities.Summary.74c43bb0-5eef-4100-80b4-f80bd901866a" xml:space="preserve"><value>Believing someone is taking charge of you triggers a Composure test; failure drives you to reclaim control, possibly violently.</value></data>
+  <data name="Qualities.SummarySource.74c43bb0-5eef-4100-80b4-f80bd901866a" xml:space="preserve"><value>FD604779759E483F9C06A0E5BBD792DDB33ED78050D50FA380CAFD5E5E28B8EF</value></data>
+  <data name="Qualities.Summary.1b5acdf3-66ae-4ed7-b5fa-614668721774" xml:space="preserve"><value>Your clothing grants no social dice or limit bonuses; unrelated benefits remain unchanged.</value></data>
+  <data name="Qualities.SummarySource.1b5acdf3-66ae-4ed7-b5fa-614668721774" xml:space="preserve"><value>E288E1C994CC26619A6F3876A36FAE5156C6A44E2EB8833B444E312BDC2E506A</value></data>
+  <data name="Qualities.Summary.85aeb12b-e630-4ea8-87b8-283be9d14234" xml:space="preserve"><value>Others can deceive you more easily because your resistance to Con loses dice; your own lying is unaffected.</value></data>
+  <data name="Qualities.SummarySource.85aeb12b-e630-4ea8-87b8-283be9d14234" xml:space="preserve"><value>6C2C5720FE5043DD8778E33BE1C4120093B38A6448268BD10D9C9067B838FF62</value></data>
+  <data name="Qualities.Summary.73bbf3ca-44c0-4b91-a511-9f1229b4efd3" xml:space="preserve"><value>Increase damage or radius of sight-range area preparations for extra Drain; reduce Drain from one chosen trigger type.</value></data>
+  <data name="Qualities.SummarySource.73bbf3ca-44c0-4b91-a511-9f1229b4efd3" xml:space="preserve"><value>C48AC6FFFC5767F20EABB8ABC96EC8B3911A961069A988E4754EB46D52E22C1B</value></data>
+  <data name="Qualities.Summary.ec302d7a-1955-43bb-9c1f-2c32da7ca8c0" xml:space="preserve"><value>Spend Edge to cast an unlearned spell as a Complex Action, subject to a weekly limit and increased Drain.</value></data>
+  <data name="Qualities.SummarySource.ec302d7a-1955-43bb-9c1f-2c32da7ca8c0" xml:space="preserve"><value>DEE61A84333DD489E47633A084CD5CB5B828002CE7E0545E077FBEB5B686A3FA</value></data>
+  <data name="Qualities.Summary.f65a7108-0b57-4f82-950d-9896be68aae9" xml:space="preserve"><value>Advanced academic magical knowledge raises the threshold for Physical Drain, without increasing your actual Magic.</value></data>
+  <data name="Qualities.SummarySource.f65a7108-0b57-4f82-950d-9896be68aae9" xml:space="preserve"><value>D5E0870A7BBC55EB02CC87D286CBA03EF34F0AEF26C1A7708853B705C133B0BB</value></data>
+  <data name="Qualities.Summary.282c446f-8156-4268-8baa-5d7e732fcd53" xml:space="preserve"><value>Each rank makes Matrix searches more prone to glitches; the gamemaster may require rolls even for otherwise automatic successes.</value></data>
+  <data name="Qualities.SummarySource.282c446f-8156-4268-8baa-5d7e732fcd53" xml:space="preserve"><value>69CB42895746E2A509AFA9116AB9FB8680608B463BF37741656F36598D28AF97</value></data>
+  <data name="Qualities.Summary.c4dab0b4-32c4-4840-9713-aa46c2412835" xml:space="preserve"><value>Gaining multiple marks in one Brute Force or Hack on the Fly action costs additional dice.</value></data>
+  <data name="Qualities.SummarySource.c4dab0b4-32c4-4840-9713-aa46c2412835" xml:space="preserve"><value>34D97D226637C8A683E38F6A409FDD06B1EB22D881AA4724FC26FED057C8C942</value></data>
+  <data name="Qualities.Summary.ba1644ab-2191-4366-8f5f-13c21eca1cc4" xml:space="preserve"><value>Resisting the urge to spread harmful misinformation or pull Matrix pranks requires Composure, even when your friends would suffer.</value></data>
+  <data name="Qualities.SummarySource.ba1644ab-2191-4366-8f5f-13c21eca1cc4" xml:space="preserve"><value>CA8C653AB841D4C1AF0608B75B543C31F809773B3F9142F1DFEFAD5135219DD7</value></data>
 </root>
