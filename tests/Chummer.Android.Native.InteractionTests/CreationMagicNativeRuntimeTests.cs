@@ -21,7 +21,63 @@ internal static class CreationMagicNativeRuntimeTests
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
     public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
     public static void RunMagicReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, magicReReview: true);
-    public static void RunMysticReadability(string contentRoot) => RunTalent(contentRoot, technomancer: false, mysticAdept: true);
+    public static void RunMysticReadability(string contentRoot)
+    {
+        VerifySpellDescriptions(contentRoot);
+        RunTalent(contentRoot, technomancer: false, mysticAdept: true);
+    }
+
+    private static void VerifySpellDescriptions(string contentRoot)
+    {
+        var resolver = new FileSystemCharacterSourceDataResolver(
+            new FileSystemContentOverlayCatalogService(contentRoot, contentRoot, null));
+        var context = resolver.TryCreateContext("<character><settings>"
+            + CharacterCreationBootstrapProfiles.PrioritySettingsProfileId + "</settings></character>");
+        Require(context is not null && context.TryResolveCreationMagicResonanceAuthority(out _), "Spell help needs actual Core content.");
+        context!.TryResolveCreationMagicResonanceAuthority(out var authority);
+        string before = JsonSerializer.Serialize(authority);
+        var previous = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                int authored = 0;
+                foreach (var spell in authority.Spells)
+                {
+                    string summary = CreationSpellInfo.Summary(spell);
+                    Require(!summary.Contains(CreationFlowStrings.Get("Spells.Unavailable", "missing"))
+                        && !summary.Contains(spell.Identity.SourceId) && summary.Length > 15,
+                        "Actual spell has no readable source-bound profile: " + spell.Name + "/" + locale);
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + spell.Identity.SourceId, string.Empty);
+                    if (prose.Length == 0) continue;
+                    authored++;
+                    Require(summary.StartsWith(prose, StringComparison.Ordinal), "Reviewed spell definition hash mismatched: " + spell.Name);
+                    var xml = System.Xml.Linq.XElement.Parse(spell.CanonicalSourceXml);
+                    xml.Element("dv")!.Value = "F+99";
+                    string changed = xml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+                    var custom = spell with { CanonicalSourceXml = changed,
+                        CanonicalSourceXmlDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8(changed) };
+                    string amended = CreationSpellInfo.Summary(custom);
+                    Require(!amended.Contains(prose) && amended.Contains("F+99")
+                        && amended.Contains(CreationFlowStrings.Get("Spells.Changed", "missing")),
+                        "Changed custom rules retained the original spell explanation.");
+                    Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
+                        == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
+                }
+                Require(authored == 10, "Expected all ten reviewed spell summaries in each locale.");
+                Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
+            }
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+            Require(!CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Levitate"))
+                .Contains("Damage: 0."), "Non-damaging spell help exposes a zero-value placeholder.");
+            string fireball = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Fireball"));
+            Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
+                && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
+            Require(JsonSerializer.Serialize(authority) == before, "Reading spell help mutated the rules catalog.");
+        }
+        finally { System.Globalization.CultureInfo.CurrentUICulture = previous; }
+    }
 
     public static void RunSumToTen(string contentRoot)
     {

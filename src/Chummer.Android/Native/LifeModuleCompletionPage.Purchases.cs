@@ -144,6 +144,7 @@ internal sealed partial class LifeModuleCompletionPage
         {
             var id = option.Identity;
             Body(option.Name + " · " + option.SourceBook + " " + option.Page);
+            if (id.Kind == CharacterCreationMagicResonanceKinds.Spell) Body(CreationSpellInfo.Summary(option));
             foreach (string reason in option.Blockers) Body(reason);
             bool chosen = selected.Tradition == id || selected.Stream == id || selected.Spells.Contains(id)
                 || selected.ComplexForms.Contains(id) || selected.AdeptPowers.Any(x => x.Identity == id);
