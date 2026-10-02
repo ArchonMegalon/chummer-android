@@ -1304,4 +1304,17 @@
   <data name="Spells.Summary.4ba6626f-4109-4451-ab0a-e659752ab15e" xml:space="preserve"><value>Atenúa sonidos para oyentes vivos.</value></data>
   <data name="Spells.Summary.c307d243-669b-47d0-9642-aee7f9207e63" xml:space="preserve"><value>Atenúa sonidos, incluso para micrófonos.</value></data>
   <data name="Spells.Summary.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>Atenúa los ruidos del objetivo.</value></data>
+  <!-- SR5 core Manipulation effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.b447e60d-88b6-48e4-a595-6dae86581867" xml:space="preserve"><value>Anima un objeto, sin control preciso.</value></data>
+  <data name="Spells.Summary.13577f45-cb22-4285-bbf4-06072286dfbb" xml:space="preserve"><value>Anima objetos, sin control preciso.</value></data>
+  <data name="Spells.Summary.32a6a213-8c89-4efe-b56d-042814a13b9f" xml:space="preserve"><value>Controla el cuerpo, no pensamientos.</value></data>
+  <data name="Spells.Summary.0404dc24-1305-4891-899f-d45ddff2811c" xml:space="preserve"><value>Controla el cuerpo, no pensamientos.</value></data>
+  <data name="Spells.Summary.d97d3ece-e21b-42c7-bfeb-4ca3834587c0" xml:space="preserve"><value>Controla pensamientos; órdenes parecen decisiones propias.</value></data>
+  <data name="Spells.Summary.64904294-a652-4361-8809-ce37a8d79f8f" xml:space="preserve"><value>Controla pensamientos; órdenes parecen decisiones propias.</value></data>
+  <data name="Spells.Summary.52bd988c-88a5-4f07-8f02-f8a5f202ef8d" xml:space="preserve"><value>Lanza un objeto contra un blanco.</value></data>
+  <data name="Spells.Summary.459e6c2d-d0b7-4c0e-a85a-dc5d8e794930" xml:space="preserve"><value>Incendia al objetivo tras completarse.</value></data>
+  <data name="Spells.Summary.b1d545b6-2498-4682-8058-a3f7783c1c84" xml:space="preserve"><value>Obstaculiza magia, no materia ordinaria.</value></data>
+  <data name="Spells.Summary.1e1e488d-d727-43f8-900d-5c171c320d1d" xml:space="preserve"><value>Crea una pared translúcida; pasan gases.</value></data>
+  <data name="Spells.Summary.d7d6bbf6-6855-47ce-9865-5a01db507d71" xml:space="preserve"><value>Arremolina objetos, golpeando objetivos cercanos.</value></data>
+  <data name="Spells.Summary.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>Oscurece una zona.</value></data>
 </root>

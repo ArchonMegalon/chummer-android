@@ -1818,4 +1818,29 @@
   <data name="Spells.SummarySource.c307d243-669b-47d0-9642-aee7f9207e63" xml:space="preserve"><value>81E312F3FD2A85FE54C926F0835C2BDE490B0845771C54EAD8733B17CF947CFF</value></data>
   <data name="Spells.Summary.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>Quiets the subject's own noises.</value></data>
   <data name="Spells.SummarySource.370e0dfb-550e-4330-92eb-9ef3b8a044b5" xml:space="preserve"><value>49049EED39816C132F2368BCD36A35843B1E8C3F1DBB849011007F2C5D0101F5</value></data>
+  <!-- SR5 core Manipulation effects; numeric profiles remain Core-owned. -->
+  <data name="Spells.Summary.b447e60d-88b6-48e4-a595-6dae86581867" xml:space="preserve"><value>Animates an object's movement, without fine control.</value></data>
+  <data name="Spells.SummarySource.b447e60d-88b6-48e4-a595-6dae86581867" xml:space="preserve"><value>AD61CF08A89CF3C7C74B127BA94C0E9668F0239209C54B0C8BE0FFDECC065649</value></data>
+  <data name="Spells.Summary.13577f45-cb22-4285-bbf4-06072286dfbb" xml:space="preserve"><value>Animates objects, without fine control.</value></data>
+  <data name="Spells.SummarySource.13577f45-cb22-4285-bbf4-06072286dfbb" xml:space="preserve"><value>2095AA92A17E5B01909665D047705B2A56241A1477985504F3A4F56FBF2600AB</value></data>
+  <data name="Spells.Summary.32a6a213-8c89-4efe-b56d-042814a13b9f" xml:space="preserve"><value>Puppeteers the body, not thoughts.</value></data>
+  <data name="Spells.SummarySource.32a6a213-8c89-4efe-b56d-042814a13b9f" xml:space="preserve"><value>D01D495EB0CEA28F2A255B7708C2AEB49DCCC03C303FED8D6E5CA98AA65FA014</value></data>
+  <data name="Spells.Summary.0404dc24-1305-4891-899f-d45ddff2811c" xml:space="preserve"><value>Puppeteers the body, not thoughts.</value></data>
+  <data name="Spells.SummarySource.0404dc24-1305-4891-899f-d45ddff2811c" xml:space="preserve"><value>2F8C73F3BDB4D7FDE290DAF4AAB9EC546CC20061E22A779BE5C06EFC1F26A97F</value></data>
+  <data name="Spells.Summary.d97d3ece-e21b-42c7-bfeb-4ca3834587c0" xml:space="preserve"><value>Controls thoughts; commands seem self-chosen.</value></data>
+  <data name="Spells.SummarySource.d97d3ece-e21b-42c7-bfeb-4ca3834587c0" xml:space="preserve"><value>0EB0F3B9F1291943FD10962909ABB906BE1A5E937063801BD706B01EDB47793F</value></data>
+  <data name="Spells.Summary.64904294-a652-4361-8809-ce37a8d79f8f" xml:space="preserve"><value>Controls thoughts; commands seem self-chosen.</value></data>
+  <data name="Spells.SummarySource.64904294-a652-4361-8809-ce37a8d79f8f" xml:space="preserve"><value>C6CCB78533490FDF4D1A6334B822BFFD43B208B6F4CA39600689AC68E45D8CA2</value></data>
+  <data name="Spells.Summary.52bd988c-88a5-4f07-8f02-f8a5f202ef8d" xml:space="preserve"><value>Hurls an object at a target.</value></data>
+  <data name="Spells.SummarySource.52bd988c-88a5-4f07-8f02-f8a5f202ef8d" xml:space="preserve"><value>DEC8522672FD7106573A516D2B6DD6DAEC5F033DECA66B791DA9CD7E25FE0E79</value></data>
+  <data name="Spells.Summary.459e6c2d-d0b7-4c0e-a85a-dc5d8e794930" xml:space="preserve"><value>Ignites the target after completion.</value></data>
+  <data name="Spells.SummarySource.459e6c2d-d0b7-4c0e-a85a-dc5d8e794930" xml:space="preserve"><value>7781072B5D5C0F462F8C9A547BD0F5AA0D8D62F346868071626C2DAE3CA64050</value></data>
+  <data name="Spells.Summary.b1d545b6-2498-4682-8058-a3f7783c1c84" xml:space="preserve"><value>Hinders magic, not ordinary matter.</value></data>
+  <data name="Spells.SummarySource.b1d545b6-2498-4682-8058-a3f7783c1c84" xml:space="preserve"><value>FE8C2BCF2654BCEA0498D4EBAE7D7550E32A621A571EE51BBBA0525B741E43B1</value></data>
+  <data name="Spells.Summary.1e1e488d-d727-43f8-900d-5c171c320d1d" xml:space="preserve"><value>Creates a translucent wall; gases pass.</value></data>
+  <data name="Spells.SummarySource.1e1e488d-d727-43f8-900d-5c171c320d1d" xml:space="preserve"><value>EE6C22C6A7EE671DFD3B27BE277B9190721341243BB618558F18F9BC32B02972</value></data>
+  <data name="Spells.Summary.d7d6bbf6-6855-47ce-9865-5a01db507d71" xml:space="preserve"><value>Whirls loose objects, battering nearby targets.</value></data>
+  <data name="Spells.SummarySource.d7d6bbf6-6855-47ce-9865-5a01db507d71" xml:space="preserve"><value>DC064D10306861A89EEAFDDF2334561DC93083D8F0019F57972661A99521C119</value></data>
+  <data name="Spells.Summary.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>Darkens an area.</value></data>
+  <data name="Spells.SummarySource.6aa76b6a-0096-4e09-a672-d8de84885017" xml:space="preserve"><value>DB9EDA0C52F3B8F04E8699E6EE4E2EC253CF9A96B194A46703D746CC5C9F6596</value></data>
 </root>
