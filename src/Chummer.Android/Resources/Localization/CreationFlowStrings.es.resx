@@ -1392,4 +1392,36 @@
   <data name="Spells.Summary.466e45ee-755d-4fd6-ba23-298afa5849ef" xml:space="preserve"><value>Atenúa sonido entre dentro/fuera.</value></data>
   <data name="Spells.Summary.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>Intercambia temporalmente firmas vehiculares.</value></data>
   <data name="Spells.Summary.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>Disfraza vehículos; mantener contacto.</value></data>
+  <data name="Spells.Range.Special" xml:space="preserve"><value>Alcance especial.</value></data>
+  <data name="Spells.Summary.f7984928-b770-4c96-8454-e8708b820dd0" xml:space="preserve"><value>Restringe movimientos físicos.</value></data>
+  <data name="Spells.Summary.e59a2be4-41b5-4b3e-aa5b-c4881a021cae" xml:space="preserve"><value>Restringe movimientos físicos.</value></data>
+  <data name="Spells.Summary.30292b3d-d81d-433f-a211-af1939e158db" xml:space="preserve"><value>Sujeta objetivos vivos o astrales.</value></data>
+  <data name="Spells.Summary.37e33acf-31ab-429e-b470-d4a4c2e27559" xml:space="preserve"><value>Sujeta objetivos vivos o astrales.</value></data>
+  <data name="Spells.Summary.75411316-c3b0-43cb-bbb8-24bde461ea58" xml:space="preserve"><value>Barrera dañina para espíritus insecto.</value></data>
+  <data name="Spells.Summary.f075819d-4924-4140-a5b4-fe8fdc069485" xml:space="preserve"><value>Calma animales no sapientes; aún se defienden.</value></data>
+  <data name="Spells.Summary.b0a9f3b0-d153-4ff3-9193-666f89aaf0c3" xml:space="preserve"><value>Calma animales no sapientes; aún se defienden.</value></data>
+  <data name="Spells.Summary.faf0247b-bd15-4287-aa08-99f704de2abb" xml:space="preserve"><value>Reduce daño por caídas.</value></data>
+  <data name="Spells.Summary.05088798-a160-4080-90bb-fed9880435ba" xml:space="preserve"><value>Purifica el elemento elegido.</value></data>
+  <data name="Spells.Summary.b0d02e0b-6c8f-4fef-8ca3-fe8f509218f0" xml:space="preserve"><value>Impide mentir deliberadamente, no callar.</value></data>
+  <data name="Spells.Summary.e0578a09-8fba-424f-9288-b5e1ef810c2c" xml:space="preserve"><value>Dirige animales no sapientes.</value></data>
+  <data name="Spells.Summary.7d37e3fa-d16b-4d4f-8285-629f511df0e6" xml:space="preserve"><value>Dirige animales no sapientes.</value></data>
+  <data name="Spells.Summary.1b311db9-d5cc-4b4c-857a-3208caa1bf0a" xml:space="preserve"><value>Mejora defensa contra ataques físicos a distancia.</value></data>
+  <data name="Spells.Summary.b683e8f4-ca91-4c64-932d-757754069a1f" xml:space="preserve"><value>Cuesta más percibir contradicciones.</value></data>
+  <data name="Spells.Summary.547c0959-7a9b-487c-adec-54f639585695" xml:space="preserve"><value>Cambia la ropa, no su protección.</value></data>
+  <data name="Spells.Summary.ad128cba-aa39-4433-ab1e-9259e19778f6" xml:space="preserve"><value>Ralentiza metabolismo; no mantiene la inconsciencia.</value></data>
+  <data name="Spells.Summary.ffc5309a-9ae8-4770-aabd-2abe8246c0ec" xml:space="preserve"><value>Interfiere señales de radio e inalámbricas.</value></data>
+  <data name="Spells.Summary.d3431ff8-e33f-4cd4-a185-4817b5cce2f8" xml:space="preserve"><value>Provoca embriaguez y fatiga.</value></data>
+  <data name="Spells.Summary.e55eccaa-107d-4cee-b0fb-d10abb2d1f35" xml:space="preserve"><value>Aporta nutrientes; uso repetido arriesga adicción.</value></data>
+  <data name="Spells.Summary.8b3edb22-35ab-44a3-aa9d-0553a1af4da4" xml:space="preserve"><value>Atenúa sonido entre dentro/fuera.</value></data>
+  <data name="Spells.Summary.58331f62-e907-4a4a-a59c-f9303d16dcbe" xml:space="preserve"><value>Disfraza vehículos como otros de tamaño similar.</value></data>
+  <data name="Spells.Summary.38c206bb-9ab5-48ad-b736-0a8a464f1f1e" xml:space="preserve"><value>Atrae un objeto desatendido hasta tu mano.</value></data>
+  <data name="Spells.Summary.bc591aab-8409-4359-9124-c93f4bc968f0" xml:space="preserve"><value>Oculta calor corporal ante visión y sensores térmicos.</value></data>
+  <data name="Spells.Summary.3ca36ddc-1e69-48b4-884b-b37ad86b6412" xml:space="preserve"><value>Oculta el olor de un objeto.</value></data>
+  <data name="Spells.Summary.69d35098-2786-4b84-9825-3706430cc82b" xml:space="preserve"><value>Recarga una preparación debilitada una sola vez.</value></data>
+  <data name="Spells.Summary.70f31768-c19b-4bef-8b71-d992d956d06a" xml:space="preserve"><value>Arma de maná exclusiva del lanzador; ignora armadura, sin parar ataques físicos.</value></data>
+  <data name="Spells.Summary.bc8e70a9-2af6-4728-836d-daf19d5c61d4" xml:space="preserve"><value>Arma física exclusiva del lanzador; permite parar, armadura protege.</value></data>
+  <data name="Spells.Summary.d0f89025-7573-47d2-accf-48f2a7d7a03d" xml:space="preserve"><value>Disfraz idealizado que inspira simpatía.</value></data>
+  <data name="Spells.Summary.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>Disfraz idealizado colectivo que inspira simpatía.</value></data>
+  <data name="Spells.Summary.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>Borra permanentemente los recuerdos más recientes.</value></data>
+  <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Envía un breve mensaje o imagen telepática.</value></data>
 </root>

@@ -915,6 +915,17 @@ internal static partial class AfterRunAuthorityHarness
             search.Text = query;
             ((ISearchBarController)search).OnSearchButtonPressed();
         }
+        var supplements = allOptions.Where(item => CreationMagicNativeRuntimeTests.HasNewSupplementSummary(
+            item.SourceBook, item.Category, item.Name)).ToArray();
+        if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
+        {
+            Require(supplements.Length == 31 && supplements.Count(options.Contains) == 30,
+                "The native catalog fixture must retain all 31 supplement definitions and 30 admitted choices.");
+            var blocked = supplements.Single(item => !options.Contains(item));
+            Require(blocked.SourceBook == "SG" && blocked.Name == "Clean [Element]"
+                && blocked.Blockers.Contains(CharacterCreationMagicResonanceBlockers.OptionSemanticsUnsupported),
+                "Adding help must not enable an unsupported parameterized spell or hide an ordinary choice.");
+        }
         if (options[0].Identity.Kind == CharacterCreationMagicResonanceKinds.Spell)
         foreach (var spell in new[] { "Levitate", "Lightning Bolt", "Detect Enemies, Extended",
             "Antidote", "Detox", "Resist Pain", "Phantasm", "Trid Phantasm", "Silence",
@@ -923,11 +934,16 @@ internal static partial class AfterRunAuthorityHarness
             "Astral Window", "Mindnet", "Mindnet Extended", "Night Vision", "Spatial Sense, Extended",
             "Thought Recognition", "Area Thought Recognition", "Translate" }
             .Select(name => options.Single(item => item.Name == name))
-            .Concat(options.Where(item => item.SourceBook == "SG" && item.Category == "Illusion")))
+            .Concat(options.Where(item => item.SourceBook == "SG" && item.Category == "Illusion"))
+            .Concat(supplements))
         {
             Search(spell.Name);
             string help = CreationSpellInfo.Summary(CreationSpellInfo.Resolve(coordinator.State.CreationMagicResonance, spell));
-            Require(MinimalVisibleText(catalog).Contains(help), "The actual spell list omitted its inline description.");
+            if (options.Contains(spell))
+                Require(MinimalVisibleText(catalog).Contains(help), "The actual spell list omitted its inline description.");
+            else
+                Require(!Rows().Any(row => row.AutomationId == Id(spell)),
+                    "An explanatory summary made an unsupported spell selectable.");
             var spellPage = new CreationMagicResonanceOptionPage(coordinator, editor, spell, draft);
             await (Task)typeof(CreationMagicResonanceOptionPage).GetMethod("PrepareForAppearanceRefreshAsync",
                 BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(spellPage, [CancellationToken.None])!;
@@ -936,6 +952,10 @@ internal static partial class AfterRunAuthorityHarness
                 label.AutomationId == "creation-magic-resonance-spell-summary");
             Require(summary.Text == help && summary.TextColor.Equals(NativeTheme.Text)
                 && summary.LineBreakMode == LineBreakMode.WordWrap, "Spell details are missing, clipped or unreadable.");
+            if (!options.Contains(spell))
+                Require(!MinimalVisible(spellPage).OfType<Button>().Single(button =>
+                    button.AutomationId == "creation-magic-resonance-option-toggle").IsEnabled,
+                    "Help on an unsupported spell enabled its selection action.");
         }
         Search("  " + options.Last().Name.ToUpperInvariant() + "  ");
         Require(Rows().Select(button => button.AutomationId).Contains(Id(options.Last())),

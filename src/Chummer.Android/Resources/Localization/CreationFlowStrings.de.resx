@@ -1409,4 +1409,36 @@
   <data name="Spells.Summary.466e45ee-755d-4fd6-ba23-298afa5849ef" xml:space="preserve"><value>Dämpft grenzüberschreitenden Schall.</value></data>
   <data name="Spells.Summary.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>Tauscht Fahrzeug-Sensorsignaturen zeitweilig.</value></data>
   <data name="Spells.Summary.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>Tarnt Fahrzeuge; Berührung halten.</value></data>
+  <data name="Spells.Range.Special" xml:space="preserve"><value>Besondere Reichweite.</value></data>
+  <data name="Spells.Summary.f7984928-b770-4c96-8454-e8708b820dd0" xml:space="preserve"><value>Fesselt körperliche Bewegungen.</value></data>
+  <data name="Spells.Summary.e59a2be4-41b5-4b3e-aa5b-c4881a021cae" xml:space="preserve"><value>Fesselt körperliche Bewegungen.</value></data>
+  <data name="Spells.Summary.30292b3d-d81d-433f-a211-af1939e158db" xml:space="preserve"><value>Fesselt lebende oder astrale Ziele.</value></data>
+  <data name="Spells.Summary.37e33acf-31ab-429e-b470-d4a4c2e27559" xml:space="preserve"><value>Fesselt lebende oder astrale Ziele.</value></data>
+  <data name="Spells.Summary.75411316-c3b0-43cb-bbb8-24bde461ea58" xml:space="preserve"><value>Barriere, die Insektengeister verletzt.</value></data>
+  <data name="Spells.Summary.f075819d-4924-4140-a5b4-fe8fdc069485" xml:space="preserve"><value>Beruhigt nicht vernunftbegabte Tiere; Selbstverteidigung bleibt.</value></data>
+  <data name="Spells.Summary.b0a9f3b0-d153-4ff3-9193-666f89aaf0c3" xml:space="preserve"><value>Beruhigt nicht vernunftbegabte Tiere; Selbstverteidigung bleibt.</value></data>
+  <data name="Spells.Summary.faf0247b-bd15-4287-aa08-99f704de2abb" xml:space="preserve"><value>Verringert Fallschaden.</value></data>
+  <data name="Spells.Summary.05088798-a160-4080-90bb-fed9880435ba" xml:space="preserve"><value>Reinigt das gewählte Element.</value></data>
+  <data name="Spells.Summary.b0d02e0b-6c8f-4fef-8ca3-fe8f509218f0" xml:space="preserve"><value>Verhindert bewusste Lügen, nicht Schweigen.</value></data>
+  <data name="Spells.Summary.e0578a09-8fba-424f-9288-b5e1ef810c2c" xml:space="preserve"><value>Befiehlt nicht vernunftbegabten Tieren.</value></data>
+  <data name="Spells.Summary.7d37e3fa-d16b-4d4f-8285-629f511df0e6" xml:space="preserve"><value>Befiehlt nicht vernunftbegabten Tieren.</value></data>
+  <data name="Spells.Summary.1b311db9-d5cc-4b4c-857a-3208caa1bf0a" xml:space="preserve"><value>Verbessert Abwehr gegen körperliche Fernkampfangriffe.</value></data>
+  <data name="Spells.Summary.b683e8f4-ca91-4c64-932d-757754069a1f" xml:space="preserve"><value>Widersprüche fallen weniger auf.</value></data>
+  <data name="Spells.Summary.547c0959-7a9b-487c-adec-54f639585695" xml:space="preserve"><value>Gestaltet Kleidung um, ohne besseren Schutz.</value></data>
+  <data name="Spells.Summary.ad128cba-aa39-4433-ab1e-9259e19778f6" xml:space="preserve"><value>Verlangsamt Stoffwechsel; hält nicht bewusstlos.</value></data>
+  <data name="Spells.Summary.ffc5309a-9ae8-4770-aabd-2abe8246c0ec" xml:space="preserve"><value>Stört Funk- und Drahtlossignale.</value></data>
+  <data name="Spells.Summary.d3431ff8-e33f-4cd4-a185-4817b5cce2f8" xml:space="preserve"><value>Verursacht Trunkenheit und Erschöpfung.</value></data>
+  <data name="Spells.Summary.e55eccaa-107d-4cee-b0fb-d10abb2d1f35" xml:space="preserve"><value>Versorgt mit Nährstoffen; häufiger Gebrauch birgt Suchtgefahr.</value></data>
+  <data name="Spells.Summary.8b3edb22-35ab-44a3-aa9d-0553a1af4da4" xml:space="preserve"><value>Dämpft grenzüberschreitenden Schall.</value></data>
+  <data name="Spells.Summary.58331f62-e907-4a4a-a59c-f9303d16dcbe" xml:space="preserve"><value>Tarnt Fahrzeuge als ähnlich große Fahrzeuge.</value></data>
+  <data name="Spells.Summary.38c206bb-9ab5-48ad-b736-0a8a464f1f1e" xml:space="preserve"><value>Holt einen unbeaufsichtigten Gegenstand in deine Hand.</value></data>
+  <data name="Spells.Summary.bc591aab-8409-4359-9124-c93f4bc968f0" xml:space="preserve"><value>Verbirgt Körperwärme vor Wärmesicht und Sensoren.</value></data>
+  <data name="Spells.Summary.3ca36ddc-1e69-48b4-884b-b37ad86b6412" xml:space="preserve"><value>Verbirgt den Geruch eines Gegenstands.</value></data>
+  <data name="Spells.Summary.69d35098-2786-4b84-9825-3706430cc82b" xml:space="preserve"><value>Lädt ein schwächer gewordenes Alchemikum einmal nach.</value></data>
+  <data name="Spells.Summary.70f31768-c19b-4bef-8b71-d992d956d06a" xml:space="preserve"><value>Manawaffe nur für den Zaubernden; ignoriert Rüstung, keine körperliche Parade.</value></data>
+  <data name="Spells.Summary.bc8e70a9-2af6-4728-836d-daf19d5c61d4" xml:space="preserve"><value>Körperliche Waffe nur für den Zaubernden; pariert, Rüstung schützt.</value></data>
+  <data name="Spells.Summary.d0f89025-7573-47d2-accf-48f2a7d7a03d" xml:space="preserve"><value>Überzeugendes Wunschbild fördert Freundlichkeit.</value></data>
+  <data name="Spells.Summary.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>Wunschbild im Bereich fördert Freundlichkeit.</value></data>
+  <data name="Spells.Summary.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>Löscht die jüngsten Erinnerungen dauerhaft.</value></data>
+  <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Sendet eine kurze telepathische Nachricht oder ein Bild.</value></data>
 </root>

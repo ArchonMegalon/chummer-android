@@ -1989,4 +1989,67 @@
   <data name="Spells.SummarySource.0e6abd64-04bf-44ca-9358-4f12c9673209" xml:space="preserve"><value>9DD80A6C7F266CD93694AF643C6F0EC96BDE5A7BF1CD0251B246958565E8D2F8</value></data>
   <data name="Spells.Summary.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>Disguises vehicles; maintain contact.</value></data>
   <data name="Spells.SummarySource.7eec4aa0-806c-4b4d-b809-5c37c4c06ae5" xml:space="preserve"><value>6ED7F2086571E9CEA7F3DC426F2E0E7803DC5AD84FCDDF5A81FF7BCC28DC7B0C</value></data>
+  <data name="Spells.Range.Special" xml:space="preserve"><value>Special range.</value></data>
+  <data name="Spells.Summary.f7984928-b770-4c96-8454-e8708b820dd0" xml:space="preserve"><value>Restrains physical movement.</value></data>
+  <data name="Spells.SummarySource.f7984928-b770-4c96-8454-e8708b820dd0" xml:space="preserve"><value>98B3545DE79B53E962EFAB503F5D9D03D3BDA160883B07B8B3730D65777282A3</value></data>
+  <data name="Spells.Summary.e59a2be4-41b5-4b3e-aa5b-c4881a021cae" xml:space="preserve"><value>Restrains physical movement.</value></data>
+  <data name="Spells.SummarySource.e59a2be4-41b5-4b3e-aa5b-c4881a021cae" xml:space="preserve"><value>EDAD8EBCDF10B70E1FB981F4D6DFCEE2B860B03F4420BFBE00EB4532A4CEE42B</value></data>
+  <data name="Spells.Summary.30292b3d-d81d-433f-a211-af1939e158db" xml:space="preserve"><value>Binds living or astral targets.</value></data>
+  <data name="Spells.SummarySource.30292b3d-d81d-433f-a211-af1939e158db" xml:space="preserve"><value>C10B603F0520173EB8A68081149CBA2D1ECC90FE31335FD41250A41A49643D20</value></data>
+  <data name="Spells.Summary.37e33acf-31ab-429e-b470-d4a4c2e27559" xml:space="preserve"><value>Binds living or astral targets.</value></data>
+  <data name="Spells.SummarySource.37e33acf-31ab-429e-b470-d4a4c2e27559" xml:space="preserve"><value>31CA0ECE05D1BA1922E7B306CCFB98161A16905C3A2CA9F181A9318A6B7B6F59</value></data>
+  <data name="Spells.Summary.75411316-c3b0-43cb-bbb8-24bde461ea58" xml:space="preserve"><value>Barrier harming insect spirits.</value></data>
+  <data name="Spells.SummarySource.75411316-c3b0-43cb-bbb8-24bde461ea58" xml:space="preserve"><value>1E9BCADEE1C32678C973CEFB993E49F29201403CB76EEEFA4D9C219D72D13694</value></data>
+  <data name="Spells.Summary.f075819d-4924-4140-a5b4-fe8fdc069485" xml:space="preserve"><value>Calms non-sapient animals; self-defense remains.</value></data>
+  <data name="Spells.SummarySource.f075819d-4924-4140-a5b4-fe8fdc069485" xml:space="preserve"><value>3B0A84F59E05D496A821481E36C7AAB42EEF8A7B28C93E5E8D7E087B77FD070D</value></data>
+  <data name="Spells.Summary.b0a9f3b0-d153-4ff3-9193-666f89aaf0c3" xml:space="preserve"><value>Calms non-sapient animals; self-defense remains.</value></data>
+  <data name="Spells.SummarySource.b0a9f3b0-d153-4ff3-9193-666f89aaf0c3" xml:space="preserve"><value>CF0369E7374E0BEBD992889B2AF7D4704C8F35823948BC0F255C77FD0A8E8C4B</value></data>
+  <data name="Spells.Summary.faf0247b-bd15-4287-aa08-99f704de2abb" xml:space="preserve"><value>Reduces falling damage.</value></data>
+  <data name="Spells.SummarySource.faf0247b-bd15-4287-aa08-99f704de2abb" xml:space="preserve"><value>84FA1393104D58D48859EDAFEED82E3194714D9245AF4C6DFB22F593D99379BC</value></data>
+  <data name="Spells.Summary.05088798-a160-4080-90bb-fed9880435ba" xml:space="preserve"><value>Purifies the selected element.</value></data>
+  <data name="Spells.SummarySource.05088798-a160-4080-90bb-fed9880435ba" xml:space="preserve"><value>D1D9D513FCD220EE85993698618170FB8895CF50FEDC53B99FA1D1E8546CA8C9</value></data>
+  <data name="Spells.Summary.b0d02e0b-6c8f-4fef-8ca3-fe8f509218f0" xml:space="preserve"><value>Blocks deliberate lies, not silence.</value></data>
+  <data name="Spells.SummarySource.b0d02e0b-6c8f-4fef-8ca3-fe8f509218f0" xml:space="preserve"><value>0EA943F7FD4B6393EEDE76C090E72FDB55FEBF30053E341BDC92C7E29B3FE0CB</value></data>
+  <data name="Spells.Summary.e0578a09-8fba-424f-9288-b5e1ef810c2c" xml:space="preserve"><value>Commands non-sapient animals.</value></data>
+  <data name="Spells.SummarySource.e0578a09-8fba-424f-9288-b5e1ef810c2c" xml:space="preserve"><value>7E968EC6C23CE62F3C9FCB56CEF05BFF7AAFEFB5E5EF166081BCDE6A192EFF2D</value></data>
+  <data name="Spells.Summary.7d37e3fa-d16b-4d4f-8285-629f511df0e6" xml:space="preserve"><value>Commands non-sapient animals.</value></data>
+  <data name="Spells.SummarySource.7d37e3fa-d16b-4d4f-8285-629f511df0e6" xml:space="preserve"><value>3EB39CF81D7E39E6FF92B4366B34EAD2C90CD815ADB69153FCB781D84FE75A35</value></data>
+  <data name="Spells.Summary.1b311db9-d5cc-4b4c-857a-3208caa1bf0a" xml:space="preserve"><value>Improves defense against physical ranged attacks.</value></data>
+  <data name="Spells.SummarySource.1b311db9-d5cc-4b4c-857a-3208caa1bf0a" xml:space="preserve"><value>246DEAF0AB39C9E1C54562CC537CA2AA848D6B35436F198B9620971538746085</value></data>
+  <data name="Spells.Summary.b683e8f4-ca91-4c64-932d-757754069a1f" xml:space="preserve"><value>Inconsistencies become harder to notice.</value></data>
+  <data name="Spells.SummarySource.b683e8f4-ca91-4c64-932d-757754069a1f" xml:space="preserve"><value>443F2F592DB0420AF3F76B342EADC8C9974E7365ADC11E12F56B22F1803407AD</value></data>
+  <data name="Spells.Summary.547c0959-7a9b-487c-adec-54f639585695" xml:space="preserve"><value>Restyles clothing without improving protection.</value></data>
+  <data name="Spells.SummarySource.547c0959-7a9b-487c-adec-54f639585695" xml:space="preserve"><value>25BC58DFC753D7128DE7EA3AF8B74BF34CD3D39B708D2C9CFB9A30BF7882533E</value></data>
+  <data name="Spells.Summary.ad128cba-aa39-4433-ab1e-9259e19778f6" xml:space="preserve"><value>Slows metabolism; does not maintain unconsciousness.</value></data>
+  <data name="Spells.SummarySource.ad128cba-aa39-4433-ab1e-9259e19778f6" xml:space="preserve"><value>EB42B0364ED731DCC843C1DEC2AD5F26D6FBA7019E102B96A24B2A5DC0475EA1</value></data>
+  <data name="Spells.Summary.ffc5309a-9ae8-4770-aabd-2abe8246c0ec" xml:space="preserve"><value>Jams radio and wireless signals.</value></data>
+  <data name="Spells.SummarySource.ffc5309a-9ae8-4770-aabd-2abe8246c0ec" xml:space="preserve"><value>2101773913A5186F0189ACF0B31ABC5E8B38F16C494F20A49D64802DD06A2772</value></data>
+  <data name="Spells.Summary.d3431ff8-e33f-4cd4-a185-4817b5cce2f8" xml:space="preserve"><value>Causes drunkenness and fatigue.</value></data>
+  <data name="Spells.SummarySource.d3431ff8-e33f-4cd4-a185-4817b5cce2f8" xml:space="preserve"><value>15EAC835844AEDA39AA41AE450B2DAD87BAC1991D08158576B9DE78BD3CE7349</value></data>
+  <data name="Spells.Summary.e55eccaa-107d-4cee-b0fb-d10abb2d1f35" xml:space="preserve"><value>Provides nourishment; repeated use risks addiction.</value></data>
+  <data name="Spells.SummarySource.e55eccaa-107d-4cee-b0fb-d10abb2d1f35" xml:space="preserve"><value>1D0FDB57D13F7CFF6D1B8312C067FBB5FCE699CC213700347B876F96D0F9C399</value></data>
+  <data name="Spells.Summary.8b3edb22-35ab-44a3-aa9d-0553a1af4da4" xml:space="preserve"><value>Muffles sounds crossing the boundary.</value></data>
+  <data name="Spells.SummarySource.8b3edb22-35ab-44a3-aa9d-0553a1af4da4" xml:space="preserve"><value>FD1BC26E598FA29EBA98B9D9B1632F01C035AB6339369CF40051C9747B186A77</value></data>
+  <data name="Spells.Summary.58331f62-e907-4a4a-a59c-f9303d16dcbe" xml:space="preserve"><value>Disguises vehicles as similarly sized vehicles.</value></data>
+  <data name="Spells.SummarySource.58331f62-e907-4a4a-a59c-f9303d16dcbe" xml:space="preserve"><value>3806DCEA5AD8E253D0284464627EE97E2CB1A502EB3D7E4FC3DD20CE34836FE0</value></data>
+  <data name="Spells.Summary.38c206bb-9ab5-48ad-b736-0a8a464f1f1e" xml:space="preserve"><value>Pulls an unattended object into your hand.</value></data>
+  <data name="Spells.SummarySource.38c206bb-9ab5-48ad-b736-0a8a464f1f1e" xml:space="preserve"><value>090661A72AF0A581A7BA66381458FEF4AA46D498708D310AFD0310B2A8FC91C9</value></data>
+  <data name="Spells.Summary.bc591aab-8409-4359-9124-c93f4bc968f0" xml:space="preserve"><value>Conceals body heat from thermal detection.</value></data>
+  <data name="Spells.SummarySource.bc591aab-8409-4359-9124-c93f4bc968f0" xml:space="preserve"><value>1E8939789EB3676E07875D96DD59489B55EEBCF6782555B4538987AB91A5FBB7</value></data>
+  <data name="Spells.Summary.3ca36ddc-1e69-48b4-884b-b37ad86b6412" xml:space="preserve"><value>Masks an object's scent.</value></data>
+  <data name="Spells.SummarySource.3ca36ddc-1e69-48b4-884b-b37ad86b6412" xml:space="preserve"><value>551477B528CB82D31088D6CC9BC7E7CC029461CDE571A80EF90EAA0D85042B4F</value></data>
+  <data name="Spells.Summary.69d35098-2786-4b84-9825-3706430cc82b" xml:space="preserve"><value>Recharges a fading preparation once.</value></data>
+  <data name="Spells.SummarySource.69d35098-2786-4b84-9825-3706430cc82b" xml:space="preserve"><value>ED0FB59C8907BDDC4C4BA6D1FB4D8DC5231BD4211A164E22459FB1E129F0222D</value></data>
+  <data name="Spells.Summary.70f31768-c19b-4bef-8b71-d992d956d06a" xml:space="preserve"><value>Caster-only mana weapon; bypasses armor, not for physical parries.</value></data>
+  <data name="Spells.SummarySource.70f31768-c19b-4bef-8b71-d992d956d06a" xml:space="preserve"><value>BB8128B3A13B606FA5A3B1758B0B29C18CE915E84DE8EC308D6AAC8B60C37050</value></data>
+  <data name="Spells.Summary.bc8e70a9-2af6-4728-836d-daf19d5c61d4" xml:space="preserve"><value>Caster-only physical weapon; can parry, armor resists.</value></data>
+  <data name="Spells.SummarySource.bc8e70a9-2af6-4728-836d-daf19d5c61d4" xml:space="preserve"><value>CCBB299C1DF9F3456E74C8B22FEFEE39AFAD31ED9DF6D781B8C2588DB2566A0F</value></data>
+  <data name="Spells.Summary.d0f89025-7573-47d2-accf-48f2a7d7a03d" xml:space="preserve"><value>Idealized disguise that encourages friendliness.</value></data>
+  <data name="Spells.SummarySource.d0f89025-7573-47d2-accf-48f2a7d7a03d" xml:space="preserve"><value>D32E744A854349CF256EED1F11F005DB07639FBBA3A646EB18634BEB719B7B9D</value></data>
+  <data name="Spells.Summary.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>Area-wide idealized disguise encouraging friendliness.</value></data>
+  <data name="Spells.SummarySource.a2f9abc1-f4f0-4247-a9eb-5f0916212b91" xml:space="preserve"><value>43C905C393F9FCC7FB15EBDDF6FAB61E482B41AF107D607B99C542A69933EBB6</value></data>
+  <data name="Spells.Summary.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>Erases the most recent memories permanently.</value></data>
+  <data name="Spells.SummarySource.750efc53-02df-4d67-b5df-0abf2ab7e70d" xml:space="preserve"><value>1B213F9452FD452E96831522DA19451314E1462433012A6B3D08B13390B8B7C3</value></data>
+  <data name="Spells.Summary.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>Sends a brief telepathic message or image.</value></data>
+  <data name="Spells.SummarySource.08863013-48b9-4c7f-9bb1-25951b984dc1" xml:space="preserve"><value>6D600A583E7BAA1B4203E469C1FD1A1D1AB601A9F736D8C8460C803C86FC676C</value></data>
 </root>
