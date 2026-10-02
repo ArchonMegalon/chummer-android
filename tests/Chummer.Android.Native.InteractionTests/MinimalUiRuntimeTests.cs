@@ -162,6 +162,42 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("AIPS", ["spam zone", "Noise", "outside stressful"],
+            ["Spamzonen", "Rauschen", "außerhalb"],
+            ["spam", "Ruido", "sin estrés"]),
+        ("Blank Slate", ["Without", "personasoft", "separate"],
+            ["Ohne", "Personasoft", "gesonderter"],
+            ["Sin", "personasoft", "aparte"]),
+        ("Dead Emotion", ["one chosen", "gamemaster"],
+            ["gewähltes", "Spielleitung"],
+            ["una emoción", "dirección"]),
+        ("Cynic", ["Others", "against you", "not improve"],
+            ["Andere", "gegen dich", "nicht besser"],
+            ["Otros", "contra ti", "no mejoran"]),
+        ("Method Actor", ["Full days", "one role", "Willpower"],
+            ["Volle Tage", "nur", "Willenskraft"],
+            ["Días completos", "un papel", "Voluntad"]),
+        ("Watch the Suit", ["Stun", "Etiquette", "Physical"],
+            ["Betäubung", "Gebräuche", "körperliche"],
+            ["Aturdimiento", "Etiqueta", "Físicas"]),
+        ("Adept Healer", ["Empathic Healing", "more", "still transfers"],
+            ["Empathische Heilung", "mehr", "weiterhin"],
+            ["Empática", "más", "sigues"]),
+        ("Apt Pupil", ["Magical", "time", "unchanged"],
+            ["Magische", "kürzer", "unverändert"],
+            ["mágico", "tiempo", "no cambia"]),
+        ("Arcane Bodyguard", ["twice", "a third", "even alone"],
+            ["doppelt", "Drittel", "auch allein"],
+            ["duplica", "tercio", "incluso estando solo"]),
+        ("AVRse", ["VR", "believe", "physical", "only"],
+            ["VR", "körperlicher", "sicher erscheint"],
+            ["RV", "creas", "solo", "física"]),
+        ("Buddy System", ["Without teammates", "only reduces", "Hide"],
+            ["Ohne Team", "nur", "Verbergen"],
+            ["Sin equipo", "solo reduce", "Ocultarse"]),
+        ("Discombobulated", ["AR or VR", "every test", "either"],
+            ["AR oder VR", "alle Proben", "eine"],
+            ["RA ni RV", "todas", "cualquiera"]),
         ("Biosonar", ["Ultrasonic pulses", "snapshots", "aiming and perception", "hearing improves", "sonic attacks hurt more"],
             ["Ultraschallimpulse", "Momentaufnahmen", "Zielen und Wahrnehmen", "Gehör wird besser", "Schallangriffe", "mehr Schaden"],
             ["pulsos ultrasónicos", "apuntar y percibir", "imágenes instantáneas", "mejora tu oído", "ataques sónicos", "más daño"]),
@@ -986,7 +1022,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 602, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 614, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1010,6 +1046,27 @@ internal static partial class AfterRunAuthorityHarness
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Shortening copy must not detach it from its source definition: " + rule.Name);
                 }
+                foreach (string name in new[] { "Adept Healer", "Apt Pupil", "Arcane Bodyguard" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == name);
+                    Require(quality.Element("required")!.Element("allof")!.Element("magenabled") is not null,
+                        "Mastery help must retain magical admission: " + name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("required")!.Remove();
+                    string summary = CreationFlowStrings.Get(SummaryKey(quality), "");
+                    var changedLines = CreationQualityInfo.Effects(changed.ToString());
+                    Require(!changedLines.Contains(summary)
+                        && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
+                        "Mastery help must reject a definition without its prerequisites: " + name);
+                }
+                var emotion = catalog.Single(q => q.Element("name")!.Value == "Dead Emotion");
+                Require(emotion.Element("bonus")!.Element("selecttext") is not null,
+                    "Emotion help must preserve the player's specific selection.");
+                var changedEmotion = new System.Xml.Linq.XElement(emotion);
+                changedEmotion.Element("bonus")!.Element("selecttext")!.Remove();
+                Require(!CreationQualityInfo.Effects(changedEmotion.ToString()).Contains(
+                    CreationFlowStrings.Get(SummaryKey(emotion), "")),
+                    "Emotion help must not survive removal of its choice.");
                 foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
