@@ -2368,4 +2368,160 @@
   <data name="Qualities.SummarySource.56815ed4-4093-471a-a0a3-8f5b23675629" xml:space="preserve">
     <value>DF026C66F6FBF7F1D6CF8DF754CE6856B1252736AD449F824D416C02C4553BF2</value>
   </data>
+  <data name="Qualities.Summary.f9cdcb14-7181-4105-b59a-3628663f3be7" xml:space="preserve">
+    <value>Your centaur body grants a natural kick attack.</value>
+  </data>
+  <data name="Qualities.SummarySource.f9cdcb14-7181-4105-b59a-3628663f3be7" xml:space="preserve">
+    <value>22E69C89AE5E79542C75E94EEA0A1B90C74CED73F94C465104CD3916BFF7BAEB</value>
+  </data>
+  <data name="Qualities.Summary.efc80d70-30ec-4460-bddb-f6006333dd3b" xml:space="preserve">
+    <value>Your naga body grants a natural bite attack.</value>
+  </data>
+  <data name="Qualities.SummarySource.efc80d70-30ec-4460-bddb-f6006333dd3b" xml:space="preserve">
+    <value>C7CB5DD6CA16ABC910BA86ADF707BE8F7ED215E989EFBB0B357400A87449D1F3</value>
+  </data>
+  <data name="Qualities.Summary.7d6e068b-0d9d-47d5-b175-6785b50eeb2b" xml:space="preserve">
+    <value>Your digging claws also serve as natural melee weapons.</value>
+  </data>
+  <data name="Qualities.SummarySource.7d6e068b-0d9d-47d5-b175-6785b50eeb2b" xml:space="preserve">
+    <value>BC137869BFC2BE1AC411AF7F3158A247AD70A091CCAA4B98923BD881F56263AC</value>
+  </data>
+  <data name="Qualities.Summary.72a6fe4e-056d-4f04-872d-d911f2e66946" xml:space="preserve">
+    <value>Sharp claws give you a natural melee attack.</value>
+  </data>
+  <data name="Qualities.SummarySource.72a6fe4e-056d-4f04-872d-d911f2e66946" xml:space="preserve">
+    <value>183C7E152B85971C437F6762B6D05C8BE0BCA16591E3E1BCB6CCF01723A04709</value>
+  </data>
+  <data name="Qualities.Summary.d45602d8-6c15-476b-8f91-adb35c8804ec" xml:space="preserve">
+    <value>Retractable claws give you a natural melee attack.</value>
+  </data>
+  <data name="Qualities.SummarySource.d45602d8-6c15-476b-8f91-adb35c8804ec" xml:space="preserve">
+    <value>9880EA48EADC4CEAD496B29FB3338039B18710D73AA3A186E996640A37BDE267</value>
+  </data>
+  <data name="Qualities.Summary.27209cc3-756b-4cb2-b6fe-ffec5bd6a072" xml:space="preserve">
+    <value>Your fangs give you a natural bite attack.</value>
+  </data>
+  <data name="Qualities.SummarySource.27209cc3-756b-4cb2-b6fe-ffec5bd6a072" xml:space="preserve">
+    <value>065B4DBC1312D7FA827BD206FE77410B039B8CA2D21C1F4933DC3CE377D62423</value>
+  </data>
+  <data name="Qualities.Summary.c4324d55-2914-4b5c-9586-19f5515da5d7" xml:space="preserve">
+    <value>Your spiked tail serves as a natural melee weapon.</value>
+  </data>
+  <data name="Qualities.SummarySource.c4324d55-2914-4b5c-9586-19f5515da5d7" xml:space="preserve">
+    <value>D03010891786762E24957F6F2083A3253C3BD2FA2CCB903D59E135B65F414031</value>
+  </data>
+  <data name="Qualities.Summary.556c2599-ae97-44ff-98aa-442af1c9c6d4" xml:space="preserve">
+    <value>Your horns let you gore opponents in melee.</value>
+  </data>
+  <data name="Qualities.SummarySource.556c2599-ae97-44ff-98aa-442af1c9c6d4" xml:space="preserve">
+    <value>870166775A65093B95643A877C5120C882971A2B7351602637E72663B3AF7AB3</value>
+  </data>
+  <data name="Qualities.Summary.9885823f-d80f-45dc-b379-1b3f55cd6aa3" xml:space="preserve">
+    <value>Your enlarged tusks serve as natural melee weapons.</value>
+  </data>
+  <data name="Qualities.SummarySource.9885823f-d80f-45dc-b379-1b3f55cd6aa3" xml:space="preserve">
+    <value>EA601D43B16279C81E82AFE6D197460ACC6AFD8CCD50AC92CC8BAA403BDD286D</value>
+  </data>
+  <data name="Qualities.Summary.bf50a6c9-f165-451c-8d38-89240f39bb44" xml:space="preserve">
+    <value>Your social skill tests suffer a penalty.</value>
+  </data>
+  <data name="Qualities.SummarySource.bf50a6c9-f165-451c-8d38-89240f39bb44" xml:space="preserve">
+    <value>6C56005A6392FA00263BB431BF34F5A3925D835FF0CB6C838FF969E314AE1AC2</value>
+  </data>
+  <data name="Qualities.Summary.bd64ccab-5138-475d-8eb1-400ae4a11ac2" xml:space="preserve">
+    <value>Intimidation improves, but other social skills suffer outside the Matrix.</value>
+  </data>
+  <data name="Qualities.SummarySource.bd64ccab-5138-475d-8eb1-400ae4a11ac2" xml:space="preserve">
+    <value>D86DCB23EFEF08D582573F35076719B8137D61DB038435D1A67F4F1864EAA536</value>
+  </data>
+  <data name="Qualities.Summary.d9f0f912-fc95-4267-bed2-8d3fcc67846b" xml:space="preserve">
+    <value>Leadership tests are harder for you.</value>
+  </data>
+  <data name="Qualities.SummarySource.d9f0f912-fc95-4267-bed2-8d3fcc67846b" xml:space="preserve">
+    <value>23D53312FC9850E8F02FEE9B3BB7AC6AE9D4307F889AE9CA7CEBCA18E157A8ED</value>
+  </data>
+  <data name="Qualities.Summary.106cc6bf-ba42-457e-9451-92ea2da38fbd" xml:space="preserve">
+    <value>Lowers both the minimum and maximum of your Charisma.</value>
+  </data>
+  <data name="Qualities.SummarySource.106cc6bf-ba42-457e-9451-92ea2da38fbd" xml:space="preserve">
+    <value>1FE41CD1C72D16B7EA2225BF58EA2616DECAC31DC3DF00C73E3564D467F702D8</value>
+  </data>
+  <data name="Qualities.Summary.829568f2-509f-40a3-a16a-a5994ae8a037" xml:space="preserve">
+    <value>Your AI has a higher Social limit when communicating through AR or VR.</value>
+  </data>
+  <data name="Qualities.SummarySource.829568f2-509f-40a3-a16a-a5994ae8a037" xml:space="preserve">
+    <value>EA05ABFEA93D7F981A5DF10D0294D152F71CD79D56573981D8898A1116A2E437</value>
+  </data>
+  <data name="Qualities.Summary.364cdb2a-c405-488c-8e08-631ef02ebcf2" xml:space="preserve">
+    <value>Your AI gains additional condition-monitor boxes.</value>
+  </data>
+  <data name="Qualities.SummarySource.364cdb2a-c405-488c-8e08-631ef02ebcf2" xml:space="preserve">
+    <value>FF1877644C9B78C2561C9B53917288E497E76F445C1163CD58383862E2F495A9</value>
+  </data>
+  <data name="Qualities.Summary.40ceda2d-b7d1-44c2-80f0-a26ea96dcbe2" xml:space="preserve">
+    <value>Your AI's maximum Essence is reduced.</value>
+  </data>
+  <data name="Qualities.SummarySource.40ceda2d-b7d1-44c2-80f0-a26ea96dcbe2" xml:space="preserve">
+    <value>E0630781FB74E2A771AA5DA8F31508EB68299BE887891FCACA31EC915665CA7B</value>
+  </data>
+  <data name="Qualities.Summary.36464d0b-2f7d-439c-8ae1-7678e530fda1" xml:space="preserve">
+    <value>Raises your AI's mental attribute and Depth limits, especially one chosen mental attribute.</value>
+  </data>
+  <data name="Qualities.SummarySource.36464d0b-2f7d-439c-8ae1-7678e530fda1" xml:space="preserve">
+    <value>B8B4229350CF55C251954F8089A7076EB0C47D36E97CCF422F6C4A9EB61CB169</value>
+  </data>
+  <data name="Qualities.Summary.36e76b70-bf6a-4e66-8dac-13cd529b9274" xml:space="preserve">
+    <value>Combat spells deal more damage but also cause more Drain.</value>
+  </data>
+  <data name="Qualities.SummarySource.36e76b70-bf6a-4e66-8dac-13cd529b9274" xml:space="preserve">
+    <value>85BC066D74275C84F1BC9731EE7C013D2843C9AA81273611824C2A906A50B4A6</value>
+  </data>
+  <data name="Qualities.Summary.9ff65ab9-7a3c-490d-ad73-789999ab60e2" xml:space="preserve">
+    <value>You gain a bonus on defense tests.</value>
+  </data>
+  <data name="Qualities.SummarySource.9ff65ab9-7a3c-490d-ad73-789999ab60e2" xml:space="preserve">
+    <value>5FFD7D875CAEBB48EFB97DCB1CC1C6557DCE1768B0DEC4491DF2D7E1BF59A2B9</value>
+  </data>
+  <data name="Qualities.Summary.e24b86ad-004b-4252-8383-3ca4aad53a26" xml:space="preserve">
+    <value>Your crystal eyes unlock the Assensing skill.</value>
+  </data>
+  <data name="Qualities.SummarySource.e24b86ad-004b-4252-8383-3ca4aad53a26" xml:space="preserve">
+    <value>945F5A615ADF984355FA52487CA1838A6E4038D3FAA35C1870F2687F1055FB7A</value>
+  </data>
+  <data name="Qualities.Summary.90691f29-5b81-4a81-9ebc-21f2f5da1d55" xml:space="preserve">
+    <value>Trades Sorcery, Conjuring and Enchanting skills for Psychometry and Sensing.</value>
+  </data>
+  <data name="Qualities.SummarySource.90691f29-5b81-4a81-9ebc-21f2f5da1d55" xml:space="preserve">
+    <value>E64F0518D4653FFEC5D2B75B1316C66A0F33410B8B85353E57D7576D54D2BF80</value>
+  </data>
+  <data name="Qualities.Summary.ecb5ab50-68c9-45ee-9fb4-c2f0b3051096" xml:space="preserve">
+    <value>Gains Reflection and Magic Resistance; loses Binding, Spellcasting, Ritual Spellcasting, Alchemy and Artificing.</value>
+  </data>
+  <data name="Qualities.SummarySource.ecb5ab50-68c9-45ee-9fb4-c2f0b3051096" xml:space="preserve">
+    <value>4C9DA15AB3275E8FF5C83AD4A93E6EA77EE674A36684BDBCFB248142C631F254</value>
+  </data>
+  <data name="Qualities.Summary.e3d04705-b90a-4d94-90d0-4ad2c7adfa79" xml:space="preserve">
+    <value>Selected complex forms cause less Fading; compiling and decompiling machine or generalist sprites becomes easier.</value>
+  </data>
+  <data name="Qualities.SummarySource.e3d04705-b90a-4d94-90d0-4ad2c7adfa79" xml:space="preserve">
+    <value>A351E0466F12BF4895AC9EECDC765ACE003B431048569F4600F172C58FA6AD82</value>
+  </data>
+  <data name="Qualities.Summary.11d6c3b6-47c4-4765-a625-7a5907ba1b4a" xml:space="preserve">
+    <value>Reduces Fading and grants the Sourcerer Daemon echo.</value>
+  </data>
+  <data name="Qualities.SummarySource.11d6c3b6-47c4-4765-a625-7a5907ba1b4a" xml:space="preserve">
+    <value>781EB41C83EE36D920684E881403454A5C9DBC990BA2BEE154492AF50386FB9D</value>
+  </data>
+  <data name="Qualities.Summary.39803e82-d85a-4da1-9637-fdd3249f2f21" xml:space="preserve">
+    <value>Sets Agility, Reaction and Strength to zero, and increases lifestyle costs.</value>
+  </data>
+  <data name="Qualities.SummarySource.39803e82-d85a-4da1-9637-fdd3249f2f21" xml:space="preserve">
+    <value>A5A5203CF33A29A92FB534C0F31FF1821F6D1CFEC8B87F31773DC8601170CD1E</value>
+  </data>
+  <data name="Qualities.Summary.f9b746ae-9112-4b84-ba8d-e0a852678a20" xml:space="preserve">
+    <value>Grants local-contact and street-politics Home Ground benefits in the Black Forest.</value>
+  </data>
+  <data name="Qualities.SummarySource.f9b746ae-9112-4b84-ba8d-e0a852678a20" xml:space="preserve">
+    <value>A98730939F7B1681F7ACB84F73C7724F8B8DEA65EA1C2B43B53F590D5C4FBB8F</value>
+  </data>
 </root>
