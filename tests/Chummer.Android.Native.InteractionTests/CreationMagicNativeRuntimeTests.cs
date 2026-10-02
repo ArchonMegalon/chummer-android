@@ -65,13 +65,21 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 10, "Expected all ten reviewed spell summaries in each locale.");
+                Require(authored == 16, "Expected all sixteen reviewed spell summaries in each locale.");
                 Console.WriteLine($"PASS spell help: {authority.Spells.Count} exact profiles, {authored} authored effects ({locale}), custom-data/tamper rejection");
             }
             System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
             Require(!CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Levitate"))
                 .Contains("Damage: 0."), "Non-damaging spell help exposes a zero-value placeholder.");
             string fireball = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Fireball"));
+            string heal = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Heal"));
+            Require(heal.StartsWith("Repairs Physical injuries, not Stun damage.", StringComparison.Ordinal)
+                && heal.Contains("F-4") && !heal.Contains("Damage: 0."),
+                "Heal must explain the effect without an invented Stun healing or zero-damage rule.");
+            string reflexes = CreationSpellInfo.Summary(authority.Spells.Single(row => row.Name == "Increase Reflexes"));
+            Require(reflexes.StartsWith("Improves Initiative and adds Initiative dice.", StringComparison.Ordinal)
+                && reflexes.Contains("Drain: F (F = Force).") && !reflexes.Contains("F-1"),
+                "Effect prose must not replace this definition's Drain with quick-start values.");
             Require(fireball.Contains("Indirect magical attack") && fireball.Contains("Physical damage")
                 && fireball.Contains("Area within line of sight") && fireball.Contains("F-1"), "Area spell profile lost its concrete properties.");
             Require(JsonSerializer.Serialize(authority) == before, "Reading spell help mutated the rules catalog.");
