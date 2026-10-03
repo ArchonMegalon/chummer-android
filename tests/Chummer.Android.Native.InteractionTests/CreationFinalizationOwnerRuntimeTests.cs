@@ -1751,6 +1751,13 @@ internal static partial class AfterRunAuthorityHarness
                     && label.Text == CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
                         "That total does not match these dice. Check your roll and try again.")),
                     "Core rejected the dice total, but the cash page did not show readable feedback.");
+                Require(!IssuedElements(page).OfType<Label>().Any(label => label.IsVisible
+                    && (label.Text == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
+                        || label.Text == CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid)),
+                    "Starting-cash rejection exposed an internal blocker code.");
+                Require(IssuedElements(page).OfType<Label>().Count(label => label.IsVisible
+                    && label.Text == CreationKarmaCopy.DiceTotal) == 1,
+                    "The invalid total produced a duplicate required-choice prompt.");
                 var rejectedInput = input;
                 input = Element<Entry>("creation-starting-cash-roll");
                 Require(input.Text == int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),

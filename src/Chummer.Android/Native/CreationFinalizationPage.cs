@@ -102,12 +102,20 @@ internal sealed class CreationStartingCashPage : NativePageBase
         _body.Add(input);
         _body.Add(preview);
         foreach (string blocker in _blockers)
+        {
+            // Core also requests a choice when it rejects the supplied total.
+            // That is the same correction, not a second user-facing error.
+            if (blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
+                && _blockers.Contains(CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid))
+                continue;
             _body.Add(NativeTheme.Body(
                 blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid
                     ? CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
                         "That total does not match these dice. Check your roll and try again.")
-                    : blocker,
+                    : blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
+                        ? CreationKarmaCopy.DiceTotal : blocker,
                 NativeTheme.Danger));
+        }
 
         bool Current() => render == _render && IsCurrentAppearanceGeneration(appearance)
             && Coordinator.IsCreationFinalizationStateCurrent(_authority);
