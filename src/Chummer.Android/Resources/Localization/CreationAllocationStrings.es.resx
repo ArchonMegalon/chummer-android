@@ -897,4 +897,33 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
   <data name="AttributesPreview.Saving" xml:space="preserve"><value>Guardando…</value></data>
   <data name="Karma.QualityInfo" xml:space="preserve"><value>!</value></data>
+  <data name="Finalization.Title" xml:space="preserve"><value>Terminar creación</value></data>
+  <data name="Finalization.StaleReview" xml:space="preserve"><value>Esta revisión ya no está actualizada. Abre de nuevo tu runner y revisa los cambios.</value></data>
+  <data name="Finalization.Review" xml:space="preserve"><value>Revisión final</value></data>
+  <data name="Finalization.EnterCareer" xml:space="preserve"><value>Entrar en modo Carrera</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Revisa los cambios y los fondos restantes. Se guardarán juntos solo cuando confirmes.</value></data>
+  <data name="Finalization.After" xml:space="preserve"><value>Tras finalizar</value></data>
+  <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Karma restante</value></data>
+  <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Nuyen restantes</value></data>
+  <data name="Finalization.Change" xml:space="preserve"><value>Cambio {0}</value></data>
+  <data name="Finalization.ConfirmHelp" xml:space="preserve"><value>Confirma para terminar la creación e iniciar el modo Carrera. Si tu runner cambia antes de guardar, tendrás que revisar de nuevo.</value></data>
+  <data name="Finalization.Saving" xml:space="preserve"><value>Guardando…</value></data>
+  <data name="Finalization.Confirm" xml:space="preserve"><value>Confirmar e iniciar Carrera</value></data>
+  <data name="Finalization.Mode" xml:space="preserve"><value>Modo</value></data>
+  <data name="Finalization.CareerTransition" xml:space="preserve"><value>Creación → Carrera</value></data>
+  <data name="Finalization.SavedTitle" xml:space="preserve"><value>Creación guardada</value></data>
+  <data name="Finalization.ReceiptAccount" xml:space="preserve"><value>Vuelve a la cuenta original para ver esta confirmación.</value></data>
+  <data name="Finalization.CareerReady" xml:space="preserve"><value>Modo Carrera listo</value></data>
+  <data name="Finalization.BuildMethod" xml:space="preserve"><value>Método de creación</value></data>
+  <data name="Finalization.Career" xml:space="preserve"><value>Carrera</value></data>
+  <data name="Finalization.Creation" xml:space="preserve"><value>Creación</value></data>
+  <data name="Finalization.Reopened" xml:space="preserve"><value>Tu runner guardado se ha abierto de nuevo en modo Carrera.</value></data>
+  <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Tus cambios están guardados. Abre de nuevo tu runner antes de continuar en modo Carrera.</value></data>
+  <data name="Finalization.OpenCareer" xml:space="preserve"><value>Abrir runner en Carrera</value></data>
+  <data name="Finalization.Method.Priority" xml:space="preserve"><value>Prioridad</value></data>
+  <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Suma diez</value></data>
+  <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Módulos de vida</value></data>
+  <data name="Finalization.CashLifestyle" xml:space="preserve"><value>Estilo de vida para el dinero inicial</value></data>
+  <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Total de dados para el dinero inicial</value></data>
 </root>

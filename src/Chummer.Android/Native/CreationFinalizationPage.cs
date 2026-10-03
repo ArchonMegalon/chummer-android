@@ -169,7 +169,7 @@ public sealed class CreationFinalizationPage : NativePageBase
             CultureInfo.InvariantCulture,
             $"creation-finalization:{review.Binding.WorkspaceId.Value}:"
             + $"{review.Binding.ContentRevision}:{plan.PlanDigest}");
-        Title = "Finish creation";
+        Title = Copy("Title", "Finish creation");
         AutomationId = "creation-finalization-page";
         Content = new ScrollView { Content = _body };
     }
@@ -179,22 +179,22 @@ public sealed class CreationFinalizationPage : NativePageBase
         _body.Clear();
         if (!Coordinator.IsCreationFinalizationReviewCurrent(_review))
         {
-            _body.Add(NativeTheme.Body("This review belongs to a previous runner or account. Reopen the runner and review again.", NativeTheme.Danger));
+            _body.Add(NativeTheme.Body(Copy("StaleReview", "This review is no longer current. Reopen your runner and review again."), NativeTheme.Danger));
             return;
         }
-        _body.Add(NativeTheme.Eyebrow("Final review"));
-        _body.Add(NativeTheme.Title("Enter Career mode"));
-        _body.Add(NativeTheme.Body(
-            "Review the complete Core-generated delta. Nothing is written until you explicitly confirm; the write is one atomic operation.",
-            NativeTheme.Muted));
+        _body.Add(NativeTheme.Eyebrow(Copy("Review", "Final review")));
+        _body.Add(NativeTheme.Title(Copy("EnterCareer", "Enter Career mode")));
+        Label introduction = NativeTheme.Body(Copy("ReviewHelp",
+            "Check the changes and remaining funds below. They are saved together only when you confirm."), NativeTheme.Muted);
 
         Label binding = NativeTheme.Body(
             $"Revision {_review.Binding.ContentRevision} · "
             + $"plan {Short(_review.Plan!.PlanDigest)} · preview {Short(_review.PreviewDigest)}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-finalization-binding";
+        binding.IsVisible = false;
         _body.Add(NativeAuthoritySemantics.Overlay(
-            binding,
+            introduction,
             NativeAuthoritySemantics.PositiveRevision(
                 "creation-finalization-content-revision",
                 _review.Binding.ContentRevision),
@@ -206,17 +206,17 @@ public sealed class CreationFinalizationPage : NativePageBase
                 _review.PreviewDigest)));
 
         VerticalStackLayout budget = new() { Spacing = 6 };
-        budget.Add(NativeTheme.Eyebrow("After finalization"));
-        budget.Add(NativeTheme.Metric("Karma remaining", Number(_review.Plan.KarmaRemaining)));
+        budget.Add(NativeTheme.Eyebrow(Copy("After", "After finalization")));
+        budget.Add(NativeTheme.Metric(Copy("KarmaRemaining", "Karma remaining"), Number(_review.Plan.KarmaRemaining)));
         budget.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Finalization.StartingCashTitle", "Starting cash"), Number(_review.Plan.StartingNuyen)));
-        budget.Add(NativeTheme.Metric("Nuyen remaining", Number(_review.Plan.NuyenRemaining)));
+        budget.Add(NativeTheme.Metric(Copy("NuyenRemaining", "Nuyen remaining"), Number(_review.Plan.NuyenRemaining)));
         Border budgetCard = NativeTheme.Card(budget);
         budgetCard.AutomationId = "creation-finalization-costs";
         _body.Add(budgetCard);
 
         // Keep every reviewed change and cost visible. Raw source anchors are
         // diagnostics, not extra choices; they can span many phone screens.
-        List<Label> sourceDetails = [];
+        List<Label> sourceDetails = [binding];
         bool showDetails = false;
         Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
             "Qualities.ShowDetails", "Show technical details"));
@@ -234,48 +234,46 @@ public sealed class CreationFinalizationPage : NativePageBase
                 : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
         };
         _body.Add(details);
+        _body.Add(binding);
 
         foreach (CharacterCreationFinalizationDelta delta in _review.OrderedDeltas
                      .OrderBy(static item => item.Order))
         {
             VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Eyebrow(
-                $"{delta.Order.ToString(CultureInfo.InvariantCulture)} · {delta.Kind}"));
+            card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Format(
+                "Finalization.Change", "Change {0}", delta.Order)));
             Label target = NativeTheme.Title(TargetLabel(delta), 18);
             target.AutomationId = $"creation-finalization-target-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
             card.Add(target);
-            card.Add(NativeTheme.Body(
-                $"{delta.BeforeValue ?? "—"} → {delta.AfterValue ?? "—"}"));
+            card.Add(NativeTheme.Body(ChangeLabel(delta)));
             if (delta.KarmaCost != 0 || delta.NuyenCost != 0)
             {
                 card.Add(NativeTheme.Body(
                     $"Karma {Number(delta.KarmaCost)} · Nuyen {Number(delta.NuyenCost)}",
                     NativeTheme.Muted));
             }
-            if (delta.SourceAnchorIds.Count > 0 || TargetLabel(delta) != delta.TargetId)
-            {
-                Label source = NativeTheme.Body(
-                    delta.TargetId + (delta.SourceAnchorIds.Count > 0
-                        ? "\n" + string.Join(" · ", delta.SourceAnchorIds) : string.Empty),
-                    NativeTheme.Muted);
-                source.AutomationId = $"creation-finalization-source-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
-                source.IsVisible = false;
-                sourceDetails.Add(source);
-                card.Add(source);
-            }
+            Label source = NativeTheme.Body(
+                delta.TargetId + $"\n{delta.Kind} · {delta.BeforeValue ?? "—"} → {delta.AfterValue ?? "—"}"
+                + (delta.SourceAnchorIds.Count > 0
+                    ? "\n" + string.Join(" · ", delta.SourceAnchorIds) : string.Empty),
+                NativeTheme.Muted);
+            source.AutomationId = $"creation-finalization-source-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
+            source.IsVisible = false;
+            sourceDetails.Add(source);
+            card.Add(source);
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-finalization-delta-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
             _body.Add(border);
         }
 
         Label boundary = NativeTheme.Body(
-            "Confirming seals this exact revision and plan digest. If any draft changes, Core rejects the command and requires a fresh review.",
+            Copy("ConfirmHelp", "Confirm to finish creation and start Career mode. If your runner changes before saving, you will need to review again."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-finalization-atomic-boundary";
         _body.Add(NativeTheme.Card(boundary));
 
         Button confirm = NativeTheme.PrimaryButton(
-            _confirming ? "Finalizing…" : "Confirm and enter Career");
+            _confirming ? Copy("Saving", "Saving…") : Copy("Confirm", "Confirm and enter Career"));
         confirm.AutomationId = "creation-finalization-confirm";
         confirm.IsEnabled = !_confirming;
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
@@ -320,9 +318,32 @@ public sealed class CreationFinalizationPage : NativePageBase
     // Never resolve a similarly named catalog row or change the typed identity.
     // Older receipts without this optional field retain an explicit ID fallback.
     internal static string TargetLabel(CharacterCreationFinalizationDelta delta) =>
-        !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
+        IsCareerTransition(delta) ? Copy("Mode", "Mode")
+            : !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
             : delta.Kind == CharacterCreationFinalizationDeltaKinds.Attribute
-                ? CreationAllocationStrings.AttributeName(delta.TargetId) : delta.TargetId;
+                ? CreationAllocationStrings.AttributeName(delta.TargetId)
+            : delta.Kind == CharacterCreationFinalizationDeltaKinds.Resources ? delta.TargetId switch
+            {
+                "nuyen" => "Nuyen",
+                "karma" => "Karma",
+                "lifestyle" => Copy("CashLifestyle", "Starting-cash lifestyle"),
+                "starting-cash-dice" => Copy("CashDiceTotal", "Starting-cash dice total"),
+                _ => delta.TargetId
+            } : delta.TargetId;
+
+    internal static string ChangeLabel(CharacterCreationFinalizationDelta delta) =>
+        IsCareerTransition(delta) ? Copy("CareerTransition", "Creation → Career")
+            : $"{ValueLabel(delta, delta.BeforeValue)} → {ValueLabel(delta, delta.AfterValue)}";
+
+    private static bool IsCareerTransition(CharacterCreationFinalizationDelta delta) =>
+        delta.Kind == CharacterCreationFinalizationDeltaKinds.Lifecycle && delta.TargetId == "created"
+        && delta.BeforeValue == "False" && delta.AfterValue == "True";
+
+    private static string ValueLabel(CharacterCreationFinalizationDelta delta, string? value) =>
+        delta.Kind == CharacterCreationFinalizationDeltaKinds.Skill && value == "native"
+            ? CreationKarmaCopy.NativeLanguage : value ?? "—";
+
+    private static string Copy(string key, string fallback) => CreationAllocationStrings.Get("Finalization." + key, fallback);
 
     private static string Short(string value) => value.Length <= 18 ? value : value[..18] + "…";
 
@@ -346,7 +367,7 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
     {
         _receipt = receipt ?? throw new ArgumentNullException(nameof(receipt));
         _warnings = warnings ?? [];
-        Title = "Creation receipt";
+        Title = Copy("SavedTitle", "Creation saved");
         AutomationId = "creation-finalization-receipt-page";
         Content = new ScrollView { Content = _body };
     }
@@ -356,19 +377,17 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
         _body.Clear();
         if (!Coordinator.CanDisplayCreationFinalizationReceipt(_receipt))
         {
-            _body.Add(NativeTheme.Body("Return to the original account to view this receipt.", NativeTheme.Danger));
+            _body.Add(NativeTheme.Body(Copy("ReceiptAccount", "Return to the original account to view this confirmation."), NativeTheme.Danger));
             return;
         }
-        _body.Add(NativeTheme.Eyebrow("Durable receipt"));
+        _body.Add(NativeTheme.Eyebrow(Copy("SavedTitle", "Creation saved")));
         bool reopened = Coordinator.IsCreationFinalizationReceiptCurrent(_receipt);
-        _body.Add(NativeTheme.Title(reopened ? "Career mode is ready" : "Creation was saved"));
+        _body.Add(NativeTheme.Title(reopened ? Copy("CareerReady", "Career mode is ready") : Copy("SavedTitle", "Creation saved")));
 
         VerticalStackLayout receipt = new() { Spacing = 6 };
-        receipt.Add(NativeTheme.Metric("Receipt", Short(_receipt.ReceiptDigest)));
-        receipt.Add(NativeTheme.Metric("Plan", Short(_receipt.PlanDigest)));
-        receipt.Add(NativeTheme.Metric("Revision", _receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        receipt.Add(NativeTheme.Metric("Build method", _receipt.BuildMethod));
-        receipt.Add(NativeTheme.Metric("Created", _receipt.CharacterCreated ? "Yes" : "No"));
+        receipt.Add(NativeTheme.Metric(Copy("BuildMethod", "Build method"), BuildMethodLabel(_receipt.BuildMethod)));
+        receipt.Add(NativeTheme.Metric(Copy("Mode", "Mode"), _receipt.CharacterCreated
+            ? Copy("Career", "Career") : Copy("Creation", "Creation")));
         Border card = NativeTheme.Card(receipt);
         card.AutomationId = "creation-finalization-receipt";
         _body.Add(NativeAuthoritySemantics.Overlay(
@@ -397,8 +416,8 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
 
         Label reopen = NativeTheme.Body(
             reopened
-                ? "Fresh reopen verified: this runner is now using Career mode."
-                : "The atomic receipt is durable, but the Career view must be reopened before further edits.",
+                ? Copy("Reopened", "Your saved runner has reopened in Career mode.")
+                : Copy("ReopenRequired", "Your changes are saved. Reopen your runner before continuing in Career mode."),
             reopened ? NativeTheme.Success : NativeTheme.Danger);
         reopen.AutomationId = "creation-finalization-career-reopen";
         _body.Add(reopen);
@@ -411,7 +430,7 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
             _body.Add(warningLabel);
         }
 
-        Button done = NativeTheme.PrimaryButton("Open Career runner");
+        Button done = NativeTheme.PrimaryButton(Copy("OpenCareer", "Open Career runner"));
         done.AutomationId = "creation-finalization-open-career";
         done.IsEnabled = reopened;
         done.Clicked += async (_, _) =>
@@ -420,7 +439,39 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
                 await Navigation.PopToRootAsync();
         };
         _body.Add(done);
+
+        VerticalStackLayout technical = new() { Spacing = 6, IsVisible = false,
+            AutomationId = "creation-finalization-receipt-technical-details" };
+        technical.Add(NativeTheme.Metric("Receipt", Short(_receipt.ReceiptDigest)));
+        technical.Add(NativeTheme.Metric("Plan", Short(_receipt.PlanDigest)));
+        technical.Add(NativeTheme.Metric("Revision", _receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details"));
+        details.AutomationId = "creation-finalization-receipt-technical-details-toggle";
+        long appearance = CaptureAppearanceGeneration();
+        details.Clicked += (_, _) =>
+        {
+            if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(details.Parent, _body)
+                || !Coordinator.CanDisplayCreationFinalizationReceipt(_receipt))
+                return;
+            technical.IsVisible = !technical.IsVisible;
+            details.Text = technical.IsVisible
+                ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
+                : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+        };
+        _body.Add(details);
+        _body.Add(technical);
     }
+
+    internal static string BuildMethodLabel(string method) => method switch
+    {
+        CharacterCreationBuildMethods.Priority => Copy("Method.Priority", "Priority"),
+        CharacterCreationBuildMethods.SumToTen => Copy("Method.SumToTen", "Sum-to-Ten"),
+        CharacterCreationBuildMethods.Karma => Copy("Method.Karma", "Karma"),
+        CharacterCreationBuildMethods.LifeModules => Copy("Method.LifeModules", "Life Modules"),
+        _ => method
+    };
+
+    private static string Copy(string key, string fallback) => CreationAllocationStrings.Get("Finalization." + key, fallback);
 
     private static string Short(string value) => value.Length <= 18 ? value : value[..18] + "…";
 }

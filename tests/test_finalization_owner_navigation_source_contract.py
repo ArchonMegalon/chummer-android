@@ -17,6 +17,12 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
             self.assertEqual(title, values["Finalization.StartingCashTitle"])
             self.assertTrue(values["Finalization.StartingCashHelp"])
             self.assertTrue(values["Finalization.InvalidDiceTotal"])
+            for key in ("Title", "Review", "ReviewHelp", "StaleReview", "EnterCareer", "After", "KarmaRemaining",
+                        "NuyenRemaining", "Change", "ConfirmHelp", "Saving", "Confirm", "Mode", "CareerTransition",
+                        "SavedTitle", "ReceiptAccount", "CareerReady", "BuildMethod", "Career", "Creation", "Reopened",
+                        "ReopenRequired", "OpenCareer", "Method.Priority", "Method.SumToTen", "Method.Karma", "Method.LifeModules",
+                        "CashLifestyle", "CashDiceTotal"):
+                self.assertTrue(values[f"Finalization.{key}"], (suffix, key))
 
     def finalization_handler(self) -> str:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
