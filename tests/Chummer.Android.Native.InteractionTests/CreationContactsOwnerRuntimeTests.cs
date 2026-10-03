@@ -165,6 +165,86 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    public static async Task RunCreationContactsReadinessCasesAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        {
+            var owners = new ControlledLinkedOwner();
+            owners.Set(OwnerScope.LocalSingleUser);
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationContacts: true, creationBootstrap: true, creationFinalization: true,
+                productionCreationOverview: true);
+            var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeGear: true);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            var snapshot = runtime.Coordinator.State.CreationWizard!;
+            var contacts = runtime.Coordinator.LoadCreationContacts();
+            Require(contacts.State is { CanEdit: false } denied
+                && CreationContactsPhoneAuthority.IsBound(denied, runtime.Coordinator.State)
+                && denied.Blockers.Contains(CharacterCreationContactsBlockers.BudgetAuthorityRequired)
+                && snapshot.Steps.Single(s => s.StepId == CharacterCreationWizardStepIds.ContactsLifestyles).IsComplete
+                && !snapshot.Budgets.Single(b => b.BudgetId == CharacterCreationBudgetIds.Contacts).IsExact
+                && snapshot.CompletionBlockers.Contains(CharacterCreationFinalizationBlockers.GearDraftRequired),
+                "SETUP: actual Core must reproduce absent-but-complete Contacts with a missing Gear draft: "
+                + JsonSerializer.Serialize(new { contacts, snapshot.CompletionBlockers }));
+            var resources = new CharacterCreationResourcesInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+            var gear = new CharacterCreationGearInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
+            var resourceLoad = resources.Load(runtime.Coordinator.State);
+            Require(CreationResourcesPhoneAuthority.IsReady(resourceLoad.State!, runtime.Coordinator.State),
+                "SETUP: Resources must be ready before opening Gear.");
+            Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State, snapshot, out var binding),
+                "SETUP: missing dashboard binding.");
+            var projection = CreationDashboardAuthorityProjection.Loading(binding!) with
+            {
+                Contacts = contacts, Resources = resourceLoad,
+                Progress = new(CreationDashboardAuthorityPhaseState.Ready, CreationDashboardAuthorityPhaseState.Ready,
+                    CreationDashboardAuthorityPhaseState.Ready, CreationDashboardAuthorityPhaseState.Ready,
+                    CreationDashboardAuthorityPhaseState.Ready)
+            };
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(async () =>
+            {
+                var page = new BuildPage(runtime.Coordinator, resources, runtime.Presenter, gear);
+                var nav = new NavigationPage(page);
+                _ = new Window(nav);
+                var readiness = new CreationDashboardRenderReadiness(
+                    () => false, () => false, () => false, () => false, () => false, () => true);
+                var renderStages = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)renderStages.Invoke(page,
+                    [snapshot, projection, null, null, null, contacts, resourceLoad, readiness])!;
+                var route = routes[CharacterCreationWizardStepIds.ContactsLifestyles];
+                Require(route.CanOpen && route.Detail.Contains("Gear", StringComparison.Ordinal)
+                    && !route.Detail.Equals("Complete", StringComparison.OrdinalIgnoreCase),
+                    "Missing Contact budget still appears Complete/disabled instead of leading to the required Gear review: "
+                    + route.Detail);
+                await route.Open();
+                Require(nav.Navigation.NavigationStack.Last() is CreationGearPage,
+                    "Pending Contacts did not open the existing Gear review page.");
+                await nav.PopAsync(false);
+                var renderBudget = typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                renderBudget.Invoke(page, [snapshot, null, null, readiness, routes, projection, null]);
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                var contactCard = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>()
+                    .Single(card => card.AutomationId == "creation-budget-contacts");
+                var button = ((Grid)contactCard.Content!).Children.OfType<Button>().Single();
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Require(nav.Navigation.NavigationStack.Last() is CreationGearPage,
+                    "Contact budget and stage did not use the same prerequisite route.");
+                await nav.PopAsync(false);
+                owners.Set(ContactsOwnerB);
+                owners.Set(OwnerScope.LocalSingleUser);
+                await route.Open();
+                Require(nav.Navigation.NavigationStack.Count == 1,
+                    "Retained Contact prerequisite navigation survived an owner ABA transition.");
+            });
+            RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            Console.WriteLine($"PASS actual {method} absent Contacts prerequisite guidance, budget/stage navigation, owner ABA denial and no writes");
+        }
+    }
+
     private static void VerifyCreationLifestyleOwnerRead(NativeRewardRuntime runtime,
         ControlledLinkedOwner owners, WorkspaceStoredDocument saved)
     {

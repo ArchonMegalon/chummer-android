@@ -1721,13 +1721,14 @@ internal static partial class AfterRunAuthorityHarness
 
     // Test-only export of the existing actual-Core fixture for a bounded native
     // cash-entry smoke. Never fabricates rules, admission or a finalization receipt.
-    public static async Task ExportStartingCashSeedAsync(string contentRoot, string directory)
+    public static async Task ExportStartingCashSeedAsync(string contentRoot, string directory, bool contactsPending = false)
     {
         Require(Path.IsPathFullyQualified(directory) && Directory.Exists(directory)
             && !Directory.EnumerateFileSystemEntries(directory).Any(),
             "Seed destination must be explicit and empty.");
         await using var runtime = new NativeRewardRuntime(contentRoot, creationFinalization: true);
-        var saved = PrepareActualFinalizationReadyContext(runtime, fixtureAlias: "Cash-Rejection-Smoke");
+        var saved = PrepareActualFinalizationReadyContext(runtime,
+            fixtureAlias: contactsPending ? "Contacts-Readiness-Smoke" : "Cash-Rejection-Smoke", stopBeforeGear: contactsPending);
         string sourceDirectory = Path.Combine(runtime.StateDirectory, "workspaces");
         Require(Directory.Exists(sourceDirectory), "The actual fixture did not persist its workspaces.");
         foreach (string source in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
@@ -2986,7 +2987,7 @@ internal static partial class AfterRunAuthorityHarness
     private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
-        string? attributeTalent = null, string attributeTalentRank = "C")
+        string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -3083,6 +3084,8 @@ internal static partial class AfterRunAuthorityHarness
             "native-finalization-resources", true));
         Require(resourceReceipt.Outcome == CharacterCreationResourcesOutcomes.Applied,
             "Actual Resources failed: " + JsonSerializer.Serialize(resourceReceipt));
+        if (stopBeforeGear)
+            return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var gear = services.GetRequiredService<ICharacterCreationGearService>();
         var gearPreview = gear.Preview(new(gear.Load(new(runtime.Id)).Value!.Binding, [])).Value!;
         var gearReceipt = gear.Confirm(new(gearPreview.Binding, [], gearPreview.PreviewDigest, "native-finalization-gear", true));

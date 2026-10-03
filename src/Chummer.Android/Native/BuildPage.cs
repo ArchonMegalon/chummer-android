@@ -2563,6 +2563,9 @@ public sealed class BuildPage : NativePageBase
                 stage,
                 CharacterCreationWizardStepIds.ContactsLifestyles,
                 readiness.Contacts);
+            CreationBudgetRoute? contactsPrerequisite = contactsStage && !canOpenContacts
+                ? CreationContactsPrerequisiteRoute(snapshot, creationContacts, routes, readiness.Resources)
+                : null;
             bool resourcesStage = IsResourcesStage(stage.StepId);
             bool canOpenResources = resourcesStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
                 stage,
@@ -2577,7 +2580,7 @@ public sealed class BuildPage : NativePageBase
                 : null;
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canCheckSkillsReReview || canOpenQualities || canOpenMagicResonance || canCheckMagicReReview
-                           || canOpenContacts || canOpenResources || identityRoute?.IsEnabled == true;
+                           || canOpenContacts || contactsPrerequisite is not null || canOpenResources || identityRoute?.IsEnabled == true;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
             string? projectionBlocker = ProjectionStageBlocker(
@@ -2609,6 +2612,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationMagicReReviewAsync
                 : canOpenContacts
                     ? () => OpenCreationContactsAsync(creationContacts!.State!)
+                : contactsPrerequisite is not null
+                    ? contactsPrerequisite.Open
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
@@ -2637,6 +2642,8 @@ public sealed class BuildPage : NativePageBase
                     ? CreationMagicReReviewPage.Text("Title", "Review saved Magic choices")
                 : canOpenContacts
                     ? CreationContactsStageDetail(creationContacts!.State!)
+                : contactsPrerequisite is not null
+                    ? contactsPrerequisite.Detail
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
                     : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
@@ -2645,6 +2652,13 @@ public sealed class BuildPage : NativePageBase
                         ? CreationFlowStrings.DashboardBlocker(prerequisite.Blockers.FirstOrDefault()
                           ?? prerequisite.Value?.Blockers.FirstOrDefault()
                           ?? "creation-prerequisite-authority-unavailable")
+                    : contactsStage
+                        ? creationContacts is { Outcome: CharacterCreationContactOutcomes.Available, State: { } pendingContacts }
+                            && CreationContactsPhoneAuthority.IsBound(pendingContacts, Coordinator.State)
+                            && pendingContacts.Blockers.Contains(CharacterCreationContactsBlockers.BudgetAuthorityRequired)
+                            ? CreationFlowStrings.Get("Contacts.NeedsReview",
+                                "Contact points are not ready. Review and save the earlier creation steps before adding contacts.")
+                            : CreationFlowStrings.DashboardBlocker("creation-contacts-authority-load-failed")
                         : HumanizeStatus(stage.Status);
             if (stage.Blockers.Count > 0
                 && !canOpenAttributes
@@ -2664,7 +2678,9 @@ public sealed class BuildPage : NativePageBase
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
             // A section hint belongs only to the admitted ordinary editor.
             // Recovery and prerequisite fallbacks keep their own destination.
-            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected, stage.Blockers,
+            routes[stage.StepId] = new(contactsPrerequisite?.Title ?? stage.Label, detail, canOpen, selected,
+                contactsStage ? stage.Blockers.Concat(creationContacts?.Blockers ?? [])
+                    .Distinct(StringComparer.Ordinal).ToArray() : stage.Blockers,
                 canOpenMagicResonance ? budgetId => OpenCreationMagicResonanceAsync(budgetId) : null);
             Border row = CreationNavigationRow(
                 stage.Label,
@@ -2675,6 +2691,46 @@ public sealed class BuildPage : NativePageBase
             _body.Add(row);
         }
         return routes;
+    }
+
+    private CreationBudgetRoute? CreationContactsPrerequisiteRoute(
+        CharacterCreationWizardSnapshot snapshot,
+        CharacterCreationContactsInteractionLoadResult? contacts,
+        IReadOnlyDictionary<string, CreationBudgetRoute> routes,
+        bool resourcesReady)
+    {
+        var displayed = Coordinator.State;
+        // An absent optional domain can be safe for finalization without being
+        // editable. Only Core's current denial and required-step blockers may
+        // direct the user elsewhere; no points, drafts or readiness are invented.
+        if (contacts is not { Outcome: CharacterCreationContactOutcomes.Available, State: { } state }
+            || !CreationContactsPhoneAuthority.IsBound(state, displayed)
+            || !state.Blockers.Contains(CharacterCreationContactsBlockers.BudgetAuthorityRequired)) return null;
+        foreach (string blocker in snapshot.CompletionBlockers)
+        {
+            string? step = blocker switch
+            {
+                CharacterCreationFinalizationBlockers.AttributesDraftRequired => CharacterCreationWizardStepIds.Attributes,
+                CharacterCreationFinalizationBlockers.SkillsDraftRequired => CharacterCreationWizardStepIds.Skills,
+                CharacterCreationFinalizationBlockers.QualitiesDraftRequired => CharacterCreationWizardStepIds.Qualities,
+                CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired => CharacterCreationWizardStepIds.MagicResonance,
+                CharacterCreationFinalizationBlockers.ResourcesDraftRequired => CharacterCreationWizardStepIds.Resources,
+                _ => null
+            };
+            CreationBudgetRoute? destination = step is not null ? routes.GetValueOrDefault(step) : null;
+            if (blocker == CharacterCreationFinalizationBlockers.GearDraftRequired
+                && resourcesReady && _gearPresenter is not null && _overviewPresenter is not null)
+                destination = new(AndroidSurfaceStrings.Resolve()["Gear.PageTitle"], string.Empty, true,
+                    () => Navigation.PushAsync(new CreationGearPage(Coordinator, _gearPresenter, _overviewPresenter)), []);
+            if (destination?.CanOpen != true) continue;
+            var admitted = destination;
+            return new(admitted.Title,
+                CreationFlowStrings.Get("Contacts.PointsPending", "Contact points need your saved creation choices.")
+                    + " " + CreationFlowStrings.FinalizationBlocker(blocker),
+                true, () => Coordinator.IsCreationFinalizationDisplayCurrent(displayed)
+                    ? admitted.Open() : Task.CompletedTask, state.Blockers);
+        }
+        return null;
     }
 
     private void AddCompletionBlockers(CharacterCreationWizardSnapshot snapshot)

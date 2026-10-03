@@ -2112,4 +2112,6 @@
   <data name="Spells.Summary.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>Falsifica las aparentes propiedades mágicas de objetos.</value></data>
   <data name="Spells.Summary.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>Guarda un vigilante para usarlo después.</value></data>
   <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Hace visibles formas astrales y hechizos mantenidos.</value></data>
+  <data name="Contacts.PointsPending" xml:space="preserve"><value>Los puntos de contacto necesitan tus decisiones de creación guardadas.</value></data>
+  <data name="Contacts.NeedsReview" xml:space="preserve"><value>Los puntos de contacto aún no están disponibles. Revisa y guarda primero los pasos anteriores de creación.</value></data>
 </root>

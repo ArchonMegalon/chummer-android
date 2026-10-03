@@ -3424,4 +3424,6 @@
   <data name="Spells.SummarySource.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>3A6D542A98180964017E1FB75BDADB045F3F6D1D294CDB468B2133BC1D3C4319</value></data>
   <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Makes astral forms and sustained spells visible.</value></data>
   <data name="Spells.SummarySource.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>43861014B892AF7C8D84BDC22CB003B41285C8450341AC5C8EFDA28916C58598</value></data>
+  <data name="Contacts.PointsPending" xml:space="preserve"><value>Contact points need your saved creation choices.</value></data>
+  <data name="Contacts.NeedsReview" xml:space="preserve"><value>Contact points are not ready. Review and save the earlier creation steps before adding contacts.</value></data>
 </root>
