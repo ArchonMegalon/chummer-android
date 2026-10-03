@@ -162,6 +162,21 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Sapper", ["AI", "bonus dice", "Format Device"],
+            ["KI", "Bonuswürfel", "Gerät-formatieren"], ["IA", "dados", "Formatear Dispositivo"]),
+        ("Sensor Upgrade", ["sensors", "host device", "slaved"],
+            ["Sensoren", "KI-Wirtsgeräts", "untergeordneten"], ["sensores", "aloja", "subordinados"]),
+        ("Snooper", ["AI", "bonus dice", "Snoop", "Jam Signals"],
+            ["KI-Bonuswürfel", "Schnüffeln", "Signal stören"],
+            ["IA", "dados", "Espiar", "Interferir Señales"]),
+        ("Virtual Stability", ["No", "Virtual Machine", "surcharge", "normal Matrix damage still"],
+            ["Virtuelle Maschine", "keinen Zusatzschaden", "normaler Matrixschaden bleibt"],
+            ["Máquina Virtual", "no causa daño adicional", "daño matricial normal sigue"]),
+        ("Easily Exploitable", ["loses", "Firewall optimization", "multiple marks", "smaller penalties"],
+            ["verliert", "Optimierungsbonus auf Firewall", "mehrere Marken", "leichter"],
+            ["pierde", "Firewall", "varias marcas", "menores penalizaciones"]),
+        ("Corrupter", ["other programs", "glitches", "more likely"],
+            ["häufiger Patzer", "anderen Programmen"], ["más fallos", "otros programas"]),
         ("The Twisted Way", ["toxic", "awakened type", "learned separately"],
             ["toxische", "Begabung", "einzeln erlernt"], ["tóxica", "tipo", "por separado"]),
         ("Conjuring Geas", ["restriction", "all Conjuring", "bad astral reputation"],
@@ -1484,7 +1499,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 769, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 775, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1588,7 +1603,14 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Soul Swallower", Path: "required/oneof/critterpower", Value: "Essence Drain"),
                     (Name: "Stalwart Ally", Path: "required/allof/spell", Value: "Create Ally Spirit"),
                     (Name: "Taboo Transformer", Path: "required/oneof/group/spell", Value: "Shapechange"),
-                    (Name: "Worship Leader", Path: "required/allof/skill/name", Value: "Leadership")
+                    (Name: "Worship Leader", Path: "required/allof/skill/name", Value: "Leadership"),
+                    (Name: "Sapper", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Sensor Upgrade", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Snooper", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Virtual Stability", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Easily Exploitable", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Easily Exploitable", Path: "implemented", Value: "False"),
+                    (Name: "Corrupter", Path: "required/oneof/metatype", Value: "A.I.")
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);

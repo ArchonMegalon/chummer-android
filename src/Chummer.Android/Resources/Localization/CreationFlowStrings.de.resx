@@ -2026,4 +2026,10 @@
   <data name="Qualities.Summary.c9ea31d0-eef7-4489-bc11-04a2e41a4932" xml:space="preserve"><value>Du und dein Verbündeter könnt gemeinsam einmal täglich Edge bis zum nächsten Sonnenaufgang/-untergang weitergeben und einander beim Entzugswiderstand helfen.</value></data>
   <data name="Qualities.Summary.fcde8bed-ed62-4378-b995-80f96ff423af" xml:space="preserve"><value>Gestaltwandlung oder Tiergestalt verwandelt widerstrebende Ziele nach Widerstandsprobe in körperlich geschwächte Tiere; ihre geistigen Attribute bleiben unverändert.</value></data>
   <data name="Qualities.Summary.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>Freiwillig teilnehmende mundane Anhänger deiner Tradition verbessern Würfelpool und Limit deines Rituals; deine Ritualfertigkeit begrenzt den Bonus.</value></data>
+  <data name="Qualities.Summary.6dca4827-142c-4bc1-93ae-16f4f9c47eca" xml:space="preserve"><value>Deine KI erhält Bonuswürfel für Gerät-formatieren-Proben.</value></data>
+  <data name="Qualities.Summary.5a9ef869-fe86-4877-8d25-5f744c9cd007" xml:space="preserve"><value>Verbessert Sensoren des KI-Wirtsgeräts und aller ihrer Persona untergeordneten Geräte.</value></data>
+  <data name="Qualities.Summary.33be6d42-8e90-456f-85de-afb195747472" xml:space="preserve"><value>KI-Bonuswürfel für Schnüffeln und Signal stören.</value></data>
+  <data name="Qualities.Summary.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>Virtuelle Maschine verursacht deiner KI keinen Zusatzschaden; normaler Matrixschaden bleibt bestehen.</value></data>
+  <data name="Qualities.Summary.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>Deine KI verliert den Optimierungsbonus auf Firewall; mehrere Marken gegen ihre Persona werden leichter gesetzt.</value></data>
+  <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Deine KI verursacht häufiger Patzer in anderen Programmen.</value></data>
 </root>

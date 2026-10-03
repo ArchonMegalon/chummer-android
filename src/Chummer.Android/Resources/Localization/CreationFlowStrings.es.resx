@@ -2009,4 +2009,10 @@
   <data name="Qualities.Summary.c9ea31d0-eef7-4489-bc11-04a2e41a4932" xml:space="preserve"><value>Tú y tu aliado podéis transferiros Edge una vez diaria en total, hasta el próximo amanecer/anochecer, y ayudaros a resistir Drenaje.</value></data>
   <data name="Qualities.Summary.fcde8bed-ed62-4378-b995-80f96ff423af" xml:space="preserve"><value>Cambio de Forma o Forma Animal transforma objetivos reacios tras una prueba resistida en animales físicamente debilitados; sus atributos mentales no cambian.</value></data>
   <data name="Qualities.Summary.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>Creyentes mundanos de tu tradición que participan voluntariamente mejoran los dados y el límite del ritual; tu habilidad ritual limita la bonificación.</value></data>
+  <data name="Qualities.Summary.6dca4827-142c-4bc1-93ae-16f4f9c47eca" xml:space="preserve"><value>La IA gana dados al Formatear Dispositivo.</value></data>
+  <data name="Qualities.Summary.5a9ef869-fe86-4877-8d25-5f744c9cd007" xml:space="preserve"><value>Mejora sensores del dispositivo que aloja la IA y de sus dispositivos subordinados.</value></data>
+  <data name="Qualities.Summary.33be6d42-8e90-456f-85de-afb195747472" xml:space="preserve"><value>La IA gana dados para Espiar e Interferir Señales.</value></data>
+  <data name="Qualities.Summary.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>Máquina Virtual no causa daño adicional a la IA; el daño matricial normal sigue aplicándose.</value></data>
+  <data name="Qualities.Summary.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>Tu IA pierde la mejora de Firewall al optimizar; colocar varias marcas en su persona supone menores penalizaciones.</value></data>
+  <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Tu IA causa más fallos en otros programas.</value></data>
 </root>

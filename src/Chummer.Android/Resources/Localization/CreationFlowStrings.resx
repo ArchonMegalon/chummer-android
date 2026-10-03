@@ -3218,4 +3218,16 @@
   <data name="Qualities.SummarySource.fcde8bed-ed62-4378-b995-80f96ff423af" xml:space="preserve"><value>4CC7B9DE1DD45DCBF367CF86A4B41F2A999D396B1A9E03370D862D110630F284</value></data>
   <data name="Qualities.Summary.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>Voluntary mundane believers in your tradition improve your ritual's dice pool and limit; the bonus is capped by your ritual skill.</value></data>
   <data name="Qualities.SummarySource.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>AC8272939371A36D843AC3D78BAE8AEFB20ACD1A593438CEFB2F663868269A75</value></data>
+  <data name="Qualities.Summary.6dca4827-142c-4bc1-93ae-16f4f9c47eca" xml:space="preserve"><value>AI bonus dice for Format Device tests.</value></data>
+  <data name="Qualities.SummarySource.6dca4827-142c-4bc1-93ae-16f4f9c47eca" xml:space="preserve"><value>DC051CADF0BD6D642E4DE529C7FFE6135BFD2005699F05CFBE6C8CF19DD0B3E7</value></data>
+  <data name="Qualities.Summary.5a9ef869-fe86-4877-8d25-5f744c9cd007" xml:space="preserve"><value>Improves sensors on the AI's host device and devices slaved to it.</value></data>
+  <data name="Qualities.SummarySource.5a9ef869-fe86-4877-8d25-5f744c9cd007" xml:space="preserve"><value>0C89EE36B4F454E04B37B1F354B4C952F25E628658FA283C7C2B9BBAC38A62B2</value></data>
+  <data name="Qualities.Summary.33be6d42-8e90-456f-85de-afb195747472" xml:space="preserve"><value>AI bonus dice for Snoop and Jam Signals.</value></data>
+  <data name="Qualities.SummarySource.33be6d42-8e90-456f-85de-afb195747472" xml:space="preserve"><value>DD9BF9EE90C8568C648C0B3DA79F7A57437E917E5A29450FFC9921630BD162F9</value></data>
+  <data name="Qualities.Summary.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>No Virtual Machine damage surcharge for the AI; normal Matrix damage still applies.</value></data>
+  <data name="Qualities.SummarySource.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>40383B946CF5192875D9293B88D4848751640D7E8ADD5CF29FC2678CCA14755E</value></data>
+  <data name="Qualities.Summary.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>Your AI loses its Firewall optimization bonus; attackers place multiple marks on its persona with smaller penalties.</value></data>
+  <data name="Qualities.SummarySource.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>43E6BAF1384E15E1A420FFC90FD172E743ABD992815AB359FFC04D54BC2354F1</value></data>
+  <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Your AI disrupts other programs, making glitches more likely.</value></data>
+  <data name="Qualities.SummarySource.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>C0BE8DAEDE8E31FA6B670CA9878A717D9FBA12C9FE2D5FE6DE5835D50C15BA26</value></data>
 </root>
