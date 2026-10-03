@@ -23,7 +23,10 @@ public sealed partial class RunnerSessionCoordinator
         if (!CanDisplayCreationPurchase(original) || original.DisplayOwnerContext is not { } owner
             || _presenter is not IOwnerBoundWorkspaceRefreshPresenter bound)
             return false;
-        await bound.LoadAsync(owner, workspaceId, ct);
+        // Android performs the owner-bound shell sync below. Loading with the
+        // presenter's default also lists/reopens the entire roster, duplicating
+        // that work after every Resources or Gear checkpoint.
+        await bound.LoadBeforeShellSyncAsync(owner, workspaceId, ct);
         if (!CanDisplayCreationPurchase(original) || State.Error is not null
             || State.ContentRevision != revision || State.SavedRevision != savedRevision)
             return false;
