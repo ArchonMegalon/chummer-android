@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--magic-budget-focus-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunBudgetFocus(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-attribute-save-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunAttributeSaveFeedbackAsync(args[1]);

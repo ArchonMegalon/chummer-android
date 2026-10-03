@@ -24,25 +24,93 @@ public sealed class CreationMagicResonancePage : NativePageBase
     private CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>? _loaded;
     private CharacterCreationMagicResonanceEditorState? _editor;
     private bool _loading = true;
+    private readonly ScrollView _scroll;
+    private readonly CharacterOverviewState _budgetFocusDisplay;
+    private string? _pendingBudgetId;
+    private VisualElement? _budgetFocusTarget;
+    private VisualElement? _queuedFocusTarget;
+    private long _renderGeneration;
 
-    public CreationMagicResonancePage(RunnerSessionCoordinator coordinator)
+    public CreationMagicResonancePage(RunnerSessionCoordinator coordinator, string? budgetId = null)
         : this(
             coordinator,
             CharacterCreationMagicResonanceCheckpointStore.CreateDefault(
                 coordinator.State.DisplayOwnerContext, coordinator.IsCreationMagicOwnerCurrent,
                 coordinator.State.WorkspaceId?.Value
-                    ?? throw new InvalidOperationException("Open a runner before Magic / Resonance.")))
+                    ?? throw new InvalidOperationException("Open a runner before Magic / Resonance.")), budgetId)
     {
     }
 
     internal CreationMagicResonancePage(
         RunnerSessionCoordinator coordinator,
-        CharacterCreationMagicResonanceCheckpointStore store) : base(coordinator)
+        CharacterCreationMagicResonanceCheckpointStore store, string? budgetId = null) : base(coordinator)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _budgetFocusDisplay = coordinator.State;
+        _pendingBudgetId = budgetId;
         Title = CreationFlowStrings.Get("Magic.PageTitle", "Magic / Resonance");
         AutomationId = "creation-magic-resonance-page";
-        Content = new ScrollView { Content = _body };
+        Content = _scroll = new ScrollView { Content = _body };
+        _scroll.SizeChanged += (_, _) => QueueBudgetFocus();
+        _scroll.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ScrollView.ContentSize)) QueueBudgetFocus();
+        };
+    }
+
+    protected override void OnDisappearing()
+    {
+        // Only the first entry follows the dashboard hint. Returning from a
+        // chooser or resuming the app must not pull the reader back again.
+        _pendingBudgetId = null;
+        _budgetFocusTarget = null;
+        base.OnDisappearing();
+    }
+
+    private void QueueBudgetFocus()
+    {
+        if (_pendingBudgetId is null || _loading || _budgetFocusTarget is not { } target
+            || ReferenceEquals(_queuedFocusTarget, target)) return;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _renderGeneration;
+        _queuedFocusTarget = target;
+        if (!Dispatcher.Dispatch(async () =>
+        {
+            if (ReferenceEquals(_queuedFocusTarget, target)) _queuedFocusTarget = null;
+            if (_pendingBudgetId is null || _loading || render != _renderGeneration
+                || !ReferenceEquals(_budgetFocusTarget, target)
+                || !ReferenceEquals(target.Parent, _body)
+                || !IsCurrentAppearanceGeneration(appearance)
+                || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                || _loadedDisplay is not { } original
+                || !Coordinator.IsCreationCatalogDisplayCurrent(original)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(_budgetFocusDisplay)
+                || target.Height <= 0 || _scroll.Height <= 0 || _scroll.ContentSize.Height <= 0) return;
+            _pendingBudgetId = null;
+            try { await _scroll.ScrollToAsync(target, ScrollToPosition.Start, animated: false); }
+            catch (InvalidOperationException)
+            {
+                System.Diagnostics.Debug.WriteLine("Magic budget focus unavailable after navigation.");
+            }
+        })) _queuedFocusTarget = null;
+    }
+
+    private string? BudgetFocusKind(CharacterCreationMagicResonanceEditorState editor) => _pendingBudgetId switch
+    {
+        CharacterCreationMagicResonancePresentationBudgetIds.Tradition => CharacterCreationMagicResonanceKinds.Tradition,
+        CharacterCreationMagicResonancePresentationBudgetIds.Stream => CharacterCreationMagicResonanceKinds.Stream,
+        CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints => CharacterCreationMagicResonanceKinds.AdeptPower,
+        CharacterCreationMagicResonancePresentationBudgetIds.Spells => CharacterCreationMagicResonanceKinds.Spell,
+        CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms => CharacterCreationMagicResonanceKinds.ComplexForm,
+        CharacterCreationBudgetIds.SpellsFormsPrograms when editor.Talent.AllowsSpells => CharacterCreationMagicResonanceKinds.Spell,
+        CharacterCreationBudgetIds.SpellsFormsPrograms when editor.Talent.AllowsComplexForms => CharacterCreationMagicResonanceKinds.ComplexForm,
+        _ => null
+    };
+
+    private void SetBudgetFocusTarget(VisualElement target)
+    {
+        _budgetFocusTarget = target;
+        target.SizeChanged += (_, _) => QueueBudgetFocus();
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
@@ -81,6 +149,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
 
     protected override void Refresh()
     {
+        ++_renderGeneration;
+        _budgetFocusTarget = null;
+        _queuedFocusTarget = null;
         _body.Clear();
         _shownBlockerMessages.Clear();
         // The previous disclosure still owns its native child after _body.Clear().
@@ -128,6 +199,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddBudgets(review?.Preview, editor.Budgets);
         CharacterCreationMagicResonanceCheckpoint? checkpoint = AddRecovery(editor, original);
         bool laneLocked = checkpoint is not null || HasMalformedCheckpoint();
+        // Do not scroll past a recovery or unsupported-profile explanation.
+        if (laneLocked || load.Value is { } state && HasUnsupportedSeparateMagicProfile(state))
+            _pendingBudgetId = null;
         AddMysticPowerPoints(editor, laneLocked);
         AddCatalogRoutes(editor, laneLocked);
         AddReview(editor, laneLocked);
@@ -135,6 +209,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             .Concat(review?.Preview.Blockers ?? [])
             .Concat(_localBlockers));
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-magic-resonance-details"));
+        QueueBudgetFocus();
     }
 
     internal static bool HasUnsupportedSeparateMagicProfile(CharacterCreationMagicResonanceState state) =>
@@ -165,7 +240,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
         increase.Clicked += async (_, _) => await RunAsync(() => ChangeMysticPowerPointsAsync(editor, selected + 1));
         card.Add(increase);
         AddSources(card, purchase.Policy.SourceAnchorIds, _technicalDetails);
-        _body.Add(NativeTheme.Card(card));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-magic-resonance-mystic-purchase-card";
+        _body.Add(border);
+        if (!laneLocked && BudgetFocusKind(editor) == CharacterCreationMagicResonanceKinds.AdeptPower)
+            SetBudgetFocusTarget(border);
     }
 
     internal static string MysticPowerPointSummary(CharacterCreationMysticAdeptPowerPointAllocation purchase) =>
@@ -476,7 +555,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
             : CreationFlowStrings.Get(
                 "Magic.NotAllowed",
                 "Not allowed by the selected Talent");
-        _body.Add(NativeTheme.NavigationRow(
+        Border row = NativeTheme.NavigationRow(
             label,
             detail,
             () => Navigation.PushAsync(new CreationMagicResonanceCatalogPage(
@@ -486,7 +565,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 options,
                 _draft)),
             enabled: allowed && !laneLocked,
-            automationId: $"creation-magic-resonance-catalog-{Token(kind)}"));
+            automationId: $"creation-magic-resonance-catalog-{Token(kind)}");
+        row.AutomationId = $"creation-magic-resonance-section-{Token(kind)}";
+        _body.Add(row);
+        if (allowed && !laneLocked && _budgetFocusTarget is null && BudgetFocusKind(editor) == kind)
+            SetBudgetFocusTarget(row);
     }
 
     private CharacterCreationMagicResonanceBudgetState CurrentBudget(

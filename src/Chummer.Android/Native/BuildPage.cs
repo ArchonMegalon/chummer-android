@@ -13,7 +13,11 @@ public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
 
 internal sealed record CreationBudgetRoute(string Title, string Detail, bool CanOpen, Func<Task> Open,
-    IReadOnlyList<string> Blockers);
+    IReadOnlyList<string> Blockers, Func<string, Task>? OpenForBudget = null)
+{
+    internal Task OpenBudgetAsync(string budgetId) => !CanOpen ? Task.CompletedTask
+        : OpenForBudget?.Invoke(budgetId) ?? Open();
+}
 
 /// <summary>
 /// One synchronous dashboard render only. Full packet checks are shared by its
@@ -2446,7 +2450,7 @@ public sealed class BuildPage : NativePageBase
                     if (displayed.Profile?.Created != false
                         || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed)) return;
                     if (route?.CanOpen == true)
-                        await route.Open();
+                        await route.OpenBudgetAsync(projectedBudget.BudgetId);
                     else
                     {
                         // Read-only recovery, not fabricated points or an automatic
@@ -2658,7 +2662,10 @@ public sealed class BuildPage : NativePageBase
             }
             if (canOpen && !CurrentPhoneWizardScope.CoversCreationStage(stage.StepId))
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
-            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected, stage.Blockers);
+            // A section hint belongs only to the admitted ordinary editor.
+            // Recovery and prerequisite fallbacks keep their own destination.
+            routes[stage.StepId] = new(stage.Label, detail, canOpen, selected, stage.Blockers,
+                canOpenMagicResonance ? budgetId => OpenCreationMagicResonanceAsync(budgetId) : null);
             Border row = CreationNavigationRow(
                 stage.Label,
                 detail,
@@ -3045,6 +3052,9 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationMagicResonanceAsync()
         => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator));
+
+    private Task OpenCreationMagicResonanceAsync(string budgetId)
+        => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator, budgetId));
 
     private async Task OpenCreationMagicReReviewAsync()
     {

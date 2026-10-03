@@ -9,10 +9,140 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation.Overview;
 using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunMagicBudgetFocusAsync(string contentRoot, string sourceDirectory,
+        CharacterWorkspaceId id, bool technomancer)
+    {
+        var owners = new ControlledLinkedOwner();
+        owners.Set(OwnerScope.LocalSingleUser);
+        await using var runtime = new NativeRewardRuntime(contentRoot, productionCreationOverview: true,
+            linkedOwners: owners, creationSkillsSeed: target =>
+            {
+                foreach (string file in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+                {
+                    string destination = Path.Combine(target, Path.GetRelativePath(sourceDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(file, destination, overwrite: true); // Isolated fixture only.
+                }
+            });
+        runtime.Id = id;
+        await runtime.Presenter.LoadAsync(id, default);
+        string before = JsonSerializer.Serialize(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            (string Budget, string? Target)[] cases = technomancer
+                ? [(CharacterCreationMagicResonancePresentationBudgetIds.Stream, "stream"),
+                   (CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms, "complex-form"),
+                   (CharacterCreationBudgetIds.SpellsFormsPrograms, "complex-form"),
+                   (CharacterCreationMagicResonancePresentationBudgetIds.Spells, null)]
+                : [(CharacterCreationMagicResonancePresentationBudgetIds.Tradition, "tradition"),
+                   (CharacterCreationMagicResonancePresentationBudgetIds.Spells, "spell"),
+                   (CharacterCreationBudgetIds.SpellsFormsPrograms, "spell"),
+                   (CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints, "mystic"),
+                   (CharacterCreationMagicResonancePresentationBudgetIds.Stream, null)];
+            foreach (var (budget, destination) in cases)
+            {
+                var dashboard = new BuildPage(runtime.Coordinator);
+                var navigation = new NavigationPage(dashboard);
+                _ = new Window(navigation);
+                var readiness = new CreationDashboardRenderReadiness(
+                    () => false, () => false, () => false, () => true, () => false, () => false);
+                var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)typeof(BuildPage)
+                    .GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(dashboard, [runtime.Coordinator.State.CreationWizard!, null, null, null, null, null, null, readiness])!;
+                var route = routes[CharacterCreationWizardStepIds.MagicResonance];
+                Require(route.CanOpen && route.OpenForBudget is not null, "Admitted Magic route lost its section hint.");
+                await route.OpenBudgetAsync(budget);
+                var page = navigation.CurrentPage as CreationMagicResonancePage
+                    ?? throw new InvalidOperationException("Budget did not open the native Magic editor.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var scroll = (ScrollView)page.Content!;
+                var observed = new List<Element?>();
+                ((IScrollViewController)scroll).ScrollToRequested += (_, request) =>
+                {
+                    observed.Add(request.Element);
+                    ((IScrollViewController)scroll).SendScrollFinished();
+                };
+                VisualElement? Target() => (VisualElement?)typeof(CreationMagicResonancePage)
+                    .GetField("_budgetFocusTarget", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                void Layout()
+                {
+                    ((IView)scroll).Arrange(new Microsoft.Maui.Graphics.Rect(0, 0, 400, 600));
+                    if (Target() is { } element)
+                        ((IView)element).Arrange(new Microsoft.Maui.Graphics.Rect(0, 1600, 400, 90));
+                    typeof(ScrollView).GetProperty(nameof(ScrollView.ContentSize))!.SetValue(scroll,
+                        new Microsoft.Maui.Graphics.Size(400, 3000));
+                }
+                Layout();
+                // A queued target detached by refresh must not scroll. Only the
+                // replacement layout may satisfy the same first-entry request.
+                var detached = Target();
+                MinimalRender(page);
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(observed.Count == 0, "A detached/unlaid-out Magic section scrolled.");
+                Layout();
+                await ui.DrainDispatchedAsyncVoidAsync();
+                if (destination is null)
+                    Require(observed.Count == 0 && Target() is null, "Unavailable Talent choice received budget focus.");
+                else
+                {
+                    string expected = destination == "mystic" ? "creation-magic-resonance-mystic-purchase-card"
+                        : "creation-magic-resonance-section-" + destination;
+                    Require(observed.Count == 1 && observed[0]?.AutomationId == expected
+                        && !ReferenceEquals(observed[0], detached), "Budget focused the wrong/old section: " + budget
+                        + $" requests={observed.Count}, ids={string.Join(',', observed.Select(x => x?.AutomationId))}, target={Target()?.AutomationId}"
+                        + $", height={Target()?.Height}/{scroll.Height}/{scroll.ContentSize.Height}, current={runtime.Coordinator.IsCreationCatalogDisplayCurrent(runtime.Coordinator.State)}");
+                    MinimalRender(page);
+                    Layout();
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(observed.Count == 1, "Later render replayed the initial budget jump.");
+                }
+                IssuedPageLifecycle(page, "OnDisappearing");
+                await navigation.PopAsync(false);
+            }
+
+            // Late layout may not move a departed page or another owner epoch.
+            foreach (bool ownerChange in new[] { false, true })
+            {
+                var page = new CreationMagicResonancePage(runtime.Coordinator, CharacterCreationBudgetIds.SpellsFormsPrograms);
+                _ = new Window(new NavigationPage(page));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var scroll = (ScrollView)page.Content!;
+                int requests = 0;
+                ((IScrollViewController)scroll).ScrollToRequested += (_, _) =>
+                {
+                    requests++;
+                    ((IScrollViewController)scroll).SendScrollFinished();
+                };
+                var target = (VisualElement)typeof(CreationMagicResonancePage)
+                    .GetField("_budgetFocusTarget", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                ((IView)scroll).Arrange(new Microsoft.Maui.Graphics.Rect(0, 0, 400, 600));
+                ((IView)target).Arrange(new Microsoft.Maui.Graphics.Rect(0, 1600, 400, 90));
+                typeof(ScrollView).GetProperty(nameof(ScrollView.ContentSize))!.SetValue(scroll,
+                    new Microsoft.Maui.Graphics.Size(400, 3000));
+                if (ownerChange) { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                else IssuedPageLifecycle(page, "OnDisappearing");
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(requests == 0, "Queued budget focus survived navigation/owner ABA.");
+                IssuedPageLifecycle(page, "OnDisappearing");
+            }
+            Require(JsonSerializer.Serialize(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!) == before,
+                "Budget navigation changed the saved runner.");
+        });
+        int ordinary = 0, focused = 0;
+        var fallback = new CreationBudgetRoute("Attributes", "", true, () => { ordinary++; return Task.CompletedTask; }, []);
+        await fallback.OpenBudgetAsync(CharacterCreationMagicResonancePresentationBudgetIds.Spells);
+        var blocked = fallback with { CanOpen = false, OpenForBudget = _ => { focused++; return Task.CompletedTask; } };
+        await blocked.OpenBudgetAsync(CharacterCreationMagicResonancePresentationBudgetIds.Spells);
+        Require(ordinary == 1 && focused == 0, "Budget hint bypassed a fallback or blocked route.");
+        Console.WriteLine("PASS native Magic budget focus: exact Talent destinations, fresh layout, one-shot, departure/owner ABA and no save");
+    }
+
     public static async Task RunMagicReReviewCasesAsync(string contentRoot, string sourceDirectory,
         ICharacterSourceDataResolver resolver, CharacterWorkspaceId id)
     {
@@ -189,6 +319,8 @@ internal static partial class AfterRunAuthorityHarness
                     [snapshot, null, null, null, null, null, null, readiness])!;
                 Require(routes[CharacterCreationWizardStepIds.MagicResonance].CanOpen && !readiness.MagicResonance,
                     "Magic recovery route did not open or fabricated ordinary readiness.");
+                Require(routes[CharacterCreationWizardStepIds.MagicResonance].OpenForBudget is null,
+                    "Historical Magic recovery acquired an ordinary-editor focus delegate.");
                 typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
                     [snapshot, null, null, readiness, routes, null, null]);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
