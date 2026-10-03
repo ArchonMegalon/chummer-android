@@ -84,7 +84,48 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 292, $"Expected 292 reviewed spell summaries; got {authored} in {locale}.");
+                Require(authored == 306, $"Expected 306 reviewed spell/ritual summaries; got {authored} in {locale}.");
+                var reviewedRituals = authority.Spells.Where(spell =>
+                    spell.SourceBook == "SR5" && new[] { "Curse", "Prodigal Spell", "Remote Sensing",
+                        "Ward", "Circle of Protection" }.Contains(spell.Name)
+                    || spell.SourceBook == "SG" && new[] { "Alarm Ward", "Charged Ward", "Masking Ward",
+                        "Polarized Ward", "Trap Ward" }.Contains(spell.Name)
+                    || spell.SourceBook == "FA" && new[] { "Blood Bath", "Blood Oath",
+                        "Death Curse", "Guardian Bond" }.Contains(spell.Name)).ToArray();
+                Require(reviewedRituals.Length == 14 && reviewedRituals.All(spell => spell.Category == "Rituals"),
+                    "Expected fourteen separate ritual definitions, not ordinary combat or detection spells.");
+                foreach (var ritual in reviewedRituals)
+                {
+                    string prose = CreationFlowStrings.Get("Spells.Summary." + ritual.Identity.SourceId, string.Empty);
+                    string summary = CreationSpellInfo.Summary(ritual);
+                    Require(prose.Length > 0 && summary.StartsWith(prose, StringComparison.Ordinal),
+                        "A reviewed ritual lacks source-bound help: " + ritual.Name + "/" + locale);
+                    var xml = System.Xml.Linq.XElement.Parse(ritual.CanonicalSourceXml);
+                    foreach (var (field, element) in new[] { ("Range", "range"), ("Duration", "duration"), ("Type", "type") })
+                    {
+                        string expected = CreationFlowStrings.Get("Spells." + field + "." + xml.Element(element)!.Value, "missing");
+                        Require(expected != "missing" && summary.Contains(expected),
+                            "Ritual help lost its accepted profile: " + ritual.Name + "/" + field + "/" + locale);
+                    }
+                    Require(summary.Contains(CreationFlowStrings.Format("Spells.Drain", "missing", xml.Element("dv")!.Value)),
+                        "Ritual help replaced the accepted Drain profile.");
+                    foreach (string field in new[] { "descriptor", "required", "category" })
+                    {
+                        var amendedXml = new System.Xml.Linq.XElement(xml);
+                        if (field == "required")
+                            amendedXml.SetElementValue(field, "changed admission requirement");
+                        else
+                            amendedXml.SetElementValue(field, "changed " + field);
+                        string changed = amendedXml.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+                        var amended = ritual with { CanonicalSourceXml = changed,
+                            CanonicalSourceXmlDigest = CharacterCreationMagicResonanceDigest.ComputeUtf8(changed) };
+                        string altered = CreationSpellInfo.Summary(amended);
+                        Require(!altered.Contains(prose)
+                            && (altered.Contains(CreationFlowStrings.Get("Spells.Changed", "missing"))
+                                || altered == CreationFlowStrings.Get("Spells.Unavailable", "missing")),
+                            "Changed ritual metadata retained old help: " + ritual.Name + "/" + field);
+                    }
+                }
                 var coreCombat = authority.Spells.Where(spell => spell.SourceBook == "SR5" && spell.Category == "Combat").ToArray();
                 Require(coreCombat.Length == 18, "Expected the complete SR5 core combat catalog.");
                 foreach (var spell in coreCombat)
