@@ -3202,4 +3202,20 @@
   <data name="Qualities.SummarySource.ee5d131f-5606-4a40-8035-9970aa3b5b29" xml:space="preserve"><value>5EDBA4502D0293191B2978875F54F005E6D15695280A5F67299FE87476254D7A</value></data>
   <data name="Qualities.Summary.580c8ae5-899b-4fa9-8f2d-600c9ac758f9" xml:space="preserve"><value>Forms changing host/IC attributes cause less Fading; Compiling/Decompiling Fault or Generalist sprites improves, and Submersion reduces Noise.</value></data>
   <data name="Qualities.SummarySource.580c8ae5-899b-4fa9-8f2d-600c9ac758f9" xml:space="preserve"><value>9D42D0383DFD189D5244C46342B39514A469F425719D810F477719EDD76AB9A5</value></data>
+  <data name="Qualities.Summary.43be9ef8-d7e9-47fe-ac79-7d15c508a2ad" xml:space="preserve"><value>Opens toxic magical abilities for your awakened type; powers and spells must still be learned separately.</value></data>
+  <data name="Qualities.SummarySource.43be9ef8-d7e9-47fe-ac79-7d15c508a2ad" xml:space="preserve"><value>790EE680D72BCCCBDC2EF7EE83F81F02E79EE4AFE5EF403B0F2EDC5A56FF2C97</value></data>
+  <data name="Qualities.Summary.3b25b895-d700-457e-ac89-8d5a65248c94" xml:space="preserve"><value>Accept a restriction on all Conjuring skills to reduce your bad astral reputation.</value></data>
+  <data name="Qualities.SummarySource.3b25b895-d700-457e-ac89-8d5a65248c94" xml:space="preserve"><value>6F7617F1C2087CEF34ECE683CDE74ABEE6C3123F4615CE91BBF58A7CAE3CCBA3</value></data>
+  <data name="Qualities.Summary.b3373640-35cc-4a29-b2b0-6ded9acd8d4b" xml:space="preserve"><value>Helps an Infected character resist addiction caused by Essence Drain.</value></data>
+  <data name="Qualities.SummarySource.b3373640-35cc-4a29-b2b0-6ded9acd8d4b" xml:space="preserve"><value>72808F229B8797DD248BC1C71531F00D9CC817C1E8CA91A09882DBBAFF6502FE</value></data>
+  <data name="Qualities.Summary.254c19fc-0a5b-4f75-a6d9-614f885e3d19" xml:space="preserve"><value>Drain Essence faster at increased addiction risk, or use the normal rate without that penalty.</value></data>
+  <data name="Qualities.SummarySource.254c19fc-0a5b-4f75-a6d9-614f885e3d19" xml:space="preserve"><value>9C5DDAD5D19333B03E26D388F2137312C81917504178751EF4299FCE07AF1448</value></data>
+  <data name="Qualities.Summary.94702bfe-ec3e-4b57-ba3e-8c45f214e9f1" xml:space="preserve"><value>Your infection improves specific magical tasks; the affected spells, spirits or other tests depend on your strain.</value></data>
+  <data name="Qualities.SummarySource.94702bfe-ec3e-4b57-ba3e-8c45f214e9f1" xml:space="preserve"><value>55B5BD31078A523E0C59079F42E9C6B6F1B2DA577F204F988A46630DD1DDEF9D</value></data>
+  <data name="Qualities.Summary.c9ea31d0-eef7-4489-bc11-04a2e41a4932" xml:space="preserve"><value>You and your ally may pass Edge once daily between you, lasting until next dawn/dusk, and aid each other's Drain resistance.</value></data>
+  <data name="Qualities.SummarySource.c9ea31d0-eef7-4489-bc11-04a2e41a4932" xml:space="preserve"><value>2CB5C8167E9FD999E198278B6E15548BF0E520763A097B9FC324694673AB94A7</value></data>
+  <data name="Qualities.Summary.fcde8bed-ed62-4378-b995-80f96ff423af" xml:space="preserve"><value>Resisted Shapechange or Critter Form transforms unwilling targets into physically weakened animals; their mental attributes stay unchanged.</value></data>
+  <data name="Qualities.SummarySource.fcde8bed-ed62-4378-b995-80f96ff423af" xml:space="preserve"><value>4CC7B9DE1DD45DCBF367CF86A4B41F2A999D396B1A9E03370D862D110630F284</value></data>
+  <data name="Qualities.Summary.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>Voluntary mundane believers in your tradition improve your ritual's dice pool and limit; the bonus is capped by your ritual skill.</value></data>
+  <data name="Qualities.SummarySource.665d2f01-636b-4bde-b91f-47b388a0a57a" xml:space="preserve"><value>AC8272939371A36D843AC3D78BAE8AEFB20ACD1A593438CEFB2F663868269A75</value></data>
 </root>
