@@ -1696,6 +1696,26 @@ internal static partial class AfterRunAuthorityHarness
             => inner.Confirm(owner, request);
     }
 
+    // Test-only export of the existing actual-Core fixture for a bounded native
+    // cash-entry smoke. Never fabricates rules, admission or a finalization receipt.
+    public static async Task ExportStartingCashSeedAsync(string contentRoot, string directory)
+    {
+        Require(Path.IsPathFullyQualified(directory) && Directory.Exists(directory)
+            && !Directory.EnumerateFileSystemEntries(directory).Any(),
+            "Seed destination must be explicit and empty.");
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationFinalization: true);
+        var saved = PrepareActualFinalizationReadyContext(runtime, fixtureAlias: "Cash-Rejection-Smoke");
+        string sourceDirectory = Path.Combine(runtime.StateDirectory, "workspaces");
+        Require(Directory.Exists(sourceDirectory), "The actual fixture did not persist its workspaces.");
+        foreach (string source in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            string target = Path.Combine(directory, "workspaces", Path.GetRelativePath(sourceDirectory, source));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(source, target, overwrite: false);
+        }
+        Console.WriteLine($"SEED {saved.Id.Value} revision={saved.ContentRevision}/{saved.SavedRevision}");
+    }
+
     public static async Task RunStartingCashPhonePagesAsync(string contentRoot)
     {
         foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
@@ -1727,7 +1747,18 @@ internal static partial class AfterRunAuthorityHarness
                 input.Text = int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 await Click("creation-starting-cash-preview");
                 Require(ReferenceEquals(Current(), page), "An out-of-range total reached confirm.");
+                Require(IssuedElements(page).OfType<Label>().Any(label => label.IsVisible
+                    && label.Text == CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
+                        "That total does not match these dice. Check your roll and try again.")),
+                    "Core rejected the dice total, but the cash page did not show readable feedback.");
+                var rejectedInput = input;
                 input = Element<Entry>("creation-starting-cash-roll");
+                Require(input.Text == int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    "Showing the rejection discarded the entered dice total.");
+                rejectedInput.Text = "1";
+                Require(input.Text == int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    "A detached pre-rejection Entry changed the current input.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 input.Text = source.Dice.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 await Click("creation-starting-cash-preview");
                 Require(Current() is CreationFinalizationPage, "Explicit legal roll did not reach the actual review.");
