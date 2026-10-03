@@ -152,10 +152,9 @@ public sealed class CreationQualitiesPage : NativePageBase
             var prepared = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (loaded.Value is not { } state || !CreationQualitiesPhoneAuthority.IsReady(state, original))
-                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
-                draft.Bind(state, original);
-                if (!draft.Matches(state, original))
+                // Bind performs the full exact-state check for this invocation.
+                // Avoid a second check before it and a third just to read its result.
+                if (loaded.Value is not { } state || !draft.Bind(state, original))
                     return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
                 var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
                 bool canReview = CreationQualitiesPhoneAuthority.CanConfirmPreview(

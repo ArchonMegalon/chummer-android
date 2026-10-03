@@ -3540,6 +3540,64 @@ internal static partial class AfterRunAuthorityHarness
         finally { CultureInfo.CurrentUICulture = oldCulture; }
     }
 
+    private sealed class CountedQualityCatalog(IReadOnlyList<CharacterCreationQualityCatalogOption> values)
+        : IReadOnlyList<CharacterCreationQualityCatalogOption>
+    {
+        public int Reads { get; set; }
+        public int Count => values.Count;
+        public CharacterCreationQualityCatalogOption this[int index] { get { Reads++; return values[index]; } }
+        public IEnumerator<CharacterCreationQualityCatalogOption> GetEnumerator()
+        {
+            foreach (var value in values) { Reads++; yield return value; }
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private static void VerifyQualitiesSinglePassBinding(CharacterCreationQualitiesState state, CharacterOverviewState overview)
+    {
+        var options = state.Authority.Options.ToList();
+        var counted = new CountedQualityCatalog(options);
+        var observed = state with { Authority = state.Authority with { Options = counted } };
+        Require(CreationQualitiesPhoneAuthority.IsReady(observed, overview), "Counting changed the exact Core catalog.");
+        int singleValidationReads = counted.Reads;
+        var draft = new CreationQualitiesPhoneDraft();
+        Require(draft.Bind(observed, overview), "Initial exact binding failed.");
+        var choice = observed.Authority.Options.First(option => option.IsSelectable && option.EligibilityIsExact
+            && string.IsNullOrWhiteSpace(option.DisableReasonKey));
+        string[] selected = [choice.OptionId];
+        var preview = CharacterCreationQualitiesRules.Evaluate(new(observed.Binding, observed.Authority, selected));
+        Require(draft.TryAdopt(observed, overview, new(preview.CanConfirm ? CharacterCreationFoundationOutcomes.Success
+                : CharacterCreationFoundationOutcomes.Blocked, preview, preview.Blockers), selected)
+            && draft.Bind(observed, overview) && draft.SelectedOptionIds.SequenceEqual(selected)
+            && draft.Preview?.PreviewDigest == preview.PreviewDigest,
+            "Rebinding the same exact display discarded its unsaved selection.");
+        var nextBinding = observed.Binding with { CreationKarmaUsedBeforeQualities = observed.Binding.CreationKarmaUsedBeforeQualities + 1 };
+        var next = observed with { Binding = nextBinding,
+            Preview = CharacterCreationQualitiesRules.Evaluate(new(nextBinding, observed.Authority, [])) };
+        next = next with { SnapshotDigest = CharacterCreationQualitiesRules.ComputeStateDigest(next) };
+        counted.Reads = 0;
+        Require(draft.Bind(next, overview), "Changed exact binding failed.");
+        int rebindReads = counted.Reads;
+        Require(rebindReads == singleValidationReads,
+            $"Binding a changed exact display must validate its catalog once, not repeatedly: {rebindReads} vs {singleValidationReads} option reads.");
+        Require(draft.Matches(next, overview) && draft.Preview?.PreviewDigest == next.Preview.PreviewDigest
+            && draft.SelectedOptionIds.Count == 0,
+            "Rebinding did not adopt the new exact Core preview.");
+
+        // IReadOnlyList is not necessarily immutable. The same record/digest
+        // must never serve as a cached admission after its backing list changes.
+        var originalOption = options[0];
+        options[0] = originalOption with { KarmaCost = originalOption.KarmaCost + 1 };
+        Require(!draft.Bind(next, overview) && draft.Preview is null && draft.SelectedOptionIds.Count == 0 && !draft.Matches(next, overview),
+            "A changed backing catalog retained its prior binding or preview.");
+        options[0] = originalOption;
+        Require(draft.Bind(next, overview) && draft.Matches(next, overview), "Restoring the exact input did not allow fresh validation.");
+        Require(!draft.Bind(next with { Binding = next.Binding with { ContentRevision = overview.ContentRevision + 1 } }, overview)
+            && draft.Preview is null && draft.SelectedOptionIds.Count == 0,
+            "A stale overview retained a previous quality preview.");
+        Console.WriteLine($"PASS single-pass quality binding ({singleValidationReads} catalog reads), changed budget, mutable catalog and stale revision rejected");
+    }
+
     internal static async Task RunCreationQualityDetailsAsync(string contentRoot, string? smokeWorkspacePath = null)
     {
         VerifyQualitySummaryContent(contentRoot);
@@ -3564,6 +3622,7 @@ internal static partial class AfterRunAuthorityHarness
             var original = coordinator.State;
             var loaded = await coordinator.LoadCreationQualitiesForDisplayAsync(original, default);
             var state = loaded.Value ?? throw new InvalidOperationException("SETUP: quality authority missing.");
+            VerifyQualitiesSinglePassBinding(state, original);
             var catalogPage = new CreationQualitiesPage(coordinator);
             await MinimalPrepareAsync(catalogPage);
             var catalogNavigation = new NavigationPage(catalogPage);
