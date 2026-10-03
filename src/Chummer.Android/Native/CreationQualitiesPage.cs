@@ -172,7 +172,10 @@ public sealed class CreationQualitiesPage : NativePageBase
             _availableOptions = prepared.Options;
             _canReview = prepared.CanReview;
             _reviewCheckpointDigest = prepared.CheckpointDigest;
-            _draft = draft;
+            // A temporarily unavailable projection must not replace the previous
+            // unsaved selection with the worker's rejected/cleared copy. It is
+            // not actionable while blocked and is fully revalidated next time.
+            if (prepared.Editor is not null) _draft = draft;
         }
         finally
         {

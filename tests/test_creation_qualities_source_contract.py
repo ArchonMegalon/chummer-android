@@ -146,6 +146,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         self.assertIn("!draft.Bind(state, original)", prepare)
         self.assertNotIn("IsReady(", prepare)
         self.assertNotIn("draft.Matches(", prepare)
+        self.assertIn("if (prepared.Editor is not null) _draft = draft;", prepare)
         # Projection, quote admission and full Core filtering remain separate guards.
         for guard in ("ProjectEditor(state, original)", "CanConfirmPreview(", "draft.AvailableOptions("):
             self.assertIn(guard, prepare)
