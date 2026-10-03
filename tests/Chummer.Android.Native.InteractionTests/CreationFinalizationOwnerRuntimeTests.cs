@@ -1734,14 +1734,17 @@ internal static partial class AfterRunAuthorityHarness
 
     // Test-only export of the existing actual-Core fixture for a bounded native
     // cash-entry smoke. Never fabricates rules, admission or a finalization receipt.
-    public static async Task ExportStartingCashSeedAsync(string contentRoot, string directory, bool contactsPending = false)
+    public static async Task ExportStartingCashSeedAsync(string contentRoot, string directory,
+        bool contactsPending = false, bool resourcesPending = false)
     {
         Require(Path.IsPathFullyQualified(directory) && Directory.Exists(directory)
             && !Directory.EnumerateFileSystemEntries(directory).Any(),
             "Seed destination must be explicit and empty.");
         await using var runtime = new NativeRewardRuntime(contentRoot, creationFinalization: true);
         var saved = PrepareActualFinalizationReadyContext(runtime,
-            fixtureAlias: contactsPending ? "Contacts-Readiness-Smoke" : "Cash-Rejection-Smoke", stopBeforeGear: contactsPending);
+            fixtureAlias: resourcesPending ? "Contacts-Resources-Smoke"
+                : contactsPending ? "Contacts-Readiness-Smoke" : "Cash-Rejection-Smoke",
+            stopBeforeGear: contactsPending, stopBeforeResources: resourcesPending);
         string sourceDirectory = Path.Combine(runtime.StateDirectory, "workspaces");
         Require(Directory.Exists(sourceDirectory), "The actual fixture did not persist its workspaces.");
         foreach (string source in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
@@ -3089,7 +3092,8 @@ internal static partial class AfterRunAuthorityHarness
     private static WorkspaceStoredDocument PrepareActualFinalizationReadyContext(NativeRewardRuntime runtime,
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
-        string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false)
+        string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
+        bool stopBeforeResources = false)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -3178,6 +3182,8 @@ internal static partial class AfterRunAuthorityHarness
             "native-finalization-qualities", Guid.NewGuid(), true));
         Require(qualityReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual Qualities failed: " + JsonSerializer.Serialize(qualityReceipt));
+        if (stopBeforeResources)
+            return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var resources = services.GetRequiredService<ICharacterCreationResourcesService>();
         var resourcesState = resources.Load(new(runtime.Id)).Value!;
         var zero = resourcesState.Options.First(item => item.IsEnabled && item.KarmaInvestment == 0);
