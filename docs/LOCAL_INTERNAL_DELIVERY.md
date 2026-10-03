@@ -104,7 +104,15 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 77 is the latest [observed Internal availability](../play/evidence/preview77-internal-observation.md),
+Preview 78 is the latest [observed Internal availability](../play/evidence/preview78-internal-observation.md),
+confirmed on 3 October at 05:41 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Authored EN/DE/ES help now covers 803/803 Qualities and 327/363 spell/ritual
+entries; 36 specialist explanations remain open. Rules and dependencies are
+unchanged. Physical Play78 installation is not yet verified. This is not legal
+clearance, complete effect execution, full-book or public-beta readiness.
+
+Preview 77's [observed Internal availability](../play/evidence/preview77-internal-observation.md) was
 confirmed on 2 October at 22:12 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 It shortens 32 existing EN/DE/ES Quality explanations, preserving important
@@ -245,7 +253,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 76](../play/evidence/preview76-physical-observation.md) is now the latest
+[Preview 77](../play/evidence/preview77-physical-observation.md) is the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
