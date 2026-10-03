@@ -109,9 +109,11 @@ confirmed on 4 October at approximately 01:32 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Creation Qualities
 removes repeated validation and retains unsaved selections during temporary
 unavailability without relaxing fresh admission. Focused managed checks and a
-synthetic API36 single-save/new-process receipt reopen passed. Physical Play87
-installation is not yet verified. Slow transitions, all-method Creation and
-full Origin completion remain open.
+synthetic API36 single-save/new-process receipt reopen passed. The
+[physical Play86→87 update](../play/evidence/preview87-physical-observation.md)
+verified installed identity/signature and unchanged read-only Create/Qualities
+after process restart. Slow transitions, all-method Creation and full Origin
+completion remain open.
 
 Preview 86's [observed Internal availability](../play/evidence/preview86-internal-observation.md),
 confirmed on 4 October at approximately 00:18 Europe/Vienna. Its exact local
