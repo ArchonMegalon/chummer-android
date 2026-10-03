@@ -3342,4 +3342,18 @@
   <data name="Spells.SummarySource.71c1b568-6199-46bf-97b2-6faff4fb2822" xml:space="preserve"><value>29E13077AEFAB5B9D074E4E372A9D2F4ECB2D593324FA3D8BE1D9B9E23EAA6E9</value></data>
   <data name="Spells.Summary.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>Fills dead or inanimate vessels with necromantic spirits; it does not restore the deceased's memories or skills.</value></data>
   <data name="Spells.SummarySource.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>67654AEE1A5EF76F48EF08E02D8E01B54AC796E721B1D5D1B4C01FF6EC481B7D</value></data>
+  <data name="Spells.Summary.317d1173-5c00-4eac-89ff-282b3123cfbb" xml:space="preserve"><value>Karma repairs your bad astral reputation.</value></data>
+  <data name="Spells.SummarySource.317d1173-5c00-4eac-89ff-282b3123cfbb" xml:space="preserve"><value>C79F19F74ECF6CB98E3810FC9D18C0E157081EA4EC3F724E3394B380DF3D2F76</value></data>
+  <data name="Spells.Summary.1e518a3c-fdf9-40c7-af85-0d71a22402e2" xml:space="preserve"><value>Bonds with a willing ordinary animal, sharing senses.</value></data>
+  <data name="Spells.SummarySource.1e518a3c-fdf9-40c7-af85-0d71a22402e2" xml:space="preserve"><value>D94834AE6D9665DD8B806932DFC750EAF00756F73D056F4181F1EFA8CCDE766D</value></data>
+  <data name="Spells.Summary.a31197f4-c687-485b-a924-e88f2c76df76" xml:space="preserve"><value>Raises limits for direct physical use of a bonded item.</value></data>
+  <data name="Spells.SummarySource.a31197f4-c687-485b-a924-e88f2c76df76" xml:space="preserve"><value>C65349EA4044B37B6884ED14C2710D7823B4AD3BDE8FC529ADDF6041408A1EC6</value></data>
+  <data name="Spells.Summary.b0bde155-75b7-4200-8656-8414e4ba746a" xml:space="preserve"><value>Offers symbolic clues about the future, not guaranteed predictions.</value></data>
+  <data name="Spells.SummarySource.b0bde155-75b7-4200-8656-8414e4ba746a" xml:space="preserve"><value>315FFF363C906A18CFE99712681317F2E3FB034E5CB3072F81B22CF8DA953EA8</value></data>
+  <data name="Spells.Summary.47bc1866-ad35-4c9a-8b3d-52502122a33e" xml:space="preserve"><value>Gives an attuned animal borrowed or permanent adept powers.</value></data>
+  <data name="Spells.SummarySource.47bc1866-ad35-4c9a-8b3d-52502122a33e" xml:space="preserve"><value>A14A3A786E65E8A25A9F4088E245EFC05B810214E3273A68C2AFF53CBC31FFBE</value></data>
+  <data name="Spells.Summary.e7e508e7-832f-4a61-8f0e-1aced19cfb09" xml:space="preserve"><value>Weakens psychic traces and astral signatures; does not banish spirits.</value></data>
+  <data name="Spells.SummarySource.e7e508e7-832f-4a61-8f0e-1aced19cfb09" xml:space="preserve"><value>AA80408F7DED514B97FD62613337B3E395926F0F844F74532FB8CA18A61C53AE</value></data>
+  <data name="Spells.Summary.70b6b4f8-8caf-4100-bb0a-bbb0f40faa84" xml:space="preserve"><value>Trades Karma for negotiated benefits from a free spirit.</value></data>
+  <data name="Spells.SummarySource.70b6b4f8-8caf-4100-bb0a-bbb0f40faa84" xml:space="preserve"><value>7B2292BF000DBC665D8827DEFA6E4F0DA3B81F73157FEF7CC896298EFC3B6C65</value></data>
 </root>

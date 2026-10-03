@@ -2071,4 +2071,11 @@
   <data name="Spells.Summary.bd2bfef0-9de4-4870-9822-cdd504f7560f" xml:space="preserve"><value>Somete a una persona viva como sirviente obediente, en vez de reanimar muertos.</value></data>
   <data name="Spells.Summary.71c1b568-6199-46bf-97b2-6faff4fb2822" xml:space="preserve"><value>Transforma árboles comunes permanentemente en otra especie no mágica; un clima inadecuado aún puede matarlos.</value></data>
   <data name="Spells.Summary.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>Llena recipientes muertos o inanimados con espíritus nigrománticos, sin recuperar recuerdos ni habilidades del difunto.</value></data>
+  <data name="Spells.Summary.317d1173-5c00-4eac-89ff-282b3123cfbb" xml:space="preserve"><value>Gasta Karma para reducir la mala reputación astral.</value></data>
+  <data name="Spells.Summary.1e518a3c-fdf9-40c7-af85-0d71a22402e2" xml:space="preserve"><value>Vincula un animal corriente dispuesto y permite compartir sentidos.</value></data>
+  <data name="Spells.Summary.a31197f4-c687-485b-a924-e88f2c76df76" xml:space="preserve"><value>Mejora límites al usar físicamente un objeto vinculado.</value></data>
+  <data name="Spells.Summary.b0bde155-75b7-4200-8656-8414e4ba746a" xml:space="preserve"><value>Ofrece pistas simbólicas del futuro, no predicciones garantizadas.</value></data>
+  <data name="Spells.Summary.47bc1866-ad35-4c9a-8b3d-52502122a33e" xml:space="preserve"><value>Otorga poderes de adepto prestados o permanentes al animal vinculado.</value></data>
+  <data name="Spells.Summary.e7e508e7-832f-4a61-8f0e-1aced19cfb09" xml:space="preserve"><value>Reduce huellas psíquicas y firmas astrales, pero no destierra espíritus.</value></data>
+  <data name="Spells.Summary.70b6b4f8-8caf-4100-bb0a-bbb0f40faa84" xml:space="preserve"><value>Intercambia Karma por beneficios acordados con un espíritu libre.</value></data>
 </root>
