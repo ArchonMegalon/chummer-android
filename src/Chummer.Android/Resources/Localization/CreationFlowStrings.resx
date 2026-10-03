@@ -3286,4 +3286,32 @@
   <data name="Qualities.SummarySource.3e2eac9a-e256-4755-a66a-ffbaac751cfa" xml:space="preserve"><value>71657069D8DFFF41BA209A58DB94427A2C177857DF050D4396C6510627205F9C</value></data>
   <data name="Qualities.Summary.430af564-0be1-42f0-a0d0-318c093ea3d8" xml:space="preserve"><value>Elemental Body instead inflicts unavoidable Drain from the following turn; choose Physical or Stun each time.</value></data>
   <data name="Qualities.SummarySource.430af564-0be1-42f0-a0d0-318c093ea3d8" xml:space="preserve"><value>BE23607B57C932BD2967551C9697C7B4183613499D9BCCA55DB059F7C7BE7728</value></data>
+  <data name="Spells.Summary.0d15391d-b247-439c-aac6-c671c4f60204" xml:space="preserve"><value>Carries an illusion through a material link; the magic can expose your location.</value></data>
+  <data name="Spells.SummarySource.0d15391d-b247-439c-aac6-c671c4f60204" xml:space="preserve"><value>C1838B268183C6746CD7E7B0E8E9F644F5AEE108A0505EB673D7E4ECFA4A4AEE</value></data>
+  <data name="Spells.Summary.716ce109-40df-46f2-b445-692f96e62537" xml:space="preserve"><value>Uses an astral spotter for distant combat magic; indirect attacks need an unobstructed route.</value></data>
+  <data name="Spells.SummarySource.716ce109-40df-46f2-b445-692f96e62537" xml:space="preserve"><value>BB05565D11776C49F25186C133137B9533A8ADE5613E07AA6B8F9986FCAE5C18</value></data>
+  <data name="Spells.Summary.b561907f-9b1b-4153-b314-155acc8139d2" xml:space="preserve"><value>Shares extended magical senses while every ritual participant maintains concentration.</value></data>
+  <data name="Spells.SummarySource.b561907f-9b1b-4153-b314-155acc8139d2" xml:space="preserve"><value>50B4EEEF9F38C88288B68086D6E65AF59562E888AA84A827A1A6D1A34C2C49CF</value></data>
+  <data name="Spells.Summary.3cea53a2-7628-4009-9bc4-af2f141fc28d" xml:space="preserve"><value>Establishes an anchored astral barrier, not a physical wall.</value></data>
+  <data name="Spells.SummarySource.3cea53a2-7628-4009-9bc4-af2f141fc28d" xml:space="preserve"><value>CA773301C35294F85858D5BF98DB9BB977CC917FC369B036CDEC18D9F317B8AF</value></data>
+  <data name="Spells.Summary.6f1689d0-1902-4155-b6e8-4451c88348b2" xml:space="preserve"><value>Forms a physical and magical shield; anything passing outward ends it.</value></data>
+  <data name="Spells.SummarySource.6f1689d0-1902-4155-b6e8-4451c88348b2" xml:space="preserve"><value>F30C8AAD7F417D33D3180618792D706D97C4DA50551D9220FB4B1CC511FD1601</value></data>
+  <data name="Spells.Summary.1dfd942b-ce62-44bd-a74c-8d8254e6d24b" xml:space="preserve"><value>Quietly reports crossing spells or astral entities without stopping them.</value></data>
+  <data name="Spells.SummarySource.1dfd942b-ce62-44bd-a74c-8d8254e6d24b" xml:space="preserve"><value>31FD122AA4330C29D8CC298DF4DC2223A5B2CE149ECBF56E83D684E1DD5DA6BB</value></data>
+  <data name="Spells.Summary.42726082-1595-4de2-81b1-0930ae954718" xml:space="preserve"><value>Retaliates with Stun damage against astral intrusion and can return resisted spells weakened.</value></data>
+  <data name="Spells.SummarySource.42726082-1595-4de2-81b1-0930ae954718" xml:space="preserve"><value>87D8DB1C17064ED6ADB97EDB909533D79BD66DE0043FADC62B985062AC9B631A</value></data>
+  <data name="Spells.Summary.ab135fb5-251e-47ec-a93d-5d22f134f867" xml:space="preserve"><value>Disguises sufficiently weak magic inside as mundane to outside astral observers.</value></data>
+  <data name="Spells.SummarySource.ab135fb5-251e-47ec-a93d-5d22f134f867" xml:space="preserve"><value>D4B68AB4DB0E4FAFEE84FE47A91A71083D3C46327982B075D0F3FD4FF887691E</value></data>
+  <data name="Spells.Summary.10efca5d-c1df-4770-b296-471132b80b98" xml:space="preserve"><value>An astral barrier with visibility through only one side.</value></data>
+  <data name="Spells.SummarySource.10efca5d-c1df-4770-b296-471132b80b98" xml:space="preserve"><value>50F05E87DD05E99C5113FADD77BAE91C461BC8FECE9439BA64FA73CDFD65F38A</value></data>
+  <data name="Spells.Summary.8ff1dcfc-a725-4698-83f2-7f1fb0f43f4f" xml:space="preserve"><value>Becomes an astral barrier after detecting an astral intruder; spells cannot trigger it.</value></data>
+  <data name="Spells.SummarySource.8ff1dcfc-a725-4698-83f2-7f1fb0f43f4f" xml:space="preserve"><value>24B4E2320FC1CD757936DF99CEEDA0E2D3A641B2C2D75ABEC117CCF9A396DBF7</value></data>
+  <data name="Spells.Summary.31b2929d-d876-40df-9cd4-8b92f57e839b" xml:space="preserve"><value>Blood coating grants physical or astral armor that fades over time; washing removes it.</value></data>
+  <data name="Spells.SummarySource.31b2929d-d876-40df-9cd4-8b92f57e839b" xml:space="preserve"><value>054727D089F52B8027D0DA463795C2D472D718D6D11141085A02244AECE48A7C</value></data>
+  <data name="Spells.Summary.3282adfa-a92b-4d7e-895c-51dd0fe7f61a" xml:space="preserve"><value>A voluntary, blood-sealed promise improves skills only toward its goal; deliberate betrayal causes injury.</value></data>
+  <data name="Spells.SummarySource.3282adfa-a92b-4d7e-895c-51dd0fe7f61a" xml:space="preserve"><value>35340D7ED3F5C25FEFA996E97FA7E818BA430B1BDEF4841611473330F41892ED</value></data>
+  <data name="Spells.Summary.b557c296-01c2-4293-9d5a-c8e95be77612" xml:space="preserve"><value>On death, burns remaining Edge to unleash an uncontrolled blood spirit seeking revenge.</value></data>
+  <data name="Spells.SummarySource.b557c296-01c2-4293-9d5a-c8e95be77612" xml:space="preserve"><value>D229489829B01FDCB59A83393CE66329443CAD3A131597EBA4FD02E4A6B3B870</value></data>
+  <data name="Spells.Summary.242a0e9f-4130-4094-8cac-3db739ffafb2" xml:space="preserve"><value>Links you to a blood relative and lets you take their Physical wounds when nearby.</value></data>
+  <data name="Spells.SummarySource.242a0e9f-4130-4094-8cac-3db739ffafb2" xml:space="preserve"><value>BF2E6FCD4AE1F244F5E71E3AA1613E52CAAD60A5D85FC942D06B23477FFB740E</value></data>
 </root>
