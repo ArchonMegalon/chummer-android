@@ -125,7 +125,7 @@ internal static class NativeTheme
     // Exact machine values remain available for troubleshooting, but do not
     // compete with player choices or get read aloud by default. Never alter
     // the underlying values (or filter arbitrary player names/book prose).
-    public static VerticalStackLayout TechnicalDetails(View content, string automationId)
+    public static VerticalStackLayout TechnicalDetails(View content, string automationId, Func<bool>? canToggle = null)
     {
         VerticalStackLayout panel = new() { Spacing = 8, AutomationId = automationId };
         content.IsVisible = false;
@@ -139,7 +139,8 @@ internal static class NativeTheme
         toggle.AutomationId = automationId + "-toggle";
         toggle.Clicked += (_, _) =>
         {
-            if (panel.Parent is null || !ReferenceEquals(toggle.Parent, panel)) return;
+            if (panel.Parent is null || !ReferenceEquals(toggle.Parent, panel)
+                || canToggle is not null && !canToggle()) return;
             content.IsVisible = !content.IsVisible;
             toggle.Text = Copy();
         };
