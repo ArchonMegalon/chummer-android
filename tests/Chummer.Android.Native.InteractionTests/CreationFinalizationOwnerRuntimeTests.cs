@@ -2358,6 +2358,95 @@ internal static partial class AfterRunAuthorityHarness
     }
 
 
+    public static async Task RunCreationPurchaseRefreshAsync(string contentRoot)
+    {
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        foreach (bool gearPurchase in new[] { false, true })
+        foreach (string scenario in new[] { "saved", "shell-error", "shell-owner-aba", "shell-cancellation" })
+        {
+            var owners = new ControlledLinkedOwner();
+            owners.Set(OwnerScope.LocalSingleUser);
+            using var cancel = new CancellationTokenSource();
+            int shellLists = 0;
+            bool observingCommit = false;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                productionCreationOverview: true, beforeShellWorkspaceList: () =>
+                {
+                    shellLists++;
+                    if (!observingCommit) return;
+                    if (scenario == "shell-error") throw new IOException("Synthetic purchase shell failure.");
+                    if (scenario == "shell-owner-aba")
+                    { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); }
+                    if (scenario == "shell-cancellation") cancel.Cancel();
+                });
+            var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeGear: true);
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var coordinator = runtime.Coordinator;
+            var original = coordinator.State;
+            string receiptDigest;
+            Func<Task<bool>> replayHasReceipt;
+            Func<string?> coldReceipt;
+            var timer = new System.Diagnostics.Stopwatch();
+            shellLists = 0;
+            if (gearPurchase)
+            {
+                var presenter = new CharacterCreationGearInteractionPresenter(
+                    runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+                    runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
+                var loaded = presenter.Load(original).State!;
+                var item = loaded.Authority.Options.First(option => option.Name == "Flashlight" && option.IsSelectable);
+                var preview = presenter.Prepare(original, [new(item.OptionId, 1)]).PreparedPreview!;
+                Require(preview is not null, "SETUP: missing actual purchase preview.");
+                observingCommit = true;
+                timer.Start();
+                var result = await coordinator.ConfirmCreationGearPurchaseAsync(presenter, original, preview!, cancel.Token);
+                timer.Stop();
+                Require(result.Receipt is not null && result.Outcome == CharacterCreationGearOutcomes.Applied,
+                    "Gear refresh lost its durable receipt: " + JsonSerializer.Serialize(result));
+                Require(scenario == "saved" ? result.RefreshedState is not null && result.Blockers.Count == 0
+                    : result.RefreshedState is null && result.Blockers.Contains(CharacterCreationGearInteractionBlockers.RefreshAuthorityRequired),
+                    "Gear refresh published stale authority or failed a current reload: " + scenario);
+                receiptDigest = result.Receipt!.ReceiptDigest;
+                replayHasReceipt = async () => (await coordinator.ConfirmCreationGearPurchaseAsync(presenter, original, preview!)).Receipt is not null;
+                coldReceipt = () => presenter.LookupReceipt(coordinator.State, preview!.IdempotencyKey).Receipt?.ReceiptDigest;
+            }
+            else
+            {
+                var presenter = new CharacterCreationResourcesInteractionPresenter(
+                    runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                    runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+                var loaded = presenter.Load(original).State!;
+                var option = loaded.Options.Single(item => item.KarmaInvestment == 1 && item.IsEnabled);
+                var preview = presenter.Prepare(original, option.OptionId).PreparedPreview!;
+                Require(preview is not null, "SETUP: missing actual Resources preview.");
+                observingCommit = true;
+                timer.Start();
+                var result = await coordinator.ConfirmCreationResourcesPurchaseAsync(presenter, original, preview!, cancel.Token);
+                timer.Stop();
+                Require(result.Receipt is not null && result.Outcome == CharacterCreationResourcesOutcomes.Applied,
+                    "Resources refresh lost its durable receipt: " + JsonSerializer.Serialize(result));
+                Require(scenario == "saved" ? result.RefreshedState is not null && result.Blockers.Count == 0
+                    : result.RefreshedState is null && result.Blockers.Contains(CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired),
+                    "Resources refresh published stale authority or failed a current reload: " + scenario);
+                receiptDigest = result.Receipt!.ReceiptDigest;
+                replayHasReceipt = async () => (await coordinator.ConfirmCreationResourcesPurchaseAsync(presenter, original, preview!)).Receipt is not null;
+                coldReceipt = () => presenter.LookupReceipt(coordinator.State, preview!.IdempotencyKey).Receipt?.ReceiptDigest;
+            }
+            observingCommit = false;
+            Console.WriteLine($"PURCHASE_REFRESH {method} {(gearPurchase ? "Gear" : "Resources")} {scenario}: shellLists={shellLists}, elapsedMs={timer.ElapsedMilliseconds}");
+            Require(shellLists == 1, "A purchase must synchronize the shell once, not enumerate/reopen the roster twice.");
+            var after = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+            Require(after.ContentRevision == before.ContentRevision + 1 && after.SavedRevision == after.ContentRevision
+                && after.Document.Content == before.Document.Content && owners.ActiveLeases == 0,
+                "Purchase refresh lost its checkpoint, changed XML or retained an owner lease.");
+            Require(!await replayHasReceipt(), "Purchase refresh allowed the retained command to be submitted again.");
+            await HydrateFinalizationOwnerAsync(runtime, owners, after);
+            Require(coldReceipt() == receiptDigest, "Purchase receipt was lost after reopening under the current owner.");
+            RequireSameRewardDocument(after, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            Console.WriteLine("PASS purchase single shell sync, durable receipt, cold reopen and no replay: " + scenario);
+        }
+    }
+
     private static async Task VerifyOwnerBoundPurchasesAsync(NativeRewardRuntime runtime,
         ControlledLinkedOwner owners, bool linked, string method)
     {

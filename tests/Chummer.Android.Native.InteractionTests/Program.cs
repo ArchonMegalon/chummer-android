@@ -183,6 +183,11 @@ internal static class Program
             Console.WriteLine("PASS creation dashboard render scope and exact typed entry guards");
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-purchase-refresh-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationPurchaseRefreshAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-entry-gear-content-root")
         {
             await ExactTypedCreationAuthorityCanEnterItsUnstartedFinalizationDraftAsync();
