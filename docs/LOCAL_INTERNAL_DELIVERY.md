@@ -110,9 +110,13 @@ separately signed with the existing upload key and independently verified.
 It adds 34 short original ritual/enchantment explanations, bringing EN/DE/ES
 authored coverage to 803/803 Qualities and 361/363 spell/ritual/enchantment
 entries. Two specialist explanations remain unverified. Rules and dependencies
-are unchanged. Physical Preview79 Play installation is not yet verified;
-Preview78 remains the latest physical observation. No legal clearance, complete
-effect execution, full-book or public-beta readiness is claimed.
+are unchanged. The normal physical Play 78-to-79 update, expected Play signing
+certificate, readable existing Quality/spell help at font scale 1.3 and
+existing-state process restart passed. See the separate
+[physical observation](../play/evidence/preview79-physical-observation.md).
+This sample does not physically cover all 34 new explanations or a new saved
+mutation. No legal clearance, complete effect execution, full-book or
+public-beta readiness is claimed.
 
 Preview 78's [observed Internal availability](../play/evidence/preview78-internal-observation.md) was
 confirmed on 3 October at 05:41 Europe/Vienna. Its exact local ARM64 AAB was
