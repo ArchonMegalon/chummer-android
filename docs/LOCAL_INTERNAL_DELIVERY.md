@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 84 is the latest [observed Internal availability](../play/evidence/preview84-internal-observation.md),
+Preview 85 is the latest [observed Internal availability](../play/evidence/preview85-internal-observation.md),
+confirmed on 3 October at approximately22:39 Europe/Vienna. Its exact local
+ARM64 AAB was separately signed and independently verified. Core Qualities digest
+processing now allocates less while preserving canonical bytes and all admission
+guards. Focused managed checks and a synthetic API36 single-save/new-process
+receipt reopen passed. Physical85 installation/update remains unverified;
+Preview84 is still the latest physically verified version. Slow transitions,
+all-method Creation and full Origin completion remain open.
+
+Preview 84's [observed Internal availability](../play/evidence/preview84-internal-observation.md),
 confirmed on 3 October at 20:05 Europe/Vienna. The exact locally built ARM64 AAB
 was separately signed with the existing upload key and independently verified.
 Resources budget saves now retain their controls and show neutral progress;
