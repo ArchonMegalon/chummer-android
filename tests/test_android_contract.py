@@ -274,13 +274,13 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("ad51cb450f1c65b824e18b764ae197686284c312",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("38364c9dac035a69ae1c7c87e2548d1d4469836b",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "131f57432f2d35c011ab134ac80ddc5df43dcbc8",
-                    "272f14b7036ce3f5c5b1d29a0c7ea3708da477c2",
-                    "131f57432f2d35c011ab134ac80ddc5df43dcbc8",
+                    "ef5ee2b93beda2cd9b7451087db33afbcd091871",
+                    "e56e7ba7e59f63635c7051950cb2e403e907aa78",
+                    "ef5ee2b93beda2cd9b7451087db33afbcd091871",
                 ),
             ),
             ("ArchonMegalon/chummer6-hub", ("c77395de9f733427ef952c851f4a95b063cb5573",)),

@@ -358,6 +358,16 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationContactsBootstrapCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-contacts-readiness-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsReadinessCasesAsync(args[1]);
+            return;
+        }
+        if (args.Length == 3 && args[0] == "--export-contacts-pending-seed")
+        {
+            await AfterRunAuthorityHarness.ExportStartingCashSeedAsync(args[1], args[2], contactsPending: true);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--collection-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunCollectionOwnerCasesAsync(args[1]);

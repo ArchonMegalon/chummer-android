@@ -2129,4 +2129,6 @@
   <data name="Spells.Summary.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>Täuscht magische Eigenschaften eines Gegenstands vor.</value></data>
   <data name="Spells.Summary.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>Bewahrt einen Beobachter für spätere Einsätze.</value></data>
   <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Macht Astralgestalten und aufrechterhaltene Zauber sichtbar.</value></data>
+  <data name="Contacts.PointsPending" xml:space="preserve"><value>Für die Kontaktpunkte werden deine gespeicherten Erschaffungsentscheidungen benötigt.</value></data>
+  <data name="Contacts.NeedsReview" xml:space="preserve"><value>Die Kontaktpunkte stehen noch nicht fest. Prüfe und speichere zuerst die vorherigen Erschaffungsschritte.</value></data>
 </root>
