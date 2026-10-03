@@ -3230,4 +3230,24 @@
   <data name="Qualities.SummarySource.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>43E6BAF1384E15E1A420FFC90FD172E743ABD992815AB359FFC04D54BC2354F1</value></data>
   <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Your AI disrupts other programs, making glitches more likely.</value></data>
   <data name="Qualities.SummarySource.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>C0BE8DAEDE8E31FA6B670CA9878A717D9FBA12C9FE2D5FE6DE5835D50C15BA26</value></data>
+  <data name="Qualities.Summary.6c403cb7-791b-4fb1-bb5a-2f95a6859cfe" xml:space="preserve"><value>Your AI's custom home device improves Data Processing/Pilot and reduces Noise.</value></data>
+  <data name="Qualities.SummarySource.6c403cb7-791b-4fb1-bb5a-2f95a6859cfe" xml:space="preserve"><value>0E3D7B271E9400AF2F82FB017A89EAA3F87CE2F204557F9A0B836AB58E3E8317</value></data>
+  <data name="Qualities.Summary.0ee4765d-46d6-4ad9-a3ee-33d6a1167d9a" xml:space="preserve"><value>Each level helps your AI resist Essence loss.</value></data>
+  <data name="Qualities.SummarySource.0ee4765d-46d6-4ad9-a3ee-33d6a1167d9a" xml:space="preserve"><value>0AEAE274CB3FB174343F155BCF4259F78CB3626F7EEDAA9E133EDF742EDDB46E</value></data>
+  <data name="Qualities.Summary.b65991af-b962-4641-a5a2-92fc53f30370" xml:space="preserve"><value>Only your chosen device category can serve as your AI's home.</value></data>
+  <data name="Qualities.SummarySource.b65991af-b962-4641-a5a2-92fc53f30370" xml:space="preserve"><value>2F8E318E112A33FB8C39F89DDEB9C0ADFC0B2D296703D384192F03C8F4D4453B</value></data>
+  <data name="Qualities.Summary.81224e80-43f1-4b70-8eb5-029540db2f62" xml:space="preserve"><value>Your AI's unfamiliarity with physical reality can cause substantial penalties on related actions or knowledge, at the GM's discretion.</value></data>
+  <data name="Qualities.SummarySource.81224e80-43f1-4b70-8eb5-029540db2f62" xml:space="preserve"><value>33E34D58F4089CE0ABFBD2AA250FD4E603141192B6825F8BB606C1AE8BD75B91</value></data>
+  <data name="Qualities.Summary.6d6356ab-3a88-441a-8368-05a8fb8307a7" xml:space="preserve"><value>Stage tricks make spellcasting harder to spot; the audience's Assensing is hindered during the act and briefly afterward.</value></data>
+  <data name="Qualities.SummarySource.6d6356ab-3a88-441a-8368-05a8fb8307a7" xml:space="preserve"><value>298AE39B31627AD0EE53C3D05BC5F1CEF8B6278A998F0423EF48C7EF88F15D6E</value></data>
+  <data name="Qualities.Summary.578e1220-09f9-41eb-9616-cae4b7c96e56" xml:space="preserve"><value>Your mentor offers seasonal magical training or crafting help; each kind is available only annually.</value></data>
+  <data name="Qualities.SummarySource.578e1220-09f9-41eb-9616-cae4b7c96e56" xml:space="preserve"><value>542B2E1C412E19FBB082C66B0D38C2A907DA8EFF72D217DFB2685D9CE0451704</value></data>
+  <data name="Qualities.Summary.4db55b27-c211-48f2-b9a0-446bd9d32db6" xml:space="preserve"><value>Disenchanting can temporarily suppress visible foci; greater skill lets you hurt their owners through them.</value></data>
+  <data name="Qualities.SummarySource.4db55b27-c211-48f2-b9a0-446bd9d32db6" xml:space="preserve"><value>5A939490D44A5E1D8D5B44B1B18B39E24D0D19108823C910182195960C4C1EE9</value></data>
+  <data name="Qualities.Summary.96f148e1-fb72-416a-8235-89a3eeafe534" xml:space="preserve"><value>Recurring setbacks increase your lifestyle bill to the next tier without improving your living conditions.</value></data>
+  <data name="Qualities.SummarySource.96f148e1-fb72-416a-8235-89a3eeafe534" xml:space="preserve"><value>4779F2A90C8B53670EE1266F8AB799FF3CDE1131E0EDFD22AFB1361F4F9E49BE</value></data>
+  <data name="Qualities.Summary.5c49d5e2-ca52-406e-a532-8d4d148ea825" xml:space="preserve"><value>Hot-sim takes a Free Action; cold-sim requires an echo. With a control rig, drone jump-in takes a Simple Action.</value></data>
+  <data name="Qualities.SummarySource.5c49d5e2-ca52-406e-a532-8d4d148ea825" xml:space="preserve"><value>816A67EE717672BAD675F816882F0178DA175A02917DE06D8FB703A62BAB9F7A</value></data>
+  <data name="Qualities.Summary.83e5f9a2-e76b-4a11-81db-4b0466b727ce" xml:space="preserve"><value>Successful Surprise tests briefly improve Initiative; weapons are easier to quick-draw.</value></data>
+  <data name="Qualities.SummarySource.83e5f9a2-e76b-4a11-81db-4b0466b727ce" xml:space="preserve"><value>8FE9D9CB1512AD32CB47E5C555DC60A36086D3C432A3B9C3A13D96EF886866F3</value></data>
 </root>

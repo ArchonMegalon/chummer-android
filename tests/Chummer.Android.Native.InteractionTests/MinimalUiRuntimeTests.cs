@@ -162,6 +162,28 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Designer", ["home device", "Data Processing/Pilot", "Noise"],
+            ["Heimatgerät", "Datenverarbeitung/Pilot", "Rauschen"], ["hogar", "Datos/Piloto", "Ruido"]),
+        ("Hello World!", ["Each level", "Essence loss"],
+            ["Jede Stufe", "Essenzverlust"], ["Cada nivel", "Esencia"]),
+        ("Persnickety Renter", ["Only", "chosen device category", "home"],
+            ["Nur", "gewählten Kategorie", "Heimatgerät"], ["Solo", "categoría elegida", "hogar"]),
+        ("Real World Naiveté", ["physical reality", "penalties", "GM"],
+            ["physischen Welt", "Abzüge", "Spielleitung"], ["mundo físico", "penalizar", "director"]),
+        ("Charlatan", ["Stage tricks", "Assensing", "briefly afterward"],
+            ["Bühnentricks", "Askennen", "kurz danach"], ["escénicos", "Astral", "brevemente después"]),
+        ("Chosen Follower", ["mentor", "seasonal", "annually"],
+            ["Schutzgeist", "saisonal", "jährlich"], ["mentor", "estacional", "anualmente"]),
+        ("Vexcraft", ["visible foci", "greater skill", "owners"],
+            ["sichtbare Foki", "höherer Fertigkeit", "Besitzern"], ["focos visibles", "mayor habilidad", "dueños"]),
+        ("Hard Luck", ["next tier", "without improving"],
+            ["nächste Stufe", "ohne", "verbessern"], ["siguiente nivel", "sin mejorar"]),
+        ("Hair Trigger", ["Free Action", "cold-sim", "echo", "control rig", "Simple Action"],
+            ["Freie Handlung", "Cold-Sim", "Echo", "Kontrollrig", "Einfache Handlung"],
+            ["acción gratuita", "cold-sim", "eco", "interfaz de control", "acción simple"]),
+        ("Shoot First, Don't Ask Questions", ["Successful", "Surprise", "briefly", "quick-draw"],
+            ["Bestandene", "Überraschungsproben", "kurzzeitig", "schnellziehen"],
+            ["Superar", "Sorpresa", "brevemente", "desenfundar"]),
         ("Sapper", ["AI", "bonus dice", "Format Device"],
             ["KI", "Bonuswürfel", "Gerät-formatieren"], ["IA", "dados", "Formatear Dispositivo"]),
         ("Sensor Upgrade", ["sensors", "host device", "slaved"],
@@ -1499,7 +1521,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 775, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 785, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1540,7 +1562,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Revenant Adept", "Skinwalker", "Spell Jammer", "Spectral Warden",
                     "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User",
                     "Spirit Hunter I", "Spirit Hunter II", "Spirit Hunter III", "Spiritual Pilgrim",
-                    "Stalwart Ally", "Taboo Transformer", "Worship Leader",
+                    "Stalwart Ally", "Taboo Transformer", "Worship Leader", "Charlatan", "Chosen Follower", "Vexcraft",
                     "Dissonant Stream: Apophenian", "Dissonant Stream: Erisian", "Dissonant Stream: Morphinae" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
@@ -1582,6 +1604,15 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 foreach (var prerequisite in new[]
                 {
+                    (Name: "Designer", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Hello World!", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Hello World!", Path: "limit", Value: "3"),
+                    (Name: "Persnickety Renter", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Real World Naiveté", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Charlatan", Path: "required/allof/skill/name", Value: "Assensing"),
+                    (Name: "Chosen Follower", Path: "required/oneof/quality", Value: "Mentor Spirit"),
+                    (Name: "Vexcraft", Path: "required/oneof/skill/name", Value: "Disenchanting"),
+                    (Name: "Hair Trigger", Path: "required/oneof/quality", Value: "Technomancer"),
                     (Name: "Revenant Adept", Path: "required/oneof/power", Value: "Rapid Healing"),
                     (Name: "Skinwalker", Path: "required/allof/spell", Value: "[Critter] Form"),
                     (Name: "Spell Jammer", Path: "required/oneof/skill/name", Value: "Counterspelling"),
@@ -1627,7 +1658,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Specific Target, Biased)", "Favored (Specific Target, Outspoken)",
                     "Favored (Specific Target, Fanatic)", "Illusionist",
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
-                    "Natural Hacker", "Corporate Loyalist", "Metaviral Attunement",
+                    "Natural Hacker", "Corporate Loyalist", "Metaviral Attunement", "Persnickety Renter",
                     "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
                     "Location Attunement I", "Location Attunement II", "Location Attunement III",
                     "Escaped Custody", "Rank (Neither Military nor Law Enforcement) I",

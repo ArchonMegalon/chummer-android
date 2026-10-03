@@ -2015,4 +2015,14 @@
   <data name="Qualities.Summary.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>Máquina Virtual no causa daño adicional a la IA; el daño matricial normal sigue aplicándose.</value></data>
   <data name="Qualities.Summary.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>Tu IA pierde la mejora de Firewall al optimizar; colocar varias marcas en su persona supone menores penalizaciones.</value></data>
   <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Tu IA causa más fallos en otros programas.</value></data>
+  <data name="Qualities.Summary.6c403cb7-791b-4fb1-bb5a-2f95a6859cfe" xml:space="preserve"><value>El dispositivo hogar diseñado por tu IA mejora Procesamiento de Datos/Piloto y reduce Ruido.</value></data>
+  <data name="Qualities.Summary.0ee4765d-46d6-4ad9-a3ee-33d6a1167d9a" xml:space="preserve"><value>Cada nivel ayuda a tu IA a resistir pérdidas de Esencia.</value></data>
+  <data name="Qualities.Summary.b65991af-b962-4641-a5a2-92fc53f30370" xml:space="preserve"><value>Solo los dispositivos de la categoría elegida sirven de hogar a tu IA.</value></data>
+  <data name="Qualities.Summary.81224e80-43f1-4b70-8eb5-029540db2f62" xml:space="preserve"><value>La ignorancia de tu IA sobre el mundo físico puede penalizar mucho acciones o conocimientos relacionados, según el director.</value></data>
+  <data name="Qualities.Summary.6d6356ab-3a88-441a-8368-05a8fb8307a7" xml:space="preserve"><value>Los trucos escénicos dificultan detectar hechizos; la Percepción Astral del público se dificulta durante la actuación y brevemente después.</value></data>
+  <data name="Qualities.Summary.578e1220-09f9-41eb-9616-cae4b7c96e56" xml:space="preserve"><value>Tu mentor ofrece formación mágica o ayuda de fabricación estacional; cada modalidad está disponible solo anualmente.</value></data>
+  <data name="Qualities.Summary.4db55b27-c211-48f2-b9a0-446bd9d32db6" xml:space="preserve"><value>Desencantar permite suprimir temporalmente focos visibles; con mayor habilidad puedes dañar a sus dueños a través de ellos.</value></data>
+  <data name="Qualities.Summary.96f148e1-fb72-416a-8235-89a3eeafe534" xml:space="preserve"><value>Los contratiempos elevan el coste de tu estilo de vida al siguiente nivel, sin mejorar tus condiciones.</value></data>
+  <data name="Qualities.Summary.5c49d5e2-ca52-406e-a532-8d4d148ea825" xml:space="preserve"><value>Hot-sim como acción gratuita; cold-sim requiere el eco adecuado. Con interfaz de control, entrar en drones usa acción simple.</value></data>
+  <data name="Qualities.Summary.83e5f9a2-e76b-4a11-81db-4b0466b727ce" xml:space="preserve"><value>Superar pruebas de Sorpresa mejora brevemente la Iniciativa; desenfundar armas resulta más fácil.</value></data>
 </root>
