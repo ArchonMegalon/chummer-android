@@ -287,6 +287,8 @@
   <data name="Finalization.ReviewGear" xml:space="preserve"><value>Öffne Ausrüstung, prüfe deine Auswahl und speichere sie.</value></data>
   <data name="Finalization.ReviewSkillSources" xml:space="preserve"><value>Öffne Fertigkeiten und prüfe deine Auswahl anhand der aktuellen Bauart und aktivierten Bücher.</value></data>
   <data name="Gear.Saving" xml:space="preserve"><value>Ausrüstung wird gespeichert…</value></data>
+  <data name="Resources.Saving" xml:space="preserve"><value>Budget wird gespeichert…</value></data>
+  <data name="Resources.SavingDetail" xml:space="preserve"><value>Dein Ressourcenbudget wird gespeichert. Bitte warten…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Deine Ausrüstungsauswahl wird gespeichert. Bitte warten…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Deine Ausrüstungsauswahl ist gespeichert.</value></data>
   <data name="Dashboard.Unavailable" xml:space="preserve"><value>Deine Erschaffungsauswahl konnte nicht geladen werden. Öffne diesen Runner erneut.</value></data>
