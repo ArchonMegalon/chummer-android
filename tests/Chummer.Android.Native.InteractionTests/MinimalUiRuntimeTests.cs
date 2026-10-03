@@ -162,6 +162,18 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Pilot Origins", ["chosen vehicle class", "without"], ["gewählte Fahrzeugklasse", "ohne"],
+            ["clase elegida", "sin"]),
+        ("Blood Necromancer", ["both"], ["Zaubernde"], ["paciente"]),
+        ("Chakra Interrupter", ["temporarily"], ["vorübergehend"], ["temporalmente"]),
+        ("Close Combat Mage", ["choose"], ["Wähle"], ["elige"]),
+        ("Dark Ally", ["Restless"], ["ruhelos"], ["inquieto"]),
+        ("Arcology Tantrum", ["composure"], ["Selbstbeherrschung"], ["Compostura"]),
+        ("People's SIN", ["limited", "tax"], ["begrenzter", "Einkommensteuer"],
+            ["limitado", "impuestos"]),
+        ("People's SIN (Criminal)", ["criminal records"], ["Vorstrafen"], ["antecedentes"]),
+        ("Elemental Attunement", ["unavoidable", "each time"], ["unvermeidbaren", "jedes Mal"],
+            ["inevitable", "cada vez"]),
         ("Decaying Dissonance", ["composure"], ["Selbstbeherrschung"], ["Compostura"]),
         ("Nerdrage", ["every"], ["jedes"], ["cada"]),
         ("Prank Warrior", ["session"], ["Spielsitzung"], ["sesión"]),
@@ -1531,7 +1543,8 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 794, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 803 && authored == catalog.Length && missing == 0,
+                    "Every real catalog quality needs its own localized, source-bound explanation.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1574,6 +1587,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Spirit Hunter I", "Spirit Hunter II", "Spirit Hunter III", "Spiritual Pilgrim",
                     "Stalwart Ally", "Taboo Transformer", "Worship Leader", "Charlatan", "Chosen Follower", "Vexcraft",
                     "Spiritual Lodge", "Sprawl Tamer", "Crystalline Diver", "Crystalline Grace",
+                    "Blood Necromancer", "Chakra Interrupter", "Close Combat Mage", "Dark Ally",
                     "Dissonant Stream: Apophenian", "Dissonant Stream: Erisian", "Dissonant Stream: Morphinae" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
@@ -1661,7 +1675,15 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Crystalline Diver", Path: "required/oneof/quality", Value: "Crystal Breath"),
                     (Name: "Crystalline Grace", Path: "required/oneof/quality", Value: "Crystal Limb (Leg)"),
                     (Name: "Busted Cyberware", Path: "chargenonly", Value: ""),
-                    (Name: "Busted Cyberware", Path: "bonus/addware/name", Value: "Busted Ware")
+                    (Name: "Busted Cyberware", Path: "bonus/addware/name", Value: "Busted Ware"),
+                    (Name: "Pilot Origins", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Blood Necromancer", Path: "required/allof/metamagicart", Value: "Blood Magic"),
+                    (Name: "Chakra Interrupter", Path: "required/oneof/group/power", Value: "Nerve Strike"),
+                    (Name: "Close Combat Mage", Path: "required/oneof/metamagic", Value: "Spell Shaping"),
+                    (Name: "Dark Ally", Path: "bonus/addspirit", Value: ""),
+                    (Name: "People's SIN", Path: "forbidden/oneof/quality", Value: "SINner (Corporate)"),
+                    (Name: "People's SIN (Criminal)", Path: "forbidden/oneof/quality", Value: "SINner (Corporate)"),
+                    (Name: "Elemental Attunement", Path: "required/allof/power", Value: "Killing Hands")
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);
@@ -1679,7 +1701,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Specific Target, Fanatic)", "Illusionist",
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
                     "Natural Hacker", "Corporate Loyalist", "Metaviral Attunement", "Persnickety Renter",
-                    "Busted Cyberware",
+                    "Busted Cyberware", "Pilot Origins", "Close Combat Mage",
                     "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
                     "Location Attunement I", "Location Attunement II", "Location Attunement III",
                     "Escaped Custody", "Rank (Neither Military nor Law Enforcement) I",
