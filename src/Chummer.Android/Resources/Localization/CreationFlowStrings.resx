@@ -3404,4 +3404,24 @@
   <data name="Spells.SummarySource.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>E26784976281B93E2C389614CB1ED9257488ED4C6C661956C1861B8AE9C947E2</value></data>
   <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Drains local mana for short-lived magical power.</value></data>
   <data name="Spells.SummarySource.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>627988A257CF1BDF4A38C531C3155161EDDF68B988151B2A1EDC0591DBBFF84B</value></data>
+  <data name="Spells.Summary.a81eedee-cf7b-4582-991b-24d597138aee" xml:space="preserve"><value>Repels spirits; only distracts inhabiting ones.</value></data>
+  <data name="Spells.SummarySource.a81eedee-cf7b-4582-991b-24d597138aee" xml:space="preserve"><value>A07D3297AD77736BFA141A5961A54E300C17C8D88F388B22400DE9C4AD30E846</value></data>
+  <data name="Spells.Summary.e85244ab-038d-4168-b028-3f409d9d9974" xml:space="preserve"><value>Upgrades an existing ally spirit.</value></data>
+  <data name="Spells.SummarySource.e85244ab-038d-4168-b028-3f409d9d9974" xml:space="preserve"><value>FADD90F2B2BD69C50A9915ECD7C295C180275276801A731A115B78FD86CB45E8</value></data>
+  <data name="Spells.Summary.b87ad05f-05fb-461d-a19b-0f1775c480d7" xml:space="preserve"><value>Reads memories from remains, not ghosts.</value></data>
+  <data name="Spells.SummarySource.b87ad05f-05fb-461d-a19b-0f1775c480d7" xml:space="preserve"><value>3B5372298EBC9A0714085391D6EAAF38E992AF70FEA4651EE2C7A4097E90B27A</value></data>
+  <data name="Spells.Summary.eab0bcfd-9bf5-4482-9cca-2bdecb7f7b59" xml:space="preserve"><value>Temporarily borrows a dead person's physical skill.</value></data>
+  <data name="Spells.SummarySource.eab0bcfd-9bf5-4482-9cca-2bdecb7f7b59" xml:space="preserve"><value>EB4F16E7ADE5146C1CB17FA301DD6D07A264649BD1C859D09D2831662F6A9A81</value></data>
+  <data name="Spells.Summary.9028a07e-c600-4d18-a911-a0307fc0fe96" xml:space="preserve"><value>Photographs the deceased's last visual impressions.</value></data>
+  <data name="Spells.SummarySource.9028a07e-c600-4d18-a911-a0307fc0fe96" xml:space="preserve"><value>20D006C52C8E508B558B588D4D363E4569FBCA9051BCE752F5DF92E2A8460704</value></data>
+  <data name="Spells.Summary.cd9b8ee6-5116-48aa-9e32-b5b11fc99c3f" xml:space="preserve"><value>Creates ritual proxies that expose their maker.</value></data>
+  <data name="Spells.SummarySource.cd9b8ee6-5116-48aa-9e32-b5b11fc99c3f" xml:space="preserve"><value>59A3DDA3D92CCDD2A25BADAEE8A7987CE53DEADA7D3C27301666C403D8E35FA9</value></data>
+  <data name="Spells.Summary.68a3c211-ee25-42c3-9c24-8f824956acec" xml:space="preserve"><value>Restrains someone while suppressing their Magic.</value></data>
+  <data name="Spells.SummarySource.68a3c211-ee25-42c3-9c24-8f824956acec" xml:space="preserve"><value>D5E10E1EC91DA2955ADD000BAA45B7F2CBC761963F2CD874124AF49E5A1675ED</value></data>
+  <data name="Spells.Summary.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>Forges an object's apparent magical properties.</value></data>
+  <data name="Spells.SummarySource.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>7D6385490C0746AF06A10EE23FCACAE7ED067750E46386FAC4B391D96C941831</value></data>
+  <data name="Spells.Summary.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>Stores a watcher for later use.</value></data>
+  <data name="Spells.SummarySource.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>3A6D542A98180964017E1FB75BDADB045F3F6D1D294CDB468B2133BC1D3C4319</value></data>
+  <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Makes astral forms and sustained spells visible.</value></data>
+  <data name="Spells.SummarySource.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>43861014B892AF7C8D84BDC22CB003B41285C8450341AC5C8EFDA28916C58598</value></data>
 </root>
