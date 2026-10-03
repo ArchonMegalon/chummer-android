@@ -111,8 +111,11 @@ verified. Creation Magic budget links now focus the corresponding editor section
 once, including Spells and Mystic Adept power-point controls. Focused managed
 checks and an API-36 x64 diagnostic smoke passed; rules and dependencies are
 unchanged. Host restarts and System UI startup ANRs in that smoke are retained
-limitations, not a general performance claim. Physical Play80 installation is
-not yet verified. Preview79 remains the latest physical observation below.
+limitations, not a general performance claim. The normal physical Play79-to-80
+update, expected Play signature, Spells/Mystic power-point section focus at font
+scale 1.3 and existing-state process restart passed. See the separate
+[physical observation](../play/evidence/preview80-physical-observation.md).
+No saved mutation, all-private-store comparison or full Creation claim is made.
 
 Preview 79's [observed Internal availability](../play/evidence/preview79-internal-observation.md) was
 confirmed on 3 October at 07:24 Europe/Vienna. Its exact local ARM64 AAB was
@@ -282,7 +285,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 79](../play/evidence/preview79-physical-observation.md) is the latest
+[Preview 80](../play/evidence/preview80-physical-observation.md) is the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
