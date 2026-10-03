@@ -2119,4 +2119,14 @@
   <data name="Spells.Summary.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>Lädt Reagenzien aus einer traditionsgebundenen Manalinie auf und schwächt sie vorübergehend.</value></data>
   <data name="Spells.Summary.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>Verleiht einem gebundenen Geist zusätzliche mächtige Fähigkeiten.</value></data>
   <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Entzieht der Umgebung Mana für kurzfristige magische Macht.</value></data>
+  <data name="Spells.Summary.a81eedee-cf7b-4582-991b-24d597138aee" xml:space="preserve"><value>Vertreibt Geister; bewohnende Geister werden nur abgelenkt.</value></data>
+  <data name="Spells.Summary.e85244ab-038d-4168-b028-3f409d9d9974" xml:space="preserve"><value>Verbessert einen bestehenden Verbündetengeist.</value></data>
+  <data name="Spells.Summary.b87ad05f-05fb-461d-a19b-0f1775c480d7" xml:space="preserve"><value>Liest Erinnerungen aus Überresten, statt Geister zu befragen.</value></data>
+  <data name="Spells.Summary.eab0bcfd-9bf5-4482-9cca-2bdecb7f7b59" xml:space="preserve"><value>Leiht kurzzeitig eine körperliche Fertigkeit eines Verstorbenen.</value></data>
+  <data name="Spells.Summary.9028a07e-c600-4d18-a911-a0307fc0fe96" xml:space="preserve"><value>Fotografiert die letzten Seheindrücke eines Verstorbenen.</value></data>
+  <data name="Spells.Summary.cd9b8ee6-5116-48aa-9e32-b5b11fc99c3f" xml:space="preserve"><value>Erschafft einen Ritualzielersatz; macht den Hersteller angreifbar.</value></data>
+  <data name="Spells.Summary.68a3c211-ee25-42c3-9c24-8f824956acec" xml:space="preserve"><value>Fesselt jemanden und senkt dessen Magie.</value></data>
+  <data name="Spells.Summary.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>Täuscht magische Eigenschaften eines Gegenstands vor.</value></data>
+  <data name="Spells.Summary.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>Bewahrt einen Beobachter für spätere Einsätze.</value></data>
+  <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Macht Astralgestalten und aufrechterhaltene Zauber sichtbar.</value></data>
 </root>

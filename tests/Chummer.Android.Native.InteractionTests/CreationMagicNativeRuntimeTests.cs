@@ -84,7 +84,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 351, $"Expected 351 reviewed spell/ritual/enchantment summaries; got {authored} in {locale}.");
+                Require(authored == 361, $"Expected 361 reviewed spell/ritual/enchantment summaries; got {authored} in {locale}.");
                 var reviewedSpecialists = authority.Spells.Where(spell =>
                     spell.SourceBook == "SR5" && new[] { "Curse", "Prodigal Spell", "Remote Sensing",
                         "Ward", "Circle of Protection", "Circle of Healing", "Renascence",
@@ -97,16 +97,23 @@ internal static class CreationMagicNativeRuntimeTests
                         "Blood Bond", "Blood Rite", "Blood Sight", "Calling [Spirit Type]",
                         "Grave Binding", "Group Bond", "Imbue Item", "Kything", "Far Sensing", "Ley Sight",
                         "Door Wards", "Leeching", "Light of Dharma", "Living Vessel Preparation",
-                        "Manifest Sha", "Recharge Reagents", "Summon Great Form Spirit" }.Contains(spell.Name)
+                        "Manifest Sha", "Recharge Reagents", "Summon Great Form Spirit",
+                        "Shofar", "Ritual of Change", "Whisper of Bones", "Hand of Glory",
+                        "Mortis Optigram", "Symbolic Link", "Mystic Restraints", "Paper Lotus",
+                        "Govi", "Astral Powder" }.Contains(spell.Name)
                     || spell.SourceBook == "FA" && new[] { "Blood Bath", "Blood Oath",
                         "Death Curse", "Guardian Bond", "Forest Transformation", "Necro Summoning" }.Contains(spell.Name)
                     || spell.SourceBook == "HT" && new[] { "Corps Cadavre", "Zombie" }.Contains(spell.Name)
                     || spell.SourceBook == "SSP" && new[] { "Decrystalize", "Mana Flow", "Mana Ebb" }.Contains(spell.Name)
                     || spell.SourceBook == "PGG" && new[] { "Geopathic Connection", "Yang Zhai" }.Contains(spell.Name)).ToArray();
-                Require(reviewedSpecialists.Length == 59
-                    && reviewedSpecialists.Count(spell => spell.Category == "Rituals") == 58
-                    && reviewedSpecialists.Single(spell => spell.Category == "Enchantments").Name == "Recharge Reagents",
-                    "Expected fifty-eight rituals and the separate reagent enchantment, without recategorizing Core entries.");
+                Require(reviewedSpecialists.Length == 69
+                    && reviewedSpecialists.Count(spell => spell.Category == "Rituals") == 60
+                    && reviewedSpecialists.Count(spell => spell.Category == "Enchantments") == 9,
+                    "Expected sixty rituals and nine enchantments, without recategorizing Core entries.");
+                foreach (string name in new[] { "Recharge Reagents", "Shofar", "Hand of Glory",
+                    "Mortis Optigram", "Symbolic Link", "Mystic Restraints", "Paper Lotus", "Govi", "Astral Powder" })
+                    Require(reviewedSpecialists.Single(spell => spell.Name == name).Category == "Enchantments",
+                        "Enchantment help must not turn a Core enchantment into a ritual: " + name);
                 foreach (var ritual in reviewedSpecialists)
                 {
                     string prose = CreationFlowStrings.Get("Spells.Summary." + ritual.Identity.SourceId, string.Empty);

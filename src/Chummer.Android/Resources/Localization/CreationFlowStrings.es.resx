@@ -2102,4 +2102,14 @@
   <data name="Spells.Summary.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>Recarga reactivos desde una línea afín a tu tradición, debilitándola temporalmente.</value></data>
   <data name="Spells.Summary.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>Otorga poderes superiores a un espíritu vinculado.</value></data>
   <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Drena el maná local para obtener poder mágico pasajero.</value></data>
+  <data name="Spells.Summary.a81eedee-cf7b-4582-991b-24d597138aee" xml:space="preserve"><value>Ahuyenta espíritus; solo distrae a los que habitan recipientes.</value></data>
+  <data name="Spells.Summary.e85244ab-038d-4168-b028-3f409d9d9974" xml:space="preserve"><value>Mejora un espíritu aliado existente.</value></data>
+  <data name="Spells.Summary.b87ad05f-05fb-461d-a19b-0f1775c480d7" xml:space="preserve"><value>Lee recuerdos de restos, sin invocar difuntos.</value></data>
+  <data name="Spells.Summary.eab0bcfd-9bf5-4482-9cca-2bdecb7f7b59" xml:space="preserve"><value>Presta temporalmente una habilidad física del difunto.</value></data>
+  <data name="Spells.Summary.9028a07e-c600-4d18-a911-a0307fc0fe96" xml:space="preserve"><value>Fotografía las últimas impresiones visuales del difunto.</value></data>
+  <data name="Spells.Summary.cd9b8ee6-5116-48aa-9e32-b5b11fc99c3f" xml:space="preserve"><value>Crea sustitutos rituales; también expone al creador.</value></data>
+  <data name="Spells.Summary.68a3c211-ee25-42c3-9c24-8f824956acec" xml:space="preserve"><value>Inmoviliza y reduce la Magia del cautivo.</value></data>
+  <data name="Spells.Summary.096db26e-5fbe-461c-afb4-d6b631658aa6" xml:space="preserve"><value>Falsifica las aparentes propiedades mágicas de objetos.</value></data>
+  <data name="Spells.Summary.aaa5044f-ccba-404f-b207-68bdb218d960" xml:space="preserve"><value>Guarda un vigilante para usarlo después.</value></data>
+  <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Hace visibles formas astrales y hechizos mantenidos.</value></data>
 </root>
