@@ -5,7 +5,9 @@ Authenticated Chummer Play Console readback on 3 October 2026 at approximately
 Internal release 81, one version code, released on 4 October at 00:17
 Europe/Vienna. This is browser readback, not Publisher API evidence.
 [Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
-Physical Play installation is not yet verified. Version 86 is consumed: never
+The later [physical Play-managed update](preview86-physical-observation.md)
+verified85→86, installed identity/signature and existing-state process restart.
+Version 86 is consumed: never
 rebuild or re-upload it. Preview 85 and its physical evidence remain unchanged.
 
 ## Change and exact artifact

@@ -110,7 +110,10 @@ ARM64 AAB was separately signed and independently verified. Karma creation now
 shows bold actual Core attribute ratings and quoted ranges/costs; edits require
 a fresh preview. Review hides reader-facing XML/GUID anchors. Focused managed
 checks and a synthetic API36 save/new-process reopen passed within the explicitly
-recorded per-APK scope. Physical Play installation is not yet verified.
+recorded per-APK scope. The [physical Play-managed85→86 update](../play/evidence/preview86-physical-observation.md)
+verified installed identity/signature and unchanged existing Priority state
+after process restart, without changing user choices. The changed Karma route
+is synthetic-device evidence, not physical coverage of that existing runner.
 Slow transitions, all-method Creation and full Origin completion remain open.
 
 Preview 85's [observed Internal availability](../play/evidence/preview85-internal-observation.md),
