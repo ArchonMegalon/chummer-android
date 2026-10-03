@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 80 is the latest [observed Internal availability](../play/evidence/preview80-internal-observation.md),
+Preview 81 is the latest [observed Internal availability](../play/evidence/preview81-internal-observation.md),
+confirmed on 3 October at 11:28 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Invalid starting-cash rolls now retain editable input and show a readable error;
+finalization review/receipt hide technical identifiers behind details while
+preserving visible changes and costs. Focused managed checks and API36 x64
+synthetic finalization/save/new-process receipt readback passed. Rules and
+dependencies are unchanged. Physical Play81 installation is not yet verified.
+No full SR5 Creation, general beta, tablet or Origin completion is claimed.
+
+Preview 80's [observed Internal availability](../play/evidence/preview80-internal-observation.md) was
 confirmed on 3 October at approximately 09:28 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed with the existing upload key and independently
 verified. Creation Magic budget links now focus the corresponding editor section
