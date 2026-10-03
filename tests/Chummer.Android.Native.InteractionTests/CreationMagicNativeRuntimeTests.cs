@@ -40,6 +40,11 @@ internal static class CreationMagicNativeRuntimeTests
     public static void RunSkillsReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery");
     public static void RunCheckpointRecovery(string contentRoot) => RunTalent(contentRoot, technomancer: false);
     public static void RunMagicReReview(string contentRoot) => RunTalent(contentRoot, technomancer: false, magicReReview: true);
+    public static void RunBudgetFocus(string contentRoot)
+    {
+        RunTalent(contentRoot, technomancer: false, mysticAdept: true, budgetFocus: true);
+        RunTalent(contentRoot, technomancer: true, budgetFocus: true);
+    }
     public static void RunMysticReadability(string contentRoot)
     {
         VerifySpellDescriptions(contentRoot);
@@ -789,7 +794,7 @@ internal static class CreationMagicNativeRuntimeTests
 
     private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false,
         string? aspectedGroup = null, string buildMethod = CharacterCreationBuildMethods.Priority,
-        string? seedDirectory = null, bool magicReReview = false)
+        string? seedDirectory = null, bool magicReReview = false, bool budgetFocus = false)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -907,6 +912,12 @@ internal static class CreationMagicNativeRuntimeTests
             Require(CharacterCreationMagicResonanceWorkflow.TryProject(state, out _),
                 $"Actual {buildMethod} Core state rejected by Presentation: " + ProjectionDiagnostics(state));
             VerifyMissingDraftEntry(state);
+            if (budgetFocus)
+            {
+                AfterRunAuthorityHarness.RunMagicBudgetFocusAsync(contentRoot, directory, id, technomancer)
+                    .GetAwaiter().GetResult();
+                return;
+            }
             if (seedDirectory is not null)
             {
                 foreach (string source in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
