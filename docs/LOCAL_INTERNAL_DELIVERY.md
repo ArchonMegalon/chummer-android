@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 78 is the latest [observed Internal availability](../play/evidence/preview78-internal-observation.md),
+Preview 79 is the latest [observed Internal availability](../play/evidence/preview79-internal-observation.md),
+confirmed on 3 October at 07:24 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+It adds 34 short original ritual/enchantment explanations, bringing EN/DE/ES
+authored coverage to 803/803 Qualities and 361/363 spell/ritual/enchantment
+entries. Two specialist explanations remain unverified. Rules and dependencies
+are unchanged. Physical Preview79 Play installation is not yet verified;
+Preview78 remains the latest physical observation. No legal clearance, complete
+effect execution, full-book or public-beta readiness is claimed.
+
+Preview 78's [observed Internal availability](../play/evidence/preview78-internal-observation.md) was
 confirmed on 3 October at 05:41 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Authored EN/DE/ES help now covers 803/803 Qualities and 327/363 spell/ritual
