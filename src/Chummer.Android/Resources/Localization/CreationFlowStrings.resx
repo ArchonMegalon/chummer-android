@@ -3044,4 +3044,36 @@
   <data name="Qualities.SummarySource.ef40cac3-d81e-4c7f-b14d-46abfd2f9dff" xml:space="preserve"><value>05F7B3044182D6C690A2C403389DC95D73F60EA1FD5F96CC6B0096CC5BD07755</value></data>
   <data name="Qualities.Summary.f6387f9d-c177-4c9b-a141-af2d17ea6317" xml:space="preserve"><value>With gamemaster approval, a mundane character can take another Special Modifications rank beyond the normal maximum.</value></data>
   <data name="Qualities.SummarySource.f6387f9d-c177-4c9b-a141-af2d17ea6317" xml:space="preserve"><value>3E6002C3DD1B6538FF39F3D6BE0AB7209C89FFD4521C03AB38155AE69B1034B9</value></data>
+  <data name="Qualities.Summary.be396e6b-55f8-46ac-b6d8-866985b3cffd" xml:space="preserve"><value>One chosen Matrix action can use Resonance instead of its usual mental attribute.</value></data>
+  <data name="Qualities.SummarySource.be396e6b-55f8-46ac-b6d8-866985b3cffd" xml:space="preserve"><value>0BAFDD76ADAF14507DEAC9E3DD7C990CAE18006D5768972121669676DE83B8D7</value></data>
+  <data name="Qualities.Summary.8bdd4868-191c-4c28-800b-526cb39f7786" xml:space="preserve"><value>Your living persona can join an authorized PAN or WAN as a subordinate.</value></data>
+  <data name="Qualities.SummarySource.8bdd4868-191c-4c28-800b-526cb39f7786" xml:space="preserve"><value>40EC6DF82A4A87FB6E16F98B94AFDA74164F0428B1DC50A83C8D0E3EB0BA9144</value></data>
+  <data name="Qualities.Summary.3c83d73e-7aa7-4fe5-8f03-6e983648e2eb" xml:space="preserve"><value>Your living persona can lead a PAN; Resonance determines how many devices it supports.</value></data>
+  <data name="Qualities.SummarySource.3c83d73e-7aa7-4fe5-8f03-6e983648e2eb" xml:space="preserve"><value>DB768DE2F18D70C85C003FD2C7882A76836CF7ACAE1834E8A6121B2C036AB3F0</value></data>
+  <data name="Qualities.Summary.b705a89c-219c-432c-ab47-98ff6c975b4a" xml:space="preserve"><value>Your living persona can both join authorized networks and lead a PAN, with capacity based on Resonance.</value></data>
+  <data name="Qualities.SummarySource.b705a89c-219c-432c-ab47-98ff6c975b4a" xml:space="preserve"><value>60C72A4E6FF21F78B06729C581BAD18DE98E4341E65BC45CE1789382FC1BB36F</value></data>
+  <data name="Qualities.Summary.1510e2fd-4821-4e4c-bcd3-eacb0eed5f20" xml:space="preserve"><value>After catching a projectile with Missile Parry, a Counterstrike interrupt lets you immediately throw it at a target within range.</value></data>
+  <data name="Qualities.SummarySource.1510e2fd-4821-4e4c-bcd3-eacb0eed5f20" xml:space="preserve"><value>1D603BA0508970F253986113A6D37ECF3537A0B02AE5CF32F29D190C1BD7AA97</value></data>
+  <data name="Qualities.Summary.39b19ecb-f3a8-488e-a413-f399a1991b55" xml:space="preserve"><value>Shape [Material] overcomes material resistance more easily and weakens reinforced structures faster.</value></data>
+  <data name="Qualities.SummarySource.39b19ecb-f3a8-488e-a413-f399a1991b55" xml:space="preserve"><value>E2980FEC5D2E7204A4AC63F0DBB567C37BF0064CD28859BA387148E21EAD3008</value></data>
+  <data name="Qualities.Summary.f6e65194-8055-484e-8db1-30ef63ec8eef" xml:space="preserve"><value>Fling gains better range handling and reduced penalties for called shots.</value></data>
+  <data name="Qualities.SummarySource.f6e65194-8055-484e-8db1-30ef63ec8eef" xml:space="preserve"><value>1BBA26877FD270769FFBFC1BC57246986E83FB60DE638DEBC2879B3B69232125</value></data>
+  <data name="Qualities.Summary.f0bd7ebc-8b59-4586-b83a-d884540a7651" xml:space="preserve"><value>Genetic alterations are harder to recognize during DNA analysis.</value></data>
+  <data name="Qualities.SummarySource.f0bd7ebc-8b59-4586-b83a-d884540a7651" xml:space="preserve"><value>71ED0609B4A0F7B473E564C5DD1E84E4727ED34B9C0EB8B6D085281D4F1F4468</value></data>
+  <data name="Qualities.Summary.e89ddeca-1de4-410e-916f-205aeaee6ea2" xml:space="preserve"><value>Choose cosmetic features within metahuman biology; appearance changes do not add extra limbs or new senses.</value></data>
+  <data name="Qualities.SummarySource.e89ddeca-1de4-410e-916f-205aeaee6ea2" xml:space="preserve"><value>73B0B8E09D966C56DD48BE04D2F8C99F27D5D65B286F9E89AD3B0E5FDB576AC2</value></data>
+  <data name="Qualities.Summary.b17b895e-6819-4609-91e6-9ce42d0446a9" xml:space="preserve"><value>Lacks identifying skin-ridge prints; print scanners request another identification method.</value></data>
+  <data name="Qualities.SummarySource.b17b895e-6819-4609-91e6-9ce42d0446a9" xml:space="preserve"><value>D99F5A2DAAFFCA91D2A7B218BF7BA1D5A10DE329440687CFE63DA9CF168CEE25</value></data>
+  <data name="Qualities.Summary.89564979-72ca-4e73-9923-0ce088da0227" xml:space="preserve"><value>Resemble a chosen metatype or metavariant without gaining its innate benefits or drawbacks.</value></data>
+  <data name="Qualities.SummarySource.89564979-72ca-4e73-9923-0ce088da0227" xml:space="preserve"><value>D94477987EE2BBD55B98CD61EA4A0EECC07917EE62E652FF73518DD945C7563F</value></data>
+  <data name="Qualities.Summary.4e605661-0450-4034-9d3b-11d931c4ce3c" xml:space="preserve"><value>Repair successes simultaneously mend Matrix damage and shorten repair time; no need to split hits.</value></data>
+  <data name="Qualities.SummarySource.4e605661-0450-4034-9d3b-11d931c4ce3c" xml:space="preserve"><value>C4596078945AF7B2CB171BE04C4E33F1A90ECEC8BA0D899336DF021F2E4CC02E</value></data>
+  <data name="Qualities.Summary.b016006c-129b-450d-b257-9d49a814cfa7" xml:space="preserve"><value>Recognition online improves social rolls and limits; revealing your real identity may instead provoke distrust.</value></data>
+  <data name="Qualities.SummarySource.b016006c-129b-450d-b257-9d49a814cfa7" xml:space="preserve"><value>5648EC35D5D163D01333CED811922D9613D78ADE98E8470B240CB9BFD10EC4E7</value></data>
+  <data name="Qualities.Summary.d7b36dd1-6703-46a7-b1d6-c9cd379451f1" xml:space="preserve"><value>Biofeedback damage boosts initiative for this Combat Turn; repeated hits do not add further bonuses.</value></data>
+  <data name="Qualities.SummarySource.d7b36dd1-6703-46a7-b1d6-c9cd379451f1" xml:space="preserve"><value>292AB16F79F7FAE8D9ACC6A00599FE25371427F4BB5BE9B51DB6CB13DE9D6579</value></data>
+  <data name="Qualities.Summary.f573305b-944f-490e-94e1-18f8bb7bc590" xml:space="preserve"><value>Mission secrets must become freely available, immediately after delivery if you first accept payment.</value></data>
+  <data name="Qualities.SummarySource.f573305b-944f-490e-94e1-18f8bb7bc590" xml:space="preserve"><value>E08F63508D4742D0A888FD84AED4ABB1A5AE79DA9BDFF9F2DE614C7C574985C9</value></data>
+  <data name="Qualities.Summary.21e19949-5481-47a6-939b-d3522ba3a7c8" xml:space="preserve"><value>Social rolls and Composure improve with your chosen corporation's people; you also better resist pressure to betray that corporation.</value></data>
+  <data name="Qualities.SummarySource.21e19949-5481-47a6-939b-d3522ba3a7c8" xml:space="preserve"><value>787D156A961499183606BFCFAEB4C9500E9FD2612234BB8A2BE5C08ADC66D523</value></data>
 </root>
