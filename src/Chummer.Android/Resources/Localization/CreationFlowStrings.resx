@@ -3076,4 +3076,32 @@
   <data name="Qualities.SummarySource.f573305b-944f-490e-94e1-18f8bb7bc590" xml:space="preserve"><value>E08F63508D4742D0A888FD84AED4ABB1A5AE79DA9BDFF9F2DE614C7C574985C9</value></data>
   <data name="Qualities.Summary.21e19949-5481-47a6-939b-d3522ba3a7c8" xml:space="preserve"><value>Social rolls and Composure improve with your chosen corporation's people; you also better resist pressure to betray that corporation.</value></data>
   <data name="Qualities.SummarySource.21e19949-5481-47a6-939b-d3522ba3a7c8" xml:space="preserve"><value>787D156A961499183606BFCFAEB4C9500E9FD2612234BB8A2BE5C08ADC66D523</value></data>
+  <data name="Qualities.Summary.07916773-5aa2-4c8b-b239-932a9359428a" xml:space="preserve"><value>Perception and Surprise improve at a chosen small property you know well; prolonged absence erodes the benefit.</value></data>
+  <data name="Qualities.SummarySource.07916773-5aa2-4c8b-b239-932a9359428a" xml:space="preserve"><value>BF06670CE511701248D289C7BEC4893A194005E45820415774E31DD4B1F1CDBE</value></data>
+  <data name="Qualities.Summary.257afab2-b281-4e27-b6d2-1b02b409637a" xml:space="preserve"><value>Perception and Surprise improve at a chosen familiar large home or small complex; prolonged absence erodes the benefit.</value></data>
+  <data name="Qualities.SummarySource.257afab2-b281-4e27-b6d2-1b02b409637a" xml:space="preserve"><value>F56873DCD8C8F60F72BAF35E5691BF165AD9594801B11BAF34FB9207AFCD845E</value></data>
+  <data name="Qualities.Summary.3619084e-9c13-48d0-b985-0d15aa9d885a" xml:space="preserve"><value>Perception and Surprise improve across a chosen familiar large complex; prolonged absence erodes the benefit.</value></data>
+  <data name="Qualities.SummarySource.3619084e-9c13-48d0-b985-0d15aa9d885a" xml:space="preserve"><value>E4F290C812D7547389EC438C10DC0F0CB05C394FC33CA02535B0B149AF323167</value></data>
+  <data name="Qualities.Summary.a3c1f52d-edee-4927-899f-18265e75de1c" xml:space="preserve"><value>Another serious mistake could cost your corporate job; agree dismissal conditions with your gamemaster.</value></data>
+  <data name="Qualities.SummarySource.a3c1f52d-edee-4927-899f-18265e75de1c" xml:space="preserve"><value>68190E59D0FF47ADF455BCA10A2B0083AD2C0AD44D6023D7BD14F16A2B0015F6</value></data>
+  <data name="Qualities.Summary.c80d0f3d-5be7-4d63-8891-ae3bccbfe48f" xml:space="preserve"><value>Non-technomancers gain bonus dice for Matrix actions specifically targeting technomancers, sprites or Resonance entities.</value></data>
+  <data name="Qualities.SummarySource.c80d0f3d-5be7-4d63-8891-ae3bccbfe48f" xml:space="preserve"><value>BE3505A5FBDD2A976D7F5691708E3E639F9CDFAE7F454ABC6A1B29C5ABD1CA35</value></data>
+  <data name="Qualities.Summary.eeb4db5b-f5b7-4ab5-b310-1d7107cd722f" xml:space="preserve"><value>Choose a sprite type: compiling it gains bonus dice, and successful compilation grants an extra task.</value></data>
+  <data name="Qualities.SummarySource.eeb4db5b-f5b7-4ab5-b310-1d7107cd722f" xml:space="preserve"><value>73663BA4A6F4E8FCA5BF37CB34EB9CC2649F3739CF3CE28DAB42D5806D28C063</value></data>
+  <data name="Qualities.Summary.0b8c9e67-6767-48d3-b14d-8a9b2024447a" xml:space="preserve"><value>Logic replaces Intuition for certain Matrix actions, including Matrix Perception and Matrix Search.</value></data>
+  <data name="Qualities.SummarySource.0b8c9e67-6767-48d3-b14d-8a9b2024447a" xml:space="preserve"><value>8FF0158E00EB2F8D9EE5AF8AA462B02C6DAFB8FEBEB8F62261AE99D45AD9653C</value></data>
+  <data name="Qualities.Summary.223bad23-027c-4ea3-ac0b-1ccccace61fe" xml:space="preserve"><value>Intuition replaces Logic for certain Matrix actions, including Data Spike and Edit File.</value></data>
+  <data name="Qualities.SummarySource.223bad23-027c-4ea3-ac0b-1ccccace61fe" xml:space="preserve"><value>D71FA5B3EFA2DE6F157625C8B46BD6D1253453CDD3558E00B3C0441147BC53C8</value></data>
+  <data name="Qualities.Summary.727e5ca7-0b64-462f-a3dc-254c451db3a1" xml:space="preserve"><value>Pacifist rank lowers nearby attack limits against living targets and aids peaceful solutions; attacks by or against you glitch more easily.</value></data>
+  <data name="Qualities.SummarySource.727e5ca7-0b64-462f-a3dc-254c451db3a1" xml:space="preserve"><value>7AC110A0CD2432FED96B155249E25AA74B086493A9AB4C69C3536D8486208EFD</value></data>
+  <data name="Qualities.Summary.9ce70b7b-b0cd-4ec8-87f6-42c3b74faf2a" xml:space="preserve"><value>Liquid preparations avoid basic-trigger Drain surcharges; unless timed, all liquid must be drunk or poured onto the target.</value></data>
+  <data name="Qualities.SummarySource.9ce70b7b-b0cd-4ec8-87f6-42c3b74faf2a" xml:space="preserve"><value>B116196D3DB8FA9894316448C359131B8B2807CC129EBA74DECBE1D055970DCE</value></data>
+  <data name="Qualities.Summary.bed784d2-33dc-448e-acf6-a682bb286954" xml:space="preserve"><value>Preparations retain potency longer and gain activation dice; higher initiation grades increase that bonus.</value></data>
+  <data name="Qualities.SummarySource.bed784d2-33dc-448e-acf6-a682bb286954" xml:space="preserve"><value>7AF424F4EC4FEDE80BD2DBE7114C562E6398A1D9DDCD18D1197966FDDBF85EA1</value></data>
+  <data name="Qualities.Summary.a4a85a3e-c5b6-4613-b299-7726c6918026" xml:space="preserve"><value>Spit acid at short range using its Exotic Ranged Weapon skill; replenishing saliva prevents rapid repeat attacks.</value></data>
+  <data name="Qualities.SummarySource.a4a85a3e-c5b6-4613-b299-7726c6918026" xml:space="preserve"><value>A26FB3B1577D9B7066456B876F70C9B6F0559807652381B6E47C0DB304E14FE3</value></data>
+  <data name="Qualities.Summary.de498da5-c141-4ea3-991e-97e73fb551d4" xml:space="preserve"><value>When agitated, skin secretions penalize someone touching your bare skin with theirs; spirits are unaffected.</value></data>
+  <data name="Qualities.SummarySource.de498da5-c141-4ea3-991e-97e73fb551d4" xml:space="preserve"><value>DD6FF04C6160BA4306F8AF72734E846EA1A35211395D503D7407E4768EC6C226</value></data>
+  <data name="Qualities.Summary.9b205e4a-66c7-45d9-b87b-d0c743944d60" xml:space="preserve"><value>Sense nearby heat without sight, easing visibility penalties in combat; surrounding heat can interfere.</value></data>
+  <data name="Qualities.SummarySource.9b205e4a-66c7-45d9-b87b-d0c743944d60" xml:space="preserve"><value>4E68FEC2F9841B55C5E5E87750A92F0F02A79106F7032959B3335A1CE259A414</value></data>
 </root>

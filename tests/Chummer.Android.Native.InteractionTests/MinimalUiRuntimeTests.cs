@@ -162,6 +162,48 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Location Attunement I", ["Perception", "Surprise", "chosen", "small", "absence"],
+            ["Wahrnehmung", "Überraschungsproben", "gewählten", "kleinen", "Abwesenheit"],
+            ["Percepción", "Sorpresa", "pequeña", "elegida", "ausencias"]),
+        ("Location Attunement II", ["Perception", "Surprise", "chosen", "large home", "small complex", "absence"],
+            ["Wahrnehmung", "großen Haus", "kleinen Komplex", "Abwesenheit"],
+            ["Percepción", "casa grande", "complejo pequeño", "ausencias"]),
+        ("Location Attunement III", ["Perception", "Surprise", "chosen", "large complex", "absence"],
+            ["Wahrnehmung", "großen Komplex", "Abwesenheit"],
+            ["Percepción", "complejo grande", "ausencias"]),
+        ("This Is Your Last Chance", ["corporate", "gamemaster", "dismissal"],
+            ["Konzernjob", "Spielleitung", "Entlassung"],
+            ["corporativo", "dirección de juego", "despido"]),
+        ("Reverberant", ["Non-technomancers", "specifically", "sprites", "Resonance"],
+            ["Nicht-Technomancer", "gezielt", "Sprites", "Resonanzwesen"],
+            ["no sean", "específicamente", "sprites", "Resonancia"]),
+        ("Sprite Affinity", ["Choose", "compiling", "successful", "extra task"],
+            ["Wähle", "Kompilieren", "Erfolg", "zusätzliche Aufgabe"],
+            ["Elige", "compilarlo", "éxito", "tarea adicional"]),
+        ("Trust Data, Not Lore", ["Logic replaces Intuition", "certain", "Perception", "Search"],
+            ["Logik ersetzt Intuition", "bestimmten", "Matrixwahrnehmung", "Matrixsuche"],
+            ["Lógica sustituye a Intuición", "ciertas", "Percepción", "Búsqueda"]),
+        ("Trust Lore, Not Data", ["Intuition replaces Logic", "certain", "Data Spike", "Edit File"],
+            ["Intuition ersetzt Logik", "bestimmten", "Datenstachel", "Datei editieren"],
+            ["Intuición sustituye a Lógica", "ciertas", "Pincho de Datos", "Editar Archivo"]),
+        ("Pacifist Adept", ["Pacifist rank", "attack limits", "living", "peaceful", "by or against", "glitch"],
+            ["Pazifistenstufe", "Angriffslimits", "Lebewesen", "friedliche", "von dir oder gegen dich", "patzen"],
+            ["grado", "seres vivos", "pacíficas", "tuyos o contra ti", "pifias"]),
+        ("Potion Maker", ["Liquid", "basic-trigger", "surcharges", "unless timed", "all liquid"],
+            ["Flüssige", "Entzugsaufschlag", "einfacher Auslöser", "Zeitauslösern", "alles"],
+            ["líquidas", "básicos", "salvo temporizador", "todo el líquido"]),
+        ("Practiced Alchemist", ["potency longer", "activation dice", "initiation"],
+            ["länger", "Auslösewürfel", "Initiatengrade"],
+            ["más tiempo", "activarse", "iniciación"]),
+        ("Corrosive Spit", ["acid", "short range", "Exotic Ranged", "replenishing"],
+            ["Säure", "kurze Distanz", "exotischen", "Neubildung"],
+            ["ácido", "corta distancia", "Exótica", "regenerar"]),
+        ("Defensive Secretion", ["agitated", "penalize", "bare skin", "spirits"],
+            ["Aufregung", "Probenabzüge", "Hautkontakt", "Geister"],
+            ["alterarte", "pruebas", "piel", "espíritus"]),
+        ("Thermal Sensitivity", ["nearby heat", "without sight", "visibility", "interfere"],
+            ["nahe Wärme", "ohne Sicht", "Sichtabzüge", "stören"],
+            ["calor cercano", "sin ver", "visibilidad", "interferir"]),
         ("Natural Hacker", ["chosen", "instead", "mental"],
             ["gewählten", "Resonanz", "geistige"],
             ["elegida", "Resonancia", "mental"]),
@@ -1274,7 +1316,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 698, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 712, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1307,7 +1349,9 @@ internal static partial class AfterRunAuthorityHarness
                     "Brilliant Heuristics", "Groveler", "Hold the Door",
                     "Fractal Punch", "Lone Wolf", "Team Player", "Natural Hacker",
                     "One With the Matrix I", "One With the Matrix II", "One With the Matrix III",
-                    "Missile Deflector", "Mystic Foreman", "Mystic Pitcher" })
+                    "Missile Deflector", "Mystic Foreman", "Mystic Pitcher",
+                    "Pacifist Adept", "Potion Maker", "Practiced Alchemist",
+                    "Sprite Affinity", "Trust Data, Not Lore", "Trust Lore, Not Data" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
@@ -1315,7 +1359,8 @@ internal static partial class AfterRunAuthorityHarness
                             "Memory help must retain its prerequisite quality.");
                     else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door"
                         or "Fractal Punch" or "Lone Wolf" or "Team Player" or "Natural Hacker"
-                        or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III")
+                        or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III"
+                        or "Sprite Affinity" or "Trust Data, Not Lore" or "Trust Lore, Not Data")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1335,7 +1380,8 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Specific Target, Fanatic)", "Illusionist",
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
                     "Natural Hacker", "Corporate Loyalist",
-                    "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur" })
+                    "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
+                    "Location Attunement I", "Location Attunement II", "Location Attunement III" })
                 {
                     var selected = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(selected.Element("bonus")!.Element("selecttext") is not null,
@@ -1346,6 +1392,14 @@ internal static partial class AfterRunAuthorityHarness
                         CreationFlowStrings.Get(SummaryKey(selected), "")),
                         "Choice-bound help must not survive removal of its choice: " + name);
                 }
+                var spriteAffinity = catalog.Single(q => q.Element("name")!.Value == "Sprite Affinity");
+                Require(spriteAffinity.Element("bonus")!.Element("selectsprite") is not null,
+                    "Sprite Affinity help must retain the choice of sprite type.");
+                var changedSpriteAffinity = new System.Xml.Linq.XElement(spriteAffinity);
+                changedSpriteAffinity.Element("bonus")!.Element("selectsprite")!.Remove();
+                Require(!CreationQualityInfo.Effects(changedSpriteAffinity.ToString()).Contains(
+                    CreationFlowStrings.Get(SummaryKey(spriteAffinity), "")),
+                    "Removing the sprite type choice must invalidate its bound help.");
                 foreach (var choice in new[]
                 {
                     (Name: "Natural Hacker", File: "actions.xml",
@@ -1369,18 +1423,22 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     (Name: "One With the Matrix I", Excluded: new[] { "One With the Matrix III" }),
                     (Name: "One With the Matrix II", Excluded: new[] { "One With the Matrix III" }),
-                    (Name: "One With the Matrix III", Excluded: new[] { "One With the Matrix I", "One With the Matrix II" })
+                    (Name: "One With the Matrix III", Excluded: new[] { "One With the Matrix I", "One With the Matrix II" }),
+                    (Name: "Trust Data, Not Lore", Excluded: new[] { "Trust Lore, Not Data" }),
+                    (Name: "Trust Lore, Not Data", Excluded: new[] { "Trust Data, Not Lore" }),
+                    (Name: "Reverberant", Excluded: new[] { "Technomancer" }),
+                    (Name: "Corrosive Spit", Excluded: new[] { "Natural Venom" })
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == grade.Name);
                     Require(quality.Element("forbidden")!.Element("oneof")!.Elements("quality")
                             .Select(q => q.Value).SequenceEqual(grade.Excluded),
-                        "Combined persona-network help must not erase grade exclusions.");
+                        "Quality help must retain incompatible qualities: " + grade.Name);
                     var changed = new System.Xml.Linq.XElement(quality);
                     changed.Element("forbidden")!.Remove();
                     Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
                         CreationFlowStrings.Get(SummaryKey(quality), "")),
-                        "Removing persona-network exclusions must reject old help: " + grade.Name);
+                        "Removing quality exclusions must reject old help: " + grade.Name);
                 }
                 var frostbite = catalog.Single(q => q.Element("name")!.Value == "Frostbite");
                 Require(frostbite.Element("bonus")!.Element("selectskill")!.Attribute("limittoskill")!.Value
@@ -1392,7 +1450,8 @@ internal static partial class AfterRunAuthorityHarness
                     CreationFlowStrings.Get(SummaryKey(frostbite), "")),
                     "Changing the eligible skills must invalidate the bound explanation.");
                 foreach (string name in new[] { "Biosonar", "Frog Tongue", "Greasy Skin",
-                    "Animal Pelage (Quills)", "Animal Pelage (Camo Fur)", "Magic Sense" })
+                    "Animal Pelage (Quills)", "Animal Pelage (Camo Fur)", "Magic Sense",
+                    "Corrosive Spit", "Defensive Secretion", "Thermal Sensitivity" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(quality.Element("metagenic")?.Value == "True"
