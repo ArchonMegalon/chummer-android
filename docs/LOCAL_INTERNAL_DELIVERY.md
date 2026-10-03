@@ -110,7 +110,10 @@ was separately signed with the existing upload key and independently verified.
 Resources budget saves now retain their controls and show neutral progress;
 ownership, admission and no-replay guards remain unchanged. Six actual Core/MAUI
 cases, 20 focused Python checks and the affected synthetic API36 save/new-process
-reopen passed. Physical Play installation is not yet verified. Slow transitions
+reopen passed. The [physical Play-managed83→84 update](../play/evidence/preview84-physical-observation.md)
+also passed installed identity/signature, first launch and read-only Resources
+navigation after a verified process restart, without changing user choices.
+This is not a new physical Resources mutation test. Slow transitions
 remain; no full SR5/Origin/tablet/general-beta completion claim.
 
 Preview 83's [observed Internal availability](../play/evidence/preview83-internal-observation.md),
