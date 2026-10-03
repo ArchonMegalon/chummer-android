@@ -2025,4 +2025,13 @@
   <data name="Qualities.Summary.96f148e1-fb72-416a-8235-89a3eeafe534" xml:space="preserve"><value>Los contratiempos elevan el coste de tu estilo de vida al siguiente nivel, sin mejorar tus condiciones.</value></data>
   <data name="Qualities.Summary.5c49d5e2-ca52-406e-a532-8d4d148ea825" xml:space="preserve"><value>Hot-sim como acción gratuita; cold-sim requiere el eco adecuado. Con interfaz de control, entrar en drones usa acción simple.</value></data>
   <data name="Qualities.Summary.83e5f9a2-e76b-4a11-81db-4b0466b727ce" xml:space="preserve"><value>Superar pruebas de Sorpresa mejora brevemente la Iniciativa; desenfundar armas resulta más fácil.</value></data>
+  <data name="Qualities.Summary.b4e94407-9751-4717-a5eb-2b0838d81fa9" xml:space="preserve"><value>El estrés dificulta hablar; empeoran pruebas sociales y fallos de memoria, y fallar Compostura en hosts corrompe datos.</value></data>
+  <data name="Qualities.Summary.b77f30b2-e518-44a9-8a0e-7ef3eddb65cd" xml:space="preserve"><value>Los fracasos sociales penalizan el trato social hasta sabotear cada commlink implicado o confirmar la muerte del responsable.</value></data>
+  <data name="Qualities.Summary.a6ca7ad6-49f0-41df-b9cb-1693818a0b3b" xml:space="preserve"><value>Un hacker rival sabotea a tu equipo cada sesión, incluso durante trabajos peligrosos.</value></data>
+  <data name="Qualities.Summary.a82b239b-fa92-45e7-ac87-4adedf72396a" xml:space="preserve"><value>La convergencia de GOD llega antes y siempre envía un equipo fuertemente armado tras de ti.</value></data>
+  <data name="Qualities.Summary.268ea4c4-15af-4b16-8960-a3b34963fe01" xml:space="preserve"><value>La meditación crea una logia sin materiales, activa después hasta el próximo amanecer/anochecer.</value></data>
+  <data name="Qualities.Summary.c1145d3c-a9e2-4e91-8f1f-49f69a1f219e" xml:space="preserve"><value>Más trucos y entrenamiento animal más fácil; el dominio enfrenta siempre Voluntad, sin importar el tipo.</value></data>
+  <data name="Qualities.Summary.256dbeb8-7bb8-4369-8c93-b8b206a859b8" xml:space="preserve"><value>Pulmones cristalinos permiten respirar bajo el agua, sin protección contra presión/frío.</value></data>
+  <data name="Qualities.Summary.beb709ac-4c40-4b05-9c49-1fe26e4fa2ab" xml:space="preserve"><value>Con ambas piernas de cristal saltas mejor y corres más tiempo antes de fatigarte.</value></data>
+  <data name="Qualities.Summary.ab862f1f-5ed3-4976-a781-bf63565faf26" xml:space="preserve"><value>Un implante averiado no aporta ventajas, pero sigue consumiendo Esencia; retirarlo resulta caro.</value></data>
 </root>
