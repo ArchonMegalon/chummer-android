@@ -3390,4 +3390,18 @@
   <data name="Spells.SummarySource.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>14AD464FF8953DA14B843655F758EB47ECA8F5A87669E170542A5F68B7E8CE6F</value></data>
   <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Spreads your attitudes to people within a mana-line domain; they can resist.</value></data>
   <data name="Spells.SummarySource.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>94FBE8700E282E43715108C0547E8C4D2E9B37542C6765A4CFDC60C3EBCD1590</value></data>
+  <data name="Spells.Summary.7d1bdbfd-47cb-4992-b83b-4dc815337d5d" xml:space="preserve"><value>Weakens sustained spells crossing a doorway and deactivates weaker foci.</value></data>
+  <data name="Spells.SummarySource.7d1bdbfd-47cb-4992-b83b-4dc815337d5d" xml:space="preserve"><value>90B300445CB70C9A2B0FC8EEBD05ACFDA76A990D006BA5483F1221844270D0F3</value></data>
+  <data name="Spells.Summary.3917e09a-8e02-4f98-a4d1-7e00e01f3487" xml:space="preserve"><value>Reduces nearby environmental interference; permits only speaking and observation.</value></data>
+  <data name="Spells.SummarySource.3917e09a-8e02-4f98-a4d1-7e00e01f3487" xml:space="preserve"><value>3BB1F0BD1EB3EB29390DD09E5C35235B88EA0FB1C0ECFF6DFF510A4414860259</value></data>
+  <data name="Spells.Summary.6b2838f7-8ecb-455a-a2cc-ae1484e48a9a" xml:space="preserve"><value>Makes a living body suitable for a spirit to inhabit.</value></data>
+  <data name="Spells.SummarySource.6b2838f7-8ecb-455a-a2cc-ae1484e48a9a" xml:space="preserve"><value>C29271BB1072FDC7AB72B9124E7FAC1044A6D78D180D1E1A6F70B5536C43A81A</value></data>
+  <data name="Spells.Summary.9b61d871-f156-44fc-a703-e19e99933747" xml:space="preserve"><value>Temporarily weakens an area's aspected mana.</value></data>
+  <data name="Spells.SummarySource.9b61d871-f156-44fc-a703-e19e99933747" xml:space="preserve"><value>ADE29027825393791BE29BDC1E5C0E1F88EB048A7729EF2DC0D7338ED04F61DD</value></data>
+  <data name="Spells.Summary.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>Refills reagents from a tradition-aligned mana line, temporarily weakening it.</value></data>
+  <data name="Spells.SummarySource.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>48F4AE1C50429B864F520BD22E58E1D382274708C4D9C090F25983DAA1D498DD</value></data>
+  <data name="Spells.Summary.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>Enhances a bound spirit with greater powers.</value></data>
+  <data name="Spells.SummarySource.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>E26784976281B93E2C389614CB1ED9257488ED4C6C661956C1861B8AE9C947E2</value></data>
+  <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Drains local mana for short-lived magical power.</value></data>
+  <data name="Spells.SummarySource.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>627988A257CF1BDF4A38C531C3155161EDDF68B988151B2A1EDC0591DBBFF84B</value></data>
 </root>
