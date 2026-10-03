@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 83 is the latest [observed Internal availability](../play/evidence/preview83-internal-observation.md),
+Preview 84 is the latest [observed Internal availability](../play/evidence/preview84-internal-observation.md),
+confirmed on 3 October at 20:05 Europe/Vienna. The exact locally built ARM64 AAB
+was separately signed with the existing upload key and independently verified.
+Resources budget saves now retain their controls and show neutral progress;
+ownership, admission and no-replay guards remain unchanged. Six actual Core/MAUI
+cases, 20 focused Python checks and the affected synthetic API36 save/new-process
+reopen passed. Physical Play installation is not yet verified. Slow transitions
+remain; no full SR5/Origin/tablet/general-beta completion claim.
+
+Preview 83's [observed Internal availability](../play/evidence/preview83-internal-observation.md),
 confirmed on 3 October at approximately19:06 Europe/Vienna (release time19:05).
 Its exact locally built ARM64 AAB was separately signed and independently verified.
 The [physical Play-managed82→83 update](../play/evidence/preview83-physical-observation.md)
