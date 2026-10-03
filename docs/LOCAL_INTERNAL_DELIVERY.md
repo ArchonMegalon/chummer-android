@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 81 is the latest [observed Internal availability](../play/evidence/preview81-internal-observation.md),
+Preview 82 is the latest [observed Internal availability](../play/evidence/preview82-internal-observation.md),
+confirmed on 3 October at approximately 17:59 Europe/Vienna (release time 17:58).
+Its exact local ARM64 AAB was separately signed with the existing upload key and
+independently verified. It includes Creation Contacts routing/readability, Gear
+catalog stability and reduced repeated Qualities source-context construction.
+Focused managed checks and affected synthetic API36 save/new-process receipt
+readback passed; slow transitions remain. **Physical Play installation/update82
+is not yet verified.** This is not full SR5, Origin or phone-beta completion.
+
+Preview 81's [observed Internal availability](../play/evidence/preview81-internal-observation.md),
 confirmed on 3 October at 11:28 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Invalid starting-cash rolls now retain editable input and show a readable error;
