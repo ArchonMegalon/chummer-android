@@ -111,7 +111,12 @@ Invalid starting-cash rolls now retain editable input and show a readable error;
 finalization review/receipt hide technical identifiers behind details while
 preserving visible changes and costs. Focused managed checks and API36 x64
 synthetic finalization/save/new-process receipt readback passed. Rules and
-dependencies are unchanged. Physical Play81 installation is not yet verified.
+dependencies are unchanged. The normal physical Play80-to-81 update, expected
+Play signing identity and existing-state process restart passed at font scale1.3;
+see the separate [physical observation](../play/evidence/preview81-physical-observation.md).
+The existing draft still requires Gear review/save, so changed finalization-route
+execution remains diagnostic-only, not physical Play evidence. No draft was
+mutated merely to enter that route.
 No full SR5 Creation, general beta, tablet or Origin completion is claimed.
 
 Preview 80's [observed Internal availability](../play/evidence/preview80-internal-observation.md) was
