@@ -2101,4 +2101,15 @@
   <data name="Spells.Summary.66714935-5b3c-417d-b953-159fe5a2031c" xml:space="preserve"><value>Erschließt Informationen über jemanden aus dessen frischer Blutprobe.</value></data>
   <data name="Spells.Summary.99c41c3c-5895-4a61-bb6c-184475ee7def" xml:space="preserve"><value>Ruft traditionsfremde Geister zu Verhandlungen; sie schulden keine Dienste.</value></data>
   <data name="Spells.Summary.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>Erschafft mit Formel und Karma einen individuell gestalteten Geistergefährten.</value></data>
+  <data name="Spells.Summary.884b16b4-dc92-4a32-8dde-197b37819b24" xml:space="preserve"><value>Schützt einen Leichnam vor Magie; Bewegung oder Beschädigung beendet den Schutz.</value></data>
+  <data name="Spells.Summary.548aea9d-a0c6-4e94-b59b-b49fa7e51ab7" xml:space="preserve"><value>Verbindet eine Gruppe magisch: günstigere Initiation, aber verbindliche Pflichten.</value></data>
+  <data name="Spells.Summary.0f5308ee-75fc-4f46-ad85-c28d2bd0e3bc" xml:space="preserve"><value>Verleiht eingestimmten Gegenständen oder gebundenen Foki zusätzliche magische Eigenschaften.</value></data>
+  <data name="Spells.Summary.ff8bc6fc-7361-47e9-a5a0-081927ec9166" xml:space="preserve"><value>Macht Astralwesen bei misslungenem Widerstand sichtbar, aber nicht körperlich greifbar.</value></data>
+  <data name="Spells.Summary.705766cb-ba49-494e-a679-653ff18ef57b" xml:space="preserve"><value>Spürt entfernte Manaverhältnisse und Störungen ohne astrale Wahrnehmung auf.</value></data>
+  <data name="Spells.Summary.32bfb856-4df9-438a-9122-85f5ec8a647c" xml:space="preserve"><value>Ermöglicht Sehen und Hören entlang einer Manalinie; Hüter blockieren es.</value></data>
+  <data name="Spells.Summary.de47011e-2de9-4e4d-9862-d05465c8b4e8" xml:space="preserve"><value>Verwandelt eine kristallisierte Person zurück; Schäden an der Statue bleiben als Verletzungen bestehen.</value></data>
+  <data name="Spells.Summary.a920e020-9beb-46e9-b39a-d7ac43d3fe51" xml:space="preserve"><value>Mildert vorübergehend Manamangel in Gebieten mit negativer Hintergrundstrahlung.</value></data>
+  <data name="Spells.Summary.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>Senkt vorübergehend positive Hintergrundstrahlung; füllt keine manaarmen Gebiete auf.</value></data>
+  <data name="Spells.Summary.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>Löst Unfälle in einer Manaliniendomäne aus; das Ziel wird direkt, durch Späher oder Leysicht wahrgenommen.</value></data>
+  <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Überträgt deine Einstellungen auf Menschen in einer Manaliniendomäne; sie können widerstehen.</value></data>
 </root>

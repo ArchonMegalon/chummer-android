@@ -3368,4 +3368,26 @@
   <data name="Spells.SummarySource.99c41c3c-5895-4a61-bb6c-184475ee7def" xml:space="preserve"><value>6294BC8615197EF76A71F35A8DB68DA0D00257368D828AC85BB2DB141A0C1279</value></data>
   <data name="Spells.Summary.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>Creates a customized spirit companion using a formula and Karma.</value></data>
   <data name="Spells.SummarySource.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>65A74083F113A2C9822B3D423515DE58E487205E2EA96BDFD3BD4D14C3F0C4DE</value></data>
+  <data name="Spells.Summary.884b16b4-dc92-4a32-8dde-197b37819b24" xml:space="preserve"><value>Guards a corpse against magic; movement or damage breaks protection.</value></data>
+  <data name="Spells.SummarySource.884b16b4-dc92-4a32-8dde-197b37819b24" xml:space="preserve"><value>7574AC99F6D31BFAEF0DDF61A20B1D0570A9E963803A9DAB4BC63F8E0CC54E82</value></data>
+  <data name="Spells.Summary.548aea9d-a0c6-4e94-b59b-b49fa7e51ab7" xml:space="preserve"><value>Magically binds a group, lowering initiation costs but imposing obligations.</value></data>
+  <data name="Spells.SummarySource.548aea9d-a0c6-4e94-b59b-b49fa7e51ab7" xml:space="preserve"><value>BE7D5D83BFC700E4C33403D734850F887AB8DA49971EA11220A506B38601C3C2</value></data>
+  <data name="Spells.Summary.0f5308ee-75fc-4f46-ad85-c28d2bd0e3bc" xml:space="preserve"><value>Adds magical traits to attuned items or bonded foci.</value></data>
+  <data name="Spells.SummarySource.0f5308ee-75fc-4f46-ad85-c28d2bd0e3bc" xml:space="preserve"><value>7331C6CBB4560F7471639FE88D72BBFAA6408C90A9CA5CBABE8E227CF018D6B6</value></data>
+  <data name="Spells.Summary.ff8bc6fc-7361-47e9-a5a0-081927ec9166" xml:space="preserve"><value>Makes astral beings visible unless they resist; not physically solid.</value></data>
+  <data name="Spells.SummarySource.ff8bc6fc-7361-47e9-a5a0-081927ec9166" xml:space="preserve"><value>454A99587D8CAD0C895A66C688C366DB2A7008D62F9A73014466FDCB56D86692</value></data>
+  <data name="Spells.Summary.705766cb-ba49-494e-a679-653ff18ef57b" xml:space="preserve"><value>Senses distant mana conditions and disturbances without astral perception.</value></data>
+  <data name="Spells.SummarySource.705766cb-ba49-494e-a679-653ff18ef57b" xml:space="preserve"><value>42D67F957E7AC1D75E25A7E0EF31560534A24E109244EF62D71D4AB052A49676</value></data>
+  <data name="Spells.Summary.32bfb856-4df9-438a-9122-85f5ec8a647c" xml:space="preserve"><value>Sees and hears along a mana line; wards block it.</value></data>
+  <data name="Spells.SummarySource.32bfb856-4df9-438a-9122-85f5ec8a647c" xml:space="preserve"><value>06AEE4AC227F8B50344BF6439B18E90BF19572A031EC280E2D8A7E355D002A49</value></data>
+  <data name="Spells.Summary.de47011e-2de9-4e4d-9862-d05465c8b4e8" xml:space="preserve"><value>Restores a crystallized person to flesh; damage to the statue remains as injuries.</value></data>
+  <data name="Spells.SummarySource.de47011e-2de9-4e4d-9862-d05465c8b4e8" xml:space="preserve"><value>6CCA2E1D8D3D54162E210F151B7C7B683156CA3052F5F237D5ADA409B250D6B3</value></data>
+  <data name="Spells.Summary.a920e020-9beb-46e9-b39a-d7ac43d3fe51" xml:space="preserve"><value>Temporarily replenishes mana in areas with negative background count.</value></data>
+  <data name="Spells.SummarySource.a920e020-9beb-46e9-b39a-d7ac43d3fe51" xml:space="preserve"><value>808B6DD9296576B4CBE82AD9A29E91D58CA04E91DB305ECAAE0B6A089FBAF55A</value></data>
+  <data name="Spells.Summary.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>Temporarily reduces positive background count; cannot replenish mana-depleted areas.</value></data>
+  <data name="Spells.SummarySource.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>35C6B9ECC659357707EFE3C3C3DABE834F216C2927CFF11B164428EA51E596B0</value></data>
+  <data name="Spells.Summary.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>Causes accidents in a mana-line domain through sight, a spotter or Ley Sight.</value></data>
+  <data name="Spells.SummarySource.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>14AD464FF8953DA14B843655F758EB47ECA8F5A87669E170542A5F68B7E8CE6F</value></data>
+  <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Spreads your attitudes to people within a mana-line domain; they can resist.</value></data>
+  <data name="Spells.SummarySource.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>94FBE8700E282E43715108C0547E8C4D2E9B37542C6765A4CFDC60C3EBCD1590</value></data>
 </root>

@@ -2084,4 +2084,15 @@
   <data name="Spells.Summary.66714935-5b3c-417d-b953-159fe5a2031c" xml:space="preserve"><value>Obtiene información sobre alguien a partir de su sangre reciente.</value></data>
   <data name="Spells.Summary.99c41c3c-5895-4a61-bb6c-184475ee7def" xml:space="preserve"><value>Llama a espíritus ajenos a tu tradición para negociar; no deben servicios.</value></data>
   <data name="Spells.Summary.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>Crea un espíritu compañero personalizado mediante una fórmula y Karma.</value></data>
+  <data name="Spells.Summary.884b16b4-dc92-4a32-8dde-197b37819b24" xml:space="preserve"><value>Protege un cadáver de magia; moverlo o dañarlo rompe la protección.</value></data>
+  <data name="Spells.Summary.548aea9d-a0c6-4e94-b59b-b49fa7e51ab7" xml:space="preserve"><value>Vincula mágicamente un grupo: iniciación más barata, pero obligaciones vinculantes.</value></data>
+  <data name="Spells.Summary.0f5308ee-75fc-4f46-ad85-c28d2bd0e3bc" xml:space="preserve"><value>Añade propiedades mágicas a objetos sintonizados o focos vinculados.</value></data>
+  <data name="Spells.Summary.ff8bc6fc-7361-47e9-a5a0-081927ec9166" xml:space="preserve"><value>Hace visibles a entidades astrales si no resisten; no las materializa.</value></data>
+  <data name="Spells.Summary.705766cb-ba49-494e-a679-653ff18ef57b" xml:space="preserve"><value>Detecta condiciones y perturbaciones del maná a distancia, sin percepción astral.</value></data>
+  <data name="Spells.Summary.32bfb856-4df9-438a-9122-85f5ec8a647c" xml:space="preserve"><value>Permite ver y oír siguiendo una línea de maná; las barreras lo bloquean.</value></data>
+  <data name="Spells.Summary.de47011e-2de9-4e4d-9862-d05465c8b4e8" xml:space="preserve"><value>Devuelve una persona cristalizada a su cuerpo; los daños de la estatua permanecen como heridas.</value></data>
+  <data name="Spells.Summary.a920e020-9beb-46e9-b39a-d7ac43d3fe51" xml:space="preserve"><value>Repone maná temporalmente en zonas con un nivel de fondo negativo.</value></data>
+  <data name="Spells.Summary.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>Reduce temporalmente el nivel de fondo positivo; no repone zonas sin maná.</value></data>
+  <data name="Spells.Summary.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>Provoca accidentes en el dominio de una línea de maná, viendo al objetivo directamente, mediante observador o visión ley.</value></data>
+  <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Contagia tus actitudes a quienes viven o trabajan en el dominio de una línea de maná; pueden resistirse.</value></data>
 </root>
