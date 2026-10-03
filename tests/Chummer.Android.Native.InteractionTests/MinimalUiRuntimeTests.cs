@@ -162,6 +162,47 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Spirit Hunter I", ["owed services", "Banishing", "Astral Combat/Killing Hands", "briefly"],
+            ["Diensten", "Astralkampf", "Todeskralle", "kurzzeitig"],
+            ["servicios", "Destierro", "combate astral", "Manos Letales", "brevemente"]),
+        ("Spirit Hunter II", ["owed services", "Banishing", "Astral Combat/Killing Hands", "longer"],
+            ["Diensten", "Astralkampf", "Todeskralle", "länger"],
+            ["servicios", "Destierro", "combate astral", "Manos Letales", "más tiempo"]),
+        ("Spirit Hunter III", ["owed services", "Banishing", "Astral Combat/Killing Hands", "longest"],
+            ["Diensten", "Astralkampf", "Todeskralle", "am längsten"],
+            ["servicios", "Destierro", "combate astral", "Manos Letales", "más tiempo aún"]),
+        ("Spiritual Pilgrim", ["background count", "more quickly"],
+            ["Hintergrundstrahlung", "schneller"], ["trasfondo astral", "más rápido"]),
+        ("Improved Restoration", ["Successful", "extra damage", "Core Condition Monitor"],
+            ["Erfolgreiche", "zusätzlichen Schaden", "Kern-Zustandsmonitor"],
+            ["exitosas", "daño adicional", "monitor del núcleo"]),
+        ("Low Profile", ["devices", "Overwatch", "more slowly", "Emulate", "no reduction"],
+            ["Geräte", "Overwatch", "langsamer", "Emulieren", "keine"],
+            ["dispositivos", "Vigilancia", "lentamente", "Emular", "no"]),
+        ("Munge", ["Essence", "Matrix entities", "code", "physical or astral", "ineligible"],
+            ["Essenz", "Matrixwesen", "Codeverzehr", "körperliche oder astrale", "keine"],
+            ["Esencia", "Matriz", "código", "físicos o astrales", "no"]),
+        ("Multiprocessing", ["Observe in Detail", "unopposed Matrix Perception", "Free Actions", "outside", "combat"],
+            ["Genaues Beobachten", "nicht vergleichende Matrixwahrnehmung", "Freie Handlungen", "außerhalb", "kämpfen"],
+            ["Observar en Detalle", "Percepción Matricial no enfrentada", "gratuitas", "fuera", "combate"]),
+        ("Bi-Polar", ["Agility/Reaction", "Logic/Intuition", "depression", "stability", "paid medication"],
+            ["GES/REA", "LOG/INT", "Depression", "Stabile", "Medikamente", "kosten"],
+            ["Agilidad/Reacción", "Lógica/Intuición", "depresión", "Estabilidad", "medicación", "pago"]),
+        ("Centaur Body", ["anatomy", "inherited", "not", "purchased"],
+            ["Körperbau", "angeborene", "kein", "gekaufter"],
+            ["anatomía", "innato", "no", "comprada"]),
+        ("Latent Dracomorphosis", ["No immediate", "GM", "Karma debt", "Resonance", "Magic"],
+            ["Zunächst keine", "Spielleiter", "Karmaschulden", "Resonanz", "Magie"],
+            ["Sin", "inmediatos", "director", "deuda de Karma", "Resonancia", "Magia"]),
+        ("Dissonant Stream: Apophenian", ["Device", "less Fading", "Compiling/Decompiling", "Data or Generalist", "Submersion", "Sleaze"],
+            ["Gerätebezogene", "weniger Schwund", "Daten-/Generalisten", "kompilierst/dekompilierst", "Wandlung", "Schleicher"],
+            ["dispositivos", "Menos Desvanecimiento", "Compilar/Descompilar", "datos o generalistas", "Sumersión", "Sigilo"]),
+        ("Dissonant Stream: Erisian", ["other personas", "less Fading", "Compiling/Decompiling", "Crack or Generalist", "Submersion", "Firewall"],
+            ["andere Personas", "weniger Schwund", "Infiltrator-/Generalisten", "kompilierst/dekompilierst", "Wandlung", "Firewall"],
+            ["otras personas", "Menos Desvanecimiento", "Compilar/Descompilar", "intrusión o generalistas", "Sumersión", "Firewall"]),
+        ("Dissonant Stream: Morphinae", ["host/IC attributes", "less Fading", "Compiling/Decompiling", "Fault or Generalist", "Submersion", "Noise"],
+            ["Host-/IC-Attribute", "weniger Schwund", "Stör-/Generalisten", "kompilierst/dekompilierst", "Wandlung", "Rauschen"],
+            ["atributos de hosts/IC", "Menos Desvanecimiento", "Compilar/Descompilar", "fallo o generalistas", "Sumersión", "Ruido"]),
         ("Revenant Adept", ["Regeneration", "yearly", "seasonal", "month"],
             ["Regeneration", "jährlichen", "saisonalen", "Monat"],
             ["Regeneración", "anuales", "estacional", "mes"]),
@@ -1421,7 +1462,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 747, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 761, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1460,7 +1501,9 @@ internal static partial class AfterRunAuthorityHarness
                     "Puppet Master", "Reckless Spell Master", "Renaissance Ritualist", "Shock Mage",
                     "Unique Avatar", "Data Hog", "On the Wagon", "Escaped Custody", "Delicate Fingers",
                     "Revenant Adept", "Skinwalker", "Spell Jammer", "Spectral Warden",
-                    "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User" })
+                    "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User",
+                    "Spirit Hunter I", "Spirit Hunter II", "Spirit Hunter III", "Spiritual Pilgrim",
+                    "Dissonant Stream: Apophenian", "Dissonant Stream: Erisian", "Dissonant Stream: Morphinae" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
@@ -1484,7 +1527,8 @@ internal static partial class AfterRunAuthorityHarness
                         or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III"
                         or "Sprite Affinity" or "Trust Data, Not Lore" or "Trust Lore, Not Data"
                         or "Unique Avatar" or "Data Hog" or "On the Wagon"
-                        or "Code of Honor: Black Hat" or "Know Your Limit" or "Sprite Combustion" or "Taint of Dissonance")
+                        or "Code of Honor: Black Hat" or "Know Your Limit" or "Sprite Combustion" or "Taint of Dissonance"
+                        or "Dissonant Stream: Apophenian" or "Dissonant Stream: Erisian" or "Dissonant Stream: Morphinae")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1503,7 +1547,15 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Revenant Adept", Path: "required/oneof/power", Value: "Rapid Healing"),
                     (Name: "Skinwalker", Path: "required/allof/spell", Value: "[Critter] Form"),
                     (Name: "Spell Jammer", Path: "required/oneof/skill/name", Value: "Counterspelling"),
-                    (Name: "Wired User", Path: "required/oneof/quality", Value: "Addiction (Mild)")
+                    (Name: "Wired User", Path: "required/oneof/quality", Value: "Addiction (Mild)"),
+                    (Name: "Spirit Hunter II", Path: "required/allof/quality", Value: "Spirit Hunter I"),
+                    (Name: "Spirit Hunter III", Path: "required/allof/quality", Value: "Spirit Hunter II"),
+                    (Name: "Improved Restoration", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Low Profile", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Munge", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Multiprocessing", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Centaur Body", Path: "required/allof/metatype", Value: "Centaur"),
+                    (Name: "Latent Dracomorphosis", Path: "forbidden/oneof/quality", Value: "Dracoform (Eastern Drake)")
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);
@@ -1547,6 +1599,31 @@ internal static partial class AfterRunAuthorityHarness
                 Require(!CreationQualityInfo.Effects(changedGrantedThrillSeeker.ToString()).Contains(
                     CreationFlowStrings.Get(SummaryKey(grantedThrillSeeker), "")),
                     "Removing hidden-grant status must invalidate the old explanation.");
+                var centaurBody = catalog.Single(q => q.Element("name")!.Value == "Centaur Body");
+                Require(centaurBody.Element("hide") is not null && centaurBody.Element("karma")!.Value == "0",
+                    "An inherited centaur trait must not be presented as a separately purchased advantage.");
+                var changedCentaurBody = new System.Xml.Linq.XElement(centaurBody);
+                changedCentaurBody.Element("hide")!.Remove();
+                Require(!CreationQualityInfo.Effects(changedCentaurBody.ToString()).Contains(
+                    CreationFlowStrings.Get(SummaryKey(centaurBody), "")),
+                    "Removing inherited-trait visibility restrictions must reject its old explanation.");
+                foreach (string stream in new[] { "Apophenian", "Erisian", "Morphinae" })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == "Dissonant Stream: " + stream);
+                    var exclusions = quality.Element("forbidden")!.Element("oneof")!.Elements("quality")
+                        .Select(q => q.Value).ToArray();
+                    Require(exclusions.Length == 6 && exclusions.Distinct().Count() == 6
+                        && new[] { "Cyberadept", "Machinist", "Sourceror", "Technoshaman" }
+                            .All(name => exclusions.Contains("Resonant Stream: " + name))
+                        && new[] { "Apophenian", "Erisian", "Morphinae" }.Where(name => name != stream)
+                            .All(name => exclusions.Contains("Dissonant Stream: " + name)),
+                        "Dissonant-stream help must retain exclusive stream admission.");
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("forbidden")!.Remove();
+                    Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
+                        CreationFlowStrings.Get(SummaryKey(quality), "")),
+                        "Removing stream exclusions must reject the old explanation.");
+                }
                 var spriteAffinity = catalog.Single(q => q.Element("name")!.Value == "Sprite Affinity");
                 Require(spriteAffinity.Element("bonus")!.Element("selectsprite") is not null,
                     "Sprite Affinity help must retain the choice of sprite type.");

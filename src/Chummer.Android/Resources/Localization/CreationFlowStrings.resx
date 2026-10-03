@@ -3174,4 +3174,32 @@
   <data name="Qualities.SummarySource.e138ecce-6fba-4fe6-be09-1d60dc8c3853" xml:space="preserve"><value>1E3D50074F652809A10085FADAF051F534CAB8B069277A9D92C47F617DE0DB03</value></data>
   <data name="Qualities.Summary.25f5745d-8e1d-463f-9b96-c047bc99a587" xml:space="preserve"><value>Only summon through Binding for more optional spirit powers; Binding handles Minion rituals and pacification, but atonement costs more Karma.</value></data>
   <data name="Qualities.SummarySource.25f5745d-8e1d-463f-9b96-c047bc99a587" xml:space="preserve"><value>91EC92D6218DFFCBD56F3F477CB2FE70AEA0D346361C25A43E8AC435D15B2B9D</value></data>
+  <data name="Qualities.Summary.7bd24b5c-9ad4-4083-b58b-5dcc420d1950" xml:space="preserve"><value>Removing owed services by Banishing or causing Astral Combat/Killing Hands damage blocks the affected spirit's powers briefly.</value></data>
+  <data name="Qualities.SummarySource.7bd24b5c-9ad4-4083-b58b-5dcc420d1950" xml:space="preserve"><value>5DAF83FEC8F6250321B04BB84A29FF0F3FEA8B6308301BD2B1D2502074326B17</value></data>
+  <data name="Qualities.Summary.3ef898e6-b57d-4254-88d8-b8e37491e186" xml:space="preserve"><value>Removing owed services by Banishing or causing Astral Combat/Killing Hands damage blocks the affected spirit's powers longer.</value></data>
+  <data name="Qualities.SummarySource.3ef898e6-b57d-4254-88d8-b8e37491e186" xml:space="preserve"><value>8FA01C79055373FC58156AEB19DF55A73EB277CF4F23FA3F7A274E37AA89EFEC</value></data>
+  <data name="Qualities.Summary.80b557bc-c7fd-413f-8b8a-4571c8f3fa56" xml:space="preserve"><value>Removing owed services by Banishing or causing Astral Combat/Killing Hands damage blocks the affected spirit's powers longest.</value></data>
+  <data name="Qualities.SummarySource.80b557bc-c7fd-413f-8b8a-4571c8f3fa56" xml:space="preserve"><value>1E50A90A6A91E02CB5E50F987218663106310F09FED8B32AA3D3C41A14BD9D8C</value></data>
+  <data name="Qualities.Summary.d815700b-9e8a-410b-8795-83196629a5ad" xml:space="preserve"><value>You adapt to local background count more quickly.</value></data>
+  <data name="Qualities.SummarySource.d815700b-9e8a-410b-8795-83196629a5ad" xml:space="preserve"><value>07CBA308BB7822B1550434E5AAC91AEEC331C31DFEA5463CBCDCFE46AF8E53BA</value></data>
+  <data name="Qualities.Summary.d6ced15f-2ba7-4a02-bfb7-ddcc0a3e263e" xml:space="preserve"><value>Successful recovery rolls repair extra damage on your AI's Core Condition Monitor.</value></data>
+  <data name="Qualities.SummarySource.d6ced15f-2ba7-4a02-bfb7-ddcc0a3e263e" xml:space="preserve"><value>48CEAACFF814A774EC1485475591EAA3CE99166B4E805AC9C5C70C0B036CE5AD</value></data>
+  <data name="Qualities.Summary.6a2da674-ba73-4a95-ab3d-e4bbe2eeb926" xml:space="preserve"><value>Illegal Matrix actions using devices increase Overwatch more slowly; Emulate gains no reduction.</value></data>
+  <data name="Qualities.SummarySource.6a2da674-ba73-4a95-ab3d-e4bbe2eeb926" xml:space="preserve"><value>9CCDA1F5C967D239E422A5F73DBDF29A44946F4B994AF60F0B0721B7615E267F</value></data>
+  <data name="Qualities.Summary.d7c75876-dc2d-44c3-bdb4-e898ef733d4e" xml:space="preserve"><value>Drain Essence from Matrix entities by consuming their code; physical or astral beings are ineligible.</value></data>
+  <data name="Qualities.SummarySource.d7c75876-dc2d-44c3-bdb4-e898ef733d4e" xml:space="preserve"><value>24B9934ACDE9A3055AE6733F52618192E5FC218B8B69515D3DB0A6CF5FEB120E</value></data>
+  <data name="Qualities.Summary.b86f54af-cca7-4698-ad6d-21ffca93fb23" xml:space="preserve"><value>Observe in Detail and unopposed Matrix Perception become Free Actions; gain an extra Free Action outside Matrix/vehicle combat.</value></data>
+  <data name="Qualities.SummarySource.b86f54af-cca7-4698-ad6d-21ffca93fb23" xml:space="preserve"><value>5606157D1F76B375713389F24340F8E63A5D509FE10709BF83740912A9001477</value></data>
+  <data name="Qualities.Summary.e7148da6-022b-4d54-b888-60719265e7f1" xml:space="preserve"><value>Mania improves Agility/Reaction but hinders Logic/Intuition; depression hinders all four, stability neither. Regular paid medication can prevent these shifts.</value></data>
+  <data name="Qualities.SummarySource.e7148da6-022b-4d54-b888-60719265e7f1" xml:space="preserve"><value>A986CC1F326F3B5984AD61A7984AF0EACE195E1378BB755B1BBBF97F4AA4A481</value></data>
+  <data name="Qualities.Summary.11d6fbc9-c2cf-4686-8f95-ef46a83cc0ff" xml:space="preserve"><value>Marks a centaur's four-legged anatomy; this inherited trait is not a separately purchased advantage.</value></data>
+  <data name="Qualities.SummarySource.11d6fbc9-c2cf-4686-8f95-ef46a83cc0ff" xml:space="preserve"><value>30307694F041E51AF0A4B4FA782EEA90D662C0273D5D67954BB9E4B8D7F16C1F</value></data>
+  <data name="Qualities.Summary.e132257f-14d8-4e5a-9f20-ae6af29649d5" xml:space="preserve"><value>No immediate Drake powers; the GM may trigger a later transformation with substantial Karma debt, replacing any Resonance with Magic.</value></data>
+  <data name="Qualities.SummarySource.e132257f-14d8-4e5a-9f20-ae6af29649d5" xml:space="preserve"><value>6300693C16C32B06D230B874E6B1C335556FE15D16D5CB78A930444B3F6101CD</value></data>
+  <data name="Qualities.Summary.e40e318d-ecde-4a20-bfc5-36d341a644b5" xml:space="preserve"><value>Device forms cause less Fading; Compiling/Decompiling Data or Generalist sprites improves, and Submersion boosts Sleaze.</value></data>
+  <data name="Qualities.SummarySource.e40e318d-ecde-4a20-bfc5-36d341a644b5" xml:space="preserve"><value>F4270E7E1CB36C1C07CE80767325C241BE495EC9CB9F3103402A3953A130A669</value></data>
+  <data name="Qualities.Summary.ee5d131f-5606-4a40-8035-9970aa3b5b29" xml:space="preserve"><value>Forms affecting other personas cause less Fading; Compiling/Decompiling Crack or Generalist sprites improves, and Submersion boosts Firewall.</value></data>
+  <data name="Qualities.SummarySource.ee5d131f-5606-4a40-8035-9970aa3b5b29" xml:space="preserve"><value>5EDBA4502D0293191B2978875F54F005E6D15695280A5F67299FE87476254D7A</value></data>
+  <data name="Qualities.Summary.580c8ae5-899b-4fa9-8f2d-600c9ac758f9" xml:space="preserve"><value>Forms changing host/IC attributes cause less Fading; Compiling/Decompiling Fault or Generalist sprites improves, and Submersion reduces Noise.</value></data>
+  <data name="Qualities.SummarySource.580c8ae5-899b-4fa9-8f2d-600c9ac758f9" xml:space="preserve"><value>9D42D0383DFD189D5244C46342B39514A469F425719D810F477719EDD76AB9A5</value></data>
 </root>
