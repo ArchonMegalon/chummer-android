@@ -162,6 +162,72 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Every Man For Himself", ["ally", "Composure", "helping", "danger"],
+            ["Verbündeter", "Selbstbeherrschung", "Hilfe", "Gefahr"],
+            ["aliado", "Compostura", "ayudar", "peligro"]),
+        ("No Man Left Behind", ["Composure", "recover", "dead", "danger"],
+            ["Selbstbeherrschung", "bergen", "Gefahr", "tot"],
+            ["Compostura", "rescatar", "muertos", "riesgo"]),
+        ("Stay Out of My Way", ["Social", "direct superiors", "betray", "Composure"],
+            ["Soziale", "direkten Vorgesetzten", "Verrat", "Selbstbeherrschung"],
+            ["sociales", "superiores directos", "traicionar", "Compostura"]),
+        ("Unique Avatar", ["visible", "social", "remember", "identify"],
+            ["sichtbare", "soziale Matrixproben", "erinnerbar", "wiedererkennbar"],
+            ["visible", "sociales", "recuerden", "identifiquen"]),
+        ("Data Hog", ["Overwatch", "convergence", "earlier", "GOD"],
+            ["Overwatch", "Konvergenz", "früher", "GOD"],
+            ["Overwatch", "convergencia", "antes", "GOD"]),
+        ("Escaped Custody", ["Choose", "corporate", "records", "Composure"],
+            ["Wähle", "Akten", "Konzern", "Selbstbeherrschung"],
+            ["Elige", "corporación", "registros", "Compostura"]),
+        ("On the Wagon", ["Matrix", "dice penalty", "not sober"],
+            ["nicht nüchtern", "Matrixhandlungen", "Würfelabzug"],
+            ["Matriz", "dados", "no estás sobrio"]),
+        ("Puppet Master", ["Each rank", "mental manipulation", "without penalty", "above your Magic"],
+            ["Jede Stufe", "mentalen Manipulationszauber", "Aufrechterhaltungsabzug", "über deinem Magiewert"],
+            ["Cada grado", "manipulación mental", "sin penalizador", "encima de tu Magia"]),
+        ("Reckless Spell Master", ["daily", "extra Drain", "ranks", "uninterrupted rest"],
+            ["tägliche", "Zusatzentzug", "Stufe", "ununterbrochene Ruhe"],
+            ["diaria", "grado", "Drenaje adicional", "descanso ininterrumpido"]),
+        ("Renaissance Ritualist", ["Lead", "mixed-tradition", "participant allowance", "Magic", "initiation"],
+            ["Leite", "Traditionen", "Teilnehmerzahl", "Magie", "Initiation"],
+            ["Dirige", "tradiciones", "cupo", "Magia", "iniciación"]),
+        ("Shock Mage", ["Damaging Combat", "initiative", "stacking"],
+            ["Kampfzauber", "Schaden", "Initiative", "weiterhin"],
+            ["combate", "daño", "iniciativa", "acumulándose"]),
+        ("Delicate Fingers", ["handling penalty", "trolls", "gear"],
+            ["Trolle", "Bedienungsabzug", "Ausrüstung"],
+            ["penalización", "trolls", "equipo"]),
+        ("Human Lifespan", ["Creation-only", "ork", "matures", "ages"],
+            ["Erschaffung", "Ork", "reift", "altert"],
+            ["creación", "orko", "madura", "envejece"]),
+        ("Force of Chaos", ["smaller", "combat", "tactics", "group maneuvers"],
+            ["geringere", "Kampfboni", "Taktiken", "Gruppenmanövern"],
+            ["menores", "combate", "tácticas", "maniobras"]),
+        ("Trog Traitor", ["Notoriety", "neighborhoods", "orks", "trolls"],
+            ["Schlechter Ruf", "Orks", "Trollen", "Vierteln"],
+            ["Notoriedad", "barrios", "orka", "troll"]),
+        ("Poor Self Control (Thrill Seeker) (Dareadrenaline)", ["Augmentation", "thrill-seeking", "without Karma", "harder"],
+            ["Verstärkung", "Risikodrang", "ohne Karma", "schwieriger"],
+            ["mejora", "riesgo", "sin Karma", "más difícil"]),
+        ("Rank (Neither Military nor Law Enforcement) I", ["social limits", "members", "chosen organization"],
+            ["soziale Limits", "Mitgliedern", "gewählten Organisation"],
+            ["límites sociales", "miembros", "organización elegida"]),
+        ("Rank (Military or Law Enforcement) I", ["social limits", "internally", "under your authority"],
+            ["soziale Limits", "intern", "Amtsgewalt"],
+            ["límites sociales", "internos", "bajo tu autoridad"]),
+        ("Rank (Neither Military nor Law Enforcement) II", ["social limits", "members", "chosen organization"],
+            ["soziale Limits", "Mitgliedern", "gewählten Organisation"],
+            ["límites sociales", "miembros", "organización elegida"]),
+        ("Rank (Military or Law Enforcement) II", ["social limits", "internally", "under your authority"],
+            ["soziale Limits", "intern", "Amtsgewalt"],
+            ["límites sociales", "internos", "bajo tu autoridad"]),
+        ("Rank (Neither Military nor Law Enforcement) III", ["social limits", "members", "chosen organization"],
+            ["soziale Limits", "Mitgliedern", "gewählten Organisation"],
+            ["límites sociales", "miembros", "organización elegida"]),
+        ("Rank (Military or Law Enforcement) III", ["social limits", "internally", "under your authority"],
+            ["soziale Limits", "intern", "Amtsgewalt"],
+            ["límites sociales", "internos", "bajo tu autoridad"]),
         ("Location Attunement I", ["Perception", "Surprise", "chosen", "small", "absence"],
             ["Wahrnehmung", "Überraschungsproben", "gewählten", "kleinen", "Abwesenheit"],
             ["Percepción", "Sorpresa", "pequeña", "elegida", "ausencias"]),
@@ -1316,7 +1382,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 712, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 734, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1351,16 +1417,26 @@ internal static partial class AfterRunAuthorityHarness
                     "One With the Matrix I", "One With the Matrix II", "One With the Matrix III",
                     "Missile Deflector", "Mystic Foreman", "Mystic Pitcher",
                     "Pacifist Adept", "Potion Maker", "Practiced Alchemist",
-                    "Sprite Affinity", "Trust Data, Not Lore", "Trust Lore, Not Data" })
+                    "Sprite Affinity", "Trust Data, Not Lore", "Trust Lore, Not Data",
+                    "Puppet Master", "Reckless Spell Master", "Renaissance Ritualist", "Shock Mage",
+                    "Unique Avatar", "Data Hog", "On the Wagon", "Escaped Custody", "Delicate Fingers" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Memory Palace",
                             "Memory help must retain its prerequisite quality.");
+                    else if (name == "Escaped Custody")
+                        Require(quality.Element("required")!.Element("allof")!.Elements("quality")
+                                .Select(q => q.Value).SequenceEqual(new[] { "Records on File", "Technomancer" }),
+                            "Escaped Custody retains both corporate records and technomancer admission.");
+                    else if (name == "Delicate Fingers")
+                        Require(quality.Element("required")!.Element("oneof")!.Element("metatype")!.Value == "Troll",
+                            "Equipment handling help must retain its troll prerequisite.");
                     else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door"
                         or "Fractal Punch" or "Lone Wolf" or "Team Player" or "Natural Hacker"
                         or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III"
-                        or "Sprite Affinity" or "Trust Data, Not Lore" or "Trust Lore, Not Data")
+                        or "Sprite Affinity" or "Trust Data, Not Lore" or "Trust Lore, Not Data"
+                        or "Unique Avatar" or "Data Hog" or "On the Wagon")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1381,7 +1457,11 @@ internal static partial class AfterRunAuthorityHarness
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
                     "Natural Hacker", "Corporate Loyalist",
                     "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
-                    "Location Attunement I", "Location Attunement II", "Location Attunement III" })
+                    "Location Attunement I", "Location Attunement II", "Location Attunement III",
+                    "Escaped Custody", "Rank (Neither Military nor Law Enforcement) I",
+                    "Rank (Neither Military nor Law Enforcement) II", "Rank (Neither Military nor Law Enforcement) III",
+                    "Rank (Military or Law Enforcement) I", "Rank (Military or Law Enforcement) II",
+                    "Rank (Military or Law Enforcement) III" })
                 {
                     var selected = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(selected.Element("bonus")!.Element("selecttext") is not null,
@@ -1392,6 +1472,16 @@ internal static partial class AfterRunAuthorityHarness
                         CreationFlowStrings.Get(SummaryKey(selected), "")),
                         "Choice-bound help must not survive removal of its choice: " + name);
                 }
+                var grantedThrillSeeker = catalog.Single(q => q.Element("name")!.Value
+                    == "Poor Self Control (Thrill Seeker) (Dareadrenaline)");
+                Require(grantedThrillSeeker.Element("hide") is not null
+                    && grantedThrillSeeker.Element("karma")!.Value == "0",
+                    "Augmentation-granted drawback help must not turn it into a purchasable Karma reward.");
+                var changedGrantedThrillSeeker = new System.Xml.Linq.XElement(grantedThrillSeeker);
+                changedGrantedThrillSeeker.Element("hide")!.Remove();
+                Require(!CreationQualityInfo.Effects(changedGrantedThrillSeeker.ToString()).Contains(
+                    CreationFlowStrings.Get(SummaryKey(grantedThrillSeeker), "")),
+                    "Removing hidden-grant status must invalidate the old explanation.");
                 var spriteAffinity = catalog.Single(q => q.Element("name")!.Value == "Sprite Affinity");
                 Require(spriteAffinity.Element("bonus")!.Element("selectsprite") is not null,
                     "Sprite Affinity help must retain the choice of sprite type.");
@@ -1427,7 +1517,10 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Trust Data, Not Lore", Excluded: new[] { "Trust Lore, Not Data" }),
                     (Name: "Trust Lore, Not Data", Excluded: new[] { "Trust Data, Not Lore" }),
                     (Name: "Reverberant", Excluded: new[] { "Technomancer" }),
-                    (Name: "Corrosive Spit", Excluded: new[] { "Natural Venom" })
+                    (Name: "Corrosive Spit", Excluded: new[] { "Natural Venom" }),
+                    (Name: "Unique Avatar", Excluded: new[] { "Digital Doppelganger" }),
+                    (Name: "On the Wagon", Excluded: new[] { "Addiction (Mild)", "Addiction (Moderate)",
+                        "Addiction (Severe)", "Addiction (Burnout)" })
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == grade.Name);

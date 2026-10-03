@@ -3104,4 +3104,48 @@
   <data name="Qualities.SummarySource.de498da5-c141-4ea3-991e-97e73fb551d4" xml:space="preserve"><value>DD6FF04C6160BA4306F8AF72734E846EA1A35211395D503D7407E4768EC6C226</value></data>
   <data name="Qualities.Summary.9b205e4a-66c7-45d9-b87b-d0c743944d60" xml:space="preserve"><value>Sense nearby heat without sight, easing visibility penalties in combat; surrounding heat can interfere.</value></data>
   <data name="Qualities.SummarySource.9b205e4a-66c7-45d9-b87b-d0c743944d60" xml:space="preserve"><value>4E68FEC2F9841B55C5E5E87750A92F0F02A79106F7032959B3335A1CE259A414</value></data>
+  <data name="Qualities.Summary.bb0cd874-a7bb-4863-b393-23ef0eda6313" xml:space="preserve"><value>If an ally is hurt or falls, failed Composure prevents you from helping while danger continues.</value></data>
+  <data name="Qualities.SummarySource.bb0cd874-a7bb-4863-b393-23ef0eda6313" xml:space="preserve"><value>08D85065E947E240E0AB0F3711C4713E24D970B20A1F3647C204621510A05B8F</value></data>
+  <data name="Qualities.Summary.7b051d98-e95b-48f9-8fbb-dae69a739913" xml:space="preserve"><value>Failed Composure compels you to recover fallen teammates, even dead ones, despite personal danger.</value></data>
+  <data name="Qualities.SummarySource.7b051d98-e95b-48f9-8fbb-dae69a739913" xml:space="preserve"><value>E6D6F6BC0572865808C350048E5067DE14CC4DFE6BDDE74DE49764A0DCF3DFFB</value></data>
+  <data name="Qualities.Summary.e4956c8e-119f-4670-9dcf-30f4709863ae" xml:space="preserve"><value>Social rolls suffer except with direct superiors; resisting an opportunity to betray someone for personal gain requires Composure.</value></data>
+  <data name="Qualities.SummarySource.e4956c8e-119f-4670-9dcf-30f4709863ae" xml:space="preserve"><value>AE121DA456D691558097B4C3DF28AEB18E281D6802379DA29B3B002BA2BDED32</value></data>
+  <data name="Qualities.Summary.ad35c6ec-664c-46a3-8dc5-ac48dfddd0cf" xml:space="preserve"><value>A visible persona improves your Matrix social rolls, but others can remember and identify you more easily.</value></data>
+  <data name="Qualities.SummarySource.ad35c6ec-664c-46a3-8dc5-ac48dfddd0cf" xml:space="preserve"><value>52CDE5E301C1FE6AB17607F830AC4DE9EFCF0647F7C6CD378C146C16D0D288F1</value></data>
+  <data name="Qualities.Summary.7e172644-9b48-4822-8636-b45827ff6938" xml:space="preserve"><value>Your Overwatch Score triggers convergence earlier, giving you less room before GOD intervenes.</value></data>
+  <data name="Qualities.SummarySource.7e172644-9b48-4822-8636-b45827ff6938" xml:space="preserve"><value>8B1FBDEA36AFAF511F1EF38BF0706339AC2A8B1F9C95C3A5E93FF87F803F247D</value></data>
+  <data name="Qualities.Summary.2cafaee0-fb4b-4b56-90e2-8eb864c5a033" xml:space="preserve"><value>Choose a former corporate captor holding your records; dealings with that corporation penalize Composure.</value></data>
+  <data name="Qualities.SummarySource.2cafaee0-fb4b-4b56-90e2-8eb864c5a033" xml:space="preserve"><value>D07BE15CF9EE9FDF73762DF4E7C8E287C7D760CE6EE0574B91DDBD7A5CE69104</value></data>
+  <data name="Qualities.Summary.ff939676-0195-4885-ba91-5ee536719b2f" xml:space="preserve"><value>Matrix actions suffer a dice penalty whenever you are not sober.</value></data>
+  <data name="Qualities.SummarySource.ff939676-0195-4885-ba91-5ee536719b2f" xml:space="preserve"><value>04CF0E974588672FAC2673AC666BC0B4F8D94299AC059F91CC01D0E3E7764351</value></data>
+  <data name="Qualities.Summary.b9808fa8-744f-46e2-b769-bed5ce0b3ad1" xml:space="preserve"><value>Each rank sustains another mental manipulation spell without penalty; sustaining spells above your Magic disables this benefit.</value></data>
+  <data name="Qualities.SummarySource.b9808fa8-744f-46e2-b769-bed5ce0b3ad1" xml:space="preserve"><value>B0B7FCB60202D1044FDFA3E66354799FC476AF5F6C01A4C64E0D7CD71E66B5D4</value></data>
+  <data name="Qualities.Summary.b15bbc5a-626c-4f04-b08e-203cb24c6b1a" xml:space="preserve"><value>Limited daily reckless castings avoid extra Drain; ranks grant more uses, replenished by uninterrupted rest.</value></data>
+  <data name="Qualities.SummarySource.b15bbc5a-626c-4f04-b08e-203cb24c6b1a" xml:space="preserve"><value>9676FF03E62F00FCCF261AEE3615D118343CDB42EC9E4725C6F590ED8C1FBE3D</value></data>
+  <data name="Qualities.Summary.baa0cfd8-3c53-48ba-b3b7-61de0bc48695" xml:space="preserve"><value>Lead mixed-tradition rituals without mismatch penalties for a participant allowance based on Magic and initiation.</value></data>
+  <data name="Qualities.SummarySource.baa0cfd8-3c53-48ba-b3b7-61de0bc48695" xml:space="preserve"><value>538F187096D661D3DA3F5A60F2310584F3D5645C616FCF41D7FA4292B2EA76B6</value></data>
+  <data name="Qualities.Summary.820ec42b-5255-4c73-93af-e8caa5b6abbf" xml:space="preserve"><value>Damaging Combat spells lower initiative, stacking with other initiative-reducing spell effects.</value></data>
+  <data name="Qualities.SummarySource.820ec42b-5255-4c73-93af-e8caa5b6abbf" xml:space="preserve"><value>19CB592B94862EDE31E77640B15F467AE1E0E29FCD84036AFC2EA9BF5D235A0B</value></data>
+  <data name="Qualities.Summary.fd5468e4-a671-4c84-a9ec-590b94ae6ae3" xml:space="preserve"><value>Removes the handling penalty for trolls using gear made for smaller hands.</value></data>
+  <data name="Qualities.SummarySource.fd5468e4-a671-4c84-a9ec-590b94ae6ae3" xml:space="preserve"><value>2F08DCE82FB36EBC92BF49D1D977F11D0B75465FF9B5B19061082B1466F9C0B0</value></data>
+  <data name="Qualities.Summary.9ad4e8e7-80d7-4941-96d5-9a1aaa1bd4c9" xml:space="preserve"><value>Creation-only background: an ork matures and ages at a human pace.</value></data>
+  <data name="Qualities.SummarySource.9ad4e8e7-80d7-4941-96d5-9a1aaa1bd4c9" xml:space="preserve"><value>6C4F53C48E5F02B6EFA3F4312AADA6FC823A14E8DBA04F983E11CFB61566286C</value></data>
+  <data name="Qualities.Summary.13379299-27a2-4b5d-8938-6a54f49dc861" xml:space="preserve"><value>You gain smaller combat bonuses from tactics and group maneuvers.</value></data>
+  <data name="Qualities.SummarySource.13379299-27a2-4b5d-8938-6a54f49dc861" xml:space="preserve"><value>10AC23328A4B3B4BA6BA0B1303959877321128E5B86F65AA0950ED7411CFA218</value></data>
+  <data name="Qualities.Summary.ca4459b7-ea68-4b6c-9754-8bdcf3f4aef7" xml:space="preserve"><value>Your effective Notoriety rises in neighborhoods dominated by orks or trolls.</value></data>
+  <data name="Qualities.SummarySource.ca4459b7-ea68-4b6c-9754-8bdcf3f4aef7" xml:space="preserve"><value>CF37BE4D1816BFAD085901D40BA05A3E372DF4D2B3E73ED40917A0ACFA1E8642</value></data>
+  <data name="Qualities.Summary.bbb3bce6-8adc-4992-94b5-7248556a391a" xml:space="preserve"><value>Augmentation grants thrill-seeking without Karma; existing thrill-seeking becomes harder to resist.</value></data>
+  <data name="Qualities.SummarySource.bbb3bce6-8adc-4992-94b5-7248556a391a" xml:space="preserve"><value>FAE4B22BED214A80D569F6DC2DD9D690F5004FAB48E94B30154B46E9FE8B3C09</value></data>
+  <data name="Qualities.Summary.c15df7f5-2108-4be2-9500-86045221be0a" xml:space="preserve"><value>Raises social limits with members of your chosen organization.</value></data>
+  <data name="Qualities.SummarySource.c15df7f5-2108-4be2-9500-86045221be0a" xml:space="preserve"><value>25AC368E8C3A3A17B01FC1E62345BC78F71B8DE889D667E9ED56BB012A15970A</value></data>
+  <data name="Qualities.Summary.49a9c3a8-538a-4d4e-a4e8-8bf837687d25" xml:space="preserve"><value>Raises social limits internally and with people under your authority.</value></data>
+  <data name="Qualities.SummarySource.49a9c3a8-538a-4d4e-a4e8-8bf837687d25" xml:space="preserve"><value>27DF948BFBEAEED93FD76AA0E8EE6DC640F89DDB933D0BF3DB0E3F14D024968D</value></data>
+  <data name="Qualities.Summary.53bd1804-1029-4ebe-9464-a82d91be5dd9" xml:space="preserve"><value>Raises social limits with members of your chosen organization.</value></data>
+  <data name="Qualities.SummarySource.53bd1804-1029-4ebe-9464-a82d91be5dd9" xml:space="preserve"><value>1FBD2AF35A4FA9576E261C876D7D4F06837F21FDB29C0F5A633DCEF5CD402950</value></data>
+  <data name="Qualities.Summary.6ccdc691-30cb-40f0-a283-6321703b018f" xml:space="preserve"><value>Raises social limits internally and with people under your authority.</value></data>
+  <data name="Qualities.SummarySource.6ccdc691-30cb-40f0-a283-6321703b018f" xml:space="preserve"><value>4B33D44EB4B15ECDD9B65FE650624BF22DB056255E54E537C9C7E6252DE37B8E</value></data>
+  <data name="Qualities.Summary.fe414583-aa74-4a50-8132-27887ec341d6" xml:space="preserve"><value>Raises social limits with members of your chosen organization.</value></data>
+  <data name="Qualities.SummarySource.fe414583-aa74-4a50-8132-27887ec341d6" xml:space="preserve"><value>A284D90D51480C2BA9D9AF9CBBB0478F4F21C1CA9D865A9C41E2FA70666E24DC</value></data>
+  <data name="Qualities.Summary.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>Raises social limits internally and with people under your authority.</value></data>
+  <data name="Qualities.SummarySource.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>AD68D6E887CF3908EAA6FE62B23A777A3B37CD41C2D422074D86377D20C7D283</value></data>
 </root>
