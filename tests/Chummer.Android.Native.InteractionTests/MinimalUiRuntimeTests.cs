@@ -162,6 +162,16 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Decaying Dissonance", ["composure"], ["Selbstbeherrschung"], ["Compostura"]),
+        ("Nerdrage", ["every"], ["jedes"], ["cada"]),
+        ("Prank Warrior", ["session"], ["Spielsitzung"], ["sesión"]),
+        ("Wanted by GOD", ["always"], ["stets"], ["siempre"]),
+        ("Spiritual Lodge", ["afterward"], ["anschließend"], ["después"]),
+        ("Sprawl Tamer", ["always"], ["stets"], ["siempre"]),
+        ("Crystalline Diver", ["cold"], ["Kälte"], ["presión/frío"]),
+        ("Crystalline Grace", ["both"], ["zwei"], ["ambas"]),
+        ("Busted Cyberware", ["no benefit", "Essence", "expensive"],
+            ["keinen Nutzen", "Essenz", "teuer"], ["no aporta ventajas", "Esencia", "caro"]),
         ("Designer", ["home device", "Data Processing/Pilot", "Noise"],
             ["Heimatgerät", "Datenverarbeitung/Pilot", "Rauschen"], ["hogar", "Datos/Piloto", "Ruido"]),
         ("Hello World!", ["Each level", "Essence loss"],
@@ -1521,7 +1531,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 785, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 794, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1563,6 +1573,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User",
                     "Spirit Hunter I", "Spirit Hunter II", "Spirit Hunter III", "Spiritual Pilgrim",
                     "Stalwart Ally", "Taboo Transformer", "Worship Leader", "Charlatan", "Chosen Follower", "Vexcraft",
+                    "Spiritual Lodge", "Sprawl Tamer", "Crystalline Diver", "Crystalline Grace",
                     "Dissonant Stream: Apophenian", "Dissonant Stream: Erisian", "Dissonant Stream: Morphinae" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
@@ -1641,7 +1652,16 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Virtual Stability", Path: "required/oneof/metatype", Value: "A.I."),
                     (Name: "Easily Exploitable", Path: "required/oneof/metatype", Value: "A.I."),
                     (Name: "Easily Exploitable", Path: "implemented", Value: "False"),
-                    (Name: "Corrupter", Path: "required/oneof/metatype", Value: "A.I.")
+                    (Name: "Corrupter", Path: "required/oneof/metatype", Value: "A.I."),
+                    (Name: "Decaying Dissonance", Path: "required/oneof/quality", Value: "Technomancer"),
+                    (Name: "Wanted by GOD", Path: "forbidden/oneof/quality", Value: "Technomancer"),
+                    (Name: "Wanted by GOD", Path: "required/oneof/skill/name", Value: "Hacking"),
+                    (Name: "Spiritual Lodge", Path: "required/allof/skill/name", Value: "Ritual Spellcasting"),
+                    (Name: "Sprawl Tamer", Path: "required/oneof/skill/name", Value: "Animal Handling"),
+                    (Name: "Crystalline Diver", Path: "required/oneof/quality", Value: "Crystal Breath"),
+                    (Name: "Crystalline Grace", Path: "required/oneof/quality", Value: "Crystal Limb (Leg)"),
+                    (Name: "Busted Cyberware", Path: "chargenonly", Value: ""),
+                    (Name: "Busted Cyberware", Path: "bonus/addware/name", Value: "Busted Ware")
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);
@@ -1659,6 +1679,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Specific Target, Fanatic)", "Illusionist",
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
                     "Natural Hacker", "Corporate Loyalist", "Metaviral Attunement", "Persnickety Renter",
+                    "Busted Cyberware",
                     "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
                     "Location Attunement I", "Location Attunement II", "Location Attunement III",
                     "Escaped Custody", "Rank (Neither Military nor Law Enforcement) I",
