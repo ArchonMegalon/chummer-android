@@ -109,8 +109,13 @@ confirmed on 3 October at 05:41 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Authored EN/DE/ES help now covers 803/803 Qualities and 327/363 spell/ritual
 entries; 36 specialist explanations remain open. Rules and dependencies are
-unchanged. Physical Play78 installation is not yet verified. This is not legal
-clearance, complete effect execution, full-book or public-beta readiness.
+unchanged. The normal physical Play77-to-78 update, expected Play signing
+certificate, readable existing help examples at font scale1.3 and existing-state
+process restart passed. See the separate
+[physical observation](../play/evidence/preview78-physical-observation.md).
+The sample does not physically cover every new explanation or a new save
+transaction. This is not legal clearance, complete effect execution, full-book
+or public-beta readiness.
 
 Preview 77's [observed Internal availability](../play/evidence/preview77-internal-observation.md) was
 confirmed on 2 October at 22:12 Europe/Vienna. Its exact local ARM64 AAB was
@@ -253,7 +258,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 77](../play/evidence/preview77-physical-observation.md) is the latest
+[Preview 78](../play/evidence/preview78-physical-observation.md) is the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process

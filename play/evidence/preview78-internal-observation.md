@@ -6,8 +6,9 @@ release 73, one version code, released at 05:40 Europe/Vienna. This is browser
 readback, not Publisher API evidence. [Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
 
 Version 78 is consumed; never rebuild or re-upload it to change producer metadata.
-Preview 77 and earlier evidence remain immutable. Physical Play installation
-has not yet been verified for this version. This is not public-beta readiness.
+Preview 77 and earlier evidence remain immutable. The subsequent
+[physical Play update and bounded help/restart observation](preview78-physical-observation.md)
+passed on 3 October at 05:55–06:01 Europe/Vienna. This is not public-beta readiness.
 
 ## Scope
 
