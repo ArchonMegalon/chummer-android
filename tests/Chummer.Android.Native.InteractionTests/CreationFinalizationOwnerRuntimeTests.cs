@@ -2641,6 +2641,8 @@ internal static partial class AfterRunAuthorityHarness
             var target = labels.Single(label => label.AutomationId == "creation-finalization-target-" + delta.Order);
             Require(target.Text == CreationFinalizationPage.TargetLabel(delta) && target.IsVisible,
                 "Final review hid or replaced a reviewed target name.");
+            if (delta.TargetId is "starting-cash-dice" or "lifestyle" or "nuyen" or "karma")
+                Require(target.Text != delta.TargetId, "Exact finalization field needs readable copy: " + delta.Kind + "/" + delta.TargetId);
             if (!string.IsNullOrWhiteSpace(delta.TargetName) && delta.Kind != CharacterCreationFinalizationDeltaKinds.Lifecycle)
                 Require(target.Text == delta.TargetName, "Final review did not display the exact admitted name.");
             var deltaCard = (VerticalStackLayout)body.Children.OfType<Border>()

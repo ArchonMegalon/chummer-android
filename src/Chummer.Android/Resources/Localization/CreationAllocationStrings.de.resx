@@ -924,4 +924,6 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
   <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
   <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Lebensmodule</value></data>
+  <data name="Finalization.CashLifestyle" xml:space="preserve"><value>Lebensstil für das Startgeld</value></data>
+  <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Würfelsumme für das Startgeld</value></data>
 </root>

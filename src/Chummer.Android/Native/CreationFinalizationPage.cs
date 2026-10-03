@@ -321,7 +321,15 @@ public sealed class CreationFinalizationPage : NativePageBase
         IsCareerTransition(delta) ? Copy("Mode", "Mode")
             : !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
             : delta.Kind == CharacterCreationFinalizationDeltaKinds.Attribute
-                ? CreationAllocationStrings.AttributeName(delta.TargetId) : delta.TargetId;
+                ? CreationAllocationStrings.AttributeName(delta.TargetId)
+            : delta.Kind == CharacterCreationFinalizationDeltaKinds.Resources ? delta.TargetId switch
+            {
+                "nuyen" => "Nuyen",
+                "karma" => "Karma",
+                "lifestyle" => Copy("CashLifestyle", "Starting-cash lifestyle"),
+                "starting-cash-dice" => Copy("CashDiceTotal", "Starting-cash dice total"),
+                _ => delta.TargetId
+            } : delta.TargetId;
 
     internal static string ChangeLabel(CharacterCreationFinalizationDelta delta) =>
         IsCareerTransition(delta) ? Copy("CareerTransition", "Creation → Career")

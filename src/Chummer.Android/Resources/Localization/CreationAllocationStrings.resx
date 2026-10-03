@@ -924,4 +924,6 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
   <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
   <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="Finalization.CashLifestyle" xml:space="preserve"><value>Starting-cash lifestyle</value></data>
+  <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Starting-cash dice total</value></data>
 </root>
