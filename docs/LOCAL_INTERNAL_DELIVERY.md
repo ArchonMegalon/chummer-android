@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 86 is the latest [observed Internal availability](../play/evidence/preview86-internal-observation.md),
+Preview 87 is the latest [observed Internal availability](../play/evidence/preview87-internal-observation.md),
+confirmed on 4 October at approximately 01:32 Europe/Vienna. Its exact local
+ARM64 AAB was separately signed and independently verified. Creation Qualities
+removes repeated validation and retains unsaved selections during temporary
+unavailability without relaxing fresh admission. Focused managed checks and a
+synthetic API36 single-save/new-process receipt reopen passed. Physical Play87
+installation is not yet verified. Slow transitions, all-method Creation and
+full Origin completion remain open.
+
+Preview 86's [observed Internal availability](../play/evidence/preview86-internal-observation.md),
 confirmed on 4 October at approximately 00:18 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Karma creation now
 shows bold actual Core attribute ratings and quoted ranges/costs; edits require
