@@ -2051,4 +2051,13 @@
   <data name="Qualities.Summary.256dbeb8-7bb8-4369-8c93-b8b206a859b8" xml:space="preserve"><value>Kristalllungen lassen dich unter Wasser atmen; Druck und Kälte bleiben gefährlich.</value></data>
   <data name="Qualities.Summary.beb709ac-4c40-4b05-9c49-1fe26e4fa2ab" xml:space="preserve"><value>Mit zwei Kristallbeinen springst du besser und kannst länger laufen, bevor du ermüdest.</value></data>
   <data name="Qualities.Summary.ab862f1f-5ed3-4976-a781-bf63565faf26" xml:space="preserve"><value>Ein defektes Implantat bietet keinen Nutzen, verbraucht aber weiterhin Essenz; sein Ausbau ist teuer.</value></data>
+  <data name="Qualities.Summary.91a06a6b-7d4a-4b10-9180-18dd3da623ab" xml:space="preserve"><value>Die KI kann in ihre gewählte Fahrzeugklasse hineinspringen, mit Kontrollrig-Vorteilen und Autosofts, auch ohne Riggeranpassung.</value></data>
+  <data name="Qualities.Summary.3fa061b9-c3bd-40bb-a292-eb35a8f8f5f8" xml:space="preserve"><value>Belebt kürzlich Verstorbene unter dauerhaftem Essenzverlust; Zaubernde und Wiederbelebte riskieren bleibende Schäden.</value></data>
+  <data name="Qualities.Summary.56d00933-379d-4442-8878-6db5b08fd20c" xml:space="preserve"><value>Zuvor askennten Zielen können Nervenschlag oder Dim-Mak-Gliedmaßentreffer vorübergehend Magie rauben.</value></data>
+  <data name="Qualities.Summary.507657d6-d882-49f3-b007-9224652c2fa7" xml:space="preserve"><value>Verbessere Zauberformung: Wähle geringere Abzüge, stärkere Radiusänderungen oder größere ausgesparte Bereiche.</value></data>
+  <data name="Qualities.Summary.39384189-d15a-4f2e-97a9-7f9a0b85ef64" xml:space="preserve"><value>Binde nach Herbeirufen eine gewählte Geisterart; sie wird ruhelos und leistet manipulationsbezogene Dienste.</value></data>
+  <data name="Qualities.Summary.2c1fece2-e950-41c0-a020-2671334e1610" xml:space="preserve"><value>In Arkologien und ähnlichen Umgebungen drohen bei misslungener Selbstbeherrschung Handlungsabzüge und zerstörerische Ausbrüche.</value></data>
+  <data name="Qualities.Summary.97615a7e-33aa-4013-b146-98175ac0f6c9" xml:space="preserve"><value>Berliner Bürgerstatus mit begrenzter Anerkennung außerhalb Berlins, Einkommensteuer und kostenlosem VolksKOMM.</value></data>
+  <data name="Qualities.Summary.3e2eac9a-e256-4755-a66a-ffbaac751cfa" xml:space="preserve"><value>Berliner kriminelle SIN: Im Ausland eingeschränkt anerkannt, Vorstrafen bleiben sichtbar; Einkommensteuer und kostenloses VolksKOMM.</value></data>
+  <data name="Qualities.Summary.430af564-0be1-42f0-a0d0-318c093ea3d8" xml:space="preserve"><value>Elementarer Körper verursacht stattdessen ab der Folgerunde unvermeidbaren Entzug; wähle jedes Mal körperlichen oder geistigen Schaden.</value></data>
 </root>

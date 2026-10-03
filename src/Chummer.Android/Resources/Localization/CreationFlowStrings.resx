@@ -3268,4 +3268,22 @@
   <data name="Qualities.SummarySource.beb709ac-4c40-4b05-9c49-1fe26e4fa2ab" xml:space="preserve"><value>59594730C36B5CD9ACEAB978C1BE6149E359C66F4B57D5D4085D205D380E776F</value></data>
   <data name="Qualities.Summary.ab862f1f-5ed3-4976-a781-bf63565faf26" xml:space="preserve"><value>A broken implant offers no benefit but still consumes Essence; removing it is expensive.</value></data>
   <data name="Qualities.SummarySource.ab862f1f-5ed3-4976-a781-bf63565faf26" xml:space="preserve"><value>439E197C7EF5ED4B6075FF3FE6FE7287B82B347D0200FBCA979A3E2069B84375</value></data>
+  <data name="Qualities.Summary.91a06a6b-7d4a-4b10-9180-18dd3da623ab" xml:space="preserve"><value>An AI can jump into its chosen vehicle class with control-rig benefits and autosofts, even without rigger adaptation.</value></data>
+  <data name="Qualities.SummarySource.91a06a6b-7d4a-4b10-9180-18dd3da623ab" xml:space="preserve"><value>9D700FA898275DEFF00D32801052DB9A3F3563E677260FB88E22245901F17DD3</value></data>
+  <data name="Qualities.Summary.3fa061b9-c3bd-40bb-a292-eb35a8f8f5f8" xml:space="preserve"><value>Revives the recently dead at permanent Essence cost; both caster and patient risk lasting harm.</value></data>
+  <data name="Qualities.SummarySource.3fa061b9-c3bd-40bb-a292-eb35a8f8f5f8" xml:space="preserve"><value>B1A4E96D0D56991C243E696D0C1BEBEA4866FC972B788E856EE33B73991B1C0B</value></data>
+  <data name="Qualities.Summary.56d00933-379d-4442-8878-6db5b08fd20c" xml:space="preserve"><value>Previously assensed targets can temporarily lose Magic through Nerve Strike or Dim Mak limb attacks.</value></data>
+  <data name="Qualities.SummarySource.56d00933-379d-4442-8878-6db5b08fd20c" xml:space="preserve"><value>24E1E3BD72D40C2FAEF3708A5D5AB9A45ED85919A456C77EC3E1C607450C560A</value></data>
+  <data name="Qualities.Summary.507657d6-d882-49f3-b007-9224652c2fa7" xml:space="preserve"><value>Improve Spell Shaping: choose lower penalties, stronger radius adjustments or larger excluded zones.</value></data>
+  <data name="Qualities.SummarySource.507657d6-d882-49f3-b007-9224652c2fa7" xml:space="preserve"><value>00068E1F240E836D18579101F1DDC538378C33829BCFA77F1A3882967DB05990</value></data>
+  <data name="Qualities.Summary.39384189-d15a-4f2e-97a9-7f9a0b85ef64" xml:space="preserve"><value>Bind a chosen spirit kind after Calling; it becomes Restless and offers manipulation services.</value></data>
+  <data name="Qualities.SummarySource.39384189-d15a-4f2e-97a9-7f9a0b85ef64" xml:space="preserve"><value>01DFE9A9AF8E70510E2886D8D1477F09B2CCDF8965F645BA6DD39D0F0C725591</value></data>
+  <data name="Qualities.Summary.2c1fece2-e950-41c0-a020-2671334e1610" xml:space="preserve"><value>Arcologies and similar environments can trigger action penalties and destructive outbursts if composure fails.</value></data>
+  <data name="Qualities.SummarySource.2c1fece2-e950-41c0-a020-2671334e1610" xml:space="preserve"><value>8D51E0E4D7A93389939BC5768622B468D7C5F6F6271BC95F89B791E1E2A246CB</value></data>
+  <data name="Qualities.Summary.97615a7e-33aa-4013-b146-98175ac0f6c9" xml:space="preserve"><value>Berlin citizenship with limited recognition abroad, income tax and a free VolksKOMM.</value></data>
+  <data name="Qualities.SummarySource.97615a7e-33aa-4013-b146-98175ac0f6c9" xml:space="preserve"><value>8C0B343EE8C94BB005A0DBC410A4349563B8BEF97DE500ED86A071F4B90394B8</value></data>
+  <data name="Qualities.Summary.3e2eac9a-e256-4755-a66a-ffbaac751cfa" xml:space="preserve"><value>Berlin criminal SIN: limited recognition abroad, but criminal records travel; income tax and a free VolksKOMM.</value></data>
+  <data name="Qualities.SummarySource.3e2eac9a-e256-4755-a66a-ffbaac751cfa" xml:space="preserve"><value>71657069D8DFFF41BA209A58DB94427A2C177857DF050D4396C6510627205F9C</value></data>
+  <data name="Qualities.Summary.430af564-0be1-42f0-a0d0-318c093ea3d8" xml:space="preserve"><value>Elemental Body instead inflicts unavoidable Drain from the following turn; choose Physical or Stun each time.</value></data>
+  <data name="Qualities.SummarySource.430af564-0be1-42f0-a0d0-318c093ea3d8" xml:space="preserve"><value>BE23607B57C932BD2967551C9697C7B4183613499D9BCCA55DB059F7C7BE7728</value></data>
 </root>
