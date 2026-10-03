@@ -162,6 +162,54 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Natural Hacker", ["chosen", "instead", "mental"],
+            ["gewählten", "Resonanz", "geistige"],
+            ["elegida", "Resonancia", "mental"]),
+        ("One With the Matrix I", ["join", "authorized", "subordinate"],
+            ["Erlaubnis", "untergeordnetes"],
+            ["subordinado", "autorización"]),
+        ("One With the Matrix II", ["lead", "Resonance", "devices"],
+            ["leiten", "Resonanz", "Geräte"],
+            ["dirigir", "Resonancia", "dispositivos"]),
+        ("One With the Matrix III", ["join", "authorized", "lead", "Resonance"],
+            ["erlaubten", "beitreten", "leiten", "Resonanz"],
+            ["unirse", "autorizadas", "dirigir", "Resonancia"]),
+        ("Missile Deflector", ["catching", "Missile Parry", "Counterstrike", "range"],
+            ["Geschossparade", "Gegenangriff-Unterbrechung", "gefangene", "Wurfreichweite"],
+            ["atrapar", "Parada", "Contraataque", "alcance"]),
+        ("Mystic Foreman", ["Shape", "resistance", "reinforced"],
+            ["Formen von Material", "Widerstand", "verstärkte"],
+            ["Moldear", "resistencia", "reforzadas"]),
+        ("Mystic Pitcher", ["Fling", "range", "called shots"],
+            ["Schleuder", "Reichweitenbedingungen", "angesagte"],
+            ["Lanzar", "alcance", "localizados"]),
+        ("Phenotypic Variation - Shuffle", ["Genetic", "harder", "DNA"],
+            ["Gentechnische", "DNA", "schwerer"],
+            ["ADN", "dificultad", "genéticas"]),
+        ("Phenotypic Variation - Cosmetic Alteration", ["cosmetic", "do not", "limbs"],
+            ["kosmetische", "keine", "Gliedmaßen"],
+            ["cosméticos", "no añade", "extremidades"]),
+        ("Phenotypic Variation - Print Removal", ["skin-ridge", "another"],
+            ["Hautleistenabdrücke", "andere"],
+            ["huellas", "otro"]),
+        ("Phenotypic Variation - Metaposeur", ["chosen", "without", "drawbacks"],
+            ["gewählter", "ohne", "Nachteile"],
+            ["elegido", "sin", "desventajas"]),
+        ("Golden Screwdriver", ["Matrix damage", "simultaneously", "split"],
+            ["Matrixschaden", "gleichzeitig", "Aufteilung"],
+            ["matricial", "simultáneamente", "repartirlos"]),
+        ("Online Fame", ["Recognition", "limits", "distrust"],
+            ["Onlinebekanntheit", "Limits", "Misstrauen"],
+            ["reconocimiento", "límites", "desconfianza"]),
+        ("Pain is Gain", ["Biofeedback", "this Combat Turn", "not"],
+            ["Biofeedbackschaden", "dieser Kampfrunde", "nicht"],
+            ["biorretroalimentación", "este turno", "no acumulan"]),
+        ("Data Liberator", ["freely", "immediately", "payment"],
+            ["frei", "bezahlter", "unmittelbar"],
+            ["libremente", "cobras", "inmediatamente"]),
+        ("Corporate Loyalist", ["Social", "Composure", "chosen", "betray"],
+            ["Sozialproben", "Selbstbeherrschung", "gewählten", "Konzernverrat"],
+            ["sociales", "Compostura", "elegida", "traicionarla"]),
         ("Items of Power", ["focus addiction", "other purposes"],
             ["Fokusabhängigkeit", "andere Zwecke"],
             ["adicción", "otros fines"]),
@@ -1226,7 +1274,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 682, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 698, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1257,14 +1305,17 @@ internal static partial class AfterRunAuthorityHarness
                     "Flesh Sculpter", "Healer", "Illusionist",
                     "Items of Power", "Mage Hunter I", "Mage Hunter II", "Mage Hunter III",
                     "Brilliant Heuristics", "Groveler", "Hold the Door",
-                    "Fractal Punch", "Lone Wolf", "Team Player" })
+                    "Fractal Punch", "Lone Wolf", "Team Player", "Natural Hacker",
+                    "One With the Matrix I", "One With the Matrix II", "One With the Matrix III",
+                    "Missile Deflector", "Mystic Foreman", "Mystic Pitcher" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Memory Palace",
                             "Memory help must retain its prerequisite quality.");
                     else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door"
-                        or "Fractal Punch" or "Lone Wolf" or "Team Player")
+                        or "Fractal Punch" or "Lone Wolf" or "Team Player" or "Natural Hacker"
+                        or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1282,7 +1333,9 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Common Target, Outspoken)", "Favored (Common Target, Fanatic)",
                     "Favored (Specific Target, Biased)", "Favored (Specific Target, Outspoken)",
                     "Favored (Specific Target, Fanatic)", "Illusionist",
-                    "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)" })
+                    "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
+                    "Natural Hacker", "Corporate Loyalist",
+                    "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur" })
                 {
                     var selected = catalog.Single(q => q.Element("name")!.Value == name);
                     Require(selected.Element("bonus")!.Element("selecttext") is not null,
@@ -1292,6 +1345,42 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
                         CreationFlowStrings.Get(SummaryKey(selected), "")),
                         "Choice-bound help must not survive removal of its choice: " + name);
+                }
+                foreach (var choice in new[]
+                {
+                    (Name: "Natural Hacker", File: "actions.xml",
+                        Path: "/chummer/actions/action[category = 'Matrix' and type != 'No']/name"),
+                    (Name: "Phenotypic Variation - Metaposeur", File: "metatypes.xml",
+                        Path: "/chummer/metatypes/metatype | /chummer/metatypes/metatype/metavariants/metavariant")
+                })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == choice.Name);
+                    var selector = quality.Element("bonus")!.Element("selecttext")!;
+                    Require(selector.Attribute("xml")!.Value == choice.File
+                        && selector.Attribute("xpath")!.Value == choice.Path,
+                        "Choice help must retain its exact action or metatype scope: " + choice.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("bonus")!.Element("selecttext")!.SetAttributeValue("xpath", "/custom");
+                    Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
+                        CreationFlowStrings.Get(SummaryKey(quality), "")),
+                        "A changed selection scope must invalidate the old explanation: " + choice.Name);
+                }
+                foreach (var grade in new[]
+                {
+                    (Name: "One With the Matrix I", Excluded: new[] { "One With the Matrix III" }),
+                    (Name: "One With the Matrix II", Excluded: new[] { "One With the Matrix III" }),
+                    (Name: "One With the Matrix III", Excluded: new[] { "One With the Matrix I", "One With the Matrix II" })
+                })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == grade.Name);
+                    Require(quality.Element("forbidden")!.Element("oneof")!.Elements("quality")
+                            .Select(q => q.Value).SequenceEqual(grade.Excluded),
+                        "Combined persona-network help must not erase grade exclusions.");
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    changed.Element("forbidden")!.Remove();
+                    Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
+                        CreationFlowStrings.Get(SummaryKey(quality), "")),
+                        "Removing persona-network exclusions must reject old help: " + grade.Name);
                 }
                 var frostbite = catalog.Single(q => q.Element("name")!.Value == "Frostbite");
                 Require(frostbite.Element("bonus")!.Element("selectskill")!.Attribute("limittoskill")!.Value
@@ -1323,7 +1412,9 @@ internal static partial class AfterRunAuthorityHarness
                         "Source-bound SURGE help must not survive removal of its prerequisite: " + name);
                 }
                 foreach (string name in new[] { "Phenotypic Variation - Genewipe",
-                    "Phenotypic Variation - Masque", "Phenotypic Variation - Reprint", "Prototype Materials" })
+                    "Phenotypic Variation - Masque", "Phenotypic Variation - Reprint",
+                    "Phenotypic Variation - Shuffle", "Phenotypic Variation - Cosmetic Alteration",
+                    "Phenotypic Variation - Print Removal", "Phenotypic Variation - Metaposeur", "Prototype Materials" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     string admission = name == "Prototype Materials" ? "forbidden" : "chargenonly";
