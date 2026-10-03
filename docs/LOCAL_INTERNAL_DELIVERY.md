@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 79 is the latest [observed Internal availability](../play/evidence/preview79-internal-observation.md),
+Preview 80 is the latest [observed Internal availability](../play/evidence/preview80-internal-observation.md),
+confirmed on 3 October at approximately 09:28 Europe/Vienna. Its exact local
+ARM64 AAB was separately signed with the existing upload key and independently
+verified. Creation Magic budget links now focus the corresponding editor section
+once, including Spells and Mystic Adept power-point controls. Focused managed
+checks and an API-36 x64 diagnostic smoke passed; rules and dependencies are
+unchanged. Host restarts and System UI startup ANRs in that smoke are retained
+limitations, not a general performance claim. Physical Play80 installation is
+not yet verified. Preview79 remains the latest physical observation below.
+
+Preview 79's [observed Internal availability](../play/evidence/preview79-internal-observation.md) was
 confirmed on 3 October at 07:24 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 It adds 34 short original ritual/enchantment explanations, bringing EN/DE/ES
@@ -272,7 +282,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 78](../play/evidence/preview78-physical-observation.md) is the latest
+[Preview 79](../play/evidence/preview79-physical-observation.md) is the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
