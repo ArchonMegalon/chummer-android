@@ -28,6 +28,9 @@ public sealed class CreationGearPage : NativePageBase
     private CharacterCreationGearInteractionLoadResult? _loaded;
     private bool _ready;
     private bool _loading = true;
+    private VerticalStackLayout _basketBody = new() { Spacing = 14 };
+    private VerticalStackLayout _basketDetails = new() { Spacing = 6 };
+    private readonly List<(CharacterCreationGearCatalogOption Option, Border Row)> _catalogRows = [];
 
     public CreationGearPage(
         RunnerSessionCoordinator coordinator,
@@ -68,6 +71,9 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void Refresh()
     {
+        _catalogRows.Clear();
+        _basketBody = new() { Spacing = 14 };
+        _basketDetails = new() { Spacing = 6 };
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
@@ -112,6 +118,8 @@ public sealed class CreationGearPage : NativePageBase
             return;
         }
 
+        _body.Add(_basketBody);
+        _technicalDetails.Add(_basketDetails);
         AddBasket(state);
         AddCatalog(state);
         AddAuthority(state);
@@ -177,12 +185,14 @@ public sealed class CreationGearPage : NativePageBase
 
     private void AddBasket(CharacterCreationGearInteractionState state)
     {
-        _body.Add(NativeTheme.Eyebrow(_copy["Gear.DraftBasket"]));
+        _basketBody.Clear();
+        _basketDetails.Clear();
+        _basketBody.Add(NativeTheme.Eyebrow(_copy["Gear.DraftBasket"]));
         if (_basket.Count == 0)
         {
             Label empty = NativeTheme.Body(_copy["Gear.NoCatalogLines"], NativeTheme.Muted);
             empty.AutomationId = "creation-gear-basket-empty";
-            _body.Add(NativeTheme.Card(empty));
+            _basketBody.Add(NativeTheme.Card(empty));
         }
         else
         {
@@ -197,10 +207,10 @@ public sealed class CreationGearPage : NativePageBase
                     AddBlockers(
                         _copy["Gear.BasketAuthorityChanged"],
                         [CharacterCreationGearBlockers.InvalidOption],
-                        $"creation-gear-basket-invalid-{Token(optionId)}");
+                        $"creation-gear-basket-invalid-{Token(optionId)}", _basketBody);
                     continue;
                 }
-                _body.Add(BasketLine(state, option, quantity));
+                _basketBody.Add(BasketLine(state, option, quantity));
             }
         }
 
@@ -209,14 +219,14 @@ public sealed class CreationGearPage : NativePageBase
         preview.AutomationId = "creation-gear-preview";
         preview.IsEnabled = differs;
         preview.Clicked += async (_, _) => await RunAsync(() => OpenPreviewAsync(state));
-        _body.Add(preview);
+        _basketBody.Add(preview);
         Label previewAuthority = NativeTheme.Body(
             differs
                 ? _copy["Gear.CoreWillCalculate"]
                 : _copy["Gear.ChangeBasket"],
             NativeTheme.Muted);
         previewAuthority.AutomationId = "creation-gear-preview-authority";
-        _body.Add(previewAuthority);
+        _basketBody.Add(previewAuthority);
     }
 
     private Border BasketLine(
@@ -233,26 +243,30 @@ public sealed class CreationGearPage : NativePageBase
             option.PackageQuantity,
             option.Legality), NativeTheme.Muted));
         content.Add(NativeTheme.Metric(_copy["Gear.Quantity"], quantity.ToString(_copy.DisplayCulture)));
-        _technicalDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-option-id", option.OptionId));
-        _technicalDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-quantity", quantity));
+        _basketDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-option-id", option.OptionId));
+        _basketDetails.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-quantity", quantity));
 
+        Border card = NativeTheme.Card(content);
+        card.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}";
+        void SetQuantity(int next)
+        {
+            if (ReferenceEquals(card.Parent, _basketBody)) UpdateQuantity(state, option.OptionId, next);
+        }
         HorizontalStackLayout actions = new() { Spacing = 8 };
         Button decrement = NativeTheme.SecondaryButton("−");
         decrement.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}-decrement";
-        decrement.Clicked += (_, _) => UpdateQuantity(state, option.OptionId, quantity - 1);
+        decrement.Clicked += (_, _) => SetQuantity(quantity - 1);
         actions.Add(decrement);
         Button increment = NativeTheme.SecondaryButton("+");
         increment.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}-increment";
         increment.IsEnabled = quantity < state.Authority.MaximumQuantityPerLine;
-        increment.Clicked += (_, _) => UpdateQuantity(state, option.OptionId, quantity + 1);
+        increment.Clicked += (_, _) => SetQuantity(quantity + 1);
         actions.Add(increment);
         Button remove = NativeTheme.SecondaryButton(_copy["Gear.Remove"]);
         remove.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}-remove";
-        remove.Clicked += (_, _) => UpdateQuantity(state, option.OptionId, 0);
+        remove.Clicked += (_, _) => SetQuantity(0);
         actions.Add(remove);
         content.Add(actions);
-        Border card = NativeTheme.Card(content);
-        card.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}";
         return card;
     }
 
@@ -298,15 +312,7 @@ public sealed class CreationGearPage : NativePageBase
 
         foreach (CharacterCreationGearCatalogOption option in matches.Skip(_catalogOffset).Take(CatalogPageSize))
         {
-            bool alreadySelected = _basket.ContainsKey(option.OptionId);
-            bool lineRoom = alreadySelected || _basket.Count < state.Authority.MaximumBasketLines;
-            bool enabled = option.IsSelectable
-                           && option.PricingIsExact
-                           && option.AvailabilityIsExact
-                           && option.Blockers.Count == 0
-                           && lineRoom
-                           && (!alreadySelected
-                               || _basket[option.OptionId] < state.Authority.MaximumQuantityPerLine);
+            bool enabled = CanAddCatalogOption(state, option);
             string detail = option.IsSelectable && option.Blockers.Count == 0
                 ? _copy.Format(
                     "Gear.CatalogDetail",
@@ -320,17 +326,21 @@ public sealed class CreationGearPage : NativePageBase
                 : _copy.Format(
                     "Gear.CatalogUnavailable",
                     option.Blockers.FirstOrDefault() ?? CharacterCreationGearBlockers.UnsupportedSemantics);
-            _body.Add(NativeTheme.NavigationRow(
+            Border? row = null;
+            row = NativeTheme.NavigationRow(
                 option.Name,
                 detail,
                 () =>
                 {
+                    if (!ReferenceEquals(row?.Parent, _body)) return Task.CompletedTask;
                     int next = _basket.TryGetValue(option.OptionId, out int current) ? current + 1 : 1;
                     UpdateQuantity(state, option.OptionId, next);
                     return Task.CompletedTask;
                 },
                 enabled,
-                $"creation-gear-catalog-{Token(option.OptionId)}"));
+                $"creation-gear-catalog-{Token(option.OptionId)}");
+            _body.Add(row);
+            _catalogRows.Add((option, row));
             _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-id", option.OptionId));
             _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-digest", option.OptionDigest));
         }
@@ -379,6 +389,10 @@ public sealed class CreationGearPage : NativePageBase
         string optionId,
         int quantity)
     {
+        // Retained controls may belong to a departed appearance or account.
+        if (!_ready || !ReferenceEquals(state, _loaded?.State)
+            || _loadedDisplay is not { } original
+            || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         if (!CreationGearPhoneBasket.TrySetQuantity(
                 _basket,
                 optionId,
@@ -388,7 +402,27 @@ public sealed class CreationGearPage : NativePageBase
                 out Dictionary<string, int> updated))
             return;
         _basket = updated;
-        Refresh();
+        // Quantity edits change the pending basket, not the catalog authority.
+        // Preserve the catalog's native controls, search focus and scroll state.
+        AddBasket(state);
+        foreach ((var option, var row) in _catalogRows)
+        {
+            bool enabled = CanAddCatalogOption(state, option);
+            Grid content = (Grid)row.Content!;
+            content.Children.OfType<Button>().Single().IsEnabled = enabled;
+            content.Children.OfType<Label>().Single().TextColor = enabled ? NativeTheme.Muted : NativeTheme.Line;
+            row.Opacity = enabled ? 1 : 0.55;
+        }
+    }
+
+    private bool CanAddCatalogOption(CharacterCreationGearInteractionState state,
+        CharacterCreationGearCatalogOption option)
+    {
+        bool alreadySelected = _basket.TryGetValue(option.OptionId, out int quantity);
+        return option.IsSelectable && option.PricingIsExact && option.AvailabilityIsExact
+            && option.Blockers.Count == 0
+            && (alreadySelected || _basket.Count < state.Authority.MaximumBasketLines)
+            && (!alreadySelected || quantity < state.Authority.MaximumQuantityPerLine);
     }
 
     private async Task OpenPreviewAsync(CharacterCreationGearInteractionState state)
@@ -447,7 +481,8 @@ public sealed class CreationGearPage : NativePageBase
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-gear-details"));
     }
 
-    private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)
+    private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId,
+        VerticalStackLayout? target = null)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(title));
@@ -455,7 +490,7 @@ public sealed class CreationGearPage : NativePageBase
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
-        _body.Add(border);
+        (target ?? _body).Add(border);
     }
 
     private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";

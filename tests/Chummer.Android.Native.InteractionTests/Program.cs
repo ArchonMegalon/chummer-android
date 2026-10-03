@@ -43,6 +43,11 @@ internal static class Program
             CreationMagicNativeRuntimeTests.RunMysticReadability(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-gear-basket-render-content-root")
+        {
+            await AfterRunAuthorityHarness.RunGearBasketRenderingAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-gear-save-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunGearSaveFeedbackAsync(args[1]);

@@ -143,7 +143,8 @@ class CreationGearSourceContractTests(unittest.TestCase):
         self.assertIn("CreationGearPhoneAuthority.PreparedMatches", page)
         self.assertIn("CreationGearPhoneAuthority.ReceiptMatches", page)
         self.assertIn("CreationGearPhoneAuthority.RefreshedStateMatches", page)
-        self.assertIn("await bound.LoadAsync(owner, workspaceId, ct)", coordinator)
+        self.assertIn("await bound.LoadBeforeShellSyncAsync(owner, workspaceId, ct)", coordinator)
+        self.assertEqual(1, coordinator.count("await SyncShellAsync(ct)"))
         self.assertNotIn("await _overview.LoadAsync(", page)
         self.assertIn("CharacterDocumentChanged", page)
 
