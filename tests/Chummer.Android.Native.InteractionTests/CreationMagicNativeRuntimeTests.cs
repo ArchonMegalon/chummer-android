@@ -84,7 +84,7 @@ internal static class CreationMagicNativeRuntimeTests
                     Require(CreationSpellInfo.Summary(custom with { CanonicalSourceXmlDigest = spell.CanonicalSourceXmlDigest })
                         == CreationFlowStrings.Get("Spells.Unavailable", "missing"), "Tampered spell payload displayed trusted help.");
                 }
-                Require(authored == 327, $"Expected 327 reviewed spell/ritual summaries; got {authored} in {locale}.");
+                Require(authored == 333, $"Expected 333 reviewed spell/ritual summaries; got {authored} in {locale}.");
                 var reviewedRituals = authority.Spells.Where(spell =>
                     spell.SourceBook == "SR5" && new[] { "Curse", "Prodigal Spell", "Remote Sensing",
                         "Ward", "Circle of Protection", "Circle of Healing", "Renascence",
@@ -93,12 +93,13 @@ internal static class CreationMagicNativeRuntimeTests
                         "Polarized Ward", "Trap Ward", "Aspect Mana Line", "Astral Doppelganger",
                         "Circle of Cleansing", "Death Mark", "Dispersion Circle", "Obfuscating Ward",
                         "Atonement", "Attune Animal", "Attune Item", "Augury and Sortilege",
-                        "Empower", "Smudging", "Spirit Pact" }.Contains(spell.Name)
+                        "Empower", "Smudging", "Spirit Pact", "Ally Conjuration", "Create Ally Spirit",
+                        "Blood Bond", "Blood Rite", "Blood Sight", "Calling [Spirit Type]" }.Contains(spell.Name)
                     || spell.SourceBook == "FA" && new[] { "Blood Bath", "Blood Oath",
                         "Death Curse", "Guardian Bond", "Forest Transformation", "Necro Summoning" }.Contains(spell.Name)
                     || spell.SourceBook == "HT" && new[] { "Corps Cadavre", "Zombie" }.Contains(spell.Name)).ToArray();
-                Require(reviewedRituals.Length == 35 && reviewedRituals.All(spell => spell.Category == "Rituals"),
-                    "Expected thirty-five separate ritual definitions, not ordinary combat or detection spells.");
+                Require(reviewedRituals.Length == 41 && reviewedRituals.All(spell => spell.Category == "Rituals"),
+                    "Expected forty-one separate ritual definitions, not ordinary combat or detection spells.");
                 foreach (var ritual in reviewedRituals)
                 {
                     string prose = CreationFlowStrings.Get("Spells.Summary." + ritual.Identity.SourceId, string.Empty);
