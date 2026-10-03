@@ -12,6 +12,84 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunGearBasketRenderingAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, productionCreationOverview: true);
+        var before = PrepareActualFinalizationReadyContext(runtime);
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var gear = new CharacterCreationGearInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>());
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var page = new CreationGearPage(runtime.Coordinator, gear, runtime.Presenter);
+            var type = typeof(CreationGearPage);
+            await (Task)type.GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(page, [CancellationToken.None])!;
+            type.GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+            var load = (CharacterCreationGearInteractionLoadResult)type.GetField("_loaded", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            var state = load.State ?? throw new InvalidOperationException("Actual Gear authority unavailable.");
+            const string flashlight = "gear:c49a893a-d445-4aac-bec0-c8501cba4c2c";
+            const string prefix = "creation-gear-basket-gear-c49a893a-d445-4aac-bec0-c8501cba4c2c";
+            Button Button(string id) => MinimalVisible(page).OfType<Button>().Single(item => item.AutomationId == id);
+            var search = MinimalVisible(page).OfType<SearchBar>().Single();
+            var catalog = MinimalVisible(page).OfType<Button>()
+                .Where(item => item.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true).ToArray();
+            Require(catalog.Length > 20, "Test must render the real catalog, not an empty substitute.");
+            void Set(int quantity) => type.GetMethod("UpdateQuantity", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(page, [state, flashlight, quantity]);
+            void StableCatalog()
+            {
+                Require(ReferenceEquals(search, MinimalVisible(page).OfType<SearchBar>().Single())
+                    && catalog.SequenceEqual(MinimalVisible(page).OfType<Button>()
+                        .Where(item => item.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true)),
+                    "Basket-only change rebuilt the catalog/search native controls.");
+                Require(FinalizationDocumentDigest(store.Get(runtime.Id).Value!) == FinalizationDocumentDigest(before),
+                    "Browsing or quantity edits wrote a workspace without confirmation.");
+            }
+            Set(1);
+            StableCatalog();
+            var oldIncrement = Button(prefix + "-increment");
+            ((IButtonController)oldIncrement).SendClicked();
+            StableCatalog();
+            var basket = (Dictionary<string, int>)type.GetField("_basket", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+            Require(basket[flashlight] == 2 && Button("creation-gear-preview").IsEnabled,
+                "Increment did not update the pending basket and preview admission.");
+            Set(state.Authority.MaximumQuantityPerLine);
+            StableCatalog();
+            Require(!Button(prefix + "-increment").IsEnabled, "Maximum quantity left increment enabled.");
+            ((IButtonController)oldIncrement).SendClicked();
+            Require(((Dictionary<string, int>)type.GetField("_basket", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!)[flashlight]
+                == state.Authority.MaximumQuantityPerLine, "Detached quantity control overwrote a newer basket.");
+            var retained = Button(prefix + "-remove");
+            ((IButtonController)retained).SendClicked();
+            StableCatalog();
+            Require(!Button("creation-gear-preview").IsEnabled, "Returning to the saved empty basket left preview enabled.");
+            var selectable = catalog.First(button => button.IsEnabled
+                && button.AutomationId is not ("creation-gear-catalog-next" or "creation-gear-catalog-previous"));
+            var option = state.Authority.Options.Single(option => selectable.AutomationId
+                == "creation-gear-catalog-" + new string(option.OptionId.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray()));
+            type.GetMethod("UpdateQuantity", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(page, [state, option.OptionId, state.Authority.MaximumQuantityPerLine]);
+            StableCatalog();
+            Require(!selectable.IsEnabled, "Retained catalog row ignored its quantity limit.");
+            type.GetMethod("UpdateQuantity", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(page, [state, option.OptionId, 0]);
+            StableCatalog();
+            Require(selectable.IsEnabled, "Removing a line did not re-enable its catalog row.");
+            owners.Set(ContactsOwnerA);
+            owners.Set(ContactsOwnerB);
+            Set(1);
+            Require(!((Dictionary<string, int>)type.GetField("_basket", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!).ContainsKey(flashlight),
+                "A stale account display edited the replacement account's basket.");
+        });
+        Console.WriteLine("PASS Gear basket rendering: real Core catalog retained, bounded quantity, no write and stale-owner rejection");
+    }
+
     internal static async Task RunGearSaveFeedbackAsync(string contentRoot)
     {
         foreach (string scenario in new[] { "local", "linked", "owner-aba", "lost-reply", "failed-refresh" })
