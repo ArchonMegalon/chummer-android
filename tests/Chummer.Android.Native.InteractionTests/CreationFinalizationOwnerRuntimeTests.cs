@@ -485,6 +485,29 @@ internal static partial class AfterRunAuthorityHarness
         Require(nativeLanguage.StartsWith("Salish: ", StringComparison.Ordinal)
             && !nativeLanguage.EndsWith(": native", StringComparison.Ordinal),
             "Named language lost its readable native-language value.");
+        Require(CreationFinalizationPage.ChangeLabel(language).EndsWith(CreationKarmaCopy.NativeLanguage, StringComparison.Ordinal),
+            "Final review exposed the internal native-language marker.");
+        var lifecycle = legacy with { Kind = CharacterCreationFinalizationDeltaKinds.Lifecycle,
+            TargetId = "created", BeforeValue = "False", AfterValue = "True" };
+        string lifecycleBytes = JsonSerializer.Serialize(lifecycle);
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string languageTag in new[] { "en", "de", "es" })
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(languageTag);
+                Require(CreationFinalizationPage.TargetLabel(lifecycle) != "created"
+                    && CreationFinalizationPage.ChangeLabel(lifecycle) == CreationAllocationStrings.Get("Finalization.CareerTransition", "Creation → Career"),
+                    "The admitted lifecycle transition needs readable localized copy.");
+                Require(CreationFinalizationPage.ChangeLabel(lifecycle with { BeforeValue = "True" }) == "True → True",
+                    "An unrecognized lifecycle transition was disguised as entering Career.");
+                Require(CreationFinalizationReceiptPage.BuildMethodLabel(CharacterCreationBuildMethods.SumToTen)
+                    == CreationAllocationStrings.Get("Finalization.Method.SumToTen", "Sum-to-Ten"),
+                    "Receipt method localization must use the canonical contract value, not a guessed enum spelling.");
+            }
+        }
+        finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
+        Require(JsonSerializer.Serialize(lifecycle) == lifecycleBytes, "Lifecycle display mutated the exact Core delta.");
         await RunCreationFinalizationLocalBaselineAsync(contentRoot);
         Console.WriteLine("PASS final-review names: canonical label, historical fallback, Life Modules, real Core/MAUI render and cold receipt");
     }
@@ -1776,8 +1799,26 @@ internal static partial class AfterRunAuthorityHarness
                 input.Text = "999";
                 Require(review.Plan.StartingCash?.DiceTotal == source.Dice, "A departed Entry changed the sealed review.");
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                var binding = Element<Label>("creation-finalization-binding");
+                Require(!binding.IsVisible, "Review hashes are visible by default.");
+                ClickDetails("creation-finalization-technical-details-toggle");
+                Require(binding.IsVisible, "The current review cannot disclose its exact binding.");
+                ClickDetails("creation-finalization-technical-details-toggle");
+                Require(!binding.IsVisible, "The review binding could not collapse.");
                 await Click("creation-finalization-confirm");
                 Require(Current() is CreationFinalizationReceiptPage, "The actual confirm did not show its receipt.");
+                var technical = Element<VerticalStackLayout>("creation-finalization-receipt-technical-details");
+                Require(!technical.IsVisible && Element<Button>("creation-finalization-open-career").IsEnabled,
+                    "Receipt diagnostics are exposed by default or Career action was lost.");
+                ClickDetails("creation-finalization-receipt-technical-details-toggle");
+                Require(technical.IsVisible, "Receipt diagnostics could not open.");
+                ClickDetails("creation-finalization-receipt-technical-details-toggle");
+                Require(!technical.IsVisible, "Receipt diagnostics could not collapse.");
+                var detachedToggle = Element<Button>("creation-finalization-receipt-technical-details-toggle");
+                typeof(CreationFinalizationReceiptPage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(Current(), null);
+                ((IButtonController)detachedToggle).SendClicked();
+                Require(!technical.IsVisible && !Element<VerticalStackLayout>("creation-finalization-receipt-technical-details").IsVisible,
+                    "A detached receipt control disclosed stale data.");
                 var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
                 var receipt = cold.Document.AuxiliaryState.CharacterCreationFinalizationReceipts!.Single().Receipt;
                 Require(cold.ContentRevision == before.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
@@ -1787,11 +1828,20 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Set(ContactsOwnerB);
                 owners.Set(OwnerScope.LocalSingleUser);
                 Require(!runtime.Coordinator.IsCreationFinalizationStateCurrent(loaded), "Owner ABA revived the old cash page.");
+                ClickDetails("creation-finalization-receipt-technical-details-toggle");
+                Require(!Element<VerticalStackLayout>("creation-finalization-receipt-technical-details").IsVisible,
+                    "Owner ABA revived disclosure of an old receipt.");
                 ui.AssertHealthy();
                 Console.WriteLine("PASS " + method + " starting-cash page: explicit roll, Core rejection, preview, stale Entry, confirm and cold receipt");
 
                 NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
                 T Element<T>(string id) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == id);
+                void ClickDetails(string id)
+                {
+                    var button = Element<Button>(id);
+                    Require(button.IsEnabled, "Details button disabled: " + id);
+                    ((IButtonController)button).SendClicked();
+                }
                 async Task Appear()
                 {
                     if (IssuedPageField<int>(Current(), "_subscribed") == 0)
@@ -2582,6 +2632,8 @@ internal static partial class AfterRunAuthorityHarness
         var refresh = typeof(CreationFinalizationPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
         refresh.Invoke(page, null);
         var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var binding = body.Children.OfType<Label>().Single(label => label.AutomationId == "creation-finalization-binding");
+        Require(!binding.IsVisible, "Final-review hashes should start hidden.");
         var labels = body.Children.OfType<Border>().Select(border => border.Content)
             .OfType<VerticalStackLayout>().SelectMany(card => card.Children.OfType<Label>()).ToArray();
         foreach (var delta in review.OrderedDeltas)
@@ -2589,8 +2641,16 @@ internal static partial class AfterRunAuthorityHarness
             var target = labels.Single(label => label.AutomationId == "creation-finalization-target-" + delta.Order);
             Require(target.Text == CreationFinalizationPage.TargetLabel(delta) && target.IsVisible,
                 "Final review hid or replaced a reviewed target name.");
-            if (!string.IsNullOrWhiteSpace(delta.TargetName))
+            if (!string.IsNullOrWhiteSpace(delta.TargetName) && delta.Kind != CharacterCreationFinalizationDeltaKinds.Lifecycle)
                 Require(target.Text == delta.TargetName, "Final review did not display the exact admitted name.");
+            var deltaCard = (VerticalStackLayout)body.Children.OfType<Border>()
+                .Single(border => border.AutomationId == "creation-finalization-delta-" + delta.Order).Content!;
+            Require(deltaCard.Children.OfType<Label>().Any(label => label.IsVisible && label.Text == CreationFinalizationPage.ChangeLabel(delta)),
+                "Final review hid a reviewed value change.");
+            if (delta.KarmaCost != 0 || delta.NuyenCost != 0)
+                Require(deltaCard.Children.OfType<Label>().Any(label => label.IsVisible && label.Text ==
+                    $"Karma {delta.KarmaCost.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} · Nuyen {delta.NuyenCost.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}"),
+                    "Final review hid or changed an exact cost.");
             if (target.Text != delta.TargetId)
                 Require(labels.Any(label => label.AutomationId == "creation-finalization-source-" + delta.Order
                     && !label.IsVisible && label.Text.Split('\n')[0] == delta.TargetId),
@@ -2598,11 +2658,17 @@ internal static partial class AfterRunAuthorityHarness
         }
         var toggle = body.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-technical-details-toggle");
         ((IButtonController)toggle).SendClicked();
+        Require(binding.IsVisible, "Technical detail toggle did not reveal the review binding.");
         Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
             .All(label => label.IsVisible), "Technical detail toggle did not reveal source identities.");
         ((IButtonController)toggle).SendClicked();
+        Require(!binding.IsVisible, "Technical detail toggle did not collapse the review binding.");
         Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
             .All(label => !label.IsVisible), "Technical detail toggle did not collapse source identities.");
+        refresh.Invoke(page, null);
+        ((IButtonController)toggle).SendClicked();
+        Require(!binding.IsVisible && !body.Children.OfType<Label>().Single(label => label.AutomationId == "creation-finalization-binding").IsVisible,
+            "A detached review toggle disclosed stale authority.");
         Require(JsonSerializer.Serialize(review) == original && coordinator.IsCreationFinalizationReviewCurrent(review),
             "Display names or technical disclosure changed the admitted review authority.");
     }

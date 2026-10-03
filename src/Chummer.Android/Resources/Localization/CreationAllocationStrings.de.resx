@@ -897,4 +897,31 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Auswahl wird geprüft…</value></data>
   <data name="AttributesPreview.Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
   <data name="Karma.QualityInfo" xml:space="preserve"><value>!</value></data>
+  <data name="Finalization.Title" xml:space="preserve"><value>Erschaffung abschließen</value></data>
+  <data name="Finalization.StaleReview" xml:space="preserve"><value>Diese Prüfung ist nicht mehr aktuell. Öffne deinen Runner erneut und prüfe die Änderungen.</value></data>
+  <data name="Finalization.Review" xml:space="preserve"><value>Abschlussprüfung</value></data>
+  <data name="Finalization.EnterCareer" xml:space="preserve"><value>In die Karriere wechseln</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Prüfe die Änderungen und das verbleibende Guthaben. Erst deine Bestätigung speichert alles zusammen.</value></data>
+  <data name="Finalization.After" xml:space="preserve"><value>Nach dem Abschluss</value></data>
+  <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Verbleibendes Karma</value></data>
+  <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Verbleibende Nuyen</value></data>
+  <data name="Finalization.Change" xml:space="preserve"><value>Änderung {0}</value></data>
+  <data name="Finalization.ConfirmHelp" xml:space="preserve"><value>Bestätige, um die Erschaffung abzuschließen und die Karriere zu beginnen. Ändert sich dein Runner vor dem Speichern, musst du erneut prüfen.</value></data>
+  <data name="Finalization.Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
+  <data name="Finalization.Confirm" xml:space="preserve"><value>Bestätigen und Karriere beginnen</value></data>
+  <data name="Finalization.Mode" xml:space="preserve"><value>Modus</value></data>
+  <data name="Finalization.CareerTransition" xml:space="preserve"><value>Erschaffung → Karriere</value></data>
+  <data name="Finalization.SavedTitle" xml:space="preserve"><value>Erschaffung gespeichert</value></data>
+  <data name="Finalization.ReceiptAccount" xml:space="preserve"><value>Wechsle zum ursprünglichen Konto, um diese Bestätigung anzusehen.</value></data>
+  <data name="Finalization.CareerReady" xml:space="preserve"><value>Bereit für die Karriere</value></data>
+  <data name="Finalization.BuildMethod" xml:space="preserve"><value>Erschaffungsmethode</value></data>
+  <data name="Finalization.Career" xml:space="preserve"><value>Karriere</value></data>
+  <data name="Finalization.Creation" xml:space="preserve"><value>Erschaffung</value></data>
+  <data name="Finalization.Reopened" xml:space="preserve"><value>Dein gespeicherter Runner wurde im Karrieremodus wieder geöffnet.</value></data>
+  <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Deine Änderungen sind gespeichert. Öffne deinen Runner erneut, bevor du im Karrieremodus weitermachst.</value></data>
+  <data name="Finalization.OpenCareer" xml:space="preserve"><value>Runner im Karrieremodus öffnen</value></data>
+  <data name="Finalization.Method.Priority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Lebensmodule</value></data>
 </root>

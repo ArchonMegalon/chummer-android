@@ -897,4 +897,31 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Attributes.ReviewPreparing" xml:space="preserve"><value>Checking your choices…</value></data>
   <data name="AttributesPreview.Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="Karma.QualityInfo" xml:space="preserve"><value>!</value></data>
+  <data name="Finalization.Title" xml:space="preserve"><value>Finish creation</value></data>
+  <data name="Finalization.StaleReview" xml:space="preserve"><value>This review is no longer current. Reopen your runner and review again.</value></data>
+  <data name="Finalization.Review" xml:space="preserve"><value>Final review</value></data>
+  <data name="Finalization.EnterCareer" xml:space="preserve"><value>Enter Career mode</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Check the changes and remaining funds below. They are saved together only when you confirm.</value></data>
+  <data name="Finalization.After" xml:space="preserve"><value>After finalization</value></data>
+  <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Karma remaining</value></data>
+  <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Nuyen remaining</value></data>
+  <data name="Finalization.Change" xml:space="preserve"><value>Change {0}</value></data>
+  <data name="Finalization.ConfirmHelp" xml:space="preserve"><value>Confirm to finish creation and start Career mode. If your runner changes before saving, you will need to review again.</value></data>
+  <data name="Finalization.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Finalization.Confirm" xml:space="preserve"><value>Confirm and enter Career</value></data>
+  <data name="Finalization.Mode" xml:space="preserve"><value>Mode</value></data>
+  <data name="Finalization.CareerTransition" xml:space="preserve"><value>Creation → Career</value></data>
+  <data name="Finalization.SavedTitle" xml:space="preserve"><value>Creation saved</value></data>
+  <data name="Finalization.ReceiptAccount" xml:space="preserve"><value>Return to the original account to view this confirmation.</value></data>
+  <data name="Finalization.CareerReady" xml:space="preserve"><value>Career mode is ready</value></data>
+  <data name="Finalization.BuildMethod" xml:space="preserve"><value>Build method</value></data>
+  <data name="Finalization.Career" xml:space="preserve"><value>Career</value></data>
+  <data name="Finalization.Creation" xml:space="preserve"><value>Creation</value></data>
+  <data name="Finalization.Reopened" xml:space="preserve"><value>Your saved runner has reopened in Career mode.</value></data>
+  <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Your changes are saved. Reopen your runner before continuing in Career mode.</value></data>
+  <data name="Finalization.OpenCareer" xml:space="preserve"><value>Open Career runner</value></data>
+  <data name="Finalization.Method.Priority" xml:space="preserve"><value>Priority</value></data>
+  <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Life Modules</value></data>
 </root>
