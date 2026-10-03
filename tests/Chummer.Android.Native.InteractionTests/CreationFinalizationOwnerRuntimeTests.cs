@@ -1544,6 +1544,25 @@ internal static partial class AfterRunAuthorityHarness
         Require(probe.LoadCalls == 1,
             "Rendering, paging and filtering must not reload Core after appearance preparation.");
 
+        var draftField = typeof(CreationQualitiesPage).GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var pageDraft = (CreationQualitiesPhoneDraft)draftField.GetValue(page)!;
+        Require(pageDraft.TryAdopt(qualityState, runtime.Coordinator.State,
+            new(CharacterCreationFoundationOutcomes.Success, quoted, quoted.Blockers), chosen),
+            "SETUP: page must retain an unsaved exact quality selection.");
+        probe.ReturnUnavailable = true;
+        await Prepare(page);
+        refresh.Invoke(page, null);
+        Require(Rows().Length == 0 && !MinimalVisible(page).OfType<Button>().Any()
+            && ((CreationQualitiesPhoneDraft)draftField.GetValue(page)!).SelectedOptionIds.SequenceEqual(chosen),
+            "A temporarily unavailable catalog must hide all actions without discarding unsaved selection.");
+        probe.ReturnUnavailable = false;
+        await Prepare(page);
+        refresh.Invoke(page, null);
+        Require(((CreationQualitiesPhoneDraft)draftField.GetValue(page)!).SelectedOptionIds.SequenceEqual(chosen)
+            && Rows().Length > 0,
+            "Fresh exact validation after an unavailable read did not restore the unsaved choice.");
+        int loadsBeforeCancellation = probe.LoadCalls;
+
         // Cancellation may not stop Core's synchronous read, but must discard
         // its result and release both the activation gate and original-owner lease.
         var canceledPage = new CreationQualitiesPage(runtime.Coordinator);
@@ -1582,7 +1601,7 @@ internal static partial class AfterRunAuthorityHarness
         }
         finally { gate.Release(); }
         await stale;
-        Require(probe.LoadCalls == 2, "Queued Qualities load crossed an owner A→B→A transition.");
+        Require(probe.LoadCalls == loadsBeforeCancellation + 1, "Queued Qualities load crossed an owner A→B→A transition.");
         refresh.Invoke(page, null);
         Require(Rows().Length == 0 && !Body().Children.OfType<Button>()
                 .Any(button => button.AutomationId == "creation-qualities-open-review"),
@@ -1717,6 +1736,7 @@ internal static partial class AfterRunAuthorityHarness
         public int UiThreadId { get; set; }
         public int LoadCalls { get; private set; }
         public Action? BeforeLoad { get; set; }
+        public bool ReturnUnavailable { get; set; }
         public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(OwnerContextStamp owner, CharacterCreationQualitiesLoadRequest request)
         {
             Require(Environment.CurrentManagedThreadId != UiThreadId && owners.ActiveLeases == 0
@@ -1724,7 +1744,11 @@ internal static partial class AfterRunAuthorityHarness
                 "Qualities Core read must run off UI with its exact owner; Core owns the synchronous lease.");
             LoadCalls++;
             BeforeLoad?.Invoke();
-            return inner.Load(owner, request);
+            var result = inner.Load(owner, request);
+            return ReturnUnavailable && result.Value is { } state
+                ? new(CharacterCreationFoundationOutcomes.Blocked, state with { CanEdit = false },
+                    [CharacterCreationQualitiesBlockers.AuthorityUnavailable])
+                : result;
         }
         public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(OwnerContextStamp owner, CharacterCreationQualitiesPreviewRequest request)
             => inner.Preview(owner, request);

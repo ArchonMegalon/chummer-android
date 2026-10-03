@@ -31,21 +31,28 @@ internal sealed class CreationQualitiesPhoneDraft
         return copy;
     }
 
-    public void Bind(CharacterCreationQualitiesState state, CharacterOverviewState overview)
+    // Return the result of this call's full validation, not a retained admission.
+    // A caller preparing the same display need not immediately hash it again
+    // just to learn whether binding succeeded. Preview/apply keep their own guards.
+    public bool Bind(CharacterCreationQualitiesState state, CharacterOverviewState overview)
     {
-        if (Matches(state, overview))
-            return;
+        bool ready = CreationQualitiesPhoneAuthority.IsReady(state, overview);
+        if (ready && _binding is not null
+            && CreationQualitiesPhoneAuthority.BindingEquals(_binding, state.Binding)
+            && CharacterCreationQualitiesRules.DigestsEqual(_snapshotDigest, state.SnapshotDigest))
+            return true;
         _binding = null;
         _snapshotDigest = null;
         _preview = null;
         _selectedOptionIds.Clear();
-        if (!CreationQualitiesPhoneAuthority.IsReady(state, overview))
-            return;
+        if (!ready)
+            return false;
         _binding = state.Binding;
         _snapshotDigest = state.SnapshotDigest;
         foreach (string optionId in state.PendingDraft?.SelectedOptionIds ?? [])
             _selectedOptionIds.Add(optionId);
         _preview = state.Preview;
+        return true;
     }
 
     public bool Matches(CharacterCreationQualitiesState state, CharacterOverviewState overview)

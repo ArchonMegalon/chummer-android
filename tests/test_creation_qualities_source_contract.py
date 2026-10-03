@@ -139,6 +139,18 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         self.assertIn("cancellationToken.ThrowIfCancellationRequested();", page)
         self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(original)", render)
 
+    def test_appearance_uses_the_fresh_binding_result_without_duplicate_validation(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        prepare = page[page.index("protected override async Task PrepareForAppearanceRefreshAsync("):
+                       page.index("protected override void Refresh()")]
+        self.assertIn("!draft.Bind(state, original)", prepare)
+        self.assertNotIn("IsReady(", prepare)
+        self.assertNotIn("draft.Matches(", prepare)
+        self.assertIn("if (prepared.Editor is not null) _draft = draft;", prepare)
+        # Projection, quote admission and full Core filtering remain separate guards.
+        for guard in ("ProjectEditor(state, original)", "CanConfirmPreview(", "draft.AvailableOptions("):
+            self.assertIn(guard, prepare)
+
     def test_catalog_is_bounded_and_review_precedes_it(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         self.assertIn("matches.Skip(_catalogOffset).Take(CatalogPageSize)", page)

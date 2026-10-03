@@ -152,10 +152,9 @@ public sealed class CreationQualitiesPage : NativePageBase
             var prepared = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (loaded.Value is not { } state || !CreationQualitiesPhoneAuthority.IsReady(state, original))
-                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
-                draft.Bind(state, original);
-                if (!draft.Matches(state, original))
+                // Bind performs the full exact-state check for this invocation.
+                // Avoid a second check before it and a third just to read its result.
+                if (loaded.Value is not { } state || !draft.Bind(state, original))
                     return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
                 var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
                 bool canReview = CreationQualitiesPhoneAuthority.CanConfirmPreview(
@@ -173,7 +172,10 @@ public sealed class CreationQualitiesPage : NativePageBase
             _availableOptions = prepared.Options;
             _canReview = prepared.CanReview;
             _reviewCheckpointDigest = prepared.CheckpointDigest;
-            _draft = draft;
+            // A temporarily unavailable projection must not replace the previous
+            // unsaved selection with the worker's rejected/cleared copy. It is
+            // not actionable while blocked and is fully revalidated next time.
+            if (prepared.Editor is not null) _draft = draft;
         }
         finally
         {
