@@ -3314,4 +3314,32 @@
   <data name="Spells.SummarySource.b557c296-01c2-4293-9d5a-c8e95be77612" xml:space="preserve"><value>D229489829B01FDCB59A83393CE66329443CAD3A131597EBA4FD02E4A6B3B870</value></data>
   <data name="Spells.Summary.242a0e9f-4130-4094-8cac-3db739ffafb2" xml:space="preserve"><value>Links you to a blood relative and lets you take their Physical wounds when nearby.</value></data>
   <data name="Spells.SummarySource.242a0e9f-4130-4094-8cac-3db739ffafb2" xml:space="preserve"><value>BF2E6FCD4AE1F244F5E71E3AA1613E52CAAD60A5D85FC942D06B23477FFB740E</value></data>
+  <data name="Spells.Summary.b7e36c07-0ac9-4a13-97b2-932cacc050e9" xml:space="preserve"><value>Shares one Health spell among the circle's occupants; leaving ends your benefit.</value></data>
+  <data name="Spells.SummarySource.b7e36c07-0ac9-4a13-97b2-932cacc050e9" xml:space="preserve"><value>69F6835852FA50C35427C733C46D8F1A52205F223124EC283719420442840D9D</value></data>
+  <data name="Spells.Summary.27747429-0230-4c46-a7ce-bbee8d7d8c83" xml:space="preserve"><value>Keeps an area Manipulation spell active around a fixed anchor.</value></data>
+  <data name="Spells.SummarySource.27747429-0230-4c46-a7ce-bbee8d7d8c83" xml:space="preserve"><value>E387FC60ACA669C32CCBA60085A2BA991BC447C3681B5D4930F5322FF99F0DAD</value></data>
+  <data name="Spells.Summary.1149e55c-e902-407c-9f40-9c0713447c50" xml:space="preserve"><value>Creates a temporary astral helper that follows your orders without a physical body.</value></data>
+  <data name="Spells.SummarySource.1149e55c-e902-407c-9f40-9c0713447c50" xml:space="preserve"><value>581713D24647F962B81B982F88AE235FFA986CA79BA444E83025C96745351B9D</value></data>
+  <data name="Spells.Summary.f99ab85f-2cc7-4c09-8ea4-581f75e40487" xml:space="preserve"><value>Temporarily animates an object as a simple servant, limited by its body and understanding.</value></data>
+  <data name="Spells.SummarySource.f99ab85f-2cc7-4c09-8ea4-581f75e40487" xml:space="preserve"><value>269A3F324E28204F1B08630DC54162492387889A06D1B409C359FABC79F3299C</value></data>
+  <data name="Spells.Summary.ae2bddcc-9899-4549-b0ff-1dc7c1bb291a" xml:space="preserve"><value>Tunes a mana-line segment to favor your magical tradition.</value></data>
+  <data name="Spells.SummarySource.ae2bddcc-9899-4549-b0ff-1dc7c1bb291a" xml:space="preserve"><value>78DDC365FB1BA52CFBC4E9C9156E3837805FFC85696E7A8475EBAEF975937CF7</value></data>
+  <data name="Spells.Summary.89e47041-6072-42f5-b693-d1b91cadca6e" xml:space="preserve"><value>Imitates another person's astral signature on ritual participants.</value></data>
+  <data name="Spells.SummarySource.89e47041-6072-42f5-b693-d1b91cadca6e" xml:space="preserve"><value>1A80A27D8EA3C6D5C7ACB9AE27ABC54CFF175C190292F789660DE1006801E3B4</value></data>
+  <data name="Spells.Summary.0d1969eb-cbb1-4044-8c13-161f4b1d4cb8" xml:space="preserve"><value>Locally reduces positive background count, but cannot repair mana shortages.</value></data>
+  <data name="Spells.SummarySource.0d1969eb-cbb1-4044-8c13-161f4b1d4cb8" xml:space="preserve"><value>B73A26B84A3DCFE87193E2668875AB4724C8E9DF5EFE62F8B121B7062D268AA7</value></data>
+  <data name="Spells.Summary.d0a24ff2-ca52-4d76-856a-60c30bf0ecf0" xml:space="preserve"><value>Helps trace a corpse's astral trail to its death site.</value></data>
+  <data name="Spells.SummarySource.d0a24ff2-ca52-4d76-856a-60c30bf0ecf0" xml:space="preserve"><value>8B4E64841017C1B093049C5DCE4586C8F25B33DD8C9A7FBB2F38CF7828DA8525</value></data>
+  <data name="Spells.Summary.444208d1-5cc0-4cb7-981e-52df0c8252a1" xml:space="preserve"><value>Accelerates potency loss in alchemical preparations entering the area.</value></data>
+  <data name="Spells.SummarySource.444208d1-5cc0-4cb7-981e-52df0c8252a1" xml:space="preserve"><value>E56A6C1BC92C6D1A0849BA64C812A52082775288CE8747104A7E94BBE9D4F854</value></data>
+  <data name="Spells.Summary.cde04a23-e0cc-4aed-98e9-0d744757610e" xml:space="preserve"><value>Hides the interior from detection magic too weak to penetrate.</value></data>
+  <data name="Spells.SummarySource.cde04a23-e0cc-4aed-98e9-0d744757610e" xml:space="preserve"><value>7C94DC2917A0D96520D75CA1FF42EFEC8A00DFE7429C5D8EEB5D3FCD12D748C2</value></data>
+  <data name="Spells.Summary.1f10cb4f-67d6-4193-b897-1a7f5ab67c2a" xml:space="preserve"><value>Raises temporary corpse servants that may retain old skills or rebel; their bodies eventually crumble.</value></data>
+  <data name="Spells.SummarySource.1f10cb4f-67d6-4193-b897-1a7f5ab67c2a" xml:space="preserve"><value>2A244183BC5C419631144AC17CD0209DB7754B9152B3FDC079BAC9FE6E6E6657</value></data>
+  <data name="Spells.Summary.bd2bfef0-9de4-4870-9822-cdd504f7560f" xml:space="preserve"><value>Subjugates a living person as an obedient servant, rather than reanimating the dead.</value></data>
+  <data name="Spells.SummarySource.bd2bfef0-9de4-4870-9822-cdd504f7560f" xml:space="preserve"><value>08CF31FE0F026546F818CF7EFE2DAF3D317C05E085A9D6D034F46656E631E91C</value></data>
+  <data name="Spells.Summary.71c1b568-6199-46bf-97b2-6faff4fb2822" xml:space="preserve"><value>Permanently changes ordinary trees to another nonmagical species; an unsuitable climate can still kill them.</value></data>
+  <data name="Spells.SummarySource.71c1b568-6199-46bf-97b2-6faff4fb2822" xml:space="preserve"><value>29E13077AEFAB5B9D074E4E372A9D2F4ECB2D593324FA3D8BE1D9B9E23EAA6E9</value></data>
+  <data name="Spells.Summary.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>Fills dead or inanimate vessels with necromantic spirits; it does not restore the deceased's memories or skills.</value></data>
+  <data name="Spells.SummarySource.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>67654AEE1A5EF76F48EF08E02D8E01B54AC796E721B1D5D1B4C01FF6EC481B7D</value></data>
 </root>

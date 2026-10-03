@@ -2057,4 +2057,18 @@
   <data name="Spells.Summary.3282adfa-a92b-4d7e-895c-51dd0fe7f61a" xml:space="preserve"><value>Una promesa voluntaria de sangre mejora habilidades solo para cumplirla; traicionarla deliberadamente causa heridas.</value></data>
   <data name="Spells.Summary.b557c296-01c2-4293-9d5a-c8e95be77612" xml:space="preserve"><value>Al morir, quema el Edge restante y libera un espíritu de sangre incontrolado que busca venganza.</value></data>
   <data name="Spells.Summary.242a0e9f-4130-4094-8cac-3db739ffafb2" xml:space="preserve"><value>Te vincula con un familiar de sangre y permite asumir sus heridas físicas cuando está cerca.</value></data>
+  <data name="Spells.Summary.b7e36c07-0ac9-4a13-97b2-932cacc050e9" xml:space="preserve"><value>Comparte un hechizo de salud entre quienes están dentro del círculo; salir termina su efecto.</value></data>
+  <data name="Spells.Summary.27747429-0230-4c46-a7ce-bbee8d7d8c83" xml:space="preserve"><value>Mantiene activo un hechizo de manipulación de área alrededor de un anclaje fijo.</value></data>
+  <data name="Spells.Summary.1149e55c-e902-407c-9f40-9c0713447c50" xml:space="preserve"><value>Crea un ayudante astral temporal que obedece tus órdenes, sin cuerpo físico.</value></data>
+  <data name="Spells.Summary.f99ab85f-2cc7-4c09-8ea4-581f75e40487" xml:space="preserve"><value>Anima temporalmente un objeto como sirviente sencillo, limitado por su cuerpo y su comprensión.</value></data>
+  <data name="Spells.Summary.ae2bddcc-9899-4549-b0ff-1dc7c1bb291a" xml:space="preserve"><value>Ajusta un tramo de línea de maná a tu tradición mágica.</value></data>
+  <data name="Spells.Summary.89e47041-6072-42f5-b693-d1b91cadca6e" xml:space="preserve"><value>Imita la firma astral de otra persona en los participantes.</value></data>
+  <data name="Spells.Summary.0d1969eb-cbb1-4044-8c13-161f4b1d4cb8" xml:space="preserve"><value>Reduce localmente el trasfondo positivo, pero no corrige la escasez de maná.</value></data>
+  <data name="Spells.Summary.d0a24ff2-ca52-4d76-856a-60c30bf0ecf0" xml:space="preserve"><value>Ayuda a seguir el rastro astral del cadáver hasta donde murió.</value></data>
+  <data name="Spells.Summary.444208d1-5cc0-4cb7-981e-52df0c8252a1" xml:space="preserve"><value>Acelera la pérdida de potencia de preparados alquímicos que entran en la zona.</value></data>
+  <data name="Spells.Summary.cde04a23-e0cc-4aed-98e9-0d744757610e" xml:space="preserve"><value>Oculta el interior a magia de detección demasiado débil para atravesarlo.</value></data>
+  <data name="Spells.Summary.1f10cb4f-67d6-4193-b897-1a7f5ab67c2a" xml:space="preserve"><value>Crea sirvientes cadáveres temporales que pueden conservar habilidades o rebelarse; sus cuerpos acaban desmoronándose.</value></data>
+  <data name="Spells.Summary.bd2bfef0-9de4-4870-9822-cdd504f7560f" xml:space="preserve"><value>Somete a una persona viva como sirviente obediente, en vez de reanimar muertos.</value></data>
+  <data name="Spells.Summary.71c1b568-6199-46bf-97b2-6faff4fb2822" xml:space="preserve"><value>Transforma árboles comunes permanentemente en otra especie no mágica; un clima inadecuado aún puede matarlos.</value></data>
+  <data name="Spells.Summary.af79d0e0-ab7b-4fd5-899a-eb0ae0c48371" xml:space="preserve"><value>Llena recipientes muertos o inanimados con espíritus nigrománticos, sin recuperar recuerdos ni habilidades del difunto.</value></data>
 </root>
