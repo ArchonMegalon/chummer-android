@@ -13,6 +13,13 @@ internal static partial class AfterRunAuthorityHarness
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
         if (onlyScenario == "phone-magic") { await RunKarmaPhonePagesAsync(contentRoot, magic: true); return; }
+        if (onlyScenario == "phone-attribute-values")
+        {
+            await RunKarmaPhonePagesAsync(contentRoot, attributeMetatype: "Human");
+            await RunKarmaPhonePagesAsync(contentRoot, attributeMetatype: "Troll");
+            await RunKarmaPhonePagesAsync(contentRoot, magic: true, attributeMetatype: "Human");
+            return;
+        }
         if (onlyScenario == "phone-revalidation") { await RunKarmaPhoneRevalidationAsync(contentRoot); return; }
         if (onlyScenario == "completion-admission") { await RunKarmaCompletionAdmissionAsync(contentRoot); return; }
         if (onlyScenario == "source-profile") { await RunKarmaSourceProfileAsync(contentRoot); return; }

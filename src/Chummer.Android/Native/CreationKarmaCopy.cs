@@ -138,6 +138,8 @@ internal static class CreationKarmaCopy
     public static string Cost(string name, decimal cost) => CreationAllocationStrings.Format("Karma.Cost", "{0} · {1} Karma", name, cost);
     public static string Levels(string name, int levels) => CreationAllocationStrings.Format("Karma.Levels", "{0}: {1}", name, levels);
     public static string AttributePurchases(string name, int levels) => CreationAllocationStrings.Format("Karma.AttributePurchases", "{0} · purchased levels: {1} (not the final rating)", name, levels);
+    public static string AttributePending(string name) => CreationAllocationStrings.Format("Karma.AttributePending", "{0}: awaiting preview", name);
+    public static string AttributeRangeCost(int minimum, int maximum, int karma) => CreationAllocationStrings.Format("Karma.AttributeRangeCost", "Natural range {0}–{1} · {2} Karma", minimum, maximum, karma);
     public static string KnowledgeBudget(decimal used, decimal total) => CreationAllocationStrings.Format("Karma.KnowledgeBudget", "Knowledge points: {0} / {1}", used, total);
     public static string ValueCost(string name, object rating, decimal cost) => CreationAllocationStrings.Format("Karma.ValueCost", "{0}: {1} · {2} Karma", name, rating, cost);
 }

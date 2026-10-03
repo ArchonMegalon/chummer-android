@@ -30,6 +30,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private readonly List<int> _qualityOffsets = [0];
     private string _qualityQuery = string.Empty;
     private CancellationTokenSource? _qualityPreparation;
+    private readonly Dictionary<string, (Label Rating, Label Cost)> _attributeValues = new(StringComparer.Ordinal);
 
     internal CreationKarmaPage(RunnerSessionCoordinator coordinator) : this(coordinator,
         new CreationKarmaPhoneSession(coordinator), CreationKarmaStep.Overview) { }
@@ -131,6 +132,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         _render++;
         _loading.IsRunning = false;
         _body.Clear();
+        _attributeValues.Clear();
         _body.IsEnabled = _session.FrameCurrent;
         _body.Add(NativeTheme.Title(Title));
         if (!_session.FrameCurrent)
@@ -212,6 +214,13 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         _session.Change(selection);
         if (_status is not null) _status.Text = CreationKarmaCopy.Pending;
+        // Changing one attribute can affect the whole quote. Never turn a
+        // purchase count into a guessed rating or retain old costs as current.
+        foreach (var (id, labels) in _attributeValues)
+        {
+            labels.Rating.Text = CreationKarmaCopy.AttributePending(CreationAllocationStrings.AttributeName(id));
+            labels.Cost.IsVisible = false;
+        }
     }
 
     private async Task Preview()
@@ -342,7 +351,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     }
 
     private void AddLevels(string name, string id, int value, int max, Action<int> changed, bool enabled = true,
-        Func<int, string>? caption = null)
+        Func<int, string>? caption = null, View? summary = null)
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
         string Caption(int levels) => caption?.Invoke(levels) ?? CreationKarmaCopy.Levels(name, levels);
@@ -357,7 +366,11 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             changed(next);
             label.Text = Caption(next);
         };
-        _body.Add(NativeTheme.Card(new VerticalStackLayout { Children = { label, stepper } }));
+        var card = new VerticalStackLayout { Spacing = 6 };
+        if (summary is not null) card.Add(summary);
+        card.Add(label);
+        card.Add(stepper);
+        _body.Add(NativeTheme.Card(card));
     }
 
     private void AddAttributes()
@@ -366,15 +379,25 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         _body.Add(NativeTheme.Body(CreationKarmaCopy.LevelHelp, NativeTheme.Muted));
         foreach (var attribute in attributes.Attributes)
         {
+            string name = CreationAllocationStrings.AttributeName(attribute.AttributeId);
+            bool currentQuote = _session.QuoteCurrent;
+            var rating = NativeTheme.Title(currentQuote ? CreationKarmaCopy.Levels(name, attribute.Current)
+                : CreationKarmaCopy.AttributePending(name));
+            rating.AutomationId = "karma-attribute-" + attribute.AttributeId + "-rating";
+            var cost = NativeTheme.Body(CreationKarmaCopy.AttributeRangeCost(attribute.Minimum, attribute.Maximum,
+                attribute.KarmaCost), NativeTheme.Muted);
+            cost.AutomationId = "karma-attribute-" + attribute.AttributeId + "-cost";
+            cost.IsVisible = currentQuote;
+            _attributeValues.Add(attribute.AttributeId, (rating, cost));
             int current = _session.Selection.Attributes.SingleOrDefault(a => a.AttributeId == attribute.AttributeId)?.KarmaLevels ?? 0;
-            AddLevels(CreationAllocationStrings.AttributeName(attribute.AttributeId), "karma-attribute-" + attribute.AttributeId,
+            AddLevels(name, "karma-attribute-" + attribute.AttributeId,
                 current, attribute.IsEnabled ? attribute.Maximum - attribute.Minimum : 0,
                 next => Change(_session.Selection! with
                 {
                     Attributes = _session.Selection!.Attributes!.Where(a => a.AttributeId != attribute.AttributeId)
                         .Concat(next > 0 ? [new CharacterCreationKarmaAttributeAllocation(attribute.AttributeId, next)] : []).ToArray()
-                }), caption: levels => CreationKarmaCopy.AttributePurchases(
-                    CreationAllocationStrings.AttributeName(attribute.AttributeId), levels));
+                }), caption: levels => CreationKarmaCopy.AttributePurchases(name, levels),
+                summary: new VerticalStackLayout { Spacing = 4, Children = { rating, cost } });
         }
         AddButton(CreationKarmaCopy.Preview, "karma-preview-attributes", Preview);
     }
@@ -852,7 +875,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         AddSelectionSummary();
         if (_session.QuoteCurrent && _session.Quote is { } quote)
         {
-            foreach (string anchor in quote.SourceAnchorIds) _body.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
+            // Source identities remain in the admitted quote, not in reader-facing copy.
             AddButton(CreationKarmaCopy.Confirm, "karma-confirm", async () =>
             {
                 long appearance = CaptureAppearanceGeneration();

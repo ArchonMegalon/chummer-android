@@ -19,7 +19,8 @@ internal static partial class AfterRunAuthorityHarness
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false, bool magic = false)
+    private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false, bool magic = false,
+        string? attributeMetatype = null)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -56,7 +57,7 @@ internal static partial class AfterRunAuthorityHarness
                 && Element<Label>("karma-metatype-bonuses-77fa1ed8-f4e6-4763-9f0b-f125318b9782").Text
                     == CreationKarmaCopy.MetatypeBonuses(1, 1, 100),
                 "Metatype choice must disclose Core-owned Dwarf/Troll bonuses and lifestyle surcharges before selection.");
-            Button human = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == "Human");
+            Button human = IssuedElements(Current()).OfType<Button>().Single(b => b.Text == (attributeMetatype ?? "Human"));
             await Click(human.AutomationId);
             AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Talent));
             await Click("karma-open-talent");
@@ -75,6 +76,72 @@ internal static partial class AfterRunAuthorityHarness
             await Click(magic ? "karma-talent-0e741331-d776-4be8-abc5-4101228abdef" : "karma-talent-mundane");
             AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes));
             await Click("karma-open-attributes");
+            if (attributeMetatype is not null)
+            {
+                AssertAttributeValues();
+                var oldBody = Element<Stepper>("karma-attribute-BOD");
+                int originalBody = Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "BOD").Current;
+                Require(originalBody == (attributeMetatype == "Troll" ? 5 : 1),
+                    "SETUP: real metatype minima must differ from purchased levels.");
+                oldBody.Value = 1;
+                foreach (var attribute in Session().Quote!.Attributes!.Attributes)
+                {
+                    Require(Element<Label>("karma-attribute-" + attribute.AttributeId + "-rating").Text
+                            == CreationAllocationStrings.Format("Karma.AttributePending", "{0}: awaiting preview",
+                                CreationAllocationStrings.AttributeName(attribute.AttributeId))
+                        && !Element<Label>("karma-attribute-" + attribute.AttributeId + "-cost").IsVisible,
+                        "An edited draft must not present an older rating or cost as current.");
+                }
+                await Click("karma-preview-attributes");
+                AssertAttributeValues();
+                Require(Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "BOD").Current == originalBody + 1,
+                    "Core did not include the chosen metatype minimum in the final rating.");
+                if (magic)
+                {
+                    Element<Stepper>("karma-attribute-MAG").Value = 2;
+                    await Click("karma-preview-attributes");
+                    AssertAttributeValues();
+                    Require(Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "MAG").Current == 3,
+                        "Magic must display Core's starting grant plus purchases, not the number of purchases.");
+                }
+                await Back();
+                var selected = Session().Selection;
+                oldBody.Value = 2;
+                Require(ReferenceEquals(selected, Session().Selection), "A departed attribute control changed the draft.");
+                await Click("karma-open-attributes");
+                AssertAttributeValues();
+                string[] sourceAnchors = Session().Quote!.SourceAnchorIds.ToArray();
+                Require(sourceAnchors.Any(anchor => anchor.Contains("#", StringComparison.Ordinal)),
+                    "SETUP: review must exercise technical source identities.");
+                await Back();
+                await Click("karma-open-review");
+                Require(!IssuedElements(Current()).OfType<Label>()
+                        .Any(label => sourceAnchors.Contains(label.Text, StringComparer.Ordinal)),
+                    "Review must not expose raw source anchors or their GUIDs as reader-facing text.");
+                Require(sourceAnchors.SequenceEqual(Session().Quote!.SourceAnchorIds, StringComparer.Ordinal),
+                    "Hiding technical source text must preserve the quote's source authority.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+                Require(probe!.ConfirmCalls == 0, "Reading or previewing attribute values persisted a draft.");
+                Console.WriteLine($"PASS Karma attribute values: {attributeMetatype}, magic={magic}; Core ratings/costs, pending edits, return, no write");
+                return;
+
+                void AssertAttributeValues()
+                {
+                    Require(Session().QuoteCurrent, "SETUP: attribute values need a current real Core quote.");
+                    foreach (var attribute in Session().Quote!.Attributes!.Attributes)
+                    {
+                        string name = CreationAllocationStrings.AttributeName(attribute.AttributeId);
+                        var rating = Element<Label>("karma-attribute-" + attribute.AttributeId + "-rating");
+                        var cost = Element<Label>("karma-attribute-" + attribute.AttributeId + "-cost");
+                        Require(rating.Text == CreationKarmaCopy.Levels(name, attribute.Current)
+                            && rating.FontAttributes.HasFlag(FontAttributes.Bold) && rating.FontSize >= 24,
+                            "Actual Core attribute values must be large and bold, not replaced by purchase counts.");
+                        Require(cost.IsVisible && cost.Text == CreationAllocationStrings.Format("Karma.AttributeRangeCost",
+                            "Natural range {0}–{1} · {2} Karma", attribute.Minimum, attribute.Maximum, attribute.KarmaCost),
+                            "Attribute range/cost must come from the same Core quote as the displayed rating.");
+                    }
+                }
+            }
             Stepper oldAgility = Element<Stepper>("karma-attribute-AGI");
             Require(Element<Label>("karma-attribute-AGI-value").Text == CreationKarmaCopy.AttributePurchases("Agility", 0),
                 "An attribute editor must distinguish purchased levels from the final rating.");
