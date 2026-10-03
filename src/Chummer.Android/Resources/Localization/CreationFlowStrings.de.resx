@@ -2032,4 +2032,14 @@
   <data name="Qualities.Summary.130f2287-6e27-4a7b-a45c-0313e8ecad73" xml:space="preserve"><value>Virtuelle Maschine verursacht deiner KI keinen Zusatzschaden; normaler Matrixschaden bleibt bestehen.</value></data>
   <data name="Qualities.Summary.73e0a16b-3fac-41a1-9157-cd51625e1843" xml:space="preserve"><value>Deine KI verliert den Optimierungsbonus auf Firewall; mehrere Marken gegen ihre Persona werden leichter gesetzt.</value></data>
   <data name="Qualities.Summary.40f20232-ad18-4a00-858d-8b1a85a5a71d" xml:space="preserve"><value>Deine KI verursacht häufiger Patzer in anderen Programmen.</value></data>
+  <data name="Qualities.Summary.6c403cb7-791b-4fb1-bb5a-2f95a6859cfe" xml:space="preserve"><value>Das selbst entworfene Heimatgerät deiner KI verbessert Datenverarbeitung/Pilot und verringert Rauschen.</value></data>
+  <data name="Qualities.Summary.0ee4765d-46d6-4ad9-a3ee-33d6a1167d9a" xml:space="preserve"><value>Jede Stufe hilft deiner KI, Essenzverlust zu widerstehen.</value></data>
+  <data name="Qualities.Summary.b65991af-b962-4641-a5a2-92fc53f30370" xml:space="preserve"><value>Nur Geräte der gewählten Kategorie können deiner KI als Heimatgerät dienen.</value></data>
+  <data name="Qualities.Summary.81224e80-43f1-4b70-8eb5-029540db2f62" xml:space="preserve"><value>Unkenntnis der physischen Welt kann deiner KI bei entsprechenden Handlungen oder Wissensproben erhebliche Abzüge bringen; die Spielleitung entscheidet.</value></data>
+  <data name="Qualities.Summary.6d6356ab-3a88-441a-8368-05a8fb8307a7" xml:space="preserve"><value>Bühnentricks erschweren das Erkennen von Zauberei; Askennen des Publikums wird während der Vorführung und kurz danach erschwert.</value></data>
+  <data name="Qualities.Summary.578e1220-09f9-41eb-9616-cae4b7c96e56" xml:space="preserve"><value>Dein Schutzgeist bietet saisonal magische Ausbildung oder Herstellungshilfe; jede Art ist nur jährlich verfügbar.</value></data>
+  <data name="Qualities.Summary.4db55b27-c211-48f2-b9a0-446bd9d32db6" xml:space="preserve"><value>Entzaubern kann sichtbare Foki zeitweise unterdrücken; mit höherer Fertigkeit kannst du ihren Besitzern darüber Schaden zufügen.</value></data>
+  <data name="Qualities.Summary.96f148e1-fb72-416a-8235-89a3eeafe534" xml:space="preserve"><value>Ständige Rückschläge erhöhen deine Lebensstilkosten auf die nächste Stufe, ohne deine Lebensbedingungen zu verbessern.</value></data>
+  <data name="Qualities.Summary.5c49d5e2-ca52-406e-a532-8d4d148ea825" xml:space="preserve"><value>Hot-Sim als Freie Handlung, Cold-Sim nur mit passendem Echo; mit Kontrollrig ist der Drohneneinstieg eine Einfache Handlung.</value></data>
+  <data name="Qualities.Summary.83e5f9a2-e76b-4a11-81db-4b0466b727ce" xml:space="preserve"><value>Bestandene Überraschungsproben erhöhen kurzzeitig die Initiative; Waffen lassen sich leichter schnellziehen.</value></data>
 </root>
