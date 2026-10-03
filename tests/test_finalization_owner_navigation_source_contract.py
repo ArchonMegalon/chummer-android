@@ -16,6 +16,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
             values = {entry.attrib["name"]: entry.findtext("value") for entry in root.findall("data")}
             self.assertEqual(title, values["Finalization.StartingCashTitle"])
             self.assertTrue(values["Finalization.StartingCashHelp"])
+            self.assertTrue(values["Finalization.InvalidDiceTotal"])
 
     def finalization_handler(self) -> str:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")

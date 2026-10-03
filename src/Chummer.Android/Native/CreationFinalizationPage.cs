@@ -96,11 +96,26 @@ internal sealed class CreationStartingCashPage : NativePageBase
             if (result is { Outcome: CharacterCreationFinalizationOutcomes.Available, Value.CanConfirm: true }
                 && Coordinator.IsCreationFinalizationReviewCurrent(result.Value))
                 await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
+            else
+                Refresh();
         });
         _body.Add(input);
         _body.Add(preview);
         foreach (string blocker in _blockers)
-            _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        {
+            // Core also requests a choice when it rejects the supplied total.
+            // That is the same correction, not a second user-facing error.
+            if (blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
+                && _blockers.Contains(CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid))
+                continue;
+            _body.Add(NativeTheme.Body(
+                blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid
+                    ? CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
+                        "That total does not match these dice. Check your roll and try again.")
+                    : blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
+                        ? CreationKarmaCopy.DiceTotal : blocker,
+                NativeTheme.Danger));
+        }
 
         bool Current() => render == _render && IsCurrentAppearanceGeneration(appearance)
             && Coordinator.IsCreationFinalizationStateCurrent(_authority);

@@ -152,6 +152,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunStartingCashPhonePagesAsync(args[1]);
             return;
         }
+        if (args.Length == 3 && args[0] == "--creation-starting-cash-seed")
+        {
+            await AfterRunAuthorityHarness.ExportStartingCashSeedAsync(args[1], args[2]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-attributes-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationAttributesAsync(args[1]);
