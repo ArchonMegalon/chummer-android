@@ -162,6 +162,45 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("Revenant Adept", ["Regeneration", "yearly", "seasonal", "month"],
+            ["Regeneration", "jährlichen", "saisonalen", "Monat"],
+            ["Regeneración", "anuales", "estacional", "mes"]),
+        ("Skinwalker", ["Critter", "each rank", "sizes", "self-transformation", "hide"],
+            ["eigener Tiergestalt", "jede Stufe", "Tiergrößen", "Tierhaut"],
+            ["Forma Animal", "cada grado", "tamaños", "ti mismo", "piel"]),
+        ("Spell Jammer", ["Counterspelling", "visible", "temporarily", "Spellcasting"],
+            ["Antimagie", "sichtbare", "Spruchzaubereiproben", "vorübergehend"],
+            ["Contraconjuros", "visibles", "temporalmente", "Lanzamiento de hechizos"]),
+        ("Code of Honor: Black Hat", ["data", "sell", "pays most", "never"],
+            ["Daten", "Meistbietende", "verschenke", "niemals"],
+            ["datos", "pague más", "nunca", "regales"]),
+        ("Know Your Limit", ["Physical", "harder", "Stun", "unaffected"],
+            ["Körperlichem", "schwieriger", "Geistiger", "unverändert"],
+            ["físico", "difícil", "aturdimiento", "no cambia"]),
+        ("Sprite Combustion", ["fewer tasks", "at least one", "Registering", "penalty"],
+            ["weniger", "mindestens einen Dienst", "Registrieren", "Würfelabzug"],
+            ["menos tareas", "al menos una", "Registrar", "penalizador"]),
+        ("Taint of Dissonance", ["Resonance entities", "lower limit", "not", "technomancers"],
+            ["Resonanzwesen", "niedrigeres Limit", "Technomancer", "nicht"],
+            ["Resonancia", "límites menores", "tecnomantes", "no"]),
+        ("Wired User", ["sober", "Matrix", "penalty"],
+            ["nüchtern", "Matrixhandlungen", "Würfelabzug"],
+            ["sobrio", "dados", "Matriz"]),
+        ("Electronic Witness", ["sound", "video", "wireless off", "all actions"],
+            ["Ton", "Bild", "abgeschalteter Funk", "alle Handlungen"],
+            ["audio", "vídeo", "apagar", "todas las acciones"]),
+        ("Faraday Himself", ["noise", "nearby", "yourself", "not distant"],
+            ["Rauschen", "dir", "nahen Nutzern", "außerhalb"],
+            ["ruido", "ti", "cercanos", "fuera"]),
+        ("Latest and Greatest", ["monthly", "most earnings", "earmarked", "other expenses"],
+            ["monatlich", "Großteil", "vorgemerktes", "unbenutzbar"],
+            ["mensualmente", "mayoría", "ahorro", "otros gastos"]),
+        ("Leeeeeeeroy Jenkins", ["Failed Composure", "immediate", "delays retreat", "name"],
+            ["Misslungene Selbstbeherrschung", "sofortige", "Rückzug", "Name"],
+            ["Compostura", "inmediatamente", "retirarse", "nombre"]),
+        ("Spectral Warden", ["Only summon", "Binding", "more optional spirit powers", "Minion", "atonement"],
+            ["Beschwören nur durch Binden", "optionale Geisterkräfte", "Dienerrituale", "Buße"],
+            ["solo", "Vincular", "poderes", "Esbirro", "expiar"]),
         ("Every Man For Himself", ["ally", "Composure", "helping", "danger"],
             ["Verbündeter", "Selbstbeherrschung", "Hilfe", "Gefahr"],
             ["aliado", "Compostura", "ayudar", "peligro"]),
@@ -1382,7 +1421,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 734, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 747, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1419,7 +1458,9 @@ internal static partial class AfterRunAuthorityHarness
                     "Pacifist Adept", "Potion Maker", "Practiced Alchemist",
                     "Sprite Affinity", "Trust Data, Not Lore", "Trust Lore, Not Data",
                     "Puppet Master", "Reckless Spell Master", "Renaissance Ritualist", "Shock Mage",
-                    "Unique Avatar", "Data Hog", "On the Wagon", "Escaped Custody", "Delicate Fingers" })
+                    "Unique Avatar", "Data Hog", "On the Wagon", "Escaped Custody", "Delicate Fingers",
+                    "Revenant Adept", "Skinwalker", "Spell Jammer", "Spectral Warden",
+                    "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
                     if (name == "Mnemonic Vault")
@@ -1432,11 +1473,18 @@ internal static partial class AfterRunAuthorityHarness
                     else if (name == "Delicate Fingers")
                         Require(quality.Element("required")!.Element("oneof")!.Element("metatype")!.Value == "Troll",
                             "Equipment handling help must retain its troll prerequisite.");
+                    else if (name == "Wired User")
+                        Require(quality.Element("required")!.Element("allof")!.Element("quality")!.Value == "Technomancer"
+                            && quality.Element("required")!.Element("oneof")!.Elements("quality")
+                                .Select(q => q.Value).SequenceEqual(new[] { "Addiction (Mild)", "Addiction (Moderate)",
+                                    "Addiction (Severe)", "Addiction (Burnout)" }),
+                            "Wired User help must retain both technomancer and addiction admission.");
                     else if (name is "Brilliant Heuristics" or "Groveler" or "Hold the Door"
                         or "Fractal Punch" or "Lone Wolf" or "Team Player" or "Natural Hacker"
                         or "One With the Matrix I" or "One With the Matrix II" or "One With the Matrix III"
                         or "Sprite Affinity" or "Trust Data, Not Lore" or "Trust Lore, Not Data"
-                        or "Unique Avatar" or "Data Hog" or "On the Wagon")
+                        or "Unique Avatar" or "Data Hog" or "On the Wagon"
+                        or "Code of Honor: Black Hat" or "Know Your Limit" or "Sprite Combustion" or "Taint of Dissonance")
                         Require(quality.Element("required")!.Element("oneof")!.Element("quality")!.Value == "Technomancer",
                             "Resonance help must retain technomancer admission: " + name);
                     else
@@ -1449,6 +1497,23 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!changedLines.Contains(summary)
                         && changedLines.Contains(CreationFlowStrings.Get("Qualities.Info.ChangedDefinition", "")),
                         "Bound help must reject a definition without its prerequisites: " + name);
+                }
+                foreach (var prerequisite in new[]
+                {
+                    (Name: "Revenant Adept", Path: "required/oneof/power", Value: "Rapid Healing"),
+                    (Name: "Skinwalker", Path: "required/allof/spell", Value: "[Critter] Form"),
+                    (Name: "Spell Jammer", Path: "required/oneof/skill/name", Value: "Counterspelling"),
+                    (Name: "Wired User", Path: "required/oneof/quality", Value: "Addiction (Mild)")
+                })
+                {
+                    var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);
+                    var changed = new System.Xml.Linq.XElement(quality);
+                    var node = prerequisite.Path.Split('/').Aggregate(changed, (parent, name) => parent.Element(name)!);
+                    Require(node.Value == prerequisite.Value, "Focused prerequisite fixture changed: " + prerequisite.Name);
+                    node.Remove();
+                    Require(!CreationQualityInfo.Effects(changed.ToString()).Contains(
+                        CreationFlowStrings.Get(SummaryKey(quality), "")),
+                        "Removing a specific prerequisite must invalidate bound help: " + prerequisite.Name);
                 }
                 foreach (string name in new[] { "Dead Emotion", "Favored (Common Target, Biased)",
                     "Favored (Common Target, Outspoken)", "Favored (Common Target, Fanatic)",

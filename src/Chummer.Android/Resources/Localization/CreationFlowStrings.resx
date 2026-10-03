@@ -3148,4 +3148,30 @@
   <data name="Qualities.SummarySource.fe414583-aa74-4a50-8132-27887ec341d6" xml:space="preserve"><value>A284D90D51480C2BA9D9AF9CBBB0478F4F21C1CA9D865A9C41E2FA70666E24DC</value></data>
   <data name="Qualities.Summary.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>Raises social limits internally and with people under your authority.</value></data>
   <data name="Qualities.SummarySource.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>AD68D6E887CF3908EAA6FE62B23A777A3B37CD41C2D422074D86377D20C7D283</value></data>
+  <data name="Qualities.Summary.cd712655-a83b-4905-923d-be07ced1677b" xml:space="preserve"><value>Temporarily grants Regeneration, with limited yearly uses and a seasonal cooldown of at least a month.</value></data>
+  <data name="Qualities.SummarySource.cd712655-a83b-4905-923d-be07ced1677b" xml:space="preserve"><value>E6513EDFE42FD74DCA60BEF0FA2988CA5CC1B465BC45BBB244F3FF6CAF8E0C12</value></data>
+  <data name="Qualities.Summary.16cb1300-bdf4-42d0-9556-3b681ef517fc" xml:space="preserve"><value>With (Critter) Form, each rank expands animal sizes for self-transformation; you need the matching hide.</value></data>
+  <data name="Qualities.SummarySource.16cb1300-bdf4-42d0-9556-3b681ef517fc" xml:space="preserve"><value>D163A52D78F6180E24C88024868E28EBCD6197004BAA4D1AAD99963004F3FCEA</value></data>
+  <data name="Qualities.Summary.632aebb2-e6f2-4b38-81c7-be494964c614" xml:space="preserve"><value>Use Counterspelling against visible casters to temporarily penalize their Spellcasting rolls.</value></data>
+  <data name="Qualities.SummarySource.632aebb2-e6f2-4b38-81c7-be494964c614" xml:space="preserve"><value>0572E2978DA0D9D6E258DCD45EE3B271C7C98370A200F8DCBC3717526497BB6B</value></data>
+  <data name="Qualities.Summary.d3ed1f43-ffd8-4c96-8faf-de8bbf4c3c83" xml:space="preserve"><value>Stolen data must earn money: sell to whoever pays most, never give it away.</value></data>
+  <data name="Qualities.SummarySource.d3ed1f43-ffd8-4c96-8faf-de8bbf4c3c83" xml:space="preserve"><value>04E70E540F8BE9C3CAF5AEFDB0CACDBB8F9F9F73CE7F7678DD8365D3A170F3D1</value></data>
+  <data name="Qualities.Summary.57e260d7-7e08-4dae-a3e3-0d174bf61689" xml:space="preserve"><value>Resisting Physical Fading becomes harder; Stun Fading is unaffected.</value></data>
+  <data name="Qualities.SummarySource.57e260d7-7e08-4dae-a3e3-0d174bf61689" xml:space="preserve"><value>9EA9800296374499B0552386B1AF369036187112A918755A561E74E315ADAF30</value></data>
+  <data name="Qualities.Summary.4116d691-86f0-4fb5-bf78-f2059514956a" xml:space="preserve"><value>Compiled sprites owe fewer tasks but retain at least one; Registering also suffers a dice penalty.</value></data>
+  <data name="Qualities.SummarySource.4116d691-86f0-4fb5-bf78-f2059514956a" xml:space="preserve"><value>8526BBA40643CEBD9F4ED3237E4878BA7E8C7189E3BB50D4CCCE0AD04B0A699B</value></data>
+  <data name="Qualities.Summary.153dc4b0-199d-4fc7-9b94-b8cf05afdf56" xml:space="preserve"><value>Opposed tests against Resonance entities use a lower limit; this does not apply against technomancers.</value></data>
+  <data name="Qualities.SummarySource.153dc4b0-199d-4fc7-9b94-b8cf05afdf56" xml:space="preserve"><value>5F43B81D2036173EEB39C65C06678A534DCB265EA6B8850426F089577DAB61A5</value></data>
+  <data name="Qualities.Summary.102c4f07-f82c-4976-89bd-bcd3b906fb68" xml:space="preserve"><value>While sober, your Matrix actions suffer a dice penalty.</value></data>
+  <data name="Qualities.SummarySource.102c4f07-f82c-4976-89bd-bcd3b906fb68" xml:space="preserve"><value>0D5DCCFFBF4A68BD0066E66B34C00D2F4DB8F5D196EE2C94043A7CEEC987943F</value></data>
+  <data name="Qualities.Summary.565e404b-947f-4027-a2dd-f74f51682c3b" xml:space="preserve"><value>Always record sound and video with wireless gear; losing recording or switching wireless off penalizes all actions.</value></data>
+  <data name="Qualities.SummarySource.565e404b-947f-4027-a2dd-f74f51682c3b" xml:space="preserve"><value>88422D0396700E14116ECCA0CD34AF7B1FBB4CA6BE35BE732EC8F609FC3E5079</value></data>
+  <data name="Qualities.Summary.38a26727-a736-47a9-803f-cfa762c9b8a0" xml:space="preserve"><value>Adds noise around you, affecting nearby users and yourself, but not distant connections to you.</value></data>
+  <data name="Qualities.SummarySource.38a26727-a736-47a9-803f-cfa762c9b8a0" xml:space="preserve"><value>1725F71C88AF9303B1EB912EF812E6917F247855141D849F5490AF44B9BFE60D</value></data>
+  <data name="Qualities.Summary.3a32e8c5-6d02-4360-bac2-221229a68741" xml:space="preserve"><value>Upgrade equipment monthly, reserving most earnings for purchases; earmarked savings cannot fund other expenses.</value></data>
+  <data name="Qualities.SummarySource.3a32e8c5-6d02-4360-bac2-221229a68741" xml:space="preserve"><value>7F522664869D63D7866B7656690F1817E6857E78476ACB0FBE0868EA20259699</value></data>
+  <data name="Qualities.Summary.e138ecce-6fba-4fe6-be09-1d60dc8c3853" xml:space="preserve"><value>Failed Composure forces immediate attacks and delays retreat; shouting your name boosts the opening attack.</value></data>
+  <data name="Qualities.SummarySource.e138ecce-6fba-4fe6-be09-1d60dc8c3853" xml:space="preserve"><value>1E3D50074F652809A10085FADAF051F534CAB8B069277A9D92C47F617DE0DB03</value></data>
+  <data name="Qualities.Summary.25f5745d-8e1d-463f-9b96-c047bc99a587" xml:space="preserve"><value>Only summon through Binding for more optional spirit powers; Binding handles Minion rituals and pacification, but atonement costs more Karma.</value></data>
+  <data name="Qualities.SummarySource.25f5745d-8e1d-463f-9b96-c047bc99a587" xml:space="preserve"><value>91EC92D6218DFFCBD56F3F477CB2FE70AEA0D346361C25A43E8AC435D15B2B9D</value></data>
 </root>

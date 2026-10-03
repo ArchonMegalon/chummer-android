@@ -1974,4 +1974,17 @@
   <data name="Qualities.Summary.6ccdc691-30cb-40f0-a283-6321703b018f" xml:space="preserve"><value>Mejora límites sociales internos y ante personas bajo tu autoridad.</value></data>
   <data name="Qualities.Summary.fe414583-aa74-4a50-8132-27887ec341d6" xml:space="preserve"><value>Mejora límites sociales con miembros de tu organización elegida.</value></data>
   <data name="Qualities.Summary.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>Mejora límites sociales internos y ante personas bajo tu autoridad.</value></data>
+  <data name="Qualities.Summary.cd712655-a83b-4905-923d-be07ced1677b" xml:space="preserve"><value>Otorga Regeneración temporal, con usos anuales limitados y una espera estacional de al menos un mes.</value></data>
+  <data name="Qualities.Summary.16cb1300-bdf4-42d0-9556-3b681ef517fc" xml:space="preserve"><value>Con Forma Animal, cada grado amplía tamaños para transformarte a ti mismo; requiere la piel correspondiente.</value></data>
+  <data name="Qualities.Summary.632aebb2-e6f2-4b38-81c7-be494964c614" xml:space="preserve"><value>Usa Contraconjuros contra lanzadores visibles para penalizar temporalmente sus pruebas de Lanzamiento de hechizos.</value></data>
+  <data name="Qualities.Summary.d3ed1f43-ffd8-4c96-8faf-de8bbf4c3c83" xml:space="preserve"><value>Los datos robados deben generar ingresos: véndelos a quien pague más, nunca los regales.</value></data>
+  <data name="Qualities.Summary.57e260d7-7e08-4dae-a3e3-0d174bf61689" xml:space="preserve"><value>Resistir Desvanecimiento físico resulta más difícil; el de aturdimiento no cambia.</value></data>
+  <data name="Qualities.Summary.4116d691-86f0-4fb5-bf78-f2059514956a" xml:space="preserve"><value>Los sprites compilados deben menos tareas, pero conservan al menos una; Registrar sufre un penalizador.</value></data>
+  <data name="Qualities.Summary.153dc4b0-199d-4fc7-9b94-b8cf05afdf56" xml:space="preserve"><value>Las pruebas opuestas contra entidades de Resonancia usan límites menores; contra tecnomantes no se aplica.</value></data>
+  <data name="Qualities.Summary.102c4f07-f82c-4976-89bd-bcd3b906fb68" xml:space="preserve"><value>Estar sobrio penaliza los dados de tus acciones de Matriz.</value></data>
+  <data name="Qualities.Summary.565e404b-947f-4027-a2dd-f74f51682c3b" xml:space="preserve"><value>Graba siempre audio y vídeo con equipo inalámbrico; dejar de grabar o apagar conexiones penaliza todas las acciones.</value></data>
+  <data name="Qualities.Summary.38a26727-a736-47a9-803f-cfa762c9b8a0" xml:space="preserve"><value>Aumenta ruido para ti y usuarios cercanos, pero no para conexiones hacia ti desde fuera.</value></data>
+  <data name="Qualities.Summary.3a32e8c5-6d02-4360-bac2-221229a68741" xml:space="preserve"><value>Mejora equipo mensualmente reservando la mayoría de ingresos para compras; ese ahorro no financia otros gastos.</value></data>
+  <data name="Qualities.Summary.e138ecce-6fba-4fe6-be09-1d60dc8c3853" xml:space="preserve"><value>Fallar Compostura obliga a atacar inmediatamente y retrasa retirarse; gritar tu nombre mejora el ataque inicial.</value></data>
+  <data name="Qualities.Summary.25f5745d-8e1d-463f-9b96-c047bc99a587" xml:space="preserve"><value>Invocar solo al Vincular añade poderes opcionales y permite rituales de Esbirro y apaciguar espíritus con Vinculación; expiar cuesta más Karma.</value></data>
 </root>
