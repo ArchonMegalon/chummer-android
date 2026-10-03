@@ -49,9 +49,14 @@ Restart log SHA256:
 
 The tested examples already existed before 79. This is an exact-installed-build
 help/navigation and existing-state restart smoke, not physical coverage of all
-34 newly added explanations, every locale or a newly saved mutation. Returning
-from Quality help reloaded the chooser at its top; scroll-position preservation
-remains a usability follow-up, not a claimed passing property.
+34 newly added explanations, every locale or a newly saved mutation.
+
+An initial return from Quality help displayed its top-of-page loading state.
+A second bounded observation waited for that load to finish without further
+input and confirmed restoration to the original scrolled position. Before-help
+and after-return-ready hierarchies are byte-identical, SHA256
+`bfebda6639c3782566e148f19792e6fe9be3bde1dc825b66b8b2a608f68aa7cd`.
+No persistent scroll-reset defect was established and no code change was made.
 
 ## Custody and limits
 
