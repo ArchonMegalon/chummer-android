@@ -109,9 +109,10 @@ confirmed on 3 October at approximately22:39 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Core Qualities digest
 processing now allocates less while preserving canonical bytes and all admission
 guards. Focused managed checks and a synthetic API36 single-save/new-process
-receipt reopen passed. Physical85 installation/update remains unverified;
-Preview84 is still the latest physically verified version. Slow transitions,
-all-method Creation and full Origin completion remain open.
+receipt reopen passed. The [physical Play-managed84→85 update](../play/evidence/preview85-physical-observation.md)
+verified installed identity/signature, readable existing Quality help and
+read-only Qualities after a verified process restart, without changing user
+choices. Slow transitions, all-method Creation and full Origin completion remain open.
 
 Preview 84's [observed Internal availability](../play/evidence/preview84-internal-observation.md),
 confirmed on 3 October at 20:05 Europe/Vienna. The exact locally built ARM64 AAB
