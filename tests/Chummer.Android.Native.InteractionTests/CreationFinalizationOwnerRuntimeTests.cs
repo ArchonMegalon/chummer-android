@@ -1452,10 +1452,23 @@ internal static partial class AfterRunAuthorityHarness
         MinimalRequireNoMachineValues(page);
         Button grantHelp = MinimalVisible(page).OfType<Button>().Single(button =>
             button.AutomationId == "creation-quality-granted-info-read-only-help-test");
-        ((IButtonController)grantHelp).SendClicked();
+        await ui.BeginAsyncVoid(() => ((IButtonController)grantHelp).SendClicked());
+        string grantSummary = CreationFlowStrings.Get("Qualities.Summary." + analytical.SourceId.ToString("D"), string.Empty);
         Require(navigation.CurrentPage is CreationQualityInfoPage
-            && MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2"),
-            "Granted quality lacks the same read-only bonus help as a purchase choice.");
+            && !string.IsNullOrWhiteSpace(grantSummary)
+            && MinimalVisibleText(navigation.CurrentPage).Contains(grantSummary)
+            && !MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2"),
+            "Granted quality must show its concise explanation before the folded supporting values. Actual: "
+                + navigation.CurrentPage.GetType().Name + " / " + MinimalVisibleText(navigation.CurrentPage));
+        Button grantEffects = MinimalVisible(navigation.CurrentPage).OfType<Button>().Single(button =>
+            button.AutomationId == "creation-quality-info-effects-toggle");
+        ((IButtonController)grantEffects).SendClicked();
+        Require(MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2"),
+            "Granted quality must expose its source-backed bonus when effect details are expanded.");
+        ((IButtonController)grantEffects).SendClicked();
+        Require(!MinimalVisibleText(navigation.CurrentPage).Contains("Bonus: 2")
+            && MinimalVisibleText(navigation.CurrentPage).Contains(grantSummary),
+            "Folding granted-quality details must retain the concise explanation.");
         MinimalRequireNoMachineValues(navigation.CurrentPage);
         await navigation.PopAsync(false);
         RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);

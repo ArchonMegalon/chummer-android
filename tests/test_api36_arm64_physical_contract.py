@@ -28,6 +28,25 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+class Api36PinnedContentAuthorityTests(unittest.TestCase):
+    def test_unmocked_content_commit_and_repository_tree_match_current_intake(self) -> None:
+        authority = json.loads(
+            (ROOT / "eng/internal-phone-beta-package-authority.json").read_text()
+        )
+        content = json.loads(
+            (ROOT / "src/Chummer.Android/Content/chummer-content-manifest.json").read_text()
+        )
+        # Full Core repository tree observed at the admitted recipe commit,
+        # not a content digest or the mocked tree used by driver fixtures.
+        self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT,
+                         "4e34e01fd945d1cafbef5cc71e51bcf093df4c0c")
+        self.assertEqual(contract.TRUSTED_CORE_CONTENT_TREE,
+                         "1f57e993ed23b037f2535f5401d6375ddbc7c47c")
+        self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT,
+                         authority["sourceGraph"]["corePackageRecipeCommit"])
+        self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT, content["coreRevision"])
+
+
 class Api36Arm64PhysicalContractTests(unittest.TestCase):
     def test_file_hierarchy_observer_retry_allowlist_is_exact(self) -> None:
         self.assertEqual(
