@@ -1952,4 +1952,26 @@
   <data name="Qualities.Summary.a4a85a3e-c5b6-4613-b299-7726c6918026" xml:space="preserve"><value>Escupe ácido a corta distancia usando su habilidad de Arma Exótica a Distancia; regenerar saliva impide ataques seguidos.</value></data>
   <data name="Qualities.Summary.de498da5-c141-4ea3-991e-97e73fb551d4" xml:space="preserve"><value>Al alterarte, tu secreción cutánea penaliza las pruebas de quien toque tu piel con la suya; no afecta a espíritus.</value></data>
   <data name="Qualities.Summary.9b205e4a-66c7-45d9-b87b-d0c743944d60" xml:space="preserve"><value>Percibe calor cercano sin ver y reduce penalizadores de visibilidad en combate; el calor ambiental puede interferir.</value></data>
+  <data name="Qualities.Summary.bb0cd874-a7bb-4863-b393-23ef0eda6313" xml:space="preserve"><value>Si hieren o derriban a un aliado, fallar Compostura te impide ayudar mientras persista el peligro.</value></data>
+  <data name="Qualities.Summary.7b051d98-e95b-48f9-8fbb-dae69a739913" xml:space="preserve"><value>Fallar Compostura te obliga a rescatar compañeros caídos, incluso muertos, pese al riesgo personal.</value></data>
+  <data name="Qualities.Summary.e4956c8e-119f-4670-9dcf-30f4709863ae" xml:space="preserve"><value>Penaliza pruebas sociales salvo con superiores directos; evitar traicionar por beneficio propio requiere Compostura.</value></data>
+  <data name="Qualities.Summary.ad35c6ec-664c-46a3-8dc5-ac48dfddd0cf" xml:space="preserve"><value>Una persona visible mejora tus pruebas sociales en la Matriz, pero facilita que otros te recuerden e identifiquen.</value></data>
+  <data name="Qualities.Summary.7e172644-9b48-4822-8636-b45827ff6938" xml:space="preserve"><value>Tu puntuación de Overwatch provoca convergencia antes, dejando menos margen hasta que intervenga GOD.</value></data>
+  <data name="Qualities.Summary.2cafaee0-fb4b-4b56-90e2-8eb864c5a033" xml:space="preserve"><value>Elige una antigua corporación captora que conserve tus registros; tratar con ella penaliza Compostura.</value></data>
+  <data name="Qualities.Summary.ff939676-0195-4885-ba91-5ee536719b2f" xml:space="preserve"><value>Todas tus acciones de Matriz sufren penalizadores de dados cuando no estás sobrio.</value></data>
+  <data name="Qualities.Summary.b9808fa8-744f-46e2-b769-bed5ce0b3ad1" xml:space="preserve"><value>Cada grado mantiene otro hechizo de manipulación mental sin penalizador; mantener hechizos por encima de tu Magia desactiva el beneficio.</value></data>
+  <data name="Qualities.Summary.b15bbc5a-626c-4f04-b08e-203cb24c6b1a" xml:space="preserve"><value>Una cantidad diaria según tu grado de lanzamientos temerarios evita Drenaje adicional; recuperarla exige descanso ininterrumpido.</value></data>
+  <data name="Qualities.Summary.baa0cfd8-3c53-48ba-b3b7-61de0bc48695" xml:space="preserve"><value>Dirige rituales sin penalizar tradiciones distintas dentro de un cupo de participantes determinado por Magia e iniciación.</value></data>
+  <data name="Qualities.Summary.820ec42b-5255-4c73-93af-e8caa5b6abbf" xml:space="preserve"><value>Los hechizos de combate que causan daño reducen iniciativa, acumulándose con sus otros efectos reductores.</value></data>
+  <data name="Qualities.Summary.fd5468e4-a671-4c84-a9ec-590b94ae6ae3" xml:space="preserve"><value>Elimina la penalización de manejo para trolls que usan equipo para manos más pequeñas.</value></data>
+  <data name="Qualities.Summary.9ad4e8e7-80d7-4941-96d5-9a1aaa1bd4c9" xml:space="preserve"><value>Trasfondo de creación: un orko madura y envejece al ritmo humano.</value></data>
+  <data name="Qualities.Summary.13379299-27a2-4b5d-8938-6a54f49dc861" xml:space="preserve"><value>Recibes menores bonificadores de combate por tácticas y maniobras de grupo.</value></data>
+  <data name="Qualities.Summary.ca4459b7-ea68-4b6c-9754-8bdcf3f4aef7" xml:space="preserve"><value>La Notoriedad cuenta como mayor en barrios de mayoría orka o troll.</value></data>
+  <data name="Qualities.Summary.bbb3bce6-8adc-4992-94b5-7248556a391a" xml:space="preserve"><value>La mejora provoca ansia de riesgo sin Karma; si ya existía, resistirla resulta más difícil.</value></data>
+  <data name="Qualities.Summary.c15df7f5-2108-4be2-9500-86045221be0a" xml:space="preserve"><value>Mejora límites sociales con miembros de tu organización elegida.</value></data>
+  <data name="Qualities.Summary.49a9c3a8-538a-4d4e-a4e8-8bf837687d25" xml:space="preserve"><value>Mejora límites sociales internos y ante personas bajo tu autoridad.</value></data>
+  <data name="Qualities.Summary.53bd1804-1029-4ebe-9464-a82d91be5dd9" xml:space="preserve"><value>Mejora límites sociales con miembros de tu organización elegida.</value></data>
+  <data name="Qualities.Summary.6ccdc691-30cb-40f0-a283-6321703b018f" xml:space="preserve"><value>Mejora límites sociales internos y ante personas bajo tu autoridad.</value></data>
+  <data name="Qualities.Summary.fe414583-aa74-4a50-8132-27887ec341d6" xml:space="preserve"><value>Mejora límites sociales con miembros de tu organización elegida.</value></data>
+  <data name="Qualities.Summary.aa9fbb62-1c5c-4c4f-acfd-34880cf61600" xml:space="preserve"><value>Mejora límites sociales internos y ante personas bajo tu autoridad.</value></data>
 </root>
