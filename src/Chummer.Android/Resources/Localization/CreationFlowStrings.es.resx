@@ -80,9 +80,9 @@
   <data name="Contacts.Free" xml:space="preserve"><value>Gratis</value></data>
   <data name="Contacts.FriendsInHighPlaces" xml:space="preserve"><value>Amigos en las altas esferas</value></data>
   <data name="Contacts.Heading" xml:space="preserve"><value>Contactos</value></data>
-  <data name="Contacts.Intro" xml:space="preserve"><value>Añade, edita o elimina un contacto. Revisa los costes calculados por Core antes de confirmar. Las mascotas y los enemigos tienen flujos separados.</value></data>
+  <data name="Contacts.Intro" xml:space="preserve"><value>Añade a alguien a quien tu runner pueda recurrir. Revisa sus datos y el coste en puntos antes de guardar.</value></data>
   <data name="Contacts.Loyalty" xml:space="preserve"><value>Lealtad {0}</value></data>
-  <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Abre el catálogo de Core, configura un estilo de vida tipado y revisa la economía exacta de nuyen/PL.</value></data>
+  <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Elige dónde vive tu runner y revisa el coste.</value></data>
   <data name="Contacts.PageTitle" xml:space="preserve"><value>Contactos de creación</value></data>
   <data name="Contacts.Unnamed" xml:space="preserve"><value>Contacto sin nombre</value></data>
   <data name="Lifestyles.AddFromCatalog" xml:space="preserve"><value>Añadir desde el catálogo exacto de Core</value></data>
@@ -2114,4 +2114,41 @@
   <data name="Spells.Summary.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>Hace visibles formas astrales y hechizos mantenidos.</value></data>
   <data name="Contacts.PointsPending" xml:space="preserve"><value>Los puntos de contacto necesitan tus decisiones de creación guardadas.</value></data>
   <data name="Contacts.NeedsReview" xml:space="preserve"><value>Los puntos de contacto aún no están disponibles. Revisa y guarda primero los pasos anteriores de creación.</value></data>
+  <data name="Contacts.Edit" xml:space="preserve"><value>Editar contacto</value></data>
+  <data name="Contacts.Review" xml:space="preserve"><value>Revisar cambios</value></data>
+  <data name="Contacts.Changes" xml:space="preserve"><value>Datos del contacto</value></data>
+  <data name="Contacts.DraftHelp" xml:space="preserve"><value>Nada se guarda hasta que revises y confirmes el cambio.</value></data>
+  <data name="Contacts.ConfirmHelp" xml:space="preserve"><value>He revisado estos datos y costes y quiero guardar el cambio.</value></data>
+  <data name="Contacts.Confirm" xml:space="preserve"><value>Guardar cambio del contacto</value></data>
+  <data name="Contacts.Saved" xml:space="preserve"><value>Cambio del contacto guardado.</value></data>
+  <data name="Contacts.SavedReload" xml:space="preserve"><value>El cambio está guardado. Abre de nuevo el runner en su cuenta original. No vuelvas a enviar el cambio.</value></data>
+  <data name="Contacts.PointsBefore" xml:space="preserve"><value>Puntos de contacto antes</value></data>
+  <data name="Contacts.PointsAfter" xml:space="preserve"><value>Puntos de contacto después</value></data>
+  <data name="Contacts.HighPlacesBefore" xml:space="preserve"><value>Amigos influyentes antes</value></data>
+  <data name="Contacts.HighPlacesAfter" xml:space="preserve"><value>Amigos influyentes después</value></data>
+  <data name="Contacts.SavedContacts" xml:space="preserve"><value>Contactos guardados</value></data>
+  <data name="Contacts.Reload" xml:space="preserve"><value>Volver a abrir runner</value></data>
+  <data name="Contacts.SavedSemantic" xml:space="preserve"><value>Guardado. Puntos usados: {0} → {1}. Restantes: {2}.</value></data>
+  <data name="Contacts.BackToCreation" xml:space="preserve"><value>Volver a Creación</value></data>
+  <data name="Contacts.Yes" xml:space="preserve"><value>Sí</value></data>
+  <data name="Contacts.No" xml:space="preserve"><value>No</value></data>
+  <data name="Contacts.Field.name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Contacts.Field.role" xml:space="preserve"><value>Función</value></data>
+  <data name="Contacts.Field.location" xml:space="preserve"><value>Ubicación</value></data>
+  <data name="Contacts.Field.notes" xml:space="preserve"><value>Notas</value></data>
+  <data name="Contacts.Field.custom-name" xml:space="preserve"><value>Nombre personalizado</value></data>
+  <data name="Contacts.Field.metatype" xml:space="preserve"><value>Metatipo</value></data>
+  <data name="Contacts.Field.gender" xml:space="preserve"><value>Género</value></data>
+  <data name="Contacts.Field.age" xml:space="preserve"><value>Edad</value></data>
+  <data name="Contacts.Field.contact-type" xml:space="preserve"><value>Tipo de contacto</value></data>
+  <data name="Contacts.Field.preferred-payment" xml:space="preserve"><value>Pago preferido</value></data>
+  <data name="Contacts.Field.hobbies-vice" xml:space="preserve"><value>Aficiones / vicios</value></data>
+  <data name="Contacts.Field.personal-life" xml:space="preserve"><value>Vida personal</value></data>
+  <data name="Contacts.Field.group-name" xml:space="preserve"><value>Nombre del grupo</value></data>
+  <data name="Contacts.Field.connection" xml:space="preserve"><value>Conexión</value></data>
+  <data name="Contacts.Field.loyalty" xml:space="preserve"><value>Lealtad</value></data>
+  <data name="Contacts.Field.group" xml:space="preserve"><value>Contacto grupal</value></data>
+  <data name="Contacts.Field.free" xml:space="preserve"><value>Contacto gratuito</value></data>
+  <data name="Contacts.Field.family" xml:space="preserve"><value>Familia</value></data>
+  <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Chantaje</value></data>
 </root>

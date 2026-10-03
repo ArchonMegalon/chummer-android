@@ -19,13 +19,14 @@ public sealed class CreationContactPreviewPage : NativePageBase
     private CreationContactPhoneConfirmResult? _confirmation;
     private bool _explicitlyConfirmed;
     private CharacterCreationContactsInteractionLoadResult? _loaded;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     internal CreationContactPreviewPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationContactPreparedPreview prepared) : base(coordinator)
     {
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
-        Title = "Review contact change";
+        Title = Copy("Review", "Review changes");
         AutomationId = "creation-contact-preview-page";
         Content = new ScrollView { Content = _body };
     }
@@ -43,12 +44,13 @@ public sealed class CreationContactPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
+        _technicalDetails = new() { Spacing = 6 };
+        _body.Add(NativeTheme.Eyebrow(Copy("Review", "Review changes")));
         _body.Add(NativeTheme.Title(_prepared.Edit.ChangeKind switch
         {
             CharacterCreationContactChangeKind.Add => CreationFlowStrings.Get("Contacts.Add", "Add contact"),
             CharacterCreationContactChangeKind.Remove => CreationFlowStrings.Get("Contacts.Remove", "Remove contact"),
-            _ => "Creation Contact change"
+            _ => Copy("Edit", "Edit contact")
         }));
         if (_prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Remove)
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Contacts.RemoveWarning",
@@ -60,6 +62,13 @@ public sealed class CreationContactPreviewPage : NativePageBase
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+        CharacterOverviewState original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-contact-preview-details",
+            () => IsCurrentAppearanceGeneration(appearance)
+                  && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                  && original.DisplayOwnerContext == _prepared.DisplayOwnerContext
+                  && original.WorkspaceId == _prepared.Binding.WorkspaceId));
     }
 
     private void AddBinding()
@@ -69,12 +78,12 @@ public sealed class CreationContactPreviewPage : NativePageBase
             + $"Contact {_prepared.ContactBefore.ContactId:D}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-contact-preview-binding";
-        _body.Add(binding);
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(binding);
+        _technicalDetails.Add(DigestLabel(
             "Preview digest",
             _prepared.PreviewDigest,
             "creation-contact-preview-digest"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Atomic plan digest",
             _prepared.WritePlan.PlanDigest,
             "creation-contact-plan-digest"));
@@ -83,34 +92,34 @@ public sealed class CreationContactPreviewPage : NativePageBase
     private void AddTargetDiff()
     {
         VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow("Target before / after"));
+        card.Add(NativeTheme.Eyebrow(Copy("Changes", "Contact details")));
         if (_prepared.Edit.ChangeKind != CharacterCreationContactChangeKind.Edit)
             card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Contacts.Presence", "Contact entry"),
                 _prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Add
                     ? CreationFlowStrings.Get("Contacts.AddDelta", "Not present → added")
                     : CreationFlowStrings.Get("Contacts.RemoveDelta", "Present → removed")));
-        card.Add(NativeTheme.Metric("Contact", _prepared.ContactBefore.ContactId.ToString("D")));
-        card.Add(NativeTheme.Metric(
-            "Name",
-            $"{_prepared.ContactBefore.Identity.Name} → {_prepared.ContactAfter.Identity.Name}"));
-        card.Add(NativeTheme.Metric(
-            "Connection",
-            $"{_prepared.ContactBefore.Connection} → {_prepared.ContactAfter.Connection}"));
-        card.Add(NativeTheme.Metric(
-            "Loyalty",
-            $"{_prepared.ContactBefore.Loyalty} → {_prepared.ContactAfter.Loyalty}"));
-        card.Add(NativeTheme.Metric(
-            "Group",
-            $"{Bool(_prepared.ContactBefore.IsGroup)} → {Bool(_prepared.ContactAfter.IsGroup)}"));
-        card.Add(NativeTheme.Metric(
-            "Free",
-            $"{Bool(_prepared.ContactBefore.Free)} → {Bool(_prepared.ContactAfter.Free)}"));
-        card.Add(NativeTheme.Metric(
-            "Family",
-            $"{Bool(_prepared.ContactBefore.Family)} → {Bool(_prepared.ContactAfter.Family)}"));
-        card.Add(NativeTheme.Metric(
-            "Blackmail",
-            $"{Bool(_prepared.ContactBefore.Blackmail)} → {Bool(_prepared.ContactAfter.Blackmail)}"));
+        // The write plan belongs in diagnostics, but every changed player value
+        // must remain visible, including identity text, notes and intentional clears.
+        foreach (CharacterCreationContactFieldAuthority before in _prepared.ContactBefore.Fields)
+        {
+            CharacterCreationContactFieldAuthority? after = _prepared.ContactAfter.Fields
+                .SingleOrDefault(field => field.FieldId == before.FieldId);
+            if (after is null) continue;
+            bool changed = !string.Equals(before.SerializedValue, after.SerializedValue, StringComparison.Ordinal);
+            bool primary = before.FieldId is CharacterCreationContactFieldIds.Name
+                or CharacterCreationContactFieldIds.Connection or CharacterCreationContactFieldIds.Loyalty;
+            bool collectionValue = _prepared.Edit.ChangeKind != CharacterCreationContactChangeKind.Edit
+                && !string.IsNullOrEmpty(before.SerializedValue)
+                && !(before.ValueKind == CharacterCreationContactValueKinds.Boolean && before.SerializedValue == "False");
+            bool addedValue = _prepared.Edit.ChangeKind == CharacterCreationContactChangeKind.Add
+                && !string.IsNullOrEmpty(after.SerializedValue)
+                && !(after.ValueKind == CharacterCreationContactValueKinds.Boolean && after.SerializedValue == "False");
+            if (!primary && !changed && !collectionValue && !addedValue) continue;
+            string value = changed ? $"{DisplayValue(before)} → {DisplayValue(after)}" : DisplayValue(before);
+            View metric = NativeTheme.Metric(CreationContactEditPage.FieldLabel(before), value);
+            metric.AutomationId = "creation-contact-change-" + before.FieldId;
+            card.Add(metric);
+        }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-contact-preview-target";
         _body.Add(border);
@@ -119,19 +128,19 @@ public sealed class CreationContactPreviewPage : NativePageBase
     private void AddBudgets()
     {
         AddBudget(
-            "Contact points before",
+            Copy("PointsBefore", "Contact points before"),
             _prepared.ContactBudgetBefore,
             "creation-contact-preview-budget-before");
         AddBudget(
-            "Contact points after",
+            Copy("PointsAfter", "Contact points after"),
             _prepared.ContactBudgetAfter,
             "creation-contact-preview-budget-after");
         AddBudget(
-            "Friends in High Places before",
+            Copy("HighPlacesBefore", "Friends in High Places before"),
             _prepared.HighPlacesBudgetBefore,
             "creation-contact-preview-high-places-before");
         AddBudget(
-            "Friends in High Places after",
+            Copy("HighPlacesAfter", "Friends in High Places after"),
             _prepared.HighPlacesBudgetAfter,
             "creation-contact-preview-high-places-after");
     }
@@ -143,10 +152,10 @@ public sealed class CreationContactPreviewPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(title));
-        card.Add(NativeTheme.Metric("Total", budget.Total.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Used", budget.Used.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Total", "Total"), budget.Total.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Used", "Used"), budget.Used.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Remaining",
+            CreationFlowStrings.Get("Common.Remaining", "Remaining"),
             budget.Remaining.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
@@ -158,7 +167,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
 
     private void AddWritePlan()
     {
-        _body.Add(NativeTheme.Eyebrow("Ordered atomic write plan"));
+        _technicalDetails.Add(NativeTheme.Eyebrow("Ordered atomic write plan"));
         foreach (CharacterCreationContactWriteOperation operation in _prepared.WritePlan.Operations)
         {
             VerticalStackLayout card = new() { Spacing = 6 };
@@ -173,7 +182,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             Border border = NativeTheme.Card(card, new Thickness(14));
             border.AutomationId =
                 $"creation-contact-write-{operation.Order}-{operation.FieldId}";
-            _body.Add(border);
+            _technicalDetails.Add(border);
         }
 
         VerticalStackLayout preservation = new() { Spacing = 6 };
@@ -197,7 +206,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             _prepared.WritePlan.ContentDigestAfter));
         Border preservationCard = NativeTheme.Card(preservation);
         preservationCard.AutomationId = "creation-contact-preview-preservation";
-        _body.Add(preservationCard);
+        _technicalDetails.Add(preservationCard);
     }
 
     private void AddBlockers()
@@ -227,9 +236,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             })
         {
             Label done = NativeTheme.Body(
-                _confirmation.RecoveredByReceiptLookup
-                    ? "Confirmed and recovered by the stable idempotency receipt lookup."
-                    : "Confirmed, atomically checkpointed, and reloaded from Core.");
+                Copy("Saved", "Contact change saved."));
             done.AutomationId = "creation-contact-confirmed";
             _body.Add(NativeTheme.Card(done));
             return;
@@ -239,8 +246,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             && CreationContactsPhoneAuthority.ReceiptMatches(_prepared, committed))
         {
             Label saved = NativeTheme.Body(
-                "Saved and atomically checkpointed. Reload the original account's character to continue; "
-                + "this change must not be submitted again.");
+                Copy("SavedReload", "Your change is saved. Reopen the runner in its original account to continue. Do not submit the change again."));
             saved.AutomationId = "creation-contact-committed-reload-required";
             _body.Add(NativeTheme.Card(saved));
             return;
@@ -253,7 +259,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
             Color = NativeTheme.Signal
         };
         Label explicitLabel = NativeTheme.Body(
-            "I explicitly confirm this exact preview and atomic write plan.");
+            Copy("ConfirmHelp", "I have reviewed these details and costs and want to save this change."));
         Grid explicitRow = new()
         {
             ColumnDefinitions =
@@ -267,7 +273,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
         explicitRow.Add(explicitLabel, 1);
         _body.Add(NativeTheme.Card(explicitRow, new Thickness(14)));
 
-        Button confirm = NativeTheme.PrimaryButton("Confirm Contact change");
+        Button confirm = NativeTheme.PrimaryButton(Copy("Confirm", "Save contact change"));
         confirm.AutomationId = "creation-contact-confirm";
         confirm.IsEnabled = CanConfirm() && _explicitlyConfirmed;
         explicitConfirm.CheckedChanged += (_, args) =>
@@ -306,85 +312,74 @@ public sealed class CreationContactPreviewPage : NativePageBase
         var refreshed = _confirmation.RefreshedState;
 
         VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow("Atomic creation receipt"));
+        card.Add(NativeTheme.Eyebrow(Copy("Saved", "Contact change saved.")));
         card.Add(NativeTheme.Metric(
-            "Previous revision",
-            receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
-            "Content revision",
-            receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
-            "Saved revision",
-            receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
-            "Contact points before",
+            Copy("PointsBefore", "Contact points before"),
             receipt.ContactPointsBefore.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Contact points after",
+            Copy("PointsAfter", "Contact points after"),
             receipt.ContactPointsAfter.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Remaining",
+            CreationFlowStrings.Get("Common.Remaining", "Remaining"),
             receipt.ContactPointsRemaining.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Reloaded contacts",
-            refreshed is null ? "Reload required" : refreshed.Contacts.Count.ToString(CultureInfo.InvariantCulture)));
+            Copy("SavedContacts", "Saved contacts"),
+            refreshed is null ? Copy("Reload", "Reopen runner") : refreshed.Contacts.Count.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-contact-confirm-receipt";
         SemanticProperties.SetDescription(
             border,
-            $"Atomic creation receipt. Previous revision {receipt.PreviousContentRevision}. "
-            + $"Content revision {receipt.ContentRevision}. Saved revision {receipt.SavedRevision}. "
-            + $"Used before {receipt.ContactPointsBefore}. Used after {receipt.ContactPointsAfter}. "
-            + $"Remaining {receipt.ContactPointsRemaining}.");
+            CreationFlowStrings.Format("Contacts.SavedSemantic", "Saved. Points used: {0} → {1}. Remaining: {2}.",
+                receipt.ContactPointsBefore, receipt.ContactPointsAfter, receipt.ContactPointsRemaining));
         _body.Add(border);
 
-        _body.Add(DigestLabel("Receipt ID", receipt.ReceiptId, "creation-contact-receipt-id"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel("Receipt ID", receipt.ReceiptId, "creation-contact-receipt-id"));
+        _technicalDetails.Add(DigestLabel(
             "Previous workspace revision",
             receipt.PreviousWorkspaceRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-previous-workspace-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Workspace revision",
             receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-workspace-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Previous content revision",
             receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-previous-content-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Content revision",
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-content-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Previous saved revision",
             receipt.PreviousSavedRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-previous-saved-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Saved revision",
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture),
             "creation-contact-receipt-saved-revision"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Receipt digest",
             receipt.ReceiptDigest,
             "creation-contact-receipt-digest"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Content before",
             receipt.ContentDigestBefore,
             "creation-contact-receipt-content-before"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Content after",
             receipt.ContentDigestAfter,
             "creation-contact-receipt-content-after"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Idempotency key digest",
             receipt.IdempotencyKeyDigest,
             "creation-contact-receipt-idempotency-digest"));
-        _body.Add(DigestLabel(
+        _technicalDetails.Add(DigestLabel(
             "Command digest",
             receipt.CommandDigest,
             "creation-contact-receipt-command-digest"));
 
-        Button back = NativeTheme.SecondaryButton("Back to Build");
+        Button back = NativeTheme.SecondaryButton(Copy("BackToCreation", "Back to Creation"));
         back.AutomationId = "creation-contact-back-to-build";
         back.Clicked += async (_, _) => await BackToBuildAsync();
         _body.Add(back);
@@ -410,5 +405,10 @@ public sealed class CreationContactPreviewPage : NativePageBase
         return NativeTheme.Card(card, new Thickness(14));
     }
 
-    private static string Bool(bool value) => value ? "Yes" : "No";
+    private static string DisplayValue(CharacterCreationContactFieldAuthority field)
+        => field.ValueKind == CharacterCreationContactValueKinds.Boolean && bool.TryParse(field.SerializedValue, out bool value)
+            ? value ? Copy("Yes", "Yes") : Copy("No", "No")
+            : string.IsNullOrEmpty(field.SerializedValue) ? "—" : field.SerializedValue;
+
+    private static string Copy(string key, string fallback) => CreationFlowStrings.Get("Contacts." + key, fallback);
 }

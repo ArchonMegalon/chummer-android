@@ -348,6 +348,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationBootstrapOwnerCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-contacts-readable-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsReadabilityAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-contacts-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationContactsOwnerCasesAsync(args[1]);

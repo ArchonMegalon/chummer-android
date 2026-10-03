@@ -15,6 +15,7 @@ public sealed class CreationContactsPage : NativePageBase
     private CharacterCreationContactsInteractionState? _authority;
     private CharacterCreationContactsInteractionLoadResult? _loaded;
     private bool _loading;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     public CreationContactsPage(
         RunnerSessionCoordinator coordinator,
@@ -45,18 +46,19 @@ public sealed class CreationContactsPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CharacterCreation", "Character creation")));
         _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Contacts.Heading", "Contacts")));
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Contacts.Intro",
-                "Add, edit or remove a Contact. Review Core-calculated costs before confirming. Pets and Enemies use separate workflows."),
+                "Add someone your runner can turn to. Review their details and point cost before saving."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.NavigationRow(
             CreationFlowStrings.Get("Lifestyles.Heading", "Lifestyles"),
             CreationFlowStrings.Get(
                 "Contacts.OpenLifestyles",
-                "Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics."),
+                "Choose where your runner lives and review the cost."),
             () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
             automationId: "creation-contacts-open-lifestyles"));
         if (_loading)
@@ -114,6 +116,12 @@ public sealed class CreationContactsPage : NativePageBase
         }
         AddContacts(state);
         AddSourceAuthority(state);
+        CharacterOverviewState original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-contacts-details",
+            () => IsCurrentAppearanceGeneration(appearance)
+                  && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                  && CreationContactsPhoneAuthority.IsReady(state, Coordinator.State)));
     }
 
     private void AddBinding(CharacterCreationContactsInteractionState state)
@@ -128,7 +136,7 @@ public sealed class CreationContactsPage : NativePageBase
                 ShortDigest(state.Binding.SourceDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-contacts-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
     }
 
     private void AddBudget(
@@ -197,11 +205,7 @@ public sealed class CreationContactsPage : NativePageBase
                     CreationFlowStrings.Format("Contacts.Loyalty", "Loyalty {0}", contact.Loyalty),
                     contact.Free
                         ? CreationFlowStrings.Get("Contacts.Free", "Free")
-                        : CreationFlowStrings.Format("Contacts.Cost", "Cost {0}", contact.ContactPointCost),
-                    CreationFlowStrings.Format(
-                        "Common.AuthorityInline",
-                        "authority {0}",
-                        ShortDigest(contact.ContactDigest))
+                        : CreationFlowStrings.Format("Contacts.Cost", "Cost {0}", contact.ContactPointCost)
                 }.Where(value => value is not null));
             _body.Add(NativeTheme.NavigationRow(
                 name,
@@ -210,6 +214,7 @@ public sealed class CreationContactsPage : NativePageBase
                     Coordinator,
                     contact.ContactId)),
                 automationId: $"creation-contact-item-{contact.ContactId:N}"));
+            _technicalDetails.Add(NativeTheme.Metric(name, $"{contact.ContactId:D}\n{contact.ContactDigest}"));
         }
     }
 
@@ -224,7 +229,7 @@ public sealed class CreationContactsPage : NativePageBase
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Runtime", "Runtime"), state.Binding.RuntimeDigest));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-contacts-authority";
-        _body.Add(border);
+        _technicalDetails.Add(border);
     }
 
     private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)

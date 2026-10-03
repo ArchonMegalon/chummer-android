@@ -483,6 +483,127 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    public static async Task RunCreationContactsReadabilityAsync(string contentRoot)
+    {
+        foreach (string language in new[] { "en", "de", "es" })
+        {
+            using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(async () =>
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = new(language);
+                var owners = new ControlledLinkedOwner();
+                owners.Set(ContactsOwnerA);
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationContacts: true);
+                await runtime.Coordinator.InitializeAsync();
+                await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument(ContactsCreationXml, "sr5"), default);
+                runtime.Id = imported.Id;
+                await runtime.Presenter.LoadAsync(runtime.Id, default);
+                var state = (await runtime.Coordinator.LoadCreationContactsForDisplayAsync(runtime.Coordinator.State, default)).State!;
+                Require(state is not null, "Contacts readability fixture did not load.");
+                var savedBefore = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
+                var navigation = new NavigationPage(new ContentPage());
+                _ = new Window(navigation);
+                var pages = new List<NativePageBase>();
+
+                var list = new CreationContactsPage(runtime.Coordinator, state);
+                await Appear(list);
+                VerifyDisclosure(list, "creation-contacts-details", CreationContactId.ToString("D"));
+                Require(VisibleLabels(list).Any(label => label.Text == "Fixer"), "List hid the Contact name.");
+                var edit = new CreationContactEditPage(runtime.Coordinator, CreationContactId);
+                await Appear(edit);
+                VerifyDisclosure(edit, "creation-contact-edit-details", CreationContactId.ToString("D"));
+                Require(IssuedElements(edit).OfType<InputView>().Count() == 13,
+                    "Readability change removed an editable identity field.");
+                var notes = IssuedElements(edit).OfType<InputView>().Single(x => x.AutomationId == "creation-contact-field-notes");
+                // Player-authored GUID-shaped text must never be scrubbed like machine metadata.
+                string note = "Meet at gate " + CreationContactId.ToString("D");
+                notes.Text = note;
+                IssuedElements(edit).OfType<InputView>().Single(x => x.AutomationId == "creation-contact-field-role").Text = "Street doc";
+                var reviewButton = IssuedElements(edit).OfType<Button>().Single(x => x.AutomationId == "creation-contact-preview");
+                Require(reviewButton.IsEnabled, "Edited Contact cannot be reviewed.");
+                await ui.BeginAsyncVoid(() => ((IButtonController)reviewButton).SendClicked());
+                Require(navigation.Navigation.NavigationStack.Last() is CreationContactPreviewPage,
+                    "Actual edit gesture did not open the preview.");
+                var preview = (CreationContactPreviewPage)navigation.Navigation.NavigationStack.Last();
+                await Appear(preview, alreadyPushed: true);
+                // Exclude player text from the machine-identity assertion.
+                VerifyDisclosure(preview, "creation-contact-preview-details", "Contact " + CreationContactId.ToString("D"));
+                foreach (string fieldId in new[] { CharacterCreationContactFieldIds.Role, CharacterCreationContactFieldIds.Notes })
+                {
+                    var delta = IssuedElements(preview).OfType<View>().Single(x => x.AutomationId == "creation-contact-change-" + fieldId);
+                    Require(IsVisible(delta), "A reviewed text change was hidden with the write plan.");
+                }
+                Require(VisibleLabels(preview).Any(x => x.Text.Contains(note, StringComparison.Ordinal)),
+                    "Player-authored GUID-shaped text was removed from review.");
+                RequireSameRewardDocument(savedBefore, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!);
+                var confirm = IssuedElements(preview).OfType<Button>().Single(x => x.AutomationId == "creation-contact-confirm");
+                Require(!confirm.IsEnabled, "Details disclosure accepted confirmation implicitly.");
+                IssuedElements(preview).OfType<CheckBox>().Single(x => x.AutomationId == "creation-contact-explicit-confirm").IsChecked = true;
+                Require(confirm.IsEnabled, "Explicit confirmation did not admit an exact preview.");
+                await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
+                Require(IssuedElements(preview).Any(x => x.AutomationId == "creation-contact-confirm-receipt")
+                    && !IssuedElements(preview).Any(x => x.AutomationId == "creation-contact-confirm"),
+                    "Saved page lost its receipt or offered replay.");
+                VerifyDisclosure(preview, "creation-contact-preview-details", "sha256:");
+                var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
+                Require(cold.ContentRevision == savedBefore.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
+                    && cold.Document.Content.Contains(note, StringComparison.Ordinal)
+                    && cold.Document.Content.Contains("Street doc", StringComparison.Ordinal),
+                    "Actual page confirmation lost reviewed text or did not checkpoint once.");
+
+                var panel = IssuedElements(preview).OfType<VerticalStackLayout>().Single(x => x.AutomationId == "creation-contact-preview-details");
+                var toggle = panel.Children.OfType<Button>().Single();
+                var technical = panel.Children.OfType<VerticalStackLayout>().Single();
+                owners.Set(ContactsOwnerB);
+                owners.Set(ContactsOwnerA);
+                ((IButtonController)toggle).SendClicked();
+                Require(!technical.IsVisible, "Retained receipt details crossed an owner A→B→A transition.");
+                RequireSameRewardDocument(cold, new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!);
+                foreach (var page in pages)
+                    if (IssuedPageField<int>(page, "_subscribed") != 0) IssuedPageLifecycle(page, "OnDisappearing");
+                Console.WriteLine("PASS " + language + " actual Contacts list/edit/review/save, hidden exact diagnostics, text deltas, cold checkpoint and owner-ABA disclosure guard");
+
+                async Task Appear(NativePageBase page, bool alreadyPushed = false)
+                {
+                    foreach (var previous in pages)
+                        if (IssuedPageField<int>(previous, "_subscribed") != 0) IssuedPageLifecycle(previous, "OnDisappearing");
+                    if (!alreadyPushed) await navigation.PushAsync(page, false);
+                    pages.Add(page);
+                    if (IssuedPageField<int>(page, "_subscribed") == 0)
+                        await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                }
+
+                void VerifyDisclosure(NativePageBase page, string id, string machineValue)
+                {
+                    var panel = IssuedElements(page).OfType<VerticalStackLayout>().Single(x => x.AutomationId == id);
+                    var toggle = panel.Children.OfType<Button>().Single();
+                    var technical = panel.Children.OfType<VerticalStackLayout>().Single();
+                    Require(!technical.IsVisible && !VisibleLabels(page).Any(x => x.Text.Contains(machineValue, StringComparison.Ordinal)),
+                        id + ": machine metadata is visible by default.");
+                    ((IButtonController)toggle).SendClicked();
+                    Require(technical.IsVisible && VisibleLabels(page).Any(x => x.Text.Contains(machineValue, StringComparison.Ordinal)),
+                        id + ": exact diagnostic identity was lost.");
+                    ((IButtonController)toggle).SendClicked();
+                    Require(!technical.IsVisible, id + ": details did not close.");
+                    typeof(NativePageBase).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+                    ((IButtonController)toggle).SendClicked();
+                    Require(!technical.IsVisible && !VisibleLabels(page).Any(x => x.Text.Contains(machineValue, StringComparison.Ordinal)),
+                        id + ": detached toggle revealed old or current metadata.");
+                }
+            });
+        }
+
+        static bool IsVisible(Element element)
+        {
+            for (Element? current = element; current is not null; current = current.Parent)
+                if (current is VisualElement { IsVisible: false }) return false;
+            return true;
+        }
+        static IEnumerable<Label> VisibleLabels(Element root)
+            => IssuedElements(root).OfType<Label>().Where(x => IsVisible(x) && x.Text is not null);
+    }
+
     private static Dictionary<OwnerScope, WorkspaceStoredDocument> SnapshotContactsPartitions(
         FileWorkspaceStore store, CharacterWorkspaceId id)
         => new[] { OwnerScope.LocalSingleUser, ContactsOwnerA, ContactsOwnerB }.ToDictionary(owner => owner,

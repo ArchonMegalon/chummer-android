@@ -82,9 +82,9 @@
   <data name="Contacts.Free" xml:space="preserve"><value>Free</value></data>
   <data name="Contacts.FriendsInHighPlaces" xml:space="preserve"><value>Friends in High Places</value></data>
   <data name="Contacts.Heading" xml:space="preserve"><value>Contacts</value></data>
-  <data name="Contacts.Intro" xml:space="preserve"><value>Add, edit or remove a Contact. Review Core-calculated costs before confirming. Pets and Enemies use separate workflows.</value></data>
+  <data name="Contacts.Intro" xml:space="preserve"><value>Add someone your runner can turn to. Review their details and point cost before saving.</value></data>
   <data name="Contacts.Loyalty" xml:space="preserve"><value>Loyalty {0}</value></data>
-  <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics.</value></data>
+  <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Choose where your runner lives and review the cost.</value></data>
   <data name="Contacts.PageTitle" xml:space="preserve"><value>Creation contacts</value></data>
   <data name="Contacts.Unnamed" xml:space="preserve"><value>Unnamed Contact</value></data>
   <data name="Lifestyles.AddFromCatalog" xml:space="preserve"><value>Add from exact Core catalog</value></data>
@@ -3426,4 +3426,41 @@
   <data name="Spells.SummarySource.30fb4769-568f-49d8-833a-868e34e34809" xml:space="preserve"><value>43861014B892AF7C8D84BDC22CB003B41285C8450341AC5C8EFDA28916C58598</value></data>
   <data name="Contacts.PointsPending" xml:space="preserve"><value>Contact points need your saved creation choices.</value></data>
   <data name="Contacts.NeedsReview" xml:space="preserve"><value>Contact points are not ready. Review and save the earlier creation steps before adding contacts.</value></data>
+  <data name="Contacts.Edit" xml:space="preserve"><value>Edit contact</value></data>
+  <data name="Contacts.Review" xml:space="preserve"><value>Review changes</value></data>
+  <data name="Contacts.Changes" xml:space="preserve"><value>Contact details</value></data>
+  <data name="Contacts.DraftHelp" xml:space="preserve"><value>Nothing is saved until you review and confirm the change.</value></data>
+  <data name="Contacts.ConfirmHelp" xml:space="preserve"><value>I have reviewed these details and costs and want to save this change.</value></data>
+  <data name="Contacts.Confirm" xml:space="preserve"><value>Save contact change</value></data>
+  <data name="Contacts.Saved" xml:space="preserve"><value>Contact change saved.</value></data>
+  <data name="Contacts.SavedReload" xml:space="preserve"><value>Your change is saved. Reopen the runner in its original account to continue. Do not submit the change again.</value></data>
+  <data name="Contacts.PointsBefore" xml:space="preserve"><value>Contact points before</value></data>
+  <data name="Contacts.PointsAfter" xml:space="preserve"><value>Contact points after</value></data>
+  <data name="Contacts.HighPlacesBefore" xml:space="preserve"><value>Friends in High Places before</value></data>
+  <data name="Contacts.HighPlacesAfter" xml:space="preserve"><value>Friends in High Places after</value></data>
+  <data name="Contacts.SavedContacts" xml:space="preserve"><value>Saved contacts</value></data>
+  <data name="Contacts.Reload" xml:space="preserve"><value>Reopen runner</value></data>
+  <data name="Contacts.SavedSemantic" xml:space="preserve"><value>Saved. Points used: {0} → {1}. Remaining: {2}.</value></data>
+  <data name="Contacts.BackToCreation" xml:space="preserve"><value>Back to Creation</value></data>
+  <data name="Contacts.Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="Contacts.No" xml:space="preserve"><value>No</value></data>
+  <data name="Contacts.Field.name" xml:space="preserve"><value>Name</value></data>
+  <data name="Contacts.Field.role" xml:space="preserve"><value>Role</value></data>
+  <data name="Contacts.Field.location" xml:space="preserve"><value>Location</value></data>
+  <data name="Contacts.Field.notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Contacts.Field.custom-name" xml:space="preserve"><value>Custom name</value></data>
+  <data name="Contacts.Field.metatype" xml:space="preserve"><value>Metatype</value></data>
+  <data name="Contacts.Field.gender" xml:space="preserve"><value>Gender</value></data>
+  <data name="Contacts.Field.age" xml:space="preserve"><value>Age</value></data>
+  <data name="Contacts.Field.contact-type" xml:space="preserve"><value>Contact type</value></data>
+  <data name="Contacts.Field.preferred-payment" xml:space="preserve"><value>Preferred payment</value></data>
+  <data name="Contacts.Field.hobbies-vice" xml:space="preserve"><value>Hobbies / vice</value></data>
+  <data name="Contacts.Field.personal-life" xml:space="preserve"><value>Personal life</value></data>
+  <data name="Contacts.Field.group-name" xml:space="preserve"><value>Group name</value></data>
+  <data name="Contacts.Field.connection" xml:space="preserve"><value>Connection</value></data>
+  <data name="Contacts.Field.loyalty" xml:space="preserve"><value>Loyalty</value></data>
+  <data name="Contacts.Field.group" xml:space="preserve"><value>Group contact</value></data>
+  <data name="Contacts.Field.free" xml:space="preserve"><value>Free contact</value></data>
+  <data name="Contacts.Field.family" xml:space="preserve"><value>Family</value></data>
+  <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Blackmail</value></data>
 </root>

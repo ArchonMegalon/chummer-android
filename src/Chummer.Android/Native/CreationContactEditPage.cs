@@ -19,6 +19,7 @@ public sealed class CreationContactEditPage : NativePageBase
     private IReadOnlyList<string> _prepareBlockers = [];
     private CharacterCreationContactsInteractionLoadResult? _loaded;
     private bool _loading = true;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     internal CreationContactEditPage(
         RunnerSessionCoordinator coordinator,
@@ -28,7 +29,7 @@ public sealed class CreationContactEditPage : NativePageBase
             throw new ArgumentException("A stable Contact identity is required.", nameof(contactId));
         _contactId = contactId;
         _adding = adding;
-        Title = adding ? CreationFlowStrings.Get("Contacts.Add", "Add contact") : "Edit creation contact";
+        Title = adding ? CreationFlowStrings.Get("Contacts.Add", "Add contact") : Copy("Edit", "Edit contact");
         AutomationId = "creation-contact-edit-page";
         Content = new ScrollView { Content = _body };
     }
@@ -50,8 +51,9 @@ public sealed class CreationContactEditPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _previewButton = null;
-        _body.Add(NativeTheme.Eyebrow("Character creation · Contact"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CharacterCreation", "Character creation")));
         if (_loading)
         {
             _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-contact-edit-loading" });
@@ -76,7 +78,7 @@ public sealed class CreationContactEditPage : NativePageBase
         _draft.Bind(state, contact);
         _body.Add(NativeTheme.Title(
             string.IsNullOrWhiteSpace(contact.Identity.Name)
-                ? "Unnamed Contact"
+                ? CreationFlowStrings.Get("Contacts.Unnamed", "Unnamed Contact")
                 : contact.Identity.Name));
         AddBinding(state, contact);
         if (_adding)
@@ -102,6 +104,12 @@ public sealed class CreationContactEditPage : NativePageBase
             });
             _body.Add(remove);
         }
+        CharacterOverviewState original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-contact-edit-details",
+            () => IsCurrentAppearanceGeneration(appearance)
+                  && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                  && CreationContactsPhoneAuthority.IsReady(state, Coordinator.State)));
     }
 
     private void AddBinding(
@@ -113,7 +121,7 @@ public sealed class CreationContactEditPage : NativePageBase
             + $"Contact {contact.ContactId:D} · authority {ShortDigest(contact.ContactDigest)}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-contact-edit-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
     }
 
     private void AddFieldProjection(
@@ -135,7 +143,7 @@ public sealed class CreationContactEditPage : NativePageBase
             .OrderBy(field => Array.IndexOf(firstFields, field.FieldId) is int index && index >= 0 ? index : firstFields.Length))
         {
             VerticalStackLayout card = new() { Spacing = 7 };
-            card.Add(NativeTheme.FieldLabel(field.Label));
+            card.Add(NativeTheme.FieldLabel(FieldLabel(field)));
             switch (field.ValueKind)
             {
                 case CharacterCreationContactValueKinds.Text:
@@ -160,9 +168,7 @@ public sealed class CreationContactEditPage : NativePageBase
                     ?? CharacterCreationContactsBlockers.FieldNotEditable,
                     NativeTheme.Danger));
             }
-            card.Add(NativeTheme.Body(
-                $"Source · {string.Join(" · ", field.SourceAnchorIds)}",
-                NativeTheme.Muted));
+            _technicalDetails.Add(NativeTheme.Metric(FieldLabel(field), string.Join(" · ", field.SourceAnchorIds)));
             _body.Add(NativeTheme.Card(card, new Thickness(14)));
         }
     }
@@ -210,7 +216,7 @@ public sealed class CreationContactEditPage : NativePageBase
         Picker picker = new()
         {
             AutomationId = $"creation-contact-field-{field.FieldId}",
-            Title = field.Label,
+            Title = FieldLabel(field),
             IsEnabled = field.IsEditable
         };
         foreach (CharacterCreationContactOption option in options)
@@ -265,15 +271,14 @@ public sealed class CreationContactEditPage : NativePageBase
         CharacterCreationContactsInteractionState state,
         CharacterCreationContactProjection contact)
     {
-        _previewButton = NativeTheme.PrimaryButton("Preview exact change");
+        _previewButton = NativeTheme.PrimaryButton(Copy("Review", "Review changes"));
         _previewButton.AutomationId = "creation-contact-preview";
         _previewButton.IsEnabled = _adding || _draft.HasChanges(state, contact);
         _previewButton.Clicked += async (_, _) => await PreparePreviewAsync(state, contact);
         _body.Add(_previewButton);
 
         Label scope = NativeTheme.Body(
-            "This is a local typed draft. Core alone calculates budgets and the ordered atomic write plan. "
-            + "A separate explicit confirmation is required; the global Build Save is not used.",
+            Copy("DraftHelp", "Nothing is saved until you review and confirm the change."),
             NativeTheme.Muted);
         scope.AutomationId = "creation-contact-draft-scope";
         _body.Add(scope);
@@ -340,4 +345,9 @@ public sealed class CreationContactEditPage : NativePageBase
 
     private static string ShortDigest(string value)
         => string.IsNullOrWhiteSpace(value) ? "unavailable" : value[..Math.Min(19, value.Length)];
+
+    internal static string FieldLabel(CharacterCreationContactFieldAuthority field)
+        => Copy("Field." + field.FieldId, field.Label);
+
+    private static string Copy(string key, string fallback) => CreationFlowStrings.Get("Contacts." + key, fallback);
 }
