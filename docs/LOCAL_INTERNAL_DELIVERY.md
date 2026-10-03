@@ -104,14 +104,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 82 is the latest [observed Internal availability](../play/evidence/preview82-internal-observation.md),
+Preview 83 is the latest [observed Internal availability](../play/evidence/preview83-internal-observation.md),
+confirmed on 3 October at approximately19:06 Europe/Vienna (release time19:05).
+Its exact locally built ARM64 AAB was separately signed and independently verified.
+The [physical Play-managed82→83 update](../play/evidence/preview83-physical-observation.md)
+verified the Play certificate, first launch and Contacts prerequisite navigation
+after process restart without changing the user's choices. Contacts no longer
+opens Gear before Resources is saved. This does not complete all SR5 methods,
+Origin or phone beta; slow transitions remain. The later saving-feedback source
+change is not included in83.
+
+Preview 82's [observed Internal availability](../play/evidence/preview82-internal-observation.md),
 confirmed on 3 October at approximately 17:59 Europe/Vienna (release time 17:58).
 Its exact local ARM64 AAB was separately signed with the existing upload key and
 independently verified. It includes Creation Contacts routing/readability, Gear
 catalog stability and reduced repeated Qualities source-context construction.
 Focused managed checks and affected synthetic API36 save/new-process receipt
-readback passed; slow transitions remain. **Physical Play installation/update82
-is not yet verified.** This is not full SR5, Origin or phone-beta completion.
+readback passed; slow transitions remain. Its later physical Play update verified
+installation/signature but exposed the premature Contacts→Gear route, corrected
+and physically rechecked in83. Neither observation proves full SR5, Origin or
+phone-beta completion.
 
 Preview 81's [observed Internal availability](../play/evidence/preview81-internal-observation.md),
 confirmed on 3 October at 11:28 Europe/Vienna. Its exact local ARM64 AAB was

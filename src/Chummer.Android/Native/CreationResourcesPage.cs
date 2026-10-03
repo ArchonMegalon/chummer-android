@@ -380,6 +380,10 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private bool _ready;
     private bool _loading = true;
     private bool _submitted;
+    private bool _saving;
+    private Button? _confirm;
+    private Label? _confirmationStatus;
+    private ActivityIndicator? _saveProgress;
     private readonly AndroidSurfaceCopy _copy;
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly VerticalStackLayout _body = new()
@@ -427,6 +431,14 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
 
     protected override void Refresh()
     {
+        // Preserve the issued controls and scroll position during confirmation,
+        // but never retain another account or runner's private preview.
+        if (_saving && Coordinator.CanDisplayCreationPurchase(_original)) return;
+        if (_saveProgress is { } previousProgress)
+            previousProgress.IsVisible = previousProgress.IsRunning = false;
+        _confirm = null;
+        _confirmationStatus = null;
+        _saveProgress = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(_copy["ResourcesPreview.Title"]));
@@ -492,6 +504,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         confirm.AutomationId = "creation-resources-confirm";
         confirm.IsEnabled = exact;
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        _confirm = confirm;
         _body.Add(confirm);
         Label warning = NativeTheme.Body(
             exact
@@ -499,7 +512,14 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
                 : _copy["ResourcesPreview.ConfirmStale"],
             exact ? NativeTheme.Muted : NativeTheme.Danger);
         warning.AutomationId = "creation-resources-confirm-authority";
+        _confirmationStatus = warning;
         _body.Add(warning);
+        _saveProgress = new ActivityIndicator
+        {
+            IsVisible = false, IsRunning = false,
+            AutomationId = "creation-resources-save-progress"
+        };
+        _body.Add(_saveProgress);
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-resources-preview-details"));
     }
 
@@ -509,51 +529,71 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         _submitted = true;
         _ready = false;
         _failure = null;
-        Refresh();
-        var result = await Coordinator.ConfirmCreationResourcesPurchaseAsync(_resources, _original, _prepared);
-        if (result.Receipt is not { } receipt
-            || result.Outcome is not (CharacterCreationResourcesOutcomes.Applied or CharacterCreationResourcesOutcomes.Replayed)
-            || !CreationResourcesPhoneAuthority.ReceiptMatches(_prepared, receipt))
+        _saving = true;
+        if (_confirm is { } confirm)
         {
-            _failure = result.Outcome == "outcome-unknown"
-                ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
-                : result.Blockers.FirstOrDefault() ?? CharacterCreationResourcesInteractionBlockers.ReceiptMismatch;
-            return;
+            confirm.IsEnabled = false;
+            confirm.Text = CreationFlowStrings.Get("Resources.Saving", "Saving budget…");
         }
-        // Retain the durable receipt before refreshing. Refresh failure is not
-        // mutation failure and must not permit a second submission.
-        _receipt = receipt;
-        if (result.RefreshedState is not { } refreshed
-            || !CreationResourcesPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
-            || !Coordinator.CanDisplayCreationPurchase(_original))
+        if (_confirmationStatus is { } status)
         {
-            _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
-            return;
+            status.Text = CreationFlowStrings.Get("Resources.SavingDetail", "Saving your resource budget. Please wait…");
+            status.TextColor = NativeTheme.Muted;
         }
+        ActivityIndicator? progress = _saveProgress;
+        if (progress is not null) progress.IsVisible = progress.IsRunning = true;
+        try
+        {
+            var result = await Coordinator.ConfirmCreationResourcesPurchaseAsync(_resources, _original, _prepared);
+            if (result.Receipt is not { } receipt
+                || result.Outcome is not (CharacterCreationResourcesOutcomes.Applied or CharacterCreationResourcesOutcomes.Replayed)
+                || !CreationResourcesPhoneAuthority.ReceiptMatches(_prepared, receipt))
+            {
+                _failure = result.Outcome == "outcome-unknown"
+                    ? CreationFlowStrings.Get("Purchases.OutcomeUnknown", "The result could not be verified. Reopen the character before making another purchase.")
+                    : result.Blockers.FirstOrDefault() ?? CharacterCreationResourcesInteractionBlockers.ReceiptMismatch;
+                return;
+            }
+            // Retain the durable receipt before refreshing. Refresh failure is not
+            // mutation failure and must not permit a second submission.
+            _receipt = receipt;
+            if (result.RefreshedState is not { } refreshed
+                || !CreationResourcesPhoneAuthority.RefreshedStateMatches(_prepared, receipt, refreshed)
+                || !Coordinator.CanDisplayCreationPurchase(_original))
+            {
+                _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
+                return;
+            }
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
-        if (AndroidE2EAuthority.Enabled)
-        {
-            if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
-                    receipt.RawCharacterXmlDigest,
-                    out string expectedPayloadSha256))
+            if (AndroidE2EAuthority.Enabled)
             {
-                _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
-                return;
+                if (!CreationResourcesPhoneAuthority.TryNormalizeRawCharacterXmlSha256(
+                        receipt.RawCharacterXmlDigest,
+                        out string expectedPayloadSha256))
+                {
+                    _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
+                    return;
+                }
+                NativeWorkspaceAuthoritySnapshot? proofAuthority =
+                    await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
+                        receipt.WorkspaceId,
+                        receipt.WorkspaceRevision,
+                        receipt.SavedRevision,
+                        expectedPayloadSha256,
+                        CancellationToken.None);
+                if (proofAuthority is null)
+                {
+                    _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
+                    return;
+                }
             }
-            NativeWorkspaceAuthoritySnapshot? proofAuthority =
-                await Coordinator.RefreshApi36ProofWorkspaceAuthorityAsync(
-                    receipt.WorkspaceId,
-                    receipt.WorkspaceRevision,
-                    receipt.SavedRevision,
-                    expectedPayloadSha256,
-                    CancellationToken.None);
-            if (proofAuthority is null)
-            {
-                _failure = CharacterCreationResourcesInteractionBlockers.RefreshAuthorityRequired;
-                return;
-            }
-        }
 #endif
+        }
+        finally
+        {
+            _saving = false;
+            if (progress is not null) progress.IsVisible = progress.IsRunning = false;
+        }
     }
 
     private void AddBudgetComparison()

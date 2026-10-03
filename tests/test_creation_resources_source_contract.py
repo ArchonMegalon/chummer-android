@@ -93,7 +93,8 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
         coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
         self.assertIn("ExplicitlyConfirmed: true", coordinator)
         self.assertIn("ConfirmCreationResourcesPurchaseAsync(_resources, _original, _prepared)", text)
-        self.assertIn("await bound.LoadAsync(owner, workspaceId, ct)", coordinator)
+        self.assertIn("await bound.LoadBeforeShellSyncAsync(owner, workspaceId, ct)", coordinator)
+        self.assertNotIn("await bound.LoadAsync(owner, workspaceId, ct)", coordinator)
         self.assertNotIn("await _overview.LoadAsync(", text)
         self.assertIn("presenter.Load(refreshedDisplay)", coordinator)
 

@@ -270,6 +270,8 @@
   <data name="Qualities.SourceDisabled" xml:space="preserve"><value>La fuente requerida no está activada para este personaje.</value></data>
   <data name="Qualities.Unavailable" xml:space="preserve"><value>Esta cualidad no está disponible actualmente para este personaje.</value></data>
   <data name="Gear.Saving" xml:space="preserve"><value>Guardando equipo…</value></data>
+  <data name="Resources.Saving" xml:space="preserve"><value>Guardando presupuesto…</value></data>
+  <data name="Resources.SavingDetail" xml:space="preserve"><value>Guardando tu presupuesto de recursos. Espera, por favor…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Guardando tus elecciones de equipo. Espera, por favor…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Tu selección de equipo está guardada.</value></data>
   <data name="Dashboard.Unavailable" xml:space="preserve"><value>No se pudieron cargar tus elecciones de creación. Vuelve a abrir este runner para intentarlo de nuevo.</value></data>
