@@ -162,6 +162,28 @@ internal static partial class AfterRunAuthorityHarness
     // Editorial checks protect concise, useful help; they do not establish copyright clearance.
     private static readonly (string Name, string[] English, string[] German, string[] Spanish)[] ConciseQualitySummaries =
     [
+        ("The Twisted Way", ["toxic", "awakened type", "learned separately"],
+            ["toxische", "Begabung", "einzeln erlernt"], ["tóxica", "tipo", "por separado"]),
+        ("Conjuring Geas", ["restriction", "all Conjuring", "bad astral reputation"],
+            ["Einschränkung", "aller Beschwörungsfertigkeiten", "schlechten Ruf"],
+            ["restricción", "todas", "Conjuración", "mala reputación astral"]),
+        ("It Works If You Work It", ["Infected", "addiction", "Essence Drain"],
+            ["Infizierten", "Essenzentzug", "Sucht"], ["Infectados", "adicción", "Drenaje de Esencia"]),
+        ("Soul Swallower", ["Essence faster", "addiction risk", "normal rate", "without"],
+            ["Schnellerer Essenzentzug", "Suchtrisiko", "normalen Tempo", "entfällt"],
+            ["Esencia más rápido", "riesgo de adicción", "ritmo normal", "evita"]),
+        ("Metaviral Attunement", ["specific", "spells, spirits or other tests", "strain"],
+            ["bestimmte", "Zauber, Geister oder andere Proben", "Virusstamm"],
+            ["determinadas", "hechizos, espíritus u otras pruebas", "cepa"]),
+        ("Stalwart Ally", ["Edge", "once daily between you", "next dawn/dusk", "Drain resistance"],
+            ["Edge", "gemeinsam einmal täglich", "nächsten Sonnenaufgang/-untergang", "Entzugswiderstand"],
+            ["Edge", "una vez diaria en total", "próximo amanecer/anochecer", "resistir Drenaje"]),
+        ("Taboo Transformer", ["Resisted", "Shapechange or Critter Form", "unwilling", "physically weakened", "mental attributes stay unchanged"],
+            ["Widerstandsprobe", "Gestaltwandlung oder Tiergestalt", "widerstrebende", "körperlich geschwächte", "geistigen Attribute bleiben unverändert"],
+            ["prueba resistida", "Cambio de Forma o Forma Animal", "reacios", "físicamente debilitados", "atributos mentales no cambian"]),
+        ("Worship Leader", ["Voluntary", "mundane", "your tradition", "dice pool and limit", "capped"],
+            ["Freiwillig", "mundane", "deiner Tradition", "Würfelpool und Limit", "begrenzt"],
+            ["voluntariamente", "mundanos", "tu tradición", "dados y el límite", "limita"]),
         ("Spirit Hunter I", ["owed services", "Banishing", "Astral Combat/Killing Hands", "briefly"],
             ["Diensten", "Astralkampf", "Todeskralle", "kurzzeitig"],
             ["servicios", "Destierro", "combate astral", "Manos Letales", "brevemente"]),
@@ -1462,7 +1484,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (summary.Length > 0) Require(lines[0] == summary,
                         "The original summary must precede technical effects: " + quality.Element("name")!.Value);
                 }
-                Require(authored >= 761, "Localized source-identity summaries were not loaded from the real catalog.");
+                Require(authored >= 769, "Localized source-identity summaries were not loaded from the real catalog.");
                 VerifyTradeoffQualitySummaries(catalog, locale);
                 VerifyCompulsionQualitySummaries(catalog, locale);
                 VerifyNaturalVenomQualitySummaries(catalog, locale);
@@ -1503,6 +1525,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Revenant Adept", "Skinwalker", "Spell Jammer", "Spectral Warden",
                     "Code of Honor: Black Hat", "Know Your Limit", "Sprite Combustion", "Taint of Dissonance", "Wired User",
                     "Spirit Hunter I", "Spirit Hunter II", "Spirit Hunter III", "Spiritual Pilgrim",
+                    "Stalwart Ally", "Taboo Transformer", "Worship Leader",
                     "Dissonant Stream: Apophenian", "Dissonant Stream: Erisian", "Dissonant Stream: Morphinae" })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == name);
@@ -1555,7 +1578,17 @@ internal static partial class AfterRunAuthorityHarness
                     (Name: "Munge", Path: "required/oneof/metatype", Value: "A.I."),
                     (Name: "Multiprocessing", Path: "required/oneof/metatype", Value: "A.I."),
                     (Name: "Centaur Body", Path: "required/allof/metatype", Value: "Centaur"),
-                    (Name: "Latent Dracomorphosis", Path: "forbidden/oneof/quality", Value: "Dracoform (Eastern Drake)")
+                    (Name: "Latent Dracomorphosis", Path: "forbidden/oneof/quality", Value: "Dracoform (Eastern Drake)"),
+                    (Name: "Conjuring Geas", Path: "careeronly", Value: ""),
+                    (Name: "Conjuring Geas", Path: "bonus/astralreputation", Value: "-1"),
+                    (Name: "The Twisted Way", Path: "required/oneof/quality", Value: "Adept"),
+                    (Name: "The Twisted Way", Path: "forbidden/oneof/quality", Value: "The Artisan's Way"),
+                    (Name: "It Works If You Work It", Path: "required/oneof/quality", Value: "Infected: Bandersnatch"),
+                    (Name: "Metaviral Attunement", Path: "required/oneof/quality", Value: "Infected: Bandersnatch"),
+                    (Name: "Soul Swallower", Path: "required/oneof/critterpower", Value: "Essence Drain"),
+                    (Name: "Stalwart Ally", Path: "required/allof/spell", Value: "Create Ally Spirit"),
+                    (Name: "Taboo Transformer", Path: "required/oneof/group/spell", Value: "Shapechange"),
+                    (Name: "Worship Leader", Path: "required/allof/skill/name", Value: "Leadership")
                 })
                 {
                     var quality = catalog.Single(q => q.Element("name")!.Value == prerequisite.Name);
@@ -1572,7 +1605,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Favored (Specific Target, Biased)", "Favored (Specific Target, Outspoken)",
                     "Favored (Specific Target, Fanatic)", "Illusionist",
                     "Dry Addict (Mild)", "Dry Addict (Moderate)", "Dry Addict (Severe)", "Dry Addict (Burnout)",
-                    "Natural Hacker", "Corporate Loyalist",
+                    "Natural Hacker", "Corporate Loyalist", "Metaviral Attunement",
                     "Phenotypic Variation - Cosmetic Alteration", "Phenotypic Variation - Metaposeur",
                     "Location Attunement I", "Location Attunement II", "Location Attunement III",
                     "Escaped Custody", "Rank (Neither Military nor Law Enforcement) I",
