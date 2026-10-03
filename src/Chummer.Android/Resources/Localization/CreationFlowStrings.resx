@@ -3356,4 +3356,16 @@
   <data name="Spells.SummarySource.e7e508e7-832f-4a61-8f0e-1aced19cfb09" xml:space="preserve"><value>AA80408F7DED514B97FD62613337B3E395926F0F844F74532FB8CA18A61C53AE</value></data>
   <data name="Spells.Summary.70b6b4f8-8caf-4100-bb0a-bbb0f40faa84" xml:space="preserve"><value>Trades Karma for negotiated benefits from a free spirit.</value></data>
   <data name="Spells.SummarySource.70b6b4f8-8caf-4100-bb0a-bbb0f40faa84" xml:space="preserve"><value>7B2292BF000DBC665D8827DEFA6E4F0DA3B81F73157FEF7CC896298EFC3B6C65</value></data>
+  <data name="Spells.Summary.cbab5603-5140-40ec-85a2-4c0706ad440b" xml:space="preserve"><value>Creates a customized spirit companion using a formula and Karma.</value></data>
+  <data name="Spells.SummarySource.cbab5603-5140-40ec-85a2-4c0706ad440b" xml:space="preserve"><value>23AE7B01299435B373A7A1405667C3FE9A2A8527135868F7FD8738594818CBEF</value></data>
+  <data name="Spells.Summary.5e770b01-842f-45a2-adb3-3923a37a8ea3" xml:space="preserve"><value>Links relatives' emotions and whereabouts; lets you take their physical injuries.</value></data>
+  <data name="Spells.SummarySource.5e770b01-842f-45a2-adb3-3923a37a8ea3" xml:space="preserve"><value>927190B840DB0EE762A9C4F37A30D5A335CD21BAAD3A68C77E0FFFDCCDBEF784</value></data>
+  <data name="Spells.Summary.a6ca2396-f78f-45c1-9293-72bc41bb860b" xml:space="preserve"><value>Stores sacrificial blood-magic energy in a bonded ritual blade.</value></data>
+  <data name="Spells.SummarySource.a6ca2396-f78f-45c1-9293-72bc41bb860b" xml:space="preserve"><value>072D053EC85123F53E2EB0BDD812181464C500401571A4ED3F144E48626BE54D</value></data>
+  <data name="Spells.Summary.66714935-5b3c-417d-b953-159fe5a2031c" xml:space="preserve"><value>Reveals information about someone from their recent blood sample.</value></data>
+  <data name="Spells.SummarySource.66714935-5b3c-417d-b953-159fe5a2031c" xml:space="preserve"><value>11EFDD85D0073E4C5172A7CC24F2FE26F62583C0C74D0B809DA5B87748E9B8BD</value></data>
+  <data name="Spells.Summary.99c41c3c-5895-4a61-bb6c-184475ee7def" xml:space="preserve"><value>Calls unfamiliar spirits to negotiate; they owe no services.</value></data>
+  <data name="Spells.SummarySource.99c41c3c-5895-4a61-bb6c-184475ee7def" xml:space="preserve"><value>6294BC8615197EF76A71F35A8DB68DA0D00257368D828AC85BB2DB141A0C1279</value></data>
+  <data name="Spells.Summary.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>Creates a customized spirit companion using a formula and Karma.</value></data>
+  <data name="Spells.SummarySource.779f8d7e-57a7-49aa-957e-8f31da31feac" xml:space="preserve"><value>65A74083F113A2C9822B3D423515DE58E487205E2EA96BDFD3BD4D14C3F0C4DE</value></data>
 </root>
