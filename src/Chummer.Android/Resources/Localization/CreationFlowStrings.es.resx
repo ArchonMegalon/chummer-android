@@ -2095,4 +2095,11 @@
   <data name="Spells.Summary.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>Reduce temporalmente el nivel de fondo positivo; no repone zonas sin maná.</value></data>
   <data name="Spells.Summary.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>Provoca accidentes en el dominio de una línea de maná, viendo al objetivo directamente, mediante observador o visión ley.</value></data>
   <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Contagia tus actitudes a quienes viven o trabajan en el dominio de una línea de maná; pueden resistirse.</value></data>
+  <data name="Spells.Summary.7d1bdbfd-47cb-4992-b83b-4dc815337d5d" xml:space="preserve"><value>Debilita hechizos sostenidos al cruzar una puerta y desactiva focos más débiles.</value></data>
+  <data name="Spells.Summary.3917e09a-8e02-4f98-a4d1-7e00e01f3487" xml:space="preserve"><value>Reduce interferencias ambientales cercanas; solo permite hablar y observar.</value></data>
+  <data name="Spells.Summary.6b2838f7-8ecb-455a-a2cc-ae1484e48a9a" xml:space="preserve"><value>Prepara un cuerpo vivo para alojar a un espíritu.</value></data>
+  <data name="Spells.Summary.9b61d871-f156-44fc-a703-e19e99933747" xml:space="preserve"><value>Debilita temporalmente el maná aspectado de una zona.</value></data>
+  <data name="Spells.Summary.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>Recarga reactivos desde una línea afín a tu tradición, debilitándola temporalmente.</value></data>
+  <data name="Spells.Summary.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>Otorga poderes superiores a un espíritu vinculado.</value></data>
+  <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Drena el maná local para obtener poder mágico pasajero.</value></data>
 </root>

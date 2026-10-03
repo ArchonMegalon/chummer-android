@@ -2112,4 +2112,11 @@
   <data name="Spells.Summary.6ae76940-5983-42e3-9f46-4f771cc7481f" xml:space="preserve"><value>Senkt vorübergehend positive Hintergrundstrahlung; füllt keine manaarmen Gebiete auf.</value></data>
   <data name="Spells.Summary.f1f92398-dced-429f-8463-53894d8b2604" xml:space="preserve"><value>Löst Unfälle in einer Manaliniendomäne aus; das Ziel wird direkt, durch Späher oder Leysicht wahrgenommen.</value></data>
   <data name="Spells.Summary.fb05d206-f175-4dfa-a1bb-54ae3b298d33" xml:space="preserve"><value>Überträgt deine Einstellungen auf Menschen in einer Manaliniendomäne; sie können widerstehen.</value></data>
+  <data name="Spells.Summary.7d1bdbfd-47cb-4992-b83b-4dc815337d5d" xml:space="preserve"><value>Schwächt aufrechterhaltene Zauber beim Durchqueren einer Tür und deaktiviert schwächere Foki.</value></data>
+  <data name="Spells.Summary.3917e09a-8e02-4f98-a4d1-7e00e01f3487" xml:space="preserve"><value>Mildert nahe Umwelteinflüsse; erlaubt nur Sprechen und Wahrnehmen.</value></data>
+  <data name="Spells.Summary.6b2838f7-8ecb-455a-a2cc-ae1484e48a9a" xml:space="preserve"><value>Bereitet einen lebenden Körper als Gefäß für einen Geist vor.</value></data>
+  <data name="Spells.Summary.9b61d871-f156-44fc-a703-e19e99933747" xml:space="preserve"><value>Schwächt vorübergehend das aspektierte Mana eines Gebiets.</value></data>
+  <data name="Spells.Summary.e45f4b5d-8969-4e03-ae55-583beee464fc" xml:space="preserve"><value>Lädt Reagenzien aus einer traditionsgebundenen Manalinie auf und schwächt sie vorübergehend.</value></data>
+  <data name="Spells.Summary.838a29e8-d154-41a1-a589-2e338d312a1b" xml:space="preserve"><value>Verleiht einem gebundenen Geist zusätzliche mächtige Fähigkeiten.</value></data>
+  <data name="Spells.Summary.8bd8ac0b-be01-4207-b601-77570305ea10" xml:space="preserve"><value>Entzieht der Umgebung Mana für kurzfristige magische Macht.</value></data>
 </root>
