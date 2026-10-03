@@ -168,13 +168,15 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunCreationContactsReadinessCasesAsync(string contentRoot)
     {
         foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        foreach (bool resourcesSaved in new[] { false, true })
         {
             var owners = new ControlledLinkedOwner();
             owners.Set(OwnerScope.LocalSingleUser);
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                 creationContacts: true, creationBootstrap: true, creationFinalization: true,
                 productionCreationOverview: true);
-            var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, stopBeforeGear: true);
+            var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method,
+                stopBeforeGear: true, stopBeforeResources: !resourcesSaved);
             await HydrateFinalizationOwnerAsync(runtime, owners, saved);
             var snapshot = runtime.Coordinator.State.CreationWizard!;
             var contacts = runtime.Coordinator.LoadCreationContacts();
@@ -195,6 +197,17 @@ internal static partial class AfterRunAuthorityHarness
             var resourceLoad = resources.Load(runtime.Coordinator.State);
             Require(CreationResourcesPhoneAuthority.IsReady(resourceLoad.State!, runtime.Coordinator.State),
                 "SETUP: Resources must be ready before opening Gear.");
+            Require((resourceLoad.State!.PendingDraft is not null) == resourcesSaved
+                && snapshot.CompletionBlockers.Contains(CharacterCreationFinalizationBlockers.ResourcesDraftRequired)
+                    == !resourcesSaved,
+                "SETUP: editable Resources must not imply a committed Resources draft.");
+            if (!resourcesSaved)
+            {
+                var blockedGear = runtime.Services.GetRequiredService<ICharacterCreationGearService>().Load(new(runtime.Id));
+                Require(blockedGear.Value is { CanEdit: false, ResourcesDraft: null }
+                    && blockedGear.Blockers.Contains(CharacterCreationGearBlockers.ResourcesDraftRequired),
+                    "SETUP: Core must reject Gear until Resources is saved.");
+            }
             Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State, snapshot, out var binding),
                 "SETUP: missing dashboard binding.");
             var projection = CreationDashboardAuthorityProjection.Loading(binding!) with
@@ -216,13 +229,23 @@ internal static partial class AfterRunAuthorityHarness
                 var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)renderStages.Invoke(page,
                     [snapshot, projection, null, null, null, contacts, resourceLoad, readiness])!;
                 var route = routes[CharacterCreationWizardStepIds.ContactsLifestyles];
-                Require(route.CanOpen && route.Detail.Contains("Gear", StringComparison.Ordinal)
+                string prerequisite = resourcesSaved ? "Gear" : "Resources";
+                Require(route.CanOpen && route.Detail.Contains(prerequisite, StringComparison.Ordinal)
                     && !route.Detail.Equals("Complete", StringComparison.OrdinalIgnoreCase),
-                    "Missing Contact budget still appears Complete/disabled instead of leading to the required Gear review: "
+                    "Missing Contact budget does not lead to its next required " + prerequisite + " review: "
                     + route.Detail);
                 await route.Open();
-                Require(nav.Navigation.NavigationStack.Last() is CreationGearPage,
-                    "Pending Contacts did not open the existing Gear review page.");
+                Require(resourcesSaved ? nav.Navigation.NavigationStack.Last() is CreationGearPage
+                    : nav.Navigation.NavigationStack.Last() is CreationResourcesPage,
+                    "Pending Contacts skipped the required Resources review or failed to reach Gear after it was saved.");
+                var destination = nav.Navigation.NavigationStack.Last();
+                var destinationType = destination.GetType();
+                await (Task)destinationType.GetMethod("PrepareForAppearanceRefreshAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(destination, [CancellationToken.None])!;
+                destinationType.GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(destination, null);
+                Require((bool)destinationType.GetField("_ready", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(destination)!, "The selected prerequisite page still fails its real Core binding/readiness check.");
                 await nav.PopAsync(false);
                 var renderBudget = typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 renderBudget.Invoke(page, [snapshot, null, null, readiness, routes, projection, null]);
@@ -231,7 +254,8 @@ internal static partial class AfterRunAuthorityHarness
                     .Single(card => card.AutomationId == "creation-budget-contacts");
                 var button = ((Grid)contactCard.Content!).Children.OfType<Button>().Single();
                 await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
-                Require(nav.Navigation.NavigationStack.Last() is CreationGearPage,
+                Require(resourcesSaved ? nav.Navigation.NavigationStack.Last() is CreationGearPage
+                    : nav.Navigation.NavigationStack.Last() is CreationResourcesPage,
                     "Contact budget and stage did not use the same prerequisite route.");
                 await nav.PopAsync(false);
                 owners.Set(ContactsOwnerB);
@@ -241,7 +265,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Retained Contact prerequisite navigation survived an owner ABA transition.");
             });
             RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
-            Console.WriteLine($"PASS actual {method} absent Contacts prerequisite guidance, budget/stage navigation, owner ABA denial and no writes");
+            Console.WriteLine($"PASS actual {method} Contacts prerequisites (Resources saved={resourcesSaved}), budget/stage navigation, owner ABA denial and no writes");
         }
     }
 

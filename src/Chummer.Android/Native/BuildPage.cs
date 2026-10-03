@@ -2564,7 +2564,8 @@ public sealed class BuildPage : NativePageBase
                 CharacterCreationWizardStepIds.ContactsLifestyles,
                 readiness.Contacts);
             CreationBudgetRoute? contactsPrerequisite = contactsStage && !canOpenContacts
-                ? CreationContactsPrerequisiteRoute(snapshot, creationContacts, routes, readiness.Resources)
+                ? CreationContactsPrerequisiteRoute(snapshot, creationContacts, routes,
+                    readiness.Resources && creationResources?.State?.PendingDraft is not null)
                 : null;
             bool resourcesStage = IsResourcesStage(stage.StepId);
             bool canOpenResources = resourcesStage && BuildPageUiProjection.CanOpenExactTypedCreationStage(
@@ -2697,7 +2698,7 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationWizardSnapshot snapshot,
         CharacterCreationContactsInteractionLoadResult? contacts,
         IReadOnlyDictionary<string, CreationBudgetRoute> routes,
-        bool resourcesReady)
+        bool resourcesSaved)
     {
         var displayed = Coordinator.State;
         // An absent optional domain can be safe for finalization without being
@@ -2718,8 +2719,11 @@ public sealed class BuildPage : NativePageBase
                 _ => null
             };
             CreationBudgetRoute? destination = step is not null ? routes.GetValueOrDefault(step) : null;
+            // Resources can be editable before its allocation has been saved.
+            // Gear requires that committed draft; sorted blocker order must not
+            // send the user past Resources into an unbound Gear page.
             if (blocker == CharacterCreationFinalizationBlockers.GearDraftRequired
-                && resourcesReady && _gearPresenter is not null && _overviewPresenter is not null)
+                && resourcesSaved && _gearPresenter is not null && _overviewPresenter is not null)
                 destination = new(AndroidSurfaceStrings.Resolve()["Gear.PageTitle"], string.Empty, true,
                     () => Navigation.PushAsync(new CreationGearPage(Coordinator, _gearPresenter, _overviewPresenter)), []);
             if (destination?.CanOpen != true) continue;

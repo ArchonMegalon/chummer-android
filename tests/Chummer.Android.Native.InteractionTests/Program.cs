@@ -383,6 +383,11 @@ internal static class Program
             await AfterRunAuthorityHarness.ExportStartingCashSeedAsync(args[1], args[2], contactsPending: true);
             return;
         }
+        if (args.Length == 3 && args[0] == "--export-contacts-resources-pending-seed")
+        {
+            await AfterRunAuthorityHarness.ExportStartingCashSeedAsync(args[1], args[2], resourcesPending: true);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--collection-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunCollectionOwnerCasesAsync(args[1]);
