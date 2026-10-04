@@ -737,7 +737,13 @@ public sealed partial class RunnerSessionCoordinator
     internal async Task<bool> ExportRetainedOriginBookAsync(RetainedOriginBook book, AndroidSurfaceCopy copy,
         Func<bool> isCurrentPage, CancellationToken ct, bool epub = false)
     {
-        bool Current() => isCurrentPage() && IsRetainedOriginBookCurrent(book);
+        // Admit an exact current edition once. After that, Save As owns its
+        // immutable bytes: a newly completed chapter/image must not invalidate
+        // an open picker. Runner revisions, page lifetime and the full owner
+        // stamp still guard every write, including an owner A -> B -> A change.
+        if (!IsRetainedOriginBookCurrent(book) || !_retainedBooks.TryGetValue(book, out var original))
+            throw new OperationCanceledException("The book context changed.");
+        bool Current() => isCurrentPage() && IsNativeEditDisplayCurrent(original);
         if (!Current()) throw new OperationCanceledException("The book context changed.");
         if (!book.HasExportableChapters) return false;
         byte[] bytes = await Task.Run(() => epub ? OriginBookEpub.Create(book, copy) : Encoding.UTF8.GetBytes(book.ToHtml(copy)), ct);
