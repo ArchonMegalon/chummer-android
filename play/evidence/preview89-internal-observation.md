@@ -6,8 +6,10 @@ Internal release 84, one version code, released at 04:07 Europe/Vienna.
 Readback was confirmed again at 02:10 UTC. This is browser readback, not
 Publisher API evidence.
 [Install/update](https://play.google.com/apps/internaltest/4700678198570024687).
-Physical Play installation of 89 is not yet verified: the existing phone still
-has Play-installed 88 and its normal listing offers Open, not Update.
+The later [physical Play88→89 update](preview89-physical-observation.md)
+verified installed identity, the Play signature, loading feedback and unchanged
+visible Creation after a verified new-process restart. Its scope is bounded;
+it does not establish physical Origin reading/export or all-method Creation.
 Version 89 is consumed; never rebuild or re-upload it. Prior evidence is retained.
 
 ## Change and exact artifact
