@@ -104,7 +104,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 99 is the latest [observed Internal availability](../play/evidence/preview99-internal-observation.md),
+Preview 100 is the latest [observed Internal availability](../play/evidence/preview100-internal-observation.md),
+confirmed on 4 October at approximately 19:31 Europe/Vienna. Its exact local
+ARM64 AAB was separately signed with the existing upload key and independently
+verified. Early account-recovery reads and credential-queue waits now honor
+cancellation; admitted credential commits still finish and real storage errors
+remain fail-closed. Campaign uses the same visible Cancel action. Focused managed
+MAUI/Core/security and synthetic API36 cancel/deadline/departure/new-process
+checks passed; unchanged behavior results are reused for the version-only delta.
+**Physical Play100 installation/update and live account refresh are unverified.**
+This does not establish the cause of the historical Hub503, interruptibility of
+a non-cooperative OS read, full SR5/Origin or general-beta completion.
+
+Preview 99's [observed Internal availability](../play/evidence/preview99-internal-observation.md),
 confirmed on 4 October at approximately 18:01 Europe/Vienna (release time 18:00).
 Its exact local ARM64 AAB was separately signed with the existing upload key and
 independently verified. Life Modules exotic skill variants now retain independent
