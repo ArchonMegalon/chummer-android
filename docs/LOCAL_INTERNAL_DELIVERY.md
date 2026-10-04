@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 89 is the latest [observed Internal availability](../play/evidence/preview89-internal-observation.md),
+Preview 91 is the latest [observed Internal availability](../play/evidence/preview91-internal-observation.md),
+confirmed on 4 October at 10:41 Europe/Vienna. The exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Origin opens available full prose first; EPUB/HTML require complete chapters.
+Life Modules adds automatic chapter requests, visible progress, reading before
+successor/rule effects, editable city reuse and contextual story presets.
+Focused actual-MAUI and synthetic API36 reading/export/new-process checks passed.
+**Physical Play91 installation/update remains unverified.** Version 90 remains
+a separately uploaded inactive library artifact, not a completed rollout.
+Slow transitions, all-method Creation and full Origin completion remain open.
+
+Preview 89's [observed Internal availability](../play/evidence/preview89-internal-observation.md),
 confirmed on 4 October at approximately 04:07 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Startup now shows
 loading feedback and reuses the already restored runner list, preserving owner
