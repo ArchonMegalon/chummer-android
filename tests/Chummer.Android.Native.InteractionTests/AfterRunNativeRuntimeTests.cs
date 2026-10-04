@@ -569,7 +569,8 @@ internal static partial class AfterRunAuthorityHarness
             IAndroidImageDocumentService? originSceneDocuments = null,
             bool creationAttributes = false,
             Func<IOwnerBoundCharacterCreationAttributesService, IOwnerBoundCharacterCreationAttributesService>? attributesDecorator = null,
-            bool creationSkills = false)
+            bool creationSkills = false,
+            bool lifeModuleInputDrafts = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -715,6 +716,7 @@ internal static partial class AfterRunAuthorityHarness
                     lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
                     lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
+                    lifeModuleInputDrafts: lifeModuleInputDrafts ? new LifeModuleCompletionDraftStore(StateDirectory) : null,
                     originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
                         _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
                         new FileOriginDossierDraftTimelineStore(StateDirectory)),

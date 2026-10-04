@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 6cae599a89301a290d13e0d7b0c46fc6f29c302c
+          ref: 2b2d63a3887e1d2813843bef958be448c7837c1a
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
