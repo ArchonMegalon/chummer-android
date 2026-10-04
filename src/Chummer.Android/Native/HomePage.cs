@@ -9,6 +9,12 @@ namespace Chummer.Android.Native;
 public class HomePage : NativePageBase, IPlayReviewSafeSurface
 {
     private readonly string _runnerRoute;
+    private readonly ActivityIndicator _startupProgress = new()
+    {
+        AutomationId = "home-startup-progress",
+        Color = NativeTheme.Text,
+        HeightRequest = 32
+    };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 20, 20, 36),
@@ -27,6 +33,32 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         _runnerRoute = runnerRoute;
         Title = title;
         Content = new ScrollView { Content = _body };
+        ShowStartupProgress();
+    }
+
+    protected override void OnAppearing()
+    {
+        // The first frame must not wait for local owner/workspace restoration.
+        // Do not render runner data or enable actions before the base lifecycle
+        // has admitted the current appearance and completed initialization.
+        ShowStartupProgress();
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _startupProgress.IsRunning = false;
+        base.OnDisappearing();
+    }
+
+    private void ShowStartupProgress()
+    {
+        _body.Clear();
+        var status = NativeTheme.Title(PhoneStrings.Get("HomeLoading", "Opening your runners…"));
+        status.AutomationId = "home-startup-status";
+        _body.Add(status);
+        _startupProgress.IsRunning = true;
+        _body.Add(_startupProgress);
     }
 
 #if DEBUG
@@ -38,6 +70,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
 
     protected override void Refresh()
     {
+        _startupProgress.IsRunning = false;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Chummer"));
         _body.Add(NativeTheme.Title(PhoneStrings.Get("HomeYourRunners", "Your runners")));

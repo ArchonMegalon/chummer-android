@@ -328,6 +328,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--home-startup-feedback-content-root")
+        {
+            await AfterRunAuthorityHarness.RunHomeStartupFeedbackAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--initial-phone-route-content-root")
         {
             await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
