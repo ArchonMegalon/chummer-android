@@ -15,6 +15,14 @@ using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
 {
+    public static async Task RunStoryFlowAsync()
+    {
+        RunAuthoringSource();
+        await RunOptionalOpeningDetailsAsync();
+        await RunReadBeforeNextChoiceAsync();
+        await RunCitySuggestionsAsync();
+    }
+
     private static readonly OwnerContextStamp TestOwner = new(OwnerScope.LocalSingleUser, "origin-test-owner", 0);
     private sealed class TestOrigin(LifeModuleOriginDossierInteractionService inner) : IOwnerBoundLifeModuleOriginService
     {
@@ -55,6 +63,7 @@ internal static class OriginDossierBookRuntimeTests
         await RunLiveContinuationPageAsync();
         await RunFinishChoiceOrderingAsync();
         await RunFollowUpPageAsync();
+        await RunCitySuggestionsAsync();
         foreach (string scenario in new[] { "terminal", "two-chapters", "cancel-after-commit", "storage-failure", "tampered-pending", "stale-book" })
         {
             string directory = Path.Combine(Path.GetTempPath(), "chummer-origin-book-" + Guid.NewGuid().ToString("N"));
@@ -802,6 +811,10 @@ internal static class OriginDossierBookRuntimeTests
         var prose = OriginBookProseDraft.Create(chapter, chronological.CurrentTurn.Locale, jobId, new string('b', 64), "Reviewed fictional scene.");
         var readings = new OriginBookReadingState("local-single-user", source.WorkspaceId, [new(chapter.ChapterId, prose, null)]);
         var reader = new RetainedOriginBook(chronological, readings);
+        Require(unreviewedBook.MechanicsAfterReading(chapter).Count == 0
+            && reader.MechanicsAfterReading(chapter).SequenceEqual(new[] {
+                "Confirmed module contributions, not final ratings: Survival +1" }),
+            "Rule changes appeared before reading or included a future/private contribution.");
         Require(reader.TryGetAuthoringPredecessor(nextChapter, out var previous)
             && previous?.RequestId == jobId && previous.SourceDigest == OriginChapterSourceIdentity.Digest(source)
             && previous.ProviderReceiptDigest == prose.ProviderReceiptDigest
@@ -812,6 +825,8 @@ internal static class OriginDossierBookRuntimeTests
         Require(new RetainedOriginBook(chronological, restoredReadings).TryGetAuthoringPredecessor(nextChapter, out var restoredPrevious)
             && restoredPrevious == previous, "Reading restart changed the predecessor binding.");
         var pendingOnly = readings with { Chapters = [new(chapter.ChapterId, null, prose)] };
+        Require(new RetainedOriginBook(chronological, pendingOnly).MechanicsAfterReading(chapter).Count == 0,
+            "Generating a chapter counted as the user having read it.");
         Require(!new RetainedOriginBook(chronological, pendingOnly).TryGetAuthoringPredecessor(nextChapter, out _),
             "A pending draft was treated as a selected reading.");
         Require(!new RetainedOriginBook(chronological with { VisibleChapters = [chapter, nextChapter with
@@ -960,6 +975,18 @@ internal static class OriginDossierBookRuntimeTests
             "A missing or merely generated opening unlocked the next module.");
         Require(new RetainedOriginBook(throughChildhood, reading).HasReadCurrentStory && !reopened.HasReadCurrentStory,
             "Readiness ignored the latest decision or required a paid foundation chapter.");
+        var finish = childhood with { ChapterId = "selection-finished", ThroughAcceptedDecisionId = "finish", ChapterDigest = Digest("finish") };
+        var finishFact = new OriginCanonicalNarrativeFact("finish-fact", "accepted-module-selection-finish", "Done", "finish", [], "");
+        var finished = throughChildhood with { VisibleChapters = [foundation, childhood, finish],
+            AllowedCanonicalFactIds = [.. throughChildhood.AllowedCanonicalFactIds, finishFact.FactId],
+            CanonicalLayer = throughChildhood.CanonicalLayer with {
+                AcceptedDecisionIds = [.. throughChildhood.CanonicalLayer.AcceptedDecisionIds, "finish"],
+                Facts = [.. throughChildhood.CanonicalLayer.Facts, finishFact] } };
+        var finishedBook = new RetainedOriginBook(finished, reading);
+        Require(finishedBook.HasReadCurrentStory && finishedBook.IsSelectionFinish(finish) && !finishedBook.CanOpenAuthoring(finish),
+            "A sealed finish marker required an impossible extra paid chapter before Career.");
+        Require(!new RetainedOriginBook(finished with { AllowedCanonicalFactIds = throughChildhood.AllowedCanonicalFactIds }, reading).HasReadCurrentStory,
+            "An unapproved finish marker bypassed reading readiness.");
         var unrelated = OriginBookProseDraft.Create(childhood, book.Locale, "unrelated-request", Digest("provider"), "Unrelated story.");
         Require(!new RetainedOriginBook(throughChildhood, reading with { Chapters = [new(childhood.ChapterId, unrelated, null)] }).HasReadCurrentStory,
             "Reading accepted a draft not bound to the exact canonical source.");
@@ -1026,17 +1053,18 @@ internal static class OriginDossierBookRuntimeTests
                 var next = Page(LifeModuleJourneyStageOrders.TeenYears);
                 Require(!Choices(next), "The next choices flashed before reading readiness was known.");
                 await Appear(next);
+                Require(progressOpens == 1, "The unread chapter did not open automatically before the next module.");
                 Require(!Choices(next) && Elements(next).OfType<Label>().Any(label =>
                     label.AutomationId == "origin-life-story-wait" && label.Text == copy["Origin.StoryReadRequired"]),
                     "Unread story did not explain the next-step gate in the selected language.");
                 var refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
                 await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
-                Require(progressOpens == 1 && !Choices(next) && prepares == 0,
+                Require(progressOpens == 2 && !Choices(next) && prepares == 0,
                     "Unread status returned silently instead of opening the existing chapter status.");
                 ready = true;
                 refresh = Elements(next).OfType<Button>().Single(b => b.AutomationId == "origin-life-story-refresh");
                 await ui.BeginAsyncVoid(() => ((IButtonController)refresh).SendClicked());
-                Require(Choices(next) && prepares == 0 && progressOpens == 1,
+                Require(Choices(next) && prepares == 0 && progressOpens == 2,
                     "Reading confirmation failed to unlock choices or opened unnecessary progress.");
                 var retiredChoice = Elements(next).OfType<Button>().First(b => b.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true);
                 pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1059,7 +1087,7 @@ internal static class OriginDossierBookRuntimeTests
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
                     | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(next, null);
                 pending.SetResult(false); await lateStatus;
-                Require(progressOpens == 1 && !Choices(next),
+                Require(progressOpens == 2 && !Choices(next),
                     "A departed status check opened a chapter view after leaving the wizard.");
             }
             ui.AssertHealthy();
@@ -1169,6 +1197,78 @@ internal static class OriginDossierBookRuntimeTests
                 "Confirmed answers did not advance exactly one turn/chapter.");
         });
         Console.WriteLine("PASS Origin book: required input form, exact review, reopen and stale-confirm rejection");
+    }
+
+    private static async Task RunCitySuggestionsAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(3)));
+            var checkpoint = interaction.Start("workspace-1").Value!;
+            var choice = checkpoint.Projection.CurrentTurn.LegalChoices.Single();
+            LifeModuleFollowUpPromptDto City(string id, string label) => new(id, label, "text", true, [], [], "effect", "name");
+            var prompts = new[] { City("city-a", "City"), City("city-b", "city"), City("arcology", "Arcology") };
+            var facts = new[] {
+                new OriginCanonicalNarrativeFact("birth-city", "accepted-life-module-answer", "City: Seattle", "birth", [], Digest("birth")),
+                new OriginCanonicalNarrativeFact("teen-city", "accepted-life-module-answer", "city: Berlin", "teen", [], Digest("teen")),
+                new OriginCanonicalNarrativeFact("future-city", "accepted-life-module-answer", "City: Boston", "future", [], Digest("future")) };
+            var projection = checkpoint.Projection with {
+                CurrentTurn = checkpoint.Projection.CurrentTurn with { LegalChoices = [choice with { FollowUps = prompts }] },
+                CanonicalLayer = checkpoint.Projection.CanonicalLayer with { AcceptedDecisionIds = ["birth", "teen"], Facts = facts },
+                AllowedCanonicalFactIds = ["birth-city", "teen-city"] };
+            checkpoint = checkpoint with { Projection = projection };
+            Require(OriginDossierLifeModuleDecisionPage.LastConfirmedCity(projection) == "Berlin"
+                && OriginDossierLifeModuleDecisionPage.LastConfirmedCity(projection with {
+                    CanonicalLayer = projection.CanonicalLayer with { AcceptedDecisionIds = [] } }) is null,
+                "The city suggestion used an unaccepted/future fact or a device-global default.");
+            var display = new OriginDossierLifeModulePhoneResult(LifeModuleOriginDossierOutcomes.Success,
+                OriginDossierLifeModuleInteractionProjector.Project(checkpoint), [],
+                LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                FoundationSnapshotDigest: "sha256:" + Digest("foundation"),
+                BoundContentDigest: checkpoint.BoundContentDigest, BoundSourceDigest: checkpoint.BoundSourceDigest,
+                BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest, StoryCheckpoint: checkpoint);
+            OriginDossierLifeModuleDecisionPage Page() => new(display, "en-US",
+                (_, _) => throw new InvalidOperationException("Prefilling must not prepare or mutate."),
+                (_, _) => throw new InvalidOperationException("Prefilling must not confirm."));
+            async Task Open(OriginDossierLifeModuleDecisionPage page)
+                => await ui.BeginAsyncVoid(() => ((IButtonController)Elements(page).OfType<Button>()
+                    .Single(b => b.AutomationId == "origin-life-choice-0")).SendClicked());
+            var page = Page(); await Open(page);
+            Entry Field(string id) => Elements(page).OfType<Entry>().Single(e => e.AutomationId == "origin-life-answer-" + id);
+            Require(Field("city-a").Text == "Berlin" && Field("city-b").Text == "Berlin"
+                && string.IsNullOrEmpty(Field("arcology").Text), "City defaults overwrote a different kind of question.");
+            Field("city-a").Text = "Hamburg";
+            Require(Field("city-b").Text == "Hamburg", "Repeated city fields did not follow the first answer.");
+            Field("city-b").Text = "Bremen";
+            Field("city-a").Text = "Kiel";
+            Require(Field("city-b").Text == "Bremen", "An explicitly different city was overwritten.");
+            var reopened = Page(); await Open(reopened);
+            Require(Elements(reopened).OfType<Entry>().First().Text == "Berlin",
+                "Cold page reopen remembered unsaved edits instead of confirmed runner history.");
+            var savedAuthority = new DecisionAuthority(3);
+            var savedChoice = savedAuthority.Current.LegalChoices.Single();
+            savedAuthority.Current = savedAuthority.Current with { LegalChoices = [savedChoice with {
+                FollowUps = prompts.Select(p => p with { SourceAnchorIds = savedChoice.SourceAnchorIds }).ToArray(),
+                MechanicsPreview = savedChoice.MechanicsPreview with { PendingFollowUpIds = prompts.Select(p => p.PromptId).ToArray() }
+            }] };
+            var savedInteraction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(savedAuthority));
+            var savedStart = savedInteraction.Start("workspace-1");
+            Require(savedStart.Value is not null, "City fixture start: " + string.Join(", ", savedStart.Blockers));
+            var savedCheckpoint = savedInteraction.Prepare(savedStart.Value!, choice.ChoiceId,
+                new Dictionary<string, string> { ["city-a"] = "Kiel", ["city-b"] = "Bremen", ["arcology"] = "Renraku" }).Value!;
+            Require(savedCheckpoint.PendingPreview?.InputResolution is not null, "The saved city fixture has no resolved answers.");
+            display = display with { State = OriginDossierLifeModuleInteractionProjector.Project(savedCheckpoint),
+                StoryCheckpoint = savedCheckpoint, BoundContentDigest = savedCheckpoint.BoundContentDigest,
+                BoundSourceDigest = savedCheckpoint.BoundSourceDigest, BoundMechanicsSnapshotDigest = savedCheckpoint.BoundMechanicsSnapshotDigest };
+            page = Page(); await Open(page);
+            Require(Field("city-a").Text == "Kiel" && Field("city-b").Text == "Bremen", "Reopening lost the explicit city answers.");
+            Field("city-a").Text = "Hamburg";
+            Require(Field("city-b").Text == "Bremen" && Field("arcology").Text == "Renraku",
+                "Editing a restored city overwrote another explicitly saved answer.");
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS city suggestions: confirmed chronology, cold page, repeated fields, explicit override and non-city isolation");
     }
 
     private static async Task RunLiveContinuationPageAsync()
@@ -1830,8 +1930,18 @@ internal static class OriginDossierBookRuntimeTests
                 var page = Page();
                 T Find<T>(string id) where T : Element => Elements(page).OfType<T>().Single(e => e.AutomationId == id);
                 Task Click(string id) => ui.BeginAsyncVoid(() => ((IButtonController)Find<Button>(id)).SendClicked());
+                void Custom(string field, string text)
+                {
+                    var picker = Find<Picker>("origin-story-" + field + "-suggestions");
+                    picker.SelectedIndex = picker.Items.Count - 1;
+                    var entry = Find<Entry>("origin-story-" + field);
+                    Require(entry.IsVisible, "Custom did not reveal its text field.");
+                    entry.Text = text;
+                }
                 Require(!Find<VerticalStackLayout>("origin-story-details").IsVisible && saves == 0,
                     "Optional story details started expanded or wrote on render.");
+                Require(Elements(page).OfType<Entry>().Where(e => e.AutomationId?.StartsWith("origin-story-") == true)
+                    .All(e => !e.IsVisible), "An unspecified custom story field started visible.");
                 Require(Find<Picker>("origin-story-period").SelectedIndex == 0
                     && Find<Picker>("origin-story-addiction-status").SelectedIndex == 0
                     && string.IsNullOrEmpty(Find<Entry>("origin-story-experiences").Text),
@@ -1841,17 +1951,17 @@ internal static class OriginDossierBookRuntimeTests
                     "Skipping details blocked a decision or invented identity details.");
                 ((IButtonController)Find<Button>("origin-story-details-expand")).SendClicked();
                 Find<Picker>("origin-story-gender").SelectedIndex = 3;
-                Find<Entry>("origin-story-pronouns").Text = "they/them";
+                Custom("pronouns", "they/them");
                 Find<Picker>("origin-story-tone").SelectedIndex = 4;
-                Find<Entry>("origin-story-motivation").Text = "Find a home";
-                Find<Entry>("origin-story-family").Text = "Seattle, an aunt";
-                Find<Entry>("origin-story-experiences").Text = "A betrayal";
-                Find<Entry>("origin-story-addiction").Text = "Gambling";
+                Custom("motivation", "Find a home");
+                Custom("family", "Seattle, an aunt");
+                Custom("experiences", "A betrayal");
+                Custom("addiction", "Gambling");
                 Find<Picker>("origin-story-addiction-status").SelectedIndex = 3;
                 Find<Picker>("origin-story-period").SelectedIndex = 3;
-                Find<Entry>("origin-story-chronology").Text = "Only after leaving school";
-                Find<Entry>("origin-story-turning-points").Text = "A broken promise";
-                Find<Entry>("origin-story-anchors").Text = "A loyal friend";
+                Custom("chronology", "Only after leaving school");
+                Custom("turning-points", "A broken promise");
+                Custom("anchors", "A loyal friend");
                 Require(saves == 0 && confirmations == 1, "Editing sent or saved unconfirmed details.");
                 ((IButtonController)Find<Button>("origin-story-details-expand")).SendClicked();
                 await Click("origin-life-confirm");
@@ -1871,12 +1981,29 @@ internal static class OriginDossierBookRuntimeTests
                     "Reopen lost saved details, changed defaults or saved automatically.");
                 Require(!Elements(page).Any(e => e is Switch || e.AutomationId?.Contains("avoid", StringComparison.Ordinal) == true),
                     "Opening details introduced a mechanics toggle or avoidance setting.");
+                var addiction = Find<Picker>("origin-story-addiction-suggestions");
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                Require(addiction.Items.Contains(copy["Origin.Suggestion.gambling"])
+                    && addiction.Items.Contains(copy["Origin.Suggestion.shopping"]),
+                    "Addiction suggestions omitted gambling or shopping.");
+                addiction.SelectedIndex = addiction.Items.IndexOf(copy["Origin.Suggestion.shopping"]);
+                Require(!Find<Entry>("origin-story-addiction").IsVisible,
+                    "A preset left the custom text field visible.");
+                // Even a stale hidden entry callback must not replace a preset.
+                Find<Entry>("origin-story-addiction").Text = "Hidden stale input";
+                await Click("origin-life-confirm");
+                Require(saves == 2 && saved.StoryProfile?.Background?.AddictionHistory == copy["Origin.Suggestion.shopping"],
+                    "A preset was not saved or was replaced by hidden custom text.");
+                page = Page();
+                Require(!Find<Entry>("origin-story-addiction").IsVisible
+                    && Find<Picker>("origin-story-addiction-suggestions").SelectedIndex == 2,
+                    "Reopen did not restore the selected shopping suggestion.");
                 foreach (string id in new[] { "family", "experiences", "addiction", "chronology", "turning-points", "anchors" })
-                    Find<Entry>("origin-story-" + id).Text = "";
+                    Find<Picker>("origin-story-" + id + "-suggestions").SelectedIndex = 0;
                 Find<Picker>("origin-story-period").SelectedIndex = 0;
                 Find<Picker>("origin-story-addiction-status").SelectedIndex = 0;
                 await Click("origin-life-confirm");
-                Require(saves == 2 && confirmations == 3 && saved.StoryProfile is { Background: null, Pronouns: "they/them" },
+                Require(saves == 3 && confirmations == 4 && saved.StoryProfile is { Background: null, Pronouns: "they/them" },
                     "Clearing optional background left an invalid empty object or erased unrelated opening details.");
             }
             ui.AssertHealthy();

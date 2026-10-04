@@ -7,6 +7,8 @@ namespace Chummer.Android.Native;
 internal sealed class RetainedOriginBookPage : NativePageBase
 {
     private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
+    private readonly VerticalStackLayout _progress = new() { Padding = new Thickness(20, 8), Spacing = 4,
+        BackgroundColor = NativeTheme.Paper, IsVisible = false, AutomationId = "origin-reader-pinned-progress" };
     private readonly AndroidSurfaceCopy _copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
     private RetainedOriginBook? _book;
     private OriginBookReaderLoad? _load;
@@ -26,7 +28,10 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     {
         Title = _copy["Origin.ReadBook"];
         AutomationId = "origin-retained-book";
-        Content = new ScrollView { Content = _body };
+        var layout = new Grid { RowDefinitions = { new(GridLength.Auto), new(GridLength.Star) } };
+        layout.Add(_progress, 0, 0);
+        layout.Add(new ScrollView { Content = _body }, 0, 1);
+        Content = layout;
     }
 
     protected override void OnAppearing()
@@ -72,6 +77,8 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _progress.Clear();
+        _progress.IsVisible = false;
         if (_book is not { } book || !Coordinator.IsRetainedOriginBookCurrent(book))
         {
             _book = null;
@@ -89,8 +96,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         }
         _body.Add(NativeTheme.Title(book.RunnerName));
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookLanguage", book.Locale), NativeTheme.Muted));
-        _body.Add(NativeTheme.Body(_copy["Origin.BookSavedChapters"], NativeTheme.Muted));
-        if (book.UsesSr5Opening)
+        bool hasReadableChapter = book.Chapters.Any(c => book.ReadableChapter(c) is not null);
+        if (!hasReadableChapter) _body.Add(NativeTheme.Body(_copy["Origin.BookSavedChapters"], NativeTheme.Muted));
+        if (book.UsesSr5Opening && !hasReadableChapter)
         {
             var opening = NativeTheme.Body(_copy[book.OpeningSetupComplete
                 ? "Origin.OpeningSetupReady" : "Origin.OpeningSetupRequired"], NativeTheme.Muted);
@@ -99,47 +107,35 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             if (!book.OpeningSetupComplete) AddReturnToRunner();
         }
         long appearance = CaptureAppearanceGeneration();
-        var epub = NativeTheme.ReadingButton(_copy["Origin.ExportEpub"]);
-        epub.IsEnabled = book.HasExportableChapters;
-        epub.AutomationId = "origin-book-export-epub";
-        epub.Clicked += async (_, _) => await RunAsync(async () =>
+        AddPinnedProgress(book);
+        // Do not offer empty books or decision summaries as downloadable prose.
+        // Completed chapters remain available while later chapters are pending.
+        if (book.HasExportableChapters)
         {
-            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                && Coordinator.IsRetainedOriginBookCurrent(book);
-            if (!Current()) return;
-            bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None, epub: true);
-            if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
-        });
-        _body.Add(epub);
-        var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
-        export.IsEnabled = book.HasExportableChapters;
-        export.AutomationId = "origin-book-export";
-        export.Clicked += async (_, _) => await RunAsync(async () =>
-        {
-            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                && Coordinator.IsRetainedOriginBookCurrent(book);
-            if (!Current()) return;
-            bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None);
-            if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
-        });
-        _body.Add(export);
-        if (!Coordinator.Account.IsLinked)
-        {
-            var explanation = NativeTheme.Body(_copy["Origin.BookAccountExplanation"], NativeTheme.Muted);
-            explanation.AutomationId = "origin-book-account-explanation";
-            _body.Add(explanation);
-            var account = NativeTheme.ReadingButton(_copy["Origin.BookAccount"]);
-            account.AutomationId = "origin-book-account";
-            account.IsEnabled = !Coordinator.Account.IsLoading;
-            account.Clicked += async (_, _) => await RunAsync(async () =>
+            var epub = NativeTheme.ReadingButton(_copy["Origin.ExportEpub"]);
+            epub.AutomationId = "origin-book-export-epub";
+            epub.Clicked += async (_, _) => await RunAsync(async () =>
             {
-                if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                    && Coordinator.IsRetainedOriginBookCurrent(book)
-                    && !Coordinator.Account.IsLinked && !Coordinator.Account.IsLoading)
-                    await Navigation.PushAsync(new AccountPrivacyPage(Coordinator));
+                bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                    && Coordinator.IsRetainedOriginBookCurrent(book);
+                if (!Current()) return;
+                bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None, epub: true);
+                if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
             });
-            _body.Add(account);
+            _body.Add(epub);
+            var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
+            export.AutomationId = "origin-book-export";
+            export.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                    && Coordinator.IsRetainedOriginBookCurrent(book);
+                if (!Current()) return;
+                bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None);
+                if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
+            });
+            _body.Add(export);
         }
+        if (!hasReadableChapter) AddAccountRoute(book, appearance);
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
         if (Coordinator.CanRequestOriginChapter(book) && book.Chapters.Any(c => book.ReadableChapter(c) is null
             && book.Reading(c)?.AuthoringSource is not null))
@@ -155,11 +151,14 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _body.Add(refresh);
         }
         if (book.ScenesUnavailable) _body.Add(NativeTheme.Body(_copy["Origin.ScenesUnavailable"]));
-        foreach (var chapter in book.Chapters)
+        // Unread full prose first, then saved prose. Missing chapters must not
+        // bury text that already exists; their live status stays pinned above.
+        foreach (var chapter in book.Chapters.OrderBy(c => book.ReadableChapter(c) is null ? 2
+            : book.IsExportableChapter(c) ? 1 : 0))
         {
             // Metatype/birth decisions form the opening brief, not a short
             // pretend chapter before the generated childhood narrative.
-            if (book.IsOpeningSetup(chapter) && book.ReadableChapter(chapter) is null) continue;
+            if ((book.IsOpeningSetup(chapter) || book.IsSelectionFinish(chapter)) && book.ReadableChapter(chapter) is null) continue;
             _body.Add(NativeTheme.Title(book.IsOpeningSetup(chapter)
                 ? _copy["Origin.OpeningSetupTitle"] : chapter.Title, 21));
             if (book.Scene(chapter) is { } scene)
@@ -192,6 +191,18 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                     });
                     _body.Add(read);
                 }
+                else
+                {
+                    var changes = book.MechanicsAfterReading(chapter);
+                    if (changes.Count > 0)
+                    {
+                        var effects = new VerticalStackLayout { Spacing = 8,
+                            AutomationId = $"origin-read-chapter-effects-{chapter.Sequence}" };
+                        effects.Add(NativeTheme.Title(_copy["Origin.AfterReadingChanges"], 18));
+                        foreach (string change in changes) effects.Add(NativeTheme.Body(change));
+                        _body.Add(NativeTheme.Card(effects));
+                    }
+                }
             }
             else
             {
@@ -209,7 +220,8 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 _body.Add(bar);
                 string message = result?.Outcome switch
                 {
-                    AndroidOriginChapterOutcome.NotFound => "Origin.AuthoringNotFound",
+                    AndroidOriginChapterOutcome.NotFound => book.Reading(chapter)?.AuthoringSource is not null
+                        ? "Origin.AuthoringOutcomeUnconfirmed" : "Origin.ReaderFullTextPending",
                     AndroidOriginChapterOutcome.Available => state switch
                     {
                         OriginChapterAuthoringStates.AwaitingAuthoring => "Origin.AuthoringQueued",
@@ -240,35 +252,60 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                     _body.Add(NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted));
                 }
             }
-            if (Coordinator.PrepareOriginChapterSource(book, chapter) is not null)
-            {
-                var author = NativeTheme.ReadingButton(_copy["Origin.AuthorChapter"]);
-                author.AutomationId = $"origin-author-chapter-{chapter.Sequence}";
-                author.Clicked += async (_, _) => await RunAsync(async () =>
-                {
-                    if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                        && Coordinator.CanRequestOriginChapter(book))
-                        await Navigation.PushAsync(new OriginBookAuthoringPage(Coordinator, book, chapter));
-                });
-                _body.Add(author);
-            }
-            if (book.Pending(chapter) is { } draft)
-            {
-                var review = NativeTheme.ReadingButton(_copy["Origin.ReviewProse"]);
-                review.AutomationId = $"origin-review-prose-{chapter.Sequence}";
-                review.Clicked += async (_, _) => await RunAsync(async () =>
-                {
-                    if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                        && Coordinator.IsRetainedOriginBookCurrent(book))
-                        await Navigation.PushAsync(new OriginBookProseReviewPage(Coordinator, book, chapter, draft));
-                });
-                _body.Add(review);
-            }
         }
+        if (hasReadableChapter) AddAccountRoute(book, appearance);
+        if (book.HasReadCurrentStory) AddReturnToRunner();
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookMetadata", "chummer.run"), NativeTheme.Muted));
         // Keep the existing initial text-read -> illustration ordering even
         // when an export refreshes the now-readable page during that first read.
         if (_openingAppearance != appearance) StartSceneWatch(appearance);
+    }
+
+    private void AddPinnedProgress(RetainedOriginBook book)
+    {
+        if (!Coordinator.Account.IsLinked || !book.OpeningSetupComplete) return;
+        var chapter = book.Chapters.FirstOrDefault(c => !book.IsOpeningSetup(c) && !book.IsSelectionFinish(c)
+            && book.ReadableChapter(c) is null);
+        if (chapter is null) return;
+        _chapterStatus.TryGetValue(chapter.ChapterId, out var result);
+        bool active = _chapterReadAppearance is not null || _watchPending;
+        _progress.IsVisible = true;
+        _progress.Add(new ActivityIndicator { IsRunning = active, IsVisible = active,
+            AutomationId = "origin-reader-writing-spinner" });
+        _progress.Add(NativeTheme.Body(_copy[result?.UnknownRemoteOutcome == true ? "Origin.AuthoringOutcomeUnconfirmed"
+            : result?.Outcome == AndroidOriginChapterOutcome.NotFound && book.Reading(chapter)?.AuthoringSource is not null
+                ? "Origin.AuthoringOutcomeUnconfirmed"
+            : result?.Job?.State == OriginChapterAuthoringStates.AwaitingAuthoring ? "Origin.AuthoringQueued"
+            : result?.Job?.State == OriginChapterAuthoringStates.ReconciliationRequired ? "Origin.AuthoringOutcomeUnconfirmed"
+            : "Origin.ReaderFullTextPending"]));
+        var progress = new ProgressBar { Progress = result?.Job?.State switch
+            {
+                OriginChapterAuthoringStates.AwaitingAuthoring => 1d / 3,
+                OriginChapterAuthoringStates.ReconciliationRequired => 2d / 3,
+                _ => 0
+            }, ProgressColor = NativeTheme.Ink, AutomationId = "origin-reader-writing-progress" };
+        SemanticProperties.SetDescription(progress, _copy["Origin.ReaderProgressStages"]);
+        _progress.Add(progress);
+        _progress.Add(NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted));
+    }
+
+    private void AddAccountRoute(RetainedOriginBook book, long appearance)
+    {
+        if (Coordinator.Account.IsLinked) return;
+        var explanation = NativeTheme.Body(_copy["Origin.BookAccountExplanation"], NativeTheme.Muted);
+        explanation.AutomationId = "origin-book-account-explanation";
+        _body.Add(explanation);
+        var account = NativeTheme.ReadingButton(_copy["Origin.BookAccount"]);
+        account.AutomationId = "origin-book-account";
+        account.IsEnabled = !Coordinator.Account.IsLoading;
+        account.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                && Coordinator.IsRetainedOriginBookCurrent(book)
+                && !Coordinator.Account.IsLinked && !Coordinator.Account.IsLoading)
+                await Navigation.PushAsync(new AccountPrivacyPage(Coordinator));
+        });
+        _body.Add(account);
     }
 
     private void AddReturnToRunner()
@@ -368,10 +405,13 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
             || _chapterReadAppearance == appearance) return false;
         _chapterReadAppearance = appearance;
+        if (_book is { } visible) { _progress.Clear(); AddPinnedProgress(visible); }
         try { return await ReadMissingChapterCoreAsync(appearance, ct); }
         finally
         {
             if (_chapterReadAppearance == appearance) _chapterReadAppearance = null;
+            if (IsCurrentAppearanceGeneration(appearance) && _book is { } current)
+            { _progress.Clear(); _progress.IsVisible = false; AddPinnedProgress(current); }
         }
     }
 
@@ -381,14 +421,22 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (_book is not { } book
             || !Coordinator.CanRequestOriginChapter(book)) { _watchPending = false; return false; }
         var chapter = book.Chapters.FirstOrDefault(c => book.ReadableChapter(c) is null
-            && book.Reading(c)?.AuthoringSource is not null
             && Coordinator.PrepareOriginChapterSource(book, c) is not null);
         if (chapter is null) { _watchPending = false; return false; }
         var source = Coordinator.PrepareOriginChapterSource(book, chapter)!;
+        // The confirmed Origin choices are the source approval. No separate
+        // provider toggle/button. Once admitted locally, an uncertain request
+        // is read-only even after process restart; never spend credits again
+        // merely because the provider temporarily reports no result.
+        bool newChapter = book.Reading(chapter)?.AuthoringSource is null;
+        // The coordinator retires this reading edition when it durably freezes
+        // a new request and validates the replacement against the same owner.
+        // The page guard tracks navigation, not the superseded edition's lease.
         bool Current() => !ct.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
-            && ReferenceEquals(_book, book) && Coordinator.CanRequestOriginChapter(book);
+            && ReferenceEquals(_book, book);
         var (result, updated) = await Coordinator.SyncOriginChapterAsync(book, chapter, source,
-            consentToCreate: false, Current, ct, reconcileReaderAcceptance: false);
+            consentToCreate: newChapter, Current, ct, reconcileReaderAcceptance: false,
+            consentToAutomaticIllustrations: newChapter);
         if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
             || !ReferenceEquals(_book, book)) return false;
         if (updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated))
@@ -407,7 +455,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _notice = null;
         _chapterStatus[chapter.ChapterId] = result;
         _watchPending = result.Job?.State is OriginChapterAuthoringStates.AwaitingAuthoring
-            or OriginChapterAuthoringStates.ReconciliationRequired;
+            or OriginChapterAuthoringStates.ReconciliationRequired || result.UnknownRemoteOutcome;
         return !ReferenceEquals(book, updated) || previous?.Outcome != result.Outcome
             || previous?.Job?.State != result.Job?.State;
     }
@@ -482,5 +530,6 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _book = null;
         _load = null;
         _body.Clear();
+        _progress.Clear(); _progress.IsVisible = false;
     }
 }

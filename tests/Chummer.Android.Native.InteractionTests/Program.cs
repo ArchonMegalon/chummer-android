@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--origin-story-flow")
+        {
+            await OriginDossierBookRuntimeTests.RunStoryFlowAsync();
+            return;
+        }
         if (args.Length == 2 && args[0] == "--magic-budget-focus-content-root")
         {
             CreationMagicNativeRuntimeTests.RunBudgetFocus(args[1]);
@@ -109,6 +114,11 @@ internal static class Program
         if (args.Length is 2 or 3 && args[0] == "--origin-reader-local-text-content-root")
         {
             await AfterRunAuthorityHarness.RunOriginReaderLocalTextAsync(args[1], args.Length == 3 ? args[2] : null);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--origin-reader-automatic-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginReaderLocalTextAsync(args[1], automatic: true);
             return;
         }
         if (args.Length == 2 && args[0] == "--life-module-linked-owner-content-root")

@@ -18,6 +18,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     private string _search = "";
     private int _page;
     private Label? _pending;
+    private bool _unreadStory;
     private const int PageSize = 20;
     private CharacterCreationFoundationFinalizationPreviewRequest Input => _session.Input!;
     private CharacterCreationFoundationFinalizationPreview? Quote => _session.Preview;
@@ -63,7 +64,24 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
     {
         long appearance = CaptureAppearanceGeneration();
+        _unreadStory = false;
         await _session.OpenAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
+        if (!IsCurrentAppearanceGeneration(appearance)) return;
+        // A Core-only completion without a book remains usable. An existing
+        // Origin timeline must be presented before its grants/allocations.
+        if (Coordinator.CanReadRetainedOriginBook())
+        {
+            _unreadStory = true;
+            try
+            {
+                var book = await Coordinator.LoadRetainedOriginBookAsync(ct,
+                    () => IsCurrentAppearanceGeneration(appearance));
+                if (IsCurrentAppearanceGeneration(appearance))
+                    _unreadStory = book is not null && (!Coordinator.IsRetainedOriginBookCurrent(book) || !book.HasReadCurrentStory);
+            }
+            catch (Exception error) when (error is IOException or InvalidOperationException
+                or OperationCanceledException or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+        }
     }
     private bool Current(long render, long appearance) => _render == render && IsCurrentAppearanceGeneration(appearance) && _session.Ready;
     private Task Open(LifeCompletionStep step, string? id = null, string? kind = null)
@@ -174,6 +192,12 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
                 });
                 _body.Add(reset);
             }
+            return;
+        }
+        if (_unreadStory)
+        {
+            Body(AndroidSurfaceStrings.Resolve()["Origin.MechanicsAfterReading"], "life-completion-story-first");
+            if (_openBook is not null) Button(LifeCopy("Book", "Read your book"), "life-open-book", _openBook);
             return;
         }
         Body(CreationKarmaCopy.Binding(_session.State!.Binding.ContentRevision, _session.State.Binding.SavedRevision), "life-completion-binding");

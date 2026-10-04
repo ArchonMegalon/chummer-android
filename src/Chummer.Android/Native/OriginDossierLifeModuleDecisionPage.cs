@@ -27,11 +27,13 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? _openStoryProgress;
     private bool _storyReady;
     private bool _checkingStory;
+    private string? _presentedStoryDigest;
     private string? _selectedMetatypeOptionId;
     private int _renderGeneration;
     private bool _actionInFlight;
     private string? _editingChoiceId;
     private readonly Dictionary<string, string> _answers = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _explicitCityAnswers = new(StringComparer.Ordinal);
     private OriginBookReadingState? _openingDetails;
     private OriginStoryProfile _storyProfile = new();
     private bool _detailsExpanded;
@@ -95,7 +97,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await RefreshStoryReadinessAsync();
+        if (await RefreshStoryReadinessAsync()) await LeadToUnreadStoryAsync();
     }
 
     protected override void OnDisappearing()
@@ -107,6 +109,23 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
     private bool NeedsStoryBeforeChoices => _storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
         && _state.StageOrder > LifeModuleJourneyStageOrders.FormativeYears;
+
+    private async Task LeadToUnreadStoryAsync()
+    {
+        if (_storyReady || !NeedsStoryBeforeChoices || _storyCheckpoint is not { } checkpoint
+            || _openStoryProgress is null || _presentedStoryDigest == checkpoint.Projection.SeedDigest) return;
+        int generation = _renderGeneration;
+        bool Current() => generation == _renderGeneration && ReferenceEquals(_storyCheckpoint, checkpoint);
+        // Once per saved chapter, not on every Back/appearance. Returning from
+        // an unfinished chapter must never trap the reader in a navigation loop.
+        _presentedStoryDigest = checkpoint.Projection.SeedDigest;
+        try { await _openStoryProgress(checkpoint, Current); }
+        catch (Exception error) when (error is IOException or InvalidOperationException
+            or OperationCanceledException or UnauthorizedAccessException)
+        {
+            if (Current()) _presentedStoryDigest = null;
+        }
+    }
 
     private async Task<bool> RefreshStoryReadinessAsync()
     {
@@ -202,9 +221,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                         int readingGeneration = _renderGeneration;
                         bool Current() => readingGeneration == _renderGeneration
                             && ReferenceEquals(_storyCheckpoint, checkpoint);
-                        // A local Selected flag is not live provider status.
-                        // Open the existing read-only request/status view; this
-                        // never consents, requests generation or accepts prose.
+                        // The reader observes or starts the exact saved chapter;
+                        // it never marks prose as read just by opening it.
                         await _openStoryProgress(checkpoint, Current);
                     }
                     catch (Exception error) when (error is IOException or InvalidOperationException
@@ -369,26 +387,49 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             { if (Current()) changed(picker.SelectedIndex > 0 ? values[picker.SelectedIndex - 1] : null); };
             section.Add(picker);
         }
-        void Text(string id, string key, string? value, int max, Action<string?> changed, string? hint = null)
+        void Text(string id, string key, string? value, int max, Action<string?> changed,
+            string[] suggestions, string? hint = null)
         {
             section.Add(NativeTheme.Body(_copy[key]));
             if (hint is not null) section.Add(NativeTheme.Body(_copy[hint], NativeTheme.Muted));
+            string[] options = suggestions.Select(s => _copy["Origin.Suggestion." + s]).ToArray();
+            int selected = Array.IndexOf(options, value!);
+            int customIndex = options.Length + 1;
+            var picker = new Picker { Title = _copy[key], TextColor = NativeTheme.Ink,
+                TitleColor = NativeTheme.Muted, BackgroundColor = NativeTheme.Paper, AutomationId = id + "-suggestions" };
+            picker.Items.Add(_copy["Origin.SetupUnspecified"]);
+            foreach (string option in options) picker.Items.Add(option);
+            picker.Items.Add(_copy["Origin.SetupCustom"]);
+            // Existing free text remains editable; merely rendering a suggestion
+            // must never replace it or invent a detail for an unspecified field.
+            picker.SelectedIndex = value is null ? 0 : selected >= 0 ? selected + 1 : customIndex;
             var entry = new Entry { Text = value, MaxLength = max, TextColor = NativeTheme.Ink,
-                BackgroundColor = NativeTheme.Paper, AutomationId = id };
+                BackgroundColor = NativeTheme.Paper, AutomationId = id,
+                Placeholder = _copy["Origin.SetupCustom"], IsVisible = picker.SelectedIndex == customIndex };
             entry.TextChanged += (_, args) =>
-            { if (Current()) changed(string.IsNullOrWhiteSpace(args.NewTextValue) ? null : args.NewTextValue.Trim()); };
+            { if (Current() && picker.SelectedIndex == customIndex)
+                changed(string.IsNullOrWhiteSpace(args.NewTextValue) ? null : args.NewTextValue.Trim()); };
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (!Current()) return;
+                entry.IsVisible = picker.SelectedIndex == customIndex;
+                changed(entry.IsVisible
+                    ? (string.IsNullOrWhiteSpace(entry.Text) ? null : entry.Text.Trim())
+                    : picker.SelectedIndex > 0 ? options[picker.SelectedIndex - 1] : null);
+            };
+            section.Add(picker);
             section.Add(entry);
         }
         Select("origin-story-gender", "Origin.SetupGender", "Origin.Gender.", ["male", "female", "other"],
             _storyProfile.Gender, value => _storyProfile = _storyProfile with { Gender = value });
         Text("origin-story-pronouns", "Origin.SetupPronouns", _storyProfile.Pronouns, 120,
-            value => _storyProfile = _storyProfile with { Pronouns = value });
+            value => _storyProfile = _storyProfile with { Pronouns = value }, ["she", "he", "they"]);
         Select("origin-story-tone", "Origin.SetupTone", "Origin.Tone.", ["dark", "cheerful", "hopeful", "epic", "mixed"],
             _storyProfile.Tone, value => _storyProfile = _storyProfile with { Tone = value });
         Text("origin-story-motivation", "Origin.SetupMotivation", _storyProfile.Motivation, 512,
-            value => _storyProfile = _storyProfile with { Motivation = value });
+            value => _storyProfile = _storyProfile with { Motivation = value }, ["belonging", "freedom", "protect"]);
         Text("origin-story-person", "Origin.SetupPerson", _storyProfile.ImportantPerson, 512,
-            value => _storyProfile = _storyProfile with { ImportantPerson = value });
+            value => _storyProfile = _storyProfile with { ImportantPerson = value }, ["friend", "sibling", "mentor"]);
         section.Add(NativeTheme.Body(_copy["Origin.BackgroundDetail"], NativeTheme.Muted));
         var background = _storyProfile.Background ?? new OriginStoryBackground();
         void Background(Func<OriginStoryBackground, OriginStoryBackground> change)
@@ -397,22 +438,28 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             _storyProfile = _storyProfile with { Background = next.IsEmpty ? null : next };
         }
         Text("origin-story-family", "Origin.BackgroundFamily", background.BirthplaceFamily, 256,
-            value => Background(b => b with { BirthplaceFamily = value }), "Origin.BackgroundFamilyHint");
+            value => Background(b => b with { BirthplaceFamily = value }),
+            ["distant-parent", "chosen-family", "relatives", "supportive-family"], "Origin.BackgroundFamilyHint");
         Select("origin-story-period", "Origin.BackgroundWhen", "Origin.Period.", ["childhood", "teen", "adult"],
             background.Period, value => Background(b => b with { Period = value }));
         Text("origin-story-chronology", "Origin.BackgroundChronology", background.Chronology, 256,
-            value => Background(b => b with { Chronology = value }), "Origin.BackgroundChronologyHint");
+            value => Background(b => b with { Chronology = value }),
+            ["early-memory", "after-school", "adult-recovery"], "Origin.BackgroundChronologyHint");
         Text("origin-story-experiences", "Origin.BackgroundExperiences", background.Experiences, 256,
-            value => Background(b => b with { Experiences = value }), "Origin.BackgroundExperiencesHint");
+            value => Background(b => b with { Experiences = value }),
+            ["haunted", "betrayal", "safety"], "Origin.BackgroundExperiencesHint");
         Text("origin-story-addiction", "Origin.BackgroundAddiction", background.AddictionHistory, 256,
-            value => Background(b => b with { AddictionHistory = value }), "Origin.BackgroundAddictionHint");
+            value => Background(b => b with { AddictionHistory = value }),
+            ["gambling", "shopping", "alcohol", "substances", "btl"], "Origin.BackgroundAddictionHint");
         Select("origin-story-addiction-status", "Origin.BackgroundStatus", "Origin.Addiction.",
             ["current", "abstinent", "recovery"], background.AddictionStatus,
             value => Background(b => b with { AddictionStatus = value }));
         Text("origin-story-turning-points", "Origin.BackgroundTurningPoints", background.TurningPoints, 256,
-            value => Background(b => b with { TurningPoints = value }), "Origin.BackgroundTurningPointsHint");
+            value => Background(b => b with { TurningPoints = value }),
+            ["missing-sibling", "promise", "secret"], "Origin.BackgroundTurningPointsHint");
         Text("origin-story-anchors", "Origin.BackgroundAnchors", background.PositiveAnchors, 256,
-            value => Background(b => b with { PositiveAnchors = value }), "Origin.BackgroundAnchorsHint");
+            value => Background(b => b with { PositiveAnchors = value }),
+            ["loyal-friend", "humour", "ritual"], "Origin.BackgroundAnchorsHint");
         body.Add(section);
     }
 
@@ -424,14 +471,50 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     {
         _editingChoiceId = choiceId;
         _answers.Clear();
+        _explicitCityAnswers.Clear();
         if (_storyCheckpoint?.PendingPreview?.InputResolution is { } pending && pending.ChoiceId == choiceId)
             foreach (var answer in pending.Values)
+            {
                 _answers.Add(answer.Key, answer.Value);
+                _explicitCityAnswers.Add(answer.Key);
+            }
+        string? city = LastConfirmedCity(_storyCheckpoint?.Projection);
+        if (city is not null)
+            foreach (var prompt in FollowUps(choiceId).Where(IsCityPrompt))
+                _answers.TryAdd(prompt.PromptId, city);
+    }
+
+    internal static bool IsCityPrompt(LifeModuleFollowUpPromptDto prompt)
+        => prompt.InputKind == "text" && IsCityLabel(prompt.Label);
+
+    private static bool IsCityLabel(string label)
+        => label.Trim().Trim('[', ']').Trim().ToLowerInvariant() is "city" or "stadt" or "ciudad";
+
+    internal static string? LastConfirmedCity(OriginStoryArcSeed? story)
+    {
+        if (story is null) return null;
+        // This is an editable presentation suggestion, never a new rule fact.
+        // Read only Core's admitted answers, in decision order, so cold reopen
+        // needs no device-global city cache and cannot borrow another runner's city.
+        foreach (string decision in story.CanonicalLayer.AcceptedDecisionIds.Reverse())
+            foreach (var fact in story.CanonicalLayer.Facts.Reverse())
+            {
+                if (fact.AcceptedDecisionId != decision || fact.FactKind != "accepted-life-module-answer"
+                    || !story.AllowedCanonicalFactIds.Contains(fact.FactId)) continue;
+                int separator = fact.LocalizedSummary.IndexOf(": ", StringComparison.Ordinal);
+                if (separator < 0 || !IsCityLabel(fact.LocalizedSummary[..separator])) continue;
+                string city = fact.LocalizedSummary[(separator + 2)..].Trim();
+                if (city.Length is > 0 and <= 1024 && !city.Any(char.IsControl)) return city;
+            }
+        return null;
     }
 
     private void AddInputForm(VerticalStackLayout card, string choiceId, int generation)
     {
         var prompts = FollowUps(choiceId);
+        var cityFields = new List<Entry>();
+        var editedCities = new HashSet<Entry>();
+        bool copyingCity = false;
         var review = NativeTheme.PrimaryButton(_copy["Origin.ReviewAnswers"]);
         review.AutomationId = "origin-life-review-answers";
         void UpdateReady() => review.IsEnabled = !_actionInFlight && prompts.All(prompt => !prompt.IsRequired
@@ -480,8 +563,25 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 {
                     if (_actionInFlight || generation != _renderGeneration) return;
                     _answers[promptId] = entry.Text?.Trim() ?? string.Empty;
+                    if (!copyingCity && IsCityPrompt(prompt))
+                    {
+                        _explicitCityAnswers.Add(promptId);
+                        editedCities.Add(entry);
+                        copyingCity = true;
+                        try
+                        {
+                            foreach (var other in cityFields.Where(other => other != entry && !editedCities.Contains(other)))
+                                other.Text = entry.Text;
+                        }
+                        finally { copyingCity = false; }
+                    }
                     UpdateReady();
                 };
+                if (IsCityPrompt(prompt))
+                {
+                    cityFields.Add(entry);
+                    if (_explicitCityAnswers.Contains(promptId)) editedCities.Add(entry);
+                }
                 card.Add(entry);
             }
         }
@@ -514,7 +614,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             && _state.PendingPreviewDigest is { } previewDigest)
         {
             Label preview = NativeTheme.Body(
-                _copy["Origin.StoryChoiceReview"],
+                _copy["Origin.StoryChoiceReview"] + "\n" + _copy["Origin.AutomaticStoryNotice"],
                 NativeTheme.Ink);
             preview.AutomationId = "origin-life-preview";
             body.Insert(2, preview);
@@ -570,9 +670,16 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     if (generation != _renderGeneration || confirmed?.IsSuccess != true)
                         return;
                     if (confirmed.Completed)
+                    {
+                        // The terminal chapter still belongs before completion.
+                        // Pop this decision first, then present its full reader.
                         await Navigation.PopAsync();
+                        if (_openBook is not null) await _openBook();
+                    }
                     else if (TryAdoptConfirmed(confirmed))
-                        await RefreshStoryReadinessAsync();
+                    {
+                        if (await RefreshStoryReadinessAsync()) await LeadToUnreadStoryAsync();
+                    }
                 }
                 finally
                 {
@@ -660,6 +767,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _selectedMetatypeOptionId = null;
         _editingChoiceId = null;
         _answers.Clear();
+        _explicitCityAnswers.Clear();
         return true;
     }
 
