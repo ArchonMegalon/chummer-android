@@ -101,10 +101,16 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     private async Task ChangeReview(CharacterCreationFoundationFinalizationPreviewRequest input) { Change(input); await Review(); }
     private void Body(string text, string? id = null)
     { var label = NativeTheme.Body(text); label.AutomationId = id; _body.Add(label); }
-    private Button Button(string text, string id, Func<Task> action, bool enabled = true)
+    private Button Button(string text, string id, Func<Task> action, bool enabled = true, bool multiline = false)
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
         var button = NativeTheme.SecondaryButton(text); button.AutomationId = id; button.IsEnabled = enabled;
+        if (multiline)
+        {
+            button.LineBreakMode = LineBreakMode.WordWrap;
+            button.MinimumHeightRequest = button.HeightRequest;
+            button.HeightRequest = -1;
+        }
         button.Clicked += async (_, _) => await RunAsync(async () =>
         { await Task.Yield(); if (enabled && Current(render, appearance)) await action(); });
         _body.Add(button);
@@ -354,7 +360,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             string name = source?.Name ?? selected.SourceSkillId;
             if (specialization is not null) name += " · " + specialization.Name;
             Button(name, "life-selected-skill-" + selected.Kind + "-" + selected.SourceSkillId + "-" + selected.SpecializationOptionId,
-                () => Open(LifeCompletionStep.Skill, selected.SourceSkillId, selected.Kind, selected.SpecializationOptionId));
+                () => Open(LifeCompletionStep.Skill, selected.SourceSkillId, selected.Kind, selected.SpecializationOptionId), multiline: true);
         }
         Search();
         foreach (var row in Page(catalog.ActiveSkills.Concat(catalog.KnowledgeSkills)
@@ -380,7 +386,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             Search();
             foreach (var option in Page(source.Specializations.Where(x => x.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase))))
                 Button(option.Name, "life-specialization-" + option.OptionId,
-                    () => Open(LifeCompletionStep.Skill, source.SourceSkillId, source.Kind, option.OptionId));
+                    () => Open(LifeCompletionStep.Skill, source.SourceSkillId, source.Kind, option.OptionId), multiline: true);
             return;
         }
         var variant = source.IsExotic ? source.Specializations.SingleOrDefault(x => x.OptionId == _instanceId) : null;

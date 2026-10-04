@@ -51,6 +51,8 @@ internal static partial class AfterRunAuthorityHarness
             AssertAllocations(2, 1);
             var selected = IssuedElements(Current()).OfType<Button>().Where(x => x.AutomationId?.StartsWith("life-selected-skill-", StringComparison.Ordinal) == true).ToArray();
             Require(selected.Length == 2 && selected.Select(x => x.AutomationId).Distinct().Count() == 2
+                && selected.All(button => button.LineBreakMode == LineBreakMode.WordWrap && button.HeightRequest == -1
+                    && button.MinimumHeightRequest >= 44)
                 && variants.All(variant => selected.Any(button => button.Text.Contains(variant.Name, StringComparison.Ordinal))),
                 "Exotic rows lack distinct exact identities and readable variant names.");
             await Click(selected.Single(x => x.Text.Contains(variants[1].Name, StringComparison.Ordinal)).AutomationId);
