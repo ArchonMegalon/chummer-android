@@ -104,7 +104,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 91 is the latest [observed Internal availability](../play/evidence/preview91-internal-observation.md),
+Preview 92 is the latest [observed Internal availability](../play/evidence/preview92-internal-observation.md),
+confirmed on 4 October at 11:12 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Origin now retains a visible status action after bounded connection failures
+before chapter admission. Focused actual-MAUI recovery/no-replay checks passed;
+the changed action has not had a new device smoke. Existing full-text/export
+and read-before-next guards remain. **Physical Play92 installation/update is
+unverified.** Full Origin, all-method SR5 and general-beta completion remain open.
+
+Preview 91's [observed Internal availability](../play/evidence/preview91-internal-observation.md),
 confirmed on 4 October at 10:41 Europe/Vienna. The exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Origin opens available full prose first; EPUB/HTML require complete chapters.
