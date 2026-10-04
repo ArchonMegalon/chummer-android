@@ -365,6 +365,7 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     public bool FailAcceptance, CorruptPredecessor;
     public bool LoseRequestResponse;
     public AndroidOriginChapterOutcome? PredecessorReadFailure;
+    public AndroidOriginChapterResult? SuccessorReadFailure;
     public Action? AfterPredecessorRead, AfterAcceptance;
     public Action<OriginChapterSource>? BeforeRequest;
     public Func<Task>? BeforeSuccessorRead;
@@ -390,7 +391,11 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
             if (PredecessorReadFailure is { } failure) return new AndroidOriginChapterResult(failure);
             if (CorruptPredecessor) job = job with { DraftText = "Different unselected prose." };
         }
-        else if (BeforeSuccessorRead is { } pause) await pause();
+        else
+        {
+            if (BeforeSuccessorRead is { } pause) await pause();
+            if (SuccessorReadFailure is { } failure) return failure;
+        }
         return job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
             : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job);
     }

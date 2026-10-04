@@ -137,8 +137,11 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         }
         if (!hasReadableChapter) AddAccountRoute(book, appearance);
         if (_notice is not null) _body.Add(NativeTheme.Body(_notice));
+        // A read can fail before any authoring source is frozen. Keep recovery
+        // available after the bounded watch pauses, not only for admitted jobs.
+        // The normal read-first path still fences every uncertain paid request.
         if (Coordinator.CanRequestOriginChapter(book) && book.Chapters.Any(c => book.ReadableChapter(c) is null
-            && book.Reading(c)?.AuthoringSource is not null))
+            && Coordinator.PrepareOriginChapterSource(book, c) is not null))
         {
             var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
             refresh.AutomationId = "origin-reader-refresh";

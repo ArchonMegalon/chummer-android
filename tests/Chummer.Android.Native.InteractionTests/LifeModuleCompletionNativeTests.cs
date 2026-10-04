@@ -301,6 +301,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(await runtime.Coordinator.RecordOriginBookReaderAcceptanceAsync(book, prose, () => true, default),
                     "The automatic successor fixture needs the first chapter's explicit read acknowledgement.");
             int requests = remote.Requests, acceptances = remote.Acceptances;
+            if (automatic) remote.SuccessorReadFailure = new(AndroidOriginChapterOutcome.Unavailable,
+                RetryableReadFailure: true);
             var page = new RetainedOriginBookPage(runtime.Coordinator);
             var window = new Window(new NavigationPage(page));
             using var alerts = new IssuedPageAlerts(page, window);
@@ -338,8 +340,27 @@ internal static partial class AfterRunAuthorityHarness
             Require(visibleDuringRead, "An existing full chapter and its EPUB action remained hidden behind the next chapter's network status read.");
             if (automatic)
             {
+                // A connection can fail before the request has any durable
+                // authoring identity. Exhaust only the bounded read reserve,
+                // then recover through the real visible page action.
+                long initialGeneration = IssuedPageField<long>(page, "_appearanceGeneration");
+                await page.PollChapterOnceAsync(initialGeneration, default);
+                await page.PollChapterOnceAsync(initialGeneration, default);
+                Require(remote.Requests == requests && remote.Acceptances == acceptances
+                    && new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value)
+                        .Chapters.All(c => c.ChapterId != next.ChapterId || c.AuthoringSource is null),
+                    "Failed pre-admission reads generated or froze a new paid chapter.");
+                Require(!IssuedElements(page).OfType<ActivityIndicator>().Any(e =>
+                    e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning),
+                    "The exhausted status reserve still shows an active generation spinner.");
+                var recover = IssuedElements(page).OfType<Button>().SingleOrDefault(b =>
+                    b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+                Require(recover is not null,
+                    "A paused pre-admission chapter has no visible recovery action; the user is stuck until reopening the book.");
+                remote.SuccessorReadFailure = null;
+                await ui.BeginAsyncVoid(() => ((IButtonController)recover!).SendClicked());
                 Require(remote.Requests == requests + 1 && remote.Acceptances == acceptances,
-                    "The saved next chapter did not start automatically exactly once.");
+                    "Recovering a pre-admission connection failure did not start the saved next chapter exactly once.");
                 requests = remote.Requests;
                 Require(!IssuedElements(page).Any(e => e.AutomationId is "origin-authoring-consent" or "origin-authoring-request"
                     || e.AutomationId?.StartsWith("origin-author-chapter-", StringComparison.Ordinal) == true),
@@ -403,7 +424,7 @@ internal static partial class AfterRunAuthorityHarness
                     && b.AutomationId is "origin-book-export" or "origin-book-export-epub") == 2,
                     "Reopening a book with completed prose and a missing successor hid its HTML/EPUB actions.");
                 IssuedPageLifecycle(reopened, "OnDisappearing");
-                Console.WriteLine("PASS automatic chapter: one dispatch, pinned spinner, no extra controls, cold no-replay, hidden unread mechanics");
+                Console.WriteLine("PASS automatic chapter: bounded pre-admission failure and visible recovery, one dispatch, pinned spinner, cold no-replay, hidden unread mechanics");
             }
             ui.AssertHealthy();
             Console.WriteLine("PASS HTML/EPUB absent without completed prose; both export saved chapters during pending status and cold reopen, no runner mutation");
