@@ -1684,7 +1684,9 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
 
     private async Task<StoredGrant?> ReadStoredGrantAsync(CancellationToken cancellationToken)
     {
-        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        // Waiting has not begun any credential commit. Cancellation may leave
+        // this queue safely; an admitted staged commit still finishes below.
+        await _credentialCommitGate.WaitAsync(cancellationToken);
         try
         {
             await RecoverStagedGrantCommitCoreAsync();
@@ -1713,6 +1715,13 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
                 OwnerAuthority.PublishLinked(identity.InstallationId, identity.GrantId!, subject, knownExpiry);
             else OwnerAuthority.Invalidate();
             return new StoredGrant(identity, accessToken, subject);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Abandoning a read is not evidence that the linked identity is
+            // corrupt. Any staged credential commit above finished under its
+            // own non-cancellable boundary; retain its resulting authority.
+            throw;
         }
         catch
         {

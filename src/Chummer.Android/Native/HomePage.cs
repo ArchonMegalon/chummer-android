@@ -316,6 +316,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                 Coordinator.OnlineCharacters.Count == 0
                     ? PhoneStrings.Get("LoadOnlineRunners", "Load online runners")
                     : PhoneStrings.Get("Refresh", "Refresh"));
+            refresh.AutomationId = "home-load-online-runners";
             refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
             online.Add(refresh);
             foreach (AndroidOnlineCharacter character in Coordinator.OnlineCharacters.Take(6))

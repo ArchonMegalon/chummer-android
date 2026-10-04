@@ -6769,7 +6769,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         => _system.ShareTextAsync(text);
 
     public Task RefreshLinkedDataAsync(CancellationToken cancellationToken = default)
-        => RefreshContinuationCatalogAsync(cancellationToken);
+        => RefreshLinkedDataWithBudgetAsync(TimeSpan.FromSeconds(30), cancellationToken);
 
     public void SelectGroup(AndroidLinkedGroup? group)
     {

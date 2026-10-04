@@ -40,6 +40,30 @@ public sealed partial class RunnerSessionCoordinator
     private sealed record ContinuationCatalog(OwnerContextStamp Owner, IReadOnlyList<AndroidWorkspaceContinuationItem> Items);
     private ContinuationCatalog? _continuationCatalog;
     private long _continuationCatalogGeneration;
+    private readonly SemaphoreSlim _linkedDataRefreshGate = new(1, 1);
+
+    private async Task RefreshLinkedDataWithBudgetAsync(TimeSpan timeout, CancellationToken ct)
+    {
+        using var budget = new CancellationTokenSource(timeout);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token, budget.Token);
+        if (!await _linkedDataRefreshGate.WaitAsync(0, cancellation.Token))
+            throw new InvalidOperationException(PhoneStrings.Get("AccountDataAlreadyLoading", "Account data is already loading."));
+        try
+        {
+            // SecureStorage/Keystore and signed-response processing can execute
+            // synchronously before their first await. Keep the whole chain, not
+            // only the runner-list step, off the Android UI context. This is one
+            // total budget, not a fresh allowance for each chained request.
+            await Task.Run(() => RefreshContinuationCatalogAsync(cancellation.Token), cancellation.Token);
+        }
+        catch (OperationCanceledException) when (budget.IsCancellationRequested && !ct.IsCancellationRequested
+            && !_lifetime.IsCancellationRequested)
+        {
+            throw new TimeoutException(PhoneStrings.Get("AccountDataLoadTimedOut",
+                "Account data could not be loaded in time. Local runners are unchanged. Please try again later."));
+        }
+        finally { _linkedDataRefreshGate.Release(); }
+    }
 
     private bool IsContinuationOwnerCurrent(OwnerContextStamp original)
         => TryCaptureWorkspaceOwner(out OwnerContextStamp? current) && current == original && original.IsValid;
@@ -74,6 +98,7 @@ public sealed partial class RunnerSessionCoordinator
     private async Task RefreshContinuationCatalogAsync(CancellationToken ct)
     {
         await _account.InitializeAsync(ct);
+        ct.ThrowIfCancellationRequested();
         long generation = Interlocked.Increment(ref _continuationCatalogGeneration);
         if (!_account.Snapshot.IsLinked || _account is not IAndroidWorkspaceContinuationTransport transport
             || !TryCaptureWorkspaceOwner(out OwnerContextStamp? captured) || captured is not { IsValid: true } original)
@@ -100,11 +125,13 @@ public sealed partial class RunnerSessionCoordinator
         var selected = groups.FirstOrDefault(group => group.GroupId == selectedGroupId) ?? groups.FirstOrDefault();
         IReadOnlyList<AndroidChronicleProject> chronicles = selected is not null
             ? await _account.ListChroniclesAsync(selected.GroupId, ct) : [];
+        ct.ThrowIfCancellationRequested();
         if (_account is not AndroidAccountLinkService actual) return;
         var authority = new AndroidAccountOwnerContextAccessor(actual);
         if (!authority.TryAcquire(original, out var lease)) return;
         using (lease)
         {
+            ct.ThrowIfCancellationRequested();
             if (Volatile.Read(ref _continuationCatalogGeneration) != generation
                 || Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty) != selectedGroupId) return;
             // One synchronous credential lease closes the account-transition

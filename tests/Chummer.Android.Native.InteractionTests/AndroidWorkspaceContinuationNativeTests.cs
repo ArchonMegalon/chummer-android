@@ -12,6 +12,7 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
@@ -31,9 +32,152 @@ internal static partial class AfterRunAuthorityHarness
 
     public static async Task RunAndroidCatalogSequencingCasesAsync(string contentRoot)
     {
+        await RunNativeCatalogUiLoadingAsync(contentRoot);
+        await RunNativeCatalogDeadlineAsync(contentRoot);
+        await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
+        await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
         foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
             await RunNativeCatalogSequencingAsync(contentRoot, ending);
         Console.WriteLine("PASS 5 native catalog sequencing cases");
+    }
+
+    private static async Task RunNativeCatalogUiLoadingAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            fixture.Account.ForbiddenContext = ui;
+            foreach (string ending in new[] { "cancel", "departure", "complete" })
+            {
+                var page = new RunnersPage(fixture.Runtime.Coordinator);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                var button = IssuedElements(page).OfType<Button>()
+                    .Single(item => item.AutomationId == "home-load-online-runners");
+                string originalLabel = button.Text;
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                fixture.Account.ListEntered = entered;
+                fixture.Account.ReleaseList = release;
+                int groups = fixture.Account.SignedGroupLists;
+                Task load = ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                try
+                {
+                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(fixture.Account.UiReads == 0, "Manual account refresh performed credential/HTTP work on the UI context.");
+                    Require(button.IsEnabled && button.Text.Contains("Cancel", StringComparison.Ordinal),
+                        "An in-flight account load has no enabled cancellation affordance.");
+                    if (ending == "cancel") ((IButtonController)button).SendClicked();
+                    else if (ending == "departure") IssuedPageLifecycle(page, "OnDisappearing");
+                    else release.TrySetResult();
+                    await load.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(button.Text == originalLabel && button.IsEnabled,
+                        "The account button stayed loading after completion/cancellation/departure.");
+                    Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" ? 1 : 0),
+                        "A canceled or departed load dispatched follow-on account requests.");
+                    bool actionRan = false;
+                    await (Task)typeof(NativePageBase).GetMethod("RunAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .Invoke(page, new object[] { (Func<Task>)(() => { actionRan = true; return Task.CompletedTask; }) })!;
+                    Require(actionRan, "Account loading left the page action gate stuck.");
+                }
+                finally
+                {
+                    release.TrySetResult();
+                    await load.WaitAsync(TimeSpan.FromSeconds(5));
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                }
+                Console.WriteLine("PASS actual MAUI account loading: " + ending);
+            }
+        });
+    }
+
+    private static async Task RunNativeCatalogDeadlineAsync(string contentRoot)
+    {
+        await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Account.ListEntered = entered;
+        fixture.Account.ReleaseList = release;
+        var before = fixture.Runtime.Coordinator.OnlineCharacters.ToArray();
+        int groups = fixture.Account.SignedGroupLists;
+        var method = typeof(RunnerSessionCoordinator).GetMethod("RefreshLinkedDataWithBudgetAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Task refresh = (Task)method.Invoke(fixture.Runtime.Coordinator,
+            new object[] { TimeSpan.FromMilliseconds(500), CancellationToken.None })!;
+        Exception? failure = null;
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            bool duplicateRejected = false;
+            try { await fixture.Runtime.Coordinator.RefreshLinkedDataAsync(); }
+            catch (InvalidOperationException) { duplicateRejected = true; }
+            Require(duplicateRejected, "Overlapping account loads were allowed to compete for signed reads.");
+            try { await refresh.WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (Exception error) { failure = error; }
+            Require(failure is TimeoutException && failure.Message.Contains("Local runners", StringComparison.Ordinal),
+                "Account deadline did not return a bounded, usable offline error.");
+            Require(fixture.Account.SignedGroupLists == groups
+                && fixture.Runtime.Coordinator.OnlineCharacters.SequenceEqual(before),
+                "Timed-out loading dispatched another request or replaced the prior catalog.");
+        }
+        finally { release.TrySetResult(); }
+        // A new explicit request, not automatic replay, must still work.
+        await fixture.Runtime.Coordinator.RefreshLinkedDataAsync();
+        Require(fixture.Account.SignedGroupLists == groups + 1, "Timeout leaked the account refresh gate.");
+        Console.WriteLine("PASS bounded account refresh deadline, retained catalog and explicit retry");
+    }
+
+    private static async Task RunNativeCatalogCredentialQueueCancellationAsync(string contentRoot)
+    {
+        await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+        var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService).GetField("_credentialCommitGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture.Account.Service)!;
+        using var canceled = new CancellationTokenSource();
+        await gate.WaitAsync();
+        Task? pending = null;
+        bool canceledBeforeWriterFinished = false;
+        int before = fixture.Account.SignedLists;
+        try
+        {
+            pending = ((IAndroidWorkspaceContinuationTransport)fixture.Account.Service)
+                .ListContinuationsAsync(fixture.Owner, canceled.Token);
+            Require(!pending.IsCompleted, "Credential queue cancellation did not actually wait for a writer.");
+            canceled.Cancel();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(2)); }
+            catch (OperationCanceledException) { canceledBeforeWriterFinished = true; }
+            catch (TimeoutException) { }
+        }
+        finally { gate.Release(); }
+        try { await pending!; } catch (OperationCanceledException) { }
+        Require(canceledBeforeWriterFinished && fixture.Account.Owner.Capture() == fixture.Owner
+            && fixture.Account.Service.Snapshot.IsLinked && fixture.Account.SignedLists == before,
+            "Canceled credential admission waited indefinitely, invalidated its owner, or dispatched a request.");
+        Console.WriteLine("PASS cancellation leaves credential wait without clearing or changing the linked owner");
+    }
+
+    private static async Task RunNativeCatalogCredentialReadCancellationAsync(string contentRoot)
+    {
+        await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+        using var canceled = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Account.Metadata.BeforeReadAsync = async key =>
+        {
+            if (key != "chummer.account.installation-id.v1") return;
+            entered.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, canceled.Token);
+        };
+        int before = fixture.Account.SignedLists;
+        Task pending = ((IAndroidWorkspaceContinuationTransport)fixture.Account.Service)
+            .ListContinuationsAsync(fixture.Owner, canceled.Token);
+        try { await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); }
+        finally { canceled.Cancel(); }
+        try { await pending; } catch (OperationCanceledException) { }
+        Require(fixture.Account.Owner.Capture() == fixture.Owner && fixture.Account.Service.Snapshot.IsLinked
+            && fixture.Account.SignedLists == before,
+            "Canceling a credential read revoked the known owner or dispatched a signed request.");
+        fixture.Account.Metadata.BeforeReadAsync = null;
+        await fixture.Runtime.Coordinator.RefreshLinkedDataAsync();
+        Console.WriteLine("PASS canceled credential read retains owner and permits an explicit later load");
     }
 
     private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending)
@@ -324,6 +468,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         private readonly IDisposable _http;
         private readonly AccountMetadata _metadata = new();
+        internal AccountMetadata Metadata => _metadata;
         private readonly AccountDeviceKeys _keys = new();
         private readonly AccountClock _clock = new();
         private string _subject = "subject";
@@ -336,6 +481,8 @@ internal static partial class AfterRunAuthorityHarness
         internal TaskCompletionSource? ListEntered;
         internal TaskCompletionSource? ReleaseList;
         internal bool FailList;
+        internal SynchronizationContext? ForbiddenContext;
+        internal int UiReads;
 
         internal NativeContinuationAccount()
         {
@@ -362,6 +509,8 @@ internal static partial class AfterRunAuthorityHarness
 
         private async Task<HttpResponseMessage> RespondAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (ForbiddenContext is not null && ReferenceEquals(SynchronizationContext.Current, ForbiddenContext))
+                Interlocked.Increment(ref UiReads);
             using JsonDocument document = JsonDocument.Parse(await request.Content!.ReadAsByteArrayAsync(ct));
             string installation = document.RootElement.GetProperty("installationId").GetString()!;
             string path = request.RequestUri!.AbsolutePath;
