@@ -11,7 +11,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
 {
     private readonly LifeModuleCompletionSession _session;
     private readonly LifeCompletionStep _step;
-    private readonly string? _id, _kind;
+    private readonly string? _id, _kind, _instanceId;
     private readonly Func<Task>? _openBook;
     private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
     private long _render;
@@ -28,9 +28,10 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         : this(coordinator, new LifeModuleCompletionSession(coordinator, store), LifeCompletionStep.Overview, openBook) { }
 
     private LifeModuleCompletionPage(RunnerSessionCoordinator coordinator, LifeModuleCompletionSession session,
-        LifeCompletionStep step, Func<Task>? openBook, string? id = null, string? kind = null) : base(coordinator)
+        LifeCompletionStep step, Func<Task>? openBook, string? id = null, string? kind = null,
+        string? instanceId = null) : base(coordinator)
     {
-        _session = session; _step = step; _openBook = openBook; _id = id; _kind = kind;
+        _session = session; _step = step; _openBook = openBook; _id = id; _kind = kind; _instanceId = instanceId;
         Title = Caption(step); AutomationId = "life-completion-" + step.ToString().ToLowerInvariant();
         Content = new ScrollView { Content = _body };
     }
@@ -84,8 +85,8 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         }
     }
     private bool Current(long render, long appearance) => _render == render && IsCurrentAppearanceGeneration(appearance) && _session.Ready;
-    private Task Open(LifeCompletionStep step, string? id = null, string? kind = null)
-        => Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator, _session, step, _openBook, id, kind));
+    private Task Open(LifeCompletionStep step, string? id = null, string? kind = null, string? instanceId = null)
+        => Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator, _session, step, _openBook, id, kind, instanceId));
     private void Change(CharacterCreationFoundationFinalizationPreviewRequest input)
     {
         _session.Change(input);
@@ -349,8 +350,11 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         foreach (var selected in Input.SkillSelection.Skills)
         {
             var source = catalog.ActiveSkills.Concat(catalog.KnowledgeSkills).SingleOrDefault(x => x.SourceSkillId == selected.SourceSkillId && x.Kind == selected.Kind);
-            Button(source?.Name ?? selected.SourceSkillId, "life-selected-skill-" + selected.SourceSkillId,
-                () => Open(LifeCompletionStep.Skill, selected.SourceSkillId, selected.Kind));
+            var specialization = source?.Specializations.SingleOrDefault(x => x.OptionId == selected.SpecializationOptionId);
+            string name = source?.Name ?? selected.SourceSkillId;
+            if (specialization is not null) name += " · " + specialization.Name;
+            Button(name, "life-selected-skill-" + selected.Kind + "-" + selected.SourceSkillId + "-" + selected.SpecializationOptionId,
+                () => Open(LifeCompletionStep.Skill, selected.SourceSkillId, selected.Kind, selected.SpecializationOptionId));
         }
         Search();
         foreach (var row in Page(catalog.ActiveSkills.Concat(catalog.KnowledgeSkills)
@@ -367,17 +371,33 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         if (Input.SkillSelection is not { } skills || Quote?.SkillsCatalog is not { } catalog || Quote.SkillsQuote is not { } quote) return;
         var source = catalog.ActiveSkills.Concat(catalog.KnowledgeSkills).SingleOrDefault(x => x.SourceSkillId == _id && x.Kind == _kind);
         if (source is null) return;
-        // One editable instance per ordinary skill; exotic instances retain their exact specialization identity.
-        var original = skills.Skills.FirstOrDefault(x => x.SourceSkillId == _id && x.Kind == _kind);
-        var edit = original ?? new CharacterCreationKarmaSkillAllocation(source.SourceSkillId, source.Kind, 0);
         Body(source.Name);
+        // Exotic weapon variants are separate skills, not interchangeable +2
+        // specializations. Choose an exact source identity before editing its
+        // levels; catalog and selected-row navigation reach that same instance.
+        if (source.IsExotic && _instanceId is null)
+        {
+            Search();
+            foreach (var option in Page(source.Specializations.Where(x => x.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase))))
+                Button(option.Name, "life-specialization-" + option.OptionId,
+                    () => Open(LifeCompletionStep.Skill, source.SourceSkillId, source.Kind, option.OptionId));
+            return;
+        }
+        var variant = source.IsExotic ? source.Specializations.SingleOrDefault(x => x.OptionId == _instanceId) : null;
+        if (source.IsExotic && variant is null) { Body(CreationKarmaCopy.Stale); return; }
+        var original = skills.Skills.SingleOrDefault(x => x.SourceSkillId == _id && x.Kind == _kind
+            && (!source.IsExotic || x.SpecializationOptionId == _instanceId));
+        var edit = original ?? new CharacterCreationKarmaSkillAllocation(source.SourceSkillId, source.Kind, 0,
+            SpecializationOptionId: variant?.OptionId,
+            SpecializationPayment: variant is null ? null : CharacterCreationKarmaSpecializationPayments.ExoticIdentity);
+        if (variant is not null) Body(variant.Name, "life-exotic-variant-name");
         int maximum = source.Kind == CharacterCreationSkillKinds.Active ? quote.Policy.MaxActiveSkillRatingCreate : quote.Policy.MaxKnowledgeSkillRatingCreate;
         Number(CreationKarmaCopy.KarmaLevels, "life-skill-levels", edit.KarmaLevels, maximum, value => edit = edit with { KarmaLevels = value });
         if (source.Kind == CharacterCreationSkillKinds.Knowledge)
             Number(CreationKarmaCopy.KnowledgeLevels, "life-knowledge-levels", edit.KnowledgePointLevels, maximum, value => edit = edit with { KnowledgePointLevels = value });
         if (source.CanBeNativeLanguage)
             Flag(CreationKarmaCopy.NativeLanguage, "life-native-language", edit.IsNativeLanguage, value => edit = edit with { IsNativeLanguage = value });
-        foreach (var option in source.Specializations)
+        foreach (var option in source.IsExotic ? [] : source.Specializations)
             Button(option.Name, "life-specialization-" + option.OptionId, () =>
             {
                 edit = edit with { SpecializationOptionId = option.OptionId,

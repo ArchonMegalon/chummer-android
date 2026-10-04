@@ -36,6 +36,7 @@
     <Compile Include="CreationKarmaNativeRuntimeTests.cs" />
     <Compile Include="LifeModuleCompletionNativeTests.cs" />
     <Compile Include="LifeModuleApprenticeNativeTests.cs" />
+    <Compile Include="LifeModuleExoticSkillsNativeTests.cs" />
     <Compile Include="Sr6CreationFoundationNativeTests.cs" />
     <Compile Include="OriginDossierBookRuntimeTests.cs" />
     <Compile Include="OriginChapterAuthoringHttpTests.cs" />
