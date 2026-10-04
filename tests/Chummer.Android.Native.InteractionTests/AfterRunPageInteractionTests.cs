@@ -8,9 +8,103 @@ using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Internals;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunNativeActionDepartureAsync()
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string entry in new[] { "normal", "conditional-true", "conditional-false" })
+            foreach (string lifecycle in new[] { "current", "departed", "returned" })
+            foreach (bool fails in new[] { false, true })
+            {
+                using var fixture = new PageFixture();
+                var page = new ActionDeparturePage(fixture.Coordinator);
+                var window = new Window(new NavigationPage(page));
+                using var alerts = new IssuedPageAlerts(page, window);
+                var navigation = new ActionDepartureNavigation();
+                ((NavigationProxy)page.Navigation).Inner = navigation;
+                page.AdmitTestAppearance();
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                int completions = 0;
+                Task pending = page.ExecuteAsync(entry, async () =>
+                {
+                    await release.Task;
+                    completions++;
+                    if (fails) throw new InvalidOperationException("Late account response fixture");
+                    fixture.State = fixture.State with
+                    {
+                        ActiveDialog = new("dialog.new_character", "Select Build Method", null, [], [])
+                    };
+                });
+                Require(!pending.IsCompleted, "SETUP: action did not suspend at the controlled response.");
+                await page.ExecuteAsync(entry, () => throw new InvalidOperationException("Overlapping action ran"));
+                if (lifecycle != "current") page.Depart();
+                if (lifecycle == "returned") page.AdmitTestAppearance();
+                release.SetResult();
+                await pending.WaitAsync(TimeSpan.FromSeconds(10));
+                bool current = lifecycle == "current";
+                Require(completions == 1, "Departure abandoned or replayed the admitted action.");
+                Require(alerts.Messages.Count == (current && fails ? 1 : 0),
+                    $"{entry}/{lifecycle}: error alert escaped its original appearance.");
+                Require(navigation.ModalPushes == (current && !fails ? 1 : 0),
+                    $"{entry}/{lifecycle}: active dialog escaped its original appearance.");
+                Require(page.Renders == (current && !fails && entry != "conditional-false" ? 1 : 0),
+                    $"{entry}/{lifecycle}: stale or conditional action rendered the wrong page.");
+                Require(!IssuedPageField<NativePageActionGate>(page, "_actionGate").IsClaimed,
+                    "Completed action retained the page action gate.");
+                page.Depart();
+                Console.WriteLine($"PASS native action completion {entry}/{lifecycle}/{(fails ? "error" : "dialog")}");
+            }
+        });
+    }
+
+    // Real NativePageBase action/lifecycle paths on the managed MAUI assembly.
+    // Appearance fields establish the initial fixture without initializing unrelated
+    // services. OnDisappearing itself is real. This is not Android handler evidence.
+    private sealed class ActionDeparturePage(RunnerSessionCoordinator coordinator) : NativePageBase(coordinator)
+    {
+        public int Renders;
+        protected override void Refresh() => Renders++;
+        public void AdmitTestAppearance()
+        {
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var generation = typeof(NativePageBase).GetField("_appearanceGeneration", flags)!;
+            generation.SetValue(this, (long)generation.GetValue(this)! + 1);
+            typeof(NativePageBase).GetField("_subscribed", flags)!.SetValue(this, 1);
+        }
+        public void Depart() => base.OnDisappearing();
+        public Task ExecuteAsync(string entry, Func<Task> action)
+            => entry == "normal" ? RunAsync(action) : RunWithConditionalRefreshAsync(async () =>
+            {
+                await action();
+                return entry == "conditional-true";
+            });
+    }
+
+    // Observe modal admission only; no native modal rendering is claimed.
+    private sealed class ActionDepartureNavigation : INavigation
+    {
+        public int ModalPushes;
+        public IReadOnlyList<Page> NavigationStack => [];
+        public IReadOnlyList<Page> ModalStack => [];
+        public Task PushModalAsync(Page page) { ModalPushes++; return Task.CompletedTask; }
+        public Task PushModalAsync(Page page, bool animated) => PushModalAsync(page);
+        public void InsertPageBefore(Page page, Page before) => throw new NotSupportedException();
+        public Task<Page> PopAsync() => throw new NotSupportedException();
+        public Task<Page> PopAsync(bool animated) => throw new NotSupportedException();
+        public Task<Page> PopModalAsync() => throw new NotSupportedException();
+        public Task<Page> PopModalAsync(bool animated) => throw new NotSupportedException();
+        public Task PopToRootAsync() => throw new NotSupportedException();
+        public Task PopToRootAsync(bool animated) => throw new NotSupportedException();
+        public Task PushAsync(Page page) => throw new NotSupportedException();
+        public Task PushAsync(Page page, bool animated) => throw new NotSupportedException();
+        public void RemovePage(Page page) => throw new NotSupportedException();
+    }
+
     public static Task RunNativeDialogBusyCaseAsync()
     {
         using var fixture = new PageFixture();

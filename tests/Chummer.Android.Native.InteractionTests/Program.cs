@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--native-action-departure")
+        {
+            await AfterRunAuthorityHarness.RunNativeActionDepartureAsync();
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--runner-deletion-content-root")
         {
             await AfterRunAuthorityHarness.RunRunnerDeletionAsync(args[1], args.Length == 3 ? args[2] : null);
@@ -512,6 +517,7 @@ internal static class Program
             throw new ArgumentException("Expected --after-run-runtime-content-root followed by an explicit Core content directory.");
         (string Name, Func<Task> Run)[] tests =
         [
+            (nameof(AfterRunAuthorityHarness.RunNativeActionDepartureAsync), AfterRunAuthorityHarness.RunNativeActionDepartureAsync),
             (nameof(WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync), WizardMetricsReserveSpaceForLabelsAndWrapExactValuesAsync),
             (nameof(TabletInspectorBindingTests.RunAsync), TabletInspectorBindingTests.RunAsync),
             (nameof(SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync), SettlementRecoveryUsesActualNativeAndCoreAssembliesAsync),
