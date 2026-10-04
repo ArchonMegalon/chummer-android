@@ -109,8 +109,10 @@ confirmed on 4 October at approximately02:58 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Saved Origin text
 appears before pending chapter-status reads; EPUB stays usable during them.
 Focused actual-MAUI and synthetic API36 reader/export/new-process reopen passed.
-Physical Play88 installation remains unverified. Slow transitions, all-method
-Creation and full Origin completion remain open.
+The [physical Play87→88 update](../play/evidence/preview88-physical-observation.md)
+verified installed identity/signature and unchanged visible Creation after a
+new-process restart. Physical Origin reader/export is not proven by that check.
+Slow transitions, all-method Creation and full Origin completion remain open.
 
 Preview 87's [observed Internal availability](../play/evidence/preview87-internal-observation.md),
 confirmed on 4 October at approximately 01:32 Europe/Vienna. Its exact local

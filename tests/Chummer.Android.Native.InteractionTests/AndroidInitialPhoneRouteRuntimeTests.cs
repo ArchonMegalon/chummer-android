@@ -11,6 +11,57 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunHomeStartupFeedbackAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var runtime = new NativeRewardRuntime(contentRoot);
+            var page = new RunnersPage(runtime.Coordinator);
+            var window = new Window(page);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            ActivityIndicator Progress() => IssuedElements(page).OfType<ActivityIndicator>()
+                .Single(indicator => indicator.AutomationId == "home-startup-progress");
+            void AssertLoading()
+            {
+                Require(IssuedElements(page).OfType<Label>().Any(label => label.IsVisible
+                        && label.AutomationId == "home-startup-status" && !string.IsNullOrWhiteSpace(label.Text)),
+                    "Cold Home is blank before owner/workspace initialization completes.");
+                Require(Progress().IsRunning && Progress().IsVisible
+                    && !IssuedElements(page).OfType<Button>().Any(),
+                    "Home must show progress without exposing actions before initialization.");
+            }
+            AssertLoading(); // Also covers the first frame before OnAppearing.
+            var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_initializeGate",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+            await gate.WaitAsync();
+            Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            ActivityIndicator progress = Progress();
+            try
+            {
+                AssertLoading();
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                IssuedPageLifecycle(page, "OnDisappearing");
+                Require(!progress.IsRunning, "Departed Home left its loading animation running.");
+            }
+            finally { gate.Release(); }
+            await appearance.WaitAsync(TimeSpan.FromSeconds(20));
+            Require(!IssuedElements(page).OfType<Button>().Any() && !progress.IsRunning,
+                "Late initialization rendered actions or restarted progress on a departed Home.");
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"))
+                .WaitAsync(TimeSpan.FromSeconds(20));
+            Require(IssuedElements(page).OfType<Button>().Any(button => button.AutomationId == "home-open-file")
+                && !IssuedElements(page).Any(element => element.AutomationId == "home-startup-status")
+                && !progress.IsRunning && alerts.Titles.Count == 0,
+                "Returning Home did not replace startup progress with settled actions.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Console.WriteLine("PASS Home first frame, held initialization, UI heartbeat, departure and settled reappearance");
+        });
+    }
+
     public static async Task RunInitialPhoneRouteCasesAsync(string contentRoot)
     {
         RunInitialPhoneRoutePolicyCases();
