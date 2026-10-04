@@ -10,6 +10,7 @@ public abstract class NativePageBase : ContentPage
     private int _appearanceRefreshActive;
     private long _appearanceGeneration;
     private CancellationTokenSource? _appearanceLifetime;
+    private CancellationTokenSource? _linkedDataRefresh;
     private readonly NativeRefreshCoalescer _coordinatorRefresh = new();
     private readonly NativePageActionGate _actionGate = new();
 
@@ -93,6 +94,7 @@ public abstract class NativePageBase : ContentPage
         CancellationTokenSource? appearanceLifetime =
             Interlocked.Exchange(ref _appearanceLifetime, null);
         appearanceLifetime?.Cancel();
+        _linkedDataRefresh?.Cancel();
         Volatile.Write(ref _appearanceRefreshActive, 0);
         _coordinatorRefresh.AbandonThrough(departedGeneration);
 
@@ -146,18 +148,28 @@ public abstract class NativePageBase : ContentPage
     }
 
     protected Task RunLinkedDataRefreshAsync(Button button)
-        => RunAsync(async () =>
+    {
+        // Cancellation must remain reachable while RunAsync owns the action
+        // gate. A second tap cancels this read; it never dispatches another one.
+        if (_linkedDataRefresh is { } pending)
         {
+            pending.Cancel();
+            return Task.CompletedTask;
+        }
+        return RunAsync(async () =>
+        {
+            using var cancellation = new CancellationTokenSource();
+            _linkedDataRefresh = cancellation;
             string label = button.Text;
-            button.IsEnabled = false;
-            button.Text = PhoneStrings.Get("LoadingAccountData", "Loading account data…");
-            try { await Coordinator.RefreshLinkedDataAsync(); }
+            button.Text = PhoneStrings.Get("CancelLoadingAccountData", "Loading… Cancel");
+            try { await Coordinator.RefreshLinkedDataAsync(cancellation.Token); }
             finally
             {
+                _linkedDataRefresh = null;
                 button.Text = label;
-                button.IsEnabled = true;
             }
         });
+    }
 
     protected async Task RunAsync(Func<Task> action)
     {

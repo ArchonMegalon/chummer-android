@@ -36,6 +36,9 @@
   <data name="LinkAccount" xml:space="preserve"><value>Konto verknüpfen</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Online-Runner laden</value></data>
   <data name="LoadingAccountData" xml:space="preserve"><value>Kontodaten werden geladen…</value></data>
+  <data name="CancelLoadingAccountData" xml:space="preserve"><value>Laden… Abbrechen</value></data>
+  <data name="AccountDataAlreadyLoading" xml:space="preserve"><value>Kontodaten werden bereits geladen.</value></data>
+  <data name="AccountDataLoadTimedOut" xml:space="preserve"><value>Die Kontodaten konnten nicht rechtzeitig geladen werden. Lokale Runner sind unverändert. Bitte versuche es später erneut.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="MoreRunnerFile" xml:space="preserve"><value>Runner-Datei</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>

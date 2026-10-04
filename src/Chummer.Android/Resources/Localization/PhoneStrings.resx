@@ -43,6 +43,9 @@
   <data name="LinkAccount" xml:space="preserve"><value>Link account</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Load online runners</value></data>
   <data name="LoadingAccountData" xml:space="preserve"><value>Loading account data…</value></data>
+  <data name="CancelLoadingAccountData" xml:space="preserve"><value>Loading… Cancel</value></data>
+  <data name="AccountDataAlreadyLoading" xml:space="preserve"><value>Account data is already loading.</value></data>
+  <data name="AccountDataLoadTimedOut" xml:space="preserve"><value>Account data could not be loaded in time. Local runners are unchanged. Please try again later.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="MoreRunnerFile" xml:space="preserve"><value>Runner file</value></data>
   <data name="Save" xml:space="preserve"><value>Save</value></data>
