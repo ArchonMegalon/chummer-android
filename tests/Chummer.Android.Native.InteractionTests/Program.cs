@@ -166,6 +166,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunLifeModuleApprenticePagesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--life-module-exotic-skills-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleExoticSkillsAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--life-module-completion-content-root")
         {
             await AfterRunAuthorityHarness.RunLifeModuleCompletionAsync(args[1]);
