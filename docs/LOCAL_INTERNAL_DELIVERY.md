@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 102 is the latest [observed Internal availability](../play/evidence/preview102-internal-observation.md),
+Preview 103 is the latest [observed Internal availability](../play/evidence/preview103-internal-observation.md),
+confirmed on 4 October at 22:31 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Late native action results no longer open dialogs/errors after leaving a page,
+including away-and-back. Admitted work still finishes; current-page errors remain.
+Focused actual-MAUI tests and a synthetic API36 lifecycle/new-process diagnostic
+passed; unchanged behavior results are reused for the version-only delta.
+**Physical Play103 installation/update and live account refresh are unverified.**
+This is not real runner-save authority, historical Hub503 diagnosis, performance
+clearance, full SR5/Origin or general-beta completion.
+
+Preview 102's [observed Internal availability](../play/evidence/preview102-internal-observation.md),
 confirmed on 4 October at 21:36 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Life Modules distinguishes specialization removal from removing all added skill
