@@ -109,9 +109,10 @@ confirmed on 4 October at approximately 04:07 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed and independently verified. Startup now shows
 loading feedback and reuses the already restored runner list, preserving owner
 and stale-state checks. Focused actual-MAUI and synthetic API36 new-process
-restoration passed. Physical Play installation of 89 is not yet verified;
-the existing phone remains on 88. Slow transitions, all-method Creation and full
-Origin completion remain open.
+restoration passed. The [physical Play88→89 update](../play/evidence/preview89-physical-observation.md)
+verified installed identity/signature, loading feedback and unchanged visible
+Creation after a verified new-process restart. Slow transitions, all-method
+Creation and full Origin completion remain open.
 
 Preview 88's [observed Internal availability](../play/evidence/preview88-internal-observation.md),
 confirmed on 4 October at approximately02:58 Europe/Vienna. Its exact local
@@ -385,7 +386,7 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 80](../play/evidence/preview80-physical-observation.md) is the latest
+[Preview 89](../play/evidence/preview89-physical-observation.md) is the latest
 physically observed Play version, with the bounded affected-route coverage above.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
