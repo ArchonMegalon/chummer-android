@@ -310,7 +310,20 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             && ReferenceEquals(_book, accepted);
         try
         {
-            await Coordinator.RecordOriginBookReaderAcceptanceAsync(accepted, prose, StillHere, lifetime.Token);
+            if (accepted.Chapters.Any(c => accepted.ReadableChapter(c) is null
+                && Coordinator.PrepareOriginChapterSource(accepted, c) is not null))
+            {
+                // Restored history can already contain the next confirmed
+                // module. Reading its predecessor makes that chapter eligible
+                // now, without another click/reopen. The existing read-first
+                // path reconciles this exact saved acceptance before dispatch;
+                // do not send a separate acknowledgement and then retry it.
+                await RefreshChapterStatusAsync(appearance, lifetime.Token);
+                if (_watchPending && !lifetime.IsCancellationRequested
+                    && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
+            }
+            else
+                await Coordinator.RecordOriginBookReaderAcceptanceAsync(accepted, prose, StillHere, lifetime.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception error)

@@ -243,7 +243,8 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS linked-owner Life Modules start, review, commit, save, cold reopen, namespace isolation and ABA rejection");
     }
 
-    internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null, bool automatic = false)
+    internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null,
+        bool automatic = false, bool recoverUnreadSequence = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -288,6 +289,73 @@ internal static partial class AfterRunAuthorityHarness
             remote.Seed(source, prose);
             book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, prose, () => true, default))!;
             CheckExportActions(book, false);
+            if (recoverUnreadSequence)
+            {
+                // Restored multi-decision books can contain an unread opening
+                // while later already-confirmed Life Modules still need prose.
+                // Reading must resume that exact history, not require reopening
+                // the page or expose an extra provider-writing button.
+                var recoveredReader = new RetainedOriginBookPage(runtime.Coordinator);
+                var recoveredWindow = new Window(new NavigationPage(recoveredReader));
+                using var recoveredAlerts = new IssuedPageAlerts(recoveredReader, recoveredWindow);
+                await recoveredAlerts.PreflightAsync();
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(recoveredReader, "OnAppearing"));
+                Require(remote.Requests == 0 && remote.Acceptances == 0,
+                    "Opening recovered prose implicitly accepted it or started a successor.");
+                var read = IssuedElements(recoveredReader).OfType<Button>().Single(b =>
+                    b.AutomationId == $"origin-chapter-read-{first.Sequence}");
+                var acknowledgementEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var acknowledgementRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                remote.BeforeAcceptance = ct =>
+                {
+                    acknowledgementEntered.TrySetResult();
+                    return acknowledgementRelease.Task.WaitAsync(ct);
+                };
+                Task reading = ui.BeginAsyncVoid(() => ((IButtonController)read).SendClicked());
+                try
+                {
+                    await acknowledgementEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                    Require(remote.Requests == 0, "A successor started before its predecessor acknowledgement.");
+                    Require(IssuedElements(recoveredReader).OfType<ActivityIndicator>().Any(e =>
+                        e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning && e.IsVisible),
+                        "Automatic recovered continuation has no visible busy indicator.");
+                    var exportEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    output.BeforeRead = () => exportEntered.TrySetResult();
+                    var export = IssuedElements(recoveredReader).OfType<Button>().Single(b => b.AutomationId == "origin-book-export-epub");
+                    // Join both real async-void handlers through the existing
+                    // reading task; BeginAsyncVoid admits only an idle pump.
+                    ((IButtonController)export).SendClicked();
+                    await exportEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                }
+                finally { acknowledgementRelease.TrySetResult(); }
+                await reading;
+                output.BeforeRead = null;
+                Require(output.EpubDeliveries == 1, "Waiting for restored successor admission blocked export of read prose.");
+                remote.BeforeAcceptance = null;
+                Require(remote.Acceptances == 1 && remote.Requests == 1,
+                    "Reading a recovered chapter did not automatically resume its already-confirmed successor.");
+                long recoveredGeneration = IssuedPageField<long>(recoveredReader, "_appearanceGeneration");
+                await recoveredReader.PollChapterOnceAsync(recoveredGeneration, default);
+                Require(IssuedElements(recoveredReader).Any(e => e.AutomationId == "origin-reader-writing-spinner")
+                    && !IssuedElements(recoveredReader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{next.Sequence}"),
+                    "Successor observation lacks visible progress or exposes unread mechanics.");
+                IssuedPageLifecycle(recoveredReader, "OnDisappearing");
+                await recoveredReader.PollChapterOnceAsync(recoveredGeneration, default);
+                var reopened = new RetainedOriginBookPage(runtime.Coordinator);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                Require(remote.Acceptances == 1 && remote.Requests == 1,
+                    "Status observation or reopen replayed reader acceptance or successor generation.");
+                var restoredReading = new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value);
+                Require(restoredReading.Chapters.Single(c => c.ChapterId == first.ChapterId).Selected?.Text == prose.Text
+                    && restoredReading.Chapters.Single(c => c.ChapterId == next.ChapterId) is { AuthoringSource: not null, Selected: null },
+                    "Cold reading state lost the explicit decision or exact successor admission.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+                IssuedPageLifecycle(reopened, "OnDisappearing");
+                Require(recoveredAlerts.Titles.Count == 0, "Recovered chapter continuation displayed an unexpected error.");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS recovered multi-decision book: explicit read resumes exact successor, progress/export responsive, cold no-replay and unchanged runner");
+                return;
+            }
             book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
             CheckExportActions(book, true);
             if (!automatic)
