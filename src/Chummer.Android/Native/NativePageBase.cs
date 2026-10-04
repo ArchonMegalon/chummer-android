@@ -194,7 +194,13 @@ public abstract class NativePageBase : ContentPage
                 _coordinatorRefresh.DiscardPendingThrough(actionGeneration);
                 Refresh();
             }
-            await ShowActiveDialogAsync();
+            // The admitted action may finish after navigation (including away
+            // and back). Its result must not present UI from the old appearance.
+            // Recheck after Refresh, which can itself cause a page transition.
+            if (IsCurrentAppearanceGeneration(actionGeneration))
+            {
+                await ShowActiveDialogAsync();
+            }
             succeeded = true;
         }
         catch (OperationCanceledException)
@@ -203,7 +209,10 @@ public abstract class NativePageBase : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            if (IsCurrentAppearanceGeneration(actionGeneration))
+            {
+                await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            }
         }
         finally
         {
@@ -212,7 +221,7 @@ public abstract class NativePageBase : ContentPage
             TryScheduleCoordinatorRefresh(Volatile.Read(ref _appearanceGeneration));
         }
 
-        if (succeeded)
+        if (succeeded && IsCurrentAppearanceGeneration(actionGeneration))
         {
             await NotifyPlayReviewSafeMomentAsync(
                 signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
@@ -238,7 +247,10 @@ public abstract class NativePageBase : ContentPage
                 _coordinatorRefresh.DiscardPendingThrough(actionGeneration);
                 Refresh();
             }
-            await ShowActiveDialogAsync();
+            if (IsCurrentAppearanceGeneration(actionGeneration))
+            {
+                await ShowActiveDialogAsync();
+            }
             succeeded = true;
         }
         catch (OperationCanceledException)
@@ -247,7 +259,10 @@ public abstract class NativePageBase : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            if (IsCurrentAppearanceGeneration(actionGeneration))
+            {
+                await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            }
         }
         finally
         {
@@ -256,7 +271,7 @@ public abstract class NativePageBase : ContentPage
             TryScheduleCoordinatorRefresh(Volatile.Read(ref _appearanceGeneration));
         }
 
-        if (succeeded)
+        if (succeeded && IsCurrentAppearanceGeneration(actionGeneration))
         {
             await NotifyPlayReviewSafeMomentAsync(
                 signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
