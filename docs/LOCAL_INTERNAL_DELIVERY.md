@@ -104,7 +104,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 94 is the latest [observed Internal availability](../play/evidence/preview94-internal-observation.md),
+Preview 95 is the latest [observed Internal availability](../play/evidence/preview95-internal-observation.md),
+confirmed on 4 October at 14:16 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+After explicit reading of a recovered Origin chapter, its already-confirmed
+eligible successor now resumes automatically through the existing recovery flow.
+Focused actual-MAUI delayed-acknowledgement/export/ownership checks and synthetic
+API36 full-reader/read-to-next/new-process checks passed; unchanged behavior
+results are reused for the version-only increment. **Physical Play95
+installation/update is unverified.** No automatic reading acceptance or uncertain
+paid-job replay was added. Full live Origin, all-method SR5 and general-beta
+completion remain open.
+
+Preview 94's [observed Internal availability](../play/evidence/preview94-internal-observation.md),
 confirmed on 4 October at 13:33 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Origin EPUB/HTML exports retain their admitted snapshot if an illustration
