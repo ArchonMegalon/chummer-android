@@ -15,6 +15,8 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private CancellationTokenSource? _pollLifetime;
     private bool _watchPending;
     private int _readFailures;
+    private long? _chapterReadAppearance;
+    private long? _openingAppearance;
     private CancellationTokenSource? _sceneLifetime;
     private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AndroidOriginSceneResult> _sceneStatus = new(StringComparer.Ordinal);
@@ -45,15 +47,26 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
     {
         long appearance = CaptureAppearanceGeneration();
-        _book = null;
-        _load = null;
-        _notice = null;
-        var loaded = await Coordinator.LoadOriginBookReaderAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
-        if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return;
-        _load = loaded;
-        _book = loaded.Book;
-        await ReadMissingChapterAsync(appearance, ct);
-        if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
+        _openingAppearance = appearance;
+        try
+        {
+            _book = null;
+            _load = null;
+            _notice = null;
+            var loaded = await Coordinator.LoadOriginBookReaderAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
+            if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return;
+            _load = loaded;
+            _book = loaded.Book;
+            // The admitted local edition is already readable/exportable. A slow
+            // status request for a later chapter must not hide those saved pages.
+            Refresh();
+            await ReadMissingChapterAsync(appearance, ct);
+            if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
+        }
+        finally
+        {
+            if (_openingAppearance == appearance) _openingAppearance = null;
+        }
     }
 
     protected override void Refresh()
@@ -133,13 +146,12 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         {
             var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
             refresh.AutomationId = "origin-reader-refresh";
-            refresh.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(async () =>
+            refresh.Clicked += async (_, _) =>
             {
-                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_book, book)) return false;
-                bool changed = await ReadMissingChapterAsync(appearance, default);
+                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_book, book)) return;
+                await RefreshChapterStatusAsync(appearance, default);
                 if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
-                return changed;
-            });
+            };
             _body.Add(refresh);
         }
         if (book.ScenesUnavailable) _body.Add(NativeTheme.Body(_copy["Origin.ScenesUnavailable"]));
@@ -254,7 +266,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             }
         }
         _body.Add(NativeTheme.Body(_copy.Format("Origin.BookMetadata", "chummer.run"), NativeTheme.Muted));
-        StartSceneWatch(appearance);
+        // Keep the existing initial text-read -> illustration ordering even
+        // when an export refreshes the now-readable page during that first read.
+        if (_openingAppearance != appearance) StartSceneWatch(appearance);
     }
 
     private void AddReturnToRunner()
@@ -348,6 +362,21 @@ internal sealed class RetainedOriginBookPage : NativePageBase
 
     private async Task<bool> ReadMissingChapterAsync(long appearance, CancellationToken ct)
     {
+        // Serialize reads within this appearance without occupying the action
+        // gate while awaiting Hub. A retired appearance cannot clear a newer
+        // read's ownership or stop its watch.
+        if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
+            || _chapterReadAppearance == appearance) return false;
+        _chapterReadAppearance = appearance;
+        try { return await ReadMissingChapterCoreAsync(appearance, ct); }
+        finally
+        {
+            if (_chapterReadAppearance == appearance) _chapterReadAppearance = null;
+        }
+    }
+
+    private async Task<bool> ReadMissingChapterCoreAsync(long appearance, CancellationToken ct)
+    {
         if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return false;
         if (_book is not { } book
             || !Coordinator.CanRequestOriginChapter(book)) { _watchPending = false; return false; }
@@ -418,8 +447,29 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     }
 
     internal Task PollChapterOnceAsync(long appearance, CancellationToken ct)
-        => RunWithConditionalRefreshAsync(() => _watchPending
-            ? ReadMissingChapterAsync(appearance, ct) : Task.FromResult(false));
+        => _watchPending ? RefreshChapterStatusAsync(appearance, ct) : Task.CompletedTask;
+
+    private async Task RefreshChapterStatusAsync(long appearance, CancellationToken ct)
+    {
+        bool Current() => !ct.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance);
+        if (!Current()) return;
+        try
+        {
+            // Do not silently reject Read/Export actions for the duration of a
+            // provider read. Only the short render uses the normal action gate.
+            bool changed = await ReadMissingChapterAsync(appearance, ct);
+            await RunWithConditionalRefreshAsync(() => Task.FromResult(changed && Current()));
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error)
+        {
+            if (!Current()) return;
+            _watchPending = false;
+            // Preserve the existing page error handling; never leave an async
+            // click/watch exception unobserved or retry an unclassified failure.
+            await RunWithConditionalRefreshAsync(() => Task.FromException<bool>(error));
+        }
+    }
 
     protected override void OnDisappearing()
     {
