@@ -2732,8 +2732,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             // Never consult the old device-wide selected-runner or play
             // preferences before a real owner-bound Shell has been established.
             if (!IsWorkspaceOwnerInitialized()) return false;
-            await RestoreSelectedWorkspaceAsync(cancellationToken);
-            await SyncShellAsync(cancellationToken);
+            CharacterOverviewState? restored = await RestoreSelectedWorkspaceAsync(cancellationToken);
+            if (restored is not null)
+                await FinalizeShellAsync(syncPresenterContext: false, cancellationToken, restored);
+            else
+                await SyncShellAsync(cancellationToken);
             _ = await TryRefreshWorkspaceAuthorityAsync(State.WorkspaceId, null, cancellationToken);
             if (!IsWorkspaceOwnerInitialized()) return false;
             RestorePlayState();
@@ -7150,9 +7153,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     private async Task FinalizeShellAsync(
         bool syncPresenterContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CharacterOverviewState? expectedState = null)
     {
-        CharacterOverviewState requested = State;
+        CharacterOverviewState requested = expectedState ?? State;
         await _shellSyncGate.WaitAsync(cancellationToken);
         try
         {
@@ -7263,13 +7267,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 #endif
     }
 
-    private async Task RestoreSelectedWorkspaceAsync(CancellationToken cancellationToken)
+    private async Task<CharacterOverviewState?> RestoreSelectedWorkspaceAsync(CancellationToken cancellationToken)
     {
         if (State.Profile is not null && State.WorkspaceId is not null)
         {
-            return;
+            return null;
         }
 
+        OwnerContextStamp? originalOwner = State.Session.OwnerContext;
         string selectedId = Preferences.Default.Get(SelectedWorkspacePreferenceKey, string.Empty);
         CharacterWorkspaceId? workspaceId = State.Session.ActiveWorkspaceId;
         workspaceId ??= State.OpenWorkspaces.FirstOrDefault(workspace =>
@@ -7281,7 +7286,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         workspaceId ??= State.OpenWorkspaces.Count == 1 ? State.OpenWorkspaces[0].Id : null;
         if (workspaceId is null)
         {
-            return;
+            return null;
         }
 
         await _presenter.LoadAsync(workspaceId.Value, cancellationToken);
@@ -7293,11 +7298,33 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             await _presenter.LoadAsync(workspaceId.Value, cancellationToken);
         }
 
-        if (State.Profile is not null)
-        {
-            Preferences.Default.Set(SelectedWorkspacePreferenceKey, workspaceId.Value.Value);
-        }
+        // The concrete presenter's awaited LoadAsync already synchronizes Shell
+        // through the exact owner-bound client. Keep that completed state rather
+        // than rereading the same roster. Other presenters, failed/incomplete
+        // loads and changed owner generations retain the full-sync fallback.
+        // FinalizeShellAsync rechecks this exact state after its gate and writes
+        // the selected-runner preference only under the current owner stamp.
+        CharacterOverviewState restored = State;
+        return _presenter is CharacterOverviewPresenter && _shellPresenter is ShellPresenter
+            && CanReuseRestoredShellContext(originalOwner, workspaceId.Value, restored, _shellPresenter.State)
+            ? restored : null;
     }
+
+    internal static bool CanReuseRestoredShellContext(
+        OwnerContextStamp? originalOwner,
+        CharacterWorkspaceId requestedWorkspace,
+        CharacterOverviewState restored,
+        ShellState shell)
+        => originalOwner is { IsValid: true } owner
+           && restored is { IsBusy: false, Error: null, Profile: not null }
+           && restored.WorkspaceId == requestedWorkspace
+           && restored.DisplayOwnerContext == owner
+           && restored.Session.OwnerContext == owner
+           && restored.Session.ActiveWorkspaceId == requestedWorkspace
+           && shell is { IsBusy: false, Error: null }
+           && shell.OwnerContext == owner
+           && shell.ActiveWorkspaceId == requestedWorkspace
+           && shell.OpenWorkspaces.Any(workspace => workspace.Id == requestedWorkspace);
 
     private void RefreshSurface()
         => _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
