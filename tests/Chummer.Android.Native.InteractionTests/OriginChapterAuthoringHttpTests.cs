@@ -360,12 +360,14 @@ internal static partial class AfterRunAuthorityHarness
 public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTransport
 {
     private OriginChapterAuthoringJob? _previous, _next;
+    public int Reads { get; private set; }
     public int Requests, Acceptances;
     public bool FailAcceptance, CorruptPredecessor;
     public bool LoseRequestResponse;
     public AndroidOriginChapterOutcome? PredecessorReadFailure;
     public Action? AfterPredecessorRead, AfterAcceptance;
     public Action<OriginChapterSource>? BeforeRequest;
+    public Func<Task>? BeforeSuccessorRead;
     public void ResetCounts() { Requests = Acceptances = 0; }
     public void RemoveSuccessor() => _next = null;
     public void Seed(OriginChapterSource source, Chummer.Presentation.OriginBooks.OriginBookProseDraft draft)
@@ -378,17 +380,19 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
             "InitializeAsync" or "RefreshAsync" => Task.CompletedTask,
             _ => base.Invoke(method, args)
         };
-    public Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner, OriginChapterSource source, CancellationToken ct = default)
+    public async Task<AndroidOriginChapterResult> ReadChapterAsync(OwnerContextStamp owner, OriginChapterSource source, CancellationToken ct = default)
     {
+        Reads++;
         var job = _previous?.SourceDigest == OriginChapterSourceIdentity.Digest(source) ? _previous : _next;
         if (ReferenceEquals(job, _previous) && job is not null)
         {
             AfterPredecessorRead?.Invoke();
-            if (PredecessorReadFailure is { } failure) return Task.FromResult(new AndroidOriginChapterResult(failure));
+            if (PredecessorReadFailure is { } failure) return new AndroidOriginChapterResult(failure);
             if (CorruptPredecessor) job = job with { DraftText = "Different unselected prose." };
         }
-        return Task.FromResult(job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
-            : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job));
+        else if (BeforeSuccessorRead is { } pause) await pause();
+        return job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
+            : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job);
     }
     public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
         string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)

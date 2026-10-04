@@ -243,6 +243,130 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS linked-owner Life Modules start, review, commit, save, cold reopen, namespace isolation and ABA rejection");
     }
 
+    internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            var account = DispatchProxy.Create<IAndroidAccountLinkService, OriginSuccessorAccount>();
+            var remote = (OriginSuccessorAccount)account;
+            var output = new LifeBookOutputProbe();
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners, accountService: account, outputDocuments: output);
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Saved book while next chapter waits", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await runtime.Coordinator.SaveAsync();
+            await Task.Run(() => SeedNativeLifeStory(runtime, id));
+            await runtime.Presenter.LoadAsync(id, default);
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            var first = book.Chapters[1];
+            var next = book.Chapters[2];
+            var source = book.AuthoringSource(first);
+            var prose = OriginBookProseDraft.Create(first, book.Locale,
+                Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(source), new string('d', 64),
+                "The complete saved opening. This text must stay readable while the next chapter is still being written.");
+            remote.Seed(source, prose);
+            book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, prose, () => true, default))!;
+            book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
+            var queued = await runtime.Coordinator.SyncOriginChapterAsync(book, next, book.AuthoringSource(next), true, () => true, default);
+            Require(queued.Result.Job?.State == Chummer.Run.Contracts.Community.OriginChapterAuthoringStates.AwaitingAuthoring
+                && queued.Book?.Reading(next)?.AuthoringSource is not null,
+                "The reader fixture needs an accepted full chapter and one existing pending successor.");
+            int requests = remote.Requests, acceptances = remote.Acceptances;
+            var page = new RetainedOriginBookPage(runtime.Coordinator);
+            var window = new Window(new NavigationPage(page));
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            remote.BeforeSuccessorRead = () => { entered.TrySetResult(); return release.Task; };
+            Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            bool visibleDuringRead = false;
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                visibleDuringRead = IssuedElements(page).OfType<Label>().Any(label =>
+                    label.AutomationId == $"origin-retained-chapter-{first.Sequence}" && label.Text == prose.Text)
+                    && !IssuedElements(page).Any(e => e.AutomationId == "origin-book-loading")
+                    && IssuedElements(page).OfType<Button>().Any(b => b.AutomationId == "origin-book-export-epub" && b.IsEnabled);
+            }
+            finally
+            {
+                release.TrySetResult();
+                await appearance.WaitAsync(TimeSpan.FromSeconds(15));
+                remote.BeforeSuccessorRead = null;
+            }
+            Require(visibleDuringRead, "An existing full chapter and its EPUB action remained hidden behind the next chapter's network status read.");
+            long generation = IssuedPageField<long>(page, "_appearanceGeneration");
+            entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            remote.BeforeSuccessorRead = () => { entered.TrySetResult(); return release.Task; };
+            Task poll = page.PollChapterOnceAsync(generation, default);
+            bool exportedDuringRead = false;
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                int activeReads = remote.Reads;
+                await page.PollChapterOnceAsync(generation, default);
+                await page.PollChapterOnceAsync(generation - 1, default);
+                using (var canceled = new CancellationTokenSource())
+                {
+                    canceled.Cancel();
+                    await page.PollChapterOnceAsync(generation, canceled.Token);
+                }
+                Require(remote.Reads == activeReads && !poll.IsCompleted,
+                    "Concurrent, departed or canceled observations duplicated the active chapter read.");
+                var export = IssuedElements(page).OfType<Button>().Single(b => b.AutomationId == "origin-book-export-epub");
+                await ui.BeginAsyncVoid(() => ((IButtonController)export).SendClicked()).WaitAsync(TimeSpan.FromSeconds(10));
+                exportedDuringRead = output.EpubDeliveries == 1 && output.Epub.Length > 0 && !poll.IsCompleted;
+            }
+            finally
+            {
+                release.TrySetResult();
+                await poll.WaitAsync(TimeSpan.FromSeconds(15));
+                remote.BeforeSuccessorRead = null;
+                IssuedPageLifecycle(page, "OnDisappearing");
+            }
+            Require(exportedDuringRead, "A background chapter-status read held the action gate and silently ignored EPUB export.");
+            int departedReads = remote.Reads;
+            await page.PollChapterOnceAsync(generation, default);
+            Require(remote.Reads == departedReads && !IssuedElements(page).Any(e => e is Button or Label),
+                "The departed reader continued private status work or retained book content.");
+            Require(remote.Requests == requests && remote.Acceptances == acceptances && alerts.Titles.Count == 0,
+                "Reading/exporting the saved book generated, accepted or failed an unrelated chapter.");
+            var cold = new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value);
+            Require(cold.Chapters.Single(c => c.ChapterId == first.ChapterId).Selected?.DraftDigest == prose.DraftDigest
+                && cold.Chapters.Single(c => c.ChapterId == next.ChapterId).Selected is null,
+                "The reader changed the accepted or pending chapter during read-only status checks.");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            ui.AssertHealthy();
+            Console.WriteLine("PASS full saved Origin chapter visible during pending status, EPUB usable during poll, no new generation/acceptance or runner mutation");
+            if (smokeDirectory is not null)
+            {
+                // Synthetic offline fixture only, for an isolated emulator app.
+                // Never export a real account store or claim provider execution.
+                Require(Path.IsPathFullyQualified(smokeDirectory) && !Directory.Exists(smokeDirectory),
+                    "Native smoke output must be a fresh absolute directory.");
+                Directory.CreateDirectory(smokeDirectory);
+                foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*.json", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(smokeDirectory, Path.GetRelativePath(runtime.StateDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target);
+                }
+                Console.WriteLine("ORIGIN_READER_SMOKE_WORKSPACE " + id.Value);
+                Console.WriteLine("ORIGIN_READER_SMOKE_READING_DIGEST " + cold.Digest);
+            }
+        });
+    }
+
     internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
     {
         await RunOriginBookCredentialReadContentionAsync(contentRoot);
@@ -353,8 +477,13 @@ internal static partial class AfterRunAuthorityHarness
             var displayedWizard = runtime.Coordinator.State.CreationWizard!;
             string originalWizard = JsonSerializer.Serialize(displayedWizard);
             var moduleBudget = runtime.Coordinator.State.CreationFoundation!.LifeModuleBudget;
+            var technicalDetails = Element<VerticalStackLayout>("creation-wizard-details");
+            var diagnosticContent = technicalDetails.Children.OfType<VerticalStackLayout>().Single();
+            var diagnosticElements = IssuedElements(diagnosticContent).ToHashSet();
             Require(IssuedElements(root).Any(element => element.AutomationId == "creation-life-module-budget")
-                && !IssuedElements(root).OfType<Label>().Any(label => label.Text?.Contains("creation-wizard-budget-authority-unavailable", StringComparison.Ordinal) == true),
+                && !diagnosticContent.IsVisible
+                && !IssuedElements(root).OfType<Label>().Any(label => !diagnosticElements.Contains(label)
+                    && label.Text?.Contains("creation-wizard-budget-authority-unavailable", StringComparison.Ordinal) == true),
                 "The Life Modules landing page still shows unrelated Priority budget failures.");
             Require(Element<Label>("creation-life-module-budget-values").Text == CreationAllocationStrings.Format(
                     "LifeDashboard.Budget", "Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}",
@@ -492,7 +621,10 @@ internal static partial class AfterRunAuthorityHarness
             Require(LifeModuleCompletionPage.ReviewChange(reviewed, englishDelta).Contains("English", StringComparison.Ordinal)
                 && !LifeModuleCompletionPage.ReviewChange(reviewed, englishDelta).Contains("life-module-skill:", StringComparison.Ordinal),
                 "The reader still sees an internal skill identity instead of its exact reviewed name.");
-            var unknownSkill = englishDelta with { TargetId = englishDelta.TargetId + ":different-identity" };
+            // Current Core deltas supply a reviewed TargetName. Clear that name
+            // when testing the legacy identity-only fallback; keeping it would
+            // correctly display the reviewed name without any catalog lookup.
+            var unknownSkill = englishDelta with { TargetId = englishDelta.TargetId + ":different-identity", TargetName = null };
             Require(LifeModuleCompletionPage.ReviewChange(reviewed, unknownSkill).Contains(unknownSkill.TargetId, StringComparison.Ordinal),
                 "A merely similar skill identity received another skill's display name.");
             var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
