@@ -369,6 +369,7 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     public Action? AfterPredecessorRead, AfterAcceptance;
     public Action<OriginChapterSource>? BeforeRequest;
     public Func<Task>? BeforeSuccessorRead;
+    public Func<CancellationToken, Task>? BeforeAcceptance;
     public void ResetCounts() { Requests = Acceptances = 0; }
     public void RemoveSuccessor() => _next = null;
     public void Seed(OriginChapterSource source, Chummer.Presentation.OriginBooks.OriginBookProseDraft draft)
@@ -399,7 +400,7 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
         return job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
             : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job);
     }
-    public Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
+    public async Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
         string providerReceiptDigest, string draftText, bool explicitlyConfirmed, CancellationToken ct = default)
     {
         if (!explicitlyConfirmed || _previous?.SourceDigest != OriginChapterSourceIdentity.Digest(source)
@@ -408,11 +409,12 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
                 + $"source={_previous?.SourceDigest == OriginChapterSourceIdentity.Digest(source)}, "
                 + $"text={_previous?.DraftText == draftText}, receipt={_previous?.ProviderReceiptDigest == providerReceiptDigest}.");
         Acceptances++;
-        if (FailAcceptance) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
+        if (BeforeAcceptance is { } pause) await pause(ct);
+        if (FailAcceptance) return new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true);
         _previous = _previous with { ReaderAcceptedTextDigest = Convert.ToHexStringLower(
             System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(draftText))) };
         AfterAcceptance?.Invoke();
-        return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _previous));
+        return new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, _previous);
     }
     public Task<AndroidOriginChapterResult> RequestChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
         bool externalProcessingConsent, CancellationToken ct = default, OriginChapterPredecessor? previous = null)

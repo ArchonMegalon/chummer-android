@@ -1,5 +1,6 @@
 using System.Globalization;
 using Chummer.Android.Platform;
+using Chummer.Presentation.OriginBooks;
 using Chummer.Run.Contracts.Community;
 
 namespace Chummer.Android.Native;
@@ -15,6 +16,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private string? _notice;
     private readonly Dictionary<string, AndroidOriginChapterResult> _chapterStatus = new(StringComparer.Ordinal);
     private CancellationTokenSource? _pollLifetime;
+    private CancellationTokenSource? _acceptanceLifetime;
     private bool _watchPending;
     private int _readFailures;
     private long? _chapterReadAppearance;
@@ -180,18 +182,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 {
                     var read = NativeTheme.ReadingButton(_copy["Origin.ChapterRead"]);
                     read.AutomationId = $"origin-chapter-read-{chapter.Sequence}";
-                    read.Clicked += async (_, _) => await RunAsync(async () =>
-                    {
-                        bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                            && Coordinator.IsRetainedOriginBookCurrent(book);
-                        if (!Current()) return;
-                        var updated = await Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, Current, default);
-                        if (updated is null || !IsCurrentAppearanceGeneration(appearance)
-                            || !Coordinator.IsRetainedOriginBookCurrent(updated)) return;
-                        _book = updated;
-                        await Coordinator.RecordOriginBookReaderAcceptanceAsync(updated, prose,
-                            () => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, updated), default);
-                    });
+                    read.Clicked += async (_, _) => await ConfirmReadAsync(book, prose, appearance);
                     _body.Add(read);
                 }
                 else
@@ -290,6 +281,49 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         SemanticProperties.SetDescription(progress, _copy["Origin.ReaderProgressStages"]);
         _progress.Add(progress);
         _progress.Add(NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted));
+    }
+
+    private async Task ConfirmReadAsync(RetainedOriginBook book, OriginBookProseDraft prose, long appearance)
+    {
+        RetainedOriginBook? accepted = null;
+        await RunAsync(async () =>
+        {
+            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
+                && Coordinator.IsRetainedOriginBookCurrent(book);
+            if (!Current()) return;
+            var updated = await Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, Current, default);
+            if (updated is null || !IsCurrentAppearanceGeneration(appearance)
+                || !Coordinator.IsRetainedOriginBookCurrent(updated)) return;
+            _book = accepted = updated;
+        });
+        if (accepted is null || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(_book, accepted) || !Coordinator.IsRetainedOriginBookCurrent(accepted)) return;
+
+        // Local explicit reading is durable before this best-effort delivery.
+        // Keep effects, export and Return usable while Hub acknowledges it.
+        // The existing selected-edition outbox reconciles a lost response before
+        // any successor request; navigation must never retry a paid generation.
+        _acceptanceLifetime?.Cancel();
+        var lifetime = new CancellationTokenSource();
+        _acceptanceLifetime = lifetime;
+        bool StillHere() => !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(_book, accepted);
+        try
+        {
+            await Coordinator.RecordOriginBookReaderAcceptanceAsync(accepted, prose, StillHere, lifetime.Token);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error)
+        {
+            if (StillHere())
+                await RunWithConditionalRefreshAsync(() => StillHere()
+                    ? Task.FromException<bool>(error) : Task.FromResult(false));
+        }
+        finally
+        {
+            if (ReferenceEquals(_acceptanceLifetime, lifetime)) _acceptanceLifetime = null;
+            lifetime.Dispose();
+        }
     }
 
     private void AddAccountRoute(RetainedOriginBook book, long appearance)
@@ -525,6 +559,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _acceptanceLifetime?.Cancel(); _acceptanceLifetime = null;
         _pollLifetime?.Cancel(); _pollLifetime = null;
         _sceneLifetime?.Cancel(); _sceneLifetime = null;
         _sceneChecked.Clear(); _sceneStatus.Clear();

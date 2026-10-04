@@ -528,11 +528,43 @@ internal static partial class AfterRunAuthorityHarness
                 && !IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}"),
                 "The native reader truncated the complete chapter or exposed unread bonuses.");
             remote.FailAcceptance = true;
-            await Click($"origin-chapter-read-{chapter.Sequence}");
+            var acceptanceEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var acceptanceRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            CancellationToken acceptanceToken = default;
+            remote.BeforeAcceptance = ct =>
+            {
+                acceptanceToken = ct;
+                acceptanceEntered.TrySetResult();
+                // Model a transport that returns after navigation, even when
+                // cancellation was requested. It must not revive the old page.
+                return acceptanceRelease.Task;
+            };
+            var readButton = IssuedElements(reader).OfType<Button>().Single(e => e.AutomationId == $"origin-chapter-read-{chapter.Sequence}");
+            Task acknowledgment = ui.BeginAsyncVoid(() => ((IButtonController)readButton).SendClicked());
+            try
+            {
+                await acceptanceEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}")
+                    && IssuedElements(reader).OfType<Button>().Any(e => e.AutomationId == "origin-book-export-epub" && e.IsEnabled),
+                    "The durable reading decision and export stayed hidden behind its server acknowledgment.");
+                var back = IssuedElements(reader).OfType<Button>().Single(e => e.AutomationId == "origin-book-return-to-runner");
+                ((IButtonController)back).SendClicked();
+                // Inspect the real navigation stack: headless MAUI has no
+                // platform animation completion to issue the Popped event.
+                await Task.Yield();
+                Require(ReferenceEquals(Current(), decision), "A slow reader acknowledgment blocked returning to the next module.");
+                Leave(reader);
+                Require(acceptanceToken.IsCancellationRequested, "Leaving the reader did not cancel its pending acknowledgment.");
+            }
+            finally
+            {
+                acceptanceRelease.TrySetResult();
+                await acknowledgment.WaitAsync(TimeSpan.FromSeconds(15));
+                remote.BeforeAcceptance = null;
+            }
             Require(remote.Acceptances == 1 && remote.Requests == 0
-                && IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}"),
-                "Explicit reading failed to retain its local decision when remote acknowledgement was unavailable.");
-            await Click("origin-book-return-to-runner");
+                && !IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}"),
+                "A late remote acknowledgment revived a departed reader or generated a chapter.");
             Require(ReferenceEquals(Current(), decision), "Read completion returned to the wrong route.");
             await Appear(decision!);
             Require(ReferenceEquals(Current(), decision)
@@ -547,7 +579,7 @@ internal static partial class AfterRunAuthorityHarness
                 "The reading route mutated or re-generated the character's story.");
             Leave(decision!); Leave(root);
             ui.AssertHealthy();
-            Console.WriteLine("PASS actual Core birth/childhood -> full reader -> explicit read -> next module, durable local acceptance during remote failure, no paid generation");
+            Console.WriteLine("PASS actual Core birth/childhood -> full reader -> explicit read -> next module while acknowledgment is pending, cancellation/late-result isolation, durable local acceptance, no paid generation");
 
             Page Current() => navigation.Navigation.NavigationStack.Last();
             void Lifecycle(Page page, string method) => page.GetType().GetMethod(method,
