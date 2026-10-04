@@ -49,6 +49,7 @@
     <Compile Include="ReputationGestureOwnerRuntimeTests.cs" />
     <Compile Include="OutputOwnerRuntimeTests.cs" />
     <Compile Include="AccountErasureOwnerRuntimeTests.cs" />
+    <Compile Include="RunnerDeletionRuntimeTests.cs" />
     <Compile Include="ReputationNativeRuntimeTests.cs" />
     <Compile Include="CreationMagicNativeRuntimeTests.cs" />
     <Compile Include="SkillsReReviewNativeRuntimeTests.cs" />

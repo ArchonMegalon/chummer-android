@@ -459,7 +459,7 @@ internal static partial class AfterRunAuthorityHarness
         private readonly object? _priorSubscription;
         public List<string> Titles { get; } = [];
         public List<string> Messages { get; } = [];
-        public IssuedPageAlerts(Page page, Window window)
+        public IssuedPageAlerts(Page page, Window window, Action<AlertArguments>? confirm = null)
         {
             _page = page;
             _priorEnabled = ((IVisualElementController)page).IsPlatformEnabled;
@@ -476,6 +476,13 @@ internal static partial class AfterRunAuthorityHarness
             ((IssuedPageAlertTransport)transport).Acknowledge = (source, args) =>
             {
                 Require(ReferenceEquals(source, page), "Unrelated page reached filtered alert handler.");
+                if (!string.IsNullOrEmpty(args.Accept) && confirm is not null)
+                {
+                    Titles.Add(args.Title ?? "");
+                    Messages.Add(args.Message ?? "");
+                    confirm(args);
+                    return;
+                }
                 Require(string.IsNullOrEmpty(args.Accept) && args.Cancel == "OK",
                     "Headless adapter cannot answer confirmation or a non-informational dialog.");
                 Titles.Add(args.Title ?? "");
