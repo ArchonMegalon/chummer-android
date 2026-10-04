@@ -15,6 +15,9 @@ internal static class CreationKarmaCopy
         CharacterCreationMagicResonanceBlockers.StreamRequired => StreamRequired,
         CharacterCreationKarmaTalentCatalog.SourceDisabled => CreationAllocationStrings.Get("Karma.TalentSourceDisabled", "This talent's sourcebook is not enabled for this runner."),
         CharacterCreationKarmaTalentCatalog.UnsupportedSource => CreationAllocationStrings.Get("Karma.TalentUnsupported", "This talent's rules are not supported by the Karma wizard yet. Choose another enabled talent."),
+        CharacterCreationLifeModuleTalentCatalog.RestrictionsRequired => CreationAllocationStrings.Get("LifeCompletion.TalentRestrictionsRequired", "Choose a spell category and a spirit category for this talent, then save and review."),
+        CharacterCreationLifeModuleTalentCatalog.SelectionInvalid => CreationAllocationStrings.Get("LifeCompletion.TalentSelectionInvalid", "Review this talent and its choices using the currently available options."),
+        CharacterCreationLifeModuleResourcesQuote.SelectionRequired => CreationAllocationStrings.Get("LifeCompletion.ResourcesRequired", "Open Resources, choose how much Karma to spend (0 is allowed), then save and review."),
         "creation-skills-native-language-required" => CreationAllocationStrings.Get("Karma.NativeLanguageRequired", "Choose a language under Skills, mark it as your native language, then use that selection in the draft."),
         _ => code
     };

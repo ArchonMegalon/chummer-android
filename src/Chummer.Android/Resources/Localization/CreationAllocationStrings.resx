@@ -814,7 +814,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.Title" xml:space="preserve"><value>Complete Life Modules</value></data>
   <data name="LifeCompletion.Pending" xml:space="preserve"><value>Input changed. Save and review again; the runner has not changed.</value></data>
   <data name="LifeCompletion.Saved" xml:space="preserve"><value>Input draft saved. The runner changes only after final confirmation.</value></data>
-  <data name="LifeCompletion.Help" xml:space="preserve"><value>Your chapters are retained. Review module grants and buy any additional values. Only Core decides costs and whether the complete runner is ready for Career.</value></data>
+  <data name="LifeCompletion.Help" xml:space="preserve"><value>Review your module grants and choose additional allocations. Saved chapters stay attached. Costs and Career readiness are checked before confirmation.</value></data>
+  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Open Resources, choose how much Karma to spend (0 is allowed), then save and review.</value></data>
   <data name="LifeCompletion.Book" xml:space="preserve"><value>Read your book</value></data>
   <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Save inputs and review</value></data>
   <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Review granted values before adding purchases</value></data>
@@ -928,4 +929,9 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Finalization.Method.LifeModules" xml:space="preserve"><value>Life Modules</value></data>
   <data name="Finalization.CashLifestyle" xml:space="preserve"><value>Starting-cash lifestyle</value></data>
   <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Starting-cash dice total</value></data>
+  <data name="LifeCompletion.SpellCategory" xml:space="preserve"><value>Spell category</value></data>
+  <data name="LifeCompletion.SpiritCategory" xml:space="preserve"><value>Spirit category</value></data>
+  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Choose both categories for this talent, then save and review. Nothing is chosen automatically.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Choose a spell category and a spirit category for this talent, then save and review.</value></data>
+  <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Review this talent and its choices using the currently available options.</value></data>
 </root>

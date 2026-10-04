@@ -2995,6 +2995,16 @@ public sealed class BuildPage : NativePageBase
 
     private async Task OpenSr5LifeModuleOriginAsync()
     {
+        // Core owns completion of the saved module sequence. A missing or stale
+        // optional book timeline must not trap an otherwise admitted runner in
+        // Origin.Start's pending-draft conflict. Opening the completion page
+        // reloads current owner-bound Core authority; it does not finalize.
+        if (Coordinator.CanOpenLifeModuleCompletion())
+        {
+            await Navigation.PushAsync(new LifeModuleCompletionPage(Coordinator,
+                () => Navigation.PushAsync(new RetainedOriginBookPage(Coordinator))));
+            return;
+        }
         AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve();
         OriginDossierLifeModulePhoneResult opened =
             await Coordinator.OpenSr5LifeModuleOriginAsync();

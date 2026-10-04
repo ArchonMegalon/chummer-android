@@ -11,6 +11,7 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         program = (ROOT / "src/Chummer.Android/MauiProgram.cs").read_text(encoding="utf-8")
         runtime = (NATIVE / "OriginDossierLifeModulePhoneRuntime.cs").read_text(encoding="utf-8")
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        book = (NATIVE / "RunnerSessionCoordinator.OriginBook.cs").read_text(encoding="utf-8")
 
         # Core's runtime registers the exact-owner service. Android must not
         # shadow it with a local-only decision authority for linked runners.
@@ -35,7 +36,12 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("BoundSourceDigest: checkpoint.BoundSourceDigest", runtime)
         self.assertIn("BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest", runtime)
         self.assertIn("BindCurrentLifeModuleBudgetAsync(original, result)", coordinator)
-        self.assertIn("await Task.Run(() => service.Load(owner, id))", coordinator)
+        budget = coordinator.split("private async Task<OriginDossierLifeModulePhoneResult> BindCurrentLifeModuleBudgetAsync(", 1)[1]
+        budget = budget.split("internal async Task<OriginDossierLifeModulePhoneResult>", 1)[0]
+        self.assertIn("await ReadOriginBookAsync(owner, () => service.Load(owner, id), default)", budget)
+        reader = book.split("private Task<T> ReadOriginBookAsync<T>(", 1)[1].split(";", 1)[0]
+        self.assertIn("androidOwner.RunReadAsync(owner, read, ct)", reader)
+        self.assertIn("Task.Run(read, ct)", reader)
         self.assertIn("foundation.LifeModuleBudget.IsExact", coordinator)
         self.assertIn("foundation.Binding.RawCharacterXmlDigest", coordinator)
         self.assertIn("foundation.Binding.SourceDigest", coordinator)

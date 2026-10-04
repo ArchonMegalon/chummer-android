@@ -203,7 +203,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
 
     private void Overview()
     {
-        Body(LifeCopy("Help", "Your chapters are retained. Review module grants and buy any additional values. Only Core decides costs and whether the complete runner is ready for Career."));
+        Body(LifeCopy("Help", "Review your module grants and choose additional allocations. Saved chapters stay attached. Costs and Career readiness are checked before confirmation."));
         if (_openBook is not null) Button(LifeCopy("Book", "Read your book"), "life-open-book", _openBook);
         foreach (var (step, available) in new[]
         {
@@ -253,13 +253,47 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         foreach (var talent in Quote?.TalentCatalog?.Options ?? [])
         {
             Body(CreationKarmaCopy.Cost(talent.Name, talent.KarmaCost));
-            foreach (string reason in talent.Blockers) Body(reason);
+            foreach (string reason in talent.Blockers) Body(CreationKarmaCopy.Blocker(reason));
             Button(talent.Name, "life-talent-" + talent.OptionId,
                 () => ChangeReview(Input with { TalentSelection = new(talent.OptionId) }), talent.IsEnabled && talent.Blockers.Count == 0);
         }
         if (Input.TalentSelection is { } selected && Quote?.TalentCatalog?.SkillUnlockChoices.TryGetValue(selected.OptionId, out var unlocks) == true)
             foreach (string unlock in unlocks)
                 Button(unlock, "life-talent-unlock-" + unlock, () => ChangeReview(Input with { TalentSelection = selected with { SkillUnlock = unlock } }));
+        if (Input.TalentSelection is not { } selection
+            || Quote?.TalentCatalog?.Options.SingleOrDefault(row => row.OptionId == selection.OptionId)?.Restrictions is not { } restrictions) return;
+
+        Body(LifeCopy("TalentRestrictionsHelp", "Choose both categories for this talent, then save and review. Nothing is chosen automatically."));
+        var spells = restrictions.SpellCategories.ToArray();
+        var spirits = restrictions.SpiritCategories.ToArray();
+        Category(LifeCopy("SpellCategory", "Spell category"), "life-talent-spell-category",
+            spells.Select(row => row.Label).ToArray(), Array.FindIndex(spells, row => row.Value == selection.Restrictions?.SpellCategory),
+            index => Set(spells[index].Value, null));
+        Category(LifeCopy("SpiritCategory", "Spirit category"), "life-talent-spirit-category",
+            spirits.Select(row => row.Label).ToArray(), Array.FindIndex(spirits, row => row.SourceId == selection.Restrictions?.SpiritSourceId),
+            index => Set(null, spirits[index].SourceId));
+        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-talent", Review);
+
+        void Set(string? spell, string? spirit)
+        {
+            if (Input.TalentSelection is not { } current || current.OptionId != selection.OptionId) return;
+            Change(Input with { TalentSelection = current with { Restrictions = new(
+                spell ?? current.Restrictions?.SpellCategory ?? "", spirit ?? current.Restrictions?.SpiritSourceId ?? "") } });
+        }
+        void Category(string title, string id, string[] labels, int selectedIndex, Action<int> changed)
+        {
+            Body(title);
+            long render = _render, appearance = CaptureAppearanceGeneration();
+            var picker = new Picker { Title = title, AutomationId = id, ItemsSource = labels, SelectedIndex = selectedIndex,
+                BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text, TitleColor = NativeTheme.Muted };
+            SemanticProperties.SetDescription(picker, title);
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (Current(render, appearance) && picker.SelectedIndex >= 0 && picker.SelectedIndex < labels.Length)
+                    changed(picker.SelectedIndex);
+            };
+            _body.Add(picker);
+        }
     }
 
     private void Attributes()
