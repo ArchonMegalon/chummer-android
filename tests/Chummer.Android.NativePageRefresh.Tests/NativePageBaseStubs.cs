@@ -59,6 +59,17 @@ namespace Chummer.Android.Native
         public FakeCoordinatorState State { get; } = new();
 
         public Task InitializeAsync() => _initialize();
+
+        public Task RefreshLinkedDataAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
+
+    public static class PhoneStrings
+    {
+        public static string Get(string key, string fallback) => fallback;
     }
 
     public static class NativeTheme

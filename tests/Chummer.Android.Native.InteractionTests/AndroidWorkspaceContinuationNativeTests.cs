@@ -48,31 +48,53 @@ internal static partial class AfterRunAuthorityHarness
         {
             await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
             fixture.Account.ForbiddenContext = ui;
-            foreach (string ending in new[] { "cancel", "departure", "complete" })
+            foreach (string entry in new[] { "runners", "campaign-button", "campaign-toolbar" })
+            foreach (string ending in entry == "runners"
+                ? new[] { "cancel", "departure", "complete" }
+                : new[] { "cancel", "other-control", "departure", "complete" })
             {
-                var page = new RunnersPage(fixture.Runtime.Coordinator);
+                NativePageBase page = entry == "runners"
+                    ? new RunnersPage(fixture.Runtime.Coordinator)
+                    : new CampaignPage(fixture.Runtime.Coordinator);
                 await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
                 var button = IssuedElements(page).OfType<Button>()
-                    .Single(item => item.AutomationId == "home-load-online-runners");
+                    .Single(item => entry == "runners"
+                        ? item.AutomationId == "home-load-online-runners"
+                        : item.Text == "Load groups");
+                ToolbarItem? toolbar = page.ToolbarItems.SingleOrDefault();
                 string originalLabel = button.Text;
+                string? originalToolbarLabel = toolbar?.Text;
+                void TapButton() => ((IButtonController)button).SendClicked();
+                void TapToolbar() => toolbar!.Command.Execute(null);
+                Action start = entry == "campaign-toolbar" ? TapToolbar : TapButton;
                 var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 fixture.Account.ListEntered = entered;
                 fixture.Account.ReleaseList = release;
                 int groups = fixture.Account.SignedGroupLists;
-                Task load = ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Task load = ui.BeginAsyncVoid(start);
                 try
                 {
                     await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     Require(fixture.Account.UiReads == 0, "Manual account refresh performed credential/HTTP work on the UI context.");
                     Require(button.IsEnabled && button.Text.Contains("Cancel", StringComparison.Ordinal),
                         "An in-flight account load has no enabled cancellation affordance.");
-                    if (ending == "cancel") ((IButtonController)button).SendClicked();
+                    Require(toolbar is null || toolbar.IsEnabled
+                        && toolbar.Text.Contains("Cancel", StringComparison.Ordinal),
+                        "Campaign toolbar does not expose the same cancel action as its page button.");
+                    if (ending == "cancel") start();
+                    else if (ending == "other-control")
+                    {
+                        if (entry == "campaign-toolbar") TapButton();
+                        else TapToolbar();
+                    }
                     else if (ending == "departure") IssuedPageLifecycle(page, "OnDisappearing");
                     else release.TrySetResult();
                     await load.WaitAsync(TimeSpan.FromSeconds(5));
                     Require(button.Text == originalLabel && button.IsEnabled,
                         "The account button stayed loading after completion/cancellation/departure.");
+                    Require(toolbar is null || toolbar.Text == originalToolbarLabel && toolbar.IsEnabled,
+                        "Campaign toolbar stayed loading after completion/cancellation/departure.");
                     Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" ? 1 : 0),
                         "A canceled or departed load dispatched follow-on account requests.");
                     bool actionRan = false;
@@ -86,7 +108,7 @@ internal static partial class AfterRunAuthorityHarness
                     await load.WaitAsync(TimeSpan.FromSeconds(5));
                     IssuedPageLifecycle(page, "OnDisappearing");
                 }
-                Console.WriteLine("PASS actual MAUI account loading: " + ending);
+                Console.WriteLine("PASS actual MAUI account loading: " + entry + "/" + ending);
             }
         });
     }
