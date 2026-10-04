@@ -121,6 +121,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunOriginReaderLocalTextAsync(args[1], automatic: true);
             return;
         }
+        if (args.Length is 2 or 3 && args[0] == "--origin-reader-next-module-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginReaderNextModuleAsync(args[1], args.Length == 3 ? args[2] : null);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--life-module-linked-owner-content-root")
         {
             await AfterRunAuthorityHarness.RunLifeModuleLinkedOwnerStartAsync(args[1]);

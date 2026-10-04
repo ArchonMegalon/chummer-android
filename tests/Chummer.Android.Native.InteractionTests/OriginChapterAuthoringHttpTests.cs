@@ -404,7 +404,9 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     {
         if (!explicitlyConfirmed || _previous?.SourceDigest != OriginChapterSourceIdentity.Digest(source)
             || _previous.DraftText != draftText || _previous.ProviderReceiptDigest != providerReceiptDigest)
-            throw new InvalidOperationException("Wrong recovered acceptance.");
+            throw new InvalidOperationException($"Wrong recovered acceptance: confirmed={explicitlyConfirmed}, "
+                + $"source={_previous?.SourceDigest == OriginChapterSourceIdentity.Digest(source)}, "
+                + $"text={_previous?.DraftText == draftText}, receipt={_previous?.ProviderReceiptDigest == providerReceiptDigest}.");
         Acceptances++;
         if (FailAcceptance) return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
         _previous = _previous with { ReaderAcceptedTextDigest = Convert.ToHexStringLower(

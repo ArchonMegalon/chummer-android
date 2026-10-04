@@ -447,6 +447,129 @@ internal static partial class AfterRunAuthorityHarness
         });
     }
 
+    internal static async Task RunOriginReaderNextModuleAsync(string contentRoot, string? smokeDirectory = null)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            // The real Android host always supplies an app locale; the
+            // isolated Linux test process otherwise starts invariant.
+            CultureInfo.CurrentUICulture = new("de-DE");
+            var owners = new ControlledLinkedOwner();
+            var account = DispatchProxy.Create<IAndroidAccountLinkService, OriginSuccessorAccount>();
+            var remote = (OriginSuccessorAccount)account;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners, accountService: account,
+                lifeCompletionDecorator: actual => actual);
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Chapter to next Life Module", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await runtime.Coordinator.SaveAsync();
+            // Only birth and childhood are committed. Teen years must wait
+            // for the full opening chapter, not a finished allocation fixture.
+            await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 2));
+            await runtime.Presenter.LoadAsync(id, default);
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            var chapter = book.Chapters.Single(c => !book.IsOpeningSetup(c));
+            var source = book.AuthoringSource(chapter);
+            string text = string.Join("\n\n", Enumerable.Range(1, 60).Select(index =>
+                $"Scene {index}. Mara remembered the rain over Renraku's courtyard. She and her friend had spent the afternoon repairing a broken radio, listening for a voice beyond the corporate walls. Tomorrow, she would have to choose where to go."))
+                + "\n\nEnd of the complete childhood chapter.";
+            var prose = OriginBookProseDraft.Create(chapter, book.Locale,
+                Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(source), new string('e', 64), text);
+            remote.Seed(source, prose);
+            var received = await runtime.Coordinator.SyncOriginChapterAsync(book, chapter, source,
+                consentToCreate: false, () => true, default, reconcileReaderAcceptance: false);
+            Require(received.Book?.Reading(chapter)?.AuthoringSource is not null && remote.Requests == 0
+                && remote.Acceptances == 0, "The completed chapter read did not retain its exact source without a new request.");
+            book = received.Book!;
+            Require(!book.HasReadCurrentStory, "Staged prose unexpectedly unlocked the next module.");
+            if (smokeDirectory is not null)
+            {
+                Require(Path.IsPathFullyQualified(smokeDirectory) && !Directory.Exists(smokeDirectory),
+                    "Native fixture output must be a fresh absolute directory.");
+                Directory.CreateDirectory(smokeDirectory);
+                foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*.json", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(smokeDirectory, Path.GetRelativePath(runtime.StateDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target);
+                }
+                Console.WriteLine("ORIGIN_READER_SMOKE_WORKSPACE " + id.Value);
+            }
+            var root = new BuildPage(runtime.Coordinator);
+            ((ScrollView)root.Content!).ScrollToRequested += (_, _) => ((ScrollView)root.Content!).SendScrollFinished();
+            var navigation = new NavigationPage(root);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(root, window);
+            await alerts.PreflightAsync();
+            await Appear(root);
+            Require(runtime.Coordinator.CanOpenSr5LifeModuleOrigin(), "The saved childhood fixture cannot continue through the real Origin runtime.");
+            Require(!IssuedElements(root).Any(e => e.AutomationId == "creation-life-module-budget"),
+                "Unread module bonuses were shown before the chapter.");
+            await Click("creation-life-module-continue");
+            var decision = navigation.Navigation.NavigationStack.OfType<OriginDossierLifeModuleDecisionPage>().SingleOrDefault();
+            Require(decision is not null, "Continue did not open the current Life Modules decision: "
+                + string.Join(" -> ", navigation.Navigation.NavigationStack.Select(p => p.GetType().Name))
+                + "; " + string.Join("; ", alerts.Messages));
+            if (ReferenceEquals(Current(), decision)) await Appear(decision!);
+            Require(Current() is RetainedOriginBookPage
+                && !IssuedElements(decision!).Any(e => e.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true),
+                "The real decision route offered the next module before leading to the unread full chapter.");
+            Leave(decision!);
+            var reader = Current();
+            await Appear(reader);
+            Require(IssuedElements(reader).OfType<Label>().Single(e => e.AutomationId == $"origin-retained-chapter-{chapter.Sequence}").Text == text
+                && !IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}"),
+                "The native reader truncated the complete chapter or exposed unread bonuses.");
+            remote.FailAcceptance = true;
+            await Click($"origin-chapter-read-{chapter.Sequence}");
+            Require(remote.Acceptances == 1 && remote.Requests == 0
+                && IssuedElements(reader).Any(e => e.AutomationId == $"origin-read-chapter-effects-{chapter.Sequence}"),
+                "Explicit reading failed to retain its local decision when remote acknowledgement was unavailable.");
+            await Click("origin-book-return-to-runner");
+            Require(ReferenceEquals(Current(), decision), "Read completion returned to the wrong route.");
+            await Appear(decision!);
+            Require(ReferenceEquals(Current(), decision)
+                && IssuedElements(decision).OfType<Button>().Any(e => e.IsEnabled
+                    && e.AutomationId?.StartsWith("origin-life-choice-", StringComparison.Ordinal) == true),
+                "Returning from the complete chapter did not unlock the real next Life Modules choices.");
+            var cold = new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value);
+            Require(cold.Chapters.Single().Selected?.Text == text && cold.Chapters.Single().Pending is null,
+                "Reading confirmation did not survive a fresh disk read.");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            Require(alerts.Titles.Count == 0 && remote.Requests == 0 && remote.Acceptances == 1,
+                "The reading route mutated or re-generated the character's story.");
+            Leave(decision!); Leave(root);
+            ui.AssertHealthy();
+            Console.WriteLine("PASS actual Core birth/childhood -> full reader -> explicit read -> next module, durable local acceptance during remote failure, no paid generation");
+
+            Page Current() => navigation.Navigation.NavigationStack.Last();
+            void Lifecycle(Page page, string method) => page.GetType().GetMethod(method,
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                binder: null, types: Type.EmptyTypes, modifiers: null)!.Invoke(page, null);
+            void Leave(Page page) => Lifecycle(page, "OnDisappearing");
+            Task Appear(Page page) => page is NativePageBase native && IssuedPageField<int>(native, "_subscribed") != 0
+                ? Task.CompletedTask : ui.BeginAsyncVoid(() => Lifecycle(page, "OnAppearing"))
+                    .WaitAsync(TimeSpan.FromSeconds(30));
+            async Task Click(string key)
+            {
+                var page = Current();
+                var button = IssuedElements(page).OfType<Button>().Single(e => e.AutomationId == key);
+                Require(button.IsEnabled, "Disabled reading-route action: " + key);
+                using var actionAlerts = new IssuedPageAlerts(page, window);
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked()).WaitAsync(TimeSpan.FromSeconds(30));
+                Require(actionAlerts.Titles.Count == 0, "Reading-route action failed: " + key + ": " + string.Join("; ", actionAlerts.Messages));
+                if (!ReferenceEquals(page, Current())) Leave(page);
+            }
+        });
+    }
+
     internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
     {
         await RunOriginBookCredentialReadContentionAsync(contentRoot);
@@ -1974,7 +2097,7 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS book read lease: cancellation while excluded, post-wait owner ABA rejection, non-reentrancy and no network");
     }
 
-    private static void SeedNativeLifeStory(NativeRewardRuntime runtime, CharacterWorkspaceId id)
+    private static void SeedNativeLifeStory(NativeRewardRuntime runtime, CharacterWorkspaceId id, int? stopAfterDecisions = null)
     {
         var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(
             new CharacterCreationFoundationLifeModuleDecisionAuthority(
@@ -1986,7 +2109,9 @@ internal static partial class AfterRunAuthorityHarness
         var checkpoint = start.Value!;
         string[] modules = ["83c132b5-fcf5-4a43-b9de-6c8ab206a586", "924ccfd0-136c-4385-94fe-a8d7be2eb7ed",
             "15bd4283-f287-4be7-b174-9e5ab97bda1a", "5a2eee69-cedb-403e-9649-fdc9a1377374", "47bf63cf-9a2a-4008-b455-c8ab68add581"];
-        for (int index = 0; index <= modules.Length; index++)
+        int decisions = stopAfterDecisions ?? modules.Length + 1;
+        Require(decisions > 0 && decisions <= modules.Length + 1, "Invalid story fixture length.");
+        for (int index = 0; index < decisions; index++)
         {
             var choices = checkpoint.Projection.CurrentTurn.LegalChoices;
             var choice = index == modules.Length ? choices.Single(row => row.ChoiceId == "finish-life-module-selection")
@@ -2002,7 +2127,8 @@ internal static partial class AfterRunAuthorityHarness
             Require(accepted.Value is not null, "Story confirmation failed: " + string.Join(", ", accepted.Blockers));
             checkpoint = accepted.Value!.Checkpoint;
         }
-        Require(checkpoint.Projection.CurrentTurn.IsTerminal && checkpoint.Projection.VisibleChapters.Count == modules.Length + 1,
+        Require(checkpoint.Projection.CurrentTurn.IsTerminal == (decisions == modules.Length + 1)
+            && checkpoint.Projection.VisibleChapters.Count == decisions,
             "Story setup did not retain every confirmed chapter.");
         // Match the phone runtime's durable timeline, so opening the real Build
         // page restores the accepted story rather than inventing a new one.
