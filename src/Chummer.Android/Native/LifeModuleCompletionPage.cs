@@ -416,16 +416,18 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             if (source.Kind == CharacterCreationSkillKinds.Knowledge)
                 Flag(CreationKarmaCopy.KnowledgeLevels, "life-specialization-knowledge", edit.SpecializationPayment == CharacterCreationKarmaSpecializationPayments.KnowledgePoint,
                     value => edit = edit with { SpecializationPayment = value ? CharacterCreationKarmaSpecializationPayments.KnowledgePoint : CharacterCreationKarmaSpecializationPayments.Karma });
-            Button(CreationKarmaCopy.Remove, "life-remove-specialization", () => ChangeReview(Input with
-            { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit with { SpecializationOptionId = null, SpecializationPayment = null }).ToArray() } }));
+            Button(LifeCopy("RemoveSpecialization", "Remove specialization"), "life-remove-specialization", () => ChangeReview(Input with
+            { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit with { SpecializationOptionId = null, SpecializationPayment = null }).ToArray() } }), multiline: true);
         }
         Button(CreationKarmaCopy.UseSelection, "life-use-skill", async () =>
         {
             Change(Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit).ToArray() } });
             await Review(); if (_session.Ready) await Navigation.PopAsync();
         });
-        Button(CreationKarmaCopy.Remove, "life-remove-skill", async () =>
-        { Change(Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).ToArray() } }); await Review(); if (_session.Ready) await Navigation.PopAsync(); }, original is not null);
+        if (original is not null)
+            Body(LifeCopy("RemoveSkillHelp", "Only your added choices for this skill are removed. Life Module grants stay."), "life-remove-skill-help");
+        Button(LifeCopy("RemoveSkill", "Remove skill choices"), "life-remove-skill", async () =>
+        { Change(Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).ToArray() } }); await Review(); if (_session.Ready) await Navigation.PopAsync(); }, original is not null, multiline: true);
     }
 
     private void Group()

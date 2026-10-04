@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using Chummer.Android.Native;
@@ -125,6 +126,7 @@ internal static partial class AfterRunAuthorityHarness
             await Session().ReviewAsync(default, () => true);
             Require(!IssuedElements(Current()).OfType<Switch>().Any(x => x.AutomationId == "life-specialization-knowledge"),
                 "An active-skill specialization exposes the invalid knowledge-point payment choice.");
+            AssertRemovalCopy();
             await Click("life-remove-specialization");
             Require(Session().Input!.SkillSelection!.Skills.Single(x => x.SourceSkillId == ordinary.SourceSkillId)
                 is { SpecializationOptionId: null, SpecializationPayment: null, KarmaLevels: 1 },
@@ -149,6 +151,32 @@ internal static partial class AfterRunAuthorityHarness
             await Appear();
             Require(Session().CanConfirm && JsonSerializer.Serialize(Session().Input) == specializedInputs,
                 "A fresh completion session lost the specialization payments.");
+            await Click("life-open-skills");
+            await OpenSkill(knowledge.Name, knowledge.SourceSkillId);
+            AssertRemovalCopy();
+            await Back();
+            await OpenSkill(ordinary.Name, ordinary.SourceSkillId);
+            var retainedChoices = Session().Input!.SkillSelection!.Skills.Where(x => x.SourceSkillId != ordinary.SourceSkillId).ToArray();
+            await Click("life-remove-skill");
+            Require(Session().Input!.SkillSelection!.Skills.SequenceEqual(retainedChoices)
+                && JsonSerializer.Serialize(files.Get(id).Value!) == originalRunner,
+                "Removing this skill's added choices changed another choice or the module-granted runner.");
+            await Back();
+            string removedInputs = JsonSerializer.Serialize(Session().Input);
+            IssuedPageLifecycle(Current(), "OnDisappearing");
+            await navigation.PushAsync(new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory)), false);
+            await Appear();
+            Require(Session().CanConfirm && JsonSerializer.Serialize(Session().Input) == removedInputs,
+                "Cold draft reopen restored removed choices or lost a retained skill.");
+            await Click("life-open-skills");
+            await OpenSkill(ordinary.Name, ordinary.SourceSkillId);
+            Require(!Element<Button>("life-remove-skill").IsEnabled,
+                "An absent added skill allocation still offered removal of module grants.");
+            Element<Stepper>("life-skill-levels").Value = 1;
+            await Click("life-specialization-" + ordinarySpec.OptionId);
+            await Click("life-use-skill");
+            await Back();
+            Console.WriteLine("PASS Life Modules removal: distinct English/German wrapping labels; specialization preserves rating; skill removal preserves all other choices/module runner; cold removal reopen and re-add");
             Console.WriteLine("PASS Life Modules specialization payments: Core rejects active knowledge payment; active UI excludes it; removal retained; knowledge payment accepted; fresh draft reopen");
             if (Environment.GetEnvironmentVariable("CHUMMER_LIFE_EXOTIC_SMOKE_DIRECTORY") is { Length: > 0 } export)
             {
@@ -184,6 +212,35 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Current())!;
             T Element<T>(string key) where T : Element => IssuedElements(Current()).OfType<T>().Single(x => x.AutomationId == key);
             CharacterCreationKarmaSkillAllocation[] Allocations() => Session().Input!.SkillSelection!.Skills.Where(x => x.SourceSkillId == source.SourceSkillId).ToArray();
+            void AssertRemovalCopy()
+            {
+                var previousCulture = CultureInfo.CurrentUICulture;
+                try
+                {
+                    foreach (var (culture, specializationText, skillText, help) in new[]
+                    {
+                        ("en-US", "Remove specialization", "Remove skill choices", "Only your added choices for this skill are removed. Life Module grants stay."),
+                        ("de-DE", "Spezialisierung entfernen", "Fertigkeitsauswahl entfernen", "Nur deine zusätzliche Auswahl für diese Fertigkeit wird entfernt. Vorteile aus Lebensmodulen bleiben erhalten.")
+                    })
+                    {
+                        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                        typeof(LifeModuleCompletionPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Current(), null);
+                        var specialization = Element<Button>("life-remove-specialization");
+                        var skill = Element<Button>("life-remove-skill");
+                        Require(specialization.Text == specializationText && skill.Text == skillText
+                            && Element<Label>("life-remove-skill-help").Text == help,
+                            "Skill and specialization removal do not clearly identify their different scope in " + culture + ".");
+                        Require(new[] { specialization, skill }.All(button => button.LineBreakMode == LineBreakMode.WordWrap
+                            && button.HeightRequest == -1 && button.MinimumHeightRequest >= 44),
+                            "Localized removal controls can clip at larger font sizes.");
+                    }
+                }
+                finally
+                {
+                    CultureInfo.CurrentUICulture = previousCulture;
+                    typeof(LifeModuleCompletionPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Current(), null);
+                }
+            }
             void AssertAllocations(int first, int second) => Require(Allocations().Length == 2
                 && Allocations().Single(x => x.SpecializationOptionId == variants[0].OptionId).KarmaLevels == first
                 && Allocations().Single(x => x.SpecializationOptionId == variants[1].OptionId).KarmaLevels == second,
