@@ -65,10 +65,131 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunInitialPhoneRouteCasesAsync(string contentRoot)
     {
         RunInitialPhoneRoutePolicyCases();
+        await RunStartupShellReuseAsync(contentRoot);
         await RunDelayedInitialPhoneRouteCaseAsync(contentRoot, navigateAway: false);
         await RunDelayedInitialPhoneRouteCaseAsync(contentRoot, navigateAway: true);
         await RunUnknownRecoveringInitialPhoneRouteCaseAsync(contentRoot);
         await RunEmptyAndUnknownInitialPhoneRouteCasesAsync(contentRoot);
+    }
+
+    public static async Task RunStartupShellReuseAsync(string contentRoot)
+    {
+        foreach (bool created in new[] { false, true })
+        {
+            int rosterReads = 0;
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                beforeShellWorkspaceList: () => Interlocked.Increment(ref rosterReads));
+            var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument($"""
+                <character><name>Cold restore fixture</name><gameedition>SR5</gameedition>
+                <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+                <buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion>
+                <appversion>5.225.0</appversion><created>{created}</created><karma>30</karma><nuyen>1000</nuyen>
+                <improvements/><contacts/><expenses/><notes>Restoration must not edit this.</notes></character>
+                """, "sr5"), default);
+            Require((await runtime.Client.SaveAsync(imported.Id, default)).Success, "Cold fixture did not save.");
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            string before = JsonSerializer.Serialize(store.Get(imported.Id).Value!);
+            Require(runtime.Presenter.State.Profile is null, "Cold fixture accidentally initialized its presenter.");
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            await runtime.Coordinator.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            var state = runtime.Coordinator.State;
+            Console.WriteLine($"Cold restore created={created}: shell roster reads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
+            Require(state is { IsBusy: false, Error: null, Profile: not null }
+                && state.Profile.Created == created && state.WorkspaceId == imported.Id
+                && runtime.Shell.State.ActiveWorkspaceId == imported.Id
+                && runtime.Shell.State.OwnerContext == state.DisplayOwnerContext
+                && state.Session.OwnerContext == state.DisplayOwnerContext
+                && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Ready,
+                "Cold restore lost its exact owner, runner, method or ready route.");
+            Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
+                "Startup shell reuse changed the persisted runner.");
+            Require(rosterReads == 1,
+                $"Cold restore repeated the presenter's completed shell roster read: {rosterReads} reads.");
+            await runtime.Coordinator.InitializeAsync();
+            Require(rosterReads == 1, "Already initialized startup repeated its roster read.");
+            var owner = state.DisplayOwnerContext!.Value;
+            var shell = runtime.Shell.State;
+            Require(RunnerSessionCoordinator.CanReuseRestoredShellContext(owner, imported.Id, state, shell),
+                "Completed exact startup did not admit reuse.");
+            foreach (var invalid in new[]
+            {
+                state with { IsBusy = true }, state with { Error = "Incomplete load" },
+                state with { Profile = null }, state with { WorkspaceId = null },
+                state with { DisplayOwnerContext = null },
+                state with { DisplayOwnerContext = new OwnerContextStamp(owner.Owner,
+                    owner.AuthorityInstanceId, owner.TransitionRevision + 2) }
+            })
+                Require(!RunnerSessionCoordinator.CanReuseRestoredShellContext(owner, imported.Id, invalid, shell),
+                    "Incomplete or owner-ABA display incorrectly skipped Shell synchronization.");
+            foreach (var invalid in new[]
+            {
+                shell with { IsBusy = true }, shell with { Error = "Incomplete Shell" },
+                shell with { ActiveWorkspaceId = null }, shell with { OpenWorkspaces = [] },
+                shell with { OwnerContext = null },
+                shell with { OwnerContext = new OwnerContextStamp(owner.Owner,
+                    owner.AuthorityInstanceId, owner.TransitionRevision + 2) }
+            })
+                Require(!RunnerSessionCoordinator.CanReuseRestoredShellContext(owner, imported.Id, state, invalid),
+                    "Incomplete or owner-ABA Shell incorrectly skipped synchronization.");
+            Require(!RunnerSessionCoordinator.CanReuseRestoredShellContext(null, imported.Id, state, shell),
+                "Unbound startup invented completed owner authority.");
+            var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_shellSyncGate",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+            await gate.WaitAsync();
+            Task retained;
+            const string preferenceKey = "chummer.android.selected-workspace.v1";
+            try
+            {
+                retained = (Task)typeof(RunnerSessionCoordinator).GetMethod("FinalizeShellAsync",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(runtime.Coordinator,
+                    [false, CancellationToken.None, state])!;
+                Require(!retained.IsCompleted, "Retained startup refresh did not wait for Shell admission.");
+                await runtime.Presenter.LoadAsync(imported.Id, default);
+                Require(!ReferenceEquals(runtime.Coordinator.State, state), "Reload did not replace the display.");
+                runtime.Settings.Set(preferenceKey, "newer-selection");
+            }
+            finally { gate.Release(); }
+            await retained;
+            Require(runtime.Settings.Get(preferenceKey, string.Empty) == "newer-selection",
+                "Queued retained refresh overwrote a newer selection after display replacement.");
+            Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
+                "Retained refresh/reload changed the saved runner.");
+            Console.WriteLine("PASS cold runner restore reuses completed owner-bound shell synchronization without mutation");
+        }
+        await RunStartupShellFailureFallbackAsync(contentRoot);
+    }
+
+    private static async Task RunStartupShellFailureFallbackAsync(string contentRoot)
+    {
+        int rosterReads = 0;
+        await using var runtime = new NativeRewardRuntime(contentRoot, beforeShellWorkspaceList: () =>
+        {
+            Interlocked.Increment(ref rosterReads);
+            throw new IOException("Deliberate startup Shell read failure.");
+        });
+        var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument("""
+            <character><name>Failed startup fixture</name><gameedition>SR5</gameedition>
+            <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+            <buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion>
+            <appversion>5.225.0</appversion><created>False</created>
+            <karma>30</karma><nuyen>1000</nuyen><improvements/><contacts/><expenses/></character>
+            """, "sr5"), default);
+        Require((await runtime.Client.SaveAsync(imported.Id, default)).Success, "Failed-startup fixture did not save.");
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        string before = JsonSerializer.Serialize(store.Get(imported.Id).Value!);
+        bool failedClosed = false;
+        try { await runtime.Coordinator.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(20)); }
+        catch (IOException error) when (error.Message == "Deliberate startup Shell read failure.")
+        {
+            failedClosed = true;
+        }
+        Require(failedClosed && rosterReads == 2
+            && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind != PhoneInitialRouteReadinessKind.Ready,
+            "Failed presenter synchronization was reused or exposed a ready runner.");
+        Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
+            "Failed startup synchronization changed saved bytes.");
+        Console.WriteLine("PASS real failed presenter Shell read retains full sync and fail-closed startup without mutation");
     }
 
     private static HomePage RenderAccountHome(NativeRewardRuntime runtime)
