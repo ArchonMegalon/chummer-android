@@ -934,4 +934,7 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Choose both categories for this talent, then save and review. Nothing is chosen automatically.</value></data>
   <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Choose a spell category and a spirit category for this talent, then save and review.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Review this talent and its choices using the currently available options.</value></data>
+  <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Remove specialization</value></data>
+  <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Remove skill choices</value></data>
+  <data name="LifeCompletion.RemoveSkillHelp" xml:space="preserve"><value>Only your added choices for this skill are removed. Life Module grants stay.</value></data>
 </root>

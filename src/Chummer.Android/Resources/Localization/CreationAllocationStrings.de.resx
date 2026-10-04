@@ -934,4 +934,7 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Wähle beide Kategorien für dieses Talent und speichere zur Prüfung. Es wird nichts automatisch ausgewählt.</value></data>
   <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Wähle eine Zauber- und eine Geisterkategorie für dieses Talent und speichere zur Prüfung.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Prüfe dieses Talent und seine Auswahl anhand der aktuell verfügbaren Optionen.</value></data>
+  <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Spezialisierung entfernen</value></data>
+  <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Fertigkeitsauswahl entfernen</value></data>
+  <data name="LifeCompletion.RemoveSkillHelp" xml:space="preserve"><value>Nur deine zusätzliche Auswahl für diese Fertigkeit wird entfernt. Vorteile aus Lebensmodulen bleiben erhalten.</value></data>
 </root>
