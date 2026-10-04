@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 96 is the latest [observed Internal availability](../play/evidence/preview96-internal-observation.md),
+Preview 97 is the latest [observed Internal availability](../play/evidence/preview97-internal-observation.md),
+confirmed on 4 October at 16:02 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Account loading now remains cancelable, runs the whole read chain off the UI
+context and uses one total read budget. Local runners and the last complete
+catalog are retained on failed/canceled reads. Focused actual-MAUI synthetic
+button/timeout/ownership/recovery tests passed; no Android-device smoke or live
+authenticated refresh is claimed. **Physical Play97 installation/update is
+unverified.** The observed Hub grant-authority503 cause remains unresolved.
+Full SR5/Origin and general-beta completion are not established.
+
+Preview 96's [observed Internal availability](../play/evidence/preview96-internal-observation.md),
 confirmed on 4 October at 15:12 Europe/Vienna (release time 15:11). Its exact
 local ARM64 AAB was separately signed with the existing upload key and independently
 verified. Runner-list deletion now requires a named, local-only confirmation;
