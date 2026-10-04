@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 100 is the latest [observed Internal availability](../play/evidence/preview100-internal-observation.md),
+Preview 101 is the latest [observed Internal availability](../play/evidence/preview101-internal-observation.md),
+confirmed on 4 October at 20:44 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Life Modules active-skill specializations no longer offer invalid knowledge-point
+payment; knowledge-skill payment and active specialization removal remain.
+Focused actual-MAUI/Core and synthetic API36 payment/save/new-process cold-reopen
+checks passed; unchanged behavior results are reused for the version-only delta.
+**Physical Play101 installation/update and live account refresh are unverified.**
+This is not new native Career finalization, full SR5/Origin, performance clearance
+or general-beta completion. The historical Hub503 cause remains unresolved.
+
+Preview 100's [observed Internal availability](../play/evidence/preview100-internal-observation.md),
 confirmed on 4 October at approximately 19:31 Europe/Vienna. Its exact local
 ARM64 AAB was separately signed with the existing upload key and independently
 verified. Early account-recovery reads and credential-queue waits now honor
