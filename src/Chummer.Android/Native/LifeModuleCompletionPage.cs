@@ -413,8 +413,9 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             });
         if (!source.IsExotic && edit.SpecializationOptionId is not null)
         {
-            Flag(CreationKarmaCopy.KnowledgeLevels, "life-specialization-knowledge", edit.SpecializationPayment == CharacterCreationKarmaSpecializationPayments.KnowledgePoint,
-                value => edit = edit with { SpecializationPayment = value ? CharacterCreationKarmaSpecializationPayments.KnowledgePoint : CharacterCreationKarmaSpecializationPayments.Karma });
+            if (source.Kind == CharacterCreationSkillKinds.Knowledge)
+                Flag(CreationKarmaCopy.KnowledgeLevels, "life-specialization-knowledge", edit.SpecializationPayment == CharacterCreationKarmaSpecializationPayments.KnowledgePoint,
+                    value => edit = edit with { SpecializationPayment = value ? CharacterCreationKarmaSpecializationPayments.KnowledgePoint : CharacterCreationKarmaSpecializationPayments.Karma });
             Button(CreationKarmaCopy.Remove, "life-remove-specialization", () => ChangeReview(Input with
             { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit with { SpecializationOptionId = null, SpecializationPayment = null }).ToArray() } }));
         }

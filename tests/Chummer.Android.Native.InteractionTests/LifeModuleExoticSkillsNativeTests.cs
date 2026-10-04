@@ -100,6 +100,56 @@ internal static partial class AfterRunAuthorityHarness
             var quoted = Session().Preview!.SkillsQuote!.Skills.Where(x => x.Allocation.SourceSkillId == source.SourceSkillId).ToArray();
             Require(quoted.Length == 2 && quoted.All(x => x.Allocation.SpecializationPayment == CharacterCreationKarmaSpecializationPayments.ExoticIdentity),
                 "Core did not quote both exact exotic identities independently.");
+            // Ordinary active specializations cannot spend the knowledge pool.
+            // Exercise the real controls and Core quote, including the valid
+            // knowledge-skill alternative and removal of an active specialization.
+            var ordinary = Session().Preview!.SkillsCatalog!.ActiveSkills.First(x => !x.IsExotic
+                && x.Specializations.Any(s => !s.Name.Contains('[', StringComparison.Ordinal))
+                && Session().Preview!.SkillsQuote!.AllowedActiveSkillSourceIds.Contains(x.SourceSkillId)
+                && Session().Preview!.SkillsQuote!.Skills.All(s => s.Allocation.SourceSkillId != x.SourceSkillId));
+            var ordinarySpec = ordinary.Specializations.First(s => !s.Name.Contains('[', StringComparison.Ordinal));
+            await Click("life-open-skills");
+            await OpenSkill(ordinary.Name, ordinary.SourceSkillId);
+            Element<Stepper>("life-skill-levels").Value = 1;
+            await Click("life-specialization-" + ordinarySpec.OptionId);
+            Require(Session().CanConfirm, "Core rejected the legal active specialization: " + string.Join(", ", Session().Blockers));
+            var legalActiveInput = Session().Input!;
+            Session().Change(legalActiveInput with { SkillSelection = legalActiveInput.SkillSelection! with
+            { Skills = legalActiveInput.SkillSelection.Skills.Select(x => x.SourceSkillId == ordinary.SourceSkillId
+                ? x with { SpecializationPayment = CharacterCreationKarmaSpecializationPayments.KnowledgePoint } : x).ToArray() } });
+            await Session().ReviewAsync(default, () => true);
+            Require(!Session().CanConfirm && Session().Preview!.SkillsQuote!.Skills.Single(x =>
+                x.Allocation.SourceSkillId == ordinary.SourceSkillId).Blockers.Contains(CharacterCreationSkillsBlockers.SpecializationInvalid),
+                "Core admitted an active specialization paid with knowledge points.");
+            Session().Change(legalActiveInput);
+            await Session().ReviewAsync(default, () => true);
+            Require(!IssuedElements(Current()).OfType<Switch>().Any(x => x.AutomationId == "life-specialization-knowledge"),
+                "An active-skill specialization exposes the invalid knowledge-point payment choice.");
+            await Click("life-remove-specialization");
+            Require(Session().Input!.SkillSelection!.Skills.Single(x => x.SourceSkillId == ordinary.SourceSkillId)
+                is { SpecializationOptionId: null, SpecializationPayment: null, KarmaLevels: 1 },
+                "Removing an active specialization removed its skill or retained its payment.");
+            await Click("life-specialization-" + ordinarySpec.OptionId);
+            await Click("life-use-skill");
+            var knowledge = Session().Preview!.SkillsCatalog!.KnowledgeSkills.First(x => !x.CanBeNativeLanguage
+                && x.Specializations.Any(s => !s.Name.Contains('[', StringComparison.Ordinal)));
+            var knowledgeSpec = knowledge.Specializations.First(s => !s.Name.Contains('[', StringComparison.Ordinal));
+            await OpenSkill(knowledge.Name, knowledge.SourceSkillId);
+            Element<Stepper>("life-knowledge-levels").Value = 1;
+            await Click("life-specialization-" + knowledgeSpec.OptionId);
+            Element<Switch>("life-specialization-knowledge").IsToggled = true;
+            await Click("life-use-skill");
+            Require(Session().CanConfirm && Session().Preview!.SkillsQuote!.Skills.Single(x =>
+                x.Allocation.SourceSkillId == knowledge.SourceSkillId) is { KnowledgePointCost: 2, SpecializationKarmaCost: 0 },
+                "A legal knowledge specialization could not use knowledge points.");
+            await Back();
+            string specializedInputs = JsonSerializer.Serialize(Session().Input);
+            IssuedPageLifecycle(Current(), "OnDisappearing");
+            await navigation.PushAsync(new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory)), false);
+            await Appear();
+            Require(Session().CanConfirm && JsonSerializer.Serialize(Session().Input) == specializedInputs,
+                "A fresh completion session lost the specialization payments.");
+            Console.WriteLine("PASS Life Modules specialization payments: Core rejects active knowledge payment; active UI excludes it; removal retained; knowledge payment accepted; fresh draft reopen");
             if (Environment.GetEnvironmentVariable("CHUMMER_LIFE_EXOTIC_SMOKE_DIRECTORY") is { Length: > 0 } export)
             {
                 Require(Path.IsPathFullyQualified(export) && !Directory.Exists(export), "Smoke export requires a new explicit synthetic directory.");
@@ -144,6 +194,12 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("life-search-go");
                 await Click("life-skill-" + source.SourceSkillId);
                 await Click("life-specialization-" + variants[index].OptionId);
+            }
+            async Task OpenSkill(string name, string skillId)
+            {
+                Element<SearchBar>("life-search").Text = name;
+                await Click("life-search-go");
+                await Click("life-skill-" + skillId);
             }
             async Task AddVariant(int index, int levels)
             {
