@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 97 is the latest [observed Internal availability](../play/evidence/preview97-internal-observation.md),
+Preview 98 is the latest [observed Internal availability](../play/evidence/preview98-internal-observation.md),
+confirmed on 4 October at approximately17:06 Europe/Vienna (release time17:05).
+Its exact local ARM64 AAB was separately signed with the existing upload key and
+independently verified. Karma completion displays exact readable names, translated
+deltas and dice help; raw technical identities remain behind optional diagnostics.
+Focused actual-MAUI/Core and synthetic API36 confirmation/Career/new-process
+checks passed; unchanged runtime results are reused for the version-only delta.
+**Physical Play98 installation/update and live account refresh are unverified.**
+Full SR5/Origin and general-beta completion remain open.
+
+Preview 97's [observed Internal availability](../play/evidence/preview97-internal-observation.md),
 confirmed on 4 October at 16:02 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Account loading now remains cancelable, runs the whole read chain off the UI
