@@ -98,6 +98,9 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                 PhoneStrings.Get("HomeContinue", "Continue building"));
             continueButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(_runnerRoute);
             current.Add(continueButton);
+            if (Coordinator.State.WorkspaceId is { } currentId
+                && Coordinator.State.Session.FindWorkspace(currentId) is { } currentWorkspace)
+                current.Add(CreateDeleteButton(currentWorkspace, "home-delete-current-runner"));
         }
         _body.Add(NativeTheme.Card(current));
 
@@ -150,10 +153,12 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             _body.Add(favorites);
         }
 
-        if (Coordinator.State.OpenWorkspaces.Count > 1)
+        OpenWorkspaceState[] otherRunners = Coordinator.State.OpenWorkspaces
+            .Where(workspace => workspace.Id != Coordinator.State.WorkspaceId).ToArray();
+        if (otherRunners.Length > 0)
         {
             _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("OpenNow", "Open now")));
-            foreach (OpenWorkspaceState workspace in Coordinator.State.OpenWorkspaces.Take(5))
+            foreach (OpenWorkspaceState workspace in otherRunners)
             {
                 string label = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
                 Button button = NativeTheme.SecondaryButton(
@@ -175,7 +180,10 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                         await Shell.Current.GoToAsync(_runnerRoute);
                     }
                 });
-                _body.Add(button);
+                var row = new VerticalStackLayout { Spacing = 6 };
+                row.Add(button);
+                row.Add(CreateDeleteButton(workspace, "home-delete-runner"));
+                _body.Add(NativeTheme.Card(row));
             }
         }
 
@@ -240,6 +248,33 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         proof.Add(label);
     }
 #endif
+
+    private Button CreateDeleteButton(OpenWorkspaceState workspace, string automationId)
+    {
+        NativeRunnerDeletionRequest? request = Coordinator.CaptureRunnerDeletionRequest(workspace);
+        string name = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
+        if (string.IsNullOrWhiteSpace(name)) name = PhoneStrings.Get("RunnerFallback", "Runner");
+        var button = NativeTheme.SecondaryButton(PhoneStrings.Get("DeleteRunner", "Delete runner"));
+        button.AutomationId = automationId;
+        button.TextColor = NativeTheme.Danger;
+        button.IsEnabled = request is not null;
+        SemanticProperties.SetDescription(button, PhoneStrings.Format("DeleteRunnerNamed", "Delete runner {0}", name));
+        button.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (request is null) return;
+            long appearance = CaptureAppearanceGeneration();
+            NativeRunnerDeletionRequest prepared = await Coordinator.PrepareRunnerDeletionAsync(request);
+            if (!IsCurrentAppearanceGeneration(appearance)) return;
+            bool confirmed = await DisplayAlertAsync(
+                PhoneStrings.Get("DeleteRunner", "Delete runner"),
+                PhoneStrings.Format("DeleteRunnerQuestion",
+                    "Delete “{0}” from this device, including unsaved changes? This cannot be undone. Online copies, online books and exported files are kept.", name),
+                PhoneStrings.Get("DeleteRunnerConfirm", "Delete from device"),
+                PhoneStrings.Get("Cancel", "Cancel"));
+            await Coordinator.DeleteRunnerAsync(prepared, confirmed && IsCurrentAppearanceGeneration(appearance));
+        });
+        return button;
+    }
 
     private void AddOnlineSection()
     {

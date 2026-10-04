@@ -186,6 +186,26 @@ public sealed class NativeAccountErasureRequest
         => ReferenceEquals(_issuer, issuer) && Interlocked.CompareExchange(ref _claimed, 1, 0) == 0;
 }
 
+// One confirmation belongs to the exact rendered runner and account epoch.
+public sealed class NativeRunnerDeletionRequest
+{
+    private readonly object _issuer;
+    private int _claimed;
+    internal NativeRunnerDeletionRequest(object issuer, OwnerContextStamp owner, OpenWorkspaceState workspace,
+        long? expectedRevision = null)
+    {
+        _issuer = issuer;
+        Owner = owner;
+        Workspace = workspace;
+        ExpectedRevision = expectedRevision ?? workspace.ContentRevision;
+    }
+    internal OwnerContextStamp Owner { get; }
+    internal OpenWorkspaceState Workspace { get; }
+    internal long ExpectedRevision { get; }
+    internal bool TryClaim(object issuer)
+        => ReferenceEquals(_issuer, issuer) && Interlocked.CompareExchange(ref _claimed, 1, 0) == 0;
+}
+
 public enum NativeWorkspaceActivationKind
 {
     LocalFile,
@@ -2955,6 +2975,94 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     : null;
             },
             cancellationToken);
+
+    public NativeRunnerDeletionRequest? CaptureRunnerDeletionRequest(OpenWorkspaceState workspace)
+    {
+        CharacterOverviewState current = State;
+        return !current.IsBusy
+            && current.Session.OwnerContext is { IsValid: true } owner
+            && IsNativePersistenceOwnerCurrent(owner)
+            && ReferenceEquals(current.Session.FindWorkspace(workspace.Id), workspace)
+            && _presenter is IOwnerBoundWorkspaceCleanupPresenter
+                ? new(this, owner, workspace) : null;
+    }
+
+    public async Task<NativeRunnerDeletionRequest> PrepareRunnerDeletionAsync(
+        NativeRunnerDeletionRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        bool Current() => !State.IsBusy && State.Session.OwnerContext == request.Owner
+            && IsNativePersistenceOwnerCurrent(request.Owner)
+            && ReferenceEquals(State.Session.FindWorkspace(request.Workspace.Id), request.Workspace);
+        if (!request.TryClaim(this) || !Current())
+            throw new InvalidOperationException(PhoneStrings.Get("DeleteRunnerChanged",
+                "The runner or account changed. Open the runner list and try again."));
+        long revision = request.ExpectedRevision;
+        if (revision <= 0 && _client is IOwnerBoundWorkspacePersistenceClient roster)
+        {
+            // Restored, unopened roster entries intentionally have no revision.
+            // Read the exact owner's local inventory BEFORE asking for confirmation;
+            // never open/modify the runner or infer an expected revision afterwards.
+            var inventory = await roster.InspectLocalWorkspacesAsync(request.Owner, cancellationToken);
+            revision = inventory.Success
+                ? inventory.Value?.Where(item => item.Id == request.Workspace.Id)
+                    .Select(item => item.ContentRevision).SingleOrDefault() ?? 0 : 0;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        if (revision <= 0 || !Current())
+            throw new InvalidOperationException(PhoneStrings.Get("DeleteRunnerChanged",
+                "The runner or account changed. Open the runner list and try again."));
+        return new(this, request.Owner, request.Workspace, revision);
+    }
+
+    public async Task<bool> DeleteRunnerAsync(NativeRunnerDeletionRequest request, bool confirmed,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.TryClaim(this) || !confirmed) return false;
+        return await WithWorkspaceActivationGateAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.ExpectedRevision <= 0 || State.IsBusy || State.Session.OwnerContext != request.Owner
+                || !IsNativePersistenceOwnerCurrent(request.Owner)
+                || !ReferenceEquals(State.Session.FindWorkspace(request.Workspace.Id), request.Workspace)
+                || _presenter is not IOwnerBoundWorkspaceCleanupPresenter cleanup)
+                throw new InvalidOperationException(PhoneStrings.Get("DeleteRunnerChanged",
+                    "The runner or account changed. Open the runner list and try again."));
+
+            // Core owns the exact revision-checked local deletion and retires
+            // retained tabs/views. No remote delete or provider call is made.
+            WorkspaceStoredDeletionResult result = await cleanup.DeleteStoredWorkspaceAsync(
+                request.Owner, request.Workspace.Id, request.ExpectedRevision, true, cancellationToken);
+            if (!result.Deletion.Success || result.Deletion.Value is not { } receipt
+                || receipt.Id != request.Workspace.Id
+                || receipt.ContentRevision != request.ExpectedRevision)
+                throw new InvalidOperationException(PhoneStrings.Get("DeleteRunnerChanged",
+                    "The runner or account changed. Open the runner list and try again."));
+
+            // A committed deletion must not be replayed if refresh/cancellation
+            // fails afterwards, nor publish a notice into a replacement account.
+            if (IsNativePersistenceOwnerCurrent(request.Owner))
+            {
+                using var refreshBudget = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                bool refreshed = result.LocalProjectionRetired;
+                try
+                {
+                    await SyncShellAsync(refreshBudget.Token);
+                    RestorePlayState();
+                }
+                catch (Exception error) when (error is not OutOfMemoryException) { refreshed = false; }
+                if (IsNativePersistenceOwnerCurrent(request.Owner))
+                {
+                    _notice = refreshed
+                        ? PhoneStrings.Get("DeleteRunnerDone", "Runner deleted from this device. Online copies are kept.")
+                        : PhoneStrings.Get("DeleteRunnerRefresh", "Runner deleted from this device. Reopen the runner list to refresh it.");
+                    NotifyChanged();
+                }
+            }
+            return true;
+        }, cancellationToken);
+    }
 
     public async Task CloseWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
     {

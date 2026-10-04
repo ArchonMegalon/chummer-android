@@ -264,4 +264,11 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="BackNavigationUnavailable" xml:space="preserve"><value>No se pudo volver atrás. Inténtalo de nuevo.</value></data>
   <data name="NewRunnerUnsavedChanges" xml:space="preserve"><value>Guarda o descarta los cambios del runner actual antes de crear otro. Pulsa Cancelar para volver.</value></data>
   <data name="NewRunnerRevisionConflict" xml:space="preserve"><value>Resuelve el conflicto de guardado del runner actual antes de crear otro. Pulsa Cancelar para volver.</value></data>
+  <data name="DeleteRunner" xml:space="preserve"><value>Eliminar runner</value></data>
+  <data name="DeleteRunnerNamed" xml:space="preserve"><value>Eliminar runner {0}</value></data>
+  <data name="DeleteRunnerQuestion" xml:space="preserve"><value>¿Eliminar «{0}» de este dispositivo, incluidos los cambios sin guardar? No se puede deshacer. Se conservan las copias y los libros en línea y los archivos exportados.</value></data>
+  <data name="DeleteRunnerConfirm" xml:space="preserve"><value>Eliminar del dispositivo</value></data>
+  <data name="DeleteRunnerChanged" xml:space="preserve"><value>El runner o la cuenta han cambiado. Abre la lista de runners e inténtalo de nuevo.</value></data>
+  <data name="DeleteRunnerDone" xml:space="preserve"><value>Runner eliminado de este dispositivo. Se conservan las copias en línea.</value></data>
+  <data name="DeleteRunnerRefresh" xml:space="preserve"><value>Runner eliminado de este dispositivo. Vuelve a abrir la lista para actualizarla.</value></data>
 </root>

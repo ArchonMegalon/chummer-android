@@ -264,4 +264,11 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="BackNavigationUnavailable" xml:space="preserve"><value>Zurückgehen war nicht möglich. Bitte versuche es erneut.</value></data>
   <data name="NewRunnerUnsavedChanges" xml:space="preserve"><value>Speichere oder verwirf die Änderungen am aktuellen Runner, bevor du einen neuen erstellst. Mit Abbrechen kehrst du zurück.</value></data>
   <data name="NewRunnerRevisionConflict" xml:space="preserve"><value>Löse den Speicherkonflikt des aktuellen Runners, bevor du einen neuen erstellst. Mit Abbrechen kehrst du zurück.</value></data>
+  <data name="DeleteRunner" xml:space="preserve"><value>Runner löschen</value></data>
+  <data name="DeleteRunnerNamed" xml:space="preserve"><value>Runner {0} löschen</value></data>
+  <data name="DeleteRunnerQuestion" xml:space="preserve"><value>„{0}“ mit allen ungespeicherten Änderungen von diesem Gerät löschen? Das lässt sich nicht rückgängig machen. Online-Kopien, Online-Bücher und exportierte Dateien bleiben erhalten.</value></data>
+  <data name="DeleteRunnerConfirm" xml:space="preserve"><value>Vom Gerät löschen</value></data>
+  <data name="DeleteRunnerChanged" xml:space="preserve"><value>Runner oder Konto haben sich geändert. Öffne die Runner-Liste und versuche es erneut.</value></data>
+  <data name="DeleteRunnerDone" xml:space="preserve"><value>Runner von diesem Gerät gelöscht. Online-Kopien bleiben erhalten.</value></data>
+  <data name="DeleteRunnerRefresh" xml:space="preserve"><value>Runner von diesem Gerät gelöscht. Öffne die Runner-Liste erneut, um sie zu aktualisieren.</value></data>
 </root>

@@ -14,6 +14,13 @@
   <data name="HomeStartDetail" xml:space="preserve"><value>Open a file, link your account, or start a runner.</value></data>
   <data name="HomeCurrent" xml:space="preserve"><value>Current</value></data>
   <data name="HomeContinue" xml:space="preserve"><value>Continue building</value></data>
+  <data name="DeleteRunner" xml:space="preserve"><value>Delete runner</value></data>
+  <data name="DeleteRunnerNamed" xml:space="preserve"><value>Delete runner {0}</value></data>
+  <data name="DeleteRunnerQuestion" xml:space="preserve"><value>Delete “{0}” from this device, including unsaved changes? This cannot be undone. Online copies, online books and exported files are kept.</value></data>
+  <data name="DeleteRunnerConfirm" xml:space="preserve"><value>Delete from device</value></data>
+  <data name="DeleteRunnerChanged" xml:space="preserve"><value>The runner or account changed. Open the runner list and try again.</value></data>
+  <data name="DeleteRunnerDone" xml:space="preserve"><value>Runner deleted from this device. Online copies are kept.</value></data>
+  <data name="DeleteRunnerRefresh" xml:space="preserve"><value>Runner deleted from this device. Reopen the runner list to refresh it.</value></data>
   <data name="OpenFile" xml:space="preserve"><value>Open file</value></data>
   <data name="NewRunner" xml:space="preserve"><value>New runner</value></data>
   <data name="ApplicationSettings" xml:space="preserve"><value>Settings</value></data>
