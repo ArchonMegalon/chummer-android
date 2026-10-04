@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 95 is the latest [observed Internal availability](../play/evidence/preview95-internal-observation.md),
+Preview 96 is the latest [observed Internal availability](../play/evidence/preview96-internal-observation.md),
+confirmed on 4 October at 15:12 Europe/Vienna (release time 15:11). Its exact
+local ARM64 AAB was separately signed with the existing upload key and independently
+verified. Runner-list deletion now requires a named, local-only confirmation;
+online copies, books and exports are kept. Focused managed ownership/cancellation
+checks and synthetic API36 deletion/unchanged-other-runners/new-process checks
+passed; unchanged behavior evidence is reused for the version-only increment.
+**Physical Play96 installation/update is unverified.** This is not account deletion,
+secure erasure, complete SR5/Origin qualification or general-beta readiness.
+
+Preview 95's [observed Internal availability](../play/evidence/preview95-internal-observation.md),
 confirmed on 4 October at 14:16 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 After explicit reading of a recovered Origin chapter, its already-confirmed
