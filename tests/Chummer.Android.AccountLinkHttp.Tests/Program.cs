@@ -31,6 +31,8 @@ internal static class Program
         await RequestDeadlinesPreserveLinkedAccountAsync();
         await RequestDeadlineRetainsRedactedInterruptionTypeAsync();
         await CallerCancellationRemainsCancellationAsync();
+        await AccountInitializationCancellationSettlesAsync();
+        await CancelingQueuedInitializationCannotSettleActiveCheckAsync();
         await NativeIoFailuresPreserveLinkedAccountAsync();
         await NativeIoFailuresAreRedactedAndDoNotGrantRetriesAsync();
         await NativeIoCallerCancellationRemainsCancellationAsync();
@@ -241,6 +243,87 @@ internal static class Program
             Require(cancellation.IsCancellationRequested && terminal.Requests.Count == 1);
             Console.WriteLine($"PASS caller cancellation is not converted to offline: headers={beforeHeaders}");
         }
+    }
+
+    private static async Task AccountInitializationCancellationSettlesAsync()
+    {
+        foreach (bool alreadyLinked in new[] { false, true })
+        {
+            LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+            using var cancellation = new CancellationTokenSource();
+            bool cancelNext = false;
+            var terminal = new RecordingHandler((_, token) =>
+            {
+                if (cancelNext)
+                {
+                    cancellation.Cancel();
+                    token.ThrowIfCancellationRequested();
+                }
+                return Task.FromResult(ExactGrantStatus(fixture));
+            });
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            await service.InitializeOwnerContextAsync();
+            if (alreadyLinked) await service.InitializeAsync();
+            var owner = service.OwnerAuthority.Capture();
+            AndroidAccountLinkSnapshot previous = service.Snapshot;
+            string? binding = fixture.Metadata.GetRaw(OwnerBindingKey);
+            string? expiry = fixture.Metadata.GetRaw(StoredGrantExpiryKey);
+            int changed = 0;
+            service.Changed += (_, _) => changed++;
+            int previousRequests = terminal.Requests.Count;
+            cancelNext = true;
+            await RequireThrowsAsync<OperationCanceledException>(() => service.InitializeAsync(cancellation.Token));
+            Require(!service.Snapshot.IsLoading && changed == (alreadyLinked ? 0 : 1));
+            Require(alreadyLinked ? ReferenceEquals(service.Snapshot, previous)
+                : service.Snapshot.Status == AndroidAccountLinkStatus.Error
+                    && service.Snapshot.Label == "Account check canceled"
+                    && service.Snapshot.Detail == "Load account data again to continue.");
+            Require(service.OwnerAuthority.Capture() == owner && owner is not null
+                && fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken
+                && fixture.Metadata.GetRaw(OwnerBindingKey) == binding
+                && fixture.Metadata.GetRaw(StoredGrantExpiryKey) == expiry
+                && !fixture.Metadata.Contains(RefreshAttemptKey)
+                && terminal.Requests.Count == previousRequests + 1);
+            Require(!service.Snapshot.ToString().Contains(AccessToken, StringComparison.Ordinal));
+            cancelNext = false;
+            await service.InitializeAsync();
+            Require(service.Snapshot.IsLinked && service.OwnerAuthority.Capture() == owner);
+            Console.WriteLine($"PASS canceled account check settles initial loading and preserves known owner: linked={alreadyLinked}");
+        }
+    }
+
+    private static async Task CancelingQueuedInitializationCannotSettleActiveCheckAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var terminal = new RecordingHandler(async (_, token) =>
+        {
+            entered.TrySetResult();
+            await resume.Task.WaitAsync(token);
+            return ExactGrantStatus(fixture);
+        });
+        using var transport = CreateTransport(terminal);
+        var service = CreateService(transport, fixture);
+        int changed = 0;
+        service.Changed += (_, _) => changed++;
+        Task active = service.InitializeAsync();
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            using var cancellation = new CancellationTokenSource();
+            Task queued = service.InitializeAsync(cancellation.Token);
+            Require(!queued.IsCompleted);
+            cancellation.Cancel();
+            await RequireThrowsAsync<OperationCanceledException>(() => queued.WaitAsync(TimeSpan.FromSeconds(5)));
+            Require(service.Snapshot.IsLoading && changed == 0 && !active.IsCompleted
+                && terminal.Requests.Count == 1);
+        }
+        finally { resume.TrySetResult(); }
+        await active.WaitAsync(TimeSpan.FromSeconds(5));
+        Require(service.Snapshot.IsLinked && changed == 1 && terminal.Requests.Count == 1);
+        Console.WriteLine("PASS canceled queued initializer cannot settle another caller's active account check");
     }
 
     private static IEnumerable<Func<Exception>> NativeIoFailures()
@@ -1603,6 +1686,8 @@ internal static class Program
         var terminal = new RecordingHandler(_ => throw new InvalidOperationException("Local recovery contacted Hub."));
         using var transport = CreateTransport(terminal);
         var service = CreateService(transport, fixture);
+        int changed = 0;
+        service.Changed += (_, _) => changed++;
         var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService)
             .GetField("_credentialCommitGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!;
         using var cancellation = new CancellationTokenSource();
@@ -1623,6 +1708,8 @@ internal static class Program
         Require(canceledBeforeWriterReleased && terminal.Requests.Count == 0
             && fixture.Metadata.GetRaw(StagedGrantCommitKey) == stage
             && fixture.Metadata.Contains(PendingPollOperationKey));
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error
+            && !service.Snapshot.IsLoading && changed == 1);
         await service.InitializeAsync();
         Require(service.Snapshot.IsLinked && terminal.Requests.Count == 0);
         await RequireCommittedGrantAsync(fixture, "grant-after-response-loss");

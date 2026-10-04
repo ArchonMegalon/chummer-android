@@ -71,6 +71,8 @@
   <data name="AccountLinked" xml:space="preserve"><value>Verknüpft</value></data>
   <data name="AccountAvailableOffline" xml:space="preserve"><value>Offline verfügbar.</value></data>
   <data name="AccountLinkUnavailable" xml:space="preserve"><value>Verknüpfung nicht verfügbar</value></data>
+  <data name="AccountCheckCanceled" xml:space="preserve"><value>Kontoprüfung abgebrochen</value></data>
+  <data name="AccountLoadAgain" xml:space="preserve"><value>Lade die Kontodaten erneut, um fortzufahren.</value></data>
   <data name="AccountSecureStorageUnavailable" xml:space="preserve"><value>Der sichere Android-Speicher konnte nicht geöffnet werden.</value></data>
   <data name="AccountBrowserUnavailable" xml:space="preserve"><value>Browser nicht verfügbar</value></data>
   <data name="AccountOpenLinkingAgain" xml:space="preserve"><value>Starte die Kontoverknüpfung erneut.</value></data>

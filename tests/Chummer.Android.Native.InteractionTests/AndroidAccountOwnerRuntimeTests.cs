@@ -10,6 +10,7 @@ using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.Shell;
+using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
@@ -240,6 +241,7 @@ internal static partial class AfterRunAuthorityHarness
 
     public static async Task RunAccountResumeAdmissionCasesAsync(string contentRoot)
     {
+        await RunAccountInitializationCancellationUiCaseAsync(contentRoot);
         const string stagedKey = "chummer.account.staged-grant-commit.v1";
         foreach (bool linked in new[] { false, true })
         {
@@ -322,6 +324,72 @@ internal static partial class AfterRunAuthorityHarness
         Require(!unreadable.Owner.Capture().IsValid && unreadable.Requests == 0,
             "Unreadable recovery metadata was mistaken for an empty stage and retained owner authority.");
         Console.WriteLine("PASS unreadable account-resume probe still invalidates owner authority");
+    }
+
+    private static async Task RunAccountInitializationCancellationUiCaseAsync(string contentRoot)
+    {
+        using var seed = new ActualAccountFixture();
+        await seed.LinkAsync("canceled-check-owner", "canceled-check-grant");
+        using var account = seed.Restart();
+        await account.Owner.InitializeAsync();
+        var owner = account.Owner.Capture();
+        string credentials = JsonSerializer.Serialize(account.Metadata.Rows);
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account);
+            var page = new AccountPrivacyPage(runtime.Coordinator);
+            void Refresh() => IssuedPageLifecycle(page, "Refresh");
+            Button Button(string text) => IssuedElements(page).OfType<Button>()
+                .Single(button => button.Text == text);
+            Refresh();
+            Require(account.Account.Snapshot.IsLoading && !Button("Link account").IsEnabled,
+                "Account actions must remain unavailable while the initial check is pending.");
+            using var cancellation = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            account.Metadata.BeforeReadWithCancellationAsync = async (key, token) =>
+            {
+                if (key != "chummer.account.staged-grant-commit.v1") return;
+                entered.TrySetResult();
+                await release.Task.WaitAsync(token);
+            };
+            Task check = account.Account.InitializeAsync(cancellation.Token);
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                cancellation.Cancel();
+                bool canceled = false;
+                try { await check.WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (OperationCanceledException) { canceled = true; }
+                Require(canceled && account.Requests == 0 && account.Owner.Capture() == owner
+                    && JsonSerializer.Serialize(account.Metadata.Rows) == credentials,
+                    "Canceled initialization changed the stored account, owner or contacted Hub.");
+                Refresh();
+                Require(!account.Account.Snapshot.IsLoading && Button("Link account").IsEnabled
+                    && IssuedElements(page).OfType<Label>().Any(label => label.Text == "Account check canceled"),
+                    "The actual account page stayed disabled/loading after cancellation.");
+            }
+            finally
+            {
+                account.Metadata.BeforeReadWithCancellationAsync = null;
+                release.TrySetResult();
+                await check.ContinueWith(_ => { }, TaskScheduler.Default).WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            await account.Account.InitializeAsync();
+            Refresh();
+            Require(account.Account.Snapshot.IsLinked && Button("Unlink this device").IsEnabled
+                && account.Owner.Capture() == owner && account.Requests == 1,
+                "An explicit retry did not recover the original linked account controls.");
+        });
+        using var restart = account.Restart();
+        await restart.Owner.InitializeAsync();
+        await restart.Account.InitializeAsync();
+        Require(restart.Account.Snapshot.IsLinked && restart.Owner.Current == owner.Owner
+            && restart.Owner.Capture().AuthorityInstanceId != owner.AuthorityInstanceId,
+            "Canceled initialization lost the durable grant on a fresh account-service instance.");
+        Console.WriteLine("PASS actual MAUI account controls: pending → canceled → explicit retry, preserved credentials and fresh-instance reopen");
     }
 
     private static async Task RunOpaqueAccountOwnerKeyCasesAsync()

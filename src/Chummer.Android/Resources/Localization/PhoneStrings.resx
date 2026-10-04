@@ -78,6 +78,8 @@
   <data name="AccountLinked" xml:space="preserve"><value>Linked</value></data>
   <data name="AccountAvailableOffline" xml:space="preserve"><value>Available offline.</value></data>
   <data name="AccountLinkUnavailable" xml:space="preserve"><value>Link unavailable</value></data>
+  <data name="AccountCheckCanceled" xml:space="preserve"><value>Account check canceled</value></data>
+  <data name="AccountLoadAgain" xml:space="preserve"><value>Load account data again to continue.</value></data>
   <data name="AccountSecureStorageUnavailable" xml:space="preserve"><value>Android secure storage could not be opened.</value></data>
   <data name="AccountBrowserUnavailable" xml:space="preserve"><value>Browser unavailable</value></data>
   <data name="AccountOpenLinkingAgain" xml:space="preserve"><value>Open account linking again.</value></data>
