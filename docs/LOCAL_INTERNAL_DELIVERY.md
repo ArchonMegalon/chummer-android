@@ -104,7 +104,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 103 is the latest [observed Internal availability](../play/evidence/preview103-internal-observation.md),
+Preview 104 is the latest [observed Internal availability](../play/evidence/preview104-internal-observation.md),
+confirmed on 4 October at 23:35 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+An unexpected Origin status-read failure now stops the pinned spinner and shows
+the pause without rebuilding saved prose or export controls; explicit recovery
+does not replay paid generation. Focused actual-MAUI/Core checks and synthetic
+API36 complete-chapter, explicit-read, new-process and DocumentsUI EPUB/HTML
+checks passed. Unchanged behavior results are reused for the version-only delta.
+**Physical Play104 installation/update and live account/provider checks are
+unverified.** This is not full SR5/Origin, performance clearance or general-beta
+completion. The historical Hub503 cause remains unresolved.
+
+Preview 103's [observed Internal availability](../play/evidence/preview103-internal-observation.md),
 confirmed on 4 October at 22:31 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Late native action results no longer open dialogs/errors after leaving a page,
