@@ -75,10 +75,12 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             _unreadStory = true;
             try
             {
-                var book = await Coordinator.LoadRetainedOriginBookAsync(ct,
+                var loaded = await Coordinator.LoadOriginBookReaderAsync(ct,
                     () => IsCurrentAppearanceGeneration(appearance));
                 if (IsCurrentAppearanceGeneration(appearance))
-                    _unreadStory = book is not null && (!Coordinator.IsRetainedOriginBookCurrent(book) || !book.HasReadCurrentStory);
+                    _unreadStory = loaded.Book is { } book
+                        ? !Coordinator.IsRetainedOriginBookCurrent(book) || !book.HasReadCurrentStory
+                        : !loaded.OpeningNotStarted || !Coordinator.CanReadRetainedOriginBook(loaded.Display);
             }
             catch (Exception error) when (error is IOException or InvalidOperationException
                 or OperationCanceledException or UnauthorizedAccessException or System.Text.Json.JsonException) { }

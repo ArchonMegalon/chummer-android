@@ -726,6 +726,7 @@ internal static partial class AfterRunAuthorityHarness
 
     internal static async Task RunLifeModuleCompletionPagesAsync(string contentRoot)
     {
+        await RunLifeModuleCompletionStoryGateAsync(contentRoot);
         await RunOriginBookCredentialReadContentionAsync(contentRoot);
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -1925,6 +1926,134 @@ internal static partial class AfterRunAuthorityHarness
         }
         foreach (string scenario in new[] { "same", "post-b", "post-aba", "post-cancel" })
             await RunNativeSaveCommitAsync(contentRoot, scenario);
+    }
+
+    internal static async Task RunLifeModuleCompletionStoryGateAsync(string contentRoot, string? smokeDirectory = null)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            LifeBookReadProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: owners,
+                lifeCompletionDecorator: actual => actual, lifeBookDecorator: actual => probe = new(actual));
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Completion story gate", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await Task.Run(() => SeedNativeLifeSequence(runtime.Services.GetRequiredService<CharacterCreationFoundationService>(), id));
+            await runtime.Presenter.LoadAsync(id, default);
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var page = new LifeModuleCompletionPage(runtime.Coordinator, () => Task.CompletedTask,
+                new LifeModuleCompletionDraftStore(runtime.StateDirectory));
+            var window = new Window(new NavigationPage(page));
+            using var alerts = new IssuedPageAlerts(page, window);
+
+            // The real Core service verifies this older, rules-only sequence
+            // has no decision ledger. Only that exact absence allows editing.
+            await Observe(false, "verified legacy absence");
+            probe!.Transform = _ => new(LifeModuleOriginDossierOutcomes.Missing, null,
+                ["life-module-origin-history-unreadable"]);
+            await Observe(true, "unreadable ledger");
+            probe.Transform = _ => new(LifeModuleOriginDossierOutcomes.Missing, null, []);
+            await Observe(true, "ambiguous missing result");
+            probe.Transform = _ => new(LifeModuleOriginDossierOutcomes.Blocked, null,
+                [LifeModuleOriginDossierBlockers.AuthorityInvalid]);
+            await Observe(true, "invalid retained history");
+            probe.Transform = _ => throw new IOException("Synthetic book read failure.");
+            await Observe(true, "read exception");
+            probe.Transform = null;
+            await Observe(false, "recovered verified absence");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            Require(alerts.Titles.Count == 0, "A bounded book read failure opened a blocking alert.");
+
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Story gate reading", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await runtime.Coordinator.SaveAsync();
+            await Task.Run(() => SeedNativeLifeStory(runtime, id));
+            await runtime.Presenter.LoadAsync(id, default);
+            before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            page = new(runtime.Coordinator, () => Task.CompletedTask, new(runtime.StateDirectory));
+            var storyWindow = new Window(new NavigationPage(page));
+            using var storyAlerts = new IssuedPageAlerts(page, storyWindow);
+            await Observe(true, "unread real Core story");
+            Dump("unread");
+            var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            foreach (var chapter in book.Chapters.Where(c => !book.IsOpeningSetup(c) && !book.IsSelectionFinish(c)).ToArray())
+            {
+                var prose = OriginBookProseDraft.Create(chapter, book.Locale,
+                    Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)),
+                    new string('f', 64), "Synthetic read chapter for the completion-gate regression fixture.");
+                book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, prose, () => true, default))!;
+                book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
+            }
+            Require(book.HasReadCurrentStory, "The real story fixture did not acknowledge its chapters.");
+            // Discard transient page/session state; the new page must admit only
+            // the read acknowledgements recovered from the file-backed store.
+            page = new(runtime.Coordinator, () => Task.CompletedTask, new(runtime.StateDirectory));
+            var reopenedWindow = new Window(new NavigationPage(page));
+            using var reopenedAlerts = new IssuedPageAlerts(page, reopenedWindow);
+            await Observe(false, "read story reopened from disk");
+            Dump("read");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            probe.AfterLoad = () => { owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser); };
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            Require(!IssuedElements(page).Any(e => e.AutomationId is "life-open-qualities" or "life-open-review"),
+                "An owner transition during the book read exposed final allocations.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Require(storyAlerts.Titles.Count == 0 && reopenedAlerts.Titles.Count == 0,
+                "Story admission opened an unexpected blocking alert.");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS Life Modules completion story gate: owner A-to-B-to-A remains closed");
+
+            void Dump(string name)
+            {
+                if (smokeDirectory is null) return;
+                string destination = Path.Combine(smokeDirectory, name);
+                Require(Path.IsPathFullyQualified(destination) && !Directory.Exists(destination),
+                    "Smoke fixtures need a fresh absolute destination.");
+                Directory.CreateDirectory(destination);
+                foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*.json", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(destination, Path.GetRelativePath(runtime.StateDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target);
+                }
+            }
+
+            async Task Observe(bool blocked, string scenario)
+            {
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                var elements = IssuedElements(page).ToArray();
+                Require(elements.Any(e => e.AutomationId == "life-completion-story-first") == blocked
+                    && elements.Any(e => e.AutomationId == "life-open-qualities") == !blocked
+                    && (!blocked || !elements.Any(e => e.AutomationId == "life-open-review")),
+                    "Completion story gate failed: " + scenario);
+                IssuedPageLifecycle(page, "OnDisappearing");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS Life Modules completion story gate: " + scenario);
+            }
+        });
+    }
+
+    private sealed class LifeBookReadProbe(IOwnerBoundLifeModuleBookService inner) : IOwnerBoundLifeModuleBookService
+    {
+        internal Func<LifeModuleOriginDossierResult<OriginStoryArcSeed>, LifeModuleOriginDossierResult<OriginStoryArcSeed>>? Transform;
+        internal Action? AfterLoad;
+        public LifeModuleOriginDossierResult<OriginStoryArcSeed> Load(OwnerContextStamp owner,
+            CharacterWorkspaceId workspaceId, long contentRevision, long savedRevision)
+        {
+            var loaded = inner.Load(owner, workspaceId, contentRevision, savedRevision);
+            AfterLoad?.Invoke();
+            return Transform is { } transform ? transform(loaded) : loaded;
+        }
     }
 
     internal static async Task RunLifeModuleCompletionAsync(string contentRoot)

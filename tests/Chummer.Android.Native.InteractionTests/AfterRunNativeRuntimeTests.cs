@@ -570,7 +570,9 @@ internal static partial class AfterRunAuthorityHarness
             bool creationAttributes = false,
             Func<IOwnerBoundCharacterCreationAttributesService, IOwnerBoundCharacterCreationAttributesService>? attributesDecorator = null,
             bool creationSkills = false,
-            bool lifeModuleInputDrafts = false)
+            bool lifeModuleInputDrafts = false,
+            Func<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService,
+                Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>? lifeBookDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -715,7 +717,9 @@ internal static partial class AfterRunAuthorityHarness
                     sr6CreationFoundationService: sr6Decorator?.Invoke(_provider.GetRequiredService<ISr6CreationFoundationService>()),
                     lifeModuleFinalizationService: lifeCompletionDecorator?.Invoke(
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>()),
-                    lifeModuleBookService: _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
+                    lifeModuleBookService: lifeBookDecorator?.Invoke(
+                        _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>())
+                        ?? _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
                     lifeModuleInputDrafts: lifeModuleInputDrafts ? new LifeModuleCompletionDraftStore(StateDirectory) : null,
                     originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
                         _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
