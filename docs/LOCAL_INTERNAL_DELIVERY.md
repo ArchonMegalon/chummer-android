@@ -104,7 +104,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 104 is the latest [observed Internal availability](../play/evidence/preview104-internal-observation.md),
+Preview 105 is the latest [observed Internal availability](../play/evidence/preview105-internal-observation.md),
+confirmed on 5 October at 00:19 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Life Modules completion now blocks allocations when retained story history is
+unread or cannot be verified; explicitly verified legacy absence remains allowed.
+Nine focused actual-MAUI/Core cases and a synthetic API36 unread/read/new-process
+smoke passed. Unchanged behavior results are reused for the version-only delta;
+native failure injection is not claimed. **Physical Play105 installation/update
+and live account/provider checks remain unverified.** This is not full SR5/Origin,
+performance clearance or general-beta completion. The historical Hub503 cause
+and the read-first completion-card subtitle remain separate open work.
+
+Preview 104's [observed Internal availability](../play/evidence/preview104-internal-observation.md),
 confirmed on 4 October at 23:35 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 An unexpected Origin status-read failure now stops the pinned spinner and shows
