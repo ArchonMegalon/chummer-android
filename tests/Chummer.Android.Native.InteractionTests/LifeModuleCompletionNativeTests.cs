@@ -1401,7 +1401,29 @@ internal static partial class AfterRunAuthorityHarness
                     && authoringProbe.SceneRequests == 0, "Automatic artwork still required an image picker or human image decision.");
                 await Click("origin-book-export-epub");
                 Require(bookOutput.Epub.Length > 0, "Pending artwork blocked full-book export.");
-                imageRelease.SetResult();
+                // The image can finish while Android's Save As picker is open.
+                // Export the exact edition chosen at the click; optional artwork
+                // must not silently cancel an otherwise valid document save.
+                int beforeIllustratedSave = bookOutput.EpubDeliveries;
+                RetainedOriginBook VisibleEdition() => (RetainedOriginBook)typeof(RetainedOriginBookPage)
+                    .GetField("_book", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                    .GetValue(Current())!;
+                bookOutput.BeforeReadAsync = async () =>
+                {
+                    imageRelease.TrySetResult();
+                    var wait = System.Diagnostics.Stopwatch.StartNew();
+                    while (VisibleEdition().Scene(chapter) is null
+                        && wait.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(10);
+                    Require(VisibleEdition().Scene(chapter) is not null,
+                        "The illustration did not finish during the simulated Save As picker.");
+                };
+                try { await Click("origin-book-export-epub"); }
+                finally { bookOutput.BeforeReadAsync = null; imageRelease.TrySetResult(); }
+                Require(bookOutput.EpubDeliveries == beforeIllustratedSave + 1,
+                    "Finishing an automatic illustration silently canceled the in-progress EPUB save.");
+                using (var snapshot = new System.IO.Compression.ZipArchive(new MemoryStream(bookOutput.Epub), System.IO.Compression.ZipArchiveMode.Read))
+                    Require(!snapshot.Entries.Any(entry => entry.FullName.StartsWith("EPUB/images/", StringComparison.Ordinal)),
+                        "A pending export changed its selected bytes after the Save As picker opened.");
                 var imageWait = System.Diagnostics.Stopwatch.StartNew();
                 while (!IssuedElements(Current()).Any(e => e.AutomationId == $"origin-book-scene-{chapter.Sequence}")
                     && imageWait.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(10);
@@ -2209,6 +2231,7 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class LifeBookOutputProbe : IAndroidDocumentService
     {
         public Action? BeforeRead { get; set; }
+        public Func<Task>? BeforeReadAsync { get; set; }
         public int Deliveries { get; private set; }
         public string Html { get; private set; } = string.Empty;
         public int EpubDeliveries { get; private set; }
@@ -2221,6 +2244,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(name == "origin-dossier.html" && mediaType == "text/html"
                 || name == "origin-dossier.epub" && mediaType == "application/epub+zip", "Unexpected book output format.");
             BeforeRead?.Invoke();
+            if (BeforeReadAsync is { } beforeRead) await beforeRead();
             if (!isCurrent()) throw new OperationCanceledException();
             if (mediaType == "application/epub+zip")
             {

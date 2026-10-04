@@ -118,22 +118,22 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             epub.AutomationId = "origin-book-export-epub";
             epub.Clicked += async (_, _) => await RunAsync(async () =>
             {
-                bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                    && Coordinator.IsRetainedOriginBookCurrent(book);
-                if (!Current()) return;
+                bool Current() => IsCurrentAppearanceGeneration(appearance);
+                if (!Current() || !ReferenceEquals(_book, book) || !Coordinator.IsRetainedOriginBookCurrent(book)) return;
                 bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None, epub: true);
-                if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
+                if (Current() && _book is { } current && Coordinator.IsRetainedOriginBookCurrent(current))
+                    _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
             });
             _body.Add(epub);
             var export = NativeTheme.ReadingButton(_copy["Origin.ExportBook"]);
             export.AutomationId = "origin-book-export";
             export.Clicked += async (_, _) => await RunAsync(async () =>
             {
-                bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, book)
-                    && Coordinator.IsRetainedOriginBookCurrent(book);
-                if (!Current()) return;
+                bool Current() => IsCurrentAppearanceGeneration(appearance);
+                if (!Current() || !ReferenceEquals(_book, book) || !Coordinator.IsRetainedOriginBookCurrent(book)) return;
                 bool saved = await Coordinator.ExportRetainedOriginBookAsync(book, _copy, Current, CancellationToken.None);
-                if (Current()) _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
+                if (Current() && _book is { } current && Coordinator.IsRetainedOriginBookCurrent(current))
+                    _notice = _copy[saved ? "Origin.BookExported" : "Origin.BookExportCancelled"];
             });
             _body.Add(export);
         }
