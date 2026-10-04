@@ -262,12 +262,26 @@ internal static partial class AfterRunAuthorityHarness
                     && savedMagic.Document.AuxiliaryState.CharacterCreationKarmaMetatypeDecisions!.Single()
                         .Command.MagicSelections!.Spells.Single() == spell.Identity,
                     "Magic selections must persist once without applying the character before completion.");
+                if (Environment.GetEnvironmentVariable("CHUMMER_KARMA_COMPLETION_SMOKE_DIRECTORY") is { Length: > 0 } smokeDirectory)
+                {
+                    Require(Path.IsPathFullyQualified(smokeDirectory) && !Directory.Exists(smokeDirectory),
+                        "Karma completion smoke requires a new explicit synthetic directory.");
+                    Directory.CreateDirectory(smokeDirectory);
+                    foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*", SearchOption.AllDirectories))
+                    {
+                        string target = Path.Combine(smokeDirectory, Path.GetRelativePath(runtime.StateDirectory, file));
+                        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                        File.Copy(file, target, overwrite: false);
+                    }
+                    Console.WriteLine("Karma completion synthetic fixture: " + id.Value);
+                }
                 await Back();
                 await Click("karma-open-completion");
                 Element<Entry>("karma-completion-roll").Text = "4";
                 await Click("karma-completion-preview");
                 Require(Element<Button>("karma-completion-confirm").IsEnabled,
                     "The saved magic draft did not reach the explicit Career review.");
+                AssertReadableCompletion();
                 await Click("karma-completion-confirm");
                 var completedMagic = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
                 var xml = System.Xml.Linq.XElement.Parse(completedMagic.Document.Content);
@@ -746,6 +760,7 @@ internal static partial class AfterRunAuthorityHarness
             await Click("karma-completion-preview");
             var review = (CharacterCreationFinalizationReview)typeof(CreationKarmaCompletionPage)
                 .GetField("_review", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
+            AssertReadableCompletion();
             Require((await runtime.Coordinator.ConfirmKarmaCompletionAsync(review, false, default, () => true)).Value is null
                 && (await runtime.Coordinator.ConfirmKarmaCompletionAsync(review with { }, true, default, () => true)).Value is null
                 && probe.FinalConfirmCalls == 0, "Completion accepted implicit consent or a forged review identity.");
@@ -916,6 +931,46 @@ internal static partial class AfterRunAuthorityHarness
                     && probe.ConfirmCalls == 1,
                     "Dashboard display/navigation changed the saved Karma draft.");
                 Console.WriteLine("PASS Karma dashboard: fresh budget, warm Career/Karma switch, stale picker/owner ABA rejection, correct editor, departed callback, read failure/recovery, no writes");
+            }
+
+            void AssertReadableCompletion()
+            {
+                var review = (CharacterCreationFinalizationReview)typeof(CreationKarmaCompletionPage)
+                    .GetField("_review", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(Current())!;
+                string sealedReview = System.Text.Json.JsonSerializer.Serialize(review);
+                var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+                Label[] visible = IssuedElements(Current()).OfType<Label>().Where(label => label.IsVisible).ToArray();
+                Require(!visible.Any(label => System.Text.RegularExpressions.Regex.IsMatch(label.Text ?? string.Empty,
+                        @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\.xml#")),
+                    "Karma final review exposes technical identities instead of the sealed source names.");
+                foreach (var delta in review.OrderedDeltas.Where(delta => !string.IsNullOrWhiteSpace(delta.TargetName)))
+                    Require(Element<Label>("karma-completion-delta-" + delta.Order).Text!.Contains(delta.TargetName!, StringComparison.Ordinal),
+                        "Karma final review omitted the exact Core-bound name: " + delta.Kind);
+                foreach (var delta in review.OrderedDeltas.Where(delta => delta.TargetId is
+                    "magenabled" or "resenabled" or "depenabled" or "spells-karma" or "complex-forms-karma"
+                    or "startingnuyen" or "resource-karma-rounding" or "nuyen-carried" or "lifestyle-starting-nuyen"
+                    or "contacts-karma" or "qualities-karma-adjustment"))
+                    Require(!Element<Label>("karma-completion-delta-" + delta.Order).Text!.StartsWith(delta.TargetId + ":", StringComparison.Ordinal),
+                        "Karma final review exposes an internal scalar field: " + delta.TargetId);
+                Require(visible.Any(label => label.Text == CreationKarmaCopy.DiceTotalHelp),
+                    "Karma starting-cash input must explain the dice sum, not just request a number.");
+                var input = Element<Entry>("karma-completion-roll");
+                Require(input.TextColor == NativeTheme.Text && input.BackgroundColor == NativeTheme.Surface,
+                    "Karma dice input must remain readable in the app's light theme.");
+                Label[] sources = IssuedElements(Current()).OfType<Label>()
+                    .Where(label => label.AutomationId?.StartsWith("karma-completion-source-", StringComparison.Ordinal) == true).ToArray();
+                Require(sources.Length == review.OrderedDeltas.Count && sources.All(label => !label.IsVisible),
+                    "Every exact delta must retain collapsed diagnostic detail.");
+                ((IButtonController)Element<Button>("karma-completion-details")).SendClicked();
+                Require(sources.All(label => label.IsVisible)
+                    && review.OrderedDeltas.All(delta => sources.Any(label => label.Text!.Contains(delta.TargetId, StringComparison.Ordinal))),
+                    "Technical details must retain the original IDs without substituting the reviewed command.");
+                ((IButtonController)Element<Button>("karma-completion-details")).SendClicked();
+                Require(sources.All(label => !label.IsVisible) && probe!.FinalConfirmCalls == 0
+                    && System.Text.Json.JsonSerializer.Serialize(review) == sealedReview,
+                    "Displaying or hiding details changed the sealed review or finalized the runner.");
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+                Console.WriteLine("PASS Karma readable completion: bound names, hidden technical IDs, explicit dice help, contrast, unchanged review and saved bytes");
             }
 
             NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
