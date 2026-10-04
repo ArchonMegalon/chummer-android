@@ -243,7 +243,7 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS linked-owner Life Modules start, review, commit, save, cold reopen, namespace isolation and ABA rejection");
     }
 
-    internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null)
+    internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null, bool automatic = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -272,13 +272,34 @@ internal static partial class AfterRunAuthorityHarness
             var prose = OriginBookProseDraft.Create(first, book.Locale,
                 Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(source), new string('d', 64),
                 "The complete saved opening. This text must stay readable while the next chapter is still being written.");
+            void CheckExportActions(RetainedOriginBook edition, bool available)
+            {
+                var reader = new RetainedOriginBookPage(runtime.Coordinator);
+                typeof(RetainedOriginBookPage).GetField("_book",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(reader, edition);
+                typeof(RetainedOriginBookPage).GetMethod("Refresh",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(reader, null);
+                foreach (string exportId in new[] { "origin-book-export", "origin-book-export-epub" })
+                    Require(IssuedElements(reader).OfType<Button>().Any(b => b.AutomationId == exportId && b.IsEnabled) == available
+                        && (available || !IssuedElements(reader).Any(e => e.AutomationId == exportId)),
+                        "HTML/EPUB actions must be absent until full chapter prose is accepted, then become available.");
+            }
+            CheckExportActions(book, false);
             remote.Seed(source, prose);
             book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, prose, () => true, default))!;
+            CheckExportActions(book, false);
             book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
-            var queued = await runtime.Coordinator.SyncOriginChapterAsync(book, next, book.AuthoringSource(next), true, () => true, default);
-            Require(queued.Result.Job?.State == Chummer.Run.Contracts.Community.OriginChapterAuthoringStates.AwaitingAuthoring
-                && queued.Book?.Reading(next)?.AuthoringSource is not null,
-                "The reader fixture needs an accepted full chapter and one existing pending successor.");
+            CheckExportActions(book, true);
+            if (!automatic)
+            {
+                var queued = await runtime.Coordinator.SyncOriginChapterAsync(book, next, book.AuthoringSource(next), true, () => true, default);
+                Require(queued.Result.Job?.State == Chummer.Run.Contracts.Community.OriginChapterAuthoringStates.AwaitingAuthoring
+                    && queued.Book?.Reading(next)?.AuthoringSource is not null,
+                    "The reader fixture needs an accepted full chapter and one existing pending successor.");
+            }
+            else
+                Require(await runtime.Coordinator.RecordOriginBookReaderAcceptanceAsync(book, prose, () => true, default),
+                    "The automatic successor fixture needs the first chapter's explicit read acknowledgement.");
             int requests = remote.Requests, acceptances = remote.Acceptances;
             var page = new RetainedOriginBookPage(runtime.Coordinator);
             var window = new Window(new NavigationPage(page));
@@ -296,6 +317,17 @@ internal static partial class AfterRunAuthorityHarness
                     label.AutomationId == $"origin-retained-chapter-{first.Sequence}" && label.Text == prose.Text)
                     && !IssuedElements(page).Any(e => e.AutomationId == "origin-book-loading")
                     && IssuedElements(page).OfType<Button>().Any(b => b.AutomationId == "origin-book-export-epub" && b.IsEnabled);
+                Require(IssuedElements(page).OfType<Label>().First(label =>
+                        label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true
+                        || label.AutomationId?.StartsWith("origin-reader-status-", StringComparison.Ordinal) == true)
+                    .AutomationId == $"origin-retained-chapter-{first.Sequence}",
+                    "Pending chapter placeholders pushed existing full prose below the reading content.");
+                var layout = page.Content as Grid;
+                var pinned = IssuedElements(page).Single(e => e.AutomationId == "origin-reader-pinned-progress");
+                Require(layout is not null && layout.Children.Contains((Microsoft.Maui.IView)pinned)
+                    && Grid.GetRow(pinned) == 0 && IssuedElements(page).OfType<ActivityIndicator>()
+                        .Any(e => e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning),
+                    "The active generation/status spinner can scroll off screen.");
             }
             finally
             {
@@ -304,6 +336,15 @@ internal static partial class AfterRunAuthorityHarness
                 remote.BeforeSuccessorRead = null;
             }
             Require(visibleDuringRead, "An existing full chapter and its EPUB action remained hidden behind the next chapter's network status read.");
+            if (automatic)
+            {
+                Require(remote.Requests == requests + 1 && remote.Acceptances == acceptances,
+                    "The saved next chapter did not start automatically exactly once.");
+                requests = remote.Requests;
+                Require(!IssuedElements(page).Any(e => e.AutomationId is "origin-authoring-consent" or "origin-authoring-request"
+                    || e.AutomationId?.StartsWith("origin-author-chapter-", StringComparison.Ordinal) == true),
+                    "The automatic reader still exposes a consent toggle or separate writing button.");
+            }
             long generation = IssuedPageField<long>(page, "_appearanceGeneration");
             entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
             release = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -325,7 +366,10 @@ internal static partial class AfterRunAuthorityHarness
                     "Concurrent, departed or canceled observations duplicated the active chapter read.");
                 var export = IssuedElements(page).OfType<Button>().Single(b => b.AutomationId == "origin-book-export-epub");
                 await ui.BeginAsyncVoid(() => ((IButtonController)export).SendClicked()).WaitAsync(TimeSpan.FromSeconds(10));
-                exportedDuringRead = output.EpubDeliveries == 1 && output.Epub.Length > 0 && !poll.IsCompleted;
+                var html = IssuedElements(page).OfType<Button>().Single(b => b.AutomationId == "origin-book-export");
+                await ui.BeginAsyncVoid(() => ((IButtonController)html).SendClicked()).WaitAsync(TimeSpan.FromSeconds(10));
+                exportedDuringRead = output.EpubDeliveries == 1 && output.Epub.Length > 0
+                    && output.Deliveries == 1 && output.Html.Contains(prose.Text, StringComparison.Ordinal) && !poll.IsCompleted;
             }
             finally
             {
@@ -334,7 +378,7 @@ internal static partial class AfterRunAuthorityHarness
                 remote.BeforeSuccessorRead = null;
                 IssuedPageLifecycle(page, "OnDisappearing");
             }
-            Require(exportedDuringRead, "A background chapter-status read held the action gate and silently ignored EPUB export.");
+            Require(exportedDuringRead, "A background chapter-status read held the action gate or blocked HTML/EPUB export of completed chapters.");
             int departedReads = remote.Reads;
             await page.PollChapterOnceAsync(generation, default);
             Require(remote.Reads == departedReads && !IssuedElements(page).Any(e => e is Button or Label),
@@ -346,8 +390,23 @@ internal static partial class AfterRunAuthorityHarness
                 && cold.Chapters.Single(c => c.ChapterId == next.ChapterId).Selected is null,
                 "The reader changed the accepted or pending chapter during read-only status checks.");
             RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            if (automatic)
+            {
+                remote.RemoveSuccessor();
+                var reopened = new RetainedOriginBookPage(runtime.Coordinator);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reopened, "OnAppearing"));
+                Require(remote.Requests == requests && remote.Acceptances == acceptances,
+                    "Reopening an admitted but missing/uncertain job spent credits a second time.");
+                Require(!IssuedElements(reopened).Any(e => e.AutomationId == $"origin-read-chapter-effects-{next.Sequence}"),
+                    "An unread or ungenerated chapter exposed its rule changes.");
+                Require(IssuedElements(reopened).OfType<Button>().Count(b => b.IsEnabled
+                    && b.AutomationId is "origin-book-export" or "origin-book-export-epub") == 2,
+                    "Reopening a book with completed prose and a missing successor hid its HTML/EPUB actions.");
+                IssuedPageLifecycle(reopened, "OnDisappearing");
+                Console.WriteLine("PASS automatic chapter: one dispatch, pinned spinner, no extra controls, cold no-replay, hidden unread mechanics");
+            }
             ui.AssertHealthy();
-            Console.WriteLine("PASS full saved Origin chapter visible during pending status, EPUB usable during poll, no new generation/acceptance or runner mutation");
+            Console.WriteLine("PASS HTML/EPUB absent without completed prose; both export saved chapters during pending status and cold reopen, no runner mutation");
             if (smokeDirectory is not null)
             {
                 // Synthetic offline fixture only, for an isolated emulator app.
@@ -473,6 +532,33 @@ internal static partial class AfterRunAuthorityHarness
             var window = new Window(navigation);
             using var alerts = new IssuedPageAlerts(root, window);
             await alerts.PreflightAsync();
+            await Appear();
+            Require(!IssuedElements(root).Any(e => e.AutomationId == "creation-life-module-budget"),
+                "The dashboard exposed module rule changes before the story was read.");
+            await Click("creation-life-module-continue");
+            Require(Current() is LifeModuleCompletionPage
+                && IssuedElements(Current()).Any(e => e.AutomationId == "life-completion-story-first")
+                && !IssuedElements(Current()).Any(e => e.AutomationId == "life-open-qualities"),
+                "Unseen module prose did not hold back the completion mechanics.");
+            await Back();
+            // This allocation fixture starts after explicit reading. Keep the
+            // original empty edition for the separate offline book tests below.
+            var readingStore = new OriginBookReadingStore(runtime.StateDirectory);
+            var unreadEdition = readingStore.Load(owners.Capture().Owner.Value, id.Value);
+            var readBook = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            Require(readBook.Chapters.Count(readBook.IsSelectionFinish) == 1
+                && !readBook.CanOpenAuthoring(readBook.Chapters.Single(readBook.IsSelectionFinish)),
+                "Finishing module selection was treated as another paid narrative chapter.");
+            foreach (var completedChapter in readBook.Chapters.Where(c => !readBook.IsOpeningSetup(c) && !readBook.IsSelectionFinish(c)).ToArray())
+            {
+                var completedProse = OriginBookProseDraft.Create(completedChapter, readBook.Locale,
+                    Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(readBook.AuthoringSource(completedChapter)),
+                    new string('f', 64), "Synthetic completed chapter for the allocation-page fixture.");
+                readBook = (await runtime.Coordinator.StageOriginBookProseDraftAsync(readBook, completedProse, () => true, default))!;
+                readBook = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(readBook, completedProse, true, true, () => true, default))!;
+            }
+            Require(readBook.HasReadCurrentStory, "The allocation fixture did not acknowledge each completed chapter.");
+            IssuedPageLifecycle(root, "OnDisappearing");
             await Appear();
             var displayedWizard = runtime.Coordinator.State.CreationWizard!;
             string originalWizard = JsonSerializer.Serialize(displayedWizard);
@@ -746,6 +832,9 @@ internal static partial class AfterRunAuthorityHarness
                 && cold.Document.AuxiliaryState.CharacterCreationFinalizationArchive is not null,
                 "Phone completion was not one durable Career transition.");
             IssuedPageLifecycle(Current(), "OnDisappearing");
+            // New fixture phase: exercise an offline, not-yet-written book.
+            readingStore.Save(readingStore.Load(unreadEdition.Owner, unreadEdition.Workspace), unreadEdition, () => true, default);
+            authoringProbe.Status = AndroidAccountLinkStatus.Unlinked;
             await VerifyRetainedBookAsync();
             ui.AssertHealthy();
             Console.WriteLine("PASS Life Modules phone pages: choices, input recovery, Career, retained book/cold read, HTML export and stale-owner rejection");
@@ -797,13 +886,15 @@ internal static partial class AfterRunAuthorityHarness
                 Require(watchField.GetValue(page) is true && authoringProbe.Reads == 0,
                     "A retired or canceled observer stopped the current reader's watch.");
                 watchField.SetValue(page, false);
+                var unwrittenChapter = projected.Value.VisibleChapters[1];
                 Require(!IssuedElements(page).OfType<Label>().Any(label => label.AutomationId?.StartsWith("origin-retained-chapter-", StringComparison.Ordinal) == true)
-                    && Element<ProgressBar>($"origin-reader-progress-{finishChapter.Sequence}").Progress == 0
-                    && !string.IsNullOrWhiteSpace(Element<Label>($"origin-reader-eta-{finishChapter.Sequence}").Text)
-                    && !Element<Button>("origin-book-export-epub").IsEnabled,
+                    && Element<ProgressBar>($"origin-reader-progress-{unwrittenChapter.Sequence}").Progress == 0
+                    && !string.IsNullOrWhiteSpace(Element<Label>($"origin-reader-eta-{unwrittenChapter.Sequence}").Text)
+                    && !IssuedElements(page).Any(e => e.AutomationId == $"origin-reader-progress-{finishChapter.Sequence}")
+                    && !IssuedElements(page).Any(e => e.AutomationId is "origin-book-export" or "origin-book-export-epub"),
                     "The reader showed a decision draft instead of waiting for the full chapter with progress/ETA.");
-                Require(!IssuedElements(page).Any(element => element.AutomationId == "origin-book-account"),
-                    "A linked reader was asked to link again.");
+                Require(IssuedElements(page).Any(element => element.AutomationId == "origin-book-account"),
+                    "The offline reader did not offer the account route.");
                 Button? retiredAccountButton = null;
                 foreach (string locale in new[] { "de-DE", "en-US", "es-ES" })
                 {
@@ -820,7 +911,9 @@ internal static partial class AfterRunAuthorityHarness
                     var localizedCopy = AndroidSurfaceStrings.Resolve(locale);
                     Require(Element<Label>("origin-book-account-explanation").Text == localizedCopy["Origin.BookAccountExplanation"],
                         "The unlinked reader did not explain the account requirement in its UI language.");
-                    Require(!Element<Button>("origin-book-export").IsEnabled
+                    Require(!Element<VerticalStackLayout>("origin-reader-pinned-progress").IsVisible,
+                        "The offline reader pinned a generation status/ETA without a linked writer.");
+                    Require(!IssuedElements(Current()).Any(e => e.AutomationId is "origin-book-export" or "origin-book-export-epub")
                         && !IssuedElements(Current()).Any(e => e.AutomationId?.StartsWith("origin-author-chapter-", StringComparison.Ordinal) == true),
                         "An unlinked reader exported missing prose or exposed a generation action.");
                     retiredAccountButton = Element<Button>("origin-book-account");
@@ -835,7 +928,8 @@ internal static partial class AfterRunAuthorityHarness
                         && authoringProbe.Requests == 0 && authoringProbe.Reads == 0,
                         "Opening account settings started authentication or sent chapter facts.");
                     await Back();
-                    Require(Current() is RetainedOriginBookPage && !Element<Button>("origin-book-export").IsEnabled,
+                    Require(Current() is RetainedOriginBookPage
+                        && !IssuedElements(Current()).Any(e => e.AutomationId is "origin-book-export" or "origin-book-export-epub"),
                         "Returning from account settings enabled an empty book export.");
                     await Back();
                 }
@@ -845,6 +939,7 @@ internal static partial class AfterRunAuthorityHarness
                 await ui.BeginAsyncVoid(() => ((IButtonController)retiredAccountButton!).SendClicked());
                 Require(navigation.Navigation.NavigationStack.Count == beforeRetiredAccountClick && authoringProbe.LinkStarts == 0,
                     "A departed book action reopened account settings or began authentication.");
+                authoringProbe.Status = AndroidAccountLinkStatus.Unlinked;
                 Console.WriteLine("PASS unlinked book: DE/EN/ES account explanation, explicit navigation, offline export and no automatic sign-in/generation");
                 Require(bookOutput.Deliveries == 0, "An unfinished book was exported as full prose.");
                 var malicious = projected.Value! with
@@ -863,7 +958,7 @@ internal static partial class AfterRunAuthorityHarness
                     "The birth-background decision was offered as an independent generated chapter.");
                 var chapter = book.Chapters[1];
                 Require(book.Readings?.StoryProfile == storyProfile
-                    && runtime.Coordinator.PrepareOriginChapterSource(book, chapter)?.Facts.Any(f =>
+                    && book.AuthoringSource(chapter).Facts.Any(f =>
                         f.DecisionId.StartsWith("player-story-brief-", StringComparison.Ordinal)
                         && f.Text.Contains("they/them", StringComparison.Ordinal)) == true,
                     "The retained book did not carry the optional brief into the approved chapter source.");
@@ -899,7 +994,7 @@ internal static partial class AfterRunAuthorityHarness
                 IssuedPageLifecycle(page, "OnDisappearing");
                 await navigation.PushAsync(review, false); await Appear();
                 Require(Element<Label>($"origin-retained-chapter-{chapter.Sequence}").Text == proposal.Text
-                    && !Element<Button>("origin-book-export").IsEnabled
+                    && !IssuedElements(review).Any(e => e.AutomationId is "origin-book-export" or "origin-book-export-epub")
                     && staged!.Pending(chapter) == proposal && !staged.HasReadCurrentStory,
                     "Read did not expose the exact full text, or silently acknowledged/exported it.");
                 await Click($"origin-chapter-read-{chapter.Sequence}");
@@ -946,8 +1041,14 @@ internal static partial class AfterRunAuthorityHarness
                 Require(new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerB.Value, id.Value).Chapters.Count == 0,
                     "Reading versions leaked into another account.");
                 await Back();
-                // Actual consent -> request -> refresh -> stage -> review UI.
-                await Click($"origin-author-chapter-{chapter.Sequence}");
+                // Preserve the legacy recovery-page safety tests explicitly.
+                // Production reading starts automatically; no writing button
+                // is present there (covered by the automatic reader test).
+                authoringProbe.Status = AndroidAccountLinkStatus.Linked;
+                var legacyBook = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await navigation.PushAsync(new OriginBookAuthoringPage(runtime.Coordinator, legacyBook, chapter), false);
+                await Appear();
                 Require(Current() is OriginBookAuthoringPage && authoringProbe.Requests == 0 && authoringProbe.Reads == 1
                     && authoringProbe.Acceptances == 0
                     && !Element<Button>("origin-authoring-request").IsEnabled,

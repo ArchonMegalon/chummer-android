@@ -68,6 +68,18 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     }
 
     internal bool HasExportableChapters => Chapters.Any(IsExportableChapter);
+    internal IReadOnlyList<string> MechanicsAfterReading(OriginNarrativeChapterProjection chapter)
+    {
+        if (!IsExportableChapter(chapter)) return [];
+        var decisions = new HashSet<string>(StringComparer.Ordinal) { chapter.ThroughAcceptedDecisionId };
+        // The first real chapter includes birth/metatype plus childhood.
+        if (UsesSr5Opening && Projection.CanonicalLayer.AcceptedDecisionIds.Count > 1
+            && chapter.ThroughAcceptedDecisionId == Projection.CanonicalLayer.AcceptedDecisionIds[1])
+            decisions.Add(Projection.CanonicalLayer.AcceptedDecisionIds[0]);
+        return Projection.CanonicalLayer.Facts.Where(f => decisions.Contains(f.AcceptedDecisionId)
+                && f.FactKind == "accepted-life-module-contributions" && Projection.AllowedCanonicalFactIds.Contains(f.FactId))
+            .Select(f => f.LocalizedSummary).ToArray();
+    }
     internal bool IsExportableChapter(OriginNarrativeChapterProjection chapter)
         => ReadableChapter(chapter) is { } prose && Reading(chapter)?.Selected?.DraftDigest == prose.DraftDigest;
 
@@ -103,6 +115,15 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         => UsesSr5Opening && Chapters.Contains(chapter)
             && Projection.CanonicalLayer.AcceptedDecisionIds.FirstOrDefault() == chapter.ThroughAcceptedDecisionId;
 
+    // Finishing the module selection seals a rules transition, not another
+    // life event to write. Retained prose is preserved, but a bare finish marker
+    // must never create a paid request or hold Career behind nonexistent prose.
+    internal bool IsSelectionFinish(OriginNarrativeChapterProjection chapter)
+        => UsesSr5Opening && Chapters.Contains(chapter)
+            && Projection.CanonicalLayer.Facts.Any(f => f.AcceptedDecisionId == chapter.ThroughAcceptedDecisionId
+                && f.FactKind == "accepted-module-selection-finish"
+                && Projection.AllowedCanonicalFactIds.Contains(f.FactId));
+
     private bool HasRetainedAuthoring(OriginNarrativeChapterProjection chapter)
         => new[] { Reading(chapter)?.Selected, Pending(chapter) }.Any(draft =>
             draft is not null && draft.IsValid() && draft.Matches(chapter, Locale));
@@ -119,7 +140,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         get
         {
             if (!OpeningSetupComplete) return false;
-            var narrative = Chapters.Where(c => !IsOpeningSetup(c) || HasRetainedAuthoring(c)).ToArray();
+            var narrative = Chapters.Where(c => (!IsOpeningSetup(c) && !IsSelectionFinish(c)) || HasRetainedAuthoring(c)).ToArray();
             if (narrative.Length == 0) return false;
             try
             {
@@ -136,7 +157,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
         out OriginChapterPredecessor? previous)
     {
         previous = null;
-        if (!Chapters.Contains(chapter) || !OpeningSetupComplete || IsOpeningSetup(chapter)) return false;
+        if (!Chapters.Contains(chapter) || !OpeningSetupComplete || IsOpeningSetup(chapter) || IsSelectionFinish(chapter)) return false;
         var decisions = Projection.CanonicalLayer.AcceptedDecisionIds.ToArray();
         if (decisions.Distinct(StringComparer.Ordinal).Count() != decisions.Length) return false;
         int boundary = Array.IndexOf(decisions, chapter.ThroughAcceptedDecisionId);
@@ -151,7 +172,8 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
             return false;
         // A previously generated opening is preserved and must still be read.
         // New books have no paid foundation chapter to acknowledge or invent.
-        earlier = earlier.Where(c => !IsOpeningSetup(c.Chapter) || HasRetainedAuthoring(c.Chapter)).ToArray();
+        earlier = earlier.Where(c => (!IsOpeningSetup(c.Chapter) && !IsSelectionFinish(c.Chapter))
+            || HasRetainedAuthoring(c.Chapter)).ToArray();
         if (earlier.Length == 0) return true;
         var preceding = earlier[^1].Chapter;
         if (Reading(preceding)?.Selected is not { } selected || !selected.IsValid()

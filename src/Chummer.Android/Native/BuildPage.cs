@@ -917,13 +917,28 @@ public sealed class BuildPage : NativePageBase
         _body.Add(loading);
     }
 
+    private RetainedOriginBook? _lifeStoryBook;
+
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
         long appearance = CaptureAppearanceGeneration();
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
         _karmaDashboardSession = null;
+        _lifeStoryBook = null;
         var original = Coordinator.State;
+        if (Coordinator.CanReadRetainedOriginBook(original))
+        {
+            try
+            {
+                var book = await Coordinator.LoadRetainedOriginBookAsync(cancellationToken,
+                    () => IsCurrentAppearanceGeneration(appearance));
+                if (IsCurrentAppearanceGeneration(appearance) && book is not null
+                    && Coordinator.IsRetainedOriginBookCurrent(book)) _lifeStoryBook = book;
+            }
+            catch (Exception error) when (error is IOException or InvalidOperationException
+                or OperationCanceledException or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+        }
         if (Coordinator.CanOpenCreationKarma())
         {
             // Requote the saved auxiliary draft on appearance or runner switch.
@@ -946,6 +961,7 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _lifeStoryBook = null;
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
         _karmaDashboardSession = null;
@@ -1428,7 +1444,10 @@ public sealed class BuildPage : NativePageBase
         bool finished = foundation?.PendingDraft?.ModuleSelectionFinished == true;
         var budget = foundation?.LifeModuleBudget;
 
-        var scope = NativeTheme.Body(finished
+        bool storyRead = _lifeStoryBook is { HasReadCurrentStory: true } story
+            && Coordinator.IsRetainedOriginBookCurrent(story);
+        var scope = NativeTheme.Body(!storyRead
+            ? AndroidSurfaceStrings.Resolve()["Origin.MechanicsAfterReading"] : finished
             ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
             : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review."), NativeTheme.Muted);
         scope.AutomationId = "creation-life-module-scope";
@@ -1449,7 +1468,7 @@ public sealed class BuildPage : NativePageBase
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         var budgetCard = NativeTheme.Card(card);
         budgetCard.AutomationId = "creation-life-module-budget";
-        _body.Add(budgetCard);
+        if (storyRead) _body.Add(budgetCard);
 
         bool canOpen = current && Coordinator.CanOpenSr5LifeModuleOrigin()
             && (!finished || Coordinator.CanOpenLifeModuleCompletion());
@@ -1457,7 +1476,7 @@ public sealed class BuildPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         _body.Add(CreationNavigationRow(
             finished ? CreationAllocationStrings.Get("LifeDashboard.Complete", "Complete your runner") : CreationAllocationStrings.Get("LifeDashboard.Continue", "Continue your story"),
-            CurrentPhoneWizardScope.MarkExperimental(CreationAllocationStrings.Get("LifeDashboard.Review", "Review exact Core effects before confirming any change.")),
+            CurrentPhoneWizardScope.MarkExperimental(AndroidSurfaceStrings.Resolve()["Origin.MechanicsAfterReading"]),
             async () =>
             {
                 if (!canOpen || render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
@@ -3079,13 +3098,9 @@ public sealed class BuildPage : NativePageBase
                 if (book is null || !Coordinator.IsRetainedOriginBookCurrent(book)
                     || book.Digest != checkpoint.Projection.SeedDigest)
                     throw new InvalidOperationException("The saved story changed while checking chapter progress.");
-                var chapter = book.Chapters.LastOrDefault(book.CanOpenAuthoring);
-                if (chapter is not null && Coordinator.CanRequestOriginChapter(book))
-                    await Navigation.PushAsync(new OriginBookAuthoringPage(Coordinator, book, chapter));
-                else
-                    // Offline/unlinked readers still get their saved book and
-                    // its account explanation, never an automatic sign-in.
-                    await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+                // Present the full text (or its pinned progress) directly.
+                // Offline readers still get saved pages and account guidance.
+                await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
             });
         await Navigation.PushAsync(page);
     }
