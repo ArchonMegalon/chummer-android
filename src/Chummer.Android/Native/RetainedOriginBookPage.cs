@@ -266,12 +266,16 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _progress.IsVisible = true;
         _progress.Add(new ActivityIndicator { IsRunning = active, IsVisible = active,
             AutomationId = "origin-reader-writing-spinner" });
-        _progress.Add(NativeTheme.Body(_copy[result?.UnknownRemoteOutcome == true ? "Origin.AuthoringOutcomeUnconfirmed"
+        string status = !active && _notice == _copy["Origin.AuthoringStatusPaused"] ? _notice
+            : _copy[result?.UnknownRemoteOutcome == true ? "Origin.AuthoringOutcomeUnconfirmed"
             : result?.Outcome == AndroidOriginChapterOutcome.NotFound && book.Reading(chapter)?.AuthoringSource is not null
                 ? "Origin.AuthoringOutcomeUnconfirmed"
             : result?.Job?.State == OriginChapterAuthoringStates.AwaitingAuthoring ? "Origin.AuthoringQueued"
             : result?.Job?.State == OriginChapterAuthoringStates.ReconciliationRequired ? "Origin.AuthoringOutcomeUnconfirmed"
-            : "Origin.ReaderFullTextPending"]));
+            : "Origin.ReaderFullTextPending"];
+        var message = NativeTheme.Body(status);
+        message.AutomationId = "origin-reader-writing-status";
+        _progress.Add(message);
         var progress = new ProgressBar { Progress = result?.Job?.State switch
             {
                 OriginChapterAuthoringStates.AwaitingAuthoring => 1d / 3,
@@ -563,6 +567,12 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         {
             if (!Current()) return;
             _watchPending = false;
+            _notice = _copy["Origin.AuthoringStatusPaused"];
+            // ReadMissingChapterAsync restored the ribbon before this catch
+            // stopped the watch. Update only that pinned status: saved prose
+            // and an in-flight export must not be rebuilt or interrupted.
+            _progress.Clear(); _progress.IsVisible = false;
+            if (_book is { } book && Coordinator.IsRetainedOriginBookCurrent(book)) AddPinnedProgress(book);
             // Preserve the existing page error handling; never leave an async
             // click/watch exception unobserved or retry an unclassified failure.
             await RunWithConditionalRefreshAsync(() => Task.FromException<bool>(error));

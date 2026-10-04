@@ -435,6 +435,60 @@ internal static partial class AfterRunAuthorityHarness
                     "The automatic reader still exposes a consent toggle or separate writing button.");
             }
             long generation = IssuedPageField<long>(page, "_appearanceGeneration");
+            // An unexpected read/storage exception stops observation, not the
+            // provider job. The pinned UI must stop claiming that it is still
+            // checking, preserve saved prose, and allow an explicit read-only
+            // recovery without spending credits again.
+            var displayedProse = IssuedElements(page).OfType<Label>().Single(e =>
+                e.AutomationId == $"origin-retained-chapter-{first.Sequence}");
+            var displayedExport = IssuedElements(page).OfType<Button>().Single(e =>
+                e.AutomationId == "origin-book-export-epub");
+            remote.BeforeSuccessorRead = () => Task.FromException(new IOException("Synthetic chapter observation failure."));
+            try { await page.PollChapterOnceAsync(generation, default); }
+            finally { remote.BeforeSuccessorRead = null; }
+            Require(alerts.Titles.Count == 1, "An unexpected chapter observation error was swallowed.");
+            Require(!IssuedElements(page).OfType<ActivityIndicator>().Any(e =>
+                e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning),
+                "A stopped chapter observer left its pinned spinner running after an exception.");
+            var pinnedStatus = (VerticalStackLayout)IssuedElements(page).Single(e =>
+                e.AutomationId == "origin-reader-pinned-progress");
+            var copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
+            Require(pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                "The observation pause is not explained in the always-visible reader status.");
+            Require(ReferenceEquals(displayedProse, IssuedElements(page).OfType<Label>().Single(e =>
+                    e.AutomationId == $"origin-retained-chapter-{first.Sequence}"))
+                && ReferenceEquals(displayedExport, IssuedElements(page).OfType<Button>().Single(e =>
+                    e.AutomationId == "origin-book-export-epub")),
+                "Pausing the status observer rebuilt the user's reading or export controls.");
+            int stoppedReads = remote.Reads;
+            await page.PollChapterOnceAsync(generation, default);
+            Require(remote.Reads == stoppedReads, "An unclassified failure automatically retried the chapter read.");
+            var retryObservation = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+            var recoveryEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var recoveryReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            remote.BeforeSuccessorRead = () => { recoveryEntered.TrySetResult(); return recoveryReleased.Task; };
+            Task recovering = ui.BeginAsyncVoid(() => ((IButtonController)retryObservation).SendClicked());
+            try
+            {
+                await recoveryEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Require(pinnedStatus.Children.OfType<ActivityIndicator>().Any(e => e.IsRunning && e.IsVisible)
+                    && !pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                    "An explicit active status check still presents itself as paused.");
+            }
+            finally
+            {
+                recoveryReleased.TrySetResult();
+                await recovering.WaitAsync(TimeSpan.FromSeconds(15));
+                remote.BeforeSuccessorRead = null;
+            }
+            Require(remote.Requests == requests && remote.Acceptances == acceptances,
+                "Explicit observer recovery replayed generation or reader acceptance.");
+            Require(IssuedElements(page).OfType<ActivityIndicator>().Any(e =>
+                e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning)
+                && IssuedElements(page).OfType<Label>().Any(e => e.Text == prose.Text),
+                "Observer recovery failed to resume pending status while preserving the complete saved chapter.");
+            Console.WriteLine("PASS unexpected reader status failure: pinned pause, unchanged prose/export controls, explicit recovery and no paid replay");
             entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
             release = new(TaskCreationOptions.RunContinuationsAsynchronously);
             remote.BeforeSuccessorRead = () => { entered.TrySetResult(); return release.Task; };
@@ -472,7 +526,7 @@ internal static partial class AfterRunAuthorityHarness
             await page.PollChapterOnceAsync(generation, default);
             Require(remote.Reads == departedReads && !IssuedElements(page).Any(e => e is Button or Label),
                 "The departed reader continued private status work or retained book content.");
-            Require(remote.Requests == requests && remote.Acceptances == acceptances && alerts.Titles.Count == 0,
+            Require(remote.Requests == requests && remote.Acceptances == acceptances && alerts.Titles.Count == 1,
                 "Reading/exporting the saved book generated, accepted or failed an unrelated chapter.");
             var cold = new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value);
             Require(cold.Chapters.Single(c => c.ChapterId == first.ChapterId).Selected?.DraftDigest == prose.DraftDigest
