@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 98 is the latest [observed Internal availability](../play/evidence/preview98-internal-observation.md),
+Preview 99 is the latest [observed Internal availability](../play/evidence/preview99-internal-observation.md),
+confirmed on 4 October at approximately 18:01 Europe/Vienna (release time 18:00).
+Its exact local ARM64 AAB was separately signed with the existing upload key and
+independently verified. Life Modules exotic skill variants now retain independent
+allocations and readable multiline labels. Focused actual-MAUI/Core and synthetic
+API36 saved-draft/cold-reopen/once-only-Career/process-restart checks passed;
+unchanged runtime results are reused for the version-only delta. The existing
+cancelable account-data loading protection remains included.
+**Physical Play99 installation/update and live account refresh are unverified.**
+Full SR5/Origin and general-beta completion remain open.
+
+Preview 98's [observed Internal availability](../play/evidence/preview98-internal-observation.md),
 confirmed on 4 October at approximately17:06 Europe/Vienna (release time17:05).
 Its exact local ARM64 AAB was separately signed with the existing upload key and
 independently verified. Karma completion displays exact readable names, translated
