@@ -621,10 +621,12 @@ internal static partial class AfterRunAuthorityHarness
         internal readonly Dictionary<string, string> Rows = new(StringComparer.Ordinal);
         internal Action<string>? BeforeWrite;
         internal Func<string, Task>? BeforeReadAsync;
+        internal Func<string, CancellationToken, Task>? BeforeReadWithCancellationAsync;
         public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (BeforeReadAsync is { } beforeRead) await beforeRead(key);
+            if (BeforeReadWithCancellationAsync is { } cancellableRead) await cancellableRead(key, cancellationToken);
             lock (Rows) return Rows.GetValueOrDefault(key);
         }
         public Task SetAsync(string key, string value, CancellationToken cancellationToken = default)

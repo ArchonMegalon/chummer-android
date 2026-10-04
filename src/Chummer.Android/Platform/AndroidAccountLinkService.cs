@@ -106,7 +106,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync(cancellationToken);
             if (recoveredCommit is not null)
             {
                 SetSnapshot(new(
@@ -302,7 +302,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync(cancellationToken);
             if (recoveredCommit is not null)
             {
                 SetSnapshot(new(
@@ -412,7 +412,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync();
+            GrantContract? recoveredCommit = await RecoverStagedGrantCommitAsync(cancellationToken);
             if (recoveredCommit is not null)
             {
                 SetSnapshot(new(
@@ -1388,7 +1388,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         }
     }
 
-    private async Task<GrantContract?> RecoverStagedGrantCommitAsync()
+    private async Task<GrantContract?> RecoverStagedGrantCommitAsync(CancellationToken cancellationToken = default)
     {
         // Callers already serialize account operations with _gate. Foreground
         // resume normally has no staged commit: that read-only probe must not
@@ -1398,8 +1398,14 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         try
         {
             if (string.IsNullOrWhiteSpace(await _metadataStore.GetAsync(
-                    StagedGrantCommitKey, CancellationToken.None)))
+                    StagedGrantCommitKey, cancellationToken)))
                 return null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Canceling the read-only presence probe does not invalidate the
+            // known owner or discard an unfinished durable recovery record.
+            throw;
         }
         catch
         {
@@ -1411,10 +1417,14 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
             throw;
         }
 
-        await _credentialCommitGate.WaitAsync(CancellationToken.None);
+        await _credentialCommitGate.WaitAsync(cancellationToken);
         try
         {
-            return await RecoverStagedGrantCommitCoreAsync();
+            return await RecoverStagedGrantCommitCoreAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
@@ -1427,18 +1437,23 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         }
     }
 
-    private async Task<GrantContract?> RecoverStagedGrantCommitCoreAsync()
+    private async Task<GrantContract?> RecoverStagedGrantCommitCoreAsync(CancellationToken cancellationToken = default)
     {
+        CancellationToken probeToken = cancellationToken;
         for (int attempt = 0; attempt < 3; attempt++)
         {
             string? serialized = await _metadataStore.GetAsync(
                 StagedGrantCommitKey,
-                CancellationToken.None);
+                probeToken);
             if (string.IsNullOrWhiteSpace(serialized))
             {
                 return null;
             }
 
+            // Until this read there is no new credential mutation to finish.
+            // Once recovery/quarantine begins, complete it and any revalidation
+            // non-cancellably, just like a newly admitted grant commit.
+            probeToken = CancellationToken.None;
             StagedGrantCommit? staged = TryDeserializeStagedGrantCommit(serialized);
             if (staged is null || !IsExpectedStagedGrantCommit(staged))
             {
@@ -1689,7 +1704,7 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         await _credentialCommitGate.WaitAsync(cancellationToken);
         try
         {
-            await RecoverStagedGrantCommitCoreAsync();
+            await RecoverStagedGrantCommitCoreAsync(cancellationToken);
             string? installationId = await _metadataStore.GetAsync(
                 InstallationIdKey,
                 cancellationToken);

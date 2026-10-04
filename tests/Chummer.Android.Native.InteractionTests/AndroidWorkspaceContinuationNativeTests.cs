@@ -36,6 +36,7 @@ internal static partial class AfterRunAuthorityHarness
         await RunNativeCatalogDeadlineAsync(contentRoot);
         await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
         await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
+        await RunNativeCatalogRecoveryProbeCancellationAsync(contentRoot);
         foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
             await RunNativeCatalogSequencingAsync(contentRoot, ending);
         Console.WriteLine("PASS 5 native catalog sequencing cases");
@@ -200,6 +201,66 @@ internal static partial class AfterRunAuthorityHarness
         fixture.Account.Metadata.BeforeReadAsync = null;
         await fixture.Runtime.Coordinator.RefreshLinkedDataAsync();
         Console.WriteLine("PASS canceled credential read retains owner and permits an explicit later load");
+    }
+
+    private static async Task RunNativeCatalogRecoveryProbeCancellationAsync(string contentRoot)
+    {
+        foreach (string entry in new[] { "refresh-cancel", "refresh-deadline", "local-identity", "continuations" })
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            using var canceled = new CancellationTokenSource();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var before = fixture.Account.Metadata.Rows.ToDictionary(item => item.Key, item => item.Value);
+            int requests = fixture.Account.SignedLists + fixture.Account.SignedGroupLists;
+            fixture.Account.Metadata.BeforeReadWithCancellationAsync = async (key, token) =>
+            {
+                if (key != "chummer.account.staged-grant-commit.v1") return;
+                entered.TrySetResult();
+                await release.Task.WaitAsync(token);
+            };
+            Task pending = entry switch
+            {
+                "local-identity" => ((IAndroidAccountLocalIdentityInitializer)fixture.Account.Service)
+                    .InitializeLocalIdentityAsync(canceled.Token),
+                "continuations" => ((IAndroidWorkspaceContinuationTransport)fixture.Account.Service)
+                    .ListContinuationsAsync(fixture.Owner, canceled.Token),
+                "refresh-deadline" => (Task)typeof(RunnerSessionCoordinator)
+                    .GetMethod("RefreshLinkedDataWithBudgetAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(fixture.Runtime.Coordinator, new object[] { TimeSpan.FromMilliseconds(500), canceled.Token })!,
+                _ => fixture.Runtime.Coordinator.RefreshLinkedDataAsync(canceled.Token)
+            };
+            Exception? failure = null;
+            bool returnedBeforeStorageReleased;
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                if (entry != "refresh-deadline") canceled.Cancel();
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(2)); }
+                catch (Exception error) { failure = error; }
+                returnedBeforeStorageReleased = pending.IsCompleted;
+            }
+            finally
+            {
+                release.TrySetResult();
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (OperationCanceledException) { }
+                catch (TimeoutException) { }
+                fixture.Account.Metadata.BeforeReadWithCancellationAsync = null;
+            }
+            Require(returnedBeforeStorageReleased
+                && (entry == "refresh-deadline" ? failure is TimeoutException : failure is OperationCanceledException),
+                "Read-only staged-credential probe ignored account cancellation/deadline: " + entry);
+            Require(fixture.Account.Owner.Capture() == fixture.Owner && fixture.Account.Service.Snapshot.IsLinked
+                && fixture.Account.Metadata.Rows.Count == before.Count
+                && before.All(item => fixture.Account.Metadata.Rows.GetValueOrDefault(item.Key) == item.Value)
+                && fixture.Account.SignedLists + fixture.Account.SignedGroupLists == requests,
+                "Canceled recovery probe changed credentials/owner or dispatched follow-on requests: " + entry);
+            await fixture.Runtime.Coordinator.RefreshLinkedDataAsync();
+            Require(fixture.Account.SignedLists + fixture.Account.SignedGroupLists == requests + 2,
+                "Canceled recovery probe leaked an account gate: " + entry);
+            Console.WriteLine("PASS read-only recovery probe cancellation preserves owner and later explicit load: " + entry);
+        }
     }
 
     private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending)

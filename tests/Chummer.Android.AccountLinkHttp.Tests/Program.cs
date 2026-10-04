@@ -60,6 +60,9 @@ internal static class Program
         await ReopeningPendingLinkReusesBrowserOperationAsync();
         await BrowserOpenFailureRetainsRecoverableOperationAsync();
         await CallerCancellationCannotInterruptCredentialCommitAsync();
+        await StagedRecoveryQueueCanCancelBeforeCommitAsync();
+        await FailedRecoveryProbeStillInvalidatesOwnerAsync();
+        await CallerCancellationCannotInterruptStagedRecoveryAsync();
         await StagedCredentialCommitRecoversAfterEveryWriteAsync();
         await CredentialCommitCleanupFailureRemainsRestartableAsync();
         await StaleLinkedRejectionCannotClearConcurrentRefreshAsync();
@@ -1591,6 +1594,84 @@ internal static class Program
             Require(!refreshFixture.Metadata.Contains(RefreshAttemptKey));
             Require(!refreshFixture.Metadata.Contains(StagedGrantCommitKey));
         }
+    }
+
+    private static async Task StagedRecoveryQueueCanCancelBeforeCommitAsync()
+    {
+        LinkFixture fixture = await CreateInterruptedBootstrapStageAsync();
+        string stage = fixture.Metadata.GetRaw(StagedGrantCommitKey)!;
+        var terminal = new RecordingHandler(_ => throw new InvalidOperationException("Local recovery contacted Hub."));
+        using var transport = CreateTransport(terminal);
+        var service = CreateService(transport, fixture);
+        var gate = (SemaphoreSlim)typeof(AndroidAccountLinkService)
+            .GetField("_credentialCommitGate", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!;
+        using var cancellation = new CancellationTokenSource();
+        await gate.WaitAsync();
+        Task pending = service.InitializeAsync(cancellation.Token);
+        bool canceledBeforeWriterReleased = false;
+        try
+        {
+            Require(!pending.IsCompleted);
+            cancellation.Cancel();
+            try { await pending.WaitAsync(TimeSpan.FromSeconds(2)); }
+            catch (OperationCanceledException) { canceledBeforeWriterReleased = true; }
+            catch (TimeoutException) { }
+        }
+        finally { gate.Release(); }
+        try { await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (OperationCanceledException) { }
+        Require(canceledBeforeWriterReleased && terminal.Requests.Count == 0
+            && fixture.Metadata.GetRaw(StagedGrantCommitKey) == stage
+            && fixture.Metadata.Contains(PendingPollOperationKey));
+        await service.InitializeAsync();
+        Require(service.Snapshot.IsLinked && terminal.Requests.Count == 0);
+        await RequireCommittedGrantAsync(fixture, "grant-after-response-loss");
+        Console.WriteLine("PASS canceled staged-recovery queue leaves the exact stage for later local recovery");
+    }
+
+    private static async Task CallerCancellationCannotInterruptStagedRecoveryAsync()
+    {
+        foreach (bool refresh in new[] { false, true })
+        {
+            LinkFixture fixture = refresh ? await CreateInterruptedRefreshStageAsync()
+                : await CreateInterruptedBootstrapStageAsync();
+            using var cancellation = new CancellationTokenSource();
+            fixture.Metadata.AfterSet = key => { if (key == OwnerBindingKey) cancellation.Cancel(); };
+            var terminal = new RecordingHandler(_ => throw new InvalidOperationException("Local recovery contacted Hub."));
+            using var transport = CreateTransport(terminal);
+            var service = CreateService(transport, fixture);
+            await service.InitializeAsync(cancellation.Token);
+            Require(cancellation.IsCancellationRequested && service.Snapshot.IsLinked && terminal.Requests.Count == 0
+                && !fixture.Metadata.Contains(StagedGrantCommitKey)
+                && !fixture.Metadata.Contains(refresh ? RefreshAttemptKey : PendingPollOperationKey));
+            await RequireCommittedGrantAsync(fixture, refresh ? "grant-after-refresh" : "grant-after-response-loss");
+            var restarted = CreateService(transport, fixture);
+            await restarted.InitializeOwnerContextAsync();
+            Require(restarted.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A" && terminal.Requests.Count == 0);
+            Console.WriteLine("PASS admitted staged credential recovery finishes despite cancellation: refresh=" + refresh);
+        }
+    }
+
+    private static async Task FailedRecoveryProbeStillInvalidatesOwnerAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        var terminal = new RecordingHandler(_ => ExactGrantStatus(fixture));
+        using var transport = CreateTransport(terminal);
+        var service = CreateService(transport, fixture);
+        await service.InitializeOwnerContextAsync();
+        Require(service.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+        fixture.Metadata.BeforeGet = key =>
+        {
+            if (key == StagedGrantCommitKey) throw new IOException("Injected storage read failure.");
+        };
+        await service.InitializeAsync();
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error
+            && service.OwnerAuthority.Capture() is null && terminal.Requests.Count == 0
+            && fixture.Metadata.GetRaw(StoredAccessTokenKey) == AccessToken);
+        fixture.Metadata.BeforeGet = null;
+        await service.InitializeAsync();
+        Require(service.Snapshot.IsLinked && service.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+        Console.WriteLine("PASS genuine staged-recovery storage failure still fails closed without deleting the grant");
     }
 
     private static async Task StagedCredentialCommitRecoversAfterEveryWriteAsync()
