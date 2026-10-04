@@ -147,7 +147,7 @@ public abstract class NativePageBase : ContentPage
         }
     }
 
-    protected Task RunLinkedDataRefreshAsync(Button button)
+    protected Task RunLinkedDataRefreshAsync(Button button, ToolbarItem? toolbar = null)
     {
         // Cancellation must remain reachable while RunAsync owns the action
         // gate. A second tap cancels this read; it never dispatches another one.
@@ -161,12 +161,15 @@ public abstract class NativePageBase : ContentPage
             using var cancellation = new CancellationTokenSource();
             _linkedDataRefresh = cancellation;
             string label = button.Text;
+            string? toolbarLabel = toolbar?.Text;
             button.Text = PhoneStrings.Get("CancelLoadingAccountData", "Loading… Cancel");
+            if (toolbar is not null) toolbar.Text = button.Text;
             try { await Coordinator.RefreshLinkedDataAsync(cancellation.Token); }
             finally
             {
                 _linkedDataRefresh = null;
                 button.Text = label;
+                if (toolbar is not null) toolbar.Text = toolbarLabel;
             }
         });
     }

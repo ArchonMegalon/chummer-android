@@ -6,6 +6,7 @@ namespace Chummer.Android.Native;
 public sealed class CampaignPage : NativePageBase
 {
     private readonly ToolbarItem _refreshToolbar;
+    private Button _refreshButton = NativeTheme.SecondaryButton("Load groups");
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -18,9 +19,10 @@ public sealed class CampaignPage : NativePageBase
         Title = "Campaign";
         _refreshToolbar = new ToolbarItem
         {
-            Text = "Refresh",
-            Command = new Command(async () => await RunAsync(() => Coordinator.RefreshLinkedDataAsync()))
+            Text = "Refresh"
         };
+        _refreshToolbar.Command = new Command(async () =>
+            await RunLinkedDataRefreshAsync(_refreshButton, _refreshToolbar));
         ToolbarItems.Add(_refreshToolbar);
         Content = new ScrollView { Content = _body };
     }
@@ -52,7 +54,8 @@ public sealed class CampaignPage : NativePageBase
             ColumnSpacing = 10
         };
         Button refresh = NativeTheme.SecondaryButton(Coordinator.Groups.Count == 0 ? "Load groups" : "Refresh");
-        refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
+        _refreshButton = refresh;
+        refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh, _refreshToolbar);
         Button create = NativeTheme.PrimaryButton("Create group");
         create.Clicked += async (_, _) => await Navigation.PushModalAsync(
             new NavigationPage(new GroupEditorPage(Coordinator)));
