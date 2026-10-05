@@ -26,6 +26,9 @@ internal static class Program
 
     private static async Task Main()
     {
+        await ResponseDeadlineCannotRestartAfterHeadersAsync();
+        await ResponseBodyUsesOnlyRemainingRequestBudgetAsync();
+        await ResponseDeadlinesAreIndependentAndCallerCancellationWinsAsync();
         AccountOwnerKeyPreservesOpaqueSubjectIdentity();
         await LegacyOwnerHydratesFromExactStatusAsync();
         await RequestDeadlinesPreserveLinkedAccountAsync();
@@ -87,6 +90,83 @@ internal static class Program
         await LegacyStagedGrantCannotInheritAnOwnerAsync();
         await BoundOwnerErasureAndUnlinkCleanupAsync();
         Console.WriteLine("Account-link HTTP hardening tests passed (including native I/O regressions).");
+    }
+
+    private static async Task ResponseDeadlineCannotRestartAfterHeadersAsync()
+    {
+        var terminal = new RecordingHandler(_ => JsonResponse("{\"items\":[]}"));
+        using var transport = CreateTransport(terminal, TimeSpan.FromMilliseconds(50));
+        using var response = await transport.PostJsonAsync(
+            "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+            CreateAuthority(), CancellationToken.None);
+        // Even an already buffered body must not renew an expired request.
+        await Task.Delay(100);
+        var error = await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+            transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None));
+        Require(error.InnerException is null && terminal.Requests.Count == 1
+            && !error.ToString().Contains(AccessToken, StringComparison.Ordinal));
+        Console.WriteLine("PASS expired header-to-body deadline cannot be renewed by buffered JSON");
+    }
+
+    private static async Task ResponseBodyUsesOnlyRemainingRequestBudgetAsync()
+    {
+        // Most of the real request budget is spent receiving headers. The
+        // observation window distinguishes its remainder from a second budget.
+        var terminal = new RecordingHandler(async (_, token) =>
+        {
+            await Task.Delay(1200, token);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new NeverCompletingReadStream())
+            };
+        });
+        using var transport = CreateTransport(terminal, TimeSpan.FromMilliseconds(1500));
+        using var cancellation = new CancellationTokenSource();
+        using var response = await transport.PostJsonAsync(
+            "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+            CreateAuthority(), cancellation.Token);
+        Task<CollectionEnvelope> read = transport.ReadJsonAsync<CollectionEnvelope>(response, cancellation.Token);
+        try
+        {
+            await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+                read.WaitAsync(TimeSpan.FromMilliseconds(900)));
+            Require(terminal.Requests.Count == 1);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            try { await read; } catch (Exception error) when (error is HttpRequestException or OperationCanceledException) { }
+        }
+        Console.WriteLine("PASS stalled body receives only the remaining headers-plus-body budget");
+    }
+
+    private static async Task ResponseDeadlinesAreIndependentAndCallerCancellationWinsAsync()
+    {
+        var terminal = new RecordingHandler(_ => JsonResponse("{\"items\":[]}"));
+        using var transport = CreateTransport(terminal, TimeSpan.FromMilliseconds(100));
+        using var old = await transport.PostJsonAsync(
+            "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+            CreateAuthority(), CancellationToken.None);
+        await Task.Delay(150);
+        using var fresh = await transport.PostJsonAsync(
+            "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+            CreateAuthority(), CancellationToken.None);
+        Require((await transport.ReadJsonAsync<CollectionEnvelope>(fresh, CancellationToken.None)).Items.Count == 0);
+        await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+            transport.ReadJsonAsync<CollectionEnvelope>(old, CancellationToken.None));
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        var error = await RequireThrowsAsync<OperationCanceledException>(() =>
+            transport.ReadJsonAsync<CollectionEnvelope>(old, canceled.Token));
+        Require(error.CancellationToken == canceled.Token && terminal.Requests.Count == 2);
+
+        using var infinite = CreateTransport(new RecordingHandler(_ => JsonResponse("{\"items\":[]}")),
+            Timeout.InfiniteTimeSpan);
+        using var unlimited = await infinite.PostJsonAsync(
+            "/api/v2/android/linked/groups", new InstallationRequest("android-install"),
+            CreateAuthority(), CancellationToken.None);
+        Require((await infinite.ReadJsonAsync<CollectionEnvelope>(unlimited, CancellationToken.None)).Items.Count == 0);
+        Console.WriteLine("PASS response deadlines stay independent; caller cancellation and infinite budget are preserved");
     }
 
     private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()
