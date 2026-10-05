@@ -918,6 +918,7 @@ public sealed class BuildPage : NativePageBase
     }
 
     private RetainedOriginBook? _lifeStoryBook;
+    private OriginBookReaderLoad? _lifeStoryLoad;
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
@@ -926,15 +927,21 @@ public sealed class BuildPage : NativePageBase
         _persistedCreationReceipt = null;
         _karmaDashboardSession = null;
         _lifeStoryBook = null;
+        _lifeStoryLoad = null;
         var original = Coordinator.State;
         if (Coordinator.CanReadRetainedOriginBook(original))
         {
             try
             {
-                var book = await Coordinator.LoadRetainedOriginBookAsync(cancellationToken,
+                var loaded = await Coordinator.LoadOriginBookReaderAsync(cancellationToken,
                     () => IsCurrentAppearanceGeneration(appearance));
-                if (IsCurrentAppearanceGeneration(appearance) && book is not null
-                    && Coordinator.IsRetainedOriginBookCurrent(book)) _lifeStoryBook = book;
+                if (IsCurrentAppearanceGeneration(appearance)
+                    && Coordinator.CanReadRetainedOriginBook(loaded.Display))
+                {
+                    _lifeStoryLoad = loaded;
+                    if (loaded.Book is { } book && Coordinator.IsRetainedOriginBookCurrent(book))
+                        _lifeStoryBook = book;
+                }
             }
             catch (Exception error) when (error is IOException or InvalidOperationException
                 or OperationCanceledException or UnauthorizedAccessException or System.Text.Json.JsonException) { }
@@ -962,6 +969,7 @@ public sealed class BuildPage : NativePageBase
     protected override void OnDisappearing()
     {
         _lifeStoryBook = null;
+        _lifeStoryLoad = null;
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
         _karmaDashboardSession = null;
@@ -1444,12 +1452,23 @@ public sealed class BuildPage : NativePageBase
         bool finished = foundation?.PendingDraft?.ModuleSelectionFinished == true;
         var budget = foundation?.LifeModuleBudget;
 
-        bool storyRead = _lifeStoryBook is { HasReadCurrentStory: true } story
-            && Coordinator.IsRetainedOriginBookCurrent(story);
-        var scope = NativeTheme.Body(!storyRead
-            ? AndroidSurfaceStrings.Resolve()["Origin.MechanicsAfterReading"] : finished
-            ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
-            : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review."), NativeTheme.Muted);
+        var story = _lifeStoryBook is { } retained && Coordinator.IsRetainedOriginBookCurrent(retained)
+            ? retained : null;
+        bool storyRead = story?.HasReadCurrentStory == true;
+        bool openingNotStarted = _lifeStoryLoad is { OpeningNotStarted: true } loaded
+            && Coordinator.CanReadRetainedOriginBook(loaded.Display);
+        var copy = AndroidSurfaceStrings.Resolve();
+        // Only Core's exact missing-ledger result means a new story. A failed
+        // read must not invent either opening decisions or completed chapters.
+        string guidance = !current ? copy["Origin.BookUnavailable"]
+            : openingNotStarted || story is { OpeningSetupComplete: false } ? copy["Origin.OpeningSetupRequired"]
+            : story is null ? copy["Origin.BookUnavailable"]
+            : storyRead ? finished
+                ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
+                : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review.")
+            : story.Chapters.Any(chapter => story.ReadableChapter(chapter) is not null && !story.IsExportableChapter(chapter))
+                ? copy["Origin.MechanicsAfterReading"] : copy["Origin.ReaderFullTextPending"];
+        var scope = NativeTheme.Body(guidance, NativeTheme.Muted);
         scope.AutomationId = "creation-life-module-scope";
         _body.Add(scope);
 
@@ -1476,7 +1495,7 @@ public sealed class BuildPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         _body.Add(CreationNavigationRow(
             finished ? CreationAllocationStrings.Get("LifeDashboard.Complete", "Complete your runner") : CreationAllocationStrings.Get("LifeDashboard.Continue", "Continue your story"),
-            CurrentPhoneWizardScope.MarkExperimental(AndroidSurfaceStrings.Resolve()["Origin.MechanicsAfterReading"]),
+            CurrentPhoneWizardScope.MarkExperimental(guidance),
             async () =>
             {
                 if (!canOpen || render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
