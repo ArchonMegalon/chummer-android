@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 107 is the latest [observed Internal availability](../play/evidence/preview107-internal-observation.md),
+Preview 108 is the latest [observed Internal availability](../play/evidence/preview108-internal-observation.md),
+confirmed on 5 October at 08:53 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+New-book language selection and optional next-module chapter wishes are included.
+Focused managed and synthetic API36 UI/save/new-process checks passed; unchanged
+results are reused for the version-only delta. Questions use local stage-aware
+suggestions and Custom, without changing rules or existing paid source identities.
+**Physical Play108 installation/update, newly generated prose quality and live
+native account/provider checks remain unverified.** Full SR5 Creation/Origin,
+general performance and beta completion are not established.
+
+Preview 107's [observed Internal availability](../play/evidence/preview107-internal-observation.md),
 confirmed on 5 October at 06:57 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Account-response headers and content now share one original deadline; buffered
