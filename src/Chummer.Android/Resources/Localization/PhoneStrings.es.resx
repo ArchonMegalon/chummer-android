@@ -35,6 +35,9 @@
   <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Abre runners guardados en tu cuenta de Chummer.</value></data>
   <data name="LinkAccount" xml:space="preserve"><value>Vincular cuenta</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Cargar runners en línea</value></data>
+  <data name="CancelLoadingAccountData" xml:space="preserve"><value>Cargando… Cancelar</value></data>
+  <data name="AccountDataAlreadyLoading" xml:space="preserve"><value>Los datos de la cuenta ya se están cargando.</value></data>
+  <data name="AccountDataLoadTimedOut" xml:space="preserve"><value>No se pudieron cargar los datos de la cuenta a tiempo. Los runners locales no han cambiado. Inténtalo más tarde.</value></data>
   <data name="Refresh" xml:space="preserve"><value>Actualizar</value></data>
   <data name="MoreRunnerFile" xml:space="preserve"><value>Archivo del runner</value></data>
   <data name="Save" xml:space="preserve"><value>Guardar</value></data>
@@ -67,6 +70,8 @@
   <data name="AccountLinked" xml:space="preserve"><value>Vinculada</value></data>
   <data name="AccountAvailableOffline" xml:space="preserve"><value>Disponible sin conexión.</value></data>
   <data name="AccountLinkUnavailable" xml:space="preserve"><value>Vinculación no disponible</value></data>
+  <data name="AccountCheckCanceled" xml:space="preserve"><value>Comprobación de cuenta cancelada</value></data>
+  <data name="AccountLoadAgain" xml:space="preserve"><value>Vuelve a cargar los datos de la cuenta para continuar.</value></data>
   <data name="AccountSecureStorageUnavailable" xml:space="preserve"><value>No se pudo abrir el almacenamiento seguro de Android.</value></data>
   <data name="AccountBrowserUnavailable" xml:space="preserve"><value>Navegador no disponible</value></data>
   <data name="AccountOpenLinkingAgain" xml:space="preserve"><value>Vuelve a iniciar la vinculación de la cuenta.</value></data>

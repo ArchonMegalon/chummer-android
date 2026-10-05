@@ -263,6 +263,16 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Only the admitted initializer owns this loading state. Canceling
+            // a queued caller must not settle another operation; an established
+            // linked/pending snapshot and durable recovery bytes stay intact.
+            if (Snapshot.IsLoading)
+            {
+                SetSnapshot(new(
+                    AndroidAccountLinkStatus.Error,
+                    AccountText("AccountCheckCanceled", "Account check canceled"),
+                    AccountText("AccountLoadAgain", "Load account data again to continue.")));
+            }
             throw;
         }
         catch (AndroidDeviceRelinkRequiredException)
