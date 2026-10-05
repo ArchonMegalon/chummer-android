@@ -128,12 +128,15 @@ internal static class OriginDossierBookRuntimeTests
             var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
             var checkpoint = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
             foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            foreach (int stage in new[] { LifeModuleJourneyStageOrders.FormativeYears,
+                LifeModuleJourneyStageOrders.TeenYears, LifeModuleJourneyStageOrders.FurtherEducation,
+                LifeModuleJourneyStageOrders.RealLife })
             {
                 int saves = 0, confirmations = 0;
                 bool fail = false;
                 OriginBookReadingState saved = new(checkpoint.OwnerId, checkpoint.WorkspaceId, []);
                 var display = new OriginDossierLifeModulePhoneResult(LifeModuleOriginDossierOutcomes.Success,
-                    OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { Locale = locale }, [],
+                    OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { Locale = locale, StageOrder = stage }, [],
                     LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
                     FoundationSnapshotDigest: "sha256:" + Digest("foundation"), BoundContentDigest: checkpoint.BoundContentDigest,
                     BoundSourceDigest: checkpoint.BoundSourceDigest, BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
@@ -162,6 +165,17 @@ internal static class OriginDossierBookRuntimeTests
                     && Elements(page).OfType<Picker>().Count(p => p.Title!.Contains("Path 1", StringComparison.Ordinal)) == 3,
                     "Questions were not generated for the selected module.");
                 var motivation = Find<Picker>("origin-chapter-motivation-suggestions");
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                string firstMotive = stage switch {
+                    LifeModuleJourneyStageOrders.FormativeYears => "curiosity",
+                    LifeModuleJourneyStageOrders.FurtherEducation => "ambition",
+                    _ => "belong" };
+                Require(motivation.Items[1] == copy["Origin.RefineAnswer." + firstMotive]
+                    && Find<Picker>("origin-chapter-relationship-suggestions").Items[1]
+                        == copy["Origin.RefineAnswer." + (stage == LifeModuleJourneyStageOrders.FormativeYears ? "family" : "friend")]
+                    && Find<Picker>("origin-chapter-turning-point-suggestions").Items[1]
+                        == copy["Origin.RefineAnswer." + (stage == LifeModuleJourneyStageOrders.FurtherEducation ? "letter" : "loyalty")],
+                    "Chapter suggestions did not follow the Core narrative stage order.");
                 motivation.SelectedIndex = 1;
                 var turning = Find<Picker>("origin-chapter-turning-point-suggestions");
                 turning.SelectedIndex = turning.Items.Count - 1;

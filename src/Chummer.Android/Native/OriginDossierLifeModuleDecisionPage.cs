@@ -871,14 +871,16 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             section.Add(picker);
             section.Add(entry);
         }
-        string[] motives = _state.StageId switch {
-            CharacterCreationLifeModuleStageIds.FormativeYears => ["curiosity", "family", "belong"],
-            CharacterCreationLifeModuleStageIds.TeenYears => ["belong", "independence", "expectations"],
-            CharacterCreationLifeModuleStageIds.FurtherEducation => ["ambition", "escape", "expectations"],
+        // Narrative turn IDs need not equal the creation-wizard stage IDs.
+        // Core's journey order supplies the shared, typed stage authority.
+        string[] motives = _state.StageOrder switch {
+            LifeModuleJourneyStageOrders.FormativeYears => ["curiosity", "family", "belong"],
+            LifeModuleJourneyStageOrders.TeenYears => ["belong", "independence", "expectations"],
+            LifeModuleJourneyStageOrders.FurtherEducation => ["ambition", "escape", "expectations"],
             _ => ["belong", "escape", "expectations"] };
-        string[] people = _state.StageId == CharacterCreationLifeModuleStageIds.FormativeYears
+        string[] people = _state.StageOrder == LifeModuleJourneyStageOrders.FormativeYears
             ? ["family", "friend", "mentor"] : ["friend", "mentor", "rival"];
-        string[] turns = _state.StageId == CharacterCreationLifeModuleStageIds.FurtherEducation
+        string[] turns = _state.StageOrder == LifeModuleJourneyStageOrders.FurtherEducation
             ? ["letter", "loyalty", "discovery"] : ["loyalty", "new-start", "discovery"];
         Question("motivation", "Origin.RefineMotivation", brief.Motivation, motives,
             value => _chapterBrief = _chapterBrief! with { Motivation = value });
