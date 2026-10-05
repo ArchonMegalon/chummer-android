@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 109 is the latest [observed Internal availability](../play/evidence/preview109-internal-observation.md),
+Preview 110 is the latest [observed Internal availability](../play/evidence/preview110-internal-observation.md),
+confirmed on 5 October at 16:14 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Explicit on-device adoption moves a local runner into the linked account;
+cancellation preserves the original and interrupted placement can resume.
+Focused package/managed checks and the actual API36 adoption/new-process route
+passed with their documented boundaries. Native full paid prose was not present
+in that diagnostic fixture; chapter/image/EPUB preservation is managed coverage.
+**Physical Play110 installation, the real native complete-book route and all-method
+SR5 Creation completion remain unverified.** This is not cloud runner upload,
+whole-app parity or general-beta completion.
+
+Preview 109's [observed Internal availability](../play/evidence/preview109-internal-observation.md),
 confirmed on 5 October at 11:16 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Home loads runner workspaces independently of campaigns, completed empty lists
