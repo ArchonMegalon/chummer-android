@@ -3101,7 +3101,9 @@ public sealed class BuildPage : NativePageBase
                 // Present the full text (or its pinned progress) directly.
                 // Offline readers still get saved pages and account guidance.
                 await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
-            });
+            },
+            (checkpoint, current) => Coordinator.LoadOpeningStoryDetailsAsync(checkpoint,
+                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner));
         await Navigation.PushAsync(page);
     }
 
