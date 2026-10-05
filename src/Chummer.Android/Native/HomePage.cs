@@ -317,7 +317,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                     ? PhoneStrings.Get("LoadOnlineRunners", "Load online runners")
                     : PhoneStrings.Get("Refresh", "Refresh"));
             refresh.AutomationId = "home-load-online-runners";
-            refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
+            refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh, runnersOnly: true);
             online.Add(refresh);
             foreach (AndroidOnlineCharacter character in Coordinator.OnlineCharacters.Take(6))
             {

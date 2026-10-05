@@ -37,9 +37,10 @@ internal static partial class AfterRunAuthorityHarness
         await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
         await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
         await RunNativeCatalogRecoveryProbeCancellationAsync(contentRoot);
+        foreach (bool runnersOnly in new[] { false, true })
         foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
-            await RunNativeCatalogSequencingAsync(contentRoot, ending);
-        Console.WriteLine("PASS 5 native catalog sequencing cases");
+            await RunNativeCatalogSequencingAsync(contentRoot, ending, runnersOnly);
+        Console.WriteLine("PASS 10 full-account/runner-only catalog sequencing cases");
     }
 
     private static async Task RunNativeCatalogUiLoadingAsync(string contentRoot)
@@ -72,7 +73,10 @@ internal static partial class AfterRunAuthorityHarness
                 var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 fixture.Account.ListEntered = entered;
                 fixture.Account.ReleaseList = release;
+                fixture.Account.FailGroups = entry == "runners";
                 int groups = fixture.Account.SignedGroupLists;
+                int lists = fixture.Account.SignedLists;
+                var previousCharacters = fixture.Runtime.Coordinator.OnlineCharacters.ToArray();
                 Task load = ui.BeginAsyncVoid(start);
                 try
                 {
@@ -96,8 +100,14 @@ internal static partial class AfterRunAuthorityHarness
                         "The account button stayed loading after completion/cancellation/departure.");
                     Require(toolbar is null || toolbar.Text == originalToolbarLabel && toolbar.IsEnabled,
                         "Campaign toolbar stayed loading after completion/cancellation/departure.");
-                    Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" ? 1 : 0),
-                        "A canceled or departed load dispatched follow-on account requests.");
+                    Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" && entry != "runners" ? 1 : 0),
+                        "Runner-only, canceled or departed loading dispatched unrelated account requests.");
+                    Require(fixture.Account.SignedLists == lists + 1,
+                        "Loading runners skipped or replayed the actual signed roster read.");
+                    if (ending == "complete")
+                        Require(fixture.Runtime.Coordinator.OnlineCharacters.Count == previousCharacters.Length
+                            && !ReferenceEquals(fixture.Runtime.Coordinator.OnlineCharacters[0], previousCharacters[0]),
+                            "A successful roster read left the previous catalog instead of publishing the new one.");
                     bool actionRan = false;
                     await (Task)typeof(NativePageBase).GetMethod("RunAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
                         .Invoke(page, new object[] { (Func<Task>)(() => { actionRan = true; return Task.CompletedTask; }) })!;
@@ -263,7 +273,7 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending)
+    private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending, bool runnersOnly)
     {
         await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
         using var cancellation = new CancellationTokenSource();
@@ -273,7 +283,9 @@ internal static partial class AfterRunAuthorityHarness
         fixture.Account.ReleaseList = release;
         fixture.Account.FailList = ending == "failure";
         int groupsBefore = fixture.Account.SignedGroupLists;
-        Task refresh = fixture.Runtime.Coordinator.RefreshLinkedDataAsync(cancellation.Token);
+        Task refresh = runnersOnly
+            ? fixture.Runtime.Coordinator.RefreshOnlineRunnersAsync(cancellation.Token)
+            : fixture.Runtime.Coordinator.RefreshLinkedDataAsync(cancellation.Token);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -298,7 +310,7 @@ internal static partial class AfterRunAuthorityHarness
             "owner-b" or "owner-aba" => failure is UnauthorizedAccessException,
             _ => failure is null
         }, "Catalog sequencing lost the expected failure/cancellation contract: " + failure?.GetType().Name);
-        Require(fixture.Account.SignedGroupLists == groupsBefore + (ending == "complete" ? 1 : 0),
+        Require(fixture.Account.SignedGroupLists == groupsBefore + (ending == "complete" && !runnersOnly ? 1 : 0),
             "A failed, cancelled or retired-owner continuation dispatched a follow-on signed group request.");
         if (ending == "complete")
             Require(fixture.Runtime.Coordinator.OnlineCharacters.Count == 2,
@@ -306,7 +318,7 @@ internal static partial class AfterRunAuthorityHarness
         if (ending.StartsWith("owner-", StringComparison.Ordinal))
             Require(!fixture.Runtime.Coordinator.HasCompleteOnlineContinuation(fixture.Character),
                 "Old-owner catalog survived a credential transition during the sequential read.");
-        Console.WriteLine("PASS native catalog sequencing: " + ending);
+        Console.WriteLine("PASS native catalog sequencing: " + (runnersOnly ? "runners/" : "account/") + ending);
     }
 
     private static async Task RunNativeContinuationCanceledAsync(string contentRoot)
@@ -564,6 +576,7 @@ internal static partial class AfterRunAuthorityHarness
         internal TaskCompletionSource? ListEntered;
         internal TaskCompletionSource? ReleaseList;
         internal bool FailList;
+        internal bool FailGroups;
         internal SynchronizationContext? ForbiddenContext;
         internal int UiReads;
 
@@ -625,6 +638,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(ReleaseList is null || ReleaseList.Task.IsCompleted,
                     "Signed catalog reads overlapped before the first response completed.");
                 Interlocked.Increment(ref SignedGroupLists);
+                if (FailGroups) throw new IOException("Synthetic unavailable campaign service.");
                 return ContinuationJsonResponse(new JsonObject { ["groups"] = new JsonArray() });
             }
             if (path.EndsWith("/revoke", StringComparison.Ordinal)) return ContinuationJsonResponse(new JsonObject());
