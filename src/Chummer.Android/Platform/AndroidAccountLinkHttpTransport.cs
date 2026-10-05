@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
@@ -36,6 +37,11 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly TimeSpan _responseReadTimeout;
+    private readonly ConditionalWeakTable<HttpResponseMessage, RequestStart> _requestStarts = new();
+
+    // Monotonic request timing only, never account or mutation authority. A
+    // weak response key does not retain disposed responses or their contents.
+    private sealed record RequestStart(long Timestamp);
 
     internal AndroidAccountLinkHttpTransport(
         HttpMessageHandler terminalHandler,
@@ -99,6 +105,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         }
 
         HttpResponseMessage response;
+        long startedAt = Stopwatch.GetTimestamp();
         using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken);
         try
         {
@@ -122,6 +129,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         }
         if (!IsRedirect(response.StatusCode))
         {
+            _requestStarts.Add(response, new RequestStart(startedAt));
             CaptureResponseAuthorization(response);
             return response;
         }
@@ -156,10 +164,15 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             throw OversizedResponse();
         }
 
-        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken);
+        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken,
+            _requestStarts.TryGetValue(response, out RequestStart? start) ? start.Timestamp : null);
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             CancellationToken readToken = timeoutSource?.Token ?? cancellationToken;
+            // StreamContent and buffered JSON may finish synchronously. Reject
+            // an expired request before materializing any of its response.
+            readToken.ThrowIfCancellationRequested();
             await using Stream responseStream = await response.Content.ReadAsStreamAsync(readToken);
             await using var cappedStream = new CappedReadStream(
                 responseStream,
@@ -169,14 +182,15 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
                 cappedStream,
                 JsonOptions,
                 readToken);
+            readToken.ThrowIfCancellationRequested();
             return payload
                 ?? throw new InvalidDataException("Chummer returned an empty account response.");
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
             && timeoutSource?.IsCancellationRequested == true)
         {
-            // ResponseHeadersRead requires a separate body-read deadline. Use
-            // the same recoverable transport contract as a headers timeout.
+            // Headers and body share the original request budget, including
+            // time between these calls. This never authorizes another attempt.
             throw new InterruptedException(readingBody: true);
         }
         catch (ResponseBodyTooLargeException)
@@ -492,7 +506,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     }
 
     private CancellationTokenSource? CreateTransportTimeoutSource(
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, long? startedAt = null)
     {
         if (_responseReadTimeout == Timeout.InfiniteTimeSpan)
         {
@@ -501,7 +515,11 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
         CancellationTokenSource timeoutSource =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(_responseReadTimeout);
+        TimeSpan remaining = startedAt is { } timestamp
+            ? _responseReadTimeout - Stopwatch.GetElapsedTime(timestamp)
+            : _responseReadTimeout;
+        if (remaining <= TimeSpan.Zero) timeoutSource.Cancel();
+        else timeoutSource.CancelAfter(remaining);
         return timeoutSource;
     }
 
