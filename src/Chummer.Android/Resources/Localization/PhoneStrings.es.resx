@@ -35,6 +35,7 @@
   <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Abre runners guardados en tu cuenta de Chummer.</value></data>
   <data name="LinkAccount" xml:space="preserve"><value>Vincular cuenta</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Cargar runners en línea</value></data>
+  <data name="OnlineRunnersEmpty" xml:space="preserve"><value>Esta cuenta aún no tiene espacios de trabajo de runners guardados.</value></data>
   <data name="CancelLoadingAccountData" xml:space="preserve"><value>Cargando… Cancelar</value></data>
   <data name="AccountDataAlreadyLoading" xml:space="preserve"><value>Los datos de la cuenta ya se están cargando.</value></data>
   <data name="AccountDataLoadTimedOut" xml:space="preserve"><value>No se pudieron cargar los datos de la cuenta a tiempo. Los runners locales no han cambiado. Inténtalo más tarde.</value></data>

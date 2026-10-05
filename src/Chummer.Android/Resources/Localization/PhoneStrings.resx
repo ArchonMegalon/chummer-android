@@ -42,6 +42,7 @@
   <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Open runners saved to your Chummer account.</value></data>
   <data name="LinkAccount" xml:space="preserve"><value>Link account</value></data>
   <data name="LoadOnlineRunners" xml:space="preserve"><value>Load online runners</value></data>
+  <data name="OnlineRunnersEmpty" xml:space="preserve"><value>No runner workspaces are saved to this account yet.</value></data>
   <data name="LoadingAccountData" xml:space="preserve"><value>Loading account data…</value></data>
   <data name="CancelLoadingAccountData" xml:space="preserve"><value>Loading… Cancel</value></data>
   <data name="AccountDataAlreadyLoading" xml:space="preserve"><value>Account data is already loading.</value></data>

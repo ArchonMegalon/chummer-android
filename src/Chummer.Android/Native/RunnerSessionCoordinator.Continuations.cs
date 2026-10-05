@@ -42,6 +42,9 @@ public sealed partial class RunnerSessionCoordinator
     private long _continuationCatalogGeneration;
     private readonly SemaphoreSlim _linkedDataRefreshGate = new(1, 1);
 
+    public bool OnlineRunnersLoaded => Volatile.Read(ref _continuationCatalog) is { } catalog
+        && IsContinuationOwnerCurrent(catalog.Owner);
+
     public Task RefreshOnlineRunnersAsync(CancellationToken cancellationToken = default)
         => RunAccountCatalogRefreshAsync(TimeSpan.FromSeconds(30), includeCampaigns: false, cancellationToken);
 

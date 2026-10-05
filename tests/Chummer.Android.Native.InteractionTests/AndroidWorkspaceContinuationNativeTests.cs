@@ -33,6 +33,7 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunAndroidCatalogSequencingCasesAsync(string contentRoot)
     {
         await RunNativeCatalogUiLoadingAsync(contentRoot);
+        await RunNativeCatalogEmptyUiAsync(contentRoot);
         await RunNativeCatalogDeadlineAsync(contentRoot);
         await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
         await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
@@ -121,6 +122,42 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 Console.WriteLine("PASS actual MAUI account loading: " + entry + "/" + ending);
             }
+        });
+    }
+
+    private static async Task RunNativeCatalogEmptyUiAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            fixture.Account.Rows = new JsonArray();
+            fixture.Account.FailGroups = true;
+            var page = new RunnersPage(fixture.Runtime.Coordinator);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            try
+            {
+                int before = fixture.Account.SignedLists;
+                var button = IssuedElements(page).OfType<Button>()
+                    .Single(item => item.AutomationId == "home-load-online-runners");
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Require(fixture.Account.SignedLists == before + 1
+                    && fixture.Runtime.Coordinator.OnlineCharacters.Count == 0,
+                    "Empty-roster check did not complete the real signed list read.");
+                Require(IssuedElements(page).OfType<Label>().Any(item =>
+                        item.AutomationId == "home-online-runners-empty" && !string.IsNullOrWhiteSpace(item.Text))
+                    && IssuedElements(page).OfType<Button>().Single(item =>
+                        item.AutomationId == "home-load-online-runners").Text == "Refresh",
+                    "A completed empty account roster looks like loading did nothing.");
+                await fixture.Account.LinkAsync("other-subject", "other-empty-roster-grant");
+                await (Task)typeof(NativePageBase).GetMethod("RunAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(page, new object[] { (Func<Task>)(() => Task.CompletedTask) })!;
+                Require(!IssuedElements(page).OfType<Label>().Any(item =>
+                        item.AutomationId == "home-online-runners-empty"),
+                    "An old account's empty-roster result survived an owner transition.");
+            }
+            finally { IssuedPageLifecycle(page, "OnDisappearing"); }
+            Console.WriteLine("PASS actual native empty roster completion and owner-bound status");
         });
     }
 
