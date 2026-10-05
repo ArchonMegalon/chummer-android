@@ -10,7 +10,9 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    internal static async Task RunOriginIllustrationAcceptanceAsync(string contentRoot)
+    internal static async Task RunOriginIllustrationAcceptanceAsync(string contentRoot,
+        bool transientReadBeforeCreation = false, bool lostResultAfterCreation = false,
+        bool existingRemoteAdmission = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -18,6 +20,10 @@ internal static partial class AfterRunAuthorityHarness
             var owners = new ControlledLinkedOwner();
             var account = DispatchProxy.Create<IAndroidAccountLinkService, OriginIllustrationAcceptanceAccount>();
             var remote = (OriginIllustrationAcceptanceAccount)account;
+            remote.FailInitialSceneRead = transientReadBeforeCreation;
+            remote.LoseCreatedSceneRead = lostResultAfterCreation;
+            remote.ExistingRemoteAdmission = existingRemoteAdmission;
+            int expectedImageRequests = existingRemoteAdmission ? 0 : 1;
             remote.AfterAcceptance = () => remote.Accepted = true;
             var output = new LifeBookOutputProbe();
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
@@ -62,11 +68,29 @@ internal static partial class AfterRunAuthorityHarness
             finally { release.TrySetResult(); }
             await reading.WaitAsync(TimeSpan.FromSeconds(10));
             var wait = System.Diagnostics.Stopwatch.StartNew();
+            if (lostResultAfterCreation || existingRemoteAdmission)
+            {
+                // The paid request succeeded, but its result read was interrupted.
+                // Even a subsequent "not found" must not cause a second request.
+                int expectedReads = existingRemoteAdmission ? 2 : 3;
+                while (remote.SceneReads < expectedReads && wait.Elapsed < TimeSpan.FromSeconds(25)) await Task.Delay(10);
+                Require(remote.SceneReads >= expectedReads && remote.ImageRequests == expectedImageRequests,
+                    "A lost result read replayed the paid image request or was never observed again.");
+                IssuedPageLifecycle(reader, "OnDisappearing");
+                book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+                var reconciled = await runtime.Coordinator.SyncAutomaticOriginBookSceneAsync(book, chapter,
+                    false, () => true, default);
+                Require(reconciled.Book?.Scene(chapter) is not null && remote.ImageRequests == expectedImageRequests,
+                    "Read-only reconciliation did not retain the existing image without another request.");
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reader, "OnAppearing"));
+                wait.Restart();
+            }
             while (!IssuedElements(reader).Any(e => e.AutomationId == $"origin-book-scene-{chapter.Sequence}")
-                && remote.EarlySceneReads == 0 && wait.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(10);
+                && remote.EarlySceneReads == 0 && wait.Elapsed < TimeSpan.FromSeconds(25)) await Task.Delay(10);
             Require(remote.EarlySceneReads == 0, "Illustration read raced the durable server reader acknowledgement.");
             Require(IssuedElements(reader).OfType<Image>().Any(e => e.AutomationId == $"origin-book-scene-{chapter.Sequence}")
-                && remote.ImageRequests == 1 && remote.Requests == 0, "The first automatic image was not inserted exactly once.");
+                && remote.ImageRequests == expectedImageRequests && remote.Requests == 0,
+                "The automatic image was not retained without an unexpected creation request.");
             await ui.BeginAsyncVoid(() => ((IButtonController)IssuedElements(reader).OfType<Button>()
                 .Single(b => b.AutomationId == "origin-book-export-epub")).SendClicked());
             using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(output.Epub)))
@@ -77,7 +101,7 @@ internal static partial class AfterRunAuthorityHarness
             book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
             Require(book.Scene(chapter) is not null, "Cold reading lost the inserted illustration.");
             await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reader, "OnAppearing"));
-            Require(remote.ImageRequests == 1, "Reopening replayed the image request.");
+            Require(remote.ImageRequests == expectedImageRequests, "Reopening replayed the image request.");
             IssuedPageLifecycle(reader, "OnDisappearing");
             book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
             // Cold local selection with a missing/lost server acknowledgement:
@@ -87,7 +111,7 @@ internal static partial class AfterRunAuthorityHarness
             var failed = await runtime.Coordinator.SyncOriginBookSceneAsync(book, chapter, "", "", true,
                 () => true, default, automatic: true);
             Require(failed.Result.Outcome == AndroidOriginSceneOutcome.Unavailable && remote.SceneReads == sceneReads
-                && remote.ImageRequests == 1, "Failed reader acknowledgement reached Media or replayed an image.");
+                && remote.ImageRequests == expectedImageRequests, "Failed reader acknowledgement reached Media or replayed an image.");
             remote.FailAcceptance = false; remote.CorruptPredecessor = true;
             var mismatch = await runtime.Coordinator.SyncOriginBookSceneAsync(book, chapter, "", "", true,
                 () => true, default, automatic: true);
@@ -105,12 +129,12 @@ internal static partial class AfterRunAuthorityHarness
             remote.AfterPredecessorRead = null;
             var recovered = await runtime.Coordinator.SyncOriginBookSceneAsync(book, chapter, "", "", true,
                 () => true, default, automatic: true);
-            Require(recovered.Scene is not null && remote.ImageRequests == 1 && remote.Accepted,
+            Require(recovered.Scene is not null && remote.ImageRequests == expectedImageRequests && remote.Accepted,
                 "The saved acceptance outbox did not recover the existing image without replay.");
             RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
             Require(alerts.Titles.Count == 0, "Illustration acknowledgement displayed an unexpected error.");
             ui.AssertHealthy();
-            Console.WriteLine("PASS illustration: delayed reader acknowledgement before media, responsive full text/export, one image, EPUB and cold persistence without replay");
+            Console.WriteLine($"PASS illustration: delayed acknowledgement, responsive full text/export, one image, EPUB and cold persistence; initial-read-failure={transientReadBeforeCreation}, lost-result-read={lostResultAfterCreation}, existing-admission={existingRemoteAdmission}");
         });
     }
 }
@@ -119,6 +143,7 @@ public class OriginIllustrationAcceptanceAccount : OriginSuccessorAccount, IAndr
 {
     public bool Accepted;
     public int EarlySceneReads, ImageRequests, SceneReads;
+    public bool FailInitialSceneRead, LoseCreatedSceneRead, ExistingRemoteAdmission;
     private bool _persisted;
     private static readonly byte[] Png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
     public Task<AndroidOriginSceneResult> ReadSceneAsync(OwnerContextStamp owner, OriginChapterSource source,
@@ -126,6 +151,16 @@ public class OriginIllustrationAcceptanceAccount : OriginSuccessorAccount, IAndr
     {
         SceneReads++;
         if (!Accepted) { EarlySceneReads++; return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Conflict)); }
+        if (ExistingRemoteAdmission && SceneReads == 1)
+        {
+            _persisted = true;
+            return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, "uncertain"));
+        }
+        if (FailInitialSceneRead && SceneReads == 1 || LoseCreatedSceneRead && SceneReads == 2)
+            return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Unavailable,
+                RetryableReadFailure: true));
+        if (LoseCreatedSceneRead && SceneReads == 3 || ExistingRemoteAdmission && SceneReads == 2)
+            return Task.FromResult(new AndroidOriginSceneResult(AndroidOriginSceneOutcome.NotFound));
         return Task.FromResult(_persisted ? new AndroidOriginSceneResult(AndroidOriginSceneOutcome.Available, "persisted",
             new("The same growing protagonist", Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Png)),
                 "onemin", new string('e', 64), Png.ToArray(), OriginBookReadingState.AutomaticIllustrations))

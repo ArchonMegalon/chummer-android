@@ -23,6 +23,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private long? _openingAppearance;
     private readonly HashSet<string> _unreadChecked = new(StringComparer.Ordinal);
     private CancellationTokenSource? _sceneLifetime;
+    // Actual dispatches or known remote admissions, never a failed read probe.
     private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AndroidOriginSceneResult> _sceneStatus = new(StringComparer.Ordinal);
     private bool _sceneObservationPaused;
@@ -410,11 +411,18 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                         || !_sceneStatus.TryGetValue(c.ChapterId, out var status) || status.State is "dispatching" or "uncertain"
                             || status.UnknownRemoteOutcome || status.RetryableReadFailure));
                 if (chapter is null) break;
-                bool create = _sceneChecked.Add(chapter.ChapterId);
+                bool create = !_sceneChecked.Contains(chapter.ChapterId);
                 bool Current() => !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
                     && ReferenceEquals(_book, book);
+                void FenceCreation()
+                {
+                    // Keep the fence across newer editions, but never let a
+                    // retired appearance alter the next appearance's state.
+                    if (!lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance))
+                        _sceneChecked.Add(chapter.ChapterId);
+                }
                 var (result, updated) = await Coordinator.SyncAutomaticOriginBookSceneAsync(book, chapter,
-                    create, Current, lifetime.Token);
+                    create, Current, lifetime.Token, onCreationFenced: FenceCreation);
                 if (!Current() || updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated)) break;
                 _sceneStatus.TryGetValue(chapter.ChapterId, out var previous);
                 _book = updated;
