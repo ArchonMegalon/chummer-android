@@ -18,6 +18,9 @@ internal static class OriginDossierBookRuntimeTests
     public static async Task RunStoryFlowAsync()
     {
         RunAuthoringSource();
+        RunOpeningStoryDetailsStorage();
+        RunStoryLanguageStorage();
+        await RunStoryLanguagePickerAsync();
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
         await RunCitySuggestionsAsync();
@@ -51,6 +54,8 @@ internal static class OriginDossierBookRuntimeTests
         RunAuthoringSource();
         RunOpportunityContext();
         RunOpeningStoryDetailsStorage();
+        RunStoryLanguageStorage();
+        await RunStoryLanguagePickerAsync();
         RunReadingStreamBounds();
         RunLongBookStorage();
         RunIllustratedBookStorage();
@@ -1719,6 +1724,138 @@ internal static class OriginDossierBookRuntimeTests
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine("PASS optional opening brief: cold persistence, owner isolation, stable source identity, legacy omission and rejected stale/invalid writes");
+    }
+
+    private static void RunStoryLanguageStorage()
+    {
+        string fixtureRoot = Path.Combine(Path.GetTempPath(), "chummer-story-language-" + Guid.NewGuid().ToString("N"));
+        string directory = fixtureRoot;
+        try
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+            var pending = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            var projection = service.Confirm(pending, pending.PendingPreview!.PreviewDigest, "language-test", true).Value!.Checkpoint.Projection;
+            string canonical = JsonSerializer.Serialize(projection);
+            var chapter = projection.VisibleChapters.Single();
+            var store = new OriginBookReadingStore(directory);
+            var empty = store.Load("owner-a", "workspace-1");
+            var original = new RetainedOriginBook(projection, empty);
+            var legacySource = original.AuthoringSource(chapter);
+            Require(!JsonSerializer.Serialize(new OriginStoryProfile()).Contains("StoryLanguage", StringComparison.Ordinal),
+                "An absent book language changed legacy profile bytes.");
+            foreach (string language in new[] { "de-DE", "en-US", "es-ES" })
+            {
+                var expected = store.Load("owner-a", "workspace-1");
+                var profile = new OriginStoryProfile { StoryLanguage = language };
+                var saved = store.Save(expected, expected with { StoryProfile = profile }, () => true, default);
+                var cold = new OriginBookReadingStore(directory).Load("owner-a", "workspace-1");
+                var book = new RetainedOriginBook(projection, cold);
+                var source = book.AuthoringSource(chapter);
+                Require(cold.Digest == saved.Digest && cold.StoryProfile == profile && book.Locale == language
+                    && source.Locale == language && source.Facts.SequenceEqual(legacySource.Facts)
+                    && JsonSerializer.Serialize(projection) == canonical,
+                    "Book language was lost on cold reopen or changed canonical choices/facts.");
+                string request = OriginChapterSourceIdentity.RequestId(source);
+                var prose = OriginBookProseDraft.Create(chapter, language, request, Digest("provider"), "A complete test chapter.");
+                var retained = saved with { Chapters = [new(chapter.ChapterId, prose, null) { AuthoringSource = source }] };
+                var readable = new RetainedOriginBook(projection, retained);
+                Require(readable.ReadableChapter(chapter) == prose && readable.HasExportableChapters
+                    && readable.ToHtml(AndroidSurfaceStrings.Resolve("en-US")).Contains("lang=\"" + language + "\"", StringComparison.Ordinal),
+                    "A book in a language different from the decision UI cannot be read or exported.");
+                store.Save(saved, retained, () => true, default);
+                bool rejected = false;
+                try { store.Save(retained, retained with { StoryProfile = profile with { StoryLanguage = "de-DE" == language ? "en-US" : "de-DE" } }, () => true, default); }
+                catch (InvalidOperationException) { rejected = true; }
+                Require(rejected && store.Load("owner-a", "workspace-1").Digest == retained.Digest,
+                    "A language change rewrote an already requested/generated chapter.");
+                // Independent fixture workspace for the next language, not a production reset.
+                directory = Path.Combine(directory, "next");
+                store = new OriginBookReadingStore(directory);
+            }
+            Require(!new OriginStoryProfile { StoryLanguage = "invalid" }.IsValid,
+                "An unsupported book language was admitted.");
+        }
+        finally
+        {
+            if (Directory.Exists(fixtureRoot)) Directory.Delete(fixtureRoot, recursive: true);
+        }
+        Console.WriteLine("PASS story language: independent output, cold reopen, readable/exportable prose, immutable existing requests and legacy bytes");
+    }
+
+    private static async Task RunStoryLanguagePickerAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+            var checkpoint = service.Start("workspace-1").Value!;
+            checkpoint = checkpoint with { Projection = checkpoint.Projection with {
+                CurrentTurn = checkpoint.Projection.CurrentTurn with { JourneyId = "sr5-life-modules-foundation" } } };
+            foreach (string uiLocale in new[] { "en-US", "de-DE", "es-ES" })
+            {
+                int saves = 0;
+                bool failSave = false;
+                int loads = 0;
+                OriginBookReadingState saved = new("owner-a", "workspace-1", []);
+                var display = new OriginDossierLifeModulePhoneResult(LifeModuleOriginDossierOutcomes.Success,
+                    OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { Locale = uiLocale }, [],
+                    LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                    FoundationSnapshotDigest: "sha256:" + Digest("foundation"), BoundContentDigest: checkpoint.BoundContentDigest,
+                    BoundSourceDigest: checkpoint.BoundSourceDigest, BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                    StoryCheckpoint: checkpoint);
+                OriginDossierLifeModuleDecisionPage Page() => new(display, uiLocale,
+                    (_, _) => throw new InvalidOperationException("Language must not prepare a rules decision."),
+                    (_, _) => throw new InvalidOperationException("Language must not confirm a rules decision."),
+                    openingDetails: saved, saveOpeningDetails: (expected, profile, current) =>
+                    {
+                        Require(current() && expected == saved, "A stale language editor saved.");
+                        saves++;
+                        if (failSave) throw new IOException("Synthetic save failure");
+                        saved = expected with { StoryProfile = profile };
+                        return Task.FromResult<OriginBookReadingState?>(saved);
+                    }, loadOpeningDetails: (_, current) =>
+                    {
+                        Require(current(), "A stale appearance loaded language authority.");
+                        loads++;
+                        return Task.FromResult<OriginBookReadingState?>(saved);
+                    });
+                var page = Page();
+                Picker Picker() => Elements(page).OfType<Picker>().Single(p => p.AutomationId == "origin-story-language");
+                Require(Picker().SelectedIndex == 0 && Picker().Items.Count == 4 && saves == 0,
+                    "Story language is not selectable, invented a default, or wrote on render.");
+                var gender = Elements(page).OfType<Picker>().Single(p => p.AutomationId == "origin-story-gender");
+                gender.SelectedIndex = 2;
+                await ui.BeginAsyncVoid(() => Picker().SelectedIndex = 1);
+                Require(saved.StoryProfile is { StoryLanguage: "de-DE", Gender: null } && saves == 1,
+                    "Language was not saved or silently committed other optional details.");
+                var languageLabel = Elements(page).OfType<Label>().Single(l => l.AutomationId == "origin-life-locale");
+                Require(SemanticProperties.GetDescription(languageLabel) == languageLabel.Text
+                    && languageLabel.Text!.Contains("de-DE", StringComparison.Ordinal),
+                    "The visible and accessible book languages disagree.");
+                page = Page();
+                Require(Picker().SelectedIndex == 1, "Reopening forgot the explicit book language.");
+                failSave = true;
+                await ui.BeginAsyncVoid(() => Picker().SelectedIndex = 3);
+                Require(Picker().SelectedIndex == 1 && saved.StoryProfile?.StoryLanguage == "de-DE" && saves == 2,
+                    "A failed language save left a false visible selection or recursively saved.");
+                failSave = false;
+                await ui.BeginAsyncVoid(() => Picker().SelectedIndex = 0);
+                Require(saved.StoryProfile is null && saves == 3, "Resetting language retained an empty/invalid profile.");
+                saved = saved with { StoryProfile = new() { StoryLanguage = "es-ES" } };
+                await ui.BeginAsyncVoid(() => typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null));
+                Require(loads == 1 && Picker().SelectedIndex == 3 && saves == 3,
+                    "Returning to the decision page did not refresh language authority without writing.");
+                saved = saved with { Chapters = [new("requested-chapter", null, null)], StoryProfile = new() { StoryLanguage = "es-ES" } };
+                await ui.BeginAsyncVoid(() => typeof(OriginDossierLifeModuleDecisionPage).GetMethod("OnAppearing",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(page, null));
+                Require(!Elements(page).Any(p => p.AutomationId == "origin-story-language")
+                    && Elements(page).OfType<Label>().Any(l => l.Text == AndroidSurfaceStrings.Resolve(uiLocale)["Origin.StoryLanguageFrozen"]),
+                    "An already requested chapter allowed a language switch or hid the reason.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS story language UI: select/save/reopen, failure recovery, no rule/provider action, frozen requests in DE/EN/ES");
     }
 
     private static void RunReadingStreamBounds()

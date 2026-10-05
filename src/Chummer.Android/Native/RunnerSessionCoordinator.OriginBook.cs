@@ -45,7 +45,7 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     internal IReadOnlyList<OriginBookEpub.Illustration> SceneExports()
         => Chapters.Where(IsExportableChapter).Select(Scene).Where(s => s is not null).Select(s => s!.Export()).ToArray();
     public string RunnerName { get; } = projection.CurrentTurn.RunnerDisplayName;
-    public string Locale { get; } = projection.CurrentTurn.Locale;
+    public string Locale { get; } = readings?.StoryProfile?.StoryLanguage ?? projection.CurrentTurn.Locale;
     public string Digest { get; } = projection.SeedDigest;
     public IReadOnlyList<OriginNarrativeChapterProjection> Chapters { get; } =
         Array.AsReadOnly(projection.VisibleChapters.ToArray());
@@ -288,7 +288,6 @@ public sealed partial class RunnerSessionCoordinator
     {
         var original = State;
         if (checkpoint.Projection.CurrentTurn.JourneyId != "sr5-life-modules-foundation"
-            || checkpoint.Projection.CanonicalLayer.AcceptedDecisionIds.Count != 0
             || checkpoint.Projection.CurrentTurn.WorkspaceId != original.WorkspaceId?.Value
             || checkpoint.Projection.CurrentTurn.WorkspaceRevision != original.ContentRevision)
             return null;
@@ -303,9 +302,11 @@ public sealed partial class RunnerSessionCoordinator
                     || !TryAcquireDamageJournalOwner(owner, id, out var lease)) return null;
                 using (lease) return store.Load(owner.Owner.Value, id.Value);
             }, CancellationToken.None);
-            if (saved is null || saved.Chapters.Count != 0 || !isCurrentPage()
+            if (saved is null || !isCurrentPage()
                 || !IsNativeEditDisplayCurrent(original)) return null;
-            _openingStoryDetails.Add(saved, original);
+            // Later decisions can display the frozen book language. Only a
+            // still-unrequested edition receives an editable capability.
+            if (saved.Chapters.Count == 0) _openingStoryDetails.Add(saved, original);
             return saved;
         }, CancellationToken.None);
     }

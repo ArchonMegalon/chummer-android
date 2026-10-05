@@ -15,10 +15,14 @@ internal sealed record OriginStoryProfile(string? Gender = null, string? Pronoun
     // identities must not change merely because the app was updated.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public OriginStoryBackground? Background { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoryLanguage { get; init; }
     internal bool IsEmpty => Gender is null && Pronouns is null && Tone is null
-        && Motivation is null && ImportantPerson is null && (Background is null || Background.IsEmpty);
+        && Motivation is null && ImportantPerson is null && (Background is null || Background.IsEmpty)
+        && StoryLanguage is null;
     internal bool IsValid => (Gender is null or "male" or "female" or "other")
         && (Tone is null or "dark" or "cheerful" or "hopeful" or "epic" or "mixed")
+        && (StoryLanguage is null or "de-DE" or "en-US" or "es-ES")
         && Text(Pronouns, 120) && Text(Motivation, 512) && Text(ImportantPerson, 512)
         && (Background is null || Background.IsValid && !Background.IsEmpty);
     internal static bool Text(string? value, int maximum) => value is null
@@ -29,9 +33,13 @@ internal sealed record OriginStoryProfile(string? Gender = null, string? Pronoun
     {
         if (!IsValid) throw new InvalidDataException("The opening story details are invalid.");
         if (IsEmpty) return source;
+        // Book output language is independent of the UI/Core decision locale.
+        // It is bound into the authoring request, never a rewrite of rules or
+        // previously retained prose. Null preserves historical request bytes.
+        if (StoryLanguage is not null) source = source with { Locale = StoryLanguage };
         // Distinct player-brief identity: never impersonate a Core accepted
         // decision or add these preferences to the canonical rules timeline.
-        var opening = this with { Background = null };
+        var opening = this with { Background = null, StoryLanguage = null };
         string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(opening))).ToLowerInvariant();
         string identity = "player-story-brief-" + digest;
         var copy = AndroidSurfaceStrings.Resolve(source.Locale);

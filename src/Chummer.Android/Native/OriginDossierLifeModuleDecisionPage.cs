@@ -38,6 +38,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private OriginStoryProfile _storyProfile = new();
     private bool _detailsExpanded;
     private readonly Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? _saveOpeningDetails;
+    private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<OriginBookReadingState?>>? _loadOpeningDetails;
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModulePhoneResult opened,
@@ -48,7 +49,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<bool>>? readStoryReady = null,
         OriginBookReadingState? openingDetails = null,
         Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? saveOpeningDetails = null,
-        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? openStoryProgress = null)
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? openStoryProgress = null,
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<OriginBookReadingState?>>? loadOpeningDetails = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -84,6 +86,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _openingDetails = openingDetails;
         _storyProfile = openingDetails?.StoryProfile ?? new();
         _saveOpeningDetails = saveOpeningDetails;
+        _loadOpeningDetails = loadOpeningDetails;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
@@ -135,6 +138,24 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         int generation = _renderGeneration;
         var checkpoint = _storyCheckpoint;
         bool Current() => generation == _renderGeneration && ReferenceEquals(_storyCheckpoint, checkpoint);
+        if (_loadOpeningDetails is not null && checkpoint is not null)
+        {
+            // A confirmed module advances the workspace revision; returning
+            // from the reader may also freeze the first authoring source.
+            // Reacquire edit authority instead of keeping a stale picker alive.
+            bool wasInFlight = _actionInFlight;
+            _actionInFlight = true;
+            OriginBookReadingState? details = null;
+            try { details = await _loadOpeningDetails(checkpoint, Current); }
+            catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
+                or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+            finally { _actionInFlight = wasInFlight; }
+            if (!Current()) return false;
+            if (_openingDetails?.Digest != details?.Digest) _storyProfile = details?.StoryProfile ?? new();
+            _openingDetails = details;
+            Content = new ScrollView { Content = BuildBody() };
+            generation = _renderGeneration;
+        }
         if (!_checkingStory) return false;
         bool ready = false;
         try
@@ -163,19 +184,22 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Spacing = 14
         };
         body.Add(NativeTheme.Title(_state.RunnerDisplayName));
-        string localeCopy = _locale.UsesEnglishFallback
+        string localeCopy = _openingDetails is not null
+            ? _copy.Format("Origin.BookLanguage", _storyProfile.StoryLanguage ?? _state.Locale)
+            : _locale.UsesEnglishFallback
             ? _copy.Format("Origin.LocaleFallback", _locale.FormattingLocale)
             : _copy.Format("Origin.Locale", _locale.ResourceLanguage.ToUpperInvariant(), _locale.FormattingLocale);
         Label locale = NativeTheme.Body(localeCopy, NativeTheme.Muted);
         locale.AutomationId = "origin-life-locale";
         SemanticProperties.SetDescription(
             locale,
-            _copy.Format(
+            _openingDetails is not null ? localeCopy : _copy.Format(
                 "Origin.LocaleSemantic",
                 _locale.ResourceLanguage,
                 _locale.FormattingLocale,
                 _copy[_locale.UsesEnglishFallback ? "Common.Yes" : "Common.No"]));
         body.Add(locale);
+        AddStoryLanguage(body, generation, locale);
         if (_storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
             && _state.StageOrder <= LifeModuleJourneyStageOrders.FormativeYears)
         {
@@ -358,9 +382,69 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private bool IsOpeningDecision => _storyCheckpoint?.Projection.CurrentTurn.JourneyId == "sr5-life-modules-foundation"
         && _storyCheckpoint.Projection.CanonicalLayer.AcceptedDecisionIds.Count == 0;
 
+    private void AddStoryLanguage(VerticalStackLayout body, int generation, Label languageLabel)
+    {
+        if (_openingDetails is not { } initial || _saveOpeningDetails is null) return;
+        if (initial.Chapters.Count != 0)
+        {
+            body.Add(NativeTheme.Body(_copy["Origin.StoryLanguageFrozen"], NativeTheme.Muted));
+            return;
+        }
+        string[] languages = ["de-DE", "en-US", "es-ES"];
+        var picker = new Picker { Title = _copy["Origin.StoryLanguageChoose"], TextColor = NativeTheme.Ink,
+            TitleColor = NativeTheme.Muted, BackgroundColor = NativeTheme.Paper,
+            AutomationId = "origin-story-language" };
+        picker.Items.Add(_copy.Format("Origin.StoryLanguageDefault", _state.Locale));
+        foreach (string name in new[] { "Deutsch", "English", "Español" }) picker.Items.Add(name);
+        picker.SelectedIndex = Array.IndexOf(languages, _storyProfile.StoryLanguage!) + 1;
+        var status = NativeTheme.Body(_copy["Origin.StoryLanguageDetail"], NativeTheme.Muted);
+        status.AutomationId = "origin-story-language-status";
+        bool Current() => generation == _renderGeneration;
+        picker.SelectedIndexChanged += async (_, _) =>
+        {
+            if (!Current() || _actionInFlight || picker.SelectedIndex < 0 || picker.SelectedIndex > languages.Length
+                || _openingDetails is not { Chapters.Count: 0 } expected) return;
+            string? language = picker.SelectedIndex == 0 ? null : languages[picker.SelectedIndex - 1];
+            if (language == expected.StoryProfile?.StoryLanguage) return;
+            _actionInFlight = true;
+            body.IsEnabled = false;
+            status.Text = _copy["Origin.StoryLanguageSaving"];
+            OriginBookReadingState? saved = null;
+            try
+            {
+                // Selecting a language does not silently commit other, still
+                // unconfirmed opening details or submit a chapter request.
+                var profile = (expected.StoryProfile ?? new OriginStoryProfile()) with { StoryLanguage = language };
+                saved = await _saveOpeningDetails(expected, profile.IsEmpty ? null : profile, Current);
+                if (!Current()) return;
+                if (saved is not null)
+                {
+                    _openingDetails = saved;
+                    _storyProfile = _storyProfile with { StoryLanguage = language };
+                    languageLabel.Text = _copy.Format("Origin.BookLanguage", language ?? _state.Locale);
+                    SemanticProperties.SetDescription(languageLabel, languageLabel.Text);
+                }
+            }
+            catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
+                or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+            finally
+            {
+                if (Current())
+                {
+                    if (saved is null) picker.SelectedIndex = Array.IndexOf(languages, expected.StoryProfile?.StoryLanguage!) + 1;
+                    status.Text = _copy[saved is null ? "Origin.StoryLanguageSaveFailed" : "Origin.StoryLanguageSaved"];
+                    body.IsEnabled = true;
+                }
+                _actionInFlight = false;
+            }
+        };
+        body.Add(picker);
+        body.Add(status);
+    }
+
     private void AddOpeningDetails(VerticalStackLayout body, int generation)
     {
-        if (!IsOpeningDecision || _openingDetails is null || _saveOpeningDetails is null) return;
+        if (!IsOpeningDecision || _openingDetails is not { Chapters.Count: 0 } || _saveOpeningDetails is null) return;
         var section = new VerticalStackLayout { Spacing = 10, IsVisible = _detailsExpanded,
             AutomationId = "origin-story-details" };
         var toggle = NativeTheme.SecondaryButton(_copy[_detailsExpanded ? "Origin.SetupCollapse" : "Origin.SetupExpand"]);
