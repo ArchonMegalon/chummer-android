@@ -101,6 +101,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                     && await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false))
                 {
                     return Project(
+                        owner,
                         LifeModuleOriginDossierOutcomes.Success,
                         persisted,
                         result.Blockers);
@@ -112,7 +113,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                 return StaleOwner();
             await _store.SaveAsync(checkpoint, cancellationToken).ConfigureAwait(false);
             return await ReadAsync(owner, () => _interaction.IsCurrent(owner), cancellationToken).ConfigureAwait(false)
-                ? Project(result.Outcome, checkpoint, result.Blockers) : StaleOwner();
+                ? Project(owner, result.Outcome, checkpoint, result.Blockers) : StaleOwner();
         }
         finally
         {
@@ -145,7 +146,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                 return Failed(prepared.Outcome, prepared.Blockers);
             if (!_interaction.IsCurrent(owner)) return StaleOwner();
             await _store.SaveAsync(next, cancellationToken).ConfigureAwait(false);
-            return _interaction.IsCurrent(owner) ? Project(prepared.Outcome, next, prepared.Blockers) : StaleOwner();
+            return _interaction.IsCurrent(owner) ? Project(owner, prepared.Outcome, next, prepared.Blockers) : StaleOwner();
         }
         finally
         {
@@ -193,7 +194,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             // cancellation must not discard its result. If storage fails, the
             // previous pending preview still permits an idempotent recovery.
             await _store.SaveAsync(advance.Checkpoint, CancellationToken.None).ConfigureAwait(false);
-            return _interaction.IsCurrent(owner) ? Project(confirmed.Outcome, advance.Checkpoint, confirmed.Blockers) : StaleOwner();
+            return _interaction.IsCurrent(owner) ? Project(owner, confirmed.Outcome, advance.Checkpoint, confirmed.Blockers) : StaleOwner();
         }
         finally
         {
@@ -205,6 +206,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
         => Failed(LifeModuleOriginDossierOutcomes.Blocked, [LifeModuleOriginDossierBlockers.AuthorityInvalid]);
 
     private static OriginDossierLifeModulePhoneResult Project(
+        OwnerContextStamp admittedOwner,
         string outcome,
         LifeModuleOriginDossierDraftCheckpoint checkpoint,
         IReadOnlyList<string> blockers)
@@ -215,7 +217,7 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                 outcome,
                 checkpoint.Projection.CurrentTurn.IsTerminal
                     ? null
-                    : OriginDossierLifeModuleInteractionProjector.Project(checkpoint),
+                    : OriginDossierLifeModuleInteractionProjector.ProjectAdmitted(checkpoint, admittedOwner),
                 blockers,
                 Completed: checkpoint.Projection.CurrentTurn.IsTerminal,
                 LifeModuleBudget: null,
