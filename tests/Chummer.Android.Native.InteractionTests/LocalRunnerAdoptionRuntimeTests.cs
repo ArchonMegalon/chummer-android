@@ -5,6 +5,7 @@ using Chummer.Application.Characters;
 using Chummer.Application.LifeModules;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Owners;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.OriginBooks;
@@ -14,6 +15,7 @@ internal static partial class AfterRunAuthorityHarness
 {
     internal static async Task RunLocalRunnerAdoptionAsync(string contentRoot)
     {
+        await RunOpeningStoryAfterLocalAdoptionAsync(contentRoot);
         foreach (bool partial in new[] { false, true })
         {
             var owners = new ControlledLinkedOwner();
@@ -150,6 +152,17 @@ internal static partial class AfterRunAuthorityHarness
             Require(rebound is not null && origin.Restore(owners.Capture(), rebound).Value is not null
                 && JsonSerializer.Serialize(rebound.Projection) == JsonSerializer.Serialize(local.Projection),
                 "Native adoption lost the exact Core story timeline.");
+            var continued = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+            Require(continued.Outcome == LifeModuleOriginDossierOutcomes.Success && continued.State is not null,
+                "The adopted runner cannot continue its story: " + string.Join(", ", continued.Blockers));
+            Require(continued.State!.OwnerId == ContactsOwnerA.NormalizedValue
+                && continued.State.BoundTurnSeedDigest == rebound!.Projection.CurrentTurn.SeedDigest,
+                "The continued story changed custody or its original narrative identity.");
+            var freshPhone = new OriginDossierLifeModulePhoneRuntime(origin,
+                new FileOriginDossierDraftTimelineStore(runtime.StateDirectory));
+            var reopened = await freshPhone.OpenAsync(owners.Capture(), id.Value);
+            Require(reopened.IsSuccess && reopened.StoryCheckpoint?.CheckpointDigest == rebound!.CheckpointDigest,
+                "Cold adopted-story projection did not retain the exact checkpoint.");
             Require(OriginAdoptionFiles.Digest(inputs.ReadForAdoption(ContactsOwnerA.NormalizedValue, id))
                 == OriginAdoptionFiles.Digest(input), "Native adoption lost unfinished completion inputs.");
             var book = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true)
@@ -169,5 +182,82 @@ internal static partial class AfterRunAuthorityHarness
             Console.WriteLine("PASS native local runner adoption " + (partial ? "cold partial recovery" : "explicit coordinator handoff")
                 + ": same identity/history, owner ABA, full chapter, illustration, EPUB, timeline and completion inputs");
         }
+    }
+
+    private static async Task RunOpeningStoryAfterLocalAdoptionAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        owners.Set(OwnerScope.LocalSingleUser);
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+            productionCreationOverview: true, linkedOwners: owners,
+            lifeCompletionDecorator: actual => actual, lifeModuleInputDrafts: true, localRunnerAdoption: true);
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        await runtime.Coordinator.CreateRunnerAsync();
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Opening after adoption", default);
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+        await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+        var id = runtime.Coordinator.State.WorkspaceId!.Value;
+        var local = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+        Require(local.IsSuccess && local.State?.Timeline.Count == 0,
+            "The local opening fixture is not an undecided Life Modules runner.");
+        owners.Set(ContactsOwnerA);
+        await runtime.Coordinator.RetryLocalRunnerAdoptionsAsync();
+        var candidate = (await runtime.Coordinator.ListLocalRunnerCandidatesAsync(default)).Single(c => c.WorkspaceId == id);
+        var review = (await runtime.Coordinator.ReviewLocalRunnerAdoptionAsync(candidate))!;
+        Require(await runtime.Coordinator.ConfirmLocalRunnerAdoptionAsync(review, true),
+            "The empty local story could not be adopted through the real coordinator.");
+        var opened = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+        Require(opened.IsSuccess && opened.State?.Choices.Count > 0 && opened.State.Timeline.Count == 0,
+            "The adopted opening cannot present metatype choices: " + string.Join(", ", opened.Blockers));
+        var checkpoint = opened.StoryCheckpoint!;
+        Require(checkpoint.OwnerId == ContactsOwnerA.NormalizedValue
+            && checkpoint.Projection.CurrentTurn.OwnerId == OwnerScope.LocalSingleUser.NormalizedValue
+            && JsonSerializer.Serialize(checkpoint.Projection) == JsonSerializer.Serialize(local.StoryCheckpoint!.Projection),
+            "Rendering rewrote the immutable original narrative owner or history.");
+        var owner = owners.Capture();
+        foreach (Action rejectedProjection in new Action[]
+        {
+            () => OriginDossierLifeModuleInteractionProjector.Project(checkpoint),
+            () => OriginDossierLifeModuleInteractionProjector.ProjectAdmitted(checkpoint, default),
+            () => OriginDossierLifeModuleInteractionProjector.ProjectAdmitted(checkpoint, owner with { Owner = ContactsOwnerB }),
+            () => OriginDossierLifeModuleInteractionProjector.ProjectAdmitted(checkpoint with { WorkspaceRevision = checkpoint.WorkspaceRevision + 1 }, owner)
+        })
+        {
+            bool rejected = false;
+            try { rejectedProjection(); }
+            catch (InvalidOperationException) { rejected = true; }
+            Require(rejected, "Raw, wrong-owner or structurally inconsistent projection was accepted.");
+        }
+        var service = runtime.Services.GetRequiredService<IOwnerBoundLifeModuleOriginService>();
+        Require(service.Restore(owner, checkpoint with { CheckpointDigest = new string('0', 64) }).Value is null
+            && service.Restore(owner, checkpoint with { OwnerId = ContactsOwnerB.NormalizedValue }).Value is null,
+            "Core admitted a corrupt or foreign custody checkpoint.");
+        var choice = checkpoint.Projection.CurrentTurn.LegalChoices.First(row => row.Label.StartsWith("Human ·", StringComparison.Ordinal));
+        var answers = choice.FollowUps?.ToDictionary(prompt => prompt.PromptId,
+            prompt => prompt.Options.FirstOrDefault(option => option.IsEnabled)?.SourceValue ?? "Denver");
+        var prepared = await runtime.Coordinator.PrepareSr5LifeModuleOriginAsync(choice.ChoiceId, followUpValues: answers);
+        Require(prepared.IsSuccess && prepared.State?.PendingPreviewDigest is not null,
+            "The adopted opening choice cannot be reviewed: " + string.Join(", ", prepared.Blockers));
+        var phone = new OriginDossierLifeModulePhoneRuntime(service, new FileOriginDossierDraftTimelineStore(runtime.StateDirectory));
+        owners.Set(ContactsOwnerB);
+        Require(!(await phone.OpenAsync(owners.Capture(), id.Value)).IsSuccess
+            && service.Restore(owners.Capture(), prepared.StoryCheckpoint!).Value is null,
+            "Another account opened the adopted story.");
+        owners.Set(ContactsOwnerA);
+        Require(!(await phone.ConfirmAsync(owner, id.Value, choice.ChoiceId, prepared.State!.PendingPreviewDigest!)).IsSuccess,
+            "Owner A-B-A revived the captured story confirmation.");
+        var restored = await phone.OpenAsync(owners.Capture(), id.Value);
+        Require(restored.IsSuccess && restored.State?.PendingPreviewDigest == prepared.State.PendingPreviewDigest,
+            "Fresh owner admission did not reopen the exact pending adopted decision.");
+        var confirmed = await phone.ConfirmAsync(owners.Capture(), id.Value, choice.ChoiceId, restored.State!.PendingPreviewDigest!);
+        Require(confirmed.IsSuccess && confirmed.State?.Timeline.Count == 1,
+            "Adopted opening commit failed: " + string.Join(", ", confirmed.Blockers));
+        var cold = new OriginDossierLifeModulePhoneRuntime(service, new FileOriginDossierDraftTimelineStore(runtime.StateDirectory));
+        var reopened = await cold.OpenAsync(owners.Capture(), id.Value);
+        Require(reopened.IsSuccess && reopened.StoryCheckpoint?.CheckpointDigest == confirmed.StoryCheckpoint!.CheckpointDigest
+            && reopened.State?.Timeline.Count == 1,
+            "Disk reopen lost or duplicated the first adopted story decision.");
+        Console.WriteLine("PASS adopted opening: actual Core custody, unchanged narrative, prepare/confirm, cold reopen, raw/foreign/corrupt rejection and ABA");
     }
 }
