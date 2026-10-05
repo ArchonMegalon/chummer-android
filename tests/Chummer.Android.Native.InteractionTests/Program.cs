@@ -131,6 +131,16 @@ internal static class Program
             LinkedCharacterBindingTests.RunRecoveryReadabilityCases();
             return;
         }
+        if (args.Length == 2 && args[0] == "--origin-editorial-refresh-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginEditorialRefreshAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--origin-illustration-acceptance-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginIllustrationAcceptanceAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--origin-successor-acceptance-content-root")
         {
             await AfterRunAuthorityHarness.RunOriginSuccessorAcceptanceAsync(args[1]);

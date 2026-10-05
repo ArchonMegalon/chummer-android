@@ -444,6 +444,9 @@ public sealed partial class RunnerSessionCoordinator
         if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
         if (result.Outcome == AndroidOriginChapterOutcome.Available && result.Job is { } recovered)
         {
+            if (recovered.RequestId != OriginChapterSourceIdentity.RequestId(recovered.Source)
+                || recovered.SourceDigest != OriginChapterSourceIdentity.Digest(recovered.Source))
+                return (new(AndroidOriginChapterOutcome.Conflict), book);
             // A second device may already have admitted this chapter with its
             // own optional hints. Adopt only authenticated readback of the same
             // history; never overwrite a local draft/acceptance or reissue it.
@@ -475,7 +478,8 @@ public sealed partial class RunnerSessionCoordinator
             result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
         }
         if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);
-        if (result.Job is not { State: OriginChapterAuthoringStates.ReviewRequired } job)
+        if (result.Outcome != AndroidOriginChapterOutcome.Available
+            || result.Job is not { State: OriginChapterAuthoringStates.ReviewRequired } job)
             return (result, book);
         var draft = OriginBookProseDraft.Create(chapter, book.Locale, job.RequestId,
             job.ProviderReceiptDigest!, job.DraftText!);
@@ -488,7 +492,26 @@ public sealed partial class RunnerSessionCoordinator
                 await RecordOriginBookReaderAcceptanceAsync(book, draft, isCurrentPage, ct);
             return (result, Current() ? book : null);
         }
-        var updated = await StageOriginBookProseDraftAsync(book, draft, isCurrentPage, ct);
+        // An authenticated editorial correction may replace only the exact
+        // unread draft it supersedes. A selected edition is never rewritten,
+        // even if its acknowledgement has not reached Hub yet. Ordinary draft
+        // staging remains immutable; this exception is readback-only and does
+        // not acknowledge reading or dispatch a new provider request.
+        var reading = book.Reading(chapter);
+        if (reading?.Selected is not null) return (new(AndroidOriginChapterOutcome.Conflict), book);
+        string? supersededDraftDigest = null;
+        if (reading?.Pending is { } pending && pending.DraftDigest != draft.DraftDigest)
+        {
+            if (job.ReaderAcceptedTextDigest is not null || job.Editorial is not { } editorial
+                || editorial.Method is not ("ea_ai" or "ea_ai_with_codex_edit")
+                || editorial.OriginalTextDigest != Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(pending.Text)))
+                || editorial.OriginalProviderReceiptDigest != pending.ProviderReceiptDigest
+                || pending.JobId != draft.JobId || !pending.IsValid() || !pending.Matches(chapter, book.Locale))
+                return (new(AndroidOriginChapterOutcome.Conflict), book);
+            supersededDraftDigest = pending.DraftDigest;
+        }
+        var updated = await ChangeBookReadingAsync(book, draft, stage: true, useForReading: false,
+            isCurrentPage, ct, supersededDraftDigest);
         return (result, updated);
     }
 
@@ -676,7 +699,8 @@ public sealed partial class RunnerSessionCoordinator
             : ChangeBookReadingAsync(book, draft, stage: false, useForReading, isCurrentPage, ct);
 
     private Task<RetainedOriginBook?> ChangeBookReadingAsync(RetainedOriginBook book,
-        OriginBookProseDraft draft, bool stage, bool useForReading, Func<bool> isCurrentPage, CancellationToken ct)
+        OriginBookProseDraft draft, bool stage, bool useForReading, Func<bool> isCurrentPage, CancellationToken ct,
+        string? supersededDraftDigest = null)
         => WithWorkspaceActivationGateAsync(async () =>
         {
             if (_originBookReadings is not { } store || book.Readings is not { } expected
@@ -687,8 +711,12 @@ public sealed partial class RunnerSessionCoordinator
             // Stale prose can be discarded, never selected for a changed chapter.
             if (chapter is null || !draft.IsValid() || (stage || useForReading) && !draft.Matches(chapter, book.Locale)) return null;
             var existing = book.Reading(chapter) ?? new(chapter.ChapterId, null, null);
+            if (supersededDraftDigest is not null && (!stage || useForReading || existing.Selected is not null
+                || existing.Pending?.DraftDigest != supersededDraftDigest)) return null;
             if (stage && existing.Selected?.DraftDigest == draft.DraftDigest) return book;
+            if (stage && existing.Pending?.DraftDigest == draft.DraftDigest) return book;
             if (stage && existing.Pending is not null && existing.Pending.DraftDigest != draft.DraftDigest
+                    && supersededDraftDigest is null
                 || !stage && existing.Pending?.DraftDigest != draft.DraftDigest) return null;
             var nextChapter = stage ? existing with { Pending = draft }
                 : existing with { Pending = null, Selected = useForReading ? draft : existing.Selected };

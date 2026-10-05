@@ -369,6 +369,8 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     public Action? AfterPredecessorRead, AfterAcceptance;
     public Action<OriginChapterSource>? BeforeRequest;
     public Func<Task>? BeforeSuccessorRead;
+    public Func<Task>? BeforePredecessorRead;
+    public Func<OriginChapterAuthoringJob, OriginChapterAuthoringJob>? RewriteReadJob;
     public Func<CancellationToken, Task>? BeforeAcceptance;
     public void ResetCounts() { Requests = Acceptances = 0; }
     public void RemoveSuccessor() => _next = null;
@@ -388,9 +390,11 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
         var job = _previous?.SourceDigest == OriginChapterSourceIdentity.Digest(source) ? _previous : _next;
         if (ReferenceEquals(job, _previous) && job is not null)
         {
+            if (BeforePredecessorRead is { } pause) await pause();
             AfterPredecessorRead?.Invoke();
             if (PredecessorReadFailure is { } failure) return new AndroidOriginChapterResult(failure);
             if (CorruptPredecessor) job = job with { DraftText = "Different unselected prose." };
+            if (RewriteReadJob is { } rewrite) job = rewrite(job);
         }
         else
         {

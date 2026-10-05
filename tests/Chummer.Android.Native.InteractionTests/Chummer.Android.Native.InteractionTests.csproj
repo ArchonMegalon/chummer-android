@@ -43,6 +43,8 @@
     <Compile Include="StoriesNavigationRuntimeTests.cs" />
     <Compile Include="LocalRunnerAdoptionRuntimeTests.cs" />
     <Compile Include="OriginChapterAuthoringHttpTests.cs" />
+    <Compile Include="OriginEditorialRefreshTests.cs" />
+    <Compile Include="OriginIllustrationAcceptanceTests.cs" />
     <Compile Include="OriginSceneHttpTests.cs" />
     <Compile Include="CreationKarmaPhonePageTests.cs" />
     <Compile Include="CreationKarmaSourceProfileTests.cs" />
