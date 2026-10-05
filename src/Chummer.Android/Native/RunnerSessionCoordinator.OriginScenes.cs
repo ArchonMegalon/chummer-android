@@ -36,6 +36,21 @@ public sealed partial class RunnerSessionCoordinator
         if (automatic && book.Readings?.IllustrationPolicy != OriginBookReadingState.AutomaticIllustrations
             || consentToCreate && !automatic && !ValidOriginSceneExcerpt(text, excerpt, altText))
             return (new(AndroidOriginSceneOutcome.Conflict), null);
+        // Local reading commits before its best-effort Hub acknowledgement.
+        // Media requires that same server acceptance even for a status read.
+        // Reconcile the saved selection first, including after process death;
+        // never turn this race into a terminal scene conflict or paid replay.
+        if (_account is not IAndroidOriginChapterTransport chapters
+            || book.Reading(chapter)?.Selected is not { } selected)
+            return (new(AndroidOriginSceneOutcome.Unauthorized), null);
+        var accepted = new OriginChapterPredecessor(selected.JobId, OriginChapterSourceIdentity.Digest(source),
+            selected.ProviderReceiptDigest, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text))));
+        var acceptance = await ReconcileOriginPredecessorAsync(book, accepted, owner, chapters, Current, ct);
+        if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginSceneOutcome.Unauthorized), null);
+        if (acceptance is not null)
+            return (new(acceptance.Outcome == AndroidOriginChapterOutcome.Unauthorized ? AndroidOriginSceneOutcome.Unauthorized
+                : acceptance.Outcome == AndroidOriginChapterOutcome.Conflict ? AndroidOriginSceneOutcome.Conflict
+                : AndroidOriginSceneOutcome.Unavailable, RetryableReadFailure: acceptance.RetryableReadFailure), null);
         AndroidOriginSceneResult? result = null;
         try
         {
