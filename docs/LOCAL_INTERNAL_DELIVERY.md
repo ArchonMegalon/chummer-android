@@ -104,7 +104,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 108 is the latest [observed Internal availability](../play/evidence/preview108-internal-observation.md),
+Preview 109 is the latest [observed Internal availability](../play/evidence/preview109-internal-observation.md),
+confirmed on 5 October at 11:16 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Home loads runner workspaces independently of campaigns, completed empty lists
+are explicit, and device unlink runs off the UI context. Focused managed and
+actual real-account API36 empty-roster/unlink/new-process checks passed; unchanged
+behavior evidence is reused for the version-only delta. **Physical Play109
+installation, nonempty native recovery and full native Origin reading/EPUB
+remain unverified.** This is not full SR5 Creation/Origin or general-beta completion.
+
+Preview 108's [observed Internal availability](../play/evidence/preview108-internal-observation.md),
 confirmed on 5 October at 08:53 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 New-book language selection and optional next-module chapter wishes are included.
