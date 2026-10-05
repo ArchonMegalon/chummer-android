@@ -51,6 +51,23 @@ internal static partial class AfterRunAuthorityHarness
             Require(page.Navigation.NavigationStack.Last() is RetainedOriginBookPage,
                 "Stories did not navigate to the real native retained-book reader.");
             await page.Navigation.PopAsync();
+
+            int runnerReturns = 0;
+            var reader = new RetainedOriginBookPage(runtime.Coordinator, () =>
+            {
+                runnerReturns++;
+                return Task.CompletedTask;
+            });
+            await page.Navigation.PushAsync(reader);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(reader, "OnAppearing"));
+            var back = IssuedElements(reader).OfType<Button>().Single(b => b.AutomationId == "origin-book-return-to-runner");
+            await ui.BeginAsyncVoid(() => ((IButtonController)back).SendClicked());
+            Require(runnerReturns == 1, "The reader ignored its explicit runner return destination.");
+            IssuedPageLifecycle(reader, "OnDisappearing");
+            await ui.BeginAsyncVoid(() => ((IButtonController)back).SendClicked());
+            Require(runnerReturns == 1, "A departed reader used its stale runner return action.");
+            await page.Navigation.PopAsync();
+
             await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
             read = IssuedElements(page).OfType<Button>().Single(b => b.AutomationId == "phone-stories-read-book");
             owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser);
@@ -67,7 +84,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(page.Navigation.NavigationStack.Count == depth, "A departed tab opened an old runner's book.");
             Require(alerts.Titles.Count == 0, "Private Stories navigation raised an unexpected error.");
             ui.AssertHealthy();
-            Console.WriteLine("PASS private Stories: empty/unsupported selection, real retained-reader navigation, stale owner ABA/departure rejection, private text cleanup");
+            Console.WriteLine("PASS private Stories: empty/unsupported selection, real retained-reader navigation, explicit runner return, stale owner ABA/departure rejection, private text cleanup");
         });
     }
 }

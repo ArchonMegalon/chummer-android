@@ -69,7 +69,11 @@ public sealed class PhoneStoriesPage : NativePageBase
             read.Clicked += async (_, _) => await RunAsync(async () =>
             {
                 if (IsCurrentAppearanceGeneration(appearance) && Coordinator.CanReadRetainedOriginBook(display))
-                    await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+                    await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator, async () =>
+                    {
+                        await Navigation.PopAsync();
+                        await Shell.Current.GoToAsync(PhoneShellRoutes.RunnerAbsolute);
+                    }));
             });
             _body.Add(read);
         }

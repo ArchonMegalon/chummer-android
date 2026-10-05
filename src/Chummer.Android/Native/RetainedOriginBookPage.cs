@@ -25,9 +25,11 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AndroidOriginSceneResult> _sceneStatus = new(StringComparer.Ordinal);
     private bool _sceneObservationPaused;
+    private readonly Func<Task>? _returnToRunner;
 
-    public RetainedOriginBookPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public RetainedOriginBookPage(RunnerSessionCoordinator coordinator, Func<Task>? returnToRunner = null) : base(coordinator)
     {
+        _returnToRunner = returnToRunner;
         Title = _copy["Origin.ReadBook"];
         AutomationId = "origin-retained-book";
         var layout = new Grid { RowDefinitions = { new(GridLength.Auto), new(GridLength.Star) } };
@@ -369,7 +371,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         back.AutomationId = "origin-book-return-to-runner";
         back.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            if (IsCurrentAppearanceGeneration(appearance)) await Navigation.PopAsync();
+            if (!IsCurrentAppearanceGeneration(appearance)) return;
+            if (_returnToRunner is not null) await _returnToRunner();
+            else await Navigation.PopAsync();
         });
         _body.Add(back);
     }
