@@ -277,4 +277,17 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="DeleteRunnerChanged" xml:space="preserve"><value>El runner o la cuenta han cambiado. Abre la lista de runners e inténtalo de nuevo.</value></data>
   <data name="DeleteRunnerDone" xml:space="preserve"><value>Runner eliminado de este dispositivo. Se conservan las copias en línea.</value></data>
   <data name="DeleteRunnerRefresh" xml:space="preserve"><value>Runner eliminado de este dispositivo. Vuelve a abrir la lista para actualizarla.</value></data>
+  <data name="LocalRunnerAdoptionTitle" xml:space="preserve"><value>Runners en este dispositivo</value></data>
+  <data name="LocalRunnerAdoptionIntro" xml:space="preserve"><value>Elige un runner creado aquí antes de vincular tu cuenta. Sus decisiones guardadas y su libro se conservan juntos. Este paso no sube nada.</value></data>
+  <data name="LocalRunnerAdoptionEmpty" xml:space="preserve"><value>No hay runners sin vincular en este dispositivo.</value></data>
+  <data name="LocalRunnerAdoptionWorking" xml:space="preserve"><value>Transfiriendo tu runner y su libro…</value></data>
+  <data name="LocalRunnerAdoptionAccountChanged" xml:space="preserve"><value>Abre primero tu cuenta y vuelve a esta lista.</value></data>
+  <data name="LocalRunnerAdoptionQuestion" xml:space="preserve"><value>¿Transferir «{0}» y su libro a tu cuenta vinculada en este dispositivo? Dejará de aparecer en el modo sin cuenta. Se conservan los runners existentes de la cuenta.</value></data>
+  <data name="LocalRunnerAdoptionConfirm" xml:space="preserve"><value>Transferir a mi cuenta</value></data>
+  <data name="LocalRunnerAdoptionReload" xml:space="preserve"><value>Recargar lista</value></data>
+  <data name="LocalRunnerAdoptionUnavailable" xml:space="preserve"><value>Este runner no puede transferirse de forma segura ahora. No se ha cambiado nada.</value></data>
+  <data name="LocalRunnerAdoptionPending" xml:space="preserve"><value>La transferencia del runner no ha terminado. Se conservan tus datos originales. Reintenta para finalizar la misma transferencia.</value></data>
+  <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Transferencia terminada. Tus runners están listos.</value></data>
+  <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner y libro transferidos a esta cuenta en este dispositivo.</value></data>
+  <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Finalizar transferencia</value></data>
 </root>

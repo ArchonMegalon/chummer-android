@@ -59,6 +59,18 @@ separate `eng/local-internal-design-policy-authority.json`. Keep historical
 hosted/two-green protocol verification intact, but do not make it a prerequisite
 for local delivery or relabel local/manual checks as hosted PR/push evidence.
 
+Standing user approval, 2026-10-05: newly verified Chummer Android builds may be
+uploaded to the existing Play Internal track and tester audience without another
+per-build approval, today and for future increments until revoked. No
+operator-imposed daily or total upload-count limit applies. This supersedes older
+one-build or daily upload permissions within that scope. Record the standing
+approval separately from candidate verification; a new version needs its own
+artifact checks, not a new operator question. Keep local isolated signing with
+the existing upload key, unique higher version codes, serialized uploads and
+actual Play readback. Reconcile uncertain outcomes before retrying. Public-track
+promotion, audience/account changes, purchases and other provider budgets remain
+outside this approval; required safety and platform controls remain unchanged.
+
 Never claim Play publication from a local AAB. Publication requires a
 Chummer-scoped Play Console receipt and a successful internal-test install.
 Never check in signing secrets, upload keys, service-account JSON, tokens, or

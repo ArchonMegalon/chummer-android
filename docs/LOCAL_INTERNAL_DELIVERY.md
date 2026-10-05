@@ -36,6 +36,27 @@ journeys on one APK if that particular coverage is claimed. A short route smoke
 is never called a seven-journey pass. No branch protection is changed by this
 document or by selecting the local policy.
 
+## Standing Play Internal upload authorization
+
+The owner's 2026-10-05 approval applies today and to future verified candidates
+until revoked. Upload newly verified Chummer Android builds to the existing
+Internal track and tester audience without another per-build question. There is
+no operator-imposed daily or total upload-count limit; earlier one-build or daily
+upload permissions within this scope are superseded. A new candidate, version or
+day alone is not a reason to request approval again.
+
+Record this standing authorization alongside, but separately from, the exact
+candidate's source, checks, signing and Play results. It is not a passing test,
+signer result or publication receipt. Preserve every safety check below, the
+existing upload-key identity and unique higher version codes. Serialize uploads
+within host/platform capacity, and reconcile uncertain provider results before a
+retry rather than blindly repeating an upload or rollout.
+
+This approval does not extend to public tracks, tester/audience changes, account
+security, purchases or unrelated provider budgets. Stop for a revoked approval,
+failed required check or changed release scope. Physical Play installation still
+requires separate observed evidence; upload permission is not an install receipt.
+
 ## Delivery checklist
 
 The current package intake may reuse the exact UI owner-artifact cache under
@@ -74,8 +95,9 @@ here changes protected merge checks, signing or Play authorization.
    key as recovery. Independently verify the signed hash, strict JAR signature,
    certificate and unchanged non-signature ZIP payload in a keyless verifier.
    Preserve unsigned/signed hashes, verification results and recovery inputs.
-6. Under the owner's upload authorization, upload that exact bundle only to the
-   Chummer Internal track and existing tester audience. Stop on identity drift,
+6. Under the standing upload authorization above, upload that exact bundle only
+   to the Chummer Internal track and existing tester audience; no fresh per-build
+   approval is needed. Stop on identity drift,
    conflicting draft/version use, revoked approval or failed verification. Do
    not change Production, tester membership, billing or account security.
 7. Observe actual Play processing/availability with the scoped Console or

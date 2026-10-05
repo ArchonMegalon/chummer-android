@@ -144,6 +144,21 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             await Navigation.PushAsync(new ApplicationSettingsPage(Coordinator));
         _body.Add(applicationSettings);
 
+        if (Coordinator.CanAdoptLocalRunner)
+        {
+            var local = NativeTheme.SecondaryButton(PhoneStrings.Get("LocalRunnerAdoptionTitle", "Runners on this device"));
+            local.AutomationId = "home-local-runner-adoption";
+            local.Clicked += async (_, _) => await Navigation.PushAsync(new LocalRunnerAdoptionPage(Coordinator, _runnerRoute));
+            _body.Add(local);
+        }
+        if (Coordinator.HasPendingLocalRunnerAdoption)
+        {
+            var retry = NativeTheme.SecondaryButton(PhoneStrings.Get("LocalRunnerAdoptionRetry", "Finish runner transfer"));
+            retry.AutomationId = "home-local-runner-adoption-retry";
+            retry.Clicked += async (_, _) => await RunAsync(() => Coordinator.RetryLocalRunnerAdoptionsAsync());
+            _body.Add(retry);
+        }
+
         if (Coordinator.State.WorkspaceId is not null)
         {
             Button favorites = NativeTheme.SecondaryButton(

@@ -11,7 +11,7 @@ namespace Chummer.Android.Native;
 /// timeline. Loading performs only storage identity checks; Core Restore must
 /// still rebind the returned checkpoint to live rules authority.
 /// </summary>
-public sealed class FileOriginDossierDraftTimelineStore : IOriginDossierDraftTimelineStore
+public sealed partial class FileOriginDossierDraftTimelineStore : IOriginDossierDraftTimelineStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

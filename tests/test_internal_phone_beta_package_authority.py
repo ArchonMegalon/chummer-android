@@ -334,7 +334,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 774,
+            "minimumExpectedTests": 781,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -345,7 +345,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             ("InProcessWorkspaceContinuationTests", "Chummer.Tests/InProcessWorkspaceContinuationTests.cs", 19),
             ("InProcessShellOwnerContextTests", "Chummer.Tests/InProcessShellOwnerContextTests.cs", 26),
             ("InProcessChummerClientRulesetPluginTests", "Chummer.Tests/InProcessChummerClientRulesetPluginTests.cs", 74),
-            ("ShellBootstrapDataProviderTests", "Chummer.Tests/Presentation/ShellBootstrapDataProviderTests.cs", 24),
+            ("ShellBootstrapDataProviderTests", "Chummer.Tests/Presentation/ShellBootstrapDataProviderTests.cs", 27),
             ("ShellPresenterTests", "Chummer.Tests/Presentation/ShellPresenterTests.cs", 80),
             ("WorkspaceSessionActivationServiceTests", "Chummer.Tests/Presentation/WorkspaceSessionActivationServiceTests.cs", 5),
             ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
@@ -716,14 +716,29 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(774, receipt["testExecutions"][0]["minimumExpectedTests"])
-        self.assertEqual([19, 26, 74, 24, 80, 5, 23, 6, 1, 27],
+        self.assertEqual(781, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 27],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
         # The producer can validate the content checkout at either exact commit.
         for row in [*receipt["testExecutions"], *self.owner_execution_rows(receipt)]:
             row["coreProjectionContent"]["checkoutCommit"] = self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"]
         self.validate_receipt_copy(receipt)
+
+    def test_adoption_intake_requires_current_full_and_bootstrap_floors(self) -> None:
+        # Exact configured floors in the reviewed UI producer; not observed totals.
+        receipt = self.current_main_receipt_fixture()
+        self.assertEqual(receipt, self.validate_receipt_copy(receipt))
+        for change in ("pre-adoption-full", "pre-adoption-bootstrap"):
+            stale = copy.deepcopy(receipt)
+            if change == "pre-adoption-full":
+                stale["testExecutions"][0]["minimumExpectedTests"] = 774
+            else:
+                bootstrap = next(row for row in stale["focusedExistingOwnerRegressionTestExecutions"]
+                                 if row["filter"] == "FullyQualifiedName~ShellBootstrapDataProviderTests")
+                bootstrap["minimumExpectedTests"] = 24
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(stale)
 
     def test_finalization_owner_execution_matches_exact_ui_producer_shape(self) -> None:
         # Synthetic receipt compatibility only: these tests do not attest a

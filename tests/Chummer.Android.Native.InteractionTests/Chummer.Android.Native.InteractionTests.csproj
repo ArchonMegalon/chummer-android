@@ -39,6 +39,7 @@
     <Compile Include="LifeModuleExoticSkillsNativeTests.cs" />
     <Compile Include="Sr6CreationFoundationNativeTests.cs" />
     <Compile Include="OriginDossierBookRuntimeTests.cs" />
+    <Compile Include="LocalRunnerAdoptionRuntimeTests.cs" />
     <Compile Include="OriginChapterAuthoringHttpTests.cs" />
     <Compile Include="OriginSceneHttpTests.cs" />
     <Compile Include="CreationKarmaPhonePageTests.cs" />

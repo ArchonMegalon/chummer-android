@@ -7,7 +7,7 @@ using Chummer.Contracts.Workspaces;
 namespace Chummer.Android.Native;
 
 /// <summary>App-private input drafts only. No saved preview or permission to mutate a runner.</summary>
-public sealed class LifeModuleCompletionDraftStore(string stateDirectory)
+public sealed partial class LifeModuleCompletionDraftStore(string stateDirectory)
 {
     private const int MaximumBytes = 2 * 1024 * 1024;
     private readonly string _directory = Path.Combine(stateDirectory, "life-module-completion-inputs");

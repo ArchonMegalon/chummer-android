@@ -20,6 +20,7 @@ internal static class OriginDossierBookRuntimeTests
         RunAuthoringSource();
         RunOpeningStoryDetailsStorage();
         RunStoryLanguageStorage();
+        await RunLocalBookAdoptionStorageAsync();
         await RunChapterRefinementStorageAsync();
         await RunChapterRefinementPageAsync();
         await RunStoryLanguagePickerAsync();
@@ -29,6 +30,100 @@ internal static class OriginDossierBookRuntimeTests
     }
 
     private static readonly OwnerContextStamp TestOwner = new(OwnerScope.LocalSingleUser, "origin-test-owner", 0);
+
+    private static async Task RunLocalBookAdoptionStorageAsync()
+    {
+        string directory = Directory.CreateTempSubdirectory("chummer-local-book-adoption-").FullName;
+        try
+        {
+            const string account = "adoption-account-a";
+            var authority = new DecisionAuthority(2);
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var prepared = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            var accepted = service.Confirm(prepared, prepared.PendingPreview!.PreviewDigest, "adoption-first", true).Value!;
+            var checkpoint = service.Prepare(accepted.Checkpoint, "choice-2").Value!;
+            string local = checkpoint.OwnerId;
+            var chapter = checkpoint.Projection.VisibleChapters.Single();
+            var readings = new OriginBookReadingStore(directory);
+            var empty = readings.Load(local, checkpoint.WorkspaceId);
+            var profile = new OriginStoryProfile(Gender: "other", Pronouns: "they/them") { StoryLanguage = "de-DE" };
+            var source = profile.Apply(OriginBookAuthoringSource.Create(checkpoint.Projection, chapter));
+            string request = OriginChapterSourceIdentity.RequestId(source);
+            string prose = string.Join("\n\n", Enumerable.Range(1, 35).Select(i =>
+                $"Absatz {i}: Die Lichter der Straße begleiteten ihren langen Heimweg. 🌧️"));
+            var stored = readings.Save(empty, empty with
+            {
+                StoryProfile = profile,
+                IllustrationPolicy = OriginBookReadingState.AutomaticIllustrations,
+                PendingRefinement = new(checkpoint.PendingPreview!.PreviewDigest, checkpoint.Projection.CurrentTurn.SeedDigest,
+                    "choice-2", 1, new("Path 2", TurningPoint: "A letter arrives late")),
+                Chapters = [new(chapter.ChapterId, OriginBookProseDraft.Create(chapter, "de-DE", request, Digest("selected"), prose),
+                    OriginBookProseDraft.Create(chapter, "de-DE", request, Digest("pending"), "Private alternative ending"))
+                    { AuthoringSource = source }]
+            }, () => true, default);
+            var sceneStore = new OriginBookSceneStore(directory);
+            var book = new RetainedOriginBook(checkpoint.Projection, stored);
+            byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=");
+            var scenes = sceneStore.Save(sceneStore.Load(local, checkpoint.WorkspaceId), new(local, checkpoint.WorkspaceId,
+                [OriginBookScene.ForChapter(book, chapter, "Rain over the street", png)]), () => true, default);
+            var timeline = new FileOriginDossierDraftTimelineStore(directory);
+            await timeline.SaveAsync(checkpoint);
+            Require(OriginAdoptionFiles.Digest(timeline.ReadForAdoption(local, checkpoint.WorkspaceId))
+                == OriginAdoptionFiles.Digest(checkpoint), "The pending local chapter checkpoint was lost.");
+
+            readings.AdoptLocalEdition(account, stored.Workspace, stored.Digest, () => true, default);
+            // Simulate termination before the second private file is placed.
+            new OriginBookReadingStore(directory).AdoptLocalEdition(account, stored.Workspace, stored.Digest, () => true, default);
+            new OriginBookSceneStore(directory).AdoptLocalScenes(account, stored.Workspace, scenes.Digest, () => true, default);
+            var cold = new OriginBookReadingStore(directory).Load(account, stored.Workspace);
+            var coldScenes = new OriginBookSceneStore(directory).Load(account, stored.Workspace);
+            Require(cold.Digest == (stored with { Owner = account }).Digest
+                && coldScenes.Digest == new OriginBookScenes(account, stored.Workspace, scenes.Scenes).Digest
+                && readings.Load(local, stored.Workspace).Digest == stored.Digest
+                && sceneStore.Load(local, stored.Workspace).Digest == scenes.Digest,
+                "Adoption changed retained prose, image bytes, preferences, pending wishes or the recovery originals.");
+            var adopted = new RetainedOriginBook(checkpoint.Projection, cold, coldScenes);
+            Require(adopted.ChapterText(chapter) == prose
+                && OriginChapterSourceIdentity.RequestId(adopted.AuthoringSource(chapter)) == request,
+                "Account adoption changed the paid request identity or substituted a summary.");
+            using (var archive = new ZipArchive(new MemoryStream(OriginBookEpub.Create(adopted,
+                AndroidSurfaceStrings.Resolve("de-DE"))), ZipArchiveMode.Read))
+            {
+                using var text = archive.GetEntry("EPUB/chapter-1.xhtml")!.Open();
+                XNamespace html = "http://www.w3.org/1999/xhtml";
+                var page = XDocument.Load(text);
+                Require(string.Join("\n\n", page.Descendants(html + "p").Select(p => p.Value)) == prose
+                    && page.Descendants(html + "img").Single().Attribute("src")?.Value == "images/scene-1.png",
+                    "The adopted EPUB lost full chapter text or its offline illustration.");
+                using var image = archive.GetEntry("EPUB/images/scene-1.png")!.Open();
+                using var bytes = new MemoryStream(); image.CopyTo(bytes);
+                Require(bytes.ToArray().SequenceEqual(png), "The adopted EPUB changed image bytes.");
+            }
+
+            void Reject(Action action, string message)
+            {
+                bool rejected = false;
+                try { action(); }
+                catch (Exception error) when (error is InvalidOperationException or InvalidDataException or OperationCanceledException) { rejected = true; }
+                Require(rejected, message);
+            }
+            Reject(() => readings.AdoptLocalEdition("adoption-account-b", stored.Workspace, stored.Digest, () => false, default),
+                "A retired owner created another account edition.");
+            Reject(() => sceneStore.AdoptLocalScenes("adoption-account-b", stored.Workspace, scenes.Digest, () => true, new(true)),
+                "Canceled adoption copied illustrations.");
+            Reject(() => readings.AdoptLocalEdition(account, stored.Workspace, Digest("stale"), () => true, default),
+                "A stale local source was treated as recovered.");
+            var other = readings.Load("adoption-account-b", stored.Workspace);
+            readings.Save(other, other with { StoryProfile = new(Tone: "hopeful") }, () => true, default);
+            Reject(() => readings.AdoptLocalEdition(other.Owner, stored.Workspace, stored.Digest, () => true, default),
+                "Different existing account data was overwritten.");
+            Require(readings.Load(other.Owner, stored.Workspace).StoryProfile?.Tone == "hopeful"
+                && sceneStore.Load(other.Owner, stored.Workspace).Scenes.Count == 0,
+                "Rejected adoption damaged another account's state.");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+        Console.WriteLine("PASS local book adoption storage: full prose, images, exact paid identity, preferences/refinements, partial recovery, EPUB and conflicts");
+    }
 
     private static async Task RunChapterRefinementStorageAsync()
     {

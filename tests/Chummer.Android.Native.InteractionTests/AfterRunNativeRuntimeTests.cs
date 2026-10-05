@@ -533,6 +533,7 @@ internal static partial class AfterRunAuthorityHarness
         public readonly ShellPresenter Shell;
         public readonly RunnerSessionCoordinator Coordinator;
         public AndroidLinkedCharacterIntentJournal LinkedJournal { get; }
+        internal AndroidLocalRunnerAdoptionService? LocalAdoption { get; }
         internal IServiceProvider Services => _provider;
         public ICharacterCareerReputationService ReputationService => _provider.GetRequiredService<ICharacterCareerReputationService>();
         public CharacterWorkspaceId Id;
@@ -572,7 +573,8 @@ internal static partial class AfterRunAuthorityHarness
             bool creationSkills = false,
             bool lifeModuleInputDrafts = false,
             Func<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService,
-                Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>? lifeBookDecorator = null)
+                Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>? lifeBookDecorator = null,
+            bool localRunnerAdoption = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -671,6 +673,15 @@ internal static partial class AfterRunAuthorityHarness
                     _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
                     _provider.GetRequiredService<IRulesetWorkspaceCodecResolver>());
                 if (linkedReaderDecorator is not null) linkedReader = linkedReaderDecorator(linkedReader);
+                var originReadings = new OriginBookReadingStore(StateDirectory);
+                var originScenes = new OriginBookSceneStore(StateDirectory);
+                var originTimeline = new FileOriginDossierDraftTimelineStore(StateDirectory);
+                var completionDrafts = new LifeModuleCompletionDraftStore(StateDirectory);
+                if (localRunnerAdoption)
+                    LocalAdoption = new AndroidLocalRunnerAdoptionService(StateDirectory, store,
+                        _provider.GetRequiredService<Chummer.Application.Owners.IOwnerContextAccessor>(),
+                        _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(), originReadings,
+                        originScenes, originTimeline, completionDrafts, _provider.GetRequiredService<ICharacterFileQueries>());
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
                     null!, contactsPresenter!, null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
@@ -720,13 +731,14 @@ internal static partial class AfterRunAuthorityHarness
                     lifeModuleBookService: lifeBookDecorator?.Invoke(
                         _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>())
                         ?? _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
-                    lifeModuleInputDrafts: lifeModuleInputDrafts ? new LifeModuleCompletionDraftStore(StateDirectory) : null,
+                    lifeModuleInputDrafts: lifeModuleInputDrafts ? completionDrafts : null,
                     originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
                         _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
-                        new FileOriginDossierDraftTimelineStore(StateDirectory)),
-                    originBookReadings: new OriginBookReadingStore(StateDirectory),
-                    originBookScenes: new OriginBookSceneStore(StateDirectory),
-                    originSceneDocuments: originSceneDocuments);
+                        originTimeline),
+                    originBookReadings: originReadings,
+                    originBookScenes: originScenes,
+                    originSceneDocuments: originSceneDocuments,
+                    localRunnerAdoptionService: LocalAdoption);
             }
             catch
             {
