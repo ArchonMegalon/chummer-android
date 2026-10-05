@@ -104,7 +104,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 106 is the latest [observed Internal availability](../play/evidence/preview106-internal-observation.md),
+Preview 107 is the latest [observed Internal availability](../play/evidence/preview107-internal-observation.md),
+confirmed on 5 October at 06:57 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Account-response headers and content now share one original deadline; buffered
+responses cannot renew an expired budget. Focused HTTP/security checks and a
+synthetic API36 timeout/linked-state/new-process smoke passed. Unchanged behavior
+results are reused for the version-only delta. **Physical Play107 installation/
+update and successful native live-account/provider checks remain unverified.**
+This is not a diagnosis of every historical account hang, overall performance
+clearance, complete SR5 Creation/Origin or general-beta readiness.
+
+Preview 106's [observed Internal availability](../play/evidence/preview106-internal-observation.md),
 confirmed on 5 October at 02:33 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 An admitted initial account check now leaves Loading on caller cancellation;
