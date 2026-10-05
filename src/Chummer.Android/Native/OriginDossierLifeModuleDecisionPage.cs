@@ -98,6 +98,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
+        // Review replaces the answer form; dismiss its keyboard on the tap
+        // so it cannot cover the subsequent story choices and confirmation.
+        HideSoftInputOnTapped = true;
         AutomationId = "origin-life-decision";
         // NativeTheme uses fixed dark text, including outside the white cards.
         // Match NativePageBase instead of inheriting the OS dark background.
