@@ -34,6 +34,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         await RunNativeCatalogUiLoadingAsync(contentRoot);
         await RunNativeCatalogEmptyUiAsync(contentRoot);
+        await RunNativeUnlinkOffUiAsync(contentRoot);
         await RunNativeCatalogDeadlineAsync(contentRoot);
         await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
         await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
@@ -158,6 +159,27 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { IssuedPageLifecycle(page, "OnDisappearing"); }
             Console.WriteLine("PASS actual native empty roster completion and owner-bound status");
+        });
+    }
+
+    private static async Task RunNativeUnlinkOffUiAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            fixture.Account.ForbiddenContext = ui;
+            await fixture.Runtime.Coordinator.UnlinkAccountAsync();
+            Require(fixture.Account.SignedRevokes == 1 && fixture.Account.RevokeDisposals == 1,
+                "Unlink skipped or replayed the signed revoke or failed to dispose its response.");
+            Require(fixture.Account.UiReads == 0 && fixture.Account.UiRevokeDisposals == 0,
+                "Unlink performed credential/HTTP work or native response disposal on the UI context.");
+            Require(fixture.Runtime.Coordinator.Account.Status == AndroidAccountLinkStatus.Unlinked
+                && fixture.Runtime.Coordinator.OnlineCharacters.Count == 0,
+                "Successful unlink did not publish the unlinked state and clear the old catalog.");
+            Require(ReferenceEquals(SynchronizationContext.Current, ui),
+                "The native unlink caller did not resume on its UI context.");
+            Console.WriteLine("PASS native unlink off-UI signed request/disposal and owner cleanup");
         });
     }
 
@@ -616,6 +638,9 @@ internal static partial class AfterRunAuthorityHarness
         internal bool FailGroups;
         internal SynchronizationContext? ForbiddenContext;
         internal int UiReads;
+        internal int SignedRevokes;
+        internal int RevokeDisposals;
+        internal int UiRevokeDisposals;
 
         internal NativeContinuationAccount()
         {
@@ -678,7 +703,15 @@ internal static partial class AfterRunAuthorityHarness
                 if (FailGroups) throw new IOException("Synthetic unavailable campaign service.");
                 return ContinuationJsonResponse(new JsonObject { ["groups"] = new JsonArray() });
             }
-            if (path.EndsWith("/revoke", StringComparison.Ordinal)) return ContinuationJsonResponse(new JsonObject());
+            if (path.EndsWith("/revoke", StringComparison.Ordinal))
+            {
+                Require(request.Headers.Authorization?.Scheme == "Bearer"
+                    && request.Headers.Contains("X-Chummer-Packet-Signature")
+                    && !document.RootElement.TryGetProperty("accessToken", out _),
+                    "Unlink bypassed the signed, credential-free-body transport.");
+                Interlocked.Increment(ref SignedRevokes);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new RevokeContent(this) };
+            }
             string operation = document.RootElement.GetProperty("operationId").GetString()!;
             var response = ContinuationJsonResponse(JsonSerializer.SerializeToNode(new
             {
@@ -693,5 +726,20 @@ internal static partial class AfterRunAuthorityHarness
         }
 
         public void Dispose() { _http.Dispose(); _keys.Dispose(); }
+
+        private sealed class RevokeContent(NativeContinuationAccount account) : StringContent("{}")
+        {
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    Interlocked.Increment(ref account.RevokeDisposals);
+                    if (account.ForbiddenContext is not null
+                        && ReferenceEquals(SynchronizationContext.Current, account.ForbiddenContext))
+                        Interlocked.Increment(ref account.UiRevokeDisposals);
+                }
+                base.Dispose(disposing);
+            }
+        }
     }
 }
