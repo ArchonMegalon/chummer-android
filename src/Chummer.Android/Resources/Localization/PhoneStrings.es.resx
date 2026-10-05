@@ -290,4 +290,7 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Transferencia terminada. Tus runners están listos.</value></data>
   <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner y libro transferidos a esta cuenta en este dispositivo.</value></data>
   <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Finalizar transferencia</value></data>
+  <data name="StoriesPrivateDetail" xml:space="preserve"><value>Lee los capítulos e ilustraciones del origen de tu runner. Puedes guardar los capítulos terminados como libro.</value></data>
+  <data name="StoriesChooseRunnerDetail" xml:space="preserve"><value>Abre un runner de módulos de vida de SR5 para leer su libro de origen. El libro permanece con ese runner.</value></data>
+  <data name="StoriesChooseRunner" xml:space="preserve"><value>Elegir un runner</value></data>
 </root>

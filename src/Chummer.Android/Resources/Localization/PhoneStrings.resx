@@ -290,4 +290,7 @@ No change has been saved yet.</value></data>
   <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Runner transfer finished. Your runners are ready.</value></data>
   <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner and book transferred to this account on this device.</value></data>
   <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Finish runner transfer</value></data>
+  <data name="StoriesPrivateDetail" xml:space="preserve"><value>Read your runner’s Origin chapters and illustrations. Finished chapters can be saved as a book.</value></data>
+  <data name="StoriesChooseRunnerDetail" xml:space="preserve"><value>Open an SR5 Life Modules runner to read its Origin book. Your book stays with that runner.</value></data>
+  <data name="StoriesChooseRunner" xml:space="preserve"><value>Choose a runner</value></data>
 </root>

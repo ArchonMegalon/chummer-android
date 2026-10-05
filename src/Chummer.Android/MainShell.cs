@@ -51,7 +51,7 @@ public sealed class MainShell : Shell
             PhoneStrings.Get("ShellRunner", "Runner"),
             PhoneShellRoutes.Runner,
             "✎"));
-        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(
+        tabs.Items.Add(CreatePhoneTab<PhoneStoriesPage>(
             services,
             PhoneStrings.Get("ShellStories", "Stories"),
             PhoneShellRoutes.Archive,

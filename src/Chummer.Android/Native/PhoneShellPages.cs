@@ -19,6 +19,79 @@ public sealed class RunnersPage : HomePage
 }
 
 /// <summary>
+/// Private Origin entry for the selected runner, not the unavailable public archive.
+/// Listing this destination neither reads provider jobs nor starts book generation.
+/// </summary>
+public sealed class PhoneStoriesPage : NativePageBase
+{
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40), Spacing = 16
+    };
+
+    public PhoneStoriesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    {
+        Title = PhoneStrings.Get("ShellStories", "Stories");
+        AutomationId = "phone-private-stories";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnAppearing()
+    {
+        // A cached tab must not flash the previous account's runner before admission.
+        _body.Clear();
+        base.OnAppearing();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _body.Clear();
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        _body.Add(NativeTheme.Title(Title));
+        var display = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        if (Coordinator.CanReadRetainedOriginBook(display))
+        {
+            string? name = display.Profile?.Alias;
+            if (string.IsNullOrWhiteSpace(name)) name = display.Profile?.Name;
+            _body.Add(NativeTheme.Title(string.IsNullOrWhiteSpace(name)
+                ? PhoneStrings.Get("RunnerFallback", "Runner") : name, 22));
+            _body.Add(NativeTheme.Body(PhoneStrings.Get("StoriesPrivateDetail",
+                "Read your runner’s Origin chapters and illustrations. Finished chapters can be saved as a book."), NativeTheme.Muted));
+            var read = NativeTheme.ReadingButton(AndroidSurfaceStrings.Resolve(
+                System.Globalization.CultureInfo.CurrentUICulture.Name)["Origin.ReadBook"]);
+            read.AutomationId = "phone-stories-read-book";
+            read.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (IsCurrentAppearanceGeneration(appearance) && Coordinator.CanReadRetainedOriginBook(display))
+                    await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
+            });
+            _body.Add(read);
+        }
+        else
+        {
+            var message = NativeTheme.Body(PhoneStrings.Get("StoriesChooseRunnerDetail",
+                "Open an SR5 Life Modules runner to read its Origin book. Your book stays with that runner."), NativeTheme.Muted);
+            message.AutomationId = "phone-stories-choose-runner-message";
+            _body.Add(message);
+        }
+        var choose = NativeTheme.SecondaryButton(PhoneStrings.Get("StoriesChooseRunner", "Choose a runner"));
+        choose.AutomationId = "phone-stories-choose-runner";
+        choose.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (IsCurrentAppearanceGeneration(appearance))
+                await Shell.Current.GoToAsync(PhoneShellRoutes.RunnersAbsolute);
+        });
+        _body.Add(choose);
+    }
+}
+
+/// <summary>
 /// The current phone candidate has no replayable event-backed Play authority. Keeping the
 /// destination fail-closed prevents the former absolute-value scratchpad from implying proof.
 /// </summary>

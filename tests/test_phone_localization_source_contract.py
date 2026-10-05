@@ -69,6 +69,17 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         for source in (shell, home, more, runners):
             self.assertIn("PhoneStrings.Get", source)
 
+    def test_stories_opens_the_private_native_book_not_the_unavailable_public_archive(self) -> None:
+        shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        self.assertIn("CreatePhoneTab<PhoneStoriesPage>", shell)
+        self.assertNotIn("CreatePhoneTab<ShadowArchivePage>", shell)
+        self.assertIn("AddTransient<PhoneStoriesPage>()", program)
+        for name in ("PhoneStrings.resx", "PhoneStrings.de.resx", "PhoneStrings.es.resx"):
+            catalog = load_resx(name)
+            for key in ("StoriesPrivateDetail", "StoriesChooseRunnerDetail", "StoriesChooseRunner"):
+                self.assertTrue(catalog[key], (name, key))
+
     def test_settings_exposes_only_phone_meaningful_controls(self) -> None:
         settings = (PROJECT / "Native" / "ApplicationSettingsPage.cs").read_text(
             encoding="utf-8"
