@@ -448,6 +448,33 @@ internal static partial class AfterRunAuthorityHarness
                     "The automatic reader still exposes a consent toggle or separate writing button.");
             }
             long generation = IssuedPageField<long>(page, "_appearanceGeneration");
+            // A bounded read pause renders an inline notice as well as the
+            // pinned status. Recovering the same pending job must clear both,
+            // even when no chapter, job state or reading edition has changed.
+            var copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
+            remote.SuccessorReadFailure = new(AndroidOriginChapterOutcome.Unavailable,
+                RetryableReadFailure: true);
+            try
+            {
+                for (int failure = 0; failure < 3; failure++)
+                    await page.PollChapterOnceAsync(generation, default);
+            }
+            finally { remote.SuccessorReadFailure = null; }
+            var readerBody = (VerticalStackLayout)typeof(RetainedOriginBookPage).GetField("_body",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(page)!;
+            Require(readerBody.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                "The bounded read pause did not exercise the inline reader notice.");
+            var resumePending = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+            await ui.BeginAsyncVoid(() => ((IButtonController)resumePending).SendClicked());
+            Require(!IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]
+                || e.Text == copy["Origin.AuthoringStatusRetrying"]),
+                "Successful observation of the unchanged pending job left a stale paused/retrying notice in the reader.");
+            Require(remote.Requests == requests && remote.Acceptances == acceptances
+                && IssuedElements(page).OfType<Label>().Any(e => e.Text == prose.Text)
+                && IssuedElements(page).OfType<Button>().Any(e => e.AutomationId == "origin-book-export-epub" && e.IsEnabled),
+                "Recovering the inline notice replayed paid work or lost saved prose/export.");
+            Console.WriteLine("PASS bounded reader pause: unchanged pending job clears inline status without paid replay");
             // An unexpected read/storage exception stops observation, not the
             // provider job. The pinned UI must stop claiming that it is still
             // checking, preserve saved prose, and allow an explicit read-only
@@ -465,7 +492,6 @@ internal static partial class AfterRunAuthorityHarness
                 "A stopped chapter observer left its pinned spinner running after an exception.");
             var pinnedStatus = (VerticalStackLayout)IssuedElements(page).Single(e =>
                 e.AutomationId == "origin-reader-pinned-progress");
-            var copy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
             Require(pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
                 "The observation pause is not explained in the always-visible reader status.");
             Require(ReferenceEquals(displayedProse, IssuedElements(page).OfType<Label>().Single(e =>

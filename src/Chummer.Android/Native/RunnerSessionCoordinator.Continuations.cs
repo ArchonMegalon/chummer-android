@@ -106,7 +106,10 @@ public sealed partial class RunnerSessionCoordinator
 
     private async Task RefreshContinuationCatalogAsync(CancellationToken ct, bool includeCampaigns)
     {
-        await _account.InitializeAsync(ct);
+        if (_account is AndroidAccountLinkService linkedAccount)
+            await linkedAccount.InitializeForAuthenticatedRequestAsync(ct);
+        else
+            await _account.InitializeAsync(ct);
         ct.ThrowIfCancellationRequested();
         long generation = Interlocked.Increment(ref _continuationCatalogGeneration);
         if (!_account.Snapshot.IsLinked || _account is not IAndroidWorkspaceContinuationTransport transport

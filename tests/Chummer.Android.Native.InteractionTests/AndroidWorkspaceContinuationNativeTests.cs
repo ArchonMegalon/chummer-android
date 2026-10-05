@@ -32,6 +32,7 @@ internal static partial class AfterRunAuthorityHarness
 
     public static async Task RunAndroidCatalogSequencingCasesAsync(string contentRoot)
     {
+        await RunNativeCatalogSingleAuthenticationAsync(contentRoot);
         await RunNativeCatalogUiLoadingAsync(contentRoot);
         await RunNativeCatalogEmptyUiAsync(contentRoot);
         await RunNativeUnlinkOffUiAsync(contentRoot);
@@ -43,6 +44,39 @@ internal static partial class AfterRunAuthorityHarness
         foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
             await RunNativeCatalogSequencingAsync(contentRoot, ending, runnersOnly);
         Console.WriteLine("PASS 10 full-account/runner-only catalog sequencing cases");
+    }
+
+    private static async Task RunNativeCatalogSingleAuthenticationAsync(string contentRoot)
+    {
+        foreach (HttpStatusCode outcome in new[] { HttpStatusCode.OK, HttpStatusCode.Unauthorized,
+                     HttpStatusCode.Forbidden, HttpStatusCode.Conflict })
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            int statuses = fixture.Account.SignedStatuses;
+            int lists = fixture.Account.SignedLists;
+            int groups = fixture.Account.SignedGroupLists;
+            var previous = fixture.Runtime.Coordinator.OnlineCharacters.ToArray();
+            fixture.Account.ListStatus = outcome;
+            bool rejected = false;
+            try { await fixture.Runtime.Coordinator.RefreshOnlineRunnersAsync(); }
+            catch (Exception error) when (error is UnauthorizedAccessException or InvalidDataException)
+            { rejected = true; }
+            Require(fixture.Account.SignedStatuses == statuses && fixture.Account.SignedLists == lists + 1
+                && fixture.Account.SignedGroupLists == groups,
+                "A ready, owner-bound runner catalog issued a redundant grant-status preflight or skipped signed authentication.");
+            Require(rejected == (outcome != HttpStatusCode.OK), "A rejected signed roster was presented as loaded.");
+            if (outcome == HttpStatusCode.Unauthorized)
+                Require(!fixture.Account.Service.Snapshot.IsLinked
+                    && !fixture.Runtime.Coordinator.OnlineRunnersLoaded,
+                    "A revoked exact grant left an authorized linked catalog.");
+            else
+                Require(fixture.Account.Service.Snapshot.IsLinked && fixture.Account.Owner.Capture() == fixture.Owner,
+                    "A successful read, scope denial or data conflict cleared the current account.");
+            if (outcome is HttpStatusCode.Forbidden or HttpStatusCode.Conflict)
+                Require(fixture.Runtime.Coordinator.OnlineCharacters.SequenceEqual(previous),
+                    "A denied read replaced the previously admitted catalog.");
+        }
+        Console.WriteLine("PASS catalog uses one signed read; exact revocation clears, scope/CAS rejection preserves credentials");
     }
 
     private static async Task RunNativeCatalogUiLoadingAsync(string contentRoot)
@@ -631,6 +665,8 @@ internal static partial class AfterRunAuthorityHarness
         internal AndroidAccountOwnerContextAccessor Owner { get; }
         internal JsonArray Rows = new();
         internal int SignedLists;
+        internal int SignedStatuses;
+        internal HttpStatusCode ListStatus = HttpStatusCode.OK;
         internal int SignedGroupLists;
         internal TaskCompletionSource? ListEntered;
         internal TaskCompletionSource? ReleaseList;
@@ -673,6 +709,8 @@ internal static partial class AfterRunAuthorityHarness
             string installation = document.RootElement.GetProperty("installationId").GetString()!;
             string path = request.RequestUri!.AbsolutePath;
             if (path.EndsWith("/status", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref SignedStatuses);
                 return ContinuationJsonResponse(JsonSerializer.SerializeToNode(new
                 {
                     installationId = installation, grantId = request.Headers.GetValues("X-Chummer-Grant").Single(),
@@ -680,6 +718,7 @@ internal static partial class AfterRunAuthorityHarness
                     expiresAtUtc = DateTimeOffset.Parse(_metadata.Rows["chummer.account.installation-grant-expiry.v1"],
                         System.Globalization.CultureInfo.InvariantCulture), observedAtUtc = DateTimeOffset.UtcNow
                 })!);
+            }
             if (path.EndsWith("/continuation/workspaces/list", StringComparison.Ordinal))
             {
                 Require(request.Headers.Authorization?.Scheme == "Bearer"
@@ -687,6 +726,7 @@ internal static partial class AfterRunAuthorityHarness
                     && !document.RootElement.TryGetProperty("accessToken", out _),
                     "The native catalog bypassed the actual signed credential-free-body transport.");
                 Interlocked.Increment(ref SignedLists);
+                if (ListStatus != HttpStatusCode.OK) return new HttpResponseMessage(ListStatus);
                 if (ListEntered is not null && ReleaseList is not null)
                 {
                     ListEntered.TrySetResult();

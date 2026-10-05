@@ -26,6 +26,7 @@ internal static class Program
 
     private static async Task Main()
     {
+        await AuthenticatedRequestPreparationPreservesRecoveryAsync();
         await ResponseDeadlineCannotRestartAfterHeadersAsync();
         await ResponseBodyUsesOnlyRemainingRequestBudgetAsync();
         await ResponseDeadlinesAreIndependentAndCallerCancellationWinsAsync();
@@ -90,6 +91,60 @@ internal static class Program
         await LegacyStagedGrantCannotInheritAnOwnerAsync();
         await BoundOwnerErasureAndUnlinkCleanupAsync();
         Console.WriteLine("Account-link HTTP hardening tests passed (including native I/O regressions).");
+    }
+
+    private static async Task AuthenticatedRequestPreparationPreservesRecoveryAsync()
+    {
+        LinkFixture fixture = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(30));
+        var handler = new RecordingHandler(_ => ExactGrantStatus(fixture));
+        using var transport = CreateTransport(handler);
+        var service = CreateService(transport, fixture);
+        await service.InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(service.Snapshot.IsLinked && handler.Requests.Count == 1); // Cold startup still checks Hub.
+        var original = service.OwnerAuthority.Capture();
+        await service.InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(handler.Requests.Count == 1 && ReferenceEquals(original, service.OwnerAuthority.Capture()));
+        using (var canceled = new CancellationTokenSource())
+        {
+            canceled.Cancel();
+            await RequireThrowsAsync<OperationCanceledException>(() =>
+                service.InitializeForAuthenticatedRequestAsync(canceled.Token));
+            Require(handler.Requests.Count == 1 && service.Snapshot.IsLinked);
+        }
+        await service.InitializeAsync(); // The ordinary account check remains a real remote check.
+        Require(handler.Requests.Count == 2);
+        await fixture.Metadata.RemoveAsync(OwnerBindingKey);
+        await service.InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(handler.Requests.Count == 3 && service.OwnerAuthority.Capture()?.SubjectId == "subject-owner-A");
+        fixture.Metadata.SetRaw(OwnerBindingKey, "invalid");
+        await service.InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(service.Snapshot.Status == AndroidAccountLinkStatus.Error
+            && service.OwnerAuthority.Capture() is null && handler.Requests.Count == 3);
+
+        LinkFixture expiring = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddDays(1));
+        var refresh = new RecordingHandler(request => request.RequestUri!.AbsolutePath.EndsWith("/status", StringComparison.Ordinal)
+            ? ExactGrantStatus(expiring) : RefreshGrantResponse(expiring.Identity, RequestOperationId(request)));
+        using var refreshTransport = CreateTransport(refresh);
+        await CreateService(refreshTransport, expiring).InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(refresh.Requests.Count == 2);
+        await RequireCommittedGrantAsync(expiring, "grant-after-refresh");
+
+        LinkFixture expired = await CreateLinkedFixtureAsync(DateTimeOffset.UtcNow.AddMinutes(-1));
+        var forbidden = new RecordingHandler(_ => throw new InvalidOperationException("Unexpected recovery network request."));
+        using var noNetwork = CreateTransport(forbidden);
+        var expiredService = CreateService(noNetwork, expired);
+        await expiredService.InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+        Require(!expiredService.Snapshot.IsLinked && !expired.Metadata.Contains(StoredAccessTokenKey));
+
+        foreach (bool rotated in new[] { false, true })
+        {
+            LinkFixture staged = rotated ? await CreateInterruptedRefreshStageAsync() : await CreateInterruptedBootstrapStageAsync();
+            await CreateService(noNetwork, staged).InitializeForAuthenticatedRequestAsync(CancellationToken.None);
+            await RequireCommittedGrantAsync(staged, rotated ? "grant-after-refresh" : "grant-after-response-loss");
+            Require(!staged.Metadata.Contains(StagedGrantCommitKey));
+        }
+        Require(forbidden.Requests.Count == 0);
+        Console.WriteLine("PASS authenticated-request preparation preserves cold/legacy validation, cancellation, expiry, refresh and staged recovery");
     }
 
     private static async Task ResponseDeadlineCannotRestartAfterHeadersAsync()

@@ -25,7 +25,8 @@ public sealed partial class RunnerSessionCoordinator
 
     internal async Task<(AndroidOriginSceneResult Result, OriginBookScene? Scene)> SyncOriginBookSceneAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, string excerpt, string altText,
-        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct, bool automatic = false)
+        bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct, bool automatic = false,
+        Action? onCreationFenced = null)
     {
         bool Current() => isCurrentPage() && CanRequestOriginBookScene(book, chapter);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -55,11 +56,19 @@ public sealed partial class RunnerSessionCoordinator
         try
         {
             result = await transport.ReadSceneAsync(owner, source, text, ct);
+            // A known remote admission is also read-only from now on. A later
+            // missing response is not permission to replace an existing job.
+            if (result.Outcome == AndroidOriginSceneOutcome.Available || result.UnknownRemoteOutcome)
+                onCreationFenced?.Invoke();
             if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginSceneOutcome.Unauthorized), null);
             // A read cannot spend credits. Only confirmed absence plus this
             // explicit excerpt consent may enter the governed render lane.
             if (result.Outcome == AndroidOriginSceneOutcome.NotFound && consentToCreate)
             {
+                // Fence the actual write before dispatch, including a lost result
+                // or a retired reader edition. A failed read above is not a write
+                // attempt and must leave a later confirmed-absence request possible.
+                onCreationFenced?.Invoke();
                 result = automatic
                     ? await transport.RequestAutomaticSceneAsync(owner, source, text, true, ct)
                     : await transport.RequestSceneAsync(owner, source, text, excerpt, altText, true, ct);
@@ -96,13 +105,13 @@ public sealed partial class RunnerSessionCoordinator
 
     internal async Task<(AndroidOriginSceneResult Result, RetainedOriginBook? Book)> SyncAutomaticOriginBookSceneAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, bool allowCreate,
-        Func<bool> isCurrentPage, CancellationToken ct)
+        Func<bool> isCurrentPage, CancellationToken ct, Action? onCreationFenced = null)
     {
         if (!CanAutomaticallyIllustrateOriginBook(book) || !isCurrentPage())
             return (new(AndroidOriginSceneOutcome.Unauthorized), null);
         if (book.Scene(chapter) is not null) return (new(AndroidOriginSceneOutcome.Available, "persisted"), book);
         var (result, scene) = await SyncOriginBookSceneAsync(book, chapter, "", "", allowCreate,
-            isCurrentPage, ct, automatic: true);
+            isCurrentPage, ct, automatic: true, onCreationFenced: onCreationFenced);
         if (!isCurrentPage() || ct.IsCancellationRequested || !IsRetainedOriginBookCurrent(book))
             return (new(AndroidOriginSceneOutcome.Unauthorized), null);
         // No local picker, pretend human approval or separate image decision.
