@@ -36,7 +36,14 @@ public sealed partial class AndroidAccountLinkService : IAndroidWorkspaceContinu
             "/api/v2/install-linking/continuation/workspaces/list",
             new InstallationGrantRequest(grant.InstallationId), authority, cancellationToken);
         RequireContinuationOwnerCurrent(expected);
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            // The signed roster is the fresh grant check. Clear only its exact
+            // rejected generation, never a concurrently replaced/rotated grant.
+            await SetSnapshotAfterRejectedGrantAsync(await TryClearGrantIfCurrentAsync(grant));
+            throw new UnauthorizedAccessException("The original linked account cannot read continuations.");
+        }
+        if (response.StatusCode == HttpStatusCode.Forbidden)
             throw new UnauthorizedAccessException("The original linked account cannot read continuations.");
         if (!response.IsSuccessStatusCode)
             throw new InvalidDataException("The complete online workspace list is unavailable.");

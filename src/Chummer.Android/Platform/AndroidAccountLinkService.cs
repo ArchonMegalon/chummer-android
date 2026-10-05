@@ -101,7 +101,15 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
         finally { _gate.Release(); }
     }
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public Task InitializeAsync(CancellationToken cancellationToken = default)
+        => InitializeCoreAsync(validateRemoteGrant: true, cancellationToken);
+
+    // Only for a caller which immediately performs an owner-bound signed request.
+    // This prepares credentials; it does not admit remote data or cache revocation.
+    internal Task InitializeForAuthenticatedRequestAsync(CancellationToken cancellationToken)
+        => InitializeCoreAsync(validateRemoteGrant: false, cancellationToken);
+
+    private async Task InitializeCoreAsync(bool validateRemoteGrant, CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -202,6 +210,18 @@ public sealed partial class AndroidAccountLinkService : IAndroidAccountLinkServi
             {
                 await SetSnapshotAfterRejectedGrantAsync(
                     await TryClearGrantIfCurrentAsync(grant));
+                return;
+            }
+
+            // Recovery, key validation, exact stored-owner binding and expiry
+            // remain mandatory above. A linked, well-outside-refresh-window
+            // account need not spend a second durable Hub roundtrip on status
+            // immediately before the signed roster authenticates the same grant.
+            // Cold initialization and legacy owner hydration retain status.
+            if (!validateRemoteGrant && Snapshot.IsLinked && grant.SubjectId is not null
+                && expiresAtUtc > DateTimeOffset.UtcNow.Add(RefreshWindow))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 return;
             }
 
