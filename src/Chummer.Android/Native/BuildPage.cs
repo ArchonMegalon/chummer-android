@@ -3103,6 +3103,8 @@ public sealed class BuildPage : NativePageBase
                 await Navigation.PushAsync(new RetainedOriginBookPage(Coordinator));
             },
             (checkpoint, current) => Coordinator.LoadOpeningStoryDetailsAsync(checkpoint,
+                () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner),
+            (expected, checkpoint, brief, current) => Coordinator.SaveChapterRefinementAsync(expected, checkpoint, brief,
                 () => current() && Coordinator.State.DisplayOwnerContext == decisionOwner));
         await Navigation.PushAsync(page);
     }

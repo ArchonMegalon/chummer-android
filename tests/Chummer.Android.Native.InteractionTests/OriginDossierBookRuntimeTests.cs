@@ -20,6 +20,8 @@ internal static class OriginDossierBookRuntimeTests
         RunAuthoringSource();
         RunOpeningStoryDetailsStorage();
         RunStoryLanguageStorage();
+        await RunChapterRefinementStorageAsync();
+        await RunChapterRefinementPageAsync();
         await RunStoryLanguagePickerAsync();
         await RunOptionalOpeningDetailsAsync();
         await RunReadBeforeNextChoiceAsync();
@@ -27,6 +29,184 @@ internal static class OriginDossierBookRuntimeTests
     }
 
     private static readonly OwnerContextStamp TestOwner = new(OwnerScope.LocalSingleUser, "origin-test-owner", 0);
+
+    private static async Task RunChapterRefinementStorageAsync()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "chummer-chapter-refinement-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var authority = new DecisionAuthority(2);
+            var timeline = new FileOriginDossierDraftTimelineStore(directory);
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(authority));
+            var runtime = new OriginDossierLifeModulePhoneRuntime(new TestOrigin(service), timeline);
+            var store = new OriginBookReadingStore(directory);
+            await runtime.OpenAsync(TestOwner, "workspace-1");
+            var prepared = await runtime.PrepareAsync(TestOwner, "workspace-1", "choice-1");
+            var checkpoint = prepared.StoryCheckpoint!;
+            var initial = store.Load(checkpoint.OwnerId, checkpoint.WorkspaceId);
+            var brief = new OriginChapterRefinement("Path 1", "Follow an old friend", "An unexpected mentor", "A second chance");
+            var pending = new OriginPendingChapterRefinement(checkpoint.PendingPreview!.PreviewDigest,
+                checkpoint.Projection.CurrentTurn.SeedDigest, "choice-1", 0, brief);
+            store.Save(initial, initial with { PendingRefinement = pending }, () => true, default);
+            bool fail = true;
+            LifeModuleOriginDossierInteractionAdvance? accepted = null;
+            Task Bind(LifeModuleOriginDossierDraftCheckpoint before, LifeModuleOriginDossierInteractionAdvance advance)
+            {
+                accepted = advance;
+                if (fail) throw new IOException("Synthetic interrupted story save after rules commit");
+                var saved = store.Load(before.OwnerId, before.WorkspaceId);
+                store.BindRefinement(saved, before, advance, () => true);
+                return Task.CompletedTask;
+            }
+            try
+            {
+                await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-1", pending.PreviewDigest, retainChapterRefinement: Bind);
+                throw new Exception("Expected synthetic story save failure.");
+            }
+            catch (IOException) { }
+            Require(authority.MutationCount == 1 && store.Load(initial.Owner, initial.Workspace).PendingRefinement == pending,
+                "Interrupted confirmation lost the story wishes or replayed rules.");
+            foreach (var wrong in new[] { pending with { ChoiceId = "another-choice" },
+                pending with { PreviewDigest = Digest("another-preview") }, pending with { TurnSeedDigest = Digest("another-turn") } })
+            {
+                bool rejected = false;
+                try { store.BindRefinement(store.Load(initial.Owner, initial.Workspace) with { PendingRefinement = wrong },
+                    checkpoint, accepted!, () => true); }
+                catch (InvalidOperationException) { rejected = true; }
+                Require(rejected, "A different choice, preview or turn captured this chapter's refinement.");
+            }
+            var blocked = new RetainedOriginBook(accepted!.Checkpoint.Projection, store.Load(initial.Owner, initial.Workspace));
+            bool blockedAuthoring = false;
+            try { blocked.AuthoringSource(blocked.Projection.VisibleChapters.Single()); }
+            catch (InvalidOperationException) { blockedAuthoring = true; }
+            Require(blockedAuthoring, "An unresolved story brief silently dispatched an unrefined chapter.");
+            var restored = await runtime.OpenAsync(TestOwner, "workspace-1");
+            Require(restored.IsSuccess && restored.StoryCheckpoint?.PendingPreview?.PreviewDigest == pending.PreviewDigest,
+                "Cold reopen did not retain the existing idempotent confirmation recovery.");
+            fail = false;
+            var confirmed = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-1", pending.PreviewDigest,
+                retainChapterRefinement: Bind);
+            var cold = new OriginBookReadingStore(directory).Load(initial.Owner, initial.Workspace);
+            Require(confirmed.IsSuccess && authority.MutationCount == 1 && cold.PendingRefinement is null
+                && cold.ChapterRefinements?.Single().Brief == brief, "Recovery lost or misbound the chapter refinement.");
+            var book = new RetainedOriginBook(confirmed.StoryCheckpoint!.Projection, cold);
+            var chapter = book.Projection.VisibleChapters.Single();
+            var source = book.AuthoringSource(chapter);
+            Require(source.Facts.Last().Text.Contains("Follow an old friend", StringComparison.Ordinal)
+                && source.Facts.Last().DecisionId.StartsWith("player-chapter-brief-", StringComparison.Ordinal)
+                && source.Facts.Count == OriginBookAuthoringSource.Create(book.Projection, chapter).Facts.Count + 1,
+                "Authoring omitted player wishes or impersonated Core facts.");
+            cold = store.Save(cold, cold with { Chapters = [new(chapter.ChapterId, null, null) { AuthoringSource = source }] }, () => true, default);
+            bool immutable = false;
+            try { store.Save(cold, cold with { ChapterRefinements = null }, () => true, default); }
+            catch (InvalidOperationException) { immutable = true; }
+            Require(immutable, "A confirmed refinement could be deleted to create another paid identity.");
+            bool wrongOwner = false;
+            try { store.Save(cold, cold with { Owner = "different-owner" }, () => true, default); }
+            catch (InvalidDataException) { wrongOwner = true; }
+            Require(wrongOwner && store.Load("different-owner", initial.Workspace).ChapterRefinements is null,
+                "Story refinements crossed account boundaries.");
+            var second = await runtime.PrepareAsync(TestOwner, "workspace-1", "choice-2");
+            var next = await runtime.ConfirmAsync(TestOwner, "workspace-1", "choice-2", second.State!.PendingPreviewDigest!);
+            var later = new RetainedOriginBook(next.StoryCheckpoint!.Projection, cold);
+            Require(OriginChapterSourceIdentity.Digest(later.AuthoringSource(chapter)) == OriginChapterSourceIdentity.Digest(source)
+                && !later.AuthoringSource(later.Projection.VisibleChapters.Last()).Facts.Any(f => f.DecisionId.StartsWith("player-chapter-brief-")),
+                "Later module choices changed the frozen chapter or inherited another module's wishes.");
+            foreach (var invalid in new[] { brief with { Motivation = new string('x', 257) }, brief with { Relationship = "bad\ntext" } })
+                Require(!invalid.IsValid, "Unbounded/control text entered a story brief.");
+        }
+        finally { Directory.Delete(directory, true); }
+        Console.WriteLine("PASS chapter refinements: exact acceptance, interrupted-save recovery without rules replay, cold reopen, owner isolation, frozen jobs");
+    }
+
+    private static async Task RunChapterRefinementPageAsync()
+    {
+        using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var service = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(new DecisionAuthority(1)));
+            var checkpoint = service.Prepare(service.Start("workspace-1").Value!, "choice-1").Value!;
+            foreach (string locale in new[] { "en-US", "de-DE", "es-ES" })
+            foreach (int stage in new[] { LifeModuleJourneyStageOrders.FormativeYears,
+                LifeModuleJourneyStageOrders.TeenYears, LifeModuleJourneyStageOrders.FurtherEducation,
+                LifeModuleJourneyStageOrders.RealLife })
+            {
+                int saves = 0, confirmations = 0;
+                bool fail = false;
+                OriginBookReadingState saved = new(checkpoint.OwnerId, checkpoint.WorkspaceId, []);
+                var display = new OriginDossierLifeModulePhoneResult(LifeModuleOriginDossierOutcomes.Success,
+                    OriginDossierLifeModuleInteractionProjector.Project(checkpoint) with { Locale = locale, StageOrder = stage }, [],
+                    LifeModuleBudget: new(CharacterCreationBudgetIds.LifeModules, "Karma", 750, 0, 750, true, [], "karma"),
+                    FoundationSnapshotDigest: "sha256:" + Digest("foundation"), BoundContentDigest: checkpoint.BoundContentDigest,
+                    BoundSourceDigest: checkpoint.BoundSourceDigest, BoundMechanicsSnapshotDigest: checkpoint.BoundMechanicsSnapshotDigest,
+                    StoryCheckpoint: checkpoint);
+                OriginDossierLifeModuleDecisionPage Page() => new(display, locale,
+                    (_, _) => throw new Exception("Refinement must not prepare rule choices."),
+                    (_, _) => { confirmations++; return Task.FromResult<OriginDossierLifeModulePhoneResult?>(null); },
+                    openingDetails: saved, saveChapterRefinement: (expected, reviewed, brief, current) =>
+                    {
+                        Require(current() && expected == saved && reviewed == checkpoint, "Stale refinement saved.");
+                        saves++;
+                        if (fail) throw new IOException("Synthetic story save failure");
+                        saved = expected with { PendingRefinement = brief is null ? null : new(reviewed.PendingPreview!.PreviewDigest,
+                            reviewed.Projection.CurrentTurn.SeedDigest, "choice-1", 0, brief) };
+                        return Task.FromResult<OriginBookReadingState?>(saved);
+                    });
+                var page = Page();
+                T Find<T>(string id) where T : Element => Elements(page).OfType<T>().Single(e => e.AutomationId == id);
+                Task Click(string id) => ui.BeginAsyncVoid(() => ((IButtonController)Find<Button>(id)).SendClicked());
+                Require(!Find<VerticalStackLayout>("origin-chapter-refinement").IsVisible
+                    && Elements(page).OfType<Entry>().All(e => !e.IsVisible), "Refinements were mandatory or Custom started visible.");
+                await Click("origin-life-confirm");
+                Require(confirmations == 1 && saves == 0, "Skipping optional questions saved invented facts or blocked confirmation.");
+                ((IButtonController)Find<Button>("origin-chapter-refine")).SendClicked();
+                Require(Find<VerticalStackLayout>("origin-chapter-refinement").IsVisible
+                    && Elements(page).OfType<Picker>().Count(p => p.Title!.Contains("Path 1", StringComparison.Ordinal)) == 3,
+                    "Questions were not generated for the selected module.");
+                var motivation = Find<Picker>("origin-chapter-motivation-suggestions");
+                var copy = AndroidSurfaceStrings.Resolve(locale);
+                string firstMotive = stage switch {
+                    LifeModuleJourneyStageOrders.FormativeYears => "curiosity",
+                    LifeModuleJourneyStageOrders.FurtherEducation => "ambition",
+                    _ => "belong" };
+                Require(motivation.Items[1] == copy["Origin.RefineAnswer." + firstMotive]
+                    && Find<Picker>("origin-chapter-relationship-suggestions").Items[1]
+                        == copy["Origin.RefineAnswer." + (stage == LifeModuleJourneyStageOrders.FormativeYears ? "family" : "friend")]
+                    && Find<Picker>("origin-chapter-turning-point-suggestions").Items[1]
+                        == copy["Origin.RefineAnswer." + (stage == LifeModuleJourneyStageOrders.FurtherEducation ? "letter" : "loyalty")],
+                    "Chapter suggestions did not follow the Core narrative stage order.");
+                motivation.SelectedIndex = 1;
+                var turning = Find<Picker>("origin-chapter-turning-point-suggestions");
+                turning.SelectedIndex = turning.Items.Count - 1;
+                Require(Find<Entry>("origin-chapter-turning-point").IsVisible, "Custom did not reveal the answer field.");
+                Find<Entry>("origin-chapter-turning-point").Text = "An acceptance letter arrives too late";
+                ((IButtonController)Find<Button>("origin-chapter-refine")).SendClicked();
+                await Click("origin-life-confirm");
+                Require(saves == 1 && confirmations == 2 && saved.PendingRefinement?.Brief.TurningPoint == "An acceptance letter arrives too late",
+                    "Collapsed answers were lost before confirmation.");
+                page = Page();
+                Require(Find<Picker>("origin-chapter-motivation-suggestions").SelectedIndex == 1
+                    && Find<Entry>("origin-chapter-turning-point").Text == "An acceptance letter arrives too late",
+                    "Reopen lost the pending choices/custom answer.");
+                var stale = Find<Entry>("origin-chapter-motivation");
+                stale.Text = "Hidden text must not replace the preset";
+                var window = new Window(new NavigationPage(page));
+                using var alerts = new AfterRunAuthorityHarness.IssuedPageAlerts(page, window);
+                fail = true;
+                await Click("origin-life-confirm");
+                Require(confirmations == 2 && saves == 2 && Find<Button>("origin-life-confirm").IsEnabled,
+                    "Failed story save confirmed rules or left the UI stuck.");
+                fail = false;
+                foreach (var id in new[] { "motivation", "relationship", "turning-point" })
+                    Find<Picker>("origin-chapter-" + id + "-suggestions").SelectedIndex = 0;
+                await Click("origin-life-confirm");
+                Require(confirmations == 3 && saved.PendingRefinement is null, "Clearing answers retained an old brief.");
+            }
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS chapter refinement UI: optional/contextual presets, Custom, collapse, save failure, reopen and clear in DE/EN/ES");
+    }
     private sealed class TestOrigin(LifeModuleOriginDossierInteractionService inner) : IOwnerBoundLifeModuleOriginService
     {
         public bool IsCurrent(OwnerContextStamp owner) => owner == TestOwner;

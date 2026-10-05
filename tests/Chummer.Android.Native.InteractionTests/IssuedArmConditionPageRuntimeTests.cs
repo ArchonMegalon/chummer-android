@@ -450,7 +450,7 @@ internal static partial class AfterRunAuthorityHarness
     }
 
 #pragma warning disable CS0618 // Locked MAUI presentation-only alert adapter, no authority fields.
-    private sealed class IssuedPageAlerts : IDisposable
+    internal sealed class IssuedPageAlerts : IDisposable
     {
         private readonly Page _page;
         private readonly bool _priorEnabled;

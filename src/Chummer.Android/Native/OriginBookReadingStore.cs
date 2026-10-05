@@ -97,6 +97,35 @@ internal sealed record OriginStoryBackground(string? BirthplaceFamily = null, st
         && (Period is null or "childhood" or "teen" or "adult");
 }
 
+/// <summary>Player wishes for one selected module, never canonical rule facts.</summary>
+internal sealed record OriginChapterRefinement(string Module, string? Motivation = null,
+    string? Relationship = null, string? TurningPoint = null)
+{
+    internal bool IsEmpty => Motivation is null && Relationship is null && TurningPoint is null;
+    internal bool IsValid => OriginStoryProfile.Text(Module, 160) && !string.IsNullOrWhiteSpace(Module)
+        && OriginStoryProfile.Text(Motivation, 256) && OriginStoryProfile.Text(Relationship, 256)
+        && OriginStoryProfile.Text(TurningPoint, 256);
+
+    internal OriginChapterSource Apply(OriginChapterSource source)
+    {
+        if (!IsValid || IsEmpty) throw new InvalidDataException("Invalid chapter refinement.");
+        var copy = AndroidSurfaceStrings.Resolve(source.Locale);
+        var lines = new List<string> { copy["Origin.RefineBrief"], Module };
+        if (Motivation is not null) lines.Add(copy.Format("Origin.RefineMotivation", Module) + " " + Motivation);
+        if (Relationship is not null) lines.Add(copy.Format("Origin.RefineRelationship", Module) + " " + Relationship);
+        if (TurningPoint is not null) lines.Add(copy.Format("Origin.RefineTurningPoint", Module) + " " + TurningPoint);
+        string identity = "player-chapter-brief-" + Convert.ToHexString(
+            SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(this))).ToLowerInvariant();
+        return OriginChapterSourceIdentity.Capture(source with {
+            Facts = [.. source.Facts, new(identity, identity, string.Join("\n", lines))] });
+    }
+}
+
+internal sealed record OriginPendingChapterRefinement(string PreviewDigest, string TurnSeedDigest,
+    string ChoiceId, int PreviousDecisionCount, OriginChapterRefinement Brief);
+internal sealed record OriginBoundChapterRefinement(string ChapterId, string AcceptedDecisionId,
+    OriginChapterRefinement Brief);
+
 internal sealed record OriginBookReadingChapter(string ChapterId, OriginBookProseDraft? Selected, OriginBookProseDraft? Pending)
 {
     // Freeze exactly what was approved, before HTTP dispatch. Optional so old
@@ -113,6 +142,10 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
     // editions omit it and keep their exact bytes/digests and provider consent.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? IllustrationPolicy { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OriginPendingChapterRefinement? PendingRefinement { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<OriginBoundChapterRefinement>? ChapterRefinements { get; init; }
     internal const string AutomaticIllustrations = "automatic-private-book/v1";
     internal string Digest
     {
@@ -168,6 +201,14 @@ public sealed class OriginBookReadingStore(string stateDirectory)
             throw new InvalidDataException("The reading edition changed identity.");
         if (expected.Chapters.Count != 0 && next.StoryProfile != expected.StoryProfile)
             throw new InvalidOperationException("The story brief is frozen once a chapter is retained.");
+        // A confirmed chapter brief is append-only, including before HTTP has
+        // started. Editing it later would silently create a different paid job.
+        if (expected.ChapterRefinements?.Any(old =>
+            next.ChapterRefinements?.Contains(old) != true) == true)
+            throw new InvalidOperationException("Confirmed chapter refinements are frozen.");
+        if (next.ChapterRefinements?.Any(added => expected.ChapterRefinements?.Contains(added) != true
+            && expected.Chapters.Any(c => c.ChapterId == added.ChapterId)) == true)
+            throw new InvalidOperationException("A retained chapter cannot receive a new refinement.");
         var saved = new FileState(Schema, next, next.Digest);
         lock (_gate)
         {
@@ -234,12 +275,55 @@ public sealed class OriginBookReadingStore(string stateDirectory)
         => (state.StoryProfile is null || state.StoryProfile.IsValid && !state.StoryProfile.IsEmpty)
             && (state.IllustrationPolicy is null or OriginBookReadingState.AutomaticIllustrations)
             && state.Chapters is { Count: <= MaximumChapters }
+            && ValidRefinements(state)
             && state.Chapters.All(c => c is not null)
             && state.Chapters.Select(c => c.ChapterId).Distinct(StringComparer.Ordinal).Count() == state.Chapters.Count
             && state.Chapters.All(c => !string.IsNullOrWhiteSpace(c.ChapterId)
                 && (c.Selected is null || c.Selected.IsValid() && c.Selected.ChapterId == c.ChapterId)
                 && (c.Pending is null || c.Pending.IsValid() && c.Pending.ChapterId == c.ChapterId)
                 && ValidSource(state, c));
+
+    private static bool ValidRefinements(OriginBookReadingState state)
+    {
+        bool Id(string? value) => value is not null && OriginStoryProfile.Text(value, 256);
+        bool Digest(string? value) => value is { Length: 64 }
+            && value.All(c => c is >= 'a' and <= 'f' or >= '0' and <= '9');
+        return (state.PendingRefinement is null || state.PendingRefinement is { } pending
+            && Digest(pending.PreviewDigest) && Digest(pending.TurnSeedDigest) && Id(pending.ChoiceId)
+            && pending.PreviousDecisionCount is >= 0 and < MaximumChapters
+            && pending.Brief is { IsValid: true, IsEmpty: false })
+            && (state.ChapterRefinements is null || state.ChapterRefinements is { Count: > 0 and <= MaximumChapters } refinements
+                && refinements.All(r => r is not null && Id(r.ChapterId) && Id(r.AcceptedDecisionId)
+                    && r.Brief is { IsValid: true, IsEmpty: false })
+                && refinements.Select(r => r.ChapterId).Distinct(StringComparer.Ordinal).Count() == refinements.Count
+                && refinements.Select(r => r.AcceptedDecisionId).Distinct(StringComparer.Ordinal).Count() == refinements.Count);
+    }
+
+    internal OriginBookReadingState BindRefinement(OriginBookReadingState expected,
+        Chummer.Contracts.LifeModules.LifeModuleOriginDossierDraftCheckpoint before,
+        Chummer.Contracts.LifeModules.LifeModuleOriginDossierInteractionAdvance advance,
+        Func<bool> stillCurrent)
+    {
+        if (expected.PendingRefinement is not { } pending) return expected;
+        var receipt = advance.AcceptedDecision;
+        var projection = advance.Checkpoint.Projection;
+        if (expected.Owner != before.OwnerId || expected.Workspace != before.WorkspaceId
+            || advance.Checkpoint.OwnerId != before.OwnerId || advance.Checkpoint.WorkspaceId != before.WorkspaceId
+            || pending.PreviewDigest != before.PendingPreview?.PreviewDigest
+            || pending.TurnSeedDigest != before.Projection.CurrentTurn.SeedDigest
+            || pending.ChoiceId != receipt.ChoiceId
+            || pending.PreviousDecisionCount != before.Projection.CanonicalLayer.AcceptedDecisionIds.Count
+            || projection.CurrentTurn.PreviousTurnDigest != pending.TurnSeedDigest
+            || !projection.CanonicalLayer.AcceptedDecisionIds.SequenceEqual(
+                before.Projection.CanonicalLayer.AcceptedDecisionIds.Append(receipt.DecisionId)))
+            throw new InvalidOperationException("The chapter refinement belongs to another decision.");
+        var chapter = projection.VisibleChapters.Single(c => c.ThroughAcceptedDecisionId == receipt.DecisionId);
+        if (expected.Chapters.Any(c => c.ChapterId == chapter.ChapterId))
+            throw new InvalidOperationException("This chapter has already been requested.");
+        var bound = new OriginBoundChapterRefinement(chapter.ChapterId, receipt.DecisionId, pending.Brief);
+        return Save(expected, expected with { PendingRefinement = null,
+            ChapterRefinements = [.. expected.ChapterRefinements ?? [], bound] }, stillCurrent, CancellationToken.None);
+    }
 
     private static bool ValidSource(OriginBookReadingState state, OriginBookReadingChapter chapter)
     {
