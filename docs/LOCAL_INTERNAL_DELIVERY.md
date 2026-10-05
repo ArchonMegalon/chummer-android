@@ -104,7 +104,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 105 is the latest [observed Internal availability](../play/evidence/preview105-internal-observation.md),
+Preview 106 is the latest [observed Internal availability](../play/evidence/preview106-internal-observation.md),
+confirmed on 5 October at 02:33 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+An admitted initial account check now leaves Loading on caller cancellation;
+queued callers, stored account data, owner identity and admitted credential
+writes remain protected. Focused account/security/localization checks, five
+actual-MAUI/Core cases and synthetic API36 linked cancellation/new-process reopen
+passed. Initial-loading fault injection is managed only. Unchanged behavior
+checks are reused for the version-only delta. **Physical Play106 installation/
+update and successful live account/provider checks remain unverified.** This
+does not diagnose every historical account hang or establish full SR5/Origin,
+performance clearance, tablet parity or general-beta completion.
+
+Preview 105's [observed Internal availability](../play/evidence/preview105-internal-observation.md),
 confirmed on 5 October at 00:19 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Life Modules completion now blocks allocations when retained story history is
