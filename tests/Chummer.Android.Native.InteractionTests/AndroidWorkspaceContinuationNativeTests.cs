@@ -33,13 +33,16 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunAndroidCatalogSequencingCasesAsync(string contentRoot)
     {
         await RunNativeCatalogUiLoadingAsync(contentRoot);
+        await RunNativeCatalogEmptyUiAsync(contentRoot);
+        await RunNativeUnlinkOffUiAsync(contentRoot);
         await RunNativeCatalogDeadlineAsync(contentRoot);
         await RunNativeCatalogCredentialQueueCancellationAsync(contentRoot);
         await RunNativeCatalogCredentialReadCancellationAsync(contentRoot);
         await RunNativeCatalogRecoveryProbeCancellationAsync(contentRoot);
+        foreach (bool runnersOnly in new[] { false, true })
         foreach (string ending in new[] { "complete", "cancel", "failure", "owner-b", "owner-aba" })
-            await RunNativeCatalogSequencingAsync(contentRoot, ending);
-        Console.WriteLine("PASS 5 native catalog sequencing cases");
+            await RunNativeCatalogSequencingAsync(contentRoot, ending, runnersOnly);
+        Console.WriteLine("PASS 10 full-account/runner-only catalog sequencing cases");
     }
 
     private static async Task RunNativeCatalogUiLoadingAsync(string contentRoot)
@@ -72,7 +75,10 @@ internal static partial class AfterRunAuthorityHarness
                 var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 fixture.Account.ListEntered = entered;
                 fixture.Account.ReleaseList = release;
+                fixture.Account.FailGroups = entry == "runners";
                 int groups = fixture.Account.SignedGroupLists;
+                int lists = fixture.Account.SignedLists;
+                var previousCharacters = fixture.Runtime.Coordinator.OnlineCharacters.ToArray();
                 Task load = ui.BeginAsyncVoid(start);
                 try
                 {
@@ -96,8 +102,14 @@ internal static partial class AfterRunAuthorityHarness
                         "The account button stayed loading after completion/cancellation/departure.");
                     Require(toolbar is null || toolbar.Text == originalToolbarLabel && toolbar.IsEnabled,
                         "Campaign toolbar stayed loading after completion/cancellation/departure.");
-                    Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" ? 1 : 0),
-                        "A canceled or departed load dispatched follow-on account requests.");
+                    Require(fixture.Account.SignedGroupLists == groups + (ending == "complete" && entry != "runners" ? 1 : 0),
+                        "Runner-only, canceled or departed loading dispatched unrelated account requests.");
+                    Require(fixture.Account.SignedLists == lists + 1,
+                        "Loading runners skipped or replayed the actual signed roster read.");
+                    if (ending == "complete")
+                        Require(fixture.Runtime.Coordinator.OnlineCharacters.Count == previousCharacters.Length
+                            && !ReferenceEquals(fixture.Runtime.Coordinator.OnlineCharacters[0], previousCharacters[0]),
+                            "A successful roster read left the previous catalog instead of publishing the new one.");
                     bool actionRan = false;
                     await (Task)typeof(NativePageBase).GetMethod("RunAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
                         .Invoke(page, new object[] { (Func<Task>)(() => { actionRan = true; return Task.CompletedTask; }) })!;
@@ -111,6 +123,63 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 Console.WriteLine("PASS actual MAUI account loading: " + entry + "/" + ending);
             }
+        });
+    }
+
+    private static async Task RunNativeCatalogEmptyUiAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            fixture.Account.Rows = new JsonArray();
+            fixture.Account.FailGroups = true;
+            var page = new RunnersPage(fixture.Runtime.Coordinator);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            try
+            {
+                int before = fixture.Account.SignedLists;
+                var button = IssuedElements(page).OfType<Button>()
+                    .Single(item => item.AutomationId == "home-load-online-runners");
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Require(fixture.Account.SignedLists == before + 1
+                    && fixture.Runtime.Coordinator.OnlineCharacters.Count == 0,
+                    "Empty-roster check did not complete the real signed list read.");
+                Require(IssuedElements(page).OfType<Label>().Any(item =>
+                        item.AutomationId == "home-online-runners-empty" && !string.IsNullOrWhiteSpace(item.Text))
+                    && IssuedElements(page).OfType<Button>().Single(item =>
+                        item.AutomationId == "home-load-online-runners").Text == "Refresh",
+                    "A completed empty account roster looks like loading did nothing.");
+                await fixture.Account.LinkAsync("other-subject", "other-empty-roster-grant");
+                await (Task)typeof(NativePageBase).GetMethod("RunAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(page, new object[] { (Func<Task>)(() => Task.CompletedTask) })!;
+                Require(!IssuedElements(page).OfType<Label>().Any(item =>
+                        item.AutomationId == "home-online-runners-empty"),
+                    "An old account's empty-roster result survived an owner transition.");
+            }
+            finally { IssuedPageLifecycle(page, "OnDisappearing"); }
+            Console.WriteLine("PASS actual native empty roster completion and owner-bound status");
+        });
+    }
+
+    private static async Task RunNativeUnlinkOffUiAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
+            fixture.Account.ForbiddenContext = ui;
+            await fixture.Runtime.Coordinator.UnlinkAccountAsync();
+            Require(fixture.Account.SignedRevokes == 1 && fixture.Account.RevokeDisposals == 1,
+                "Unlink skipped or replayed the signed revoke or failed to dispose its response.");
+            Require(fixture.Account.UiReads == 0 && fixture.Account.UiRevokeDisposals == 0,
+                "Unlink performed credential/HTTP work or native response disposal on the UI context.");
+            Require(fixture.Runtime.Coordinator.Account.Status == AndroidAccountLinkStatus.Unlinked
+                && fixture.Runtime.Coordinator.OnlineCharacters.Count == 0,
+                "Successful unlink did not publish the unlinked state and clear the old catalog.");
+            Require(ReferenceEquals(SynchronizationContext.Current, ui),
+                "The native unlink caller did not resume on its UI context.");
+            Console.WriteLine("PASS native unlink off-UI signed request/disposal and owner cleanup");
         });
     }
 
@@ -263,7 +332,7 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending)
+    private static async Task RunNativeCatalogSequencingAsync(string contentRoot, string ending, bool runnersOnly)
     {
         await using var fixture = await NativeContinuationFixture.CreateAsync(contentRoot);
         using var cancellation = new CancellationTokenSource();
@@ -273,7 +342,9 @@ internal static partial class AfterRunAuthorityHarness
         fixture.Account.ReleaseList = release;
         fixture.Account.FailList = ending == "failure";
         int groupsBefore = fixture.Account.SignedGroupLists;
-        Task refresh = fixture.Runtime.Coordinator.RefreshLinkedDataAsync(cancellation.Token);
+        Task refresh = runnersOnly
+            ? fixture.Runtime.Coordinator.RefreshOnlineRunnersAsync(cancellation.Token)
+            : fixture.Runtime.Coordinator.RefreshLinkedDataAsync(cancellation.Token);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -298,7 +369,7 @@ internal static partial class AfterRunAuthorityHarness
             "owner-b" or "owner-aba" => failure is UnauthorizedAccessException,
             _ => failure is null
         }, "Catalog sequencing lost the expected failure/cancellation contract: " + failure?.GetType().Name);
-        Require(fixture.Account.SignedGroupLists == groupsBefore + (ending == "complete" ? 1 : 0),
+        Require(fixture.Account.SignedGroupLists == groupsBefore + (ending == "complete" && !runnersOnly ? 1 : 0),
             "A failed, cancelled or retired-owner continuation dispatched a follow-on signed group request.");
         if (ending == "complete")
             Require(fixture.Runtime.Coordinator.OnlineCharacters.Count == 2,
@@ -306,7 +377,7 @@ internal static partial class AfterRunAuthorityHarness
         if (ending.StartsWith("owner-", StringComparison.Ordinal))
             Require(!fixture.Runtime.Coordinator.HasCompleteOnlineContinuation(fixture.Character),
                 "Old-owner catalog survived a credential transition during the sequential read.");
-        Console.WriteLine("PASS native catalog sequencing: " + ending);
+        Console.WriteLine("PASS native catalog sequencing: " + (runnersOnly ? "runners/" : "account/") + ending);
     }
 
     private static async Task RunNativeContinuationCanceledAsync(string contentRoot)
@@ -564,8 +635,12 @@ internal static partial class AfterRunAuthorityHarness
         internal TaskCompletionSource? ListEntered;
         internal TaskCompletionSource? ReleaseList;
         internal bool FailList;
+        internal bool FailGroups;
         internal SynchronizationContext? ForbiddenContext;
         internal int UiReads;
+        internal int SignedRevokes;
+        internal int RevokeDisposals;
+        internal int UiRevokeDisposals;
 
         internal NativeContinuationAccount()
         {
@@ -625,9 +700,18 @@ internal static partial class AfterRunAuthorityHarness
                 Require(ReleaseList is null || ReleaseList.Task.IsCompleted,
                     "Signed catalog reads overlapped before the first response completed.");
                 Interlocked.Increment(ref SignedGroupLists);
+                if (FailGroups) throw new IOException("Synthetic unavailable campaign service.");
                 return ContinuationJsonResponse(new JsonObject { ["groups"] = new JsonArray() });
             }
-            if (path.EndsWith("/revoke", StringComparison.Ordinal)) return ContinuationJsonResponse(new JsonObject());
+            if (path.EndsWith("/revoke", StringComparison.Ordinal))
+            {
+                Require(request.Headers.Authorization?.Scheme == "Bearer"
+                    && request.Headers.Contains("X-Chummer-Packet-Signature")
+                    && !document.RootElement.TryGetProperty("accessToken", out _),
+                    "Unlink bypassed the signed, credential-free-body transport.");
+                Interlocked.Increment(ref SignedRevokes);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new RevokeContent(this) };
+            }
             string operation = document.RootElement.GetProperty("operationId").GetString()!;
             var response = ContinuationJsonResponse(JsonSerializer.SerializeToNode(new
             {
@@ -642,5 +726,20 @@ internal static partial class AfterRunAuthorityHarness
         }
 
         public void Dispose() { _http.Dispose(); _keys.Dispose(); }
+
+        private sealed class RevokeContent(NativeContinuationAccount account) : StringContent("{}")
+        {
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    Interlocked.Increment(ref account.RevokeDisposals);
+                    if (account.ForbiddenContext is not null
+                        && ReferenceEquals(SynchronizationContext.Current, account.ForbiddenContext))
+                        Interlocked.Increment(ref account.UiRevokeDisposals);
+                }
+                base.Dispose(disposing);
+            }
+        }
     }
 }

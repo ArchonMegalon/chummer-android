@@ -6599,7 +6599,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public async Task UnlinkAccountAsync(CancellationToken cancellationToken = default)
     {
-        await _account.UnlinkAsync(cancellationToken);
+        // Native HTTP response disposal and credential cleanup can perform
+        // synchronous Android I/O. Keep the whole operation off the UI context,
+        // then resume here to publish the result; never replay the revoke.
+        await AccountStartupWorkScheduler.RunAsync(_account.UnlinkAsync, cancellationToken);
         if (_account.Snapshot.Status == AndroidAccountLinkStatus.Unlinked)
         {
             _onlineCharacters = [];

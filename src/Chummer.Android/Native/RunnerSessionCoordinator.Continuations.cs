@@ -42,7 +42,16 @@ public sealed partial class RunnerSessionCoordinator
     private long _continuationCatalogGeneration;
     private readonly SemaphoreSlim _linkedDataRefreshGate = new(1, 1);
 
-    private async Task RefreshLinkedDataWithBudgetAsync(TimeSpan timeout, CancellationToken ct)
+    public bool OnlineRunnersLoaded => Volatile.Read(ref _continuationCatalog) is { } catalog
+        && IsContinuationOwnerCurrent(catalog.Owner);
+
+    public Task RefreshOnlineRunnersAsync(CancellationToken cancellationToken = default)
+        => RunAccountCatalogRefreshAsync(TimeSpan.FromSeconds(30), includeCampaigns: false, cancellationToken);
+
+    private Task RefreshLinkedDataWithBudgetAsync(TimeSpan timeout, CancellationToken ct)
+        => RunAccountCatalogRefreshAsync(timeout, includeCampaigns: true, ct);
+
+    private async Task RunAccountCatalogRefreshAsync(TimeSpan timeout, bool includeCampaigns, CancellationToken ct)
     {
         using var budget = new CancellationTokenSource(timeout);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token, budget.Token);
@@ -54,7 +63,7 @@ public sealed partial class RunnerSessionCoordinator
             // synchronously before their first await. Keep the whole chain, not
             // only the runner-list step, off the Android UI context. This is one
             // total budget, not a fresh allowance for each chained request.
-            await Task.Run(() => RefreshContinuationCatalogAsync(cancellation.Token), cancellation.Token);
+            await Task.Run(() => RefreshContinuationCatalogAsync(cancellation.Token, includeCampaigns), cancellation.Token);
         }
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !ct.IsCancellationRequested
             && !_lifetime.IsCancellationRequested)
@@ -95,7 +104,7 @@ public sealed partial class RunnerSessionCoordinator
         if (_initialized && !IsWorkspaceOwnerInitialized()) _workspaceOwnerInitializationPending = true;
     }
 
-    private async Task RefreshContinuationCatalogAsync(CancellationToken ct)
+    private async Task RefreshContinuationCatalogAsync(CancellationToken ct, bool includeCampaigns)
     {
         await _account.InitializeAsync(ct);
         ct.ThrowIfCancellationRequested();
@@ -112,14 +121,18 @@ public sealed partial class RunnerSessionCoordinator
         }
         // Core carrier validation may cover many bounded snapshots. Keep JSON,
         // history and digest work off the Android synchronization context.
-        string selectedGroupId = Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty);
+        string? selectedGroupId = includeCampaigns
+            ? Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty) : null;
         // Both signed reads durably admit an anti-replay packet at Hub. Parallel
         // requests compete for that store's commit gate and consume each other's
         // HTTP deadlines. Sequence them; this never retries a failed request.
         var characters = await Task.Run(() => transport.ListContinuationsAsync(original, ct), ct);
         if (!IsContinuationOwnerCurrent(original) || Volatile.Read(ref _continuationCatalogGeneration) != generation) return;
         ct.ThrowIfCancellationRequested();
-        var groups = await _account.ListGroupsAsync(ct);
+        // Loading runners must not depend on campaign services. A slow group
+        // or chronicle read must not discard a completed, admitted roster.
+        // Campaign/account refresh keeps its existing complete-catalog behavior.
+        IReadOnlyList<AndroidLinkedGroup> groups = includeCampaigns ? await _account.ListGroupsAsync(ct) : [];
         if (!IsContinuationOwnerCurrent(original) || Volatile.Read(ref _continuationCatalogGeneration) != generation) return;
         var catalog = new ContinuationCatalog(original, characters.ToArray());
         var selected = groups.FirstOrDefault(group => group.GroupId == selectedGroupId) ?? groups.FirstOrDefault();
@@ -133,11 +146,14 @@ public sealed partial class RunnerSessionCoordinator
         {
             ct.ThrowIfCancellationRequested();
             if (Volatile.Read(ref _continuationCatalogGeneration) != generation
-                || Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty) != selectedGroupId) return;
+                || (includeCampaigns && Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty) != selectedGroupId)) return;
             // One synchronous credential lease closes the account-transition
             // race at publication; no network or notification runs under it.
-            _groups = groups;
-            _chronicles = chronicles;
+            if (includeCampaigns)
+            {
+                _groups = groups;
+                _chronicles = chronicles;
+            }
             Interlocked.Exchange(ref _continuationCatalog, catalog);
             _onlineCharacters = catalog.Items.Select(item => item.Character).ToArray();
         }

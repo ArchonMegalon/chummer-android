@@ -313,12 +313,19 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         else
         {
             Button refresh = NativeTheme.SecondaryButton(
-                Coordinator.OnlineCharacters.Count == 0
+                !Coordinator.OnlineRunnersLoaded
                     ? PhoneStrings.Get("LoadOnlineRunners", "Load online runners")
                     : PhoneStrings.Get("Refresh", "Refresh"));
             refresh.AutomationId = "home-load-online-runners";
-            refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh);
+            refresh.Clicked += async (_, _) => await RunLinkedDataRefreshAsync(refresh, runnersOnly: true);
             online.Add(refresh);
+            if (Coordinator.OnlineRunnersLoaded && Coordinator.OnlineCharacters.Count == 0)
+            {
+                Label empty = NativeTheme.Body(PhoneStrings.Get("OnlineRunnersEmpty",
+                    "No runner workspaces are saved to this account yet."), NativeTheme.Muted);
+                empty.AutomationId = "home-online-runners-empty";
+                online.Add(empty);
+            }
             foreach (AndroidOnlineCharacter character in Coordinator.OnlineCharacters.Take(6))
             {
                 string name = !string.IsNullOrWhiteSpace(character.Alias)
