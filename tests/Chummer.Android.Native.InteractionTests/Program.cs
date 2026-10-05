@@ -18,6 +18,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunPrivateStoriesNavigationAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--life-dashboard-guidance-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleDashboardGuidanceAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--local-runner-adoption-content-root")
         {
             await AfterRunAuthorityHarness.RunLocalRunnerAdoptionAsync(args[1]);
