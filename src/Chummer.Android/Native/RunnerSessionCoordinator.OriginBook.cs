@@ -28,6 +28,16 @@ internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBo
     {
         var source = OriginBookAuthoringSource.Create(Projection, chapter);
         source = Readings?.StoryProfile?.Apply(source) ?? source;
+        if (Readings?.PendingRefinement is { } pending
+            && Array.IndexOf(Projection.CanonicalLayer.AcceptedDecisionIds.ToArray(),
+                chapter.ThroughAcceptedDecisionId) >= pending.PreviousDecisionCount)
+            throw new InvalidOperationException("Confirm the saved chapter details before starting its story.");
+        if (Readings?.ChapterRefinements?.SingleOrDefault(r => r.ChapterId == chapter.ChapterId) is { } refinement)
+        {
+            if (refinement.AcceptedDecisionId != chapter.ThroughAcceptedDecisionId)
+                throw new InvalidOperationException("The chapter refinement changed identity.");
+            source = refinement.Brief.Apply(source);
+        }
         if (Reading(chapter)?.AuthoringSource is not { } retained)
         {
             // Only the new, latest passage may foreshadow this exact turn.
@@ -283,6 +293,9 @@ public sealed partial class RunnerSessionCoordinator
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
     private readonly ConditionalWeakTable<OriginBookReadingState, CharacterOverviewState> _openingStoryDetails = new();
 
+    private sealed record StoryEditorAuthority(CharacterOverviewState Display, string TurnSeedDigest);
+    private readonly ConditionalWeakTable<OriginBookReadingState, StoryEditorAuthority> _chapterStoryDetails = new();
+
     internal async Task<OriginBookReadingState?> LoadOpeningStoryDetailsAsync(
         LifeModuleOriginDossierDraftCheckpoint checkpoint, Func<bool> isCurrentPage)
     {
@@ -307,6 +320,7 @@ public sealed partial class RunnerSessionCoordinator
             // Later decisions can display the frozen book language. Only a
             // still-unrequested edition receives an editable capability.
             if (saved.Chapters.Count == 0) _openingStoryDetails.Add(saved, original);
+            _chapterStoryDetails.Add(saved, new(original, checkpoint.Projection.CurrentTurn.SeedDigest));
             return saved;
         }, CancellationToken.None);
     }
@@ -332,8 +346,54 @@ public sealed partial class RunnerSessionCoordinator
             _openingStoryDetails.Remove(expected);
             if (saved is null || !isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return null;
             _openingStoryDetails.Add(saved, original);
+            if (_chapterStoryDetails.TryGetValue(expected, out var chapterEditor))
+            {
+                _chapterStoryDetails.Remove(expected);
+                _chapterStoryDetails.Add(saved, chapterEditor);
+            }
             return saved;
         }, CancellationToken.None);
+
+    internal Task<OriginBookReadingState?> SaveChapterRefinementAsync(OriginBookReadingState expected,
+        LifeModuleOriginDossierDraftCheckpoint checkpoint, OriginChapterRefinement? brief, Func<bool> isCurrentPage)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!_chapterStoryDetails.TryGetValue(expected, out var authority)
+                || !isCurrentPage() || !IsNativeEditDisplayCurrent(authority.Display)
+                || _originBookReadings is not { } store || checkpoint.PendingPreview is not { EffectReview: not null } preview
+                || checkpoint.Projection.CurrentTurn.SeedDigest != authority.TurnSeedDigest
+                || checkpoint.WorkspaceRevision != authority.Display.ContentRevision
+                || authority.Display.DisplayOwnerContext is not { } owner || authority.Display.WorkspaceId is not { } id
+                || checkpoint.OwnerId != owner.Owner.Value || checkpoint.WorkspaceId != id.Value
+                || expected.Owner != owner.Owner.Value || expected.Workspace != id.Value)
+                return null;
+            if (brief is { IsEmpty: true }) brief = null;
+            if (brief is not null && (!brief.IsValid || brief.Module != ChapterRefinementModule(preview.SelectedChoice.Label)))
+                return null;
+            var pending = brief is null ? null : new OriginPendingChapterRefinement(preview.PreviewDigest,
+                authority.TurnSeedDigest, preview.SelectedChoice.ChoiceId,
+                checkpoint.Projection.CanonicalLayer.AcceptedDecisionIds.Count, brief);
+            var next = expected with { PendingRefinement = pending };
+            var saved = await Task.Run(() =>
+            {
+                if (!isCurrentPage() || !IsNativeEditDisplayCurrent(authority.Display)
+                    || !TryAcquireDamageJournalOwner(owner, id, out var lease)) return null;
+                using (lease) return store.Save(expected, next,
+                    () => isCurrentPage() && IsNativeEditDisplayCurrent(authority.Display), CancellationToken.None);
+            });
+            _chapterStoryDetails.Remove(expected);
+            if (saved is null || !isCurrentPage() || !IsNativeEditDisplayCurrent(authority.Display)) return null;
+            _chapterStoryDetails.Add(saved, authority);
+            if (_openingStoryDetails.TryGetValue(expected, out var openingAuthority))
+            {
+                _openingStoryDetails.Remove(expected);
+                _openingStoryDetails.Add(saved, openingAuthority);
+            }
+            return saved;
+        }, CancellationToken.None);
+
+    internal static string ChapterRefinementModule(string label)
+        => label.Length <= 160 ? label.Trim() : label[..159].TrimEnd() + "…";
 
     internal bool CanReadRetainedOriginBook(CharacterOverviewState? original = null)
     {

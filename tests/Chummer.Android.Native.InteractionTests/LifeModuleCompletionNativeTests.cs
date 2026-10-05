@@ -197,10 +197,23 @@ internal static partial class AfterRunAuthorityHarness
             && new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerA.Value, id.Value).Digest == savedDetails.Digest
             && new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerB.Value, id.Value).StoryProfile is null,
             "Preparing the real Core choice lost the issued opening editor, persistence or owner isolation.");
+        var chapterBrief = new OriginChapterRefinement(RunnerSessionCoordinator.ChapterRefinementModule(choice.Label),
+            "A chance to belong", "An old friend", "An unexpected letter");
+        Require(await runtime.Coordinator.SaveChapterRefinementAsync(savedDetails! with { }, prepared.StoryCheckpoint!, chapterBrief, () => true) is null
+            && await runtime.Coordinator.SaveChapterRefinementAsync(savedDetails!, prepared.StoryCheckpoint!, chapterBrief, () => false) is null
+            && await runtime.Coordinator.SaveChapterRefinementAsync(savedDetails!, prepared.StoryCheckpoint!, chapterBrief with { Module = "Different path" }, () => true) is null,
+            "An unissued, departed or wrong-module chapter editor wrote story wishes.");
+        savedDetails = await runtime.Coordinator.SaveChapterRefinementAsync(savedDetails!, prepared.StoryCheckpoint!, chapterBrief, () => true);
+        Require(savedDetails?.PendingRefinement?.Brief == chapterBrief,
+            "Issued chapter refinement was not staged against the real Core preview.");
         var confirmed = await runtime.Coordinator.ConfirmSr5LifeModuleOriginAsync(
             choice.ChoiceId, prepared.State!.PendingPreviewDigest!);
         Require(confirmed.IsSuccess && confirmed.State?.Timeline.Count == 1,
             "Linked choice commit/reload failed: " + string.Join(",", confirmed.Blockers));
+        var chapterDetails = new OriginBookReadingStore(runtime.StateDirectory).Load(ContactsOwnerA.Value, id.Value);
+        Require(chapterDetails.PendingRefinement is null && chapterDetails.ChapterRefinements?.Single().Brief == chapterBrief
+            && chapterDetails.ChapterRefinements.Single().AcceptedDecisionId == confirmed.StoryCheckpoint!.Projection.CanonicalLayer.AcceptedDecisionIds.Single(),
+            "Real coordinator confirmation omitted or misbound the saved chapter wishes.");
         await runtime.Coordinator.SaveAsync();
         var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, id).Value!;
         Require(cold.ContentRevision == 2 && cold.SavedRevision == 2
@@ -219,9 +232,9 @@ internal static partial class AfterRunAuthorityHarness
             && !await runtime.Coordinator.HasReadCurrentLifeModuleStoryAsync(confirmed.StoryCheckpoint!, () => true),
             "The retained Core book and live checkpoint disagree, or birth alone became a completed first story.");
         Require(retainedOpening!.Readings?.StoryProfile == profile
-            && await runtime.Coordinator.LoadOpeningStoryDetailsAsync(confirmed.StoryCheckpoint!, () => true) is null
+            && (await runtime.Coordinator.LoadOpeningStoryDetailsAsync(confirmed.StoryCheckpoint!, () => true))?.StoryProfile == profile
             && await runtime.Coordinator.SaveOpeningStoryDetailsAsync(savedDetails!, profile with { Tone = "dark" }, () => true) is null,
-            "The opening brief was lost, or an old editor could rewrite the story after the first accepted decision.");
+            "The opening brief was lost, fresh read authority was unavailable, or an old editor could rewrite the story.");
         Require(retainedOpening.Opportunities is { Opportunities.Count: > 0 } hints
             && hints.DecisionDigest == confirmed.StoryCheckpoint!.Projection.CurrentTurn.DecisionDigest
             && hints.Opportunities.All(h => confirmed.StoryCheckpoint!.Projection.AllowedChoiceIds.Contains(h.ChoiceId)),

@@ -2444,7 +2444,18 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 ["sr5-life-module-origin-authority-unavailable"]);
         }
         OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
-            .ConfirmAsync(owner, workspaceId.Value, choiceId, previewDigest, cancellationToken);
+            .ConfirmAsync(owner, workspaceId.Value, choiceId, previewDigest, cancellationToken,
+                (before, advance) => Task.Run(() =>
+                {
+                    if (_originBookReadings is not { } store) return;
+                    if (!TryAcquireDamageJournalOwner(owner, workspaceId, out var lease))
+                        throw new OperationCanceledException("The story owner changed.");
+                    using (lease)
+                    {
+                        var saved = store.Load(owner.Owner.Value, workspaceId.Value);
+                        store.BindRefinement(saved, before, advance, () => IsNativePersistenceOwnerCurrent(owner));
+                    }
+                }));
         if (result.IsSuccess)
         {
             // Core and the book checkpoint have committed. Refresh every

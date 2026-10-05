@@ -158,7 +158,8 @@ public sealed class OriginDossierLifeModulePhoneRuntime
         string workspaceId,
         string choiceId,
         string previewDigest,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<LifeModuleOriginDossierDraftCheckpoint, LifeModuleOriginDossierInteractionAdvance, Task>? retainChapterRefinement = null)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -182,6 +183,11 @@ public sealed class OriginDossierLifeModulePhoneRuntime
                     explicitlyConfirmed: true), cancellationToken).ConfigureAwait(false);
             if (!IsSuccess(confirmed) || confirmed.Value is not { } advance)
                 return Failed(confirmed.Outcome, confirmed.Blockers);
+            // Retain the exact story wishes before retiring the recoverable
+            // pending preview. A failure leaves the existing idempotent Confirm
+            // recovery available; no provider call occurs at this boundary.
+            if (retainChapterRefinement is not null)
+                await retainChapterRefinement(checkpoint, advance).ConfigureAwait(false);
             // The confirmed chapter is the user's book, not a disposable wizard
             // checkpoint. Persist terminal turns as well. Once Core committed,
             // cancellation must not discard its result. If storage fails, the

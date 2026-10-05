@@ -39,6 +39,11 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private bool _detailsExpanded;
     private readonly Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? _saveOpeningDetails;
     private readonly Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<OriginBookReadingState?>>? _loadOpeningDetails;
+    private readonly Func<OriginBookReadingState, LifeModuleOriginDossierDraftCheckpoint,
+        OriginChapterRefinement?, Func<bool>, Task<OriginBookReadingState?>>? _saveChapterRefinement;
+    private string? _refinementPreview;
+    private OriginChapterRefinement? _chapterBrief;
+    private bool _refinementExpanded;
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModulePhoneResult opened,
@@ -50,7 +55,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         OriginBookReadingState? openingDetails = null,
         Func<OriginBookReadingState, OriginStoryProfile?, Func<bool>, Task<OriginBookReadingState?>>? saveOpeningDetails = null,
         Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task>? openStoryProgress = null,
-        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<OriginBookReadingState?>>? loadOpeningDetails = null)
+        Func<LifeModuleOriginDossierDraftCheckpoint, Func<bool>, Task<OriginBookReadingState?>>? loadOpeningDetails = null,
+        Func<OriginBookReadingState, LifeModuleOriginDossierDraftCheckpoint, OriginChapterRefinement?,
+            Func<bool>, Task<OriginBookReadingState?>>? saveChapterRefinement = null)
     {
         ArgumentNullException.ThrowIfNull(opened);
         if (!TryReadDisplayAuthority(
@@ -87,6 +94,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _storyProfile = openingDetails?.StoryProfile ?? new();
         _saveOpeningDetails = saveOpeningDetails;
         _loadOpeningDetails = loadOpeningDetails;
+        _saveChapterRefinement = saveChapterRefinement;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
         Title = _copy["Origin.PageTitle"];
@@ -702,6 +710,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 NativeTheme.Ink);
             preview.AutomationId = "origin-life-preview";
             body.Insert(2, preview);
+            var refinement = BuildChapterRefinement(generation, previewDigest);
+            if (refinement is not null) body.Insert(3, refinement);
             Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = CanConfirmReviewed;
@@ -750,6 +760,25 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                         }
                         _openingDetails = saved;
                     }
+                    // Persist narrative wishes before mechanics commit. The
+                    // runtime binds them to Core's accepted chapter receipt
+                    // before retiring the recoverable confirmation checkpoint.
+                    if (_storyCheckpoint is { } story && _openingDetails is { } reading
+                        && (_chapterBrief is { IsEmpty: false } || reading.PendingRefinement is not null))
+                    {
+                        var brief = refinement is null || _chapterBrief?.IsEmpty != false ? null : _chapterBrief;
+                        OriginBookReadingState? saved = null;
+                        if ((brief is null || brief.IsValid) && _saveChapterRefinement is not null)
+                            saved = await _saveChapterRefinement(reading, story, brief,
+                                () => generation == _renderGeneration);
+                        if (generation != _renderGeneration) return;
+                        if (saved is null)
+                        {
+                            await DisplayAlertAsync(_copy["Origin.PageTitle"], _copy["Origin.RefineSaveFailed"], _copy["Common.Ok"]);
+                            return;
+                        }
+                        _openingDetails = saved;
+                    }
                     var confirmed = await _confirmChoice(selectedChoiceId, previewDigest);
                     if (generation != _renderGeneration || confirmed?.IsSuccess != true)
                         return;
@@ -765,6 +794,12 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                         if (await RefreshStoryReadinessAsync()) await LeadToUnreadStoryAsync();
                     }
                 }
+                catch (Exception error) when (error is IOException or InvalidOperationException
+                    or OperationCanceledException or UnauthorizedAccessException or System.Text.Json.JsonException)
+                {
+                    if (generation == _renderGeneration)
+                        await DisplayAlertAsync(_copy["Origin.PageTitle"], _copy["Origin.RefineSaveFailed"], _copy["Common.Ok"]);
+                }
                 finally
                 {
                     _actionInFlight = false;
@@ -774,9 +809,85 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     confirm.IsEnabled = generation == _renderGeneration && CanConfirmReviewed;
                 }
             };
-            body.Insert(3, confirmationRow);
+            body.Insert(refinement is null ? 3 : 4, confirmationRow);
         }
 
+    }
+
+    private View? BuildChapterRefinement(int generation, string previewDigest)
+    {
+        if (IsOpeningDecision || _openingDetails is null || _saveChapterRefinement is null
+            || _storyCheckpoint?.PendingPreview is not { EffectReview: not null } preview
+            || _state.Choices.SingleOrDefault(c => c.IsSelected) is not { } choice || IsSelectionFinish(choice))
+            return null;
+        if (_refinementPreview != previewDigest)
+        {
+            _refinementPreview = previewDigest;
+            _refinementExpanded = false;
+            _chapterBrief = _openingDetails.PendingRefinement is { } pending
+                && pending.PreviewDigest == previewDigest && pending.ChoiceId == choice.ChoiceId
+                && pending.TurnSeedDigest == _state.BoundTurnSeedDigest
+                ? pending.Brief : new(RunnerSessionCoordinator.ChapterRefinementModule(preview.SelectedChoice.Label));
+        }
+        var brief = _chapterBrief!;
+        var container = new VerticalStackLayout { Spacing = 8 };
+        var section = new VerticalStackLayout { Spacing = 8, IsVisible = _refinementExpanded,
+            AutomationId = "origin-chapter-refinement" };
+        var toggle = NativeTheme.SecondaryButton(_copy[_refinementExpanded ? "Origin.RefineCollapse" : "Origin.RefineExpand"]);
+        toggle.AutomationId = "origin-chapter-refine";
+        bool Current() => generation == _renderGeneration && !_actionInFlight && _refinementPreview == previewDigest;
+        toggle.Clicked += (_, _) =>
+        {
+            if (!Current()) return;
+            section.IsVisible = _refinementExpanded = !_refinementExpanded;
+            toggle.Text = _copy[_refinementExpanded ? "Origin.RefineCollapse" : "Origin.RefineExpand"];
+        };
+        container.Add(toggle);
+        section.Add(NativeTheme.Body(_copy["Origin.RefineDetail"], NativeTheme.Muted));
+        void Question(string id, string key, string? value, string[] options, Action<string?> changed)
+        {
+            string question = _copy.Format(key, brief.Module);
+            section.Add(NativeTheme.Body(question));
+            var picker = new Picker { Title = question, TextColor = NativeTheme.Ink,
+                TitleColor = NativeTheme.Muted, BackgroundColor = NativeTheme.Paper,
+                AutomationId = "origin-chapter-" + id + "-suggestions" };
+            picker.Items.Add(_copy["Origin.SetupUnspecified"]);
+            foreach (string option in options) picker.Items.Add(_copy["Origin.RefineAnswer." + option]);
+            picker.Items.Add(_copy["Origin.SetupCustom"]);
+            int custom = picker.Items.Count - 1;
+            int selected = value is null ? 0 : picker.Items.IndexOf(value);
+            picker.SelectedIndex = selected >= 0 ? selected : custom;
+            var entry = new Entry { Text = value, MaxLength = 256, TextColor = NativeTheme.Ink,
+                BackgroundColor = NativeTheme.Paper, Placeholder = _copy["Origin.SetupCustom"],
+                AutomationId = "origin-chapter-" + id, IsVisible = picker.SelectedIndex == custom };
+            string? Text() => string.IsNullOrWhiteSpace(entry.Text) ? null : entry.Text.Trim();
+            entry.TextChanged += (_, _) => { if (Current() && picker.SelectedIndex == custom) changed(Text()); };
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (!Current()) return;
+                entry.IsVisible = picker.SelectedIndex == custom;
+                changed(entry.IsVisible ? Text() : picker.SelectedIndex > 0 ? picker.Items[picker.SelectedIndex] : null);
+            };
+            section.Add(picker);
+            section.Add(entry);
+        }
+        string[] motives = _state.StageId switch {
+            CharacterCreationLifeModuleStageIds.FormativeYears => ["curiosity", "family", "belong"],
+            CharacterCreationLifeModuleStageIds.TeenYears => ["belong", "independence", "expectations"],
+            CharacterCreationLifeModuleStageIds.FurtherEducation => ["ambition", "escape", "expectations"],
+            _ => ["belong", "escape", "expectations"] };
+        string[] people = _state.StageId == CharacterCreationLifeModuleStageIds.FormativeYears
+            ? ["family", "friend", "mentor"] : ["friend", "mentor", "rival"];
+        string[] turns = _state.StageId == CharacterCreationLifeModuleStageIds.FurtherEducation
+            ? ["letter", "loyalty", "discovery"] : ["loyalty", "new-start", "discovery"];
+        Question("motivation", "Origin.RefineMotivation", brief.Motivation, motives,
+            value => _chapterBrief = _chapterBrief! with { Motivation = value });
+        Question("relationship", "Origin.RefineRelationship", brief.Relationship, people,
+            value => _chapterBrief = _chapterBrief! with { Relationship = value });
+        Question("turning-point", "Origin.RefineTurningPoint", brief.TurningPoint, turns,
+            value => _chapterBrief = _chapterBrief! with { TurningPoint = value });
+        container.Add(section);
+        return container;
     }
 
     private bool CanConfirmReviewed => _state.CanConfirm && _storyCheckpoint?.PendingPreview?.EffectReview is not null;
@@ -850,6 +961,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _boundMechanicsSnapshotDigest = confirmed.BoundMechanicsSnapshotDigest!;
         _selectedMetatypeOptionId = null;
         _editingChoiceId = null;
+        _refinementPreview = null;
+        _chapterBrief = null;
+        _refinementExpanded = false;
         _answers.Clear();
         _explicitCityAnswers.Clear();
         return true;
