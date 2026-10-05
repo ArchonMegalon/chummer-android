@@ -529,11 +529,12 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         }
         _readFailures = 0;
         _unreadChecked.Add(chapter.ChapterId);
+        bool noticeCleared = _notice is not null;
         _notice = null;
         _chapterStatus[chapter.ChapterId] = result;
         _watchPending = result.Job?.State is OriginChapterAuthoringStates.AwaitingAuthoring
             or OriginChapterAuthoringStates.ReconciliationRequired || result.UnknownRemoteOutcome;
-        return !ReferenceEquals(book, updated) || previous?.Outcome != result.Outcome
+        return noticeCleared || !ReferenceEquals(book, updated) || previous?.Outcome != result.Outcome
             || previous?.Job?.State != result.Job?.State;
     }
 
