@@ -21,6 +21,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private int _readFailures;
     private long? _chapterReadAppearance;
     private long? _openingAppearance;
+    private readonly HashSet<string> _unreadChecked = new(StringComparer.Ordinal);
     private CancellationTokenSource? _sceneLifetime;
     private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AndroidOriginSceneResult> _sceneStatus = new(StringComparer.Ordinal);
@@ -62,6 +63,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _book = null;
             _load = null;
             _notice = null;
+            _unreadChecked.Clear();
             var loaded = await Coordinator.LoadOriginBookReaderAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
             if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return;
             _load = loaded;
@@ -144,7 +146,8 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         // A read can fail before any authoring source is frozen. Keep recovery
         // available after the bounded watch pauses, not only for admitted jobs.
         // The normal read-first path still fences every uncertain paid request.
-        if (Coordinator.CanRequestOriginChapter(book) && book.Chapters.Any(c => book.ReadableChapter(c) is null
+        if (Coordinator.CanRequestOriginChapter(book) && book.Chapters.Any(c => (book.ReadableChapter(c) is null
+                || book.Reading(c) is { Selected: null, Pending: not null, AuthoringSource: not null })
             && Coordinator.PrepareOriginChapterSource(book, c) is not null))
         {
             var refresh = NativeTheme.ReadingButton(_copy["Origin.AuthoringRefresh"]);
@@ -152,6 +155,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             refresh.Clicked += async (_, _) =>
             {
                 if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_book, book)) return;
+                _unreadChecked.Clear();
                 await RefreshChapterStatusAsync(appearance, default);
                 if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
             };
@@ -478,7 +482,13 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return false;
         if (_book is not { } book
             || !Coordinator.CanRequestOriginChapter(book)) { _watchPending = false; return false; }
-        var chapter = book.Chapters.FirstOrDefault(c => book.ReadableChapter(c) is null
+        // Check saved, unread prose once on entry (or explicit Refresh). Hub
+        // may have corrected that exact draft since it was retained. Keep local
+        // text visible throughout the read; do not poll/rewrite accepted prose.
+        var chapter = book.Chapters.FirstOrDefault(c => !_unreadChecked.Contains(c.ChapterId)
+            && book.Reading(c) is { Selected: null, Pending: not null, AuthoringSource: not null }
+            && book.ReadableChapter(c) is not null && Coordinator.PrepareOriginChapterSource(book, c) is not null)
+            ?? book.Chapters.FirstOrDefault(c => book.ReadableChapter(c) is null
             && Coordinator.PrepareOriginChapterSource(book, c) is not null);
         if (chapter is null) { _watchPending = false; return false; }
         var source = Coordinator.PrepareOriginChapterSource(book, chapter)!;
@@ -510,6 +520,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             return changed;
         }
         _readFailures = 0;
+        _unreadChecked.Add(chapter.ChapterId);
         _notice = null;
         _chapterStatus[chapter.ChapterId] = result;
         _watchPending = result.Job?.State is OriginChapterAuthoringStates.AwaitingAuthoring
@@ -590,6 +601,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _pollLifetime?.Cancel(); _pollLifetime = null;
         _sceneLifetime?.Cancel(); _sceneLifetime = null;
         _sceneChecked.Clear(); _sceneStatus.Clear();
+        _unreadChecked.Clear();
         _sceneObservationPaused = false;
         _watchPending = false; _readFailures = 0; _chapterStatus.Clear();
         _book = null;
