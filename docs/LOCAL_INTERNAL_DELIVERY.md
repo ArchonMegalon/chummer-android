@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 110 is the latest [observed Internal availability](../play/evidence/preview110-internal-observation.md),
+Preview 111 is the latest [observed Internal availability](../play/evidence/preview111-internal-observation.md),
+confirmed on 5 October at 21:23 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+The reader reconciles saved reading acknowledgement before automatic illustration;
+unread editorial corrections can refresh without replacing already-read prose.
+Focused managed checks and an actual API36 diagnostic route passed for a complete
+2,181-word chapter, one real illustration, illustrated EPUB and new-process reopen.
+Unchanged behavior checks are reused for the version-only delta. An initial Media
+read timed out and recovered by read-only reopening of the persisted image, without
+another paid render. **Physical Play111 installation, unattended repeatability,
+multi-age visual continuity and all-method SR5 Creation completion remain open.**
+This is not a complete book across all stages, whole-app parity or general beta.
+
+Preview 110's [observed Internal availability](../play/evidence/preview110-internal-observation.md),
 confirmed on 5 October at 16:14 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Explicit on-device adoption moves a local runner into the linked account;
