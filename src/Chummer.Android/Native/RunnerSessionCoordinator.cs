@@ -465,8 +465,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IOwnerBoundCharacterCreationAttributesService? ownerBoundCreationAttributesService = null,
         IOwnerBoundCharacterCreationSkillsService? ownerBoundCreationSkillsService = null,
         IOwnerBoundCharacterCreationQualitiesService? ownerBoundCreationQualitiesService = null,
-        IOwnerBoundCharacterCreationMagicResonanceService? ownerBoundCreationMagicResonanceService = null)
+        IOwnerBoundCharacterCreationMagicResonanceService? ownerBoundCreationMagicResonanceService = null,
+        AndroidLocalRunnerAdoptionService? localRunnerAdoptionService = null)
     {
+        _localRunnerAdoption = localRunnerAdoptionService;
         _presenter = presenter;
         _client = client;
         // Maui's existing IOwnerContextAccessor registration is the same issuing
@@ -2749,7 +2751,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     }
 
     private bool IsWorkspaceOwnerInitialized()
-        => TryCaptureWorkspaceOwner(out OwnerContextStamp? owner)
+        => !_localRunnerAdoptionRecoveryPending && TryCaptureWorkspaceOwner(out OwnerContextStamp? owner)
             && (owner is null || State.Session.OwnerContext == owner && _shellPresenter.State.OwnerContext == owner)
             && State.Error is null && _shellPresenter.State.Error is null;
 
@@ -2758,6 +2760,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         await _workspaceActivationGate.WaitAsync(cancellationToken);
         try
         {
+            if (!await RecoverLocalRunnerAdoptionsAsync(cancellationToken)) return false;
             await _shellPresenter.InitializeAsync(cancellationToken);
             await _presenter.InitializeAsync(cancellationToken);
             // Never consult the old device-wide selected-runner or play
@@ -7398,10 +7401,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
         OwnerContextStamp? originalOwner = State.Session.OwnerContext;
         string selectedId = Preferences.Default.Get(SelectedWorkspacePreferenceKey, string.Empty);
+        // The device-wide preference can name a runner from a previous owner.
+        // It is only a selection hint, never authority to open that runner in
+        // a newly initialized account (including an empty account roster).
+        bool selectedBelongsToRoster = _client is not IOwnerBoundShellStateClient
+            || State.OpenWorkspaces.Any(workspace =>
+                string.Equals(workspace.Id.Value, selectedId, StringComparison.Ordinal));
         CharacterWorkspaceId? workspaceId = State.Session.ActiveWorkspaceId;
         workspaceId ??= State.OpenWorkspaces.FirstOrDefault(workspace =>
             string.Equals(workspace.Id.Value, selectedId, StringComparison.Ordinal))?.Id;
-        if (workspaceId is null && !string.IsNullOrWhiteSpace(selectedId))
+        if (workspaceId is null && selectedBelongsToRoster && !string.IsNullOrWhiteSpace(selectedId))
         {
             workspaceId = new CharacterWorkspaceId(selectedId);
         }
@@ -7413,6 +7422,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
         await _presenter.LoadAsync(workspaceId.Value, cancellationToken);
         if (State.Profile is null
+            && selectedBelongsToRoster
             && !string.IsNullOrWhiteSpace(selectedId)
             && !string.Equals(workspaceId.Value.Value, selectedId, StringComparison.Ordinal))
         {

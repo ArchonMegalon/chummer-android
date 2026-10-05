@@ -86,8 +86,9 @@ public static class MauiProgram
                 statePath,
                 typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
-        builder.Services.AddSingleton<IOriginDossierDraftTimelineStore>(
-            new FileOriginDossierDraftTimelineStore(statePath));
+        builder.Services.AddSingleton(new FileOriginDossierDraftTimelineStore(statePath));
+        builder.Services.AddSingleton<IOriginDossierDraftTimelineStore>(provider =>
+            provider.GetRequiredService<FileOriginDossierDraftTimelineStore>());
         builder.Services.AddSingleton(new LifeModuleCompletionDraftStore(statePath));
         builder.Services.AddSingleton(new OriginBookReadingStore(statePath));
         builder.Services.AddSingleton(new OriginBookSceneStore(statePath));
@@ -124,6 +125,12 @@ public static class MauiProgram
             provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
         builder.Services.AddSingleton<IOwnerContextLeaseAccessor>(provider =>
             provider.GetRequiredService<AndroidAccountOwnerContextAccessor>());
+        builder.Services.AddSingleton(provider => new AndroidLocalRunnerAdoptionService(statePath,
+            provider.GetRequiredService<IWorkspaceStore>(), provider.GetRequiredService<IOwnerContextAccessor>(),
+            provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
+            provider.GetRequiredService<OriginBookReadingStore>(), provider.GetRequiredService<OriginBookSceneStore>(),
+            provider.GetRequiredService<FileOriginDossierDraftTimelineStore>(),
+            provider.GetRequiredService<LifeModuleCompletionDraftStore>(), provider.GetRequiredService<ICharacterFileQueries>()));
         builder.Services.RemoveAll<IDesktopWorkspaceRoamingSync>();
         builder.Services.RemoveAll<IOwnerBoundDesktopWorkspaceRoamingSync>();
         builder.Services.AddSingleton<AndroidWorkspaceContinuationRoamingSync>(provider => new(

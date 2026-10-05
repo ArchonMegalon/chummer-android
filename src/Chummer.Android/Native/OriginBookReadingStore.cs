@@ -167,7 +167,7 @@ internal sealed record OriginBookReadingState(string Owner, string Workspace, IR
 /// App-private reading editions only. Called synchronously on a worker while
 /// holding the captured owner lease. No workspace document or rules writes.
 /// </summary>
-public sealed class OriginBookReadingStore(string stateDirectory)
+public sealed partial class OriginBookReadingStore(string stateDirectory)
 {
     internal const int MaximumChapters = 128;
     // 128 chapters x selected/pending x 64 KiB text x up to 6 JSON-escape

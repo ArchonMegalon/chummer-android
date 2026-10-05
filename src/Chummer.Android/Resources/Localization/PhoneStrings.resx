@@ -277,4 +277,17 @@ No change has been saved yet.</value></data>
   <data name="BackNavigationUnavailable" xml:space="preserve"><value>Could not go back. Please try again.</value></data>
   <data name="NewRunnerUnsavedChanges" xml:space="preserve"><value>Save or discard changes to your current runner before creating another. Cancel to return to it.</value></data>
   <data name="NewRunnerRevisionConflict" xml:space="preserve"><value>Resolve the save conflict for your current runner before creating another. Cancel to return to it.</value></data>
+  <data name="LocalRunnerAdoptionTitle" xml:space="preserve"><value>Runners on this device</value></data>
+  <data name="LocalRunnerAdoptionIntro" xml:space="preserve"><value>Choose a runner created here before linking your account. Its saved choices and book stay together. Nothing is uploaded by this step.</value></data>
+  <data name="LocalRunnerAdoptionEmpty" xml:space="preserve"><value>No unlinked runners on this device.</value></data>
+  <data name="LocalRunnerAdoptionWorking" xml:space="preserve"><value>Keeping your runner and book together…</value></data>
+  <data name="LocalRunnerAdoptionAccountChanged" xml:space="preserve"><value>Open your account first, then return to this list.</value></data>
+  <data name="LocalRunnerAdoptionQuestion" xml:space="preserve"><value>Move “{0}” and its book to your currently linked account on this device? It will no longer appear in unlinked mode. Existing account runners are kept.</value></data>
+  <data name="LocalRunnerAdoptionConfirm" xml:space="preserve"><value>Move to my account</value></data>
+  <data name="LocalRunnerAdoptionReload" xml:space="preserve"><value>Reload list</value></data>
+  <data name="LocalRunnerAdoptionUnavailable" xml:space="preserve"><value>This runner cannot be transferred safely right now. Nothing was changed.</value></data>
+  <data name="LocalRunnerAdoptionPending" xml:space="preserve"><value>Runner transfer is not finished. Your original data is kept. Retry to finish the same transfer.</value></data>
+  <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Runner transfer finished. Your runners are ready.</value></data>
+  <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner and book transferred to this account on this device.</value></data>
+  <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Finish runner transfer</value></data>
 </root>

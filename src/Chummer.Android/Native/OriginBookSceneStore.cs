@@ -62,7 +62,7 @@ internal sealed class OriginBookScenes(string owner, string workspace, IEnumerab
 }
 
 /// <summary>Bounded, atomic offline scene storage. Use on a worker under an owner lease.</summary>
-public sealed class OriginBookSceneStore(string stateDirectory)
+public sealed partial class OriginBookSceneStore(string stateDirectory)
 {
     private const string Schema = "chummer.android.origin-book-scenes/v1";
     internal const int MaximumScenes = OriginBookReadingStore.MaximumChapters;

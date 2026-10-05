@@ -277,4 +277,17 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="DeleteRunnerChanged" xml:space="preserve"><value>Runner oder Konto haben sich geändert. Öffne die Runner-Liste und versuche es erneut.</value></data>
   <data name="DeleteRunnerDone" xml:space="preserve"><value>Runner von diesem Gerät gelöscht. Online-Kopien bleiben erhalten.</value></data>
   <data name="DeleteRunnerRefresh" xml:space="preserve"><value>Runner von diesem Gerät gelöscht. Öffne die Runner-Liste erneut, um sie zu aktualisieren.</value></data>
+  <data name="LocalRunnerAdoptionTitle" xml:space="preserve"><value>Runner auf diesem Gerät</value></data>
+  <data name="LocalRunnerAdoptionIntro" xml:space="preserve"><value>Wähle einen Runner, der hier vor der Kontoverknüpfung erstellt wurde. Gespeicherte Entscheidungen und Buch bleiben zusammen. Dabei wird nichts hochgeladen.</value></data>
+  <data name="LocalRunnerAdoptionEmpty" xml:space="preserve"><value>Keine Runner ohne Kontozuordnung auf diesem Gerät.</value></data>
+  <data name="LocalRunnerAdoptionWorking" xml:space="preserve"><value>Runner und Buch werden übernommen…</value></data>
+  <data name="LocalRunnerAdoptionAccountChanged" xml:space="preserve"><value>Öffne zuerst dein Konto und kehre dann zu dieser Liste zurück.</value></data>
+  <data name="LocalRunnerAdoptionQuestion" xml:space="preserve"><value>„{0}“ samt Buch auf diesem Gerät deinem aktuell verknüpften Konto zuordnen? Ohne Kontoverknüpfung wird der Runner danach nicht mehr angezeigt. Vorhandene Konto-Runner bleiben erhalten.</value></data>
+  <data name="LocalRunnerAdoptionConfirm" xml:space="preserve"><value>Meinem Konto zuordnen</value></data>
+  <data name="LocalRunnerAdoptionReload" xml:space="preserve"><value>Liste neu laden</value></data>
+  <data name="LocalRunnerAdoptionUnavailable" xml:space="preserve"><value>Dieser Runner kann gerade nicht sicher übernommen werden. Es wurde nichts geändert.</value></data>
+  <data name="LocalRunnerAdoptionPending" xml:space="preserve"><value>Die Runner-Übernahme ist noch nicht abgeschlossen. Deine ursprünglichen Daten bleiben erhalten. Setze dieselbe Übernahme erneut fort.</value></data>
+  <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Runner-Übernahme abgeschlossen. Deine Runner sind bereit.</value></data>
+  <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner und Buch sind auf diesem Gerät deinem Konto zugeordnet.</value></data>
+  <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Runner-Übernahme fortsetzen</value></data>
 </root>
