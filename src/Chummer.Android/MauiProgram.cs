@@ -216,6 +216,7 @@ public static class MauiProgram
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<ShadowArchivePage>();
         builder.Services.AddTransient<RunnersPage>();
+        builder.Services.AddTransient<PhoneStoriesPage>();
         builder.Services.AddTransient<RosterFavoritesPage>();
         builder.Services.AddTransient<ApplicationSettingsPage>();
         builder.Services.AddTransient<BuildPage>();

@@ -290,4 +290,7 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="LocalRunnerAdoptionRecovered" xml:space="preserve"><value>Runner-Übernahme abgeschlossen. Deine Runner sind bereit.</value></data>
   <data name="LocalRunnerAdoptionComplete" xml:space="preserve"><value>Runner und Buch sind auf diesem Gerät deinem Konto zugeordnet.</value></data>
   <data name="LocalRunnerAdoptionRetry" xml:space="preserve"><value>Runner-Übernahme fortsetzen</value></data>
+  <data name="StoriesPrivateDetail" xml:space="preserve"><value>Lies die Origin-Kapitel und Illustrationen deines Runners. Fertige Kapitel kannst du als Buch speichern.</value></data>
+  <data name="StoriesChooseRunnerDetail" xml:space="preserve"><value>Öffne einen SR5-Lebensmodul-Runner, um sein Origin-Buch zu lesen. Dein Buch bleibt bei diesem Runner.</value></data>
+  <data name="StoriesChooseRunner" xml:space="preserve"><value>Runner auswählen</value></data>
 </root>
