@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 116 is the latest [observed Internal availability](../play/evidence/preview116-internal-observation.md),
+Preview 117 is the latest [observed Internal availability](../play/evidence/preview117-internal-observation.md),
+confirmed on 6 October at 20:51 Europe/Vienna. The exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Core avoids duplicate historical Origin-turn processing within workspace reads;
+owner, revision, source and receipt validation remain intact. Focused native
+saved Life Modules completion and verified new-process reopen passed with
+unchanged runner/input/synthetic-reading bytes. This is a narrow read-path
+smoke, not a fresh mutation, full Career or generated-book proof.
+**Physical Play117 installation, slow cold startup/rule checks and all-method
+SR5 Creation remain open.** Reduced managed allocations are not proven native
+latency or peak-memory improvement. Previous artifacts and illustrated-book
+evidence remain intact; no new paid provider job was needed.
+
+Preview 116's [observed Internal availability](../play/evidence/preview116-internal-observation.md),
 confirmed on 6 October at 18:52 Europe/Vienna. The exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Core's private talent-catalog snapshot reduces repeated managed allocations;
