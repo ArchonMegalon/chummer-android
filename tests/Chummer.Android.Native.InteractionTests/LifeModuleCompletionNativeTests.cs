@@ -466,6 +466,30 @@ internal static partial class AfterRunAuthorityHarness
                 "The bounded read pause did not exercise the inline reader notice.");
             var resumePending = IssuedElements(page).OfType<Button>().Single(b =>
                 b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+            // An explicit retry starts a fresh bounded observation reserve. A
+            // single further transport failure must not inherit the exhausted
+            // reserve, but continued failures must still pause after three reads.
+            remote.SuccessorReadFailure = new(AndroidOriginChapterOutcome.Unavailable,
+                RetryableReadFailure: true);
+            int retryReads = remote.Reads;
+            try
+            {
+                await ui.BeginAsyncVoid(() => ((IButtonController)resumePending).SendClicked());
+                Require(remote.Reads == retryReads + 1
+                    && IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusRetrying"])
+                    && !IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                    "An explicit retry inherited the exhausted read reserve and immediately paused again.");
+                await page.PollChapterOnceAsync(generation, default);
+                await page.PollChapterOnceAsync(generation, default);
+                await page.PollChapterOnceAsync(generation, default);
+                Require(remote.Reads == retryReads + 3
+                    && IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"])
+                    && remote.Requests == requests && remote.Acceptances == acceptances,
+                    "The explicit retry exceeded its three-read bound or replayed paid work.");
+            }
+            finally { remote.SuccessorReadFailure = null; }
+            resumePending = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
             await ui.BeginAsyncVoid(() => ((IButtonController)resumePending).SendClicked());
             Require(!IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]
                 || e.Text == copy["Origin.AuthoringStatusRetrying"]),

@@ -155,7 +155,11 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             refresh.AutomationId = "origin-reader-refresh";
             refresh.Clicked += async (_, _) =>
             {
-                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_book, book)) return;
+                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_book, book)
+                    || _chapterReadAppearance == appearance) return;
+                // Only a new explicit check resets the bounded read reserve.
+                // Keep durable authoring fences and any active read untouched.
+                _readFailures = 0;
                 _unreadChecked.Clear();
                 await RefreshChapterStatusAsync(appearance, default);
                 if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
