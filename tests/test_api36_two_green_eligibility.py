@@ -56,8 +56,8 @@ class Api36TwoGreenCurrentDependencyPinsTests(unittest.TestCase):
         content = self.sources["core-content"]["commit"]
         runtime = self.manifest["sourceGraph"]["coreRuntimeSourceCommit"]
         recipe = self.manifest["sourceGraph"]["corePackageRecipeCommit"]
-        self.assertEqual("d835bc059633059421ea4b285562e6cd0a5c221e", content)
-        self.assertEqual("bb16694edafdfca04fe0562fdaf3d6ec352ed5d6", runtime)
+        self.assertEqual("9c3d4ef3e8a7529173428cc1c1c80e0819cb0dc2", content)
+        self.assertEqual("355436ecbf105f56d81902f9e58916337b4ff758", runtime)
         self.assertEqual(runtime, self.sources["core-runtime"]["commit"])
         # This candidate freezes content at the recipe commit. The independently
         # compiled runtime remains a different exact commit; roles need not have
