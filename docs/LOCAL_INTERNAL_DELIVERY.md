@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 118 is the latest [observed Internal availability](../play/evidence/preview118-internal-observation.md),
+Preview 119 is the latest [observed Internal availability](../play/evidence/preview119-internal-observation.md),
+confirmed on 7 October at 00:28 Europe/Vienna. One exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Core avoids redundant hashing of freshly owned Origin projections while keeping
+persisted/external and caller-owned state fully validated. Focused saved Life
+Modules completion/Qualities/Talent navigation and verified new-process reopen
+passed with unchanged runner/input/draft/reading/settings bytes. This is a narrow
+read-path smoke, not a fresh mutation, full Career or generated-book proof.
+**Physical Play119 installation, slow loading and all-method SR5 Creation remain
+open.** Managed allocation reduction is not native latency or peak-memory proof;
+initial system ANRs and one loading-state observer failure remain documented.
+Preview118 and earlier artifacts/evidence remain unchanged.
+
+Preview 118's [observed Internal availability](../play/evidence/preview118-internal-observation.md),
 confirmed on 6 October at 22:47 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Core avoids repeated workspace reads inside each synchronous Qualities/Magic
