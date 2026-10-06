@@ -6,7 +6,7 @@ namespace Chummer.Android.Platform;
 public enum AndroidOriginChapterOutcome { Available, NotFound, Unauthorized, Conflict, Unavailable }
 public sealed record AndroidOriginChapterResult(AndroidOriginChapterOutcome Outcome,
     OriginChapterAuthoringJob? Job = null, bool UnknownRemoteOutcome = false,
-    bool RetryableReadFailure = false);
+    bool RetryableReadFailure = false, bool MissingRegistrationConfirmed = false);
 
 public interface IAndroidOriginChapterTransport
 {

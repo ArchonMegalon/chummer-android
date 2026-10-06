@@ -25,6 +25,31 @@ internal static partial class AfterRunAuthorityHarness
             Encoding.UTF8.GetBytes(ready.DraftText))).ToLowerInvariant();
         var accepted = ready with { ReaderAcceptedTextDigest = textDigest };
         using (var fixture = new ContinuationAccountFixture())
+        {
+            await fixture.LinkAsync("subject", "chapter-registration-recovery");
+            IAndroidOriginChapterTransport transport = fixture.Account;
+            var owner = fixture.Owner.Capture();
+            foreach (string body in new[] {
+                JsonSerializer.Serialize(new { schema = "chummer.origin.chapter-missing/v1", requestId = id,
+                    canRegisterSameRequest = true }, json),
+                "", "missing", "{}",
+                JsonSerializer.Serialize(new { schema = "chummer.origin.chapter-missing/v1", requestId = "another-chapter",
+                    canRegisterSameRequest = true }, json),
+                JsonSerializer.Serialize(new { schema = "chummer.origin.chapter-missing/v1", requestId = id,
+                    canRegisterSameRequest = false }, json),
+                "{\"schema\":\"chummer.origin.chapter-missing/v1\",\"requestId\":\"wrong\",\"requestId\":\"" + id
+                    + "\",\"canRegisterSameRequest\":true}" })
+            {
+                fixture.ChapterResponse = (_, _) => new(HttpStatusCode.NotFound)
+                    { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+                var missing = await transport.ReadChapterAsync(owner, source);
+                bool exact = body == JsonSerializer.Serialize(new { schema = "chummer.origin.chapter-missing/v1",
+                    requestId = id, canRegisterSameRequest = true }, json);
+                Require(missing.MissingRegistrationConfirmed == exact && missing.Job is null,
+                    "Only the exact authenticated Hub absence response may recover a frozen registration.");
+            }
+        }
+        using (var fixture = new ContinuationAccountFixture())
         using (var ui = new IssuedPageUiContext())
         {
             await fixture.LinkAsync("subject", "chapter-ui-thread");
@@ -364,6 +389,8 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
     public int Requests, Acceptances;
     public bool FailAcceptance, CorruptPredecessor;
     public bool LoseRequestResponse;
+    public bool DropRequestBeforeCommit;
+    public bool ConfirmMissingRegistration;
     public AndroidOriginChapterOutcome? PredecessorReadFailure;
     public AndroidOriginChapterResult? SuccessorReadFailure;
     public Action? AfterPredecessorRead, AfterAcceptance;
@@ -401,7 +428,8 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
             if (BeforeSuccessorRead is { } pause) await pause();
             if (SuccessorReadFailure is { } failure) return failure;
         }
-        return job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound)
+        return job is null ? new AndroidOriginChapterResult(AndroidOriginChapterOutcome.NotFound,
+                MissingRegistrationConfirmed: ConfirmMissingRegistration)
             : new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Available, job);
     }
     public async Task<AndroidOriginChapterResult> AcceptChapterAsync(OwnerContextStamp owner, OriginChapterSource source,
@@ -428,6 +456,8 @@ public class OriginSuccessorAccount : StrictPageProxy, IAndroidOriginChapterTran
         if (!externalProcessingConsent || previous is null || previous.RequestId != _previous?.RequestId
             || previous.TextDigest != _previous.ReaderAcceptedTextDigest)
             return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Conflict));
+        if (DropRequestBeforeCommit)
+            return Task.FromResult(new AndroidOriginChapterResult(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: true));
         _next ??= new(OriginChapterSourceIdentity.RequestId(source), OriginChapterSourceIdentity.Digest(source), source,
             OriginChapterAuthoringStates.AwaitingAuthoring, "first_book_ai", null, null) { Previous = previous };
         if (LoseRequestResponse)

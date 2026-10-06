@@ -23,6 +23,17 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     internal const long MaxResponseBodyBytes = 16L * 1024 * 1024;
     internal static readonly Uri TrustedOrigin = new("https://chummer.run/");
     internal static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(20);
+    // Scene creation is not a status lookup: Hub durably admits the request
+    // before a bounded 120-second local renderer handoff. Live traces show
+    // replay admission alone taking up to 16.5 seconds. Leave one minute for
+    // admission/disclosure around that handoff, not another request attempt.
+    internal static readonly TimeSpan OriginSceneRequestTimeout = TimeSpan.FromMinutes(3);
+    // The authenticated image read includes durable replay admission, fresh
+    // disclosure checks and a separately bounded 15-second media read. The
+    // live third-scene download was canceled inside media-read after admission
+    // consumed most of the ordinary 20-second budget. Keep this exact route
+    // bounded to one minute; this neither retries nor creates another image.
+    internal static readonly TimeSpan OriginSceneReadTimeout = TimeSpan.FromMinutes(1);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -37,15 +48,30 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
     private readonly HttpClient _httpClient;
     private readonly TimeSpan _responseReadTimeout;
+    private readonly TimeSpan _originSceneRequestTimeout;
+    private readonly TimeSpan _originSceneReadTimeout;
     private readonly ConditionalWeakTable<HttpResponseMessage, RequestStart> _requestStarts = new();
 
     // Monotonic request timing only, never account or mutation authority. A
     // weak response key does not retain disposed responses or their contents.
-    private sealed record RequestStart(long Timestamp);
+    private sealed record RequestStart(long Timestamp, TimeSpan Budget);
 
     internal AndroidAccountLinkHttpTransport(
         HttpMessageHandler terminalHandler,
         TimeSpan? requestTimeout = null)
+        : this(terminalHandler, requestTimeout, null) { }
+
+    internal AndroidAccountLinkHttpTransport(
+        HttpMessageHandler terminalHandler,
+        TimeSpan? requestTimeout,
+        TimeSpan? originSceneRequestTimeout)
+        : this(terminalHandler, requestTimeout, originSceneRequestTimeout, null) { }
+
+    internal AndroidAccountLinkHttpTransport(
+        HttpMessageHandler terminalHandler,
+        TimeSpan? requestTimeout,
+        TimeSpan? originSceneRequestTimeout,
+        TimeSpan? originSceneReadTimeout)
     {
         ArgumentNullException.ThrowIfNull(terminalHandler);
         TimeSpan timeout = requestTimeout ?? RequestTimeout;
@@ -53,6 +79,12 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(requestTimeout));
         }
+        TimeSpan sceneTimeout = originSceneRequestTimeout ?? requestTimeout ?? OriginSceneRequestTimeout;
+        if (sceneTimeout <= TimeSpan.Zero && sceneTimeout != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(originSceneRequestTimeout));
+        TimeSpan sceneReadTimeout = originSceneReadTimeout ?? requestTimeout ?? OriginSceneReadTimeout;
+        if (sceneReadTimeout <= TimeSpan.Zero && sceneReadTimeout != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(originSceneReadTimeout));
 
         _httpClient = new HttpClient(
             new AndroidAccountLinkAuthorizationHandler(terminalHandler),
@@ -61,11 +93,22 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             BaseAddress = TrustedOrigin,
             // Own the deadline so a native handler that throws WebException
             // when cancellation closes its socket cannot hide its cause. The
-            // duration is unchanged; there is still only one request attempt.
+            // selected operation budget is shared with the body; there is
+            // still only one request attempt.
             Timeout = Timeout.InfiniteTimeSpan
         };
         _responseReadTimeout = timeout;
+        _originSceneRequestTimeout = sceneTimeout;
+        _originSceneReadTimeout = sceneReadTimeout;
     }
+
+    internal TimeSpan ResolveRequestTimeout(string exactPath)
+        => exactPath switch
+        {
+            "/api/v2/android/linked/origin/scenes/request" => _originSceneRequestTimeout,
+            "/api/v2/android/linked/origin/scenes/read" => _originSceneReadTimeout,
+            _ => _responseReadTimeout
+        };
 
     internal static AndroidAccountLinkHttpTransport CreateDefault()
         => new(new HttpClientHandler
@@ -106,7 +149,8 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
         HttpResponseMessage response;
         long startedAt = Stopwatch.GetTimestamp();
-        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken);
+        TimeSpan budget = ResolveRequestTimeout(requestUri.AbsolutePath);
+        using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken, budget);
         try
         {
             response = await _httpClient.SendAsync(
@@ -129,7 +173,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         }
         if (!IsRedirect(response.StatusCode))
         {
-            _requestStarts.Add(response, new RequestStart(startedAt));
+            _requestStarts.Add(response, new RequestStart(startedAt, budget));
             CaptureResponseAuthorization(response);
             return response;
         }
@@ -164,8 +208,9 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
             throw OversizedResponse();
         }
 
+        _requestStarts.TryGetValue(response, out RequestStart? start);
         using CancellationTokenSource? timeoutSource = CreateTransportTimeoutSource(cancellationToken,
-            _requestStarts.TryGetValue(response, out RequestStart? start) ? start.Timestamp : null);
+            start?.Budget ?? _responseReadTimeout, start?.Timestamp);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -505,10 +550,10 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         return false;
     }
 
-    private CancellationTokenSource? CreateTransportTimeoutSource(
-        CancellationToken cancellationToken, long? startedAt = null)
+    private static CancellationTokenSource? CreateTransportTimeoutSource(
+        CancellationToken cancellationToken, TimeSpan budget, long? startedAt = null)
     {
-        if (_responseReadTimeout == Timeout.InfiniteTimeSpan)
+        if (budget == Timeout.InfiniteTimeSpan)
         {
             return null;
         }
@@ -516,8 +561,8 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         CancellationTokenSource timeoutSource =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         TimeSpan remaining = startedAt is { } timestamp
-            ? _responseReadTimeout - Stopwatch.GetElapsedTime(timestamp)
-            : _responseReadTimeout;
+            ? budget - Stopwatch.GetElapsedTime(timestamp)
+            : budget;
         if (remaining <= TimeSpan.Zero) timeoutSource.Cancel();
         else timeoutSource.CancelAfter(remaining);
         return timeoutSource;

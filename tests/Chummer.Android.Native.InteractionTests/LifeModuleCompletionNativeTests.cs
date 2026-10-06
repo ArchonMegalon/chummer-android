@@ -466,6 +466,30 @@ internal static partial class AfterRunAuthorityHarness
                 "The bounded read pause did not exercise the inline reader notice.");
             var resumePending = IssuedElements(page).OfType<Button>().Single(b =>
                 b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+            // An explicit retry starts a fresh bounded observation reserve. A
+            // single further transport failure must not inherit the exhausted
+            // reserve, but continued failures must still pause after three reads.
+            remote.SuccessorReadFailure = new(AndroidOriginChapterOutcome.Unavailable,
+                RetryableReadFailure: true);
+            int retryReads = remote.Reads;
+            try
+            {
+                await ui.BeginAsyncVoid(() => ((IButtonController)resumePending).SendClicked());
+                Require(remote.Reads == retryReads + 1
+                    && IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusRetrying"])
+                    && !IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                    "An explicit retry inherited the exhausted read reserve and immediately paused again.");
+                await page.PollChapterOnceAsync(generation, default);
+                await page.PollChapterOnceAsync(generation, default);
+                await page.PollChapterOnceAsync(generation, default);
+                Require(remote.Reads == retryReads + 3
+                    && IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"])
+                    && remote.Requests == requests && remote.Acceptances == acceptances,
+                    "The explicit retry exceeded its three-read bound or replayed paid work.");
+            }
+            finally { remote.SuccessorReadFailure = null; }
+            resumePending = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
             await ui.BeginAsyncVoid(() => ((IButtonController)resumePending).SendClicked());
             Require(!IssuedElements(page).OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]
                 || e.Text == copy["Origin.AuthoringStatusRetrying"]),
@@ -584,7 +608,50 @@ internal static partial class AfterRunAuthorityHarness
                 Require(IssuedElements(reopened).OfType<Button>().Count(b => b.IsEnabled
                     && b.AutomationId is "origin-book-export" or "origin-book-export-epub") == 2,
                     "Reopening a book with completed prose and a missing successor hid its HTML/EPUB actions.");
+                // A bare/legacy 404 above is not recovery authority. A new,
+                // authenticated primary absence explicitly supports registering
+                // the SAME immutable request; it never resets provider work.
+                remote.ConfirmMissingRegistration = true;
+                remote.LoseRequestResponse = true;
+                var frozenSource = cold.Chapters.Single(c => c.ChapterId == next.ChapterId).AuthoringSource!;
+                remote.BeforeRequest = request => Require(
+                    Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.Digest(request)
+                        == Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.Digest(frozenSource),
+                    "Registration recovery changed the previously frozen source or story context.");
+                var recoverRegistration = IssuedElements(reopened).OfType<Button>().Single(b =>
+                    b.AutomationId == "origin-reader-refresh");
+                await ui.BeginAsyncVoid(() => ((IButtonController)recoverRegistration).SendClicked());
+                Require(remote.Requests == requests + 1 && remote.Acceptances == acceptances,
+                    "An authenticated missing registration left the saved chapter permanently stuck.");
+                long reopenedGeneration = IssuedPageField<long>(reopened, "_appearanceGeneration");
+                await reopened.PollChapterOnceAsync(reopenedGeneration, default);
+                await reopened.PollChapterOnceAsync(reopenedGeneration, default);
+                Require(remote.Requests == requests + 1 && remote.Acceptances == acceptances,
+                    "Registration recovery replayed an uncertain provider job or reader acceptance.");
+                remote.BeforeRequest = null;
                 IssuedPageLifecycle(reopened, "OnDisappearing");
+                var recoveredAgain = new RetainedOriginBookPage(runtime.Coordinator);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(recoveredAgain, "OnAppearing"));
+                Require(remote.Requests == requests + 1 && remote.Acceptances == acceptances,
+                    "Cold read of the recovered registration replayed the same request.");
+                IssuedPageLifecycle(recoveredAgain, "OnDisappearing");
+                // Even a fresh exact absence on every poll does not authorize
+                // repeated submissions after an uncertain registration response.
+                remote.RemoveSuccessor();
+                remote.DropRequestBeforeCommit = true;
+                var interrupted = new RetainedOriginBookPage(runtime.Coordinator);
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(interrupted, "OnAppearing"));
+                Require(remote.Requests == requests + 2,
+                    "A fresh reader did not attempt the confirmed missing registration.");
+                long interruptedGeneration = IssuedPageField<long>(interrupted, "_appearanceGeneration");
+                await interrupted.PollChapterOnceAsync(interruptedGeneration, default);
+                await interrupted.PollChapterOnceAsync(interruptedGeneration, default);
+                Require(remote.Requests == requests + 2 && remote.Acceptances == acceptances,
+                    "Status polling resubmitted an uncertain registration that remained absent.");
+                IssuedPageLifecycle(interrupted, "OnDisappearing");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+                Require(new OriginBookReadingStore(runtime.StateDirectory).Load(owners.Capture().Owner.Value, id.Value).Digest == cold.Digest,
+                    "Recovering registration altered the immutable reading edition.");
                 Console.WriteLine("PASS automatic chapter: bounded pre-admission failure and visible recovery, one dispatch, pinned spinner, cold no-replay, hidden unread mechanics");
             }
             ui.AssertHealthy();

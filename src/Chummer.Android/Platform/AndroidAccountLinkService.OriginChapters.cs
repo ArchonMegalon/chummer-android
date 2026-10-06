@@ -96,7 +96,31 @@ public sealed partial class AndroidAccountLinkService : IAndroidOriginChapterTra
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 return new(AndroidOriginChapterOutcome.Unauthorized);
             if (response.StatusCode == HttpStatusCode.Conflict) return new(AndroidOriginChapterOutcome.Conflict);
-            if (!create && response.StatusCode == HttpStatusCode.NotFound) return new(AndroidOriginChapterOutcome.NotFound);
+            if (!create && response.StatusCode == HttpStatusCode.NotFound)
+            {
+                bool confirmed = false;
+                if (acceptance is null && response.Content.Headers.ContentType?.MediaType == "application/json"
+                    && response.Content.Headers.ContentLength != 0)
+                {
+                    try
+                    {
+                        var missing = await _httpTransport.ReadJsonAsync<JsonElement>(response, ct, 4096);
+                        RequireContinuationOwnerCurrent(expected);
+                        RejectContinuationWireDuplicates(missing);
+                        confirmed = missing.ValueKind == JsonValueKind.Object && missing.EnumerateObject().Count() == 3
+                            && missing.TryGetProperty("schema", out var schema) && schema.ValueKind == JsonValueKind.String
+                            && schema.GetString() == "chummer.origin.chapter-missing/v1"
+                            && missing.TryGetProperty("requestId", out var missingId) && missingId.ValueKind == JsonValueKind.String
+                            && missingId.GetString() == requestId
+                            && missing.TryGetProperty("canRegisterSameRequest", out var canRegister)
+                            && canRegister.ValueKind == JsonValueKind.True;
+                    }
+                    catch (Exception error) when (error is JsonException or InvalidDataException)
+                    { /* A legacy, proxy or malformed 404 never permits frozen registration recovery. */ }
+                }
+                RequireContinuationOwnerCurrent(expected);
+                return new(AndroidOriginChapterOutcome.NotFound, MissingRegistrationConfirmed: confirmed);
+            }
             if (!response.IsSuccessStatusCode)
                 return new(AndroidOriginChapterOutcome.Unavailable, UnknownRemoteOutcome: changesRemote && !knownRejected,
                     RetryableReadFailure: !changesRemote && !ct.IsCancellationRequested && response.StatusCode is
