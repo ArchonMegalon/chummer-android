@@ -121,7 +121,7 @@ class AndroidP0PrAuthorityTests(unittest.TestCase):
             },
             "canonicalContentReceipt": {
                 "contractName": "chummer.android.content-bundle/v1",
-                "coreRevision": "01e950825273f2394582d3969d9ecbd1384c6208",
+                "coreRevision": "fd6d926bfe661beb67b0ec7f5660680cfd4d0f23",
                 "sha256": "c" * 64,
                 "sizeBytes": 100,
                 "status": "pass",
