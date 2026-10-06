@@ -9,12 +9,26 @@ using Chummer.Application.Owners;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Characters;
+using Chummer.Infrastructure.Xml;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Run.Contracts.Community;
 using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
 {
+    public static async Task RunCanonicalLanguageFollowUpsAsync(string contentRoot)
+    {
+        var catalog = new XmlLifeModulesCatalogService(Path.Combine(contentRoot, "data", "lifemodules.xml"));
+        var module = catalog.GetOptionProjections("Nationality", ["HT"])
+            .Single(item => item.ModuleId == "efdee4d0-f6fb-4d75-816e-859e85ec29d4");
+        var prompt = module.FollowUps.Single(item => item.Options.Any(option => option.OptionId == "french"));
+        Require(prompt.Options.Select(option => option.OptionId)
+            .SequenceEqual(new[] { "french", "spanish", "dutch", "english" }),
+            "The consumed Core package exposes rating metadata instead of the four canonical languages.");
+        await RunFollowUpPageAsync(prompt.Options);
+        Console.WriteLine("PASS canonical Life Modules language package: native picker, explicit selection and review reopen");
+    }
+
     public static async Task RunStoryFlowAsync()
     {
         RunAuthoringSource();
@@ -1398,7 +1412,7 @@ internal static class OriginDossierBookRuntimeTests
         Console.WriteLine("PASS Origin book: confirmation off UI context");
     }
 
-    private static async Task RunFollowUpPageAsync()
+    private static async Task RunFollowUpPageAsync(IReadOnlyList<LifeModuleFollowUpOptionDto>? languageOptions = null)
     {
         using var ui = new AfterRunAuthorityHarness.IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -1410,7 +1424,7 @@ internal static class OriginDossierBookRuntimeTests
                 FollowUps = [new("name", "Arcology", "text", true, [], choice.SourceAnchorIds, "effect", "text")
                     { DisplayLabel = "Street · Arcology" },
                     new("language", "Language", "single-select", true,
-                        [new("english", "English", true, null, new Dictionary<string, string>(), "English")],
+                        languageOptions ?? [new("english", "English", true, null, new Dictionary<string, string>(), "English")],
                         choice.SourceAnchorIds, "effect", "select")],
                 MechanicsPreview = choice.MechanicsPreview with { PendingFollowUpIds = ["name", "language"] }
             }] };
@@ -1443,6 +1457,10 @@ internal static class OriginDossierBookRuntimeTests
                 "The form lost fresh display context or the canonical-label fallback.");
             var answer = Elements(page).OfType<Entry>().Single();
             var options = Elements(page).OfType<Picker>().Single();
+            var displayedLanguages = options.ItemsSource!.Cast<LifeModuleFollowUpOptionDto>().ToArray();
+            if (languageOptions is not null)
+                Require(displayedLanguages.SequenceEqual(languageOptions),
+                    "The native picker changed or omitted the canonical Core language options.");
             Require(answer.TextColor == NativeTheme.Text && answer.PlaceholderColor == NativeTheme.Muted
                 && answer.BackgroundColor == NativeTheme.Surface,
                 "A Life Modules answer must retain contrasting text and placeholder on its light card in dark mode.");
@@ -1451,7 +1469,7 @@ internal static class OriginDossierBookRuntimeTests
                 "A Life Modules choice must retain contrasting selected text and title on its light card in dark mode.");
             answer.Text = "Renraku";
             Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
-            Elements(page).OfType<Picker>().Single().SelectedIndex = 0;
+            options.SelectedIndex = Array.FindIndex(displayedLanguages, option => option.SourceValue == "English");
             Require(review.IsEnabled, "Explicit complete answers did not enable review.");
             await Click(review);
             Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
@@ -1465,7 +1483,9 @@ internal static class OriginDossierBookRuntimeTests
                     element => element.AutomationId == "origin-life-locale"),
                 "The reviewed answers and confirmation remain below the setup header.");
             var reopened = await runtime.OpenAsync(TestOwner, "workspace-1");
-            Require(reopened.IsSuccess && reopened.StoryCheckpoint!.PendingPreview!.InputResolution!.Values["name"] == "Renraku",
+            var reopenedAnswers = reopened.StoryCheckpoint?.PendingPreview?.InputResolution?.Values;
+            Require(reopened.IsSuccess && reopenedAnswers is not null && reopenedAnswers["name"] == "Renraku"
+                && reopenedAnswers["language"] == "English",
                 "Reviewed answers did not survive reopen.");
             await Click(Button("origin-life-choice-0"));
             Require(Elements(page).OfType<Entry>().Single().Text == "Renraku", "Editing lost the reviewed answers.");
