@@ -1042,6 +1042,22 @@ internal static partial class AfterRunAuthorityHarness
             await Click("life-use-skill");
             await Back();
             await Click("life-open-resources");
+            // The initial settings cap is not the final cap when a source quality
+            // grants NuyenMaxBP. Send the amount to Core instead of rejecting it
+            // locally; this fixture has no such bonus, so Core must still block it.
+            var resourcePreview = Session().Preview!;
+            decimal aboveSettingsCap = resourcePreview.ResourcesPolicy!.MaximumKarmaInvestment + 1;
+            int beforeResourceReview = probe.PreviewCalls;
+            Element<Entry>("life-resource-investment").Text = aboveSettingsCap.ToString(CultureInfo.CurrentCulture);
+            await Click("life-use-resources");
+            Require(probe.PreviewCalls == beforeResourceReview + 1
+                && Session().Input!.KarmaResourceInvestment == aboveSettingsCap
+                && Session().Preview!.ResourcesQuote is { } overLimit
+                && overLimit.Blockers.Contains(CharacterCreationKarmaResourcesRules.InvestmentLimitExceeded),
+                "Resource amount did not reach the authoritative Core limit check.");
+            Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text
+                    == CreationKarmaCopy.ResourceLimit(Session().Preview!.ResourcesQuote!.MaximumKarmaInvestment)),
+                "Resource inputs did not display the effective Core spending limit.");
             Element<Entry>("life-resource-investment").Text = "0";
             await Click("life-use-resources");
             await Back();
@@ -1449,6 +1465,11 @@ internal static partial class AfterRunAuthorityHarness
                 // Preserve the legacy recovery-page safety tests explicitly.
                 // Production reading starts automatically; no writing button
                 // is present there (covered by the automatic reader test).
+                // Start this independent fixture with unread prose. Authenticated
+                // readback must not replace the selected edition from the prior
+                // export/review tests with a different provider draft.
+                var legacyReading = coldStore.Load(owner.Owner.Value, id.Value);
+                coldStore.Save(legacyReading, legacyReading with { Chapters = [] }, () => true, default);
                 authoringProbe.Status = AndroidAccountLinkStatus.Linked;
                 var legacyBook = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
                 IssuedPageLifecycle(Current(), "OnDisappearing");
@@ -1568,7 +1589,8 @@ internal static partial class AfterRunAuthorityHarness
                     "A ready draft retained a fabricated time estimate or incorrect generation progress.");
                 var authored = await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true);
                 Require(authored?.Pending(chapter)?.Text.StartsWith("Synthetic transport", StringComparison.Ordinal) == true
-                    && authored.ChapterText(chapter) == proposal.Text && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
+                    && authored.Reading(chapter)?.Selected is null && authored.ChapterText(chapter) == canonicalText
+                    && authoringProbe.Requests == 1 && authoringProbe.Acceptances == 0,
                     "Readback auto-adopted prose or submitted another generation.");
                 int terminalReads = authoringProbe.Reads;
                 await authoringPage.PollPendingChapterOnceAsync(authoringAppearance, default);
