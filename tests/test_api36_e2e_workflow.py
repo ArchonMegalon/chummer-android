@@ -13,9 +13,9 @@ GITIGNORE = REPO_ROOT / ".gitignore"
 PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "39db1d414a43da341c64d617c32a07fd4052f052",
+        "72473c450f248b7fe25fb0388c515e2444827cb8",
     "ArchonMegalon/chummer6-core":
-        "fe305d1b6873d4904e794eab7ce28042389688a3",
+        "ce5f65f68aca334eef75c5fccd608fcac8758767",
     "ArchonMegalon/chummer6-hub":
         "c77395de9f733427ef952c851f4a95b063cb5573",
     "ArchonMegalon/chummer6-hub-registry":
@@ -412,7 +412,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         ]
         self.assertIn("repository: ArchonMegalon/chummer6-core", content_checkout)
         self.assertIn(
-            "ref: c04f6b0a1bdc21f3fa54df78dd9f799743642e44",
+            "ref: a1a5cbc123977e35e45c75f2cc726137b1c0d38f",
             content_checkout,
         )
         self.assertIn("path: chummer-core-content", content_checkout)

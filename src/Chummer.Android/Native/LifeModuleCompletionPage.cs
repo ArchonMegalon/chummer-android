@@ -446,12 +446,16 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     private void ResourceInputs()
     {
         if (Quote?.ResourcesPolicy is not { } policy) return;
-        Body(CreationKarmaCopy.ResourceLimit(policy.MaximumKarmaInvestment));
+        // The settings ceiling excludes source-bound bonuses such as Born Rich.
+        // Only the Core quote supplies the effective limit; Core also validates
+        // the first amount, before a spending quote exists.
+        if (Quote.ResourcesQuote is { } resources)
+            Body(CreationKarmaCopy.ResourceLimit(resources.MaximumKarmaInvestment));
         Body(policy.FundingExpression);
         var amount = Text(CreationKarmaCopy.ResourceInvestment, "life-resource-investment", Input.KarmaResourceInvestment?.ToString(CultureInfo.CurrentCulture) ?? "", numeric: true);
         Button(LifeCopy("SaveReview", "Save inputs and review"), "life-use-resources", async () =>
         {
-            if (decimal.TryParse(amount.Text, NumberStyles.AllowDecimalPoint, CultureInfo.CurrentCulture, out decimal value) && value >= 0 && value <= policy.MaximumKarmaInvestment)
+            if (decimal.TryParse(amount.Text, NumberStyles.AllowDecimalPoint, CultureInfo.CurrentCulture, out decimal value) && value >= 0)
                 await ChangeReview(Input with { KarmaResourceInvestment = value });
             else await DisplayAlertAsync(Title, CreationKarmaCopy.InvalidNumber, "OK");
         });
