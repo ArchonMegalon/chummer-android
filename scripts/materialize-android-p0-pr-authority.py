@@ -52,11 +52,11 @@ SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 ARTIFACT_DIGEST = re.compile(r"^(?:sha256:)?[0-9a-f]{64}$")
 EXPECTED_DEPENDENCY_COMMITS = {
-    "core-content": "51c6a6bbdb1a498352f95512b7d47f11e6fa42b7",
-    "core-runtime": "5f4e6350791c2c4fd7959da1f07cc1a85ce5446e",
+    "core-content": "c04f6b0a1bdc21f3fa54df78dd9f799743642e44",
+    "core-runtime": "fe305d1b6873d4904e794eab7ce28042389688a3",
     "hub": "c77395de9f733427ef952c851f4a95b063cb5573",
     "media": "f3c955488210c69abdf96689dd3b3d67afba80d2",
-    "presentation": "5859961a8d0eef814a2bf86fe702b0013512ae58",
+    "presentation": "39db1d414a43da341c64d617c32a07fd4052f052",
     "registry": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ui-kit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
 }

@@ -43,6 +43,11 @@ internal static class Program
             await OriginDossierBookRuntimeTests.RunStoryFlowAsync();
             return;
         }
+        if (args.Length == 2 && args[0] == "--life-module-language-content-root")
+        {
+            await OriginDossierBookRuntimeTests.RunCanonicalLanguageFollowUpsAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--magic-budget-focus-content-root")
         {
             CreationMagicNativeRuntimeTests.RunBudgetFocus(args[1]);
