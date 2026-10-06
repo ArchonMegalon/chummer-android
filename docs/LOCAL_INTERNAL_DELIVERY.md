@@ -126,7 +126,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 113 is the latest [observed Internal availability](../play/evidence/preview113-internal-observation.md),
+Preview 114 is the latest [observed Internal availability](../play/evidence/preview114-internal-observation.md),
+confirmed on 6 October at 05:30 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Life Modules language questions exclude the technical metadata answer `0`.
+Actual API36 SDK-test smoke verified the genuine choices, reviewed-answer reopen,
+and confirmed nationality-to-childhood continuation after a verified new process.
+The post-restart check proves stage continuation, not every saved answer byte.
+The separately deployed standing Origin service delivered a new complete German
+chapter, automatic 1min.ai illustration, illustrated EPUB and restart reread.
+Earlier two-chapter reference-image evidence remains separately scoped.
+**Physical Play114 installation and all-stage SR5 Creation/Career remain open.**
+Slow saves/loading and provider-progress copy are not cleared by this release;
+general beta and every-module illustration continuity are not claimed.
+
+Preview 113's [observed Internal availability](../play/evidence/preview113-internal-observation.md),
 confirmed on 6 October at 02:18 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Life Modules optional chapter refinements now allow outside-tap keyboard
