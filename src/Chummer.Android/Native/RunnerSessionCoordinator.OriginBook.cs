@@ -15,6 +15,16 @@ namespace Chummer.Android.Native;
 internal sealed record OriginBookReaderLoad(
     CharacterOverviewState Display, RetainedOriginBook? Book, bool OpeningNotStarted = false);
 
+// A fresh story-gate projection, not a reader/export/authoring capability.
+// Wizard navigation must not decompress the illustration archive to decide
+// whether the current prose has been presented and acknowledged.
+internal sealed record OriginStoryReadiness(
+    CharacterOverviewState Display, string? SeedDigest, bool OpeningNotStarted,
+    bool OpeningSetupComplete, bool HasReadCurrentStory, bool HasUnacknowledgedChapter)
+{
+    internal RetainedOriginBook? ReadingEdition { get; init; }
+}
+
 internal sealed class RetainedOriginBook(OriginStoryArcSeed projection, OriginBookReadingState? readings = null,
     OriginBookScenes? scenes = null, bool scenesUnavailable = false,
     OriginChapterNarrativeContext? opportunities = null)
@@ -291,6 +301,7 @@ public sealed partial class RunnerSessionCoordinator
     private readonly OriginBookSceneStore? _originBookScenes;
     private readonly IAndroidImageDocumentService? _originSceneDocuments;
     private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedBooks = new();
+    private readonly ConditionalWeakTable<RetainedOriginBook, CharacterOverviewState> _retainedStoryBooks = new();
     private readonly ConditionalWeakTable<OriginBookReadingState, CharacterOverviewState> _openingStoryDetails = new();
 
     private sealed record StoryEditorAuthority(CharacterOverviewState Display, string TurnSeedDigest);
@@ -407,6 +418,12 @@ public sealed partial class RunnerSessionCoordinator
     internal bool IsRetainedOriginBookCurrent(RetainedOriginBook book)
         => _retainedBooks.TryGetValue(book, out var original) && IsNativeEditDisplayCurrent(original);
 
+    internal bool IsOriginStoryReadinessCurrent(OriginStoryReadiness story)
+        => CanReadRetainedOriginBook(story.Display)
+            && (story.ReadingEdition is null ? story.OpeningNotStarted
+                : _retainedStoryBooks.TryGetValue(story.ReadingEdition, out var original)
+                    && IsNativeEditDisplayCurrent(original));
+
     internal bool CanRequestOriginChapter(RetainedOriginBook book)
         => _account is IAndroidOriginChapterTransport && _account.Snapshot.IsLinked
             && IsRetainedOriginBookCurrent(book);
@@ -414,9 +431,9 @@ public sealed partial class RunnerSessionCoordinator
     internal async Task<bool> HasReadCurrentLifeModuleStoryAsync(
         LifeModuleOriginDossierDraftCheckpoint checkpoint, Func<bool> isCurrentPage)
     {
-        var book = await LoadRetainedOriginBookAsync(CancellationToken.None, isCurrentPage);
-        return isCurrentPage() && book is not null && IsRetainedOriginBookCurrent(book)
-            && book.Digest == checkpoint.Projection.SeedDigest && book.HasReadCurrentStory;
+        var story = await LoadOriginStoryReadinessAsync(CancellationToken.None, isCurrentPage);
+        return isCurrentPage() && IsOriginStoryReadinessCurrent(story)
+            && story.SeedDigest == checkpoint.Projection.SeedDigest && story.HasReadCurrentStory;
     }
 
     internal OriginChapterSource? PrepareOriginChapterSource(RetainedOriginBook book, OriginNarrativeChapterProjection chapter)
@@ -568,6 +585,20 @@ public sealed partial class RunnerSessionCoordinator
         => (await LoadOriginBookReaderAsync(ct, isCurrentPage)).Book;
 
     internal Task<OriginBookReaderLoad> LoadOriginBookReaderAsync(CancellationToken ct, Func<bool> isCurrentPage)
+        => LoadOriginBookAsync(ct, isCurrentPage, includeIllustrations: true);
+
+    internal async Task<OriginStoryReadiness> LoadOriginStoryReadinessAsync(CancellationToken ct, Func<bool> isCurrentPage)
+    {
+        var loaded = await LoadOriginBookAsync(ct, isCurrentPage, includeIllustrations: false);
+        var book = loaded.Book;
+        return new(loaded.Display, book?.Digest, loaded.OpeningNotStarted,
+            book?.OpeningSetupComplete == true, book?.HasReadCurrentStory == true,
+            book?.Chapters.Any(chapter => book.ReadableChapter(chapter) is not null
+                && !book.IsExportableChapter(chapter)) == true) { ReadingEdition = book };
+    }
+
+    private Task<OriginBookReaderLoad> LoadOriginBookAsync(CancellationToken ct, Func<bool> isCurrentPage,
+        bool includeIllustrations)
     {
         var original = State;
         var unavailable = new OriginBookReaderLoad(original, null);
@@ -605,7 +636,7 @@ public sealed partial class RunnerSessionCoordinator
                 }, ct);
             OriginBookScenes? scenes = null;
             bool scenesUnavailable = false;
-            if (_originBookScenes is { } sceneStore)
+            if (includeIllustrations && _originBookScenes is { } sceneStore)
             {
                 try
                 {
@@ -636,9 +667,14 @@ public sealed partial class RunnerSessionCoordinator
             }
             ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return unavailable;
-            RetireDifferentBookEditions(original, readings?.Digest, scenes?.Digest);
+            // A lightweight read still retires changed prose, but knows
+            // nothing about artwork. Never mistake unobserved scenes for an
+            // empty archive, nor admit this incomplete edition for export.
+            RetireDifferentBookEditions(original, readings?.Digest, scenes?.Digest,
+                compareScenes: includeIllustrations);
             var book = new RetainedOriginBook(projection, readings, scenes, scenesUnavailable, opportunities);
-            _retainedBooks.Add(book, original);
+            if (includeIllustrations) _retainedBooks.Add(book, original);
+            else _retainedStoryBooks.Add(book, original);
             return new OriginBookReaderLoad(original, book);
         }, ct);
     }
@@ -748,13 +784,19 @@ public sealed partial class RunnerSessionCoordinator
             return updated;
         }, ct);
 
-    private void RetireDifferentBookEditions(CharacterOverviewState original, string? readingDigest, string? sceneDigest)
+    private void RetireDifferentBookEditions(CharacterOverviewState original, string? readingDigest, string? sceneDigest,
+        bool compareScenes = true)
     {
         foreach (var entry in _retainedBooks)
             if (entry.Value.WorkspaceId == original.WorkspaceId
                 && entry.Value.DisplayOwnerContext == original.DisplayOwnerContext
-                && (entry.Key.Readings?.Digest != readingDigest || entry.Key.Scenes?.Digest != sceneDigest))
+                && (entry.Key.Readings?.Digest != readingDigest || compareScenes && entry.Key.Scenes?.Digest != sceneDigest))
                 _retainedBooks.Remove(entry.Key);
+        foreach (var entry in _retainedStoryBooks)
+            if (entry.Value.WorkspaceId == original.WorkspaceId
+                && entry.Value.DisplayOwnerContext == original.DisplayOwnerContext
+                && entry.Key.Readings?.Digest != readingDigest)
+                _retainedStoryBooks.Remove(entry.Key);
     }
 
     internal bool CanSelectOriginBookScene(RetainedOriginBook book)
