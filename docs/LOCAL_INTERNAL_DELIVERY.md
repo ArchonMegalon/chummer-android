@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 115 is the latest [observed Internal availability](../play/evidence/preview115-internal-observation.md),
+Preview 116 is the latest [observed Internal availability](../play/evidence/preview116-internal-observation.md),
+confirmed on 6 October at 18:52 Europe/Vienna. The exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Core's private talent-catalog snapshot reduces repeated managed allocations;
+live source admission, detached returns and permanent drift rejection remain.
+Focused native Talent/quality-answer save and a verified new-process reopen
+passed with unchanged input/workspace/synthetic-reading bytes and final-allocation
+readiness restored. This is a narrow synthetic route, not a fresh real-book or
+full Career proof. **Physical Play116 installation, slow cold startup/rule checks
+and all-method SR5 Creation remain open.** Managed allocation measurements are
+not native latency/peak-memory claims. Preview115 and its illustrated-book
+evidence remain intact; no new paid provider job was needed for this increment.
+
+Preview 115's [observed Internal availability](../play/evidence/preview115-internal-observation.md),
 confirmed on 6 October at 16:36 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 The affected corporate Life Modules route now reaches Career; one finalization
