@@ -236,7 +236,8 @@ internal static class Program
         using (var defaults = CreateTransport(delayed))
         {
             Require(defaults.ResolveRequestTimeout(scene) == TimeSpan.FromMinutes(3));
-            foreach (string path in new[] { "/api/v2/android/linked/origin/scenes/read",
+            Require(defaults.ResolveRequestTimeout("/api/v2/android/linked/origin/scenes/read") == TimeSpan.FromMinutes(1));
+            foreach (string path in new[] { "/api/v2/android/linked/origin/scenes/read/",
                 "/api/v2/android/linked/origin/scenes/decide", "/api/v2/android/linked/origin/chapters/read",
                 "/api/v2/install-linking/grants/status", scene + "/", scene.ToUpperInvariant() })
                 Require(defaults.ResolveRequestTimeout(path) == TimeSpan.FromSeconds(20));
@@ -302,7 +303,32 @@ internal static class Program
         // Explicit test/host overrides still constrain every request, including scenes.
         using var overridden = CreateTransport(new RecordingHandler(_ => JsonResponse("{}")), TimeSpan.FromMilliseconds(50));
         Require(overridden.ResolveRequestTimeout(scene) == TimeSpan.FromMilliseconds(50));
+        Require(overridden.ResolveRequestTimeout("/api/v2/android/linked/origin/scenes/read") == TimeSpan.FromMilliseconds(50));
+        await OriginSceneReadHasItsOwnSingleBoundedBudgetAsync();
         Console.WriteLine("PASS scene admission has one scoped bounded header/body budget; ordinary deadlines, cancellation and no replay remain");
+    }
+
+    private static async Task OriginSceneReadHasItsOwnSingleBoundedBudgetAsync()
+    {
+        const string readPath = "/api/v2/android/linked/origin/scenes/read";
+        var terminal = new RecordingHandler(async (_, token) =>
+        {
+            await Task.Delay(300, token);
+            return JsonResponse("{\"items\":[]}");
+        });
+        using var transport = new AndroidAccountLinkHttpTransport(terminal,
+            TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000), TimeSpan.FromMilliseconds(1500));
+        Require(transport.ResolveRequestTimeout(readPath) == TimeSpan.FromMilliseconds(1500));
+        Require(transport.ResolveRequestTimeout(readPath.ToUpperInvariant()) == TimeSpan.FromMilliseconds(100));
+        using var response = await transport.PostJsonAsync(readPath, new { }, CreateAuthority(), CancellationToken.None);
+        Require((await transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None)).Items.Count == 0);
+        await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+            transport.PostJsonAsync("/api/v2/android/linked/origin/scenes/decide", new { }, CreateAuthority(), CancellationToken.None));
+        await Task.Delay(1600);
+        await RequireThrowsAsync<AndroidAccountLinkHttpTransport.InterruptedException>(() =>
+            transport.ReadJsonAsync<CollectionEnvelope>(response, CancellationToken.None));
+        Require(terminal.Requests.Count == 2); // One read, one decision; no creation or automatic replay.
+        Console.WriteLine("PASS image read has its own exact-route budget without extending decisions or renewing the response deadline");
     }
 
     private static void AccountOwnerKeyPreservesOpaqueSubjectIdentity()

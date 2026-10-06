@@ -28,6 +28,12 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     // replay admission alone taking up to 16.5 seconds. Leave one minute for
     // admission/disclosure around that handoff, not another request attempt.
     internal static readonly TimeSpan OriginSceneRequestTimeout = TimeSpan.FromMinutes(3);
+    // The authenticated image read includes durable replay admission, fresh
+    // disclosure checks and a separately bounded 15-second media read. The
+    // live third-scene download was canceled inside media-read after admission
+    // consumed most of the ordinary 20-second budget. Keep this exact route
+    // bounded to one minute; this neither retries nor creates another image.
+    internal static readonly TimeSpan OriginSceneReadTimeout = TimeSpan.FromMinutes(1);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -43,6 +49,7 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
     private readonly HttpClient _httpClient;
     private readonly TimeSpan _responseReadTimeout;
     private readonly TimeSpan _originSceneRequestTimeout;
+    private readonly TimeSpan _originSceneReadTimeout;
     private readonly ConditionalWeakTable<HttpResponseMessage, RequestStart> _requestStarts = new();
 
     // Monotonic request timing only, never account or mutation authority. A
@@ -58,6 +65,13 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         HttpMessageHandler terminalHandler,
         TimeSpan? requestTimeout,
         TimeSpan? originSceneRequestTimeout)
+        : this(terminalHandler, requestTimeout, originSceneRequestTimeout, null) { }
+
+    internal AndroidAccountLinkHttpTransport(
+        HttpMessageHandler terminalHandler,
+        TimeSpan? requestTimeout,
+        TimeSpan? originSceneRequestTimeout,
+        TimeSpan? originSceneReadTimeout)
     {
         ArgumentNullException.ThrowIfNull(terminalHandler);
         TimeSpan timeout = requestTimeout ?? RequestTimeout;
@@ -68,6 +82,9 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         TimeSpan sceneTimeout = originSceneRequestTimeout ?? requestTimeout ?? OriginSceneRequestTimeout;
         if (sceneTimeout <= TimeSpan.Zero && sceneTimeout != Timeout.InfiniteTimeSpan)
             throw new ArgumentOutOfRangeException(nameof(originSceneRequestTimeout));
+        TimeSpan sceneReadTimeout = originSceneReadTimeout ?? requestTimeout ?? OriginSceneReadTimeout;
+        if (sceneReadTimeout <= TimeSpan.Zero && sceneReadTimeout != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(originSceneReadTimeout));
 
         _httpClient = new HttpClient(
             new AndroidAccountLinkAuthorizationHandler(terminalHandler),
@@ -82,11 +99,16 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
         };
         _responseReadTimeout = timeout;
         _originSceneRequestTimeout = sceneTimeout;
+        _originSceneReadTimeout = sceneReadTimeout;
     }
 
     internal TimeSpan ResolveRequestTimeout(string exactPath)
-        => exactPath == "/api/v2/android/linked/origin/scenes/request"
-            ? _originSceneRequestTimeout : _responseReadTimeout;
+        => exactPath switch
+        {
+            "/api/v2/android/linked/origin/scenes/request" => _originSceneRequestTimeout,
+            "/api/v2/android/linked/origin/scenes/read" => _originSceneReadTimeout,
+            _ => _responseReadTimeout
+        };
 
     internal static AndroidAccountLinkHttpTransport CreateDefault()
         => new(new HttpClientHandler
