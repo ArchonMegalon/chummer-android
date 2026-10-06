@@ -249,6 +249,8 @@ internal static class OriginDossierBookRuntimeTests
                         return Task.FromResult<OriginBookReadingState?>(saved);
                     });
                 var page = Page();
+                Require(page.HideSoftInputOnTapped,
+                    "Life Modules must dismiss the keyboard when reviewing answers or opening story choices.");
                 T Find<T>(string id) where T : Element => Elements(page).OfType<T>().Single(e => e.AutomationId == id);
                 Task Click(string id) => ui.BeginAsyncVoid(() => ((IButtonController)Find<Button>(id)).SendClicked());
                 Require(!Find<VerticalStackLayout>("origin-chapter-refinement").IsVisible
