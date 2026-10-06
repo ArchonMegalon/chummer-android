@@ -917,8 +917,7 @@ public sealed class BuildPage : NativePageBase
         _body.Add(loading);
     }
 
-    private RetainedOriginBook? _lifeStoryBook;
-    private OriginBookReaderLoad? _lifeStoryLoad;
+    private OriginStoryReadiness? _lifeStoryLoad;
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
@@ -926,21 +925,18 @@ public sealed class BuildPage : NativePageBase
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
         _karmaDashboardSession = null;
-        _lifeStoryBook = null;
         _lifeStoryLoad = null;
         var original = Coordinator.State;
         if (Coordinator.CanReadRetainedOriginBook(original))
         {
             try
             {
-                var loaded = await Coordinator.LoadOriginBookReaderAsync(cancellationToken,
+                var loaded = await Coordinator.LoadOriginStoryReadinessAsync(cancellationToken,
                     () => IsCurrentAppearanceGeneration(appearance));
                 if (IsCurrentAppearanceGeneration(appearance)
-                    && Coordinator.CanReadRetainedOriginBook(loaded.Display))
+                    && Coordinator.IsOriginStoryReadinessCurrent(loaded))
                 {
                     _lifeStoryLoad = loaded;
-                    if (loaded.Book is { } book && Coordinator.IsRetainedOriginBookCurrent(book))
-                        _lifeStoryBook = book;
                 }
             }
             catch (Exception error) when (error is IOException or InvalidOperationException
@@ -968,7 +964,6 @@ public sealed class BuildPage : NativePageBase
 
     protected override void OnDisappearing()
     {
-        _lifeStoryBook = null;
         _lifeStoryLoad = null;
         _persistedReceiptDisplay = null;
         _persistedCreationReceipt = null;
@@ -1452,11 +1447,11 @@ public sealed class BuildPage : NativePageBase
         bool finished = foundation?.PendingDraft?.ModuleSelectionFinished == true;
         var budget = foundation?.LifeModuleBudget;
 
-        var story = _lifeStoryBook is { } retained && Coordinator.IsRetainedOriginBookCurrent(retained)
+        var story = _lifeStoryLoad is { SeedDigest: not null } retained && Coordinator.IsOriginStoryReadinessCurrent(retained)
             ? retained : null;
         bool storyRead = story?.HasReadCurrentStory == true;
         bool openingNotStarted = _lifeStoryLoad is { OpeningNotStarted: true } loaded
-            && Coordinator.CanReadRetainedOriginBook(loaded.Display);
+            && Coordinator.IsOriginStoryReadinessCurrent(loaded);
         var copy = AndroidSurfaceStrings.Resolve();
         // Only Core's exact missing-ledger result means a new story. A failed
         // read must not invent either opening decisions or completed chapters.
@@ -1466,7 +1461,7 @@ public sealed class BuildPage : NativePageBase
             : storyRead ? finished
                 ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
                 : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review.")
-            : story.Chapters.Any(chapter => story.ReadableChapter(chapter) is not null && !story.IsExportableChapter(chapter))
+            : story.HasUnacknowledgedChapter
                 ? copy["Origin.MechanicsAfterReading"] : copy["Origin.ReaderFullTextPending"];
         var scope = NativeTheme.Body(guidance, NativeTheme.Muted);
         scope.AutomationId = "creation-life-module-scope";
@@ -3112,10 +3107,10 @@ public sealed class BuildPage : NativePageBase
             async (checkpoint, current) =>
             {
                 bool Current() => current() && Coordinator.State.DisplayOwnerContext == decisionOwner;
-                var book = await Coordinator.LoadRetainedOriginBookAsync(default, Current);
+                var story = await Coordinator.LoadOriginStoryReadinessAsync(default, Current);
                 if (!Current()) return;
-                if (book is null || !Coordinator.IsRetainedOriginBookCurrent(book)
-                    || book.Digest != checkpoint.Projection.SeedDigest)
+                if (!Coordinator.IsOriginStoryReadinessCurrent(story)
+                    || story.SeedDigest != checkpoint.Projection.SeedDigest)
                     throw new InvalidOperationException("The saved story changed while checking chapter progress.");
                 // Present the full text (or its pinned progress) directly.
                 // Offline readers still get saved pages and account guidance.

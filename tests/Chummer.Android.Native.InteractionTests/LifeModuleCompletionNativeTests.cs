@@ -2101,6 +2101,40 @@ internal static partial class AfterRunAuthorityHarness
                 book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
             }
             Require(book.HasReadCurrentStory, "The real story fixture did not acknowledge its chapters.");
+            var sceneStore = new OriginBookSceneStore(runtime.StateDirectory);
+            var retainedScenes = sceneStore.Load(book.Readings!.Owner, id.Value);
+            var illustratedChapter = book.Chapters.First(c => !book.IsOpeningSetup(c) && !book.IsSelectionFinish(c));
+            var illustration = OriginBookScene.ForChapter(book, illustratedChapter,
+                "Synthetic scene for readiness isolation.", LifeSceneInputProbe.Png);
+            sceneStore.Save(retainedScenes, new(retainedScenes.Owner, retainedScenes.Workspace, [illustration]),
+                () => true, default);
+            book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            Require(book.SceneExports().Count == 1, "The illustrated reader fixture was not retained.");
+            string archive = Directory.GetFiles(Path.Combine(runtime.StateDirectory, "origin-book-scenes"), "*.zip").Single();
+            using (var lockedArtwork = new FileStream(archive, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                var readiness = await runtime.Coordinator.LoadOriginStoryReadinessAsync(default, () => true);
+                Require(readiness.HasReadCurrentStory && readiness.SeedDigest == book.Digest
+                    && runtime.Coordinator.IsRetainedOriginBookCurrent(book) && book.SceneExports().Count == 1,
+                    "Story readiness read optional artwork or retired the complete illustrated edition.");
+            }
+            var acknowledgedReadiness = await runtime.Coordinator.LoadOriginStoryReadinessAsync(default, () => true);
+            Require(runtime.Coordinator.IsOriginStoryReadinessCurrent(acknowledgedReadiness)
+                && !runtime.Coordinator.IsRetainedOriginBookCurrent(acknowledgedReadiness.ReadingEdition!),
+                "Readiness was unavailable or incorrectly admitted an incomplete book for export/authoring.");
+            // This is a fresh disk read, not a cached acknowledgement. A
+            // changed reading edition must close the gate and retire readers.
+            var readingStore = new OriginBookReadingStore(runtime.StateDirectory);
+            var acknowledged = readingStore.Load(book.Readings!.Owner, id.Value);
+            var unread = readingStore.Save(acknowledged, acknowledged with {
+                Chapters = acknowledged.Chapters.Select(c => c with { Selected = null }).ToArray()
+            }, () => true, default);
+            var unreadReadiness = await runtime.Coordinator.LoadOriginStoryReadinessAsync(default, () => true);
+            Require(!unreadReadiness.HasReadCurrentStory && !runtime.Coordinator.IsRetainedOriginBookCurrent(book)
+                && !runtime.Coordinator.IsOriginStoryReadinessCurrent(acknowledgedReadiness),
+                "Lightweight story readiness reused an old reading acknowledgement.");
+            readingStore.Save(unread, acknowledged, () => true, default);
+            Console.WriteLine("PASS fresh story readiness: no artwork IO, preserved full reader, changed prose retires it");
             // Discard transient page/session state; the new page must admit only
             // the read acknowledgements recovered from the file-backed store.
             page = new(runtime.Coordinator, () => Task.CompletedTask, new(runtime.StateDirectory));
