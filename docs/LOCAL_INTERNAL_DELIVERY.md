@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 114 is the latest [observed Internal availability](../play/evidence/preview114-internal-observation.md),
+Preview 115 is the latest [observed Internal availability](../play/evidence/preview115-internal-observation.md),
+confirmed on 6 October at 16:36 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+The affected corporate Life Modules route now reaches Career; one finalization
+receipt and the exact saved workspace survive verified process restart. The
+full illustrated reader reopens with unchanged four-chapter prose/image storage
+and the exact 2,494-word first chapter. Existing illustrated EPUB evidence is
+retained, not presented as a new export on this APK. Core/UI package intake and
+focused native/managed checks passed; version115 adds only metadata to the
+native-tested behavior. **Physical Play115 installation and all-method SR5
+Creation/Career remain open.** Slow saves/startup/navigation and broad stale
+contract-test expectations are not cleared; no general beta or full-suite claim.
+
+Preview 114's [observed Internal availability](../play/evidence/preview114-internal-observation.md),
 confirmed on 6 October at 05:30 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Life Modules language questions exclude the technical metadata answer `0`.
