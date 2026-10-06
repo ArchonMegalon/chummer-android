@@ -126,7 +126,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 112 is the latest [observed Internal availability](../play/evidence/preview112-internal-observation.md),
+Preview 113 is the latest [observed Internal availability](../play/evidence/preview113-internal-observation.md),
+confirmed on 6 October at 02:18 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Life Modules optional chapter refinements now allow outside-tap keyboard
+dismissal. Actual API36 smoke verified both outside tap and collapsing questions
+hide the keyboard, retain the Custom answer and leave the runner budget unchanged.
+No module confirmation or paid generation occurred in this keyboard smoke.
+Unchanged behavior checks are reused for the version-only delta.
+Separately, a real two-chapter illustrated-book test preserved both full chapters
+and embedded images through native EPUB export and a new-process reopen. The
+later image used the opening image as a protagonist reference. This is a two-stage
+sample, not all-age/all-module coverage. **Physical Play113 installation, general
+permanent book-service admission and full SR5 Creation remain open.** Decision-save
+latency and provider-progress copy remain follow-ups; general beta is not claimed.
+
+Preview 112's [observed Internal availability](../play/evidence/preview112-internal-observation.md),
 confirmed on 6 October at 00:27 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Automatic illustration admission now survives an initial status-read failure,
