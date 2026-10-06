@@ -429,7 +429,8 @@ public sealed partial class RunnerSessionCoordinator
     internal async Task<(AndroidOriginChapterResult Result, RetainedOriginBook? Book)> SyncOriginChapterAsync(
         RetainedOriginBook book, OriginNarrativeChapterProjection chapter, OriginChapterSource approvedSource,
         bool consentToCreate, Func<bool> isCurrentPage, CancellationToken ct,
-        bool reconcileReaderAcceptance = true, bool consentToAutomaticIllustrations = false)
+        bool reconcileReaderAcceptance = true, bool consentToAutomaticIllustrations = false,
+        bool recoverMissingRegistration = false, Action? onRequesting = null)
     {
         bool Current() => isCurrentPage() && CanRequestOriginChapter(book);
         if (!Current() || !_retainedBooks.TryGetValue(book, out var original)
@@ -438,8 +439,9 @@ public sealed partial class RunnerSessionCoordinator
         var source = book.AuthoringSource(chapter);
         if (OriginChapterSourceIdentity.Digest(source) != OriginChapterSourceIdentity.Digest(approvedSource))
             return (new(AndroidOriginChapterOutcome.Conflict), null);
-        // Read first; neither opening this page nor refreshing a job can create
-        // a new paid task. Explicit consent is only used for a confirmed absence.
+        // Read first. A frozen source alone does not prove that registration
+        // reached Hub. Recover only the exact authenticated primary absence,
+        // through the same idempotent request; ordinary reads stay read-only.
         var result = await transport.ReadChapterAsync(owner, source, ct);
         if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
         if (result.Outcome == AndroidOriginChapterOutcome.Available && result.Job is { } recovered)
@@ -456,7 +458,9 @@ public sealed partial class RunnerSessionCoordinator
             book = retained;
             source = book.AuthoringSource(chapter);
         }
-        if (result.Outcome == AndroidOriginChapterOutcome.NotFound && consentToCreate)
+        bool recoverRegistration = recoverMissingRegistration && result.MissingRegistrationConfirmed
+            && book.Reading(chapter)?.AuthoringSource is not null;
+        if (result.Outcome == AndroidOriginChapterOutcome.NotFound && (consentToCreate || recoverRegistration))
         {
             if (!book.TryGetAuthoringPredecessor(chapter, out var previous))
                 return (new(AndroidOriginChapterOutcome.Conflict), book);
@@ -475,6 +479,8 @@ public sealed partial class RunnerSessionCoordinator
                 recoveredFromHub: false, isCurrentPage, ct, consentToAutomaticIllustrations);
             if (retained is null) return (new(AndroidOriginChapterOutcome.Conflict), null);
             book = retained;
+            if (!Current() || ct.IsCancellationRequested) return (new(AndroidOriginChapterOutcome.Unauthorized), null);
+            onRequesting?.Invoke();
             result = await transport.RequestChapterAsync(owner, source, true, ct, previous);
         }
         if (!Current() || ct.IsCancellationRequested) return (result with { Job = null }, null);

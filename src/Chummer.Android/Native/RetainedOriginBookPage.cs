@@ -22,6 +22,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
     private long? _chapterReadAppearance;
     private long? _openingAppearance;
     private readonly HashSet<string> _unreadChecked = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _registrationChecked = new(StringComparer.Ordinal);
     private CancellationTokenSource? _sceneLifetime;
     // Actual dispatches or known remote admissions, never a failed read probe.
     private readonly HashSet<string> _sceneChecked = new(StringComparer.Ordinal);
@@ -65,6 +66,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             _load = null;
             _notice = null;
             _unreadChecked.Clear();
+            _registrationChecked.Clear();
             var loaded = await Coordinator.LoadOriginBookReaderAsync(ct, () => IsCurrentAppearanceGeneration(appearance));
             if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return;
             _load = loaded;
@@ -161,6 +163,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 // Keep durable authoring fences and any active read untouched.
                 _readFailures = 0;
                 _unreadChecked.Clear();
+                _registrationChecked.Clear();
                 await RefreshChapterStatusAsync(appearance, default);
                 if (_watchPending && IsCurrentAppearanceGeneration(appearance)) StartStatusWatch(appearance);
             };
@@ -505,9 +508,9 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         if (chapter is null) { _watchPending = false; return false; }
         var source = Coordinator.PrepareOriginChapterSource(book, chapter)!;
         // The confirmed Origin choices are the source approval. No separate
-        // provider toggle/button. Once admitted locally, an uncertain request
-        // is read-only even after process restart; never spend credits again
-        // merely because the provider temporarily reports no result.
+        // provider toggle/button. A frozen source remains immutable. Recovery
+        // needs Hub's explicit same-request registration contract, not a bare
+        // 404 or a provider reporting no result. Polls never repeat a request.
         bool newChapter = book.Reading(chapter)?.AuthoringSource is null;
         // The coordinator retires this reading edition when it durably freezes
         // a new request and validates the replacement against the same owner.
@@ -516,7 +519,12 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             && ReferenceEquals(_book, book);
         var (result, updated) = await Coordinator.SyncOriginChapterAsync(book, chapter, source,
             consentToCreate: newChapter, Current, ct, reconcileReaderAcceptance: false,
-            consentToAutomaticIllustrations: newChapter);
+            consentToAutomaticIllustrations: newChapter,
+            recoverMissingRegistration: !_registrationChecked.Contains(chapter.ChapterId),
+            onRequesting: () =>
+            {
+                if (Current()) _registrationChecked.Add(chapter.ChapterId);
+            });
         if (ct.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
             || !ReferenceEquals(_book, book)) return false;
         if (updated is null || !Coordinator.IsRetainedOriginBookCurrent(updated))
