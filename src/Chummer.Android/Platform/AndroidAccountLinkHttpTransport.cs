@@ -51,8 +51,13 @@ internal sealed class AndroidAccountLinkHttpTransport : IDisposable
 
     internal AndroidAccountLinkHttpTransport(
         HttpMessageHandler terminalHandler,
-        TimeSpan? requestTimeout = null,
-        TimeSpan? originSceneRequestTimeout = null)
+        TimeSpan? requestTimeout = null)
+        : this(terminalHandler, requestTimeout, null) { }
+
+    internal AndroidAccountLinkHttpTransport(
+        HttpMessageHandler terminalHandler,
+        TimeSpan? requestTimeout,
+        TimeSpan? originSceneRequestTimeout)
     {
         ArgumentNullException.ThrowIfNull(terminalHandler);
         TimeSpan timeout = requestTimeout ?? RequestTimeout;
