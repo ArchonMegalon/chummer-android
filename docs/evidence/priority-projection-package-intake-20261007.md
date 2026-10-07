@@ -41,15 +41,44 @@ their bytes are unchanged. Private-key hygiene and whitespace checks passed.
 Historical hosted workflow pins are kept coherent; no hosted runtime run was
 dispatched and no local result is presented as hosted qualification.
 
+## Exact sealed native smoke
+
+The local Release x64 SDK-test APK was built from Android
+`181d53f7bcbeac6bf11155e3a53a74046baf9424`, tree
+`80195bace255d22a8a08cf03805786d68363e9c1`, with the exact inputs above.
+APK SHA-256: `82c4fb977fa9e0bc6449c7233186de71ba9ce65918ed693b7515779f64c86abf`.
+Build passed with zero warnings/errors; all 331 packaged content files passed.
+It uses a separate test application ID and SDK certificate, not the upload key.
+
+On the retained API36 emulator, an in-place update preserved the saved runner.
+The real Sum-to-Ten route followed Normal Attribute Points → Body 2→3 → Review
+allocation → one Save attribute choices. The screen confirmed saving and
+content/saved revisions advanced exactly once, 3/3→4/4. Normal points remaining
+changed 19→18; special points stayed 1 and Karma stayed 25. A force-stop killed
+the old process; a separately verified new process reopened the actual Body3
+screen. Saved workspace SHA-256 remained
+`1ccaddb63e74051c63095a294779cb72d9690976a812b5b8e3c0c38f945c1759`
+through restart. Screenshot SHA-256:
+`e0c4abcbeed0bbe49d2e7ace43d91faf76349b57078e1a7d634adf9423a83925`;
+hierarchy SHA-256:
+`cad5035d027810e26c78b1bdf491f1e17f3cce39ba127f3754d64413e2abe8c1`.
+
+The SDK-test APK predates only this evidence update and release metadata123→124.
+The separate ARM64 release artifact must verify that version/architecture delta.
+This is one saved Sum-to-Ten route, not complete native Priority/Magic coverage.
+
 ## Limits
 
 A separate Core-only diagnostic APK exercised an actual API36 emulator:
 Body 1→2, one Save, force-stop/new-process reopen and the qualities catalog.
 That APK predates this sealed Android graph. Its evidence is not an exact-tree
-native test of this intake. The next native candidate must retain that boundary.
+native test of this intake; the later exact sealed test above is separate.
 
 Managed repeated-read allocations improved; native cold-start speedup was not
-demonstrated. This intake is not a claim that all startup latency is fixed.
+demonstrated. Selected-workspace restoration took29.803s after the update and
+14.566s in the new process. Boot-time Android system ANRs and null hierarchy
+observations were retained; none was converted into a pass or hidden by a retry
+of Save. This intake is not a claim that all startup latency is fixed.
 No new signed release AAB, Play upload or physical Play installation is asserted.
 Preview123 remains the separately recorded Internal artifact. Full SR5 method
 completion, tablet parity and public-release readiness are not established here.
