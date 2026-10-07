@@ -98,6 +98,52 @@ internal static partial class AfterRunAuthorityHarness
         }
         Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State,
             runtime.Coordinator.State.CreationWizard!, out var binding), "SETUP: no current dashboard binding.");
+        // Inapplicable Mundane budgets add six cards but no choices. Keep every
+        // uncertain/blocked/nonzero value and leave the actual stage route alone.
+        Require(runtime.Coordinator.State.CreationMagicResonanceEditor?.Talent.Kind
+            == CharacterCreationMagicResonanceKinds.Mundane, "SETUP: ribbon fixture must be Mundane.");
+        string[] magicBudgetIds = [CharacterCreationBudgetIds.SpellsFormsPrograms,
+            CharacterCreationMagicResonancePresentationBudgetIds.Tradition,
+            CharacterCreationMagicResonancePresentationBudgetIds.Stream,
+            CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints,
+            CharacterCreationMagicResonancePresentationBudgetIds.Spells,
+            CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms];
+        var emptyMagic = magicBudgetIds.Select(id => snapshot.Budgets[0] with
+            { BudgetId = id, IsExact = true, Total = 0, Used = 0, Remaining = 0, Blockers = [] }).ToArray();
+        foreach (var budget in emptyMagic)
+        {
+            Require(!BuildPageUiProjection.ShowCreationBudget(budget, true),
+                "An exact empty Mundane magic budget should not take a card.");
+            Require(BuildPageUiProjection.ShowCreationBudget(budget, false),
+                "A missing/stale or non-Mundane authority must not hide budgets.");
+            foreach (var visible in new[]
+            {
+                budget with { IsExact = false },
+                budget with { Blockers = ["budget-authority-pending"] },
+                budget with { Total = 1 },
+                budget with { Used = 1, Remaining = -1 },
+                budget with { Remaining = 1 },
+                budget with { BudgetId = CharacterCreationBudgetIds.SpecialAttributes },
+                budget with { BudgetId = CharacterCreationBudgetIds.Resources },
+                budget with { BudgetId = "unknown-budget" }
+            })
+                Require(BuildPageUiProjection.ShowCreationBudget(visible, true),
+                    "Compact cards concealed points, a blocker or an unrelated budget.");
+        }
+        foreach (bool magicReady in new[] { false, true })
+        {
+            var page = new BuildPage(runtime.Coordinator);
+            var readiness = new CreationDashboardRenderReadiness(
+                () => false, () => false, () => false, () => magicReady, () => false, () => false);
+            render.Invoke(page, [snapshot with { Budgets = [.. snapshot.Budgets, .. emptyMagic] },
+                attributes, skills, readiness, null, null, null]);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
+            Require(cards.Length == (magicReady ? snapshot.Budgets.Count : snapshot.Budgets.Count + 6),
+                "The rendered ribbon did not follow current Mundane authority.");
+            Require(body.Children.OfType<Label>().Any(label => label.AutomationId == "creation-budget-status"),
+                "Unrelated inexact budgets lost their explanation.");
+        }
         var projection = CreationDashboardAuthorityProjection.Loading(binding!) with { Resources = resources };
         var resourceFallback = runtime.Coordinator.State.CreationWizard!.Budgets.Single(
             row => row.BudgetId == CharacterCreationBudgetIds.Resources);
@@ -1748,6 +1794,8 @@ internal static partial class AfterRunAuthorityHarness
         Require(probe.LoadCalls == 1,
             "Rendering, paging and filtering must not reload Core after appearance preparation.");
 
+        await VerifyQualitiesConfirmationFeedbackAsync(runtime.Coordinator, probe, qualityState);
+
         var draftField = typeof(CreationQualitiesPage).GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var pageDraft = (CreationQualitiesPhoneDraft)draftField.GetValue(page)!;
         Require(pageDraft.TryAdopt(qualityState, runtime.Coordinator.State,
@@ -1934,11 +1982,85 @@ internal static partial class AfterRunAuthorityHarness
             string idempotencyKey) => inner.LookupReceipt(overview, idempotencyKey);
     }
 
+    private static async Task VerifyQualitiesConfirmationFeedbackAsync(RunnerSessionCoordinator coordinator,
+        QualitiesReadProbe probe, CharacterCreationQualitiesState state)
+    {
+        var original = coordinator.State;
+        var preview = await Task.Run(() => coordinator.ReadCreationAuthority(original,
+            () => coordinator.PreviewCreationQualities(state.Binding, [], original), CancellationToken.None));
+        Require(preview.Value is { CanConfirm: true }, "SETUP: empty Qualities review must be valid.");
+        var journal = new CharacterCreationQualitiesCheckpointStore(new QualitiesFeedbackBackend());
+        var reviewed = CharacterCreationQualitiesCheckpoint.CreateReviewed(preview.Value!, [], Guid.NewGuid());
+        Require(journal.TryCreate(reviewed, out reviewed, out var blocker), blocker);
+        var page = new CreationQualitiesReviewPage(coordinator, reviewed, journal, original);
+        var refresh = typeof(CreationQualitiesReviewPage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var apply = typeof(CreationQualitiesReviewPage).GetMethod("ApplyAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
+            .GetField("_workspaceActivationGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(coordinator)!;
+        foreach (bool cancel in new[] { false, true })
+        {
+            refresh.Invoke(page, null);
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var button = body.Children.OfType<Button>().Single(item => item.AutomationId == "creation-qualities-confirm-draft");
+            var progress = body.Children.OfType<Label>().Single(item => item.AutomationId == "creation-qualities-confirm-progress");
+            string idleText = button.Text;
+            var rendered = body.Children.ToArray();
+            Require(button.IsEnabled && !progress.IsVisible, "SETUP: exact Qualities review must allow saving.");
+            int reads = probe.LoadCalls;
+            probe.BeforeLoad = () =>
+            {
+                if (cancel) throw new OperationCanceledException("qualities-feedback-test");
+                throw new InvalidOperationException("qualities-feedback-test");
+            };
+            await gate.WaitAsync();
+            Task pending = (Task)apply.Invoke(page, null)!;
+            Exception? assertion = null;
+            try
+            {
+                Require(!pending.IsCompleted && !button.IsEnabled
+                    && button.Text == CreationFlowStrings.Get("Qualities.Review.Saving", "Saving…")
+                    && progress.IsVisible
+                    && progress.Text == CreationFlowStrings.Get("Qualities.Review.Confirming", "Checking and saving qualities…")
+                    && progress.TextColor == NativeTheme.Text && rendered.SequenceEqual(body.Children)
+                    && !MinimalVisible(page).OfType<ActivityIndicator>().Any(item => item.IsRunning),
+                    "Qualities must disable and relabel the actual button, with readable in-place progress before awaiting Core.");
+                await (Task)apply.Invoke(page, null)!;
+                Require(!pending.IsCompleted && probe.LoadCalls == reads && probe.Confirms == 0
+                    && !button.IsEnabled && progress.IsVisible,
+                    "A second pending Qualities save entered Core or reset busy feedback.");
+            }
+            catch (Exception error) { assertion = error; }
+            finally { gate.Release(); }
+            try
+            {
+                await pending;
+                throw new Exception("SETUP: Qualities feedback probe did not propagate its read failure.");
+            }
+            catch (Exception error) when (error.Message == "qualities-feedback-test") { }
+            finally { probe.BeforeLoad = null; }
+            if (assertion is not null) throw assertion;
+            Require(button.IsEnabled && button.Text == idleText && !progress.IsVisible
+                && journal.TryRead(out var unchanged, out _)
+                && unchanged.CheckpointDigest == reviewed.CheckpointDigest && probe.Confirms == 0,
+                "Canceled or failed Qualities reads must restore review controls without changing the command or character.");
+        }
+        Console.WriteLine("PASS Qualities immediate readable save feedback, duplicate exclusion, unchanged journal and error/cancel cleanup");
+    }
+
+    private sealed class QualitiesFeedbackBackend : ICharacterCreationQualitiesCheckpointBackend
+    {
+        private string _payload = string.Empty;
+        public string Read() => _payload;
+        public void Write(string payload) => _payload = payload;
+        public void Remove() => _payload = string.Empty;
+    }
+
     private sealed class QualitiesReadProbe(IOwnerBoundCharacterCreationQualitiesService inner,
         ControlledLinkedOwner owners) : IOwnerBoundCharacterCreationQualitiesService
     {
         public int UiThreadId { get; set; }
         public int LoadCalls { get; private set; }
+        public int Confirms { get; private set; }
         public Action? BeforeLoad { get; set; }
         public bool ReturnUnavailable { get; set; }
         public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(OwnerContextStamp owner, CharacterCreationQualitiesLoadRequest request)
@@ -1957,7 +2079,7 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(OwnerContextStamp owner, CharacterCreationQualitiesPreviewRequest request)
             => inner.Preview(owner, request);
         public CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> Confirm(OwnerContextStamp owner, CharacterCreationQualitiesConfirmRequest request)
-            => inner.Confirm(owner, request);
+        { Confirms++; return inner.Confirm(owner, request); }
     }
 
     // Test-only export of the existing actual-Core fixture for a bounded native
