@@ -13,6 +13,95 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunCreationRankCorrectionAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+            {
+                var owners = new ControlledLinkedOwner();
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationPrerequisite: true);
+                await runtime.Coordinator.InitializeAsync();
+                await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                WorkspaceStoredDocument seed = PreparePrerequisiteOwnerFixture(runtime, method);
+                CloneFinalizationRecordFixture(runtime, ContactsOwnerA, seed);
+                CloneFinalizationRecordFixture(runtime, ContactsOwnerB, seed);
+                owners.Set(ContactsOwnerA);
+                await HydrateFinalizationOwnerAsync(runtime, owners, seed);
+                var loaded = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+                Require(loaded.Value is { } && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
+                    "SETUP: current Core prerequisite authority missing.");
+                var state = loaded.Value!;
+                var draft = new CreationPrerequisitePhoneDraft();
+                draft.Bind(state, runtime.Coordinator.State);
+                var (ranks, selections) = PrerequisiteSelections(state);
+                foreach (var entry in ranks)
+                    Require(draft.TrySelect(state, runtime.Coordinator.State, entry.Key, entry.Value), "SETUP: rank unavailable.");
+                Require(draft.TrySelectHeritage(state, runtime.Coordinator.State, selections.HeritageSelectionId)
+                    && draft.TrySelectTalent(state, runtime.Coordinator.State, selections.TalentSelectionId)
+                    && draft.CanPrepare(state, runtime.Coordinator.State), "SETUP: complete draft missing.");
+                var before = PrerequisiteColdRows(runtime);
+                var navigation = new NavigationPage(new ContentPage());
+                var window = new Window(navigation);
+                CreationPriorityCategoryPage? page = null;
+                try
+                {
+                    foreach (string category in new[] { CharacterCreationPriorityCategoryIds.Attributes, CharacterCreationPriorityCategoryIds.Resources })
+                    {
+                        page = new(runtime.Coordinator, draft, state, category);
+                        await navigation.PushAsync(page, animated: false);
+                        using var alerts = new IssuedPageAlerts(page, window);
+                        await alerts.PreflightAsync();
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                        Button? old = IssuedElements(page).OfType<Button>().SingleOrDefault(item => item.AutomationId == "creation-prerequisite-clear-rank");
+                        Require(old is { IsEnabled: true }, method + ": complete assignments cannot be corrected without resetting the whole draft.");
+                        typeof(CreationPriorityCategoryPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(page, null);
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)old!).SendClicked()));
+                        Require(draft.SelectedOption(state, runtime.Coordinator.State, category) is not null,
+                            "A previous render cleared the current rank.");
+                        Button current = IssuedElements(page).OfType<Button>().Single(item => item.AutomationId == "creation-prerequisite-clear-rank");
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)current).SendClicked()));
+                        Require(draft.SelectedOption(state, runtime.Coordinator.State, category) is null
+                            && draft.SelectedHeritage(state, runtime.Coordinator.State)?.SelectionId == selections.HeritageSelectionId
+                            && draft.SelectedTalent(state, runtime.Coordinator.State)?.SelectionId == selections.TalentSelectionId
+                            && !draft.CanPrepare(state, runtime.Coordinator.State),
+                            "Clearing one rank lost unrelated choices or admitted an incomplete draft.");
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        if (navigation.Navigation.NavigationStack.Contains(page)) await navigation.PopAsync(animated: false);
+                        page = null;
+                    }
+                    string attributeRank = method == CharacterCreationBuildMethods.Priority ? "D" : "B";
+                    Require(draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Attributes, attributeRank)
+                        && draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Resources, "B")
+                        && draft.CanPrepare(state, runtime.Coordinator.State), "Corrected ranks did not restore an exact draft.");
+                    Require(!draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Resources, "A"),
+                        "Rank correction weakened duplicate-rank or exact-total admission.");
+
+                    page = new(runtime.Coordinator, draft, state, CharacterCreationPriorityCategoryIds.Talent);
+                    await navigation.PushAsync(page, animated: false);
+                    using var finalAlerts = new IssuedPageAlerts(page, window);
+                    await finalAlerts.PreflightAsync();
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                    Button retained = IssuedElements(page).OfType<Button>().Single(item => item.AutomationId == "creation-prerequisite-clear-rank");
+                    var originalOverview = runtime.Coordinator.State;
+                    owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA);
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retained).SendClicked()));
+                    Require(draft.Assignments(state, originalOverview).Count == 5,
+                        "An old-owner callback changed the local draft after A→B→A.");
+                    Require(PrerequisiteColdRows(runtime).All(pair => pair.Value.Digest == before[pair.Key].Digest),
+                        "Local rank correction mutated a saved owner partition.");
+                    ui.AssertHealthy();
+                    Console.WriteLine("PASS actual Core/native rank correction: " + method + ", retained choices, exact admission, stale render/owner, unchanged storage");
+                }
+                finally
+                {
+                    if (page is not null) IssuedPageLifecycle(page, "OnDisappearing");
+                }
+            }
+        });
+    }
+
     public static async Task RunCreationPrerequisiteOwnerCasesAsync(string contentRoot)
         => await RunCreationPrerequisiteCasesAsync(contentRoot, parentReadinessOnly: false);
 
