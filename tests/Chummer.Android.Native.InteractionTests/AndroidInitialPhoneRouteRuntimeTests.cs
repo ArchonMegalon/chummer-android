@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.Owners;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
@@ -74,15 +75,31 @@ internal static partial class AfterRunAuthorityHarness
 
     public static async Task RunStartupShellReuseAsync(string contentRoot)
     {
-        foreach (bool created in new[] { false, true })
+        foreach (var (method, created) in new[]
+        {
+            (CharacterCreationBuildMethods.Priority, false),
+            (CharacterCreationBuildMethods.SumToTen, false),
+            (CharacterCreationBuildMethods.Karma, false),
+            (CharacterCreationBuildMethods.LifeModules, false),
+            (CharacterCreationBuildMethods.Priority, true)
+        })
         {
             int rosterReads = 0;
+            var owners = new ControlledLinkedOwner();
+            owners.Set(OwnerScope.LocalSingleUser);
+            var metrics = new List<BootstrapProductionStage>();
+            ProductionFinalizationLoadProbe? finalization = null;
             await using var runtime = new NativeRewardRuntime(contentRoot,
+                // Exercise the same owner-bound Creation projections as MauiProgram.
+                // The default reduced factory cannot establish real restore behavior.
+                productionCreationOverview: true,
+                linkedOwners: owners,
+                finalizationDecorator: actual => finalization = new(actual, owners.Capture(), metrics),
                 beforeShellWorkspaceList: () => Interlocked.Increment(ref rosterReads));
             var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument($"""
                 <character><name>Cold restore fixture</name><gameedition>SR5</gameedition>
                 <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
-                <buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion>
+                <buildmethod>{method}</buildmethod><createdversion>5.225.0</createdversion>
                 <appversion>5.225.0</appversion><created>{created}</created><karma>30</karma><nuyen>1000</nuyen>
                 <improvements/><contacts/><expenses/><notes>Restoration must not edit this.</notes></character>
                 """, "sr5"), default);
@@ -94,14 +111,23 @@ internal static partial class AfterRunAuthorityHarness
             await runtime.Coordinator.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(20));
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             var state = runtime.Coordinator.State;
-            Console.WriteLine($"Cold restore created={created}: shell roster reads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
+            Console.WriteLine($"Cold restore method={method} created={created}: shell roster reads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
+            foreach (var metric in metrics)
+                Console.WriteLine("STARTUP_PRODUCTION_STAGE " + JsonSerializer.Serialize(metric));
+            Require(finalization is not null && finalization.LoadCalls == (created ? 0 : 1)
+                    && finalization.ReviewCalls == 0 && finalization.ConfirmCalls == 0 && finalization.LookupCalls == 0,
+                "Cold restore must load the actual Creation finalization projection once, without executing an action.");
             Require(state is { IsBusy: false, Error: null, Profile: not null }
                 && state.Profile.Created == created && state.WorkspaceId == imported.Id
+                && state.Profile.BuildMethod == method
                 && runtime.Shell.State.ActiveWorkspaceId == imported.Id
                 && runtime.Shell.State.OwnerContext == state.DisplayOwnerContext
                 && state.Session.OwnerContext == state.DisplayOwnerContext
                 && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Ready,
                 "Cold restore lost its exact owner, runner, method or ready route.");
+            Require((state.CreationFoundation is not null)
+                    == (!created && method == CharacterCreationBuildMethods.LifeModules),
+                "Production restore must retain Life Modules foundation without loading it for other methods.");
             Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
                 "Startup shell reuse changed the persisted runner.");
             Require(rosterReads == 1,
