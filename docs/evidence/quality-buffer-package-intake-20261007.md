@@ -43,8 +43,24 @@ The saved workspace digest remained unchanged; no Save was replayed.
 
 ## Delivery boundary
 
-Preview130 is the next local candidate. Final sealed-graph native smoke and
-ARM64 bundle/signature inspection remain separate from the checks above.
-No AAB, new signature, Play upload or physical installation is asserted here.
-Preview129 remains the latest observed Internal artifact. Native responsiveness
-and complete SR5 Creation remain open; Windows work remains stopped.
+Final sealed-graph native check on 7 October20:03UTC used SDK-test APK
+`f28ac766453613922272d666cf83a1ffd82bf334585d5290d1f278107679c0d7`,
+Android `a389d388b45790e43ebc2c47aed77275d5531a96` and the exact seal above.
+Build completed with zero warnings/errors. Independent test-certificate and
+all331 embedded content checks passed. In-place update and process2875→3932
+reopening retained workspace SHA-256
+`2ff4347b6641900db048c44c0634fb8d3e02e08ceb2844f031d5835dcdf410ad`.
+The saved runner appeared in Runners; Continue building rendered Create with
+unchanged Sum-to-Ten budgets/revision8/8. No mutation or Save was replayed.
+Screenshots and the final non-null hierarchy are retained in the private packet.
+
+The new process took6.254s for Shell initialization and12.521s for selected
+workspace restoration. Boot SystemUI ANR contaminated the initial33.809s
+observation; one post-restart null-root hierarchy also remains recorded as a
+failed observation, not a pass. No timeout or acceptance rule was weakened.
+No app FATAL/ANR was found in the captured new-process log; this is not an
+exhaustive crash-free claim. Emulator stopped normally and data were retained.
+
+ARM64 bundle/signature inspection and actual Play readback are separate release
+evidence. This document does not assert Play upload or physical installation.
+Native responsiveness and complete SR5 Creation remain open; Windows stopped.
