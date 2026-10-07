@@ -91,7 +91,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertIn('on:\n  push:\n    branches-ignore:\n      - "**"', text)
         self.assertNotIn("\non: []\n", text)
         self.assertIn("if: ${{ false }}", text)
-        self.assertIn("ac0fcc932302597f40c2904107f418deaba5c9b3", text)
+        self.assertIn("3f78ff99b6c4988990769627129493195d197dc7", text)
         final_receipt_name = "UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json"
         self.assertEqual(1, text.count(final_receipt_name))
         self.assertIn(
@@ -129,7 +129,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         lock = REPO / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
         self.assertTrue(lock.is_file())
         self.assertEqual(
-            "01e9db262d63018e78f21ecb8fe8df8d17091facb770835c86b1e2eab33e601a",
+            "3a762ac3051086ea948bef71162b649b5817fc695f2b0a0af52668c76af01be2",
             self.authority.sha256(lock),
         )
 
