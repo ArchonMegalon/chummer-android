@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 121 is the latest [observed Internal availability](../play/evidence/preview121-internal-observation.md),
+Preview 122 is the latest [observed Internal availability](../play/evidence/preview122-internal-observation.md),
+confirmed on 7 October at 03:48 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Individual Priority/Sum-to-Ten ranks can be cleared without resetting every
+category. Focused managed admission tests passed for both methods; actual
+API36 Sum-to-Ten correction, one confirmation and verified new-process reopen
+preserved the exact workspace bytes and unrelated selections. The separate
+SDK-test APK predates only version metadata121->122; exact ARM64 artifact checks
+cover that delta. **Physical Play122, slow native loading and complete SR5
+Creation remain open.** Initial SystemUI ANR, observer failures and an unchanged
+source-markup test failure are recorded; no exhaustive/native-speed claim.
+Preview121 and earlier artifacts and evidence remain unchanged.
+
+Preview 121's [observed Internal availability](../play/evidence/preview121-internal-observation.md),
 confirmed on 7 October at 03:00 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Lightweight Life Modules story readiness no longer loads next-module narrative
