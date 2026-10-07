@@ -2706,6 +2706,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             // Hydrate the actual account's local credential/owner authority before
             // Core publishes any roster, preferences or session. Hub validation
             // remains deferred until after this local Shell initialization.
+            long startupStage = System.Diagnostics.Stopwatch.GetTimestamp();
             if (_account is IAndroidAccountLocalIdentityInitializer identity)
             {
                 try
@@ -2720,9 +2721,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     // no exception text or fallback Local identity is invented.
                 }
             }
+            startupStage = TraceStartupStageTiming("local-identity", startupStage);
             if (TryCaptureWorkspaceOwner(out _)) RestoreCharacterSettingsCatalog();
             _rosterFavorites = _rosterFavoritePresenter.Load();
             _applicationSettings = _applicationSettingsPresenter.Load();
+            _ = TraceStartupStageTiming("local-settings", startupStage);
             _workspaceOwnerInitializationPending = !await InitializeWorkspaceOwnerAsync(cancellationToken);
             _initialized = true;
             _accountInitialization = InitializeAccountWithInitialPhoneReadinessAsync();
@@ -2760,20 +2763,28 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         await _workspaceActivationGate.WaitAsync(cancellationToken);
         try
         {
+            long startupStage = System.Diagnostics.Stopwatch.GetTimestamp();
             if (!await RecoverLocalRunnerAdoptionsAsync(cancellationToken)) return false;
+            startupStage = TraceStartupStageTiming("local-adoption-recovery", startupStage);
             await _shellPresenter.InitializeAsync(cancellationToken);
+            startupStage = TraceStartupStageTiming("shell-initialize", startupStage);
             await _presenter.InitializeAsync(cancellationToken);
+            startupStage = TraceStartupStageTiming("presenter-initialize", startupStage);
             // Never consult the old device-wide selected-runner or play
             // preferences before a real owner-bound Shell has been established.
             if (!IsWorkspaceOwnerInitialized()) return false;
             CharacterOverviewState? restored = await RestoreSelectedWorkspaceAsync(cancellationToken);
+            startupStage = TraceStartupStageTiming("selected-workspace-restore", startupStage);
             if (restored is not null)
                 await FinalizeShellAsync(syncPresenterContext: false, cancellationToken, restored);
             else
                 await SyncShellAsync(cancellationToken);
+            startupStage = TraceStartupStageTiming("shell-finalize", startupStage);
             _ = await TryRefreshWorkspaceAuthorityAsync(State.WorkspaceId, null, cancellationToken);
+            startupStage = TraceStartupStageTiming("workspace-authority-refresh", startupStage);
             if (!IsWorkspaceOwnerInitialized()) return false;
             RestorePlayState();
+            _ = TraceStartupStageTiming("play-state-restore", startupStage);
             return true;
         }
         finally
@@ -7323,6 +7334,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         {
             _shellSyncGate.Release();
         }
+    }
+
+    private static long TraceStartupStageTiming(string stage, long started)
+    {
+        long completed = System.Diagnostics.Stopwatch.GetTimestamp();
+        long elapsed = checked((long)Math.Round(
+            System.Diagnostics.Stopwatch.GetElapsedTime(started, completed).TotalMilliseconds,
+            MidpointRounding.AwayFromZero));
+        // Fixed stage names and durations only: no account, runner, path, token
+        // or character content. These observations grant no readiness authority.
+        string payload = FormattableString.Invariant(
+            $"CHUMMER_STARTUP_STAGE {{\"schema\":\"chummer.android.startup-stage-timing/v1\",\"stage\":\"{stage}\",\"elapsedMs\":{elapsed}}}");
+#if ANDROID
+        global::Android.Util.Log.Info(CreationBootstrapTimingLogTag, payload);
+#else
+        Console.WriteLine(payload);
+#endif
+        return System.Diagnostics.Stopwatch.GetTimestamp();
     }
 
     private static void TraceCreationBootstrapTiming(
