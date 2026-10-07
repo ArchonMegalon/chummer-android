@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 125 is the latest [observed Internal availability](../play/evidence/preview125-internal-observation.md),
+Preview 126 is the latest [observed Internal availability](../play/evidence/preview126-internal-observation.md),
+confirmed on 7 October at 13:09 Europe/Vienna. The complete Skills specialization
+picker replaces the former six-option limit and requires explicit preview.
+Focused managed checks and actual API 36 selection, one confirmation and verified
+new-process reopen passed; saved workspace bytes remained unchanged after restart.
+The local ARM64 AAB passed unsigned inspection, isolated existing-key signing
+and independent signature/certificate/payload verification before one upload.
+Core/UI inputs are unchanged. **Physical Play 126 installation, native speedup
+and complete SR5 Creation remain open.** The separate SDK-test APK predates only
+version metadata 125-to-126 and evidence. Boot SystemUI ANR, null/stale observers
+and the unchanged Priority markup test failure are recorded, not hidden.
+Preview 125 and earlier artifacts/evidence remain unchanged.
+
+Preview 125's [observed Internal availability](../play/evidence/preview125-internal-observation.md),
 confirmed on 7 October at 12:22 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Core reuses detached Creation Skills snapshots and per-projection XML buffers
