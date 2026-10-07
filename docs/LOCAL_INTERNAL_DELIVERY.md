@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 127 is the latest [observed Internal availability](../play/evidence/preview127-internal-observation.md),
+Preview 128 is the latest [observed Internal availability](../play/evidence/preview128-internal-observation.md),
+confirmed on 7 October at 17:30 Europe/Vienna. Core reuses temporary XML buffers
+inside one Creation Magic catalog projection, with unchanged rules and catalog
+digests. The corrected package graph passed focused managed checks and actual
+API 36 saved Skills upgrade/new-process reopening; Magic Mundane entry rendered.
+The local ARM64 AAB passed unsigned inspection, isolated existing-key signing
+and independent signature/certificate/payload verification before one upload.
+**Physical Play 128 installation, native speedup and complete SR5 Creation
+remain open.** The separate SDK-test APK predates only version metadata
+127-to-128 and evidence. Slow restoration, SystemUI ANR and failed null-root
+observations remain recorded. Preview 127 and earlier artifacts are unchanged.
+
+Preview 127's [observed Internal availability](../play/evidence/preview127-internal-observation.md),
 confirmed on 7 October at 13:58 Europe/Vienna. Creation Skills review now shows
 readable selections, costs and remaining points; technical digests/revisions are
 collapsed by default, and save feedback distinguishes the draft from Career.
