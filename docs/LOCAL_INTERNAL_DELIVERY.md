@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 131 is the latest [observed Internal availability](../play/evidence/preview131-internal-observation.md),
+Preview 132 is the latest [observed Internal availability](../play/evidence/preview132-internal-observation.md),
+confirmed on 8 October at 01:26 Europe/Vienna. Irrelevant exact-zero Mundane
+magic budgets are hidden; Qualities saving immediately shows readable progress
+and prevents duplicate taps. Focused managed/native checks and a real API 36
+Priority draft save/restart/receipt reopen passed with identical workspace bytes.
+The unchanged Core/UI graph was built locally for ARM64, signed with the
+existing isolated upload key and independently verified before one upload.
+**Physical Play 132 installation, complete Creation and native startup
+responsiveness remain open.** Preview 131 and earlier artifacts are unchanged.
+
+Preview 131's [observed Internal availability](../play/evidence/preview131-internal-observation.md),
 confirmed on 8 October at 00:28 Europe/Vienna (released at 00:27). Creation
 readiness avoids loading qualities, magic and gear catalogs for absent drafts;
 saved choices still reload fresh authority and required missing steps still
