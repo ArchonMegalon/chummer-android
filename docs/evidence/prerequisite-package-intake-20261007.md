@@ -55,10 +55,33 @@ process. Workspace SHA-256 stayed
 Observed restoration times were 25.484 and 14.521 seconds, not a controlled
 speedup. A SystemUI ANR remains recorded. No Save was replayed.
 
+## Final sealed-graph native check
+
+The exact Android tree `6fa3590f30bcbd31e223c46a3625119bb4050181`
+(commit `ff0b7756697376ea82b0acb4ce3be8c9a3ffeb21`) built locally in
+2m27s with zero warnings/errors, using the final seal above and no Core override.
+SDK-test APK SHA-256:
+`dcd510f066f414b7aabe9e32fb7516580b6a162643f812c0205cf49fc5793884`.
+Its test certificate and all 331 embedded content files were verified.
+
+An in-place update preserved the retained synthetic runner. Creation rendered
+before and after a verified force-stop/new process (PID 3573 to 3757). The
+workspace SHA-256 remained `2ff4347b6641900db048c44c0634fb8d3e02e08ceb2844f031d5835dcdf410ad`
+before upgrade, after upgrade and after restart. No Save was replayed and no
+data was wiped. Screenshots, complete non-null hierarchy observations and
+process-bound startup logs are retained in the private local packet.
+
+Workspace restoration took 25.613s and 14.440s; shell initialization took
+9.147s and 6.117s. These are observations, not a controlled native speedup.
+A boot SystemUI ANR was recorded and its visible Wait action selected once.
+The owned emulator is stopped; its saved data remains available.
+
 ## Delivery boundary
 
-Final sealed-graph native upgrade/reopen verification is still pending at this
-commit. No new AAB, signature, Play upload or physical installation is asserted.
+Preview129 is the next local candidate. The native SDK-test smoke above predates
+only version metadata (128 to 129) and this evidence text; exact ARM64 Release
+bundle inspection must cover the version/package/architecture delta.
+No new AAB, signature, Play upload or physical installation is asserted here.
 Preview128 remains the latest observed Internal artifact; its evidence and
 earlier release artifacts remain unchanged. Native responsiveness and complete
 SR5 Creation are still open.
