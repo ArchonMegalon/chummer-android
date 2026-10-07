@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 128 is the latest [observed Internal availability](../play/evidence/preview128-internal-observation.md),
+Preview 129 is the latest [observed Internal availability](../play/evidence/preview129-internal-observation.md),
+confirmed on 7 October at 19:56 Europe/Vienna. Core reuses temporary XML buffers
+inside one Creation prerequisite projection, with unchanged rule results and
+fresh owner admission. The exact package graph passed focused managed checks and
+API 36 in-place upgrade/new-process reopening with unchanged saved workspace bytes.
+The local ARM64 AAB passed unsigned inspection, isolated existing-key signing
+and independent signature/certificate/payload verification before one upload.
+**Physical Play 129 installation, controlled native speedup and complete SR5
+Creation remain open.** The separate SDK-test APK predates only version metadata
+128-to-129 and evidence. Slow restoration and the boot SystemUI ANR remain
+recorded. Preview 128 and earlier artifacts/evidence are unchanged.
+
+Preview 128's [observed Internal availability](../play/evidence/preview128-internal-observation.md),
 confirmed on 7 October at 17:30 Europe/Vienna. Core reuses temporary XML buffers
 inside one Creation Magic catalog projection, with unchanged rules and catalog
 digests. The corrected package graph passed focused managed checks and actual
