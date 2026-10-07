@@ -337,6 +337,24 @@ public static class BuildPageUiProjection
     public static string SaveToolbarText(bool hasDurableSaveNotice)
         => hasDurableSaveNotice ? "Saved." : "Save";
 
+    public static bool ShowCreationBudget(
+        CharacterCreationBudgetState budget,
+        bool currentMundaneAuthority)
+    {
+        // Presentation only: never turn a hidden empty card into readiness.
+        // Preserve unknown, blocked, allocated and inconsistent values, as well
+        // as every non-magic family. The actual Magic stage/editor stays intact.
+        bool magicBudget = budget.BudgetId is CharacterCreationBudgetIds.SpellsFormsPrograms
+            or CharacterCreationMagicResonancePresentationBudgetIds.Tradition
+            or CharacterCreationMagicResonancePresentationBudgetIds.Stream
+            or CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints
+            or CharacterCreationMagicResonancePresentationBudgetIds.Spells
+            or CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms;
+        return !currentMundaneAuthority || !magicBudget || !budget.IsExact
+            || budget.Blockers.Count != 0 || budget.Total != 0
+            || budget.Used != 0 || budget.Remaining != 0;
+    }
+
     /// <summary>
     /// Lets an exact, revision-bound typed domain projection rehydrate a Creation route whose
     /// generic wizard snapshot still carries the conservative legal-options placeholder.  The
@@ -2436,6 +2454,11 @@ public sealed class BuildPage : NativePageBase
                     },
                 _ => projectedBudget
             };
+            if (!BuildPageUiProjection.ShowCreationBudget(budget,
+                    readiness.MagicResonance
+                    && Coordinator.State.CreationMagicResonanceEditor?.Talent.Kind
+                        == CharacterCreationMagicResonanceKinds.Mundane))
+                continue;
             hasInexactBudget |= !budget.IsExact;
             string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
             string amount = budget.IsExact

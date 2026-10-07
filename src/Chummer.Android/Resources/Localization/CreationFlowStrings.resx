@@ -235,6 +235,8 @@
   <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revision {0} · transaction {1}</value></data>
   <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Your choices are saved with this draft. Their effects are applied when you finish creating your runner.</value></data>
   <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Save qualities</value></data>
+  <data name="Qualities.Review.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Qualities.Review.Confirming" xml:space="preserve"><value>Checking and saving qualities…</value></data>
   <data name="Qualities.Review.Heading" xml:space="preserve"><value>Review qualities</value></data>
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Review qualities</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>The Core preview, source authority or workspace revision changed.</value></data>

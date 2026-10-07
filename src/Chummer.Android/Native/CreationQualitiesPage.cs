@@ -1673,6 +1673,8 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         Spacing = 14
     };
     private IReadOnlyList<string> _blockers = [];
+    private readonly Button _apply;
+    private readonly Label _applyProgress = NativeTheme.Body(string.Empty);
     private int _applyStarted;
 
     internal CreationQualitiesReviewPage(
@@ -1689,11 +1691,17 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
             throw new InvalidOperationException("The review page requires one exact Reviewed checkpoint.");
         Title = CreationFlowStrings.Get("Qualities.Review.PageTitle", "Review qualities");
         AutomationId = "creation-qualities-review-page";
+        _apply = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Qualities.Review.Confirm", "Save qualities"));
+        _apply.AutomationId = "creation-qualities-confirm-draft";
+        _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
+        _applyProgress.AutomationId = "creation-qualities-confirm-progress";
+        _applyProgress.IsVisible = false;
         Content = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
+        UpdateConfirmationFeedback();
         _body.Clear();
         if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
         {
@@ -1754,18 +1762,8 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         foreach (string blocker in preview.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
 
-        Button apply = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
-            "Qualities.Review.Confirm",
-            "Save qualities"));
-        apply.AutomationId = "creation-qualities-confirm-draft";
-        apply.IsEnabled = _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
-                          && Coordinator.IsCreationCatalogDisplayCurrent(_original)
-                          && preview.CanConfirm
-                          && preview.RequiresExplicitConfirmation
-                          && preview.Blockers.Count == 0
-                          && Volatile.Read(ref _applyStarted) == 0;
-        apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
-        _body.Add(apply);
+        _body.Add(_applyProgress);
+        _body.Add(_apply);
         Label boundary = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Qualities.Review.Boundary",
@@ -1776,12 +1774,31 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         _body.Add(NativeTheme.TechnicalDetails(technical, "creation-qualities-review-technical-details"));
     }
 
+    private void UpdateConfirmationFeedback()
+    {
+        bool pending = Volatile.Read(ref _applyStarted) != 0;
+        _apply.Text = pending
+            ? CreationFlowStrings.Get("Qualities.Review.Saving", "Saving…")
+            : CreationFlowStrings.Get("Qualities.Review.Confirm", "Save qualities");
+        _apply.IsEnabled = !pending
+            && _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
+            && Coordinator.IsCreationCatalogDisplayCurrent(_original)
+            && _checkpoint.Preview.CanConfirm
+            && _checkpoint.Preview.RequiresExplicitConfirmation
+            && _checkpoint.Preview.Blockers.Count == 0;
+        _applyProgress.Text = CreationFlowStrings.Get("Qualities.Review.Confirming", "Checking and saving qualities…");
+        _applyProgress.IsVisible = pending;
+    }
+
     private async Task ApplyAsync()
     {
         if (Interlocked.CompareExchange(ref _applyStarted, 1, 0) != 0)
             return;
         try
         {
+            // RunAsync suppresses coordinator refresh while work is pending.
+            // Update the displayed controls before the first await, in place.
+            UpdateConfirmationFeedback();
             if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
             {
                 _blockers = [CharacterCreationQualitiesBlockers.RevisionConflict];

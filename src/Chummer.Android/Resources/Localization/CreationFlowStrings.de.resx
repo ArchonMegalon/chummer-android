@@ -235,6 +235,8 @@
   <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revision {0} · Transaktion {1}</value></data>
   <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Deine Auswahl wird im Entwurf gespeichert. Ihre Auswirkungen werden beim Abschluss der Erschaffung angewendet.</value></data>
   <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Vor- und Nachteile speichern</value></data>
+  <data name="Qualities.Review.Saving" xml:space="preserve"><value>Speichern…</value></data>
+  <data name="Qualities.Review.Confirming" xml:space="preserve"><value>Vor- und Nachteile werden geprüft und gespeichert…</value></data>
   <data name="Qualities.Review.Heading" xml:space="preserve"><value>Vor- und Nachteile prüfen</value></data>
   <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Vor- und Nachteile prüfen</value></data>
   <data name="Qualities.ReviewChanged" xml:space="preserve"><value>Die Core-Vorschau, Quelleninstanz oder Workspace-Revision wurde geändert.</value></data>
