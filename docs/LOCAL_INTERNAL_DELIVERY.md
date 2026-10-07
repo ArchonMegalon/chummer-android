@@ -126,7 +126,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 132 is the latest [observed Internal availability](../play/evidence/preview132-internal-observation.md),
+Preview 133 is the latest [observed Internal availability](../play/evidence/preview133-internal-observation.md),
+confirmed on 8 October at 01:48 Europe/Vienna. Creation opens Gear directly after
+saved Resources, with current-runner and stale-action checks. Focused managed,
+native and actual API 36 navigation/save/restart checks passed with identical
+saved workspace bytes. The unchanged Core/UI graph was built locally for ARM64,
+signed with the existing isolated upload key and independently verified before
+one Internal upload. **Physical Play 133 installation, complete Creation and
+native startup responsiveness remain open.** Earlier artifacts are unchanged.
+
+Preview 132's [observed Internal availability](../play/evidence/preview132-internal-observation.md),
 confirmed on 8 October at 01:26 Europe/Vienna. Irrelevant exact-zero Mundane
 magic budgets are hidden; Qualities saving immediately shows readable progress
 and prevents duplicate taps. Focused managed/native checks and a real API 36
