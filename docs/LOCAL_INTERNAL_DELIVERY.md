@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 122 is the latest [observed Internal availability](../play/evidence/preview122-internal-observation.md),
+Preview 123 is the latest [observed Internal availability](../play/evidence/preview123-internal-observation.md),
+confirmed on 7 October at 07:31 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+The converged Core/UI graph reduces redundant owner-bound Creation reads while
+retaining fresh mutation admission. Managed ownership/startup checks and actual
+saved Sum-to-Ten upgrade, VM reboot/new-process restoration and interactive
+Priorities passed with unchanged workspace bytes. The separate SDK-test APK
+predates only version metadata122->123; exact ARM64 artifact checks cover that
+delta. **Physical Play123, native responsiveness and complete SR5 Creation
+remain open.** Cold restore still took96.634s; system ANRs, observer failures and
+the non-green broader source-test selection are recorded, not hidden.
+Preview122 and earlier artifacts and evidence remain unchanged.
+
+Preview 122's [observed Internal availability](../play/evidence/preview122-internal-observation.md),
 confirmed on 7 October at 03:48 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Individual Priority/Sum-to-Ten ranks can be cleared without resetting every
