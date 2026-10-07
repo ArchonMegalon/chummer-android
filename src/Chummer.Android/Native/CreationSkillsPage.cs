@@ -19,6 +19,7 @@ public sealed class CreationSkillsPage : NativePageBase
     private string? _catalogSnapshotDigest;
     private int _activeCatalogOffset;
     private int _knowledgeCatalogOffset;
+    private long _renderGeneration;
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
@@ -33,6 +34,7 @@ public sealed class CreationSkillsPage : NativePageBase
 
     protected override void Refresh()
     {
+        _renderGeneration++;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
@@ -206,19 +208,7 @@ public sealed class CreationSkillsPage : NativePageBase
             }
             card.Add(controls);
             if (source.Specializations.Count > 0 && selected is { Rating: > 0, IsNativeLanguage: false })
-            {
-                FlexLayout specs = new() { Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap };
-                foreach (CharacterCreationSkillSpecializationOption option in source.Specializations.Take(6))
-                {
-                    Button button = NativeTheme.SecondaryButton(option.Name);
-                    button.Clicked += async (_, _) => await PreviewAsync(
-                        state,
-                        _draft.WithSpecialization(source, option.OptionId),
-                        _draft.Groups);
-                    specs.Add(button);
-                }
-                card.Add(specs);
-            }
+                AddSpecializationPicker(card, state, source, selected);
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-skill-{Token(source.SourceSkillId)}";
             _body.Add(border);
@@ -316,6 +306,58 @@ public sealed class CreationSkillsPage : NativePageBase
                 "Skills.TalentGrant",
                 "Free starting rating {0} from Talent Priority.",
                 minimumRating), NativeTheme.Muted));
+    }
+
+    private void AddSpecializationPicker(
+        VerticalStackLayout card,
+        CharacterCreationSkillsState state,
+        CharacterCreationSkillCatalogEntry source,
+        CharacterCreationSkillAllocation selected)
+    {
+        // Preserve the complete admitted catalog and its typed identities. Display
+        // names are not keys, and opening/selecting in the picker never spends points.
+        CharacterCreationSkillSpecializationOption[] options = source.Specializations.ToArray();
+        int currentIndex = selected.SpecializationOptionId is null ? 0
+            : Array.FindIndex(options, option => string.Equals(option.OptionId,
+                selected.SpecializationOptionId, StringComparison.Ordinal)) + 1;
+        Picker picker = new()
+        {
+            Title = CreationAllocationStrings.Get("SkillsReReview.ChooseSpecialization", "Choose specialization"),
+            ItemsSource = new[] { CreationAllocationStrings.Get("SkillsReReview.NoSpecialization", "No specialization") }
+                .Concat(options.Select(option => option.Name)).ToArray(),
+            SelectedIndex = currentIndex,
+            TextColor = NativeTheme.Text,
+            TitleColor = NativeTheme.Muted,
+            BackgroundColor = NativeTheme.Surface,
+            FontSize = 16,
+            AutomationId = $"creation-skill-specialization-{Token(source.SourceSkillId)}"
+        };
+        Button choose = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+            "SkillsReReview.SetSpecialization", "Preview specialization"));
+        choose.AutomationId = $"creation-skill-specialization-preview-{Token(source.SourceSkillId)}";
+        choose.IsEnabled = false;
+        picker.SelectedIndexChanged += (_, _) => choose.IsEnabled = picker.SelectedIndex >= 0
+            && picker.SelectedIndex <= options.Length && picker.SelectedIndex != currentIndex;
+        long renderGeneration = _renderGeneration;
+        long appearanceGeneration = CaptureAppearanceGeneration();
+        choose.Clicked += async (_, _) =>
+        {
+            int index = picker.SelectedIndex;
+            if (index < 0 || index > options.Length || index == currentIndex
+                || renderGeneration != _renderGeneration
+                || !IsCurrentAppearanceGeneration(appearanceGeneration)
+                || !_draft.Matches(state, Coordinator.State)
+                || _draft.Skills.SingleOrDefault(item => item.Kind == source.Kind
+                    && item.SourceSkillId == source.SourceSkillId) != selected)
+                return;
+            // WithSpecialization toggles an existing ID off. Use that path only
+            // for the explicit "No specialization" choice, never for a no-op.
+            string? optionId = index == 0 ? selected.SpecializationOptionId : options[index - 1].OptionId;
+            if (optionId is null) return;
+            await PreviewAsync(state, _draft.WithSpecialization(source, optionId), _draft.Groups);
+        };
+        card.Add(picker);
+        card.Add(choose);
     }
 
     private async Task PreviewAsync(
