@@ -10,15 +10,21 @@ belong to one synchronous projection; fresh source and owner checks are retained
 - Core package recipe: `e2b93e59ed68689b621a83be8a8b4cf29a00fb09`,
   normally merged through Core PR127 with an identical tree.
 - Core ZIP SHA-256: `031a2214ef4bdd9737798ecb9fe9f2d9316e463405f09290d69632e8aa0a7fab`.
-- Presentation seal: `ef4828df8933252a8eaf17d70ae15373ff10549d`.
+- Presentation seal: `8e89c3f92f5ea1c6c95c8cab69128ae48aa45b6e`.
 - Presentation lock SHA-256: `5be9df92d2f416eb28b1f1ddab37fee054483e9eddd9ce12640a13a7a579902f`.
-- Local UI consumer receipt SHA-256: `d1a5ce4e7f5e017db5c4b8d4c7d090adca1a963d1b5f5d7a2bc5330618e282f7`.
+- Local UI consumer receipt SHA-256: `74d930c296872ca796fcad6bc807b36d61565851e7fe1a2fee903c02ef1e3585`.
 - Owner-cache manifest SHA-256: `baa0efbb608eb8732259a1c8a4d77c09437f809405d5625c8e440a0e1e23ed54`.
 
 Actual local production emitted both UI locks. The exact local consumer passed
 five builds, 869 product tests and all selected owner/continuation regressions.
-The regular main-branch update for UI PR347 has the identical source tree to the
-tested seal; the receipt continues to name the original exact consumer commit.
+The original UI PR347 was superseded by PR348 to preserve the required seal
+topology after the protected preseal publication. PR348 merged normally as
+`c42cdf3c4d728b6cf78bfba3dd7484e534eb4969`, with the same source tree and
+unchanged package bytes. The exact corrected consumer passed locally at
+14:53:03 UTC; the receipt above binds `8e89c3f`, not the earlier seal.
+Two preceding download-preflight failures remain recorded; no TLS, timeout,
+retry, test or authority check was weakened. The successful local run used
+observational public-request logging outside the unchanged repository verifier.
 Android independently verifies all 18 packages and their authority files.
 All 331 rule-data files are unchanged; the content manifest records the new
 recipe provenance. APK assembly still uses pinned Presentation source and an
@@ -39,13 +45,27 @@ locales, actual Mystic Adept and Adept profiles, power/spell purchase, Skills to
 Magic revisit, single-save/cold-reopen, owner ABA, cancellation, recovery and
 uncertain-reply no-replay tests passed. These are managed native-source tests.
 The restore log retains a transient NuGet connection reset; restore completed.
+On the corrected seal, 270 focused package/source/authority/workflow verifier
+tests passed, and repository private-key hygiene passed. Initial local CLI
+invocations used the cache parent or the wrong test working directory; those
+failures were corrected at invocation only, without weakening any check. These
+synthetic verifier tests do not constitute hosted or physical runtime evidence.
 
 An earlier separate SDK-test API36 x64 APK with this Core bundle and the prior
 Presentation graph saved Aeronautics Mechanic 2-to-3 once and reopened the same
 Sum-to-Ten workspace after a verified new process. Revision 8/8, four receipts,
 40 remaining active points and exact saved bytes were retained. The final
-sealed-graph upgrade/read/reopen check remains pending; no mutation is replayed
-merely to refresh evidence.
+old-seal upgrade/read/reopen also passed with Android `f284da8fe06581bbe149548b6383170256b7d68b`
+and the earlier `ef4828df8` Presentation seal. Its separate SDK-test
+APK SHA-256 is `91d420d59f1508a2f639706c747f685ef587496aecb8014f789a815332a9d473`.
+The installed APK matched those bytes. After verified force-stop and a new
+process, the same Skills page showed revision 8/8, Aeronautics Mechanic 3 and
+40 remaining points; saved workspace SHA-256 remained
+`2ff4347b6641900db048c44c0634fb8d3e02e08ceb2844f031d5835dcdf410ad`.
+Direct current screenshots were inspected; two null-root accessibility
+observations remain failures. The owned emulator was stopped with its data
+retained. This does not qualify the later corrected Presentation commit, and
+no mutation was replayed merely to refresh evidence.
 
 ## Delivery boundary
 

@@ -13,7 +13,7 @@ GITIGNORE = REPO_ROOT / ".gitignore"
 PLAY_RELEASE = REPO_ROOT / "docs" / "PLAY_RELEASE.md"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "ef4828df8933252a8eaf17d70ae15373ff10549d",
+        "8e89c3f92f5ea1c6c95c8cab69128ae48aa45b6e",
     "ArchonMegalon/chummer6-core":
         "abee6939e92e1de29403e0665bfab42664ee18af",
     "ArchonMegalon/chummer6-hub":
