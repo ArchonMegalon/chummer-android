@@ -44,7 +44,7 @@ runner bytes/revision remained identical and missing Gear still blocked
 finalization. Boot-contaminated and interrupted observations remain excluded,
 not passing evidence. This is not a general latency guarantee.
 
-## Pending delivery checks
+## Android integration and delivery
 
 UI intake PR354 and seal PR355 merged normally. Local Android native-source,
 MAUI compilation and interaction-test builds completed with zero warnings/errors.
@@ -53,8 +53,21 @@ existing Career runner without mutation; failed presenter reads retain fail-clos
 recovery. Android separately validated all 18 pinned packages and 331 unchanged
 rule-data files against the new recipe provenance.
 
-The final sealed-graph Android build and affected update/process-restart smoke
-remain required. The private diagnostic cache is not a release input. No new
-signed AAB, Play upload, physical installation or full Creation completion is
-asserted here. Preview 130 remains the observed Internal release until a new
-exact artifact is signed, uploaded and read back. Windows work remains stopped.
+The final sealed-graph API36 x64 SDK-test APK builds with zero warnings/errors:
+`6e58db9da2e578e74abadc4f8260dfe0318d9600fb3d1b1434e726d08b4afc7f`.
+Certificate and embedded-content checks pass. In-place update and verified
+process3070-to-3783 reopening retain identical synthetic workspace bytes:
+`2ff4347b6641900db048c44c0634fb8d3e02e08ceb2844f031d5835dcdf410ad`,
+revision8/8, same Sum-to-Ten Human Mundane runner and budgets. Missing Gear still
+blocks finalization. No Save, import or mutation was replayed. First-boot
+SystemUI ANR is retained separately; new-process screenshots/hierarchy and
+fresh route identity pass. Shell initialization9.418s and restoration13.523s
+remain slow, not proof of general responsiveness or a controlled speedup.
+
+CorePR130, UI354/355 and Android541 merged normally with required checks.
+The private diagnostic override is not a release input. One local ARM64 AAB,
+unsigned inspection, isolated existing-key signing and independent keyless
+signature/certificate/payload verification passed. [Preview131](../../play/evidence/preview131-internal-observation.md)
+was observed Available to internal testers on8October00:27Europe/Vienna.
+Physical Play installation and full Creation completion remain unverified.
+Preview130 artifacts remain unchanged; Windows work remains stopped.

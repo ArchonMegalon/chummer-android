@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 130 is the latest [observed Internal availability](../play/evidence/preview130-internal-observation.md),
+Preview 131 is the latest [observed Internal availability](../play/evidence/preview131-internal-observation.md),
+confirmed on 8 October at 00:28 Europe/Vienna (released at 00:27). Creation
+readiness avoids loading qualities, magic and gear catalogs for absent drafts;
+saved choices still reload fresh authority and required missing steps still
+block finalization. Exact sealed-graph native update/new-process reopening
+retained identical saved runner bytes. Local ARM64 inspection, isolated
+existing-key signing and independent signature/certificate/payload checks passed
+before one Internal upload. **Physical Play131 installation, native startup
+responsiveness and complete SR5 Creation remain open.** Restoration13.523s is
+still slow; no controlled native speedup is claimed. Preview130 and earlier
+artifacts/evidence remain unchanged.
+
+Preview 130's [observed Internal availability](../play/evidence/preview130-internal-observation.md),
 confirmed on 7 October at 22:10 Europe/Vienna. Core reuses private XML buffers
 inside a quality catalog projection, with unchanged rule results and owner
 admission. Exact sealed-graph native upgrade/new-process reopening retained
