@@ -574,7 +574,8 @@ internal static partial class AfterRunAuthorityHarness
             bool lifeModuleInputDrafts = false,
             Func<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService,
                 Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>? lifeBookDecorator = null,
-            bool localRunnerAdoption = false)
+            bool localRunnerAdoption = false,
+            Func<IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleOriginService>? lifeOriginDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -732,8 +733,9 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>())
                         ?? _provider.GetRequiredService<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>(),
                     lifeModuleInputDrafts: lifeModuleInputDrafts ? completionDrafts : null,
-                    originLifeModuleRuntime: lifeCompletionDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
-                        _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
+                    originLifeModuleRuntime: lifeCompletionDecorator is null && lifeOriginDecorator is null ? null : new OriginDossierLifeModulePhoneRuntime(
+                        lifeOriginDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(),
                         originTimeline),
                     originBookReadings: originReadings,
                     originBookScenes: originScenes,

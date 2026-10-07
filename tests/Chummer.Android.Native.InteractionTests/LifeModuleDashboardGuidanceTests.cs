@@ -1,4 +1,6 @@
 using Chummer.Android.Native;
+using Chummer.Application.LifeModules;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Owners;
@@ -16,9 +18,11 @@ internal static partial class AfterRunAuthorityHarness
             var owners = new ControlledLinkedOwner();
             owners.Set(OwnerScope.LocalSingleUser);
             LifeBookReadProbe? probe = null;
+            DashboardAvailabilityProbe? availability = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                 productionCreationOverview: true, linkedOwners: owners,
-                lifeBookDecorator: actual => probe = new(actual));
+                lifeBookDecorator: actual => probe = new(actual),
+                lifeOriginDecorator: actual => availability = new(actual));
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             await CreateRunner();
@@ -48,7 +52,10 @@ internal static partial class AfterRunAuthorityHarness
             await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 2));
             await runtime.Presenter.LoadAsync(id, default);
             await Observe(copy["Origin.ReaderFullTextPending"], false, "opening complete, no prose");
+            int availabilityReads = availability!.Reads;
             var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            Require(availability.Reads == availabilityReads + 1 && book.Opportunities is not null,
+                "The full reader lost the Core-owned narrative opportunities needed for authoring.");
             var chapter = book.Chapters.Last();
             var draft = OriginBookProseDraft.Create(chapter, book.Locale,
                 OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)), new string('f', 64),
@@ -73,8 +80,16 @@ internal static partial class AfterRunAuthorityHarness
 
             async Task Observe(string expected, bool showMechanics, string scenario)
             {
-                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"))
-                    .WaitAsync(TimeSpan.FromSeconds(30));
+                int reads = availability!.Reads;
+                availability.FailIfRead = true;
+                try
+                {
+                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"))
+                        .WaitAsync(TimeSpan.FromSeconds(30));
+                }
+                finally { availability.FailIfRead = false; }
+                Require(availability.Reads == reads,
+                    "Story readiness unnecessarily queried next-module availability: " + scenario);
                 var elements = IssuedElements(page).ToArray();
                 Require(elements.OfType<Label>().Single(e => e.AutomationId == "creation-life-module-scope").Text == expected,
                     "Wrong Life Modules dashboard guidance: " + scenario);
@@ -88,5 +103,32 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS Life Modules dashboard guidance: " + scenario);
             }
         });
+    }
+
+    private sealed class DashboardAvailabilityProbe(IOwnerBoundLifeModuleOriginService inner)
+        : IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleAvailabilityService
+    {
+        private int _reads;
+        public int Reads => Volatile.Read(ref _reads);
+        public bool FailIfRead { get; set; }
+        public bool IsCurrent(OwnerContextStamp owner) => inner.IsCurrent(owner);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Start(OwnerContextStamp owner, string id)
+            => inner.Start(owner, id);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Restore(OwnerContextStamp owner,
+            LifeModuleOriginDossierDraftCheckpoint checkpoint) => inner.Restore(owner, checkpoint);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Prepare(OwnerContextStamp owner,
+            LifeModuleOriginDossierDraftCheckpoint checkpoint, string choiceId,
+            IReadOnlyDictionary<string, string>? followUpValues = null)
+            => inner.Prepare(owner, checkpoint, choiceId, followUpValues);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierInteractionAdvance> Confirm(OwnerContextStamp owner,
+            LifeModuleOriginDossierDraftCheckpoint checkpoint, string previewDigest, string idempotencyKey,
+            bool explicitlyConfirmed) => inner.Confirm(owner, checkpoint, previewDigest, idempotencyKey, explicitlyConfirmed);
+        public LifeModuleOriginDossierResult<LifeModuleDecisionAvailabilitySnapshot> LoadAvailability(OwnerContextStamp owner,
+            LifeModuleDecisionAvailabilityRequest request)
+        {
+            Interlocked.Increment(ref _reads);
+            if (FailIfRead) throw new IOException("Next-module availability must not block story readiness.");
+            return ((IOwnerBoundLifeModuleAvailabilityService)inner).LoadAvailability(owner, request);
+        }
     }
 }
