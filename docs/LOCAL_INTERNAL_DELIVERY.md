@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 123 is the latest [observed Internal availability](../play/evidence/preview123-internal-observation.md),
+Preview 124 is the latest [observed Internal availability](../play/evidence/preview124-internal-observation.md),
+confirmed on 7 October at 09:58 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Core's detached Priority/Sum-to-Ten qualities/magic projections reuse work inside
+one admitted context without weakening fresh validation. Focused managed tests
+and actual API36 Sum-to-Ten Body2-to3, one Save and new-process reopen passed;
+the exact saved workspace remained unchanged after restart. Qualities loaded.
+The separate SDK-test APK predates only version metadata123-to124 and evidence;
+ARM64 artifact checks cover that delta. **Physical Play124, native responsiveness
+and complete SR5 Creation remain open.** Cold restore29.803s then14.566s is not
+controlled speedup evidence. System ANRs and null observers remain recorded.
+Preview123 and earlier artifacts/evidence are unchanged.
+
+Preview 123's [observed Internal availability](../play/evidence/preview123-internal-observation.md),
 confirmed on 7 October at 07:31 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 The converged Core/UI graph reduces redundant owner-bound Creation reads while
