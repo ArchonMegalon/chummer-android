@@ -18,9 +18,9 @@ internal static class Program
             await AfterRunAuthorityHarness.RunPrivateStoriesNavigationAsync(args[1]);
             return;
         }
-        if (args.Length == 2 && args[0] == "--life-dashboard-guidance-content-root")
+        if (args.Length is 2 or 3 && args[0] == "--life-dashboard-guidance-content-root")
         {
-            await AfterRunAuthorityHarness.RunLifeModuleDashboardGuidanceAsync(args[1]);
+            await AfterRunAuthorityHarness.RunLifeModuleDashboardGuidanceAsync(args[1], args.Length == 3 ? args[2] : null);
             return;
         }
         if (args.Length == 2 && args[0] == "--local-runner-adoption-content-root")

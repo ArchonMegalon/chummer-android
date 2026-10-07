@@ -655,9 +655,13 @@ public sealed partial class RunnerSessionCoordinator
             ct.ThrowIfCancellationRequested();
             if (!isCurrentPage() || !IsNativeEditDisplayCurrent(original)) return unavailable;
             OriginChapterNarrativeContext? opportunities = null;
+            // Only the complete reader/authoring edition needs next-module
+            // hints. Story readiness must not rebuild that catalog or depend
+            // on its availability just to check saved reading acknowledgements.
             // Read the exact owner/turn from Core; no display-budget inference
             // and no timeline Open/Restore merely to obtain optional hints.
-            if (!projection.CurrentTurn.IsTerminal && _originLifeModuleRuntime is { } originRuntime)
+            if (includeIllustrations && !projection.CurrentTurn.IsTerminal
+                && _originLifeModuleRuntime is { } originRuntime)
             {
                 var request = new LifeModuleDecisionAvailabilityRequest(id.Value, original.ContentRevision,
                     original.SavedRevision, projection.CurrentTurn.TurnId, projection.CurrentTurn.DecisionDigest);

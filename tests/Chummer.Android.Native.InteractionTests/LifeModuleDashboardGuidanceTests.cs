@@ -10,7 +10,7 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    internal static async Task RunLifeModuleDashboardGuidanceAsync(string contentRoot)
+    internal static async Task RunLifeModuleDashboardGuidanceAsync(string contentRoot, string? smokeDirectory = null)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -46,12 +46,14 @@ internal static partial class AfterRunAuthorityHarness
             await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 1));
             await runtime.Presenter.LoadAsync(id, default);
             await Observe(copy["Origin.OpeningSetupRequired"], false, "birth chosen, childhood pending");
+            Dump("birth");
 
             await CreateRunner();
             id = runtime.Coordinator.State.WorkspaceId!.Value;
             await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 2));
             await runtime.Presenter.LoadAsync(id, default);
             await Observe(copy["Origin.ReaderFullTextPending"], false, "opening complete, no prose");
+            Dump("pending");
             int availabilityReads = availability!.Reads;
             var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
             Require(availability.Reads == availabilityReads + 1 && book.Opportunities is not null,
@@ -66,6 +68,7 @@ internal static partial class AfterRunAuthorityHarness
             book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, draft, true, true, () => true, default))!;
             Require(book.HasReadCurrentStory, "The fixture failed to acknowledge the chapter.");
             await Observe(CreationAllocationStrings.Get("LifeDashboard.StoryHelp", ""), true, "read chapter reopened from disk");
+            Dump("read");
             Require(alerts.Titles.Count == 0, "Dashboard guidance raised an unexpected blocking alert.");
             ui.AssertHealthy();
 
@@ -76,6 +79,21 @@ internal static partial class AfterRunAuthorityHarness
                 await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
                 await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
                 await runtime.Coordinator.SaveAsync();
+            }
+
+            void Dump(string name)
+            {
+                if (smokeDirectory is null) return;
+                string destination = Path.Combine(smokeDirectory, name);
+                Require(Path.IsPathFullyQualified(destination) && !Directory.Exists(destination),
+                    "Smoke fixtures need a fresh absolute destination.");
+                Directory.CreateDirectory(destination);
+                foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*.json", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(destination, Path.GetRelativePath(runtime.StateDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target);
+                }
             }
 
             async Task Observe(string expected, bool showMechanics, string scenario)
