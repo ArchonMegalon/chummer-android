@@ -67,10 +67,33 @@ observations remain failures. The owned emulator was stopped with its data
 retained. This does not qualify the later corrected Presentation commit, and
 no mutation was replayed merely to refresh evidence.
 
+## Corrected-seal native upgrade and reopen
+
+The final corrected-seal SDK-test APK was built from Android
+`bb4da3322ea232d876d40433bb0e4ace6a5bf2db`, tree
+`92fa376f3c296e82f5800f706dd5375f1443df0d`, and Presentation `8e89c3f`.
+Its SHA-256 is `7baaf6ec828cafa88d32a6e7193cedfa76361c963aae661bf65da2cb5281f5e2`;
+the local build completed with zero warnings/errors. Installed bytes matched.
+An in-place upgrade retained the exact saved workspace hash above. After a
+verified force-stop and new process, the visible Skills page again showed
+revision 8, Aeronautics Mechanic 3 and 40 remaining active points. The saved
+workspace bytes remained identical. No Save or mutation was replayed.
+
+The Magic/Resonance page also opened with the existing Mundane talent and zero
+magic/resonance budgets. This is a native entry/read check, not a magical talent
+purchase or all-method coverage claim. Four null-root hierarchy observations
+remain failures; separate current screenshots were visually inspected. The
+initial emulator boot produced a SystemUI ANR. Workspace restoration took
+72.111 seconds on the first launch and 43.310 seconds after process restart;
+these are not controlled speedup results. The emulator was stopped and its
+saved data retained. Native loading performance remains an open defect.
+
+Only release version metadata 127-to-128 and this evidence change after that
+SDK-test build; the exact ARM64 bundle must still be built and inspected.
+
 ## Delivery boundary
 
 No new AAB, signing, Play upload or physical installation is asserted here.
-Preview127 remains the last confirmed Internal artifact. Earlier emulator
-SystemUI ANR and null accessibility observations remain recorded. Restored
-workspace readiness still took about 18 seconds; native responsiveness and
-complete SR5 Creation remain open. Existing releases and evidence are immutable.
+Preview127 remains the last confirmed Internal artifact. Preview128 is only the
+next local candidate. Native responsiveness and complete SR5 Creation remain
+open. Existing releases and evidence are immutable.
