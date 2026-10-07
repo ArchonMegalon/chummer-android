@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 120 is the latest [observed Internal availability](../play/evidence/preview120-internal-observation.md),
+Preview 121 is the latest [observed Internal availability](../play/evidence/preview121-internal-observation.md),
+confirmed on 7 October at 03:00 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Lightweight Life Modules story readiness no longer loads next-module narrative
+opportunities; full-reader/authoring and owner/revision/prose checks remain.
+Affected nonterminal dashboard, full synthetic chapter and verified new-process
+reopening passed with all six original saved JSON files byte-identical.
+The separate SDK-test APK predates only the two version metadata changes120→121;
+the exact ARM64 build/artifact checks cover that delta. **Physical Play121,
+slow native loading and all-method SR5 Creation remain open.** Initial system
+crashes/ANRs and observer failures are retained; no new provider-book, native-speed
+or exhaustive qualification claim. Preview120 and earlier evidence stays intact.
+
+Preview 120's [observed Internal availability](../play/evidence/preview120-internal-observation.md),
 confirmed on 7 October at 02:12 Europe/Vienna; Console release time is 02:11.
 Its local ARM64 AAB was separately signed with the existing upload key and
 independently verified. Core reuses the detached Life Modules method-rejection
