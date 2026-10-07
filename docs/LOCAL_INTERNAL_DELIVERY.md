@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 126 is the latest [observed Internal availability](../play/evidence/preview126-internal-observation.md),
+Preview 127 is the latest [observed Internal availability](../play/evidence/preview127-internal-observation.md),
+confirmed on 7 October at 13:58 Europe/Vienna. Creation Skills review now shows
+readable selections, costs and remaining points; technical digests/revisions are
+collapsed by default, and save feedback distinguishes the draft from Career.
+Focused managed checks and the actual API 36 review/disclosure/save/new-process
+route passed, with unchanged saved bytes after restart. The local ARM64 AAB
+passed unsigned inspection, isolated existing-key signing and independent
+signature/certificate/payload verification before one upload. Core/UI inputs
+are unchanged. **Physical Play 127 installation, native speedup and complete
+SR5 Creation remain open.** The separate SDK-test APK predates only version
+metadata 126-to-127 and evidence. SystemUI ANR and null/stale observations remain
+recorded. Preview 126 and earlier artifacts/evidence are unchanged.
+
+Preview 126's [observed Internal availability](../play/evidence/preview126-internal-observation.md),
 confirmed on 7 October at 13:09 Europe/Vienna. The complete Skills specialization
 picker replaces the former six-option limit and requires explicit preview.
 Focused managed checks and actual API 36 selection, one confirmation and verified
