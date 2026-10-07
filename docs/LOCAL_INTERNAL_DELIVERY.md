@@ -126,7 +126,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 119 is the latest [observed Internal availability](../play/evidence/preview119-internal-observation.md),
+Preview 120 is the latest [observed Internal availability](../play/evidence/preview120-internal-observation.md),
+confirmed on 7 October at 02:12 Europe/Vienna; Console release time is 02:11.
+Its local ARM64 AAB was separately signed with the existing upload key and
+independently verified. Core reuses the detached Life Modules method-rejection
+projection without weakening Priority-editor rejection or live-source checks.
+Focused saved completion/Qualities/Talent and verified new-process reopening
+passed with unchanged runner/input/draft/reading/settings bytes. The native
+SDK-test APK predates only the two version metadata changes from119 to120;
+the exact ARM64 release build and artifact checks cover that delta.
+**Physical Play120 installation, slow loading and all-method SR5 Creation remain
+open.** Managed allocation reduction is not native latency/peak-memory proof.
+Boot SystemUI ANR and loading-state observer failures remain documented;
+this is not a fresh mutation, full Career or new generated-book test.
+Preview119 and earlier artifacts/evidence remain unchanged.
+
+Preview 119's [observed Internal availability](../play/evidence/preview119-internal-observation.md),
 confirmed on 7 October at 00:28 Europe/Vienna. One exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Core avoids redundant hashing of freshly owned Origin projections while keeping
