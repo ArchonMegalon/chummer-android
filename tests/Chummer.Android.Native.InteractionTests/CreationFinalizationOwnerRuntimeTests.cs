@@ -512,17 +512,95 @@ internal static partial class AfterRunAuthorityHarness
             await ClickAsync(Choose());
             Require(FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(before),
                 "Previewing specialization changes mutated the saved workspace.");
-            // The page already uses the existing immutable review/confirm flow;
-            // exercise that same issued Core preview at its persistence boundary.
-            var savedResult = await runtime.Coordinator.ConfirmCreationSkillsAsync(
-                Draft().Preview!, Draft().Skills, Draft().Groups,
-                CreationSkillsPhoneAuthority.ComputeIdempotencyKey(Draft().Preview!, Draft().Skills, Draft().Groups));
-            Require(savedResult.Receipt is not null && savedResult.Blockers.Count == 0,
+            // Exercise the actual review page, including its ordinary (non-proof)
+            // accessibility tree and explicit save, against the same Core preview.
+            var preview = Draft().Preview!;
+            string previewBytes = JsonSerializer.Serialize(preview);
+            CreationSkillsPhoneConfirmResult? savedResult = null;
+            var review = new CreationSkillsPreviewPage(runtime.Coordinator, preview,
+                Draft().Skills, Draft().Groups, result => savedResult = result);
+            IssuedPageLifecycle(page, "OnDisappearing");
+            _ = new Window(new NavigationPage(review));
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(review, "OnAppearing"));
+            VerticalStackLayout Details() => MinimalVisible(review).OfType<VerticalStackLayout>()
+                .Single(item => item.AutomationId == "creation-skills-preview-details");
+            void CheckDisclosure(bool afterSave)
+            {
+                MinimalRequireNoMachineValues(review);
+                string visible = MinimalVisibleText(review);
+                Require(visible.Contains(source.Name, StringComparison.Ordinal)
+                    && visible.Contains(source.Specializations.Last().Name, StringComparison.Ordinal)
+                    && visible.Contains(CreationAllocationStrings.Get("SkillsPreview.PointCost", ""), StringComparison.Ordinal)
+                    && !visible.Contains(CreationAllocationStrings.Get("Common.ContentRevision", ""), StringComparison.Ordinal),
+                    "Review hid a player choice/cost or exposed receipt internals.");
+                var details = Details();
+                var toggle = details.Children.OfType<Button>().Single();
+                var content = details.Children.OfType<VerticalStackLayout>().Single();
+                Require(!content.IsVisible, "Review diagnostics were expanded by default.");
+                ((IButtonController)toggle).SendClicked();
+                Require(content.IsVisible
+                    && MinimalVisible(review).OfType<Label>().Any(item =>
+                        item.AutomationId == "creation-skills-preview-digest" && item.Text == preview.PreviewDigest)
+                    && MinimalVisible(review).OfType<Label>().Any(item =>
+                        item.AutomationId == "creation-skills-preview-raw-character-xml-digest"
+                        && item.Text == preview.Binding.RawCharacterXmlDigest),
+                    "Explicit disclosure lost exact preview diagnostics or automation anchors.");
+                if (afterSave)
+                    Require(MinimalVisible(review).OfType<Label>().Any(item =>
+                        item.AutomationId == "creation-skills-receipt-digest"
+                        && item.Text == savedResult!.Receipt!.ReceiptDigest),
+                        "Explicit disclosure lost the exact saved receipt digest.");
+                ((IButtonController)toggle).SendClicked();
+                Require(!content.IsVisible, "Review diagnostics would not collapse.");
+                MinimalRequireNoMachineValues(review);
+                MinimalRender(review);
+                ((IButtonController)toggle).SendClicked();
+                Require(!content.IsVisible, "A retained diagnostic toggle survived a new render.");
+            }
+            var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (var (culture, heading, save) in new[]
+                {
+                    ("en", "Your skills", "Save skills"),
+                    ("de", "Deine Fertigkeiten", "Fertigkeiten speichern"),
+                    ("es", "Tus habilidades", "Guardar habilidades")
+                })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = new(culture);
+                    MinimalRender(review);
+                    Require(MinimalVisibleText(review).Contains(heading.ToUpperInvariant(), StringComparison.Ordinal)
+                        && MinimalVisible(review).OfType<Button>().Any(item =>
+                            item.AutomationId == "creation-skills-confirm" && item.Text == save && item.IsEnabled),
+                        "Review did not render its readable localized selection/save copy.");
+                    CheckDisclosure(afterSave: false);
+                }
+            }
+            finally { System.Globalization.CultureInfo.CurrentUICulture = originalCulture; }
+            Require(JsonSerializer.Serialize(preview) == previewBytes
+                && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(before),
+                "Reading or disclosing a review changed the preview or saved runner.");
+            MinimalRender(review);
+            await ClickAsync(MinimalVisible(review).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-skills-confirm"));
+            Require(savedResult?.Receipt is not null && savedResult.Blockers.Count == 0,
                 "The last catalog specialization could not be saved: " + JsonSerializer.Serialize(savedResult));
+            Require(MinimalVisibleText(review).Contains(
+                    CreationAllocationStrings.Get("SkillsPreview.SavedHeading", "").ToUpperInvariant(), StringComparison.Ordinal)
+                && MinimalVisibleText(review).Contains(
+                    CreationAllocationStrings.Get("SkillsPreview.DurablePendingFinalization", ""), StringComparison.Ordinal)
+                && !MinimalVisible(review).OfType<Button>().Any(item => item.AutomationId == "creation-skills-confirm"),
+                "Save did not show a readable, distinct draft receipt or still offered confirmation.");
+            CheckDisclosure(afterSave: true);
             var saved = readSaved();
             Require(saved.ContentRevision == before.ContentRevision + 1
                 && saved.ContentRevision == saved.SavedRevision, "Specialization save was not once-only.");
-            IssuedPageLifecycle(page, "OnDisappearing");
+            var departedDetails = Details();
+            var departedToggle = departedDetails.Children.OfType<Button>().Single();
+            var departedContent = departedDetails.Children.OfType<VerticalStackLayout>().Single();
+            IssuedPageLifecycle(review, "OnDisappearing");
+            ((IButtonController)departedToggle).SendClicked();
+            Require(!departedContent.IsVisible, "Departed review exposed retained diagnostics.");
             await HydrateFinalizationOwnerAsync(runtime, owners, saved);
             state = runtime.Coordinator.LoadCreationSkills().Value!;
             page = new CreationSkillsPage(runtime.Coordinator, state);
@@ -553,7 +631,7 @@ internal static partial class AfterRunAuthorityHarness
             IssuedPageLifecycle(page, "OnDisappearing");
             ui.AssertHealthy();
         });
-        Console.WriteLine($"PASS Skills picker: all {source.Specializations.Count} options for {source.Name}, last ID preview/save/reopen, no implicit mutation, explicit removal, stale render/appearance/owner rejection");
+        Console.WriteLine($"PASS Skills picker/review: all {source.Specializations.Count} options for {source.Name}, EN/DE/ES readable review, collapsed exact diagnostics, explicit save/receipt/reopen, no implicit mutation, explicit removal, stale render/appearance/owner rejection");
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)
