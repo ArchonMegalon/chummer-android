@@ -1586,6 +1586,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Gear receipt failed after a fresh persisted-state load.");
             Console.WriteLine("PASS actual nonempty Gear receipt, cold reload, value-equal budgets and hostile budget deltas");
             using var ui = new IssuedPageUiContext();
+            await ui.RunAsync(() => VerifyDirectGearRouteAsync(runtime, presenter, owners, ui));
             await ui.RunAsync(() => VerifyGearCatalogNavigationAsync(runtime, presenter, owners, ui));
             Console.WriteLine("PASS actual Core Gear raw auxiliary digest, hostile formats and stale revision rejected");
         }
@@ -1863,6 +1864,79 @@ internal static partial class AfterRunAuthorityHarness
         Require(runtime.Coordinator.State.ContentRevision == before.ContentRevision,
             "Catalog navigation must not mutate the workspace or increment its revision.");
         Console.WriteLine("PASS native Qualities background read, live UI heartbeat, one-read paging/search, canceled load and owner ABA rejection");
+    }
+
+    private static async Task VerifyDirectGearRouteAsync(NativeRewardRuntime runtime,
+        ICharacterCreationGearInteractionPresenter presenter, ControlledLinkedOwner owners, IssuedPageUiContext ui)
+    {
+        var before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        var resourcesPresenter = new CharacterCreationResourcesInteractionPresenter(
+            runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>());
+        var resources = resourcesPresenter.Load(runtime.Coordinator.State);
+        Require(resources.State?.PendingDraft is not null
+            && CreationResourcesPhoneAuthority.IsReady(resources.State, runtime.Coordinator.State),
+            "SETUP: Gear navigation needs the current saved Resources draft.");
+        var render = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var resolve = typeof(BuildPage).GetMethod("CreationGearRoute", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        foreach (bool ready in new[] { false, true })
+        foreach (bool wired in new[] { false, true })
+        {
+            var page = new BuildPage(runtime.Coordinator, resourcesPresenter, runtime.Presenter, wired ? presenter : null);
+            var navigation = new NavigationPage(page);
+            _ = new Window(navigation);
+            var readiness = new CreationDashboardRenderReadiness(
+                () => false, () => false, () => false, () => false, () => false, () => ready);
+            render.Invoke(page, [runtime.Coordinator.State.CreationWizard!, null, null, null, null,
+                null, resources, readiness]);
+            var button = MinimalVisible(page).OfType<Button>().Single(item => item.AutomationId == "creation-stage-gear");
+            Require(button.IsEnabled == (ready && wired),
+                "Direct Gear entry borrowed readiness or lost its required presenter.");
+            if (button.IsEnabled)
+            {
+                await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                Require(navigation.Navigation.NavigationStack.Last() is CreationGearPage,
+                    "The Gear row did not open the actual Gear editor directly.");
+                await navigation.PopAsync(false);
+            }
+            else
+            {
+                var route = (CreationBudgetRoute)resolve.Invoke(page, [resources, ready])!;
+                await route.Open();
+                Require(navigation.Navigation.NavigationStack.Count == 1,
+                    "A disabled Gear route still navigated.");
+            }
+        }
+        var guarded = new BuildPage(runtime.Coordinator, resourcesPresenter, runtime.Presenter, presenter);
+        var nav = new NavigationPage(guarded);
+        _ = new Window(nav);
+        foreach (var missing in new CharacterCreationResourcesInteractionLoadResult?[]
+        {
+            null,
+            resources with { State = resources.State! with { PendingDraft = null } },
+            resources with { State = resources.State! with
+                { Binding = resources.State!.Binding with { ContentRevision = resources.State.Binding.ContentRevision + 1 } } }
+        })
+        {
+            var route = (CreationBudgetRoute)resolve.Invoke(guarded, [missing, true])!;
+            Require(!route.CanOpen, "Gear admitted absent, unsaved or stale Resources.");
+            await route.Open();
+        }
+        var oldRender = (CreationBudgetRoute)resolve.Invoke(guarded, [resources, true])!;
+        var generation = typeof(BuildPage).GetField("_dossierRenderGeneration", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        generation.SetValue(guarded, (long)generation.GetValue(guarded)! + 1);
+        await oldRender.Open();
+        var oldOwner = (CreationBudgetRoute)resolve.Invoke(guarded, [resources, true])!;
+        var originalOwner = owners.Capture().Owner;
+        owners.Set(ContactsOwnerB);
+        owners.Set(originalOwner);
+        await oldOwner.Open();
+        Require(nav.Navigation.NavigationStack.Count == 1,
+            "A stale render or A→B→A owner transition revived the Gear route.");
+        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        ui.AssertHealthy();
+        Console.WriteLine("PASS direct Gear row: typed saved Resources, real editor, missing/stale/owner/render rejection, unchanged saved bytes");
     }
 
     private static async Task VerifyGearCatalogNavigationAsync(NativeRewardRuntime runtime,

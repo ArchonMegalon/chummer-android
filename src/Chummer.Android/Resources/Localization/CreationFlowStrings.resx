@@ -6,6 +6,9 @@
   <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>The result could not be verified. Reopen the character before making another purchase.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Loading qualities…</value></data>
   <data name="Gear.Loading" xml:space="preserve"><value>Loading gear…</value></data>
+  <data name="Gear.StageSummary" xml:space="preserve"><value>Choose equipment using your saved resources.</value></data>
+  <data name="Gear.SaveResourcesFirst" xml:space="preserve"><value>Review and save Resources before choosing equipment.</value></data>
+  <data name="Gear.RouteUnavailable" xml:space="preserve"><value>Equipment is not ready. Check Resources first.</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>

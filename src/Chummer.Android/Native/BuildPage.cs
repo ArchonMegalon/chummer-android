@@ -2746,8 +2746,41 @@ public sealed class BuildPage : NativePageBase
                 enabled: canOpen,
                 automationId: $"creation-stage-{Token(stage.StepId)}");
             _body.Add(row);
+            if (resourcesStage)
+            {
+                // Gear is a Resources substep, not a Contacts prerequisite the
+                // player should have to discover. Opening still requires the
+                // current committed Resources draft; Gear loads fresh authority.
+                CreationBudgetRoute gear = CreationGearRoute(creationResources, readiness.Resources);
+                _body.Add(CreationNavigationRow(gear.Title, gear.Detail, gear.Open,
+                    enabled: gear.CanOpen, automationId: "creation-stage-gear"));
+            }
         }
         return routes;
+    }
+
+    private CreationBudgetRoute CreationGearRoute(
+        CharacterCreationResourcesInteractionLoadResult? resources,
+        bool resourcesReady)
+    {
+        CharacterOverviewState displayed = Coordinator.State;
+        long generation = _dossierRenderGeneration;
+        bool current = resourcesReady && resources is
+            { Outcome: CharacterCreationResourcesOutcomes.Available, State: { } state }
+            && CreationResourcesPhoneAuthority.IsReady(state, displayed);
+        bool saved = current && resources!.State!.PendingDraft is not null;
+        bool canOpen = saved && _gearPresenter is not null && _overviewPresenter is not null;
+        string detail = canOpen
+            ? CurrentPhoneWizardScope.MarkExperimental(CreationFlowStrings.Get(
+                "Gear.StageSummary", "Choose equipment using your saved resources."))
+            : current && !saved
+                ? CreationFlowStrings.Get("Gear.SaveResourcesFirst", "Review and save Resources before choosing equipment.")
+                : CreationFlowStrings.Get("Gear.RouteUnavailable", "Equipment is not ready. Check Resources first.");
+        return new(AndroidSurfaceStrings.Resolve()["Gear.PageTitle"], detail, canOpen,
+            () => canOpen && generation == _dossierRenderGeneration
+                && Coordinator.IsCreationFinalizationDisplayCurrent(displayed)
+                ? Navigation.PushAsync(new CreationGearPage(Coordinator, _gearPresenter!, _overviewPresenter!))
+                : Task.CompletedTask, []);
     }
 
     private CreationBudgetRoute? CreationContactsPrerequisiteRoute(

@@ -6,6 +6,9 @@
   <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>Das Ergebnis konnte nicht bestätigt werden. Öffne den Charakter erneut, bevor du einen weiteren Kauf tätigst.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Vor- und Nachteile werden geladen…</value></data>
   <data name="Gear.Loading" xml:space="preserve"><value>Ausrüstung wird geladen…</value></data>
+  <data name="Gear.StageSummary" xml:space="preserve"><value>Wähle Ausrüstung mit deinen gespeicherten Ressourcen.</value></data>
+  <data name="Gear.SaveResourcesFirst" xml:space="preserve"><value>Prüfe und speichere zuerst die Ressourcen, bevor du Ausrüstung auswählst.</value></data>
+  <data name="Gear.RouteUnavailable" xml:space="preserve"><value>Ausrüstung ist noch nicht verfügbar. Prüfe zuerst die Ressourcen.</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
