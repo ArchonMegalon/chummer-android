@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 129 is the latest [observed Internal availability](../play/evidence/preview129-internal-observation.md),
+Preview 130 is the latest [observed Internal availability](../play/evidence/preview130-internal-observation.md),
+confirmed on 7 October at 22:10 Europe/Vienna. Core reuses private XML buffers
+inside a quality catalog projection, with unchanged rule results and owner
+admission. Exact sealed-graph native upgrade/new-process reopening retained
+saved data. Local ARM64 inspection, isolated existing-key signing and independent
+signature/certificate/payload verification passed before one Internal upload.
+**Physical Play130 installation, native startup responsiveness and complete SR5
+Creation remain open.** Final process restoration still took12.521s; the40.6%
+managed allocation improvement is not a controlled native speedup. Boot SystemUI
+and null-root observations are retained. Previous129 artifacts remain unchanged.
+
+Preview 129's [observed Internal availability](../play/evidence/preview129-internal-observation.md),
 confirmed on 7 October at 19:56 Europe/Vienna. Core reuses temporary XML buffers
 inside one Creation prerequisite projection, with unchanged rule results and
 fresh owner admission. The exact package graph passed focused managed checks and
