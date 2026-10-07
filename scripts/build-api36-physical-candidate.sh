@@ -186,7 +186,7 @@ done
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "aca2617d5d0695d95a12136635cdd10207b08d20" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "c94744e526323ec43837633329fe4028c4f8587a" ]] \
   || fail "presentation-revision-input-mismatch"
 [[ "$CHUMMER_CORE_ENGINE_REVISION" == "355436ecbf105f56d81902f9e58916337b4ff758" ]] \
   || fail "core-runtime-revision-input-mismatch"
@@ -196,13 +196,13 @@ done
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "aca2617d5d0695d95a12136635cdd10207b08d20" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "c94744e526323ec43837633329fe4028c4f8587a" ]] \
   || fail "current-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "fc2c67ea6f8d781d0b3a92d619c51ac3197bbf2d" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "9ff23c9ffb5cdd005de28eb9d8bb536ecb7c81fa" ]] \
   || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "current-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "84533f62a849a8cb2739fff8da4deccb05d7f65803c72098401cc5b628501f77" ]] \
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "a95e8669b28234f186e83ff4695bbb61741b0b6ecdfa990c9116d004318152df" ]] \
   || fail "current-presentation-lock-mismatch"
 [[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "9c3d4ef3e8a7529173428cc1c1c80e0819cb0dc2" ]] \
   || fail "core-content-commit-mismatch"
