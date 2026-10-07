@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 124 is the latest [observed Internal availability](../play/evidence/preview124-internal-observation.md),
+Preview 125 is the latest [observed Internal availability](../play/evidence/preview125-internal-observation.md),
+confirmed on 7 October at 12:22 Europe/Vienna. Its exact local ARM64 AAB was
+separately signed with the existing upload key and independently verified.
+Core reuses detached Creation Skills snapshots and per-projection XML buffers
+without weakening fresh validation or owner admission. Focused managed checks
+and final sealed-graph SDK-test upgrade/read/reopen in a verified new process
+passed; the saved Skills workspace stayed byte-identical at revision5/5.
+The once-only mutation was checked earlier on the same Core runtime with an
+earlier Presentation graph, not replayed in this final smoke. **Physical Play125,
+native speedup and complete SR5 Creation remain open.** Restored workspace took
+16.104s; boot SystemUI ANR and null hierarchy observations remain recorded.
+Preview124 and earlier artifacts/evidence are unchanged.
+
+Preview 124's [observed Internal availability](../play/evidence/preview124-internal-observation.md),
 confirmed on 7 October at 09:58 Europe/Vienna. Its exact local ARM64 AAB was
 separately signed with the existing upload key and independently verified.
 Core's detached Priority/Sum-to-Ten qualities/magic projections reuse work inside
