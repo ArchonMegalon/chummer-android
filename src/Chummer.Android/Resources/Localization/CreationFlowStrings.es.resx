@@ -4,6 +4,9 @@
   <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Vuelve a abrir el personaje antes de realizar otra compra.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Cargando ventajas y desventajas…</value></data>
   <data name="Gear.Loading" xml:space="preserve"><value>Cargando equipo…</value></data>
+  <data name="Gear.StageSummary" xml:space="preserve"><value>Elige equipo con tus recursos guardados.</value></data>
+  <data name="Gear.SaveResourcesFirst" xml:space="preserve"><value>Revisa y guarda Recursos antes de elegir equipo.</value></data>
+  <data name="Gear.RouteUnavailable" xml:space="preserve"><value>El equipo aún no está disponible. Revisa Recursos primero.</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
