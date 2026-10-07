@@ -151,12 +151,12 @@
   <data name="Skills.SkillGroups" xml:space="preserve"><value>Skill groups</value></data>
   <data name="SkillsPreview.ActivePointsRemaining" xml:space="preserve"><value>Active points remaining</value></data>
   <data name="SkillsPreview.AtomicReceipt" xml:space="preserve"><value>Atomic Skills draft receipt</value></data>
-  <data name="SkillsPreview.Confirm" xml:space="preserve"><value>Confirm Skills draft</value></data>
-  <data name="SkillsPreview.ConfirmationBoundary" xml:space="preserve"><value>Confirmation is bound to this exact Core preview and uses a deterministic retry key after restart.</value></data>
-  <data name="SkillsPreview.Confirmed" xml:space="preserve"><value>Skills draft confirmed and authoritative state reloaded.</value></data>
-  <data name="SkillsPreview.ConfirmedRefreshRequired" xml:space="preserve"><value>Skills draft is durably confirmed. Reopen the character to refresh this phone view.</value></data>
-  <data name="SkillsPreview.DurablePendingFinalization" xml:space="preserve"><value>Typed Skills are durable; character effects remain pending finalization.</value></data>
-  <data name="SkillsPreview.FinalCoreLedgers" xml:space="preserve"><value>Final Core ledgers</value></data>
+  <data name="SkillsPreview.Confirm" xml:space="preserve"><value>Save skills</value></data>
+  <data name="SkillsPreview.ConfirmationBoundary" xml:space="preserve"><value>Check your choices, then save them. This does not finish character creation.</value></data>
+  <data name="SkillsPreview.Confirmed" xml:space="preserve"><value>Your skills are saved.</value></data>
+  <data name="SkillsPreview.ConfirmedRefreshRequired" xml:space="preserve"><value>Your skills are saved. Reopen the runner to see the updated values.</value></data>
+  <data name="SkillsPreview.DurablePendingFinalization" xml:space="preserve"><value>These choices are saved in your creation draft. Finish character creation separately to enter Career.</value></data>
+  <data name="SkillsPreview.FinalCoreLedgers" xml:space="preserve"><value>Points after saving</value></data>
   <data name="SkillsPreview.GroupPointsRemaining" xml:space="preserve"><value>Group points remaining</value></data>
   <data name="SkillsPreview.GroupRating" xml:space="preserve"><value>Group rating</value></data>
   <data name="SkillsPreview.Heading" xml:space="preserve"><value>Skills allocation</value></data>
@@ -166,7 +166,8 @@
   <data name="SkillsPreview.PointCost" xml:space="preserve"><value>Point cost</value></data>
   <data name="SkillsPreview.Rating" xml:space="preserve"><value>Rating</value></data>
   <data name="SkillsPreview.Specialization" xml:space="preserve"><value>Specialization</value></data>
-  <data name="SkillsPreview.TypedSelections" xml:space="preserve"><value>Typed selections</value></data>
+  <data name="SkillsPreview.TypedSelections" xml:space="preserve"><value>Your skills</value></data>
+  <data name="SkillsPreview.SavedHeading" xml:space="preserve"><value>Skills saved</value></data>
   <data name="Common.Next" xml:space="preserve"><value>Next</value></data>
   <data name="Common.Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Skills.CatalogRange" xml:space="preserve"><value>Showing {0}–{1} of {2}</value></data>

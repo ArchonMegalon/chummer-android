@@ -480,6 +480,7 @@ public static class CreationSkillsCatalogPaging
 /// <summary>Immutable Core preview followed by one explicit digest-bound confirmation.</summary>
 public sealed class CreationSkillsPreviewPage : NativePageBase
 {
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CharacterCreationSkillsPreview _preview;
     private readonly IReadOnlyList<CharacterCreationSkillAllocation> _allocations;
     private readonly IReadOnlyList<CharacterCreationSkillGroupAllocation> _groups;
@@ -518,6 +519,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.ExplicitReview",
             "Explicit review")));
@@ -539,7 +541,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                 CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-skills-preview-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         AddDigest("creation-skills-preview-digest", _preview.PreviewDigest);
         AddDigest("creation-skills-preview-raw-character-xml-digest", _preview.Binding.RawCharacterXmlDigest);
         AddDigest("creation-skills-preview-auxiliary-state-digest", _preview.Binding.AuxiliaryStateDigest);
@@ -548,13 +550,19 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+        VerticalStackLayout details = _technicalDetails;
+        long appearanceGeneration = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(details, "creation-skills-preview-details",
+            () => ReferenceEquals(details, _technicalDetails)
+                  && IsCurrentAppearanceGeneration(appearanceGeneration)
+                  && Coordinator.CanDisplayCreationSkillsPreview(_preview)));
     }
 
     private void AddBudgets()
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.FinalCoreLedgers",
-            "Final Core ledgers")));
+            "Points after saving")));
         foreach (CharacterCreationBudgetState budget in new[]
                  {
                      _preview.ActiveSkillPointBudget,
@@ -583,14 +591,14 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.TypedSelections",
-            "Typed selections")));
+            "Your skills")));
         foreach (CharacterCreationSkillProjection skill in _preview.Skills)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(skill.Name, 18));
-            card.Add(NativeTheme.Metric(
+            _technicalDetails.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.Kind", "Kind"),
-                skill.Kind));
+                skill.Name + " · " + skill.Kind));
             card.Add(NativeTheme.Metric(CreationAllocationStrings.Get("SkillsPreview.Rating", "Rating"), skill.IsNativeLanguage
                 ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
                 : skill.Rating.GetValueOrDefault().ToString(CultureInfo.InvariantCulture)));
@@ -646,10 +654,10 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             Label complete = NativeTheme.Body(refreshRequired
                 ? CreationAllocationStrings.Get(
                     "SkillsPreview.ConfirmedRefreshRequired",
-                    "Skills draft is durably confirmed. Reopen the character to refresh this phone view.")
+                    "Your skills are saved. Reopen the runner to see the updated values.")
                 : CreationAllocationStrings.Get(
                     "SkillsPreview.Confirmed",
-                    "Skills draft confirmed and authoritative state reloaded."),
+                    "Your skills are saved."),
                 refreshRequired ? NativeTheme.Danger : NativeTheme.Text);
             complete.AutomationId = "creation-skills-confirmed";
             _body.Add(NativeTheme.Card(complete));
@@ -663,7 +671,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                               state, Coordinator.State, _preview, _allocations, _groups);
         Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "SkillsPreview.Confirm",
-            "Confirm Skills draft"));
+            "Save skills"));
         confirm.AutomationId = "creation-skills-confirm";
         confirm.IsEnabled = canConfirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
@@ -679,7 +687,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         Label explicitAction = NativeTheme.Body(
             CreationAllocationStrings.Get(
                 "SkillsPreview.ConfirmationBoundary",
-                "Confirmation is bound to this exact Core preview and uses a deterministic retry key after restart."),
+                "Check your choices, then save them. This does not finish character creation."),
             NativeTheme.Muted);
         explicitAction.AutomationId = "creation-skills-explicit-confirmation";
         _body.Add(explicitAction);
@@ -699,18 +707,21 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         if (!Coordinator.IsCreationSkillsReceiptCurrent(receipt)) return;
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "SkillsPreview.SavedHeading",
+            "Skills saved")));
+        _technicalDetails.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.AtomicReceipt",
             "Atomic Skills draft receipt")));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.PreviousRevision", "Previous revision"),
             receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.ContentRevision", "Content revision"),
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.SavedRevision", "Saved revision"),
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
@@ -722,17 +733,17 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("SkillsPreview.KnowledgePointsRemaining", "Knowledge points remaining"),
             receipt.KnowledgePointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric(
+        _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.CharacterDocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
-        AddReceiptDigest(card, "creation-skills-receipt-digest", receipt.ReceiptDigest);
-        AddReceiptDigest(card, "creation-skills-receipt-draft-digest", receipt.DraftDigest);
-        AddReceiptDigest(card, "creation-skills-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
+        AddReceiptDigest(_technicalDetails, "creation-skills-receipt-digest", receipt.ReceiptDigest);
+        AddReceiptDigest(_technicalDetails, "creation-skills-receipt-draft-digest", receipt.DraftDigest);
+        AddReceiptDigest(_technicalDetails, "creation-skills-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
         card.Add(NativeTheme.Body(
             refreshed.PendingDraft?.CharacterEffectsApplied == false
                 ? CreationAllocationStrings.Get(
                     "SkillsPreview.DurablePendingFinalization",
-                    "Typed Skills are durable; character effects remain pending finalization.")
+                    "These choices are saved in your creation draft. Finish character creation separately to enter Career.")
                 : CreationAllocationStrings.Get(
                     "Common.CharacterEffectStateUnsafe",
                     "Character-effect state is not safe to continue."),
@@ -763,7 +774,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
         label.AutomationId = automationId;
         label.LineBreakMode = LineBreakMode.CharacterWrap;
-        _body.Add(label);
+        _technicalDetails.Add(label);
     }
 
     private static void AddReceiptDigest(VerticalStackLayout card, string automationId, string digest)

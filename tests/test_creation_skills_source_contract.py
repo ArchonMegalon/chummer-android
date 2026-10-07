@@ -62,7 +62,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             'AutomationId = "creation-skills-confirm"',
             "Coordinator.ConfirmCreationSkillsAsync(",
             'AutomationId = "creation-skills-confirm-receipt"',
-            "pending finalization",
+            '"SkillsPreview.DurablePendingFinalization"',
         ):
             self.assertIn(marker, page)
 
