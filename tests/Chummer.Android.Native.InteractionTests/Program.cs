@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-specialization-picker-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationSpecializationPickerAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-rank-correction-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationRankCorrectionAsync(args[1]);

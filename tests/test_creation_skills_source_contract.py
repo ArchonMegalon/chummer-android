@@ -7,6 +7,19 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationSkillsSourceContractTests(unittest.TestCase):
+    def test_specializations_use_complete_catalog_and_explicit_preview(self) -> None:
+        page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        self.assertNotIn("source.Specializations.Take(", page)
+        self.assertIn("source.Specializations.ToArray()", page)
+        self.assertIn("options.Select(option => option.Name)", page)
+        self.assertIn("options[index - 1].OptionId", page)
+        self.assertIn("index == currentIndex", page)
+        self.assertIn("renderGeneration != _renderGeneration", page)
+        self.assertIn("!IsCurrentAppearanceGeneration(appearanceGeneration)", page)
+        selection = page[page.index("picker.SelectedIndexChanged +="):page.index("long renderGeneration =")]
+        self.assertNotIn("PreviewAsync", selection)
+        self.assertNotIn("WithSpecialization", selection)
+
     def test_dashboard_reads_wait_for_original_owner_only_on_background_worker(self) -> None:
         page = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         start = page.index("private void ResolveCreationPhase<TResult>")

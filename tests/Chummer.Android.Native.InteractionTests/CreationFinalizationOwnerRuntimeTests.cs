@@ -430,6 +430,132 @@ internal static partial class AfterRunAuthorityHarness
         finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
     }
 
+    internal static async Task RunCreationSpecializationPickerAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, creationSkills: true,
+            productionCreationOverview: true);
+        var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+        await HydrateFinalizationOwnerAsync(runtime, owners, before);
+        var state = runtime.Coordinator.LoadCreationSkills().Value!;
+        var source = CreationSkillsPhoneAuthority.AvailableActiveSkills(state)
+            .First(item => item.Specializations.Count > 6);
+        string token = new(source.SourceSkillId.ToLowerInvariant()
+            .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+        var readSaved = () => new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var page = new CreationSkillsPage(runtime.Coordinator, state);
+            _ = new Window(new NavigationPage(page));
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
+                .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            CharacterCreationSkillAllocation Chosen() => Draft().Skills.Single(item =>
+                item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
+            Border? Card() => MinimalVisible(page).OfType<Border>().SingleOrDefault(item =>
+                item.AutomationId == "creation-skill-" + token);
+            async Task FindCardAsync()
+            {
+                for (int count = 0; Card() is null && count < 20; count++)
+                {
+                    var next = MinimalVisible(page).OfType<Button>().Single(item =>
+                        item.AutomationId == "creation-skills-active-catalog-next");
+                    Require(next.IsEnabled, "Target skill was omitted from the paged catalog.");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked());
+                }
+                Require(Card() is not null, "Target skill was not reachable.");
+            }
+            Picker Picker() => MinimalVisible(page).OfType<Picker>().Single(item =>
+                item.AutomationId == "creation-skill-specialization-" + token);
+            Button Choose() => MinimalVisible(page).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-skill-specialization-preview-" + token);
+            async Task ClickAsync(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            await FindCardAsync();
+            Require(!MinimalVisible(page).OfType<Picker>().Any(item =>
+                item.AutomationId == "creation-skill-specialization-" + token),
+                "An unrated skill offered a specialization.");
+            var plus = ((VerticalStackLayout)Card()!.Content!).Children.OfType<HorizontalStackLayout>()
+                .Single().Children.OfType<Button>().Single(item => item.Text == "+");
+            await ClickAsync(plus);
+            var picker = Picker();
+            var choose = Choose();
+            Require(picker.ItemsSource.Count == source.Specializations.Count + 1
+                && picker.ItemsSource.Cast<string>().Skip(1).SequenceEqual(source.Specializations.Select(item => item.Name))
+                && picker.SelectedIndex == 0 && !choose.IsEnabled && picker.TextColor == NativeTheme.Text,
+                "Specialization list is truncated, reordered, unreadable or changes a no-op.");
+            string untouched = JsonSerializer.Serialize(Draft().Skills);
+            picker.SelectedIndex = source.Specializations.Count;
+            Require(choose.IsEnabled && JsonSerializer.Serialize(Draft().Skills) == untouched
+                && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(before),
+                "Picker selection itself spent points or persisted a draft.");
+            await ClickAsync(choose);
+            Require(Chosen().SpecializationOptionId == source.Specializations.Last().OptionId
+                && Picker().SelectedIndex == source.Specializations.Count && !Choose().IsEnabled,
+                "The option beyond six did not preview by exact ID or restore its displayed selection.");
+            string adopted = JsonSerializer.Serialize(Draft().Skills);
+            picker.SelectedIndex = 1;
+            await ClickAsync(choose);
+            Require(JsonSerializer.Serialize(Draft().Skills) == adopted,
+                "A retained control from an earlier render changed the current proposal.");
+            var noOp = Choose();
+            Require(!noOp.IsEnabled, "An unchanged specialization must not offer a mutation.");
+            ((IButtonController)noOp).SendClicked();
+            Require(JsonSerializer.Serialize(Draft().Skills) == adopted,
+                "Re-selecting the current specialization toggled it off.");
+            Picker().SelectedIndex = 0;
+            await ClickAsync(Choose());
+            Require(Chosen().SpecializationOptionId is null && Picker().SelectedIndex == 0,
+                "The explicit No specialization choice did not remove it.");
+            Picker().SelectedIndex = source.Specializations.Count;
+            await ClickAsync(Choose());
+            Require(FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(before),
+                "Previewing specialization changes mutated the saved workspace.");
+            // The page already uses the existing immutable review/confirm flow;
+            // exercise that same issued Core preview at its persistence boundary.
+            var savedResult = await runtime.Coordinator.ConfirmCreationSkillsAsync(
+                Draft().Preview!, Draft().Skills, Draft().Groups,
+                CreationSkillsPhoneAuthority.ComputeIdempotencyKey(Draft().Preview!, Draft().Skills, Draft().Groups));
+            Require(savedResult.Receipt is not null && savedResult.Blockers.Count == 0,
+                "The last catalog specialization could not be saved: " + JsonSerializer.Serialize(savedResult));
+            var saved = readSaved();
+            Require(saved.ContentRevision == before.ContentRevision + 1
+                && saved.ContentRevision == saved.SavedRevision, "Specialization save was not once-only.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            state = runtime.Coordinator.LoadCreationSkills().Value!;
+            page = new CreationSkillsPage(runtime.Coordinator, state);
+            _ = new Window(new NavigationPage(page));
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            await FindCardAsync();
+            Require(Chosen().SpecializationOptionId == source.Specializations.Last().OptionId
+                && Picker().SelectedIndex == source.Specializations.Count && !Choose().IsEnabled,
+                "Fresh page did not restore the saved last specialization by ID.");
+            var departedPicker = Picker();
+            var departedChoose = Choose();
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            departedPicker.SelectedIndex = 0;
+            await ClickAsync(departedChoose);
+            Require(Chosen().SpecializationOptionId == source.Specializations.Last().OptionId,
+                "A prior page appearance revived a retained specialization action.");
+            var ownerPicker = Picker();
+            var ownerChoose = Choose();
+            string ownerDraft = JsonSerializer.Serialize(Draft().Skills);
+            owners.Set(ContactsOwnerB);
+            owners.Set(OwnerScope.LocalSingleUser);
+            ownerPicker.SelectedIndex = 0;
+            await ClickAsync(ownerChoose);
+            Require(JsonSerializer.Serialize(Draft().Skills) == ownerDraft
+                && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(saved),
+                "Owner A→B→A revived a retained specialization or changed the saved runner.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            ui.AssertHealthy();
+        });
+        Console.WriteLine($"PASS Skills picker: all {source.Specializations.Count} options for {source.Name}, last ID preview/save/reopen, no implicit mutation, explicit removal, stale render/appearance/owner rejection");
+    }
+
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)
     {
         await using var runtime = new NativeRewardRuntime(contentRoot);
