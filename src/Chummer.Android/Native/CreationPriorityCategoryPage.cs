@@ -72,6 +72,25 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
 
         CharacterCreationPriorityOptionProjection? selected =
             _draft.SelectedOption(_state, Coordinator.State, _categoryId);
+        if (selected is not null)
+        {
+            Button clear = NativeTheme.SecondaryButton(
+                WizardStrings.Get("Priority.CategoryPage.ClearRank", "Clear this rank"));
+            clear.AutomationId = "creation-prerequisite-clear-rank";
+            clear.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || !Coordinator.IsCreationPrerequisiteStateCurrent(_state)
+                    || !_draft.TryClearSelection(_state, Coordinator.State, _categoryId))
+                    return;
+                await Navigation.PopAsync(animated: false);
+            });
+            _body.Add(clear);
+            _body.Add(NativeTheme.Body(WizardStrings.Get(
+                "Priority.CategoryPage.ClearRankHelp",
+                "To rebalance a complete draft, clear the categories you want to change first. Other categories stay selected."),
+                NativeTheme.Muted));
+        }
         foreach (CreationPrerequisitePhoneRankOption option in options)
         {
             CharacterCreationPriorityOptionProjection projection = option.Projection;

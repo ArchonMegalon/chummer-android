@@ -211,4 +211,6 @@
   <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Use exact Edge or direct Weapon-fire actions without unrestricted editing.</value></data>
   <data name="Priority.CategoryPage.RankAlreadyUsed" xml:space="preserve"><value>This rank is already used in another category. Choose a different rank or change that assignment first.</value></data>
   <data name="Priority.CategoryPage.TotalUnreachable" xml:space="preserve"><value>With this rank, the remaining categories cannot reach the required total. Choose a different rank or adjust another category.</value></data>
+  <data name="Priority.CategoryPage.ClearRank" xml:space="preserve"><value>Clear this rank</value></data>
+  <data name="Priority.CategoryPage.ClearRankHelp" xml:space="preserve"><value>To rebalance a complete draft, clear the categories you want to change first. Other categories stay selected.</value></data>
 </root>
