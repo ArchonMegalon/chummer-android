@@ -15,6 +15,13 @@ internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunCreationRankCorrectionAsync(string contentRoot)
     {
+        foreach (var (locale, expected) in new[] { ("en-GB", "Clear this rank"), ("de-AT", "Diesen Rang freigeben"), ("es-MX", "Quitar este rango") })
+        {
+            var culture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+            Require(WizardStrings.Get("Priority.CategoryPage.ClearRank", "missing", culture) == expected
+                && WizardStrings.Get("Priority.CategoryPage.ClearRankHelp", "missing", culture) != "missing",
+                "Rank correction must use real localized resources: " + locale);
+        }
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -77,6 +84,22 @@ internal static partial class AfterRunAuthorityHarness
                         && draft.CanPrepare(state, runtime.Coordinator.State), "Corrected ranks did not restore an exact draft.");
                     Require(!draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Resources, "A"),
                         "Rank correction weakened duplicate-rank or exact-total admission.");
+                    Require(!draft.TryClearSelection(state, runtime.Coordinator.State, "unknown-category")
+                        && !draft.TryClearSelection(state with { SnapshotDigest = "stale" }, runtime.Coordinator.State,
+                            CharacterCreationPriorityCategoryIds.Talent), "Unknown or stale categories were cleared.");
+                    Require(draft.TryClearSelection(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Talent)
+                        && draft.SelectedTalent(state, runtime.Coordinator.State) is null
+                        && draft.SelectedHeritage(state, runtime.Coordinator.State)?.SelectionId == selections.HeritageSelectionId,
+                        "Talent clearing retained its selection or erased the metatype.");
+                    Require(draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Talent, ranks[CharacterCreationPriorityCategoryIds.Talent])
+                        && draft.TrySelectTalent(state, runtime.Coordinator.State, selections.TalentSelectionId), "Could not restore talent.");
+                    Require(draft.TryClearSelection(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Heritage)
+                        && draft.SelectedHeritage(state, runtime.Coordinator.State) is null
+                        && draft.SelectedTalent(state, runtime.Coordinator.State)?.SelectionId == selections.TalentSelectionId,
+                        "Metatype clearing retained its selection or erased the talent.");
+                    Require(draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Heritage, ranks[CharacterCreationPriorityCategoryIds.Heritage])
+                        && draft.TrySelectHeritage(state, runtime.Coordinator.State, selections.HeritageSelectionId)
+                        && draft.CanPrepare(state, runtime.Coordinator.State), "Could not restore an exact draft.");
 
                     page = new(runtime.Coordinator, draft, state, CharacterCreationPriorityCategoryIds.Talent);
                     await navigation.PushAsync(page, animated: false);
@@ -84,6 +107,12 @@ internal static partial class AfterRunAuthorityHarness
                     await finalAlerts.PreflightAsync();
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                     Button retained = IssuedElements(page).OfType<Button>().Single(item => item.AutomationId == "creation-prerequisite-clear-rank");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retained).SendClicked()));
+                    Require(draft.Assignments(state, runtime.Coordinator.State).Count == 5,
+                        "A callback on a departed page cleared its rank.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                    retained = IssuedElements(page).OfType<Button>().Single(item => item.AutomationId == "creation-prerequisite-clear-rank");
                     var originalOverview = runtime.Coordinator.State;
                     owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA);
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retained).SendClicked()));

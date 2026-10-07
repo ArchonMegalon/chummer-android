@@ -171,14 +171,38 @@ internal sealed class CreationPrerequisitePhoneDraft
         bool changed = !_assignments.TryGetValue(categoryId, out string? currentRank)
                        || !string.Equals(currentRank, selectedRank, StringComparison.Ordinal);
         _assignments[categoryId] = selectedRank;
-        if (changed && string.Equals(
+        if (changed)
+            ClearCategorySelections(categoryId);
+        return true;
+    }
+
+    // Unassign only this local category, allowing a complete table to be
+    // rebalanced without losing unrelated choices. Core admission is unchanged.
+    public bool TryClearSelection(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview,
+        string categoryId)
+    {
+        if (!Matches(state, overview)
+            || !CreationPrerequisitePhoneAuthority.IsReady(state, overview)
+            || !CharacterCreationPriorityCategoryIds.Ordered.Contains(categoryId, StringComparer.Ordinal)
+            || !_assignments.Remove(categoryId))
+            return false;
+
+        ClearCategorySelections(categoryId);
+        return true;
+    }
+
+    private void ClearCategorySelections(string categoryId)
+    {
+        if (string.Equals(
                 categoryId,
                 CharacterCreationPriorityCategoryIds.Heritage,
                 StringComparison.Ordinal))
         {
             _heritageSelectionId = null;
         }
-        if (changed && string.Equals(
+        if (string.Equals(
                 categoryId,
                 CharacterCreationPriorityCategoryIds.Talent,
                 StringComparison.Ordinal))
@@ -186,7 +210,6 @@ internal sealed class CreationPrerequisitePhoneDraft
             _talentSelectionId = null;
             ClearTalentGrantSelections();
         }
-        return true;
     }
 
     public bool TrySelectHeritage(

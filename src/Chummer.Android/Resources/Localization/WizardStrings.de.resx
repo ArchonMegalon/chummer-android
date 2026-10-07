@@ -211,4 +211,6 @@
   <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Exakte Edge- oder direkte Waffenfeuer-Aktionen ohne uneingeschränkte Bearbeitung verwenden.</value></data>
   <data name="Priority.CategoryPage.RankAlreadyUsed" xml:space="preserve"><value>Dieser Rang ist bereits in einer anderen Kategorie vergeben. Wähle einen anderen Rang oder ändere zuerst die andere Zuordnung.</value></data>
   <data name="Priority.CategoryPage.TotalUnreachable" xml:space="preserve"><value>Mit diesem Rang können die übrigen Kategorien die benötigte Summe nicht erreichen. Wähle einen anderen Rang oder passe eine andere Kategorie an.</value></data>
+  <data name="Priority.CategoryPage.ClearRank" xml:space="preserve"><value>Diesen Rang freigeben</value></data>
+  <data name="Priority.CategoryPage.ClearRankHelp" xml:space="preserve"><value>Gib zuerst die Kategorien frei, die du neu verteilen möchtest. Die übrigen Kategorien bleiben ausgewählt.</value></data>
 </root>

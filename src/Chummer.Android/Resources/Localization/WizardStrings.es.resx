@@ -211,4 +211,6 @@
   <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Usa acciones exactas de Edge o disparo directo sin edición irrestricta.</value></data>
   <data name="Priority.CategoryPage.RankAlreadyUsed" xml:space="preserve"><value>Este rango ya está asignado a otra categoría. Elige otro rango o cambia primero esa asignación.</value></data>
   <data name="Priority.CategoryPage.TotalUnreachable" xml:space="preserve"><value>Con este rango, las categorías restantes no pueden alcanzar el total requerido. Elige otro rango o ajusta otra categoría.</value></data>
+  <data name="Priority.CategoryPage.ClearRank" xml:space="preserve"><value>Quitar este rango</value></data>
+  <data name="Priority.CategoryPage.ClearRankHelp" xml:space="preserve"><value>Primero quita las categorías que quieras redistribuir. Las demás categorías conservan su selección.</value></data>
 </root>
