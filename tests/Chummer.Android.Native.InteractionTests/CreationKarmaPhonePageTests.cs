@@ -79,6 +79,7 @@ internal static partial class AfterRunAuthorityHarness
             if (attributeMetatype is not null)
             {
                 AssertAttributeValues();
+                var oldTopPreview = Element<Button>("karma-preview-attributes-top");
                 var oldBody = Element<Stepper>("karma-attribute-BOD");
                 int originalBody = Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "BOD").Current;
                 Require(originalBody == (attributeMetatype == "Troll" ? 5 : 1),
@@ -92,8 +93,12 @@ internal static partial class AfterRunAuthorityHarness
                         && !Element<Label>("karma-attribute-" + attribute.AttributeId + "-cost").IsVisible,
                         "An edited draft must not present an older rating or cost as current.");
                 }
-                await Click("karma-preview-attributes");
+                await Click("karma-preview-attributes-top");
                 AssertAttributeValues();
+                int previewsAfterTop = probe!.PreviewCalls;
+                await ui.BeginAsyncVoid(() => ((IButtonController)oldTopPreview).SendClicked());
+                Require(probe.PreviewCalls == previewsAfterTop && Session().QuoteCurrent,
+                    "An obsolete top-preview callback revalidated a newer render.");
                 Require(Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "BOD").Current == originalBody + 1,
                     "Core did not include the chosen metatype minimum in the final rating.");
                 if (magic)
@@ -104,10 +109,16 @@ internal static partial class AfterRunAuthorityHarness
                     Require(Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "MAG").Current == 3,
                         "Magic must display Core's starting grant plus purchases, not the number of purchases.");
                 }
+                var departedTopPreview = Element<Button>("karma-preview-attributes-top");
                 await Back();
                 var selected = Session().Selection;
                 oldBody.Value = 2;
                 Require(ReferenceEquals(selected, Session().Selection), "A departed attribute control changed the draft.");
+                int previewsAfterDeparture = probe.PreviewCalls;
+                // The departed page rejects dispatch before an async action starts.
+                ((IButtonController)departedTopPreview).SendClicked();
+                Require(probe.PreviewCalls == previewsAfterDeparture && ReferenceEquals(selected, Session().Selection),
+                    "A departed top-preview callback read or changed another page's draft.");
                 await Click("karma-open-attributes");
                 AssertAttributeValues();
                 string[] sourceAnchors = Session().Quote!.SourceAnchorIds.ToArray();
@@ -120,6 +131,23 @@ internal static partial class AfterRunAuthorityHarness
                     "Review must not expose raw source anchors or their GUIDs as reader-facing text.");
                 Require(sourceAnchors.SequenceEqual(Session().Quote!.SourceAnchorIds, StringComparer.Ordinal),
                     "Hiding technical source text must preserve the quote's source authority.");
+                if (magic)
+                {
+                    await Back();
+                    await Click("karma-open-talent");
+                    await Click("karma-talent-mundane");
+                    await Click("karma-open-attributes");
+                    Require(!Session().Quote!.Attributes!.Attributes.Single(a => a.AttributeId == "MAG").IsEnabled,
+                        "SETUP: Mundane must disable further Magic purchases.");
+                    var magicPurchases = Element<Stepper>("karma-attribute-MAG");
+                    Require(magicPurchases.IsEnabled && magicPurchases.Value == 2,
+                        "A now-invalid Magic purchase must remain visible and removable.");
+                    magicPurchases.Value = 0;
+                    await Click("karma-preview-attributes-top");
+                    AssertAttributeValues();
+                    Require(Session().Selection!.Attributes!.All(a => a.AttributeId != "MAG"),
+                        "Removing an invalid Magic purchase did not clear the draft selection.");
+                }
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
                 Require(probe!.ConfirmCalls == 0, "Reading or previewing attribute values persisted a draft.");
                 Console.WriteLine($"PASS Karma attribute values: {attributeMetatype}, magic={magic}; Core ratings/costs, pending edits, return, no write");
@@ -128,8 +156,21 @@ internal static partial class AfterRunAuthorityHarness
                 void AssertAttributeValues()
                 {
                     Require(Session().QuoteCurrent, "SETUP: attribute values need a current real Core quote.");
+                    var controls = IssuedElements(Current()).ToArray();
+                    Require(Array.FindIndex(controls, e => e.AutomationId == "karma-preview-attributes-top")
+                            < Array.FindIndex(controls, e => e.AutomationId == "karma-attribute-BOD-rating")
+                        && Element<Button>("karma-preview-attributes").IsEnabled,
+                        "Attribute preview must be reachable above the first rating as well as below the last.");
                     foreach (var attribute in Session().Quote!.Attributes!.Attributes)
                     {
+                        int purchased = Session().Selection!.Attributes!
+                            .SingleOrDefault(a => a.AttributeId == attribute.AttributeId)?.KarmaLevels ?? 0;
+                        bool editable = attribute.IsEnabled || purchased > 0;
+                        Require(controls.OfType<Stepper>().Any(e => e.AutomationId == "karma-attribute-" + attribute.AttributeId)
+                                == editable
+                            && controls.OfType<Label>().Any(e => e.AutomationId == "karma-attribute-" + attribute.AttributeId + "-value")
+                                == editable,
+                            "Read-only zero-purchase attributes must omit purchase controls; existing purchases must remain removable.");
                         string name = CreationAllocationStrings.AttributeName(attribute.AttributeId);
                         var rating = Element<Label>("karma-attribute-" + attribute.AttributeId + "-rating");
                         var cost = Element<Label>("karma-attribute-" + attribute.AttributeId + "-cost");
