@@ -377,6 +377,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     {
         if (_session.Selection?.Attributes is null || _session.Quote?.Attributes is not { } attributes) return;
         _body.Add(NativeTheme.Body(CreationKarmaCopy.LevelHelp, NativeTheme.Muted));
+        AddButton(CreationKarmaCopy.Preview, "karma-preview-attributes-top", Preview);
         foreach (var attribute in attributes.Attributes)
         {
             string name = CreationAllocationStrings.AttributeName(attribute.AttributeId);
@@ -390,6 +391,14 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             cost.IsVisible = currentQuote;
             _attributeValues.Add(attribute.AttributeId, (rating, cost));
             int current = _session.Selection.Attributes.SingleOrDefault(a => a.AttributeId == attribute.AttributeId)?.KarmaLevels ?? 0;
+            var summary = new VerticalStackLayout { Spacing = 4, Children = { rating, cost } };
+            // Keep every Core rating readable, but do not show purchase controls
+            // for read-only attributes. Retain invalid purchases for removal.
+            if (!attribute.IsEnabled && current == 0)
+            {
+                _body.Add(NativeTheme.Card(summary));
+                continue;
+            }
             AddLevels(name, "karma-attribute-" + attribute.AttributeId,
                 current, attribute.IsEnabled ? attribute.Maximum - attribute.Minimum : 0,
                 next => Change(_session.Selection! with
@@ -397,7 +406,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                     Attributes = _session.Selection!.Attributes!.Where(a => a.AttributeId != attribute.AttributeId)
                         .Concat(next > 0 ? [new CharacterCreationKarmaAttributeAllocation(attribute.AttributeId, next)] : []).ToArray()
                 }), caption: levels => CreationKarmaCopy.AttributePurchases(name, levels),
-                summary: new VerticalStackLayout { Spacing = 4, Children = { rating, cost } });
+                summary: summary);
         }
         AddButton(CreationKarmaCopy.Preview, "karma-preview-attributes", Preview);
     }
