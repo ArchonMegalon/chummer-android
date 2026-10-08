@@ -235,18 +235,11 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     private void RefreshFeedback()
     {
         ClearFeedback();
-        string? notice = Coordinator.Notice;
+        string? notice = ReadableNotice;
         if (string.IsNullOrWhiteSpace(notice)) return;
         var state = Coordinator.State;
-        // Translate only this exact known presenter refusal. Keep its real
-        // identity and dirty-state admission in the presenter; never infer that
-        // another failure can be fixed by saving, or silently save/discard here.
-        bool unsavedSwitch = state.WorkspaceId is { } id
-            && state.Session.ActiveWorkspace?.IsDirty == true
-            && notice == $"Save or discard local changes for '{id.Value}' before you switch dossiers.";
-        var label = NativeTheme.Body(unsavedSwitch
-            ? PhoneStrings.Get("HomeUnsavedSwitch", "Save your current runner before switching. Open it and tap Save.")
-            : notice);
+        bool unsavedSwitch = HasUnsavedWorkspaceSwitchNotice;
+        var label = NativeTheme.Body(notice);
         label.AutomationId = "home-action-notice";
         _feedback.Add(label);
         if (unsavedSwitch)

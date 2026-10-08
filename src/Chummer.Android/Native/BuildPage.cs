@@ -1254,7 +1254,7 @@ public sealed class BuildPage : NativePageBase
         }
         else if (!string.IsNullOrWhiteSpace(Coordinator.Notice))
         {
-            _body.Add(NativeTheme.Body(Coordinator.Notice!, NativeTheme.Muted));
+            _body.Add(NativeTheme.Body(ReadableNotice!, NativeTheme.Muted));
         }
     }
 

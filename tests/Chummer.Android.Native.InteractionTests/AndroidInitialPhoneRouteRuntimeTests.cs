@@ -60,9 +60,9 @@ internal static partial class AfterRunAuthorityHarness
             {
                 foreach (var (culture, expected) in new[]
                 {
-                    ("en", "Save your current runner before switching. Open it and tap Save."),
-                    ("de-AT", "Speichere deinen aktuellen Runner vor dem Wechsel. Öffne ihn und tippe auf Speichern."),
-                    ("es-MX", "Guarda el runner actual antes de cambiar. Ábrelo y pulsa Guardar.")
+                    ("en", "Save your current runner before switching."),
+                    ("de-AT", "Speichere deinen aktuellen Runner vor dem Wechsel."),
+                    ("es-MX", "Guarda el runner actual antes de cambiar.")
                 })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
@@ -78,6 +78,13 @@ internal static partial class AfterRunAuthorityHarness
                     retainedOpen = IssuedElements(page).OfType<Button>()
                         .Single(button => button.AutomationId == "home-review-current-runner");
                     Require(retainedOpen.IsEnabled, "Blocked switch needs a direct route back to the current runner.");
+                    var runnerPage = new BuildPage(runtime.Coordinator);
+                    typeof(BuildPage).GetMethod("AddFeedback", BindingFlags.NonPublic | BindingFlags.Instance)!
+                        .Invoke(runnerPage, null);
+                    var runnerNotice = IssuedElements(runnerPage).OfType<Label>().Single();
+                    Require(runnerNotice.Text == expected
+                        && !runnerNotice.Text.Contains(dirty.Id.Value, StringComparison.Ordinal),
+                        "Returning to the runner must not expose the same raw workspace ID again.");
                 }
             }
             finally { CultureInfo.CurrentUICulture = priorCulture; }
