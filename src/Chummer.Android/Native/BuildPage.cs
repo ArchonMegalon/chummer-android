@@ -1923,20 +1923,10 @@ public sealed class BuildPage : NativePageBase
 
     private void AddFinalizationReviewAction()
     {
-        CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
-            _creationFinalizationAuthority;
-        CreationPriorityLegalPathProjection legalPath =
-            CreationPriorityLegalPathProjection.From(authority);
-        AddCreationFinalizationStatus(legalPath);
-        if (!legalPath.CanOpenReview
-            || authority is not
-               {
-                   Outcome: CharacterCreationFinalizationOutcomes.Available,
-                   Value.CanReview: true
-               })
-        {
+        CreationBudgetRoute route = CreationFinalizationReviewRoute();
+        AddCreationFinalizationStatus(CreationPriorityLegalPathProjection.From(_creationFinalizationAuthority));
+        if (!route.CanOpen)
             return;
-        }
 
         Button review = NativeTheme.PrimaryButton(
             CurrentPhoneWizardScope.MarkExperimental("Review and finish creation"));
@@ -1945,14 +1935,32 @@ public sealed class BuildPage : NativePageBase
         review.Pressed += (_, _) => pressGeneration = BeginCreationNavigationPress();
         review.Released += (_, _) =>
             ScheduleCreationNavigationPressCancellation(pressGeneration);
-        review.Clicked += async (_, _) => await RunCreationNavigationAsync(async () =>
-        {
-            if (!IsCurrentCreationDashboardPage()
-                || !Coordinator.IsCreationFinalizationStateCurrent(authority.Value))
-                return;
-            await Navigation.PushAsync(new CreationStartingCashPage(Coordinator, authority.Value));
-        }, pressGeneration);
+        review.Clicked += async (_, _) => await RunCreationNavigationAsync(route.Open, pressGeneration);
         _body.Add(review);
+    }
+
+    private CreationBudgetRoute CreationFinalizationReviewRoute()
+    {
+        var authority = _creationFinalizationAuthority;
+        var legalPath = CreationPriorityLegalPathProjection.From(authority);
+        long generation = _dossierRenderGeneration;
+        bool canOpen = legalPath.CanOpenReview
+            && authority is { Outcome: CharacterCreationFinalizationOutcomes.Available, Value.CanReview: true }
+            && Coordinator.IsCreationFinalizationStateCurrent(authority.Value);
+        string detail = canOpen
+            ? CreationFlowStrings.Get("Finalization.Ready", "Your creation choices are ready for review. Nothing changes until you confirm.")
+            : authority is null && string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
+                ? CreationFlowStrings.Get("Finalization.Checking", "Checking your saved creation choices…")
+                : CreationFlowStrings.Get("Finalization.Blocked", "Finish the required steps and resolve the warnings before reviewing your runner.");
+        // All visible Review entries use this exact, already-loaded authority.
+        // Generic wizard availability alone never grants finalization access.
+        return new("Review and finish creation", detail, canOpen,
+            () => canOpen && generation == _dossierRenderGeneration
+                && IsCurrentCreationDashboardPage()
+                && Coordinator.IsCreationFinalizationStateCurrent(authority!.Value!)
+                    ? Navigation.PushAsync(new CreationStartingCashPage(Coordinator, authority!.Value!))
+                    : Task.CompletedTask,
+            legalPath.Blockers);
     }
 
     private void AddCreationFinalizationStatus(CreationPriorityLegalPathProjection projection)
@@ -2563,6 +2571,7 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardRenderReadiness readiness)
     {
         Dictionary<string, CreationBudgetRoute> routes = new(StringComparer.Ordinal);
+        CreationBudgetRoute finalization = CreationFinalizationReviewRoute();
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
@@ -2651,9 +2660,12 @@ public sealed class BuildPage : NativePageBase
             CreationIdentityRouteState? identityRoute = identityStage
                 ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
                 : null;
+            bool reviewStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Review, StringComparison.Ordinal);
+            bool canOpenReview = reviewStage && finalization.CanOpen;
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canCheckSkillsReReview || canOpenQualities || canOpenMagicResonance || canCheckMagicReReview
-                           || canOpenContacts || contactsPrerequisite is not null || canOpenResources || identityRoute?.IsEnabled == true;
+                           || canOpenContacts || contactsPrerequisite is not null || canOpenResources || identityRoute?.IsEnabled == true
+                           || canOpenReview;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
             string? projectionBlocker = ProjectionStageBlocker(
@@ -2663,7 +2675,9 @@ public sealed class BuildPage : NativePageBase
                 skillStage,
                 contactsStage,
                 resourcesStage);
-            Func<Task> selected = canOpenBasics
+            Func<Task> selected = canOpenReview
+                ? finalization.Open
+                : canOpenBasics
                 ? OpenCreationBasicsAsync
                 : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
@@ -2690,7 +2704,9 @@ public sealed class BuildPage : NativePageBase
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
-            string detail = canOpenBasics
+            string detail = reviewStage
+                ? finalization.Detail
+                : canOpenBasics
                 ? CreationAllocationStrings.BasicsSummary
                 : identityStage
                 ? CreationFlowStrings.DashboardBlocker(identityRoute!.Blocker)
@@ -2741,7 +2757,8 @@ public sealed class BuildPage : NativePageBase
                 && !canOpenMagicResonance
                 && !canCheckMagicReReview
                 && !canOpenContacts
-                && !canOpenResources)
+                && !canOpenResources
+                && !canOpenReview)
             {
                 string guidance = CreationFlowStrings.DashboardBlocker(stage.Blockers[0]);
                 if (!string.Equals(detail, guidance, StringComparison.Ordinal))
