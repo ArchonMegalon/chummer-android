@@ -61,12 +61,15 @@ physical and hosted receipts in those verifier tests are fixtures, not actual
 device or hosted qualification evidence. Core PR 134 and UI PRs 368/369 merged
 normally with their required checks; the merged trees preserve these inputs.
 
-## Pending delivery checks
+## Subsequent delivery checks
 
-The retained-runner native update/reopen/process-restart smoke, ARM64 AAB
-assembly and isolated signing
-remain pending for this candidate. Preview 150 is unchanged and remains the
-latest observed Internal version. No new upload or physical installation is
-claimed here. Full chapters and per-chapter app/EPUB images are unchanged.
+The exact-source retained-runner native update/read/reopen/new-process smoke
+passed; all 33 workspace files stayed unchanged. One ARM64 AAB build, isolated
+existing-key signature, independent keyless verification and Internal upload/
+readback passed. [Preview 151](../../play/evidence/preview151-internal-observation.md)
+is observed Available to internal testers. That record retains exact artifact
+identities and test limitations. Preview 150 remains unchanged. Physical Play
+installation is still unverified. Full chapters and per-chapter app/EPUB images
+are unchanged.
 Complete Creation/Career coverage and general startup reliability remain open;
 Windows is outside this increment.

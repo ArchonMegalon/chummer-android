@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 150 is the latest [observed Internal availability](../play/evidence/preview150-internal-observation.md),
+Preview 151 is the latest [observed Internal availability](../play/evidence/preview151-internal-observation.md),
+confirmed on 9 October at 01:12 Europe/Vienna. Repeated Creation prerequisite
+reads avoid full XML copies while retaining fresh source validation, detached
+values and owner/revision checks. Exact package/managed checks and the final-source
+11-runner native update/read/new-process smoke passed; all 33 files stayed
+unchanged. One local ARM64 build, isolated existing-key signature, independent
+keyless checks and one Internal upload/readback passed. Full chapters and chapter
+images remain in the reader and EPUB. **Startup remains slow; physical Play 151
+installation and complete Creation/Career coverage remain open.** No native
+speedup or finished-app claim is made. Earlier artifacts and evidence are unchanged.
+
+Preview 150's [observed Internal availability](../play/evidence/preview150-internal-observation.md),
 confirmed on 8 October at 23:23 Europe/Vienna. Saved lifestyle integrity checks
 allocate less temporary memory without changing rules, canonical digests or
 owner/revision validation. Core/UI package checks, affected managed checks and
