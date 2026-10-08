@@ -2158,4 +2158,5 @@
   <data name="Contacts.Field.free" xml:space="preserve"><value>Contacto gratuito</value></data>
   <data name="Contacts.Field.family" xml:space="preserve"><value>Familia</value></data>
   <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Chantaje</value></data>
+  <data name="Gear.AvailableCatalog" xml:space="preserve"><value>Solo se muestra el equipo disponible para este personaje. Revisa la selección para comprobar su coste total.</value></data>
 </root>
