@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 142 is the latest [observed Internal availability](../play/evidence/preview142-internal-observation.md),
+Preview 143 is the latest [observed Internal availability](../play/evidence/preview143-internal-observation.md),
+confirmed on 8 October at 12:33 Europe/Vienna. Karma Resources no longer shows a
+raw funding expression, and unsupported equipment has a readable explanation.
+The focused managed regression and actual API36 Resources/Equipment smoke
+passed; all five saved runners stayed byte-identical. Local ARM64 build,
+separate existing-key signing, independent keyless verification and one Internal
+upload/readback passed. Per-chapter app/EPUB illustrations remain included.
+**Physical Play 143 installation, complete Creation/Career and general startup
+reliability remain open.** Earlier artifacts and evidence are unchanged.
+
+Preview 142's [observed Internal availability](../play/evidence/preview142-internal-observation.md),
 confirmed on 8 October at 11:33 Europe/Vienna. Karma creation has one heading,
 shorter guidance and an explicit Metatype-first instruction. Focused managed
 prerequisite/Save/reopen checks and an actual API36 dashboard/overview/catalog
