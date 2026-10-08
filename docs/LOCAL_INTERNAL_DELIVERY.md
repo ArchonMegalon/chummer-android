@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 141 is the latest [observed Internal availability](../play/evidence/preview141-internal-observation.md),
+Preview 142 is the latest [observed Internal availability](../play/evidence/preview142-internal-observation.md),
+confirmed on 8 October at 11:33 Europe/Vienna. Karma creation has one heading,
+shorter guidance and an explicit Metatype-first instruction. Focused managed
+prerequisite/Save/reopen checks and an actual API36 dashboard/overview/catalog
+smoke passed; all four saved runners stayed byte-identical. Local ARM64 build,
+separate existing-key signing, independent keyless verification and one Internal
+upload/readback passed. Per-chapter app/EPUB illustrations remain included.
+**Physical Play 142 installation, complete Creation/Career and general startup
+reliability remain open.** Earlier artifacts and evidence are unchanged.
+
+Preview 141's [observed Internal availability](../play/evidence/preview141-internal-observation.md),
 confirmed on 8 October at 09:49 Europe/Vienna. Karma Open/Load use cancellable
 background read admission while local account hydration owns the read gate.
 Focused actual-account contention/cancellation and owner tests passed; actual
