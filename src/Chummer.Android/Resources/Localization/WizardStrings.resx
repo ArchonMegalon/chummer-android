@@ -10,7 +10,7 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>not selected</value></data>
   <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Preview blockers</value></data>
-  <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Seven Preview-authority flows are available; additional routes are marked Experimental.</value></data>
+  <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Choose your next action. Experimental features are marked.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contains Experimental routes that are not covered by the current Preview authority.</value></data>
   <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — not covered by the current Preview authority.</value></data>
   <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>Refreshing {0} remaining rule projections in the background. Ready steps stay interactive and this page updates automatically.</value></data>
@@ -163,17 +163,17 @@
   <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Runtime, sources, content, or action availability changed; the saved selection was discarded.</value></data>
   <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>The saved Career selection belonged to another workspace and was discarded.</value></data>
   <data name="Career.Commerce" xml:space="preserve"><value>Commerce</value></data>
-  <data name="Career.ChooseFamily" xml:space="preserve"><value>Choose an action family. Only routes backed by a current typed authority are shown.</value></data>
+  <data name="Career.ChooseFamily" xml:space="preserve"><value>What would you like to do?</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fifth Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Selecting a row writes only a digest-bound navigation checkpoint. The destination must load and validate its own typed authority again.</value></data>
   <data name="Career.FamilyStale" xml:space="preserve"><value>The runner changed after this action family was projected. Return and reload Career authority.</value></data>
-  <data name="Career.Heading" xml:space="preserve"><value>Career wizard</value></data>
+  <data name="Career.Heading" xml:space="preserve"><value>Career</value></data>
   <data name="Career.LastSelection" xml:space="preserve"><value> · last selection</value></data>
-  <data name="Career.Loading" xml:space="preserve"><value>Checking the exact workspace and typed Career authorities…</value></data>
-  <data name="Career.NavigationBoundary" xml:space="preserve"><value>This chooser can select and checkpoint navigation only. Review, confirmation, persistence, recovery, and receipts remain owned by the selected typed flow.</value></data>
-  <data name="Career.NoActions" xml:space="preserve"><value>No typed SR5 Career action is available for this exact runner state.</value></data>
+  <data name="Career.Loading" xml:space="preserve"><value>Loading available Career actions…</value></data>
+  <data name="Career.NavigationBoundary" xml:space="preserve"><value>Opening an action does not spend Karma or money. Review changes before confirming.</value></data>
+  <data name="Career.NoActions" xml:space="preserve"><value>No Career actions are currently available for this runner.</value></data>
   <data name="Career.PageTitle" xml:space="preserve"><value>SR5 Career</value></data>
-  <data name="Career.RequiresRunner" xml:space="preserve"><value>This wizard requires a created SR5 runner. It does not fall through to generic editing.</value></data>
+  <data name="Career.RequiresRunner" xml:space="preserve"><value>Finish creating an SR5 runner to open Career.</value></data>
   <data name="Career.Selected" xml:space="preserve"><value>Selected · </value></data>
   <data name="Career.Family.career.economy.Title" xml:space="preserve"><value>Karma and Nuyen</value></data>
   <data name="Career.Family.career.economy.Detail" xml:space="preserve"><value>Record exact manual changes or edit existing typed expense entries.</value></data>
@@ -213,4 +213,16 @@
   <data name="Priority.CategoryPage.TotalUnreachable" xml:space="preserve"><value>With this rank, the remaining categories cannot reach the required total. Choose a different rank or adjust another category.</value></data>
   <data name="Priority.CategoryPage.ClearRank" xml:space="preserve"><value>Clear this rank</value></data>
   <data name="Priority.CategoryPage.ClearRankHelp" xml:space="preserve"><value>To rebalance a complete draft, clear the categories you want to change first. Other categories stay selected.</value></data>
+  <data name="Career.Introduction" xml:space="preserve"><value>Develop your runner and prepare for the next run.</value></data>
+  <data name="Career.Open" xml:space="preserve"><value>Open Career</value></data>
+  <data name="Career.ChangeQuality" xml:space="preserve"><value>Change a quality</value></data>
+  <data name="Career.ChangeQualityDetail" xml:space="preserve"><value>Review a quality change and its Karma cost.</value></data>
+  <data name="Career.AdvanceGroup" xml:space="preserve"><value>Advance a skill group</value></data>
+  <data name="Career.AdvanceGroupDetail" xml:space="preserve"><value>Improve a skill group and check the Karma cost.</value></data>
+  <data name="Career.AddSpecialization" xml:space="preserve"><value>Add a specialization</value></data>
+  <data name="Career.AddSpecializationDetail" xml:space="preserve"><value>Choose a skill and a field to specialize in.</value></data>
+  <data name="Career.ImplantDetail" xml:space="preserve"><value>Choose an implant and review its price and effects.</value></data>
+  <data name="Career.VehicleDetail" xml:space="preserve"><value>Choose a vehicle or drone, then review upgrades and costs.</value></data>
+  <data name="Career.CommerceDetail" xml:space="preserve"><value>Browse implants and custom drugs, then review costs and effects.</value></data>
+  <data name="Career.CommerceUnavailable" xml:space="preserve"><value>Purchases are not currently available for this runner.</value></data>
 </root>

@@ -1138,46 +1138,46 @@ public sealed class BuildPage : NativePageBase
     private void AddSr5CareerWizardRoute()
     {
         VerticalStackLayout card = new() { Spacing = 8 };
-        card.Add(NativeTheme.Eyebrow("Shadowrun Fifth Edition"));
-        card.Add(NativeTheme.Title("Career", 23));
+        card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Career.Eyebrow", "Shadowrun Fifth Edition")));
+        card.Add(NativeTheme.Title(WizardStrings.Get("Career.Heading", "Career"), 23));
         card.Add(NativeTheme.Body(
-            "Use player-intent journeys and exact review/apply receipts for this created SR5 runner.",
+            WizardStrings.Get("Career.Introduction", "Develop your runner and prepare for the next run."),
             NativeTheme.Muted));
         card.Add(NativeTheme.NavigationRow(
-            "Open Career wizard",
+            WizardStrings.Get("Career.Open", "Open Career"),
             WizardStrings.Get(
                 "CurrentPhoneWizard.CareerHubDetail",
-                "Seven Preview-authority flows are available; additional routes are marked Experimental."),
+                "Choose your next action. Experimental features are marked."),
             () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
             automationId: "build-sr5-career-wizard"));
         card.Add(NativeTheme.NavigationRow(
-            "Change a quality",
+            WizardStrings.Get("Career.ChangeQuality", "Change a quality"),
             CurrentPhoneWizardScope.MarkExperimental(
-                "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction"),
+                WizardStrings.Get("Career.ChangeQualityDetail", "Review a quality change and its Karma cost.")),
             OpenSr5CareerQualityWizardAsync,
             automationId: "build-career-quality"));
         card.Add(NativeTheme.NavigationRow(
-            "Advance a skill group",
+            WizardStrings.Get("Career.AdvanceGroup", "Advance a skill group"),
             CurrentPhoneWizardScope.MarkExperimental(
-                "Direct deep link · exact InternalId → Core-bound review → atomic receipt/recovery"),
+                WizardStrings.Get("Career.AdvanceGroupDetail", "Improve a skill group and check the Karma cost.")),
             OpenSr5CareerSkillGroupWizardAsync,
             automationId: "build-career-skill-group"));
         card.Add(NativeTheme.NavigationRow(
-            "Add a specialization",
+            WizardStrings.Get("Career.AddSpecialization", "Add a specialization"),
             CurrentPhoneWizardScope.MarkExperimental(
-                "Direct deep link · typed skill identity → governed/custom choice → four-revision review"),
+                WizardStrings.Get("Career.AddSpecializationDetail", "Choose a skill and a field to specialize in.")),
             OpenSr5CareerSpecializationWizardAsync,
             automationId: "build-career-specialization"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Cyberware purchase"),
             CurrentPhoneWizardScope.MarkExperimental(
-                Sr5CareerFlowStrings.Text("Source-bound catalog → configuration → Core quote → durable receipt")),
+                WizardStrings.Get("Career.ImplantDetail", "Choose an implant and review its price and effects.")),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             automationId: "build-career-commerce"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Vehicle and drone workshop"),
             CurrentPhoneWizardScope.MarkExperimental(
-                Sr5CareerFlowStrings.Text("Exact chassis → modifications and weapon mounts → Core quote → durable purchase receipt")),
+                WizardStrings.Get("Career.VehicleDetail", "Choose a vehicle or drone, then review upgrades and costs.")),
             () => Navigation.PushAsync(new Sr5CareerVehicleWorkshopPage(Coordinator)),
             automationId: "build-career-vehicle-workshop"));
         Border route = NativeTheme.Card(card);

@@ -67,7 +67,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Career.Eyebrow", "Shadowrun Fifth Edition")));
-        _body.Add(NativeTheme.Title(WizardStrings.Get("Career.Heading", "Career wizard")));
+        _body.Add(NativeTheme.Title(WizardStrings.Get("Career.Heading", "Career")));
 
         if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(
                 Coordinator.State.Profile?.Created == true,
@@ -76,7 +76,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             AddStatus(
                 WizardStrings.Get(
                     "Career.RequiresRunner",
-                    "This wizard requires a created SR5 runner. It does not fall through to generic editing."),
+                    "Finish creating an SR5 runner to open Career."),
                 "sr5-career-wizard-edition-blocker",
                 NativeTheme.Danger);
             return;
@@ -87,7 +87,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             AddStatus(
                 WizardStrings.Get(
                     "Career.Loading",
-                    "Checking the exact workspace and typed Career authorities…"),
+                    "Loading available Career actions…"),
                 "sr5-career-wizard-loading",
                 NativeTheme.Muted);
             return;
@@ -120,7 +120,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 ShortDigest(state.Snapshot.Binding.ContentDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "sr5-career-wizard-binding";
-        _body.Add(NativeTheme.Card(binding));
+        _body.Add(NativeTheme.TechnicalDetails(binding, "sr5-career-wizard-details",
+            () => ReferenceEquals(_snapshot, state.Snapshot)
+                && MatchesCurrentRunner(state.Snapshot.Binding, Coordinator.State)));
 
         if (!string.IsNullOrWhiteSpace(_checkpointNotice))
         {
@@ -136,7 +138,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             AddStatus(
                 WizardStrings.Get(
                     "Career.NoActions",
-                    "No typed SR5 Career action is available for this exact runner state."),
+                    "No Career actions are currently available for this runner."),
                 "sr5-career-wizard-no-actions",
                 NativeTheme.Danger);
             return;
@@ -145,7 +147,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _body.Add(NativeTheme.Body(
             WizardStrings.Get(
                 "Career.ChooseFamily",
-                "Choose an action family. Only routes backed by a current typed authority are shown."),
+                "What would you like to do?"),
             NativeTheme.Muted));
         foreach (Sr5CareerWizardFamilyState family in state.Snapshot.Families
                      .Where(static family => family.HasAvailableAction))
@@ -212,8 +214,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         View commerceRoute = NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Gear and implants"),
             CurrentPhoneWizardScope.MarkExperimental(
-                Sr5CareerFlowStrings.Text(
-                    "Source-bound Cyberware and custom-drug recipes → Core quote → durable receipt")),
+                WizardStrings.Get("Career.CommerceDetail", "Browse implants and custom drugs, then review costs and effects.")),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             enabled: canOpenCommerce,
             automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
@@ -221,18 +222,18 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         if (!canOpenCommerce)
         {
             Label commerceBlocker = NativeTheme.Body(
-                Sr5CareerFlowStrings.Text(
-                    "No typed Career commerce authority is available for this exact runner revision."),
+                WizardStrings.Get("Career.CommerceUnavailable", "Purchases are not currently available for this runner."),
                 NativeTheme.Danger);
             commerceBlocker.AutomationId = "sr5-career-commerce-blocker";
             _body.Add(NativeTheme.Card(commerceBlocker));
         }
 
+        // This chooser changes navigation only; the selected flow still owns
+        // review, confirmation, persistence, recovery and exact receipts.
         Label boundary = NativeTheme.Body(
             WizardStrings.Get(
                 "Career.NavigationBoundary",
-                "This chooser can select and checkpoint navigation only. Review, confirmation, "
-                + "persistence, recovery, and receipts remain owned by the selected typed flow."),
+                "Opening an action does not spend Karma or money. Review changes before confirming."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-wizard-navigation-boundary";
         _body.Add(NativeTheme.Card(boundary));
