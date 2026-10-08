@@ -194,6 +194,7 @@ internal sealed class CreationKarmaCompletionPage : NativePageBase
                 "technomancer" => CreationAllocationStrings.Get("Sr6.Option.technomancer", "Technomancer"),
                 "spells-karma" => CreationKarmaCopy.Spells + " · Karma",
                 "complex-forms-karma" => CreationKarmaCopy.ComplexForms + " · Karma",
+                "magsplitadept" => CreationFlowStrings.Get("Magic.Mystic.Title", "Mystic Adept power points"),
                 _ => null
             },
             CharacterCreationFinalizationDeltaKinds.Resources => delta.TargetId switch

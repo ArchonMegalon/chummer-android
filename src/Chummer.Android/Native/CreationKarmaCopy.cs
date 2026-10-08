@@ -19,6 +19,7 @@ internal static class CreationKarmaCopy
         CharacterCreationLifeModuleTalentCatalog.SelectionInvalid => CreationAllocationStrings.Get("LifeCompletion.TalentSelectionInvalid", "Review this talent and its choices using the currently available options."),
         CharacterCreationLifeModuleResourcesQuote.SelectionRequired => CreationAllocationStrings.Get("LifeCompletion.ResourcesRequired", "Open Resources, choose how much Karma to spend (0 is allowed), then save and review."),
         CharacterCreationGearBlockers.UnsupportedSemantics => CreationAllocationStrings.Get("Karma.GearUnsupported", "This item's rules are not supported by this equipment wizard yet."),
+        "creation-magic-resonance-option-semantics-unsupported" => CreationFlowStrings.MagicBlocker(code),
         "creation-skills-native-language-required" => CreationAllocationStrings.Get("Karma.NativeLanguageRequired", "Choose a language under Skills, mark it as your native language, then use that selection in the draft."),
         _ => code
     };
