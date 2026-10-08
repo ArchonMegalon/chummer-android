@@ -273,6 +273,8 @@ public sealed class CreationGearPage : NativePageBase
     private void AddCatalog(CharacterCreationGearInteractionState state)
     {
         _body.Add(NativeTheme.Eyebrow(_copy["Gear.ActiveCatalog"]));
+        _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Gear.AvailableCatalog",
+            "Only equipment available for this character is shown. Review your basket to check its total cost."), NativeTheme.Muted));
         SearchBar search = new()
         {
             AutomationId = "creation-gear-search",
@@ -295,6 +297,7 @@ public sealed class CreationGearPage : NativePageBase
         _body.Add(search);
 
         CharacterCreationGearCatalogOption[] matches = state.Authority.Options
+            .Where(IsCatalogOptionAvailable)
             .Where(MatchesFilter)
             .OrderBy(option => option.Category, StringComparer.Ordinal)
             .ThenBy(option => option.Name, StringComparer.Ordinal)
@@ -313,8 +316,7 @@ public sealed class CreationGearPage : NativePageBase
         foreach (CharacterCreationGearCatalogOption option in matches.Skip(_catalogOffset).Take(CatalogPageSize))
         {
             bool enabled = CanAddCatalogOption(state, option);
-            string detail = option.IsSelectable && option.Blockers.Count == 0
-                ? _copy.Format(
+            string detail = _copy.Format(
                     "Gear.CatalogDetail",
                     option.Category,
                     option.PackageCost,
@@ -322,10 +324,7 @@ public sealed class CreationGearPage : NativePageBase
                     option.Availability,
                     option.Legality,
                     option.SourceBook,
-                    option.Page)
-                : _copy.Format(
-                    "Gear.CatalogUnavailable",
-                    option.Blockers.FirstOrDefault() ?? CharacterCreationGearBlockers.UnsupportedSemantics);
+                    option.Page);
             Border? row = null;
             row = NativeTheme.NavigationRow(
                 option.Name,
@@ -419,11 +418,17 @@ public sealed class CreationGearPage : NativePageBase
         CharacterCreationGearCatalogOption option)
     {
         bool alreadySelected = _basket.TryGetValue(option.OptionId, out int quantity);
-        return option.IsSelectable && option.PricingIsExact && option.AvailabilityIsExact
-            && option.Blockers.Count == 0
+        return IsCatalogOptionAvailable(option)
             && (alreadySelected || _basket.Count < state.Authority.MaximumBasketLines)
             && (!alreadySelected || quantity < state.Authority.MaximumQuantityPerLine);
     }
+
+    // Use Core's issued eligibility without recalculating rules in the renderer.
+    // Basket limits only disable a retained row; removing a line can re-enable it.
+    // Persisted basket entries remain visible and validated separately above.
+    private static bool IsCatalogOptionAvailable(CharacterCreationGearCatalogOption option) =>
+        option.IsSelectable && option.PricingIsExact && option.AvailabilityIsExact
+        && option.Blockers.Count == 0;
 
     private async Task OpenPreviewAsync(CharacterCreationGearInteractionState state)
     {

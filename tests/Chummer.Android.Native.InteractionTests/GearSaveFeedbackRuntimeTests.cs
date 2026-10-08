@@ -40,6 +40,26 @@ internal static partial class AfterRunAuthorityHarness
             var catalog = MinimalVisible(page).OfType<Button>()
                 .Where(item => item.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true).ToArray();
             Require(catalog.Length > 20, "Test must render the real catalog, not an empty substitute.");
+            string CatalogId(CharacterCreationGearCatalogOption option) => "creation-gear-catalog-"
+                + new string(option.OptionId.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray());
+            bool Available(CharacterCreationGearCatalogOption option) => option.IsSelectable && option.PricingIsExact
+                && option.AvailabilityIsExact && option.Blockers.Count == 0;
+            var eligible = state.Authority.Options.Where(Available)
+                .OrderBy(option => option.Category, StringComparer.Ordinal)
+                .ThenBy(option => option.Name, StringComparer.Ordinal)
+                .ThenBy(option => option.OptionId, StringComparer.Ordinal).ToArray();
+            Require(state.Authority.Options.Any(option => !Available(option)), "SETUP: real catalog has no blocked options.");
+            Require(catalog.Where(button => button.AutomationId is not
+                    ("creation-gear-catalog-next" or "creation-gear-catalog-previous"))
+                .Select(button => button.AutomationId).SequenceEqual(eligible.Take(40).Select(CatalogId)),
+                "Catalog does not show exactly the first page of Core-eligible equipment.");
+            Require(!MinimalVisible(page).OfType<Label>().Any(label => label.Text?.Contains("creation-gear-", StringComparison.Ordinal) == true),
+                "Catalog exposes internal rejection codes.");
+            var availableCheck = type.GetMethod("IsCatalogOptionAvailable", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var valid = eligible.First();
+            foreach (var unavailable in new[] { valid with { IsSelectable = false }, valid with { PricingIsExact = false },
+                         valid with { AvailabilityIsExact = false }, valid with { Blockers = [CharacterCreationGearBlockers.AvailabilityExceeded] } })
+                Require(!(bool)availableCheck.Invoke(null, [unavailable])!, "Catalog admitted an ineligible or inexact row.");
             void Set(int quantity) => type.GetMethod("UpdateQuantity", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(page, [state, flashlight, quantity]);
             void StableCatalog()
@@ -81,13 +101,26 @@ internal static partial class AfterRunAuthorityHarness
                 .Invoke(page, [state, option.OptionId, 0]);
             StableCatalog();
             Require(selectable.IsEnabled, "Removing a line did not re-enable its catalog row.");
+            var applyFilter = type.GetMethod("ApplyFilter", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            applyFilter.Invoke(page, ["not-a-real-gear-item-7cf"]);
+            Require(!MinimalVisible(page).OfType<Button>().Any(button => button.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true
+                && button.AutomationId is not ("creation-gear-catalog-next" or "creation-gear-catalog-previous")),
+                "Empty filtered catalog invented a selectable row.");
+            applyFilter.Invoke(page, [string.Empty]);
+            Require(MinimalVisible(page).OfType<Button>().Where(button => button.AutomationId?.StartsWith("creation-gear-catalog-", StringComparison.Ordinal) == true
+                    && button.AutomationId is not ("creation-gear-catalog-next" or "creation-gear-catalog-previous"))
+                .Select(button => button.AutomationId).SequenceEqual(eligible.Take(40).Select(CatalogId)),
+                "Clearing the search lost eligible rows or restored unavailable rows.");
             owners.Set(ContactsOwnerA);
             owners.Set(ContactsOwnerB);
             Set(1);
             Require(!((Dictionary<string, int>)type.GetField("_basket", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!).ContainsKey(flashlight),
                 "A stale account display edited the replacement account's basket.");
         });
-        Console.WriteLine("PASS Gear basket rendering: real Core catalog retained, bounded quantity, no write and stale-owner rejection");
+        foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            Require(CreationFlowStrings.Get("Gear.AvailableCatalog", "missing", CultureInfo.GetCultureInfo(locale)) != "missing",
+                "Missing available-catalog resource: " + locale);
+        Console.WriteLine("PASS Gear basket rendering: only Core-eligible rows, stable catalog, bounded quantity, no write and stale-owner rejection");
     }
 
     internal static async Task RunGearSaveFeedbackAsync(string contentRoot)

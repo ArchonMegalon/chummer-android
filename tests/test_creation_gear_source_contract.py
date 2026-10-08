@@ -89,7 +89,7 @@ class CreationGearSourceContractTests(unittest.TestCase):
         self.assertNotIn("new CharacterCreationGearBudget", page)
         self.assertNotIn("new CharacterCreationGearLine", page)
 
-    def test_catalog_surfaces_exact_and_unsupported_core_rows(self) -> None:
+    def test_catalog_shows_only_exact_core_eligible_rows(self) -> None:
         page = source(PAGE)
         for expression in (
             "state.Authority.Options",
@@ -102,10 +102,15 @@ class CreationGearSourceContractTests(unittest.TestCase):
             "option.Legality",
             "option.SourceBook",
             "option.Page",
-            "option.Blockers.FirstOrDefault()",
-            "CharacterCreationGearBlockers.UnsupportedSemantics",
+            ".Where(IsCatalogOptionAvailable)",
+            "option.Blockers.Count == 0",
         ):
             self.assertIn(expression, page)
+        catalog = page.split("private void AddCatalog(", 1)[1].split("private void ApplyFilter(", 1)[0]
+        self.assertNotIn("Gear.CatalogUnavailable", catalog)
+        self.assertIn("Gear.AvailableCatalog", catalog)
+        self.assertLess(catalog.index(".Where(IsCatalogOptionAvailable)"), catalog.index(".Skip(_catalogOffset)"))
+        self.assertIn("return IsCatalogOptionAvailable(option)", page)
         for automation_id in (
             "creation-gear-page",
             "creation-gear-search",
