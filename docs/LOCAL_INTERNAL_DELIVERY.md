@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 138 is the latest [observed Internal availability](../play/evidence/preview138-internal-observation.md),
+Preview 139 is the latest [observed Internal availability](../play/evidence/preview139-internal-observation.md),
+confirmed on 8 October at 08:12 Europe/Vienna. The sealed UI graph skips unrelated
+Priority preparation during pending Karma/Life Modules restoration. The existing
+app reader's matching chapter illustrations, EPUB image bytes and offline reopen
+passed explicit four-chapter coverage on the final graph. Focused managed/native
+checks and the unchanged product's actual API 36 update/new-process restoration
+passed with four saved runner files unchanged. Local ARM64 build, separate
+existing-key signature, independent keyless checks and one Internal upload/readback
+passed. **Physical Play 139 installation, complete Creation/Career and responsive
+cold startup remain open.** Preview 138 and all earlier evidence are unchanged.
+
+Preview 138's [observed Internal availability](../play/evidence/preview138-internal-observation.md),
 confirmed on 8 October at 06:36 Europe/Vienna. The new sealed Core/UI graph avoids
 duplicate reads while loading the saved-runner roster and adds generated JSON
 metadata. Focused managed/native checks and an actual API 36 in-place update/
