@@ -414,3 +414,59 @@ the display-only build is not presented as a rerun of all methods/talents.
   naming/localization of the Core delta catalog is not claimed by this change.
 - This increment creates no new Release AAB or Play publication. Preview 52's
   existing release evidence remains unchanged. Origin/provider work is separate.
+
+## 8 October follow-up: Life Modules Apprentice into Career
+
+The existing Apprentice category test now has a separate
+`--life-module-apprentice-career-content-root` route. It exercises actual MAUI
+page handlers with production Core/Presentation, not simulated rules: explicit
+Combat/Air restrictions, two purchased Magic levels, native English, zero-Karma
+Resources, empty Equipment/Lifestyles/Contacts, Hermetic tradition and Manabolt.
+It checks a fresh private-draft session, unchanged runner bytes before
+confirmation, one finalization, saved Career reread and rejection of a stale
+confirmation. The original Apprentice picker/retired-control/owner-ABA route
+also passes independently. The local interaction build had zero warnings/errors.
+These managed runs are not device-rendering evidence.
+
+The matching bounded route also passed on an API36 x64 emulator with the existing
+Preview146 SDK-test-signed Release APK:
+`8cbf9309225cd99a3b1e39eac8386d5441407c33805b1ba31b171dcb4fe52433`.
+Runtime producer is `6ca715723a7f1260cdc779372b6630e20af2e24f`;
+there is no app-source delta between that producer and base `7b099728…`.
+Core recipe `76e77b13…` / runtime `899be24…` and Presentation seal `66b3185…`
+remain unchanged. No new APK, AAB, signing operation or Play upload was needed.
+
+One synthetic Core-seeded Elf/module sequence was added beside the eight
+existing synthetic runners. The real native controls completed its remaining
+allocations from saved revision7. A synthetic dice total6 produced Street
+starting cash120. The review explicitly showed 455 Karma before carryover,
+7 retained and 448 discarded. Exactly one confirmation saved Career at8/8,
+including one Hermetic tradition, one Manabolt and one finalization receipt.
+
+After a verified force-stop, a new app process reopened the sheet and actual
+Career wizard. Opt-in technical details confirmed the same workspace at8/8;
+details were hidden again afterward. All27 workspace files were byte-identical
+across the restart and opening Career. All24 pre-existing files remained
+unchanged throughout, and the new runner's bytes were unchanged until final
+confirmation. Saved workspace SHA-256:
+`21bd442e9fbe38f172708c074f3b15a05765ff06e248367ee7e77849b623abda`.
+Finalization receipt digest:
+`sha256:76a75c7215c8570a5c77684e164e59b8bea617498ff482388fbcc90d489863f2`.
+Private read-only state verifier SHA-256:
+`a34bd505255306c1cd88dd8ec72f98ecee6166a99c727298ff5892e5e0d500be`.
+
+The owned emulator was stopped after the route. Its8GiB host limit had zero
+memory-limit/OOM events and zero swap; guest SystemUI, keyboard and service
+startup ANRs before the app launch remain recorded. One observed SystemUI Wait
+was needed. A transient null hierarchy on the later app restart was not counted
+as readiness; subsequent visible Career and exact saved-state checks passed.
+Catalog/finalization loading was slow. This is not a clean-boot or performance
+qualification, and no app ANR/crash was observed in the retained event log.
+
+Concrete UI follow-ups observed here remain open: duplicate default `Runner`
+aliases conceal saved names in the roster/picker; some Life Modules blockers
+still display technical codes; the Career sheet exposes a settings GUID.
+This route does not prove every talent or subsequent Career action. Its seeded
+sequence has no Origin chapters, so it does not requalify book generation or
+claim physical Play installation. Existing per-chapter app/EPUB image evidence
+remains separately recorded in [Origin EPUB and scenes](ORIGIN_EPUB_AND_SCENES.md).
