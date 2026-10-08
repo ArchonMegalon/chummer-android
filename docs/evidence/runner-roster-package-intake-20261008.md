@@ -48,6 +48,10 @@ Sum-to-Ten, Karma, Life Modules and a Career runner with one roster read and no
 mutation; failed presenter reads retain fail-closed recovery. The final pin
 materialization separately passes all 18 package bindings, 331 unchanged rule-
 data files and 138 source/verifier cases including the private-key negative test.
-Final sealed-graph native smoke and release delivery are not yet asserted
-here. Preview 137 remains the recorded Play
-Internal release; no physical-install or finished-app claim is made.
+The final sealed-graph native smoke subsequently passed an in-place update and
+verified new-process restore of the same four runners with unchanged file bytes.
+It still showed slow cold startup, so no general responsiveness claim is made.
+Preview 138 was locally built, separately signed with the existing upload key,
+independently inspected and observed Available on Play Internal. See the exact
+[artifact and readback record](../../play/evidence/preview138-internal-observation.md).
+No physical-install or finished-app claim is made.

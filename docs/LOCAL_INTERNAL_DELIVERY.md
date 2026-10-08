@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 137 is the latest [observed Internal availability](../play/evidence/preview137-internal-observation.md),
+Preview 138 is the latest [observed Internal availability](../play/evidence/preview138-internal-observation.md),
+confirmed on 8 October at 06:36 Europe/Vienna. The new sealed Core/UI graph avoids
+duplicate reads while loading the saved-runner roster and adds generated JSON
+metadata. Focused managed/native checks and an actual API 36 in-place update/
+new-process restore passed; all four saved runner files stayed byte-identical.
+Local ARM64 build, isolated existing-key signing, independent keyless inspection
+and one Internal upload/readback passed. **Physical Play 138 installation,
+complete Creation/Career and responsive cold startup remain open.** The emulator
+still exhibited slow startup; no broad speed or finished-app claim is made.
+Earlier artifacts and evidence remain unchanged.
+
+Preview 137's [observed Internal availability](../play/evidence/preview137-internal-observation.md),
 confirmed on 8 October at 03:51 Europe/Vienna. Karma Attributes adds a top
 Refresh preview and compact read-only rating/cost cards without losing the
 ability to remove invalid purchases. Focused managed/native checks and the
