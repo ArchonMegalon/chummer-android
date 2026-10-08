@@ -4,7 +4,7 @@
   "authorityState": "current_graph_verified",
   "publicationAuthorized": false,
   "presentationSource": {
-    "commit": "d5a1e0ee16e7cc18e12475a7c7e70e06aa0c9db2",
+    "commit": "a9cbac136ece444ac74d1a24c40f5d366fa673a7",
     "tree": "53687a61e89b7842da99e31f58b9cf0d03d5536f",
     "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
@@ -19,7 +19,7 @@
   "verificationReceipt": {
     "contractName": "chummer6-ui.fresh-package-plane-verification",
     "contractVersion": 11,
-    "sha256": "1ced83afde88cc08c9c93ecc117ea1cda284d6a19943ab8509b7e60414c65227",
+    "sha256": "09ed78fa086d579cf1579e42e52eb5e4f33c40923e9bb19b2cbc6f151364d48a",
     "sizeBytes": 81071,
     "status": "passed"
   },
