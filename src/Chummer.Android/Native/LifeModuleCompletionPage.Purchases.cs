@@ -25,7 +25,7 @@ internal sealed partial class LifeModuleCompletionPage
         {
             Body(CreationKarmaCopy.GearLine(option.Name, option.PackageQuantity, option.PackageCost));
             Body(option.SourceBook + " · " + option.Page);
-            foreach (string reason in option.Blockers) Body(reason);
+            foreach (string reason in option.Blockers) Body(CreationKarmaCopy.Blocker(reason));
             bool chosen = basket.Any(x => x.OptionId == option.OptionId);
             Button(chosen ? CreationKarmaCopy.Selected : CreationKarmaCopy.UseSelection, "life-gear-add-" + option.OptionId,
                 () => ChangeReview(Input with { GearSelection = Input.GearSelection!.Append(new(option.OptionId, option.PackageQuantity)).ToArray() }),
@@ -59,7 +59,7 @@ internal sealed partial class LifeModuleCompletionPage
         {
             Body(CreationKarmaCopy.LifestyleSource(option.Name, option.BaseCost, option.DefaultIncrementId));
             Body(option.SourceBook + " · " + option.Page);
-            foreach (string reason in option.Blockers) Body(reason);
+            foreach (string reason in option.Blockers) Body(CreationKarmaCopy.Blocker(reason));
             Button(option.Name, "life-lifestyle-add-" + option.OptionId, () => ChangeReview(Input with
             {
                 LifestyleSelection = Input.LifestyleSelection!.Append(new CharacterCreationLifestyleConfiguration(Guid.NewGuid(), option.OptionId,
@@ -145,7 +145,7 @@ internal sealed partial class LifeModuleCompletionPage
             var id = option.Identity;
             Body(option.Name + " · " + option.SourceBook + " " + option.Page);
             if (id.Kind == CharacterCreationMagicResonanceKinds.Spell) Body(CreationSpellInfo.Summary(option));
-            foreach (string reason in option.Blockers) Body(reason);
+            foreach (string reason in option.Blockers) Body(CreationFlowStrings.MagicCatalogBlocker(reason));
             bool chosen = selected.Tradition == id || selected.Stream == id || selected.Spells.Contains(id)
                 || selected.ComplexForms.Contains(id) || selected.AdeptPowers.Any(x => x.Identity == id);
             if (_kind == CharacterCreationMagicResonanceKinds.AdeptPower)

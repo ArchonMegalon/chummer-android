@@ -1271,9 +1271,7 @@ public sealed class BuildPage : NativePageBase
         // visible native anchor rather than an empty or hidden placeholder.
         if (!AddWorkspacePicker(header))
             header.Add(NativeTheme.Title(
-                Coordinator.State.Profile?.Alias
-                ?? Coordinator.State.Profile?.Name
-                ?? "New runner"));
+                PhoneStrings.RunnerName(Coordinator.State.Profile?.Name, Coordinator.State.Profile?.Alias)));
         long appearanceGeneration = _creationDashboardAppearanceGeneration;
         if (snapshot is not null)
         {
@@ -3769,7 +3767,7 @@ public sealed class BuildPage : NativePageBase
         }
 
         string[] labels = workspaces.Select(static workspace =>
-            !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name).ToArray();
+            PhoneStrings.RunnerName(workspace.Name, workspace.Alias)).ToArray();
         Picker picker = new()
         {
             AutomationId = "build-workspace-picker",
@@ -3831,16 +3829,18 @@ public sealed class BuildPage : NativePageBase
 
     private void AddSummary()
     {
-        string name = Coordinator.State.Profile?.Alias
-            ?? Coordinator.State.Profile?.Name
-            ?? "Runner";
+        string name = PhoneStrings.RunnerName(Coordinator.State.Profile?.Name, Coordinator.State.Profile?.Alias);
         VerticalStackLayout summary = new() { Spacing = 10 };
         summary.Add(NativeTheme.Eyebrow(Coordinator.State.IsDirty ? "Unsaved changes" : "Runner"));
         summary.Add(NativeTheme.Title(name, 24));
         summary.Add(NativeTheme.Metric("Metatype", Coordinator.State.Profile?.Metatype ?? string.Empty));
         summary.Add(NativeTheme.Metric("Metavariant", Coordinator.State.Profile?.Metavariant ?? string.Empty));
         summary.Add(NativeTheme.Metric("Rules", Coordinator.State.Rules?.GameEdition ?? string.Empty));
-        summary.Add(NativeTheme.Metric("Character Setting", Coordinator.State.Rules?.Settings ?? string.Empty));
+        // Some imported runners expose a human profile name; others only its
+        // opaque ID. Do not invent a name or put that implementation ID on the sheet.
+        string? settings = Coordinator.State.Rules?.Settings;
+        if (!string.IsNullOrWhiteSpace(settings) && !Guid.TryParse(settings, out _))
+            summary.Add(NativeTheme.Metric("Character Setting", settings));
         summary.Add(NativeTheme.Metric("Karma", Coordinator.State.Progress?.Karma.ToString() ?? string.Empty));
         summary.Add(NativeTheme.Metric("Nuyen", Coordinator.State.Progress?.Nuyen.ToString() ?? string.Empty));
         _body.Add(NativeTheme.Card(summary));
