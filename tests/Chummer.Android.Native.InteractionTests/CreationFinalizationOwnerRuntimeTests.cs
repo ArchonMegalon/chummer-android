@@ -714,6 +714,87 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine("PASS Skills review: missing-language explanation beside action, absent when unblocked");
     }
 
+    internal static async Task RunCreationNativeLanguageEntryAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, creationSkills: true,
+            productionCreationOverview: true);
+        var saved = PrepareActualFinalizationReadyContext(runtime, stopBeforeSkills: true);
+        await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+        var state = runtime.Coordinator.LoadCreationSkills().Value!;
+        var options = state.Authority.KnowledgeSkills.Where(item => item.CanBeNativeLanguage).ToArray();
+        Require(options.Length > 1, "Native-language test needs the real multi-language catalog.");
+        var readSaved = () => new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var page = new CreationSkillsPage(runtime.Coordinator, state);
+            var navigation = new NavigationPage(page);
+            _ = new Window(navigation);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
+                .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+            Picker Picker() => MinimalVisible(page).OfType<Picker>().Single(item =>
+                item.AutomationId == "creation-skills-native-language-picker");
+            Button Choose() => MinimalVisible(page).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-skills-native-language-preview");
+            async Task ClickAsync(Button button) => await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            var picker = Picker();
+            var choose = Choose();
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var entry = body.Children.Single(item => item is Border { AutomationId: "creation-skills-native-language" });
+            var budget = body.Children.Single(item => item is Border { AutomationId: "creation-skills-budget-active" });
+            Require(body.Children.IndexOf(entry) < body.Children.IndexOf(budget)
+                && picker.ItemsSource.Cast<string>().SequenceEqual(options.Select(item => item.Name))
+                && picker.SelectedIndex == -1 && !choose.IsEnabled && picker.TextColor == NativeTheme.Text,
+                "The first language is buried, guessed, truncated or unreadable.");
+            string untouched = JsonSerializer.Serialize(Draft().Skills);
+            picker.SelectedIndex = options.Length - 1;
+            Require(choose.IsEnabled && JsonSerializer.Serialize(Draft().Skills) == untouched,
+                "Selecting a picker item changed the draft without an explicit action.");
+            // A control from a departed appearance must not select a language.
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            await ClickAsync(choose);
+            Require(JsonSerializer.Serialize(Draft().Skills) == untouched,
+                "A departed native-language action changed the draft.");
+            picker = Picker(); choose = Choose();
+            picker.SelectedIndex = options.Length - 1;
+            await ClickAsync(choose);
+            Require(Draft().Skills.Single(item => item.IsNativeLanguage).SourceSkillId == options.Last().SourceSkillId
+                && !MinimalVisible(page).OfType<Picker>().Any(item => item.AutomationId == "creation-skills-native-language-picker")
+                && MinimalVisibleText(page).Contains(options.Last().Name, StringComparison.Ordinal),
+                "The full catalog choice did not become a readable Core-previewed native language.");
+            string adopted = JsonSerializer.Serialize(Draft().Skills);
+            picker.SelectedIndex = 0;
+            await ClickAsync(choose);
+            Require(JsonSerializer.Serialize(Draft().Skills) == adopted,
+                "An earlier render replaced the chosen language.");
+            await ClickAsync(MinimalVisible(page).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-skills-review-top"));
+            Require(navigation.Navigation.NavigationStack.Last() is CreationSkillsPreviewPage
+                && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(saved),
+                "Top review skipped the explicit preview or persisted choices implicitly.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            var ownerPage = new CreationSkillsPage(runtime.Coordinator, state);
+            _ = new Window(new NavigationPage(ownerPage));
+            page = ownerPage;
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            picker = Picker(); choose = Choose();
+            picker.SelectedIndex = 0;
+            untouched = JsonSerializer.Serialize(Draft().Skills);
+            owners.Set(ContactsOwnerB); owners.Set(OwnerScope.LocalSingleUser);
+            await ClickAsync(choose);
+            Require(JsonSerializer.Serialize(Draft().Skills) == untouched
+                && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(saved),
+                "Owner A→B→A revived a native-language action.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS first native language: visible before budgets, full Core catalog, explicit preview, top review, no writes, stale render/appearance/owner rejection");
+    }
+
     internal static async Task RunCreationFinalReviewNamesAsync(string contentRoot)
     {
         var legacy = new CharacterCreationFinalizationDelta(1, "skill:active:exact-id",
@@ -3517,7 +3598,7 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
-        bool stopBeforeResources = false)
+        bool stopBeforeResources = false, bool stopBeforeSkills = false)
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
@@ -3588,6 +3669,8 @@ internal static partial class AfterRunAuthorityHarness
         var attributeReceipt = attributes.Confirm(new(attributePreview.Binding, [], attributePreview.PreviewDigest, true));
         Require(attributeReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual Attributes failed: " + JsonSerializer.Serialize(attributeReceipt));
+        if (stopBeforeSkills)
+            return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var skills = services.GetRequiredService<ICharacterCreationSkillsService>();
         var skillState = skills.Load(new(runtime.Id)).Value!;
         var native = skillState.Authority.KnowledgeSkills.First(item => item.CanBeNativeLanguage);

@@ -70,6 +70,12 @@ public sealed class CreationSkillsPage : NativePageBase
         }
         _draft.Bind(state, Coordinator.State);
         ResetCatalogPagingIfAuthorityChanged(state);
+        if (CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State) && _draft.Matches(state, Coordinator.State))
+        {
+            AddNativeLanguage(state);
+            if (_blockers.Count > 0) AddBlockers(_blockers, "creation-skills-review-top-blockers");
+            _body.Add(CreateReviewButton(state, "creation-skills-review-top"));
+        }
         AddBinding(state);
         CharacterCreationSkillsPreview? projection = _draft.Preview;
         AddBudget(projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active");
@@ -93,6 +99,59 @@ public sealed class CreationSkillsPage : NativePageBase
             CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"),
             "knowledge");
         AddReview(state);
+    }
+
+    private void AddNativeLanguage(CharacterCreationSkillsState state)
+    {
+        // The required first language must not be buried inside many pages of
+        // knowledge skills. This is only another entrance to the same Core preview.
+        CharacterCreationSkillCatalogEntry[] options = state.Authority.KnowledgeSkills
+            .Where(item => item.CanBeNativeLanguage).ToArray();
+        if (options.Length == 0) return;
+        VerticalStackLayout card = new() { Spacing = 8 };
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Skills.NativeLanguage", "Native language")));
+        string[] chosen = options.Where(option => _draft.Skills.Any(item =>
+                item.Kind == option.Kind && item.SourceSkillId == option.SourceSkillId && item.IsNativeLanguage))
+            .Select(option => option.Name).ToArray();
+        if (chosen.Length > 0)
+        {
+            card.Add(NativeTheme.Title(string.Join(", ", chosen), 18));
+        }
+        else
+        {
+            Picker picker = new()
+            {
+                Title = CreationAllocationStrings.Get("Skills.ChooseNativeLanguage", "Choose native language"),
+                ItemsSource = options.Select(option => option.Name).ToArray(),
+                SelectedIndex = -1,
+                TextColor = NativeTheme.Text,
+                TitleColor = NativeTheme.Muted,
+                BackgroundColor = NativeTheme.Surface,
+                FontSize = 16,
+                AutomationId = "creation-skills-native-language-picker"
+            };
+            Button choose = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "Skills.UseNativeLanguage", "Use as native language"));
+            choose.AutomationId = "creation-skills-native-language-preview";
+            choose.IsEnabled = false;
+            picker.SelectedIndexChanged += (_, _) => choose.IsEnabled = picker.SelectedIndex >= 0
+                && picker.SelectedIndex < options.Length;
+            long renderGeneration = _renderGeneration;
+            long appearanceGeneration = CaptureAppearanceGeneration();
+            choose.Clicked += async (_, _) =>
+            {
+                int index = picker.SelectedIndex;
+                if (index < 0 || index >= options.Length || renderGeneration != _renderGeneration
+                    || !IsCurrentAppearanceGeneration(appearanceGeneration)
+                    || !_draft.Matches(state, Coordinator.State)) return;
+                await PreviewAsync(state, _draft.WithSkill(options[index], 0, native: true), _draft.Groups);
+            };
+            card.Add(picker);
+            card.Add(choose);
+        }
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-skills-native-language";
+        _body.Add(border);
     }
 
     private void AddBinding(CharacterCreationSkillsState state)
@@ -391,10 +450,15 @@ public sealed class CreationSkillsPage : NativePageBase
         // proceed beside its action as well as beside the allocation ledgers.
         if (_blockers.Count > 0)
             AddBlockers(_blockers, "creation-skills-review-blockers");
+        _body.Add(CreateReviewButton(state, "creation-skills-review"));
+    }
+
+    private Button CreateReviewButton(CharacterCreationSkillsState state, string automationId)
+    {
         Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
             "Skills.ReviewDraft",
             "Review Skills draft"));
-        review.AutomationId = "creation-skills-review";
+        review.AutomationId = automationId;
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
             if (!Coordinator.IsCreationSkillsStateCurrent(state)) return;
@@ -430,7 +494,7 @@ public sealed class CreationSkillsPage : NativePageBase
                     }
                 }));
         });
-        _body.Add(review);
+        return review;
     }
 
     private void AddBlockers(IReadOnlyList<string> blockers, string? automationId = null)

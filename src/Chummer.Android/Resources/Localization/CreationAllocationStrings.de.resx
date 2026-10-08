@@ -938,4 +938,7 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Spezialisierung entfernen</value></data>
   <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Fertigkeitsauswahl entfernen</value></data>
   <data name="LifeCompletion.RemoveSkillHelp" xml:space="preserve"><value>Nur deine zusätzliche Auswahl für diese Fertigkeit wird entfernt. Vorteile aus Lebensmodulen bleiben erhalten.</value></data>
+  <data name="Skills.NativeLanguage" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Muttersprache wählen</value></data>
+  <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Als Muttersprache verwenden</value></data>
 </root>

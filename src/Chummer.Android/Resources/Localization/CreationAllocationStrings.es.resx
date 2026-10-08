@@ -935,4 +935,7 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Elige ambas categorías para este talento y guarda para revisarlas. No se selecciona nada automáticamente.</value></data>
   <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Elige una categoría de hechizos y otra de espíritus para este talento y guarda para revisarlas.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Revisa este talento y sus elecciones entre las opciones disponibles actualmente.</value></data>
+  <data name="Skills.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
+  <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Elegir lengua materna</value></data>
+  <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Usar como lengua materna</value></data>
 </root>
