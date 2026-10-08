@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 148 is the latest [observed Internal availability](../play/evidence/preview148-internal-observation.md),
+Preview 149 is the latest [observed Internal availability](../play/evidence/preview149-internal-observation.md),
+confirmed on 8 October at 21:28 Europe/Vienna. Creation Review and Continue
+cards open the existing guarded finalization route when ready and explain
+blocked/loading states correctly. Focused actual-MAUI/Core checks and native
+update/Review-to-cash smoke passed; all33 saved files stayed unchanged. One
+local ARM64 build, isolated existing-key signing, independent keyless checks
+and one Internal upload/readback passed. Per-chapter images and full text remain
+in the app reader and EPUB. **Physical Play149 installation, complete
+Creation/Career and general startup reliability remain open.** Earlier artifacts
+and evidence are unchanged.
+
+Preview 148's [observed Internal availability](../play/evidence/preview148-internal-observation.md),
 confirmed on 8 October at 19:57 Europe/Vienna. Home distinguishes Open runner
 for Career from Continue building for Creation. Focused managed EN/DE/ES checks
 and native update/Home-to-Career smoke passed; all27 saved files/nine synthetic
