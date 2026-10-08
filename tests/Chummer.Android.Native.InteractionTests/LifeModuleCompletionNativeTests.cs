@@ -261,8 +261,9 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            var account = DispatchProxy.Create<IAndroidAccountLinkService, LinkedRecoveryUnlinkedAccountProxy>();
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
-                productionCreationOverview: true);
+                productionCreationOverview: true, accountService: account);
             await runtime.Coordinator.InitializeAsync();
             await runtime.Coordinator.CreateRunnerAsync();
             await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Offline illustrated chapters", default);
@@ -299,6 +300,7 @@ internal static partial class AfterRunAuthorityHarness
             for (int appearance = 0; appearance < 2; appearance++)
             {
                 await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                ui.AssertHealthy();
                 var body = (VerticalStackLayout)typeof(RetainedOriginBookPage).GetField("_body",
                     BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
                 var images = IssuedElements(page).OfType<Image>().Where(image =>
