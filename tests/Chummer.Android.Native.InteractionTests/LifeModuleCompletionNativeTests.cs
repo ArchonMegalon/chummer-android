@@ -16,6 +16,7 @@ using Chummer.Presentation;
 using Chummer.Presentation.Shell;
 using System.Reflection;
 using System.Globalization;
+using System.IO.Compression;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
