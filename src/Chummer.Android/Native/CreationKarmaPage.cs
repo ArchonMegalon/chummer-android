@@ -817,7 +817,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             _body.Add(NativeTheme.Body(CreationKarmaCopy.GearLine(option.Name, option.PackageQuantity, option.PackageCost)));
             _body.Add(NativeTheme.Body(option.SourceBook + " · " + option.Page, NativeTheme.Muted));
             if (!option.IsSelectable)
-                _body.Add(NativeTheme.Body(CreationKarmaCopy.GearUnavailable + " · " + string.Join(", ", option.Blockers), NativeTheme.Muted));
+                _body.Add(NativeTheme.Body(CreationKarmaCopy.GearUnavailable + " · " + string.Join(" · ", option.Blockers.Select(CreationKarmaCopy.Blocker)), NativeTheme.Muted));
             bool selected = selections.Any(item => item.OptionId == option.OptionId);
             AddButton(selected ? CreationKarmaCopy.Selected : CreationKarmaCopy.UseSelection,
                 "karma-add-gear-" + option.OptionId, async () =>
@@ -837,7 +837,6 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             || _session.Authority?.ResourcesPolicy is not { } policy) return;
         _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceHelp, NativeTheme.Muted));
         _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceLimit(policy.MaximumKarmaInvestment)));
-        _body.Add(NativeTheme.Body(policy.FundingExpression, NativeTheme.Muted));
         _body.Add(NativeTheme.Body(CreationKarmaCopy.ResourceInvestment));
         long render = _render, appearance = CaptureAppearanceGeneration();
         _resourceInput ??= (selection.ResourceKarmaInvestment ?? 0m).ToString(CultureInfo.CurrentCulture);

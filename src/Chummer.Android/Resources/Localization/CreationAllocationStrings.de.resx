@@ -214,10 +214,11 @@
   <data name="Karma.Scope" xml:space="preserve"><value>Experimentell: Einige Optionen fehlen noch. Speichere den Entwurf vor der Prüfung des Karrierestarts.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Ressourcen</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma investieren</value></data>
-  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vorschau der Nuyen aus der Profilformel für den Ausrüstungsentwurf. Nuyen-Modifikatoren durch Vor-/Nachteile und endgültiges Startvermögen fehlen noch. Betrag in den Entwurf übernehmen, dann zum Speichern prüfen.</value></data>
+  <data name="Karma.ResourceHelp" xml:space="preserve"><value>Tausche Karma gegen Nuyen für Ausrüstung und Lebensstile. Übernimm den Betrag, um deine Nuyen zu sehen, und prüfe den Entwurf vor dem Speichern. Startvermögen und Anpassungen durch Vor- und Nachteile sind hier nicht enthalten.</value></data>
   <data name="Karma.Gear" xml:space="preserve"><value>Ausrüstung</value></data>
   <data name="Karma.GearHelp" xml:space="preserve"><value>Ausrüstung aus aktiven Quellen wählen. Mengen sind Stückzahlen; Hinzufügen wählt eine Quellpackung. Core prüft Kosten und Verfügbarkeit. Zum Speichern den Entwurf prüfen und bestätigen.</value></data>
   <data name="Karma.GearUnavailable" xml:space="preserve"><value>In diesem Ausrüstungsentwurf nicht verfügbar</value></data>
+  <data name="Karma.GearUnsupported" xml:space="preserve"><value>Die Regeln dieses Gegenstands werden hier noch nicht unterstützt.</value></data>
   <data name="Karma.GearLine" xml:space="preserve"><value>{0} · {1} Stück · {2:N2} ¥</value></data>
   <data name="Karma.GearTotals" xml:space="preserve"><value>Ausrüstung: {0:N2} ¥ verfügbar · {1:N2} ¥ ausgegeben · {2:N2} ¥ übrig · {3:N2} ¥ über Budget</value></data>
   <data name="Karma.InvalidNumber" xml:space="preserve"><value>Eine nicht negative Zahl mit dem Dezimaltrennzeichen deiner Sprache eingeben, ohne Tausendertrennzeichen.</value></data>
