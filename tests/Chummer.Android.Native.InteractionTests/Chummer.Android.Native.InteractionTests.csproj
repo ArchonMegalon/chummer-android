@@ -32,6 +32,7 @@
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="ResourcesSaveFeedbackRuntimeTests.cs" />
     <Compile Include="MinimalUiRuntimeTests.cs" />
+    <Compile Include="CareerMinimalUiRuntimeTests.cs" />
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />
     <Compile Include="CreationKarmaNativeRuntimeTests.cs" />
     <Compile Include="LifeModuleCompletionNativeTests.cs" />

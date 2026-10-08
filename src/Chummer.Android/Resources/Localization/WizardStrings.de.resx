@@ -10,7 +10,7 @@
   <data name="Common.NotSelected" xml:space="preserve"><value>nicht ausgewählt</value></data>
   <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Vorschau-Blockaden</value></data>
-  <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Sieben Flows gehören zur Preview-Autorität; zusätzliche Routen sind als experimentell markiert.</value></data>
+  <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Wähle deine nächste Aktion. Experimentelle Funktionen sind gekennzeichnet.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Enthält experimentelle Routen, die nicht durch die aktuelle Preview-Autorität abgedeckt sind.</value></data>
   <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt.</value></data>
   <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>{0} verbleibende Regelprojektionen werden im Hintergrund aktualisiert. Bereite Schritte bleiben interaktiv und diese Seite wird automatisch aktualisiert.</value></data>
@@ -163,17 +163,17 @@
   <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Laufzeit, Quellen, Inhalt oder Aktionsverfügbarkeit wurden geändert; die gespeicherte Auswahl wurde verworfen.</value></data>
   <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>Die gespeicherte Karriereauswahl gehörte zu einem anderen Workspace und wurde verworfen.</value></data>
   <data name="Career.Commerce" xml:space="preserve"><value>Handel</value></data>
-  <data name="Career.ChooseFamily" xml:space="preserve"><value>Eine Aktionsgruppe auswählen. Angezeigt werden nur Routen mit einer aktuellen typisierten Instanz.</value></data>
+  <data name="Career.ChooseFamily" xml:space="preserve"><value>Was möchtest du tun?</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fünfte Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Die Auswahl einer Zeile schreibt nur einen Digest-gebundenen Navigations-Checkpoint. Das Ziel muss seine eigene typisierte Instanz erneut laden und prüfen.</value></data>
   <data name="Career.FamilyStale" xml:space="preserve"><value>Der Runner wurde nach der Projektion dieser Aktionsgruppe geändert. Zurückkehren und die Karriereinstanz neu laden.</value></data>
-  <data name="Career.Heading" xml:space="preserve"><value>Karriereassistent</value></data>
+  <data name="Career.Heading" xml:space="preserve"><value>Karriere</value></data>
   <data name="Career.LastSelection" xml:space="preserve"><value> · letzte Auswahl</value></data>
-  <data name="Career.Loading" xml:space="preserve"><value>Exakter Workspace und typisierte Karriereinstanzen werden geprüft…</value></data>
-  <data name="Career.NavigationBoundary" xml:space="preserve"><value>Dieser Assistent wählt und speichert nur die Navigation. Prüfung, Bestätigung, Speicherung, Wiederherstellung und Belege bleiben Eigentum des gewählten typisierten Ablaufs.</value></data>
-  <data name="Career.NoActions" xml:space="preserve"><value>Für den exakten Zustand dieses Runners ist keine typisierte SR5-Karriereaktion verfügbar.</value></data>
+  <data name="Career.Loading" xml:space="preserve"><value>Verfügbare Karriereaktionen werden geladen…</value></data>
+  <data name="Career.NavigationBoundary" xml:space="preserve"><value>Das Öffnen einer Aktion kostet weder Karma noch Geld. Prüfe Änderungen vor dem Bestätigen.</value></data>
+  <data name="Career.NoActions" xml:space="preserve"><value>Für diesen Runner sind derzeit keine Karriereaktionen verfügbar.</value></data>
   <data name="Career.PageTitle" xml:space="preserve"><value>SR5-Karriere</value></data>
-  <data name="Career.RequiresRunner" xml:space="preserve"><value>Dieser Assistent benötigt einen erschaffenen SR5-Runner. Er weicht nicht auf die allgemeine Bearbeitung aus.</value></data>
+  <data name="Career.RequiresRunner" xml:space="preserve"><value>Schließe die Erschaffung eines SR5-Runners ab, um die Karriere zu öffnen.</value></data>
   <data name="Career.Selected" xml:space="preserve"><value>Ausgewählt · </value></data>
   <data name="Career.Family.career.economy.Title" xml:space="preserve"><value>Karma und Nuyen</value></data>
   <data name="Career.Family.career.economy.Detail" xml:space="preserve"><value>Exakte manuelle Änderungen erfassen oder vorhandene typisierte Ausgaben bearbeiten.</value></data>
@@ -213,4 +213,16 @@
   <data name="Priority.CategoryPage.TotalUnreachable" xml:space="preserve"><value>Mit diesem Rang können die übrigen Kategorien die benötigte Summe nicht erreichen. Wähle einen anderen Rang oder passe eine andere Kategorie an.</value></data>
   <data name="Priority.CategoryPage.ClearRank" xml:space="preserve"><value>Diesen Rang freigeben</value></data>
   <data name="Priority.CategoryPage.ClearRankHelp" xml:space="preserve"><value>Gib zuerst die Kategorien frei, die du neu verteilen möchtest. Die übrigen Kategorien bleiben ausgewählt.</value></data>
+  <data name="Career.Introduction" xml:space="preserve"><value>Entwickle deinen Runner weiter und bereite den nächsten Run vor.</value></data>
+  <data name="Career.Open" xml:space="preserve"><value>Karriere öffnen</value></data>
+  <data name="Career.ChangeQuality" xml:space="preserve"><value>Vor- oder Nachteil ändern</value></data>
+  <data name="Career.ChangeQualityDetail" xml:space="preserve"><value>Prüfe die Änderung eines Vor- oder Nachteils und die Karmakosten.</value></data>
+  <data name="Career.AdvanceGroup" xml:space="preserve"><value>Fertigkeitsgruppe steigern</value></data>
+  <data name="Career.AdvanceGroupDetail" xml:space="preserve"><value>Steigere eine Fertigkeitsgruppe und prüfe die Karmakosten.</value></data>
+  <data name="Career.AddSpecialization" xml:space="preserve"><value>Spezialisierung hinzufügen</value></data>
+  <data name="Career.AddSpecializationDetail" xml:space="preserve"><value>Wähle eine Fertigkeit und ein Gebiet für die Spezialisierung.</value></data>
+  <data name="Career.ImplantDetail" xml:space="preserve"><value>Wähle ein Implantat und prüfe Preis und Auswirkungen.</value></data>
+  <data name="Career.VehicleDetail" xml:space="preserve"><value>Wähle ein Fahrzeug oder eine Drohne und prüfe Umbauten und Kosten.</value></data>
+  <data name="Career.CommerceDetail" xml:space="preserve"><value>Stöbere in Implantaten und eigenen Drogenmischungen und prüfe Kosten und Auswirkungen.</value></data>
+  <data name="Career.CommerceUnavailable" xml:space="preserve"><value>Für diesen Runner sind derzeit keine Einkäufe verfügbar.</value></data>
 </root>
