@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 135 is the latest [observed Internal availability](../play/evidence/preview135-internal-observation.md),
+Preview 136 is the latest [observed Internal availability](../play/evidence/preview136-internal-observation.md),
+confirmed on 8 October at 03:08 Europe/Vienna. Career entry uses shorter player
+guidance and collapses exact technical IDs/revisions/digests by default. All six
+destinations and Experimental warnings remain. Focused managed/native checks and
+the actual API 36 navigation/disclosure smoke passed with unchanged saved runner
+bytes. The unchanged Core/UI graph was built locally for ARM64, signed with the
+existing isolated upload key and independently verified before one Internal
+upload. **Physical Play 136 installation, complete Creation/Career coverage and
+native responsiveness remain open.** Earlier artifacts/evidence are unchanged.
+
+Preview 135's [observed Internal availability](../play/evidence/preview135-internal-observation.md),
 confirmed on 8 October at 02:45 Europe/Vienna. Creation Skills puts the first
 native-language picker and Review above the budget/catalog content. Focused
 managed/native checks and the actual API 36 minimal Priority route passed through
