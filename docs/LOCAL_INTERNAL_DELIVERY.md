@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 146 is the latest [observed Internal availability](../play/evidence/preview146-internal-observation.md),
+Preview 147 is the latest [observed Internal availability](../play/evidence/preview147-internal-observation.md),
+confirmed on 8 October at 19:28 Europe/Vienna. Home/picker preserve runner names;
+Career hides opaque profile IDs; Life Modules has readable selection/dice/budget
+guidance. Focused managed controls and native update/runner-switch smoke passed;
+all27 saved files/nine synthetic runners remained unchanged. One successful local
+ARM64 build, isolated existing-key signing, independent keyless verification and
+one Internal upload/readback passed. Two pre-compilation script invocation
+failures are retained, not counted as successful builds. Per-chapter images and
+full text remain in the app reader and EPUB. **Physical Play147 installation,
+complete Creation/Career and general startup reliability remain open.**
+
+Preview 146's [observed Internal availability](../play/evidence/preview146-internal-observation.md),
 confirmed on 8 October at 18:02 Europe/Vienna. Saved-character integrity checks
 use fewer temporary allocations without changing canonical digests or admission.
 Focused package/managed checks and actual API36 update/new-process Career reopen
