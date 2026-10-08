@@ -126,7 +126,16 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 139 is the latest [observed Internal availability](../play/evidence/preview139-internal-observation.md),
+Preview 140 is the latest [observed Internal availability](../play/evidence/preview140-internal-observation.md),
+confirmed on 8 October at 09:11 Europe/Vienna. Karma Creation refreshes its exact
+saved-revision dashboard binding after toolbar Save. Focused managed failure/
+recovery checks and actual API36 Save/force-stop/new-process reopen passed. Local
+ARM64 build, separate existing-key signature, independent keyless checks and one
+Internal upload/readback passed. Existing per-chapter app/EPUB illustrations remain
+included. **Physical Play 140 installation, complete Creation/Career and startup
+reliability/performance remain open.** Preview 139 and earlier evidence are unchanged.
+
+Preview 139's [observed Internal availability](../play/evidence/preview139-internal-observation.md),
 confirmed on 8 October at 08:12 Europe/Vienna. The sealed UI graph skips unrelated
 Priority preparation during pending Karma/Life Modules restoration. The existing
 app reader's matching chapter illustrations, EPUB image bytes and offline reopen
