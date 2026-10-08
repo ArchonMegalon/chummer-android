@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 149 is the latest [observed Internal availability](../play/evidence/preview149-internal-observation.md),
+Preview 150 is the latest [observed Internal availability](../play/evidence/preview150-internal-observation.md),
+confirmed on 8 October at 23:23 Europe/Vienna. Saved lifestyle integrity checks
+allocate less temporary memory without changing rules, canonical digests or
+owner/revision validation. Core/UI package checks, affected managed checks and
+the retained 11-runner native update/read/restart smoke passed; all 33 files stayed
+unchanged. The native APK predates the final metadata repin; exact final ARM64
+build, isolated existing-key signing and independent keyless verification are
+separate evidence. One Internal upload/readback passed. Full chapters and
+per-chapter images remain in the reader and EPUB. **Startup is still slow;
+physical Play 150 installation and complete Creation/Career remain open.**
+This is not a general performance or finished-app claim. Earlier artifacts and
+evidence are unchanged.
+
+Preview 149's [observed Internal availability](../play/evidence/preview149-internal-observation.md),
 confirmed on 8 October at 21:28 Europe/Vienna. Creation Review and Continue
 cards open the existing guarded finalization route when ready and explain
 blocked/loading states correctly. Focused actual-MAUI/Core checks and native

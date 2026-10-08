@@ -1,8 +1,9 @@
 # Lifestyle digest allocation intake — 8 October 2026
 
-Preview 150 is a local candidate, not yet a signed or uploaded release. It
-consumes Core's bounded allocation reduction for saved lifestyle integrity
-checks. The internal digest now reuses the existing canonical streaming helper;
+Preview 150 is now [available on Play Internal](../../play/evidence/preview150-internal-observation.md),
+with physical installation unverified. It consumes Core's bounded allocation
+reduction for saved lifestyle integrity checks. The internal digest now reuses
+the existing canonical streaming helper;
 canonical bytes, fresh mutable-input reads, rule replay, owner/revision checks,
 constant-time comparisons and persistence semantics remain unchanged.
 
@@ -93,14 +94,16 @@ was under load; baseline 149 already encountered a SystemUI ANR. These are not
 controlled performance results and do not prove the startup problem fixed.
 The temporary emulator was stopped after the smoke, preserving the fixture.
 
-## Still pending for this candidate
+## Delivery result and remaining scope
 
-Core PR 133 and UI preseal PR 365 are merged normally. Final UI seal and Android
-protected merges, the local ARM64 AAB, separate existing-upload-key signing,
-independent keyless inspection and actual Play Internal readback remain separate
-steps. No runtime authority is inferred from source checks or managed results.
+Core PR 133, UI preseal PR 365, final UI seal PR 367 and Android PR 585 merged
+normally under their unchanged required checks. One local ARM64 AAB, separate
+existing-upload-key signing, independent keyless inspection and actual Play
+Internal readback passed. Exact source/artifact/receipt identities are in the
+linked release record. No runtime authority is inferred from source checks or
+managed results.
 
-Preview 149 remains the latest observed Internal build and is unchanged. Full
+Preview 149 remains unchanged as historical evidence. Full
 chapters and per-chapter illustrations remain in the app reader and EPUB.
 Physical Play installation, complete Creation/Career coverage and general
 startup reliability are not yet established. Windows is outside this increment.
