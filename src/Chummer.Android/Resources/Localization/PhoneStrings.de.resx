@@ -16,6 +16,7 @@
   <data name="HomeStartDetail" xml:space="preserve"><value>Öffne eine Datei, verknüpfe dein Konto oder erstelle einen Runner.</value></data>
   <data name="HomeCurrent" xml:space="preserve"><value>Aktuell</value></data>
   <data name="HomeContinue" xml:space="preserve"><value>Weiterbauen</value></data>
+  <data name="HomeOpenRunner" xml:space="preserve"><value>Runner öffnen</value></data>
   <data name="OpenFile" xml:space="preserve"><value>Datei öffnen</value></data>
   <data name="NewRunner" xml:space="preserve"><value>Neuer Runner</value></data>
   <data name="ApplicationSettings" xml:space="preserve"><value>Einstellungen</value></data>

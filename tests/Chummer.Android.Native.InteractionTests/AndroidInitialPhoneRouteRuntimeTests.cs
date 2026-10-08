@@ -13,6 +13,68 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunHomeRunnerActionAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            using var account = new ActualAccountFixture();
+            await account.Owner.InitializeAsync();
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account);
+            var page = new RunnersPage(runtime.Coordinator);
+            var window = new Window(page);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            var cultureBefore = CultureInfo.CurrentUICulture;
+            try
+            {
+                // Reuse the same Home instance: returning to Creation must not
+                // retain the Career label from the previously selected runner.
+                foreach (bool created in new[] { false, true, false })
+                {
+                    var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument($"""
+                        <character><name>Home action fixture</name><gameedition>SR5</gameedition>
+                        <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+                        <buildmethod>Karma</buildmethod><createdversion>5.225.0</createdversion>
+                        <appversion>5.225.0</appversion><created>{created}</created><karma>30</karma><nuyen>1000</nuyen>
+                        <improvements/><contacts/><expenses/></character>
+                        """, "sr5"), default);
+                    Require((await runtime.Client.SaveAsync(imported.Id, default)).Success,
+                        "Home action fixture could not be saved.");
+                    await runtime.Presenter.LoadAsync(imported.Id, default);
+                    Require(runtime.Coordinator.State.WorkspaceId == imported.Id
+                        && runtime.Coordinator.State.Profile?.Created == created
+                        && runtime.Coordinator.State.Error is null,
+                        "Home action fixture has the wrong Creation/Career state.");
+                    var store = new FileWorkspaceStore(runtime.StateDirectory);
+                    string before = JsonSerializer.Serialize(store.Get(imported.Id).Value!);
+                    foreach (var (culture, draftText, careerText) in new[]
+                    {
+                        ("en", "Continue building", "Open runner"),
+                        ("de-AT", "Weiterbauen", "Runner öffnen"),
+                        ("es-MX", "Continuar creando", "Abrir runner")
+                    })
+                    {
+                        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                        typeof(HomePage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!
+                            .Invoke(page, null);
+                        var action = IssuedElements(page).OfType<Button>().First();
+                        Require(action.Text == (created ? careerText : draftText),
+                            $"Home action mislabels created={created} in {culture}: {action.Text}");
+                        Require(action.IsEnabled,
+                            "Home lost the current runner action.");
+                    }
+                    Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
+                        "Rendering the Home action changed persisted runner data.");
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = cultureBefore; }
+            Require(alerts.Titles.Count == 0, "Rendering Home opened an unexpected dialog.");
+            Console.WriteLine("PASS Home Creation/Career/Creation action labels: EN/DE/ES, no persisted changes");
+        });
+    }
+
     public static async Task RunHomeTransitionFeedbackAsync(string contentRoot)
     {
         foreach (var (name, alias, expected) in new[]

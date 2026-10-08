@@ -112,7 +112,10 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         if (Coordinator.State.Profile is not null)
         {
             Button continueButton = NativeTheme.PrimaryButton(
-                PhoneStrings.Get("HomeContinue", "Continue building"));
+                Coordinator.State.Profile.Created
+                    ? PhoneStrings.Get("HomeOpenRunner", "Open runner")
+                    : PhoneStrings.Get("HomeContinue", "Continue building"));
+            continueButton.AutomationId = "home-open-current-runner";
             continueButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(_runnerRoute);
             current.Add(continueButton);
             if (Coordinator.State.WorkspaceId is { } currentId
