@@ -46,6 +46,11 @@ internal static partial class AfterRunAuthorityHarness
             using var alerts = new IssuedPageAlerts(root, window);
             await alerts.PreflightAsync();
             await Appear();
+            Require(root.Title == CreationKarmaCopy.Title
+                && !IssuedElements(root).OfType<Label>().Any(label => label.Text == root.Title),
+                "The navigation title must not be repeated above the Karma choices.");
+            Require(Element<Label>("creation-karma-budget").Text == CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype),
+                "An empty Karma draft must explain the first choice, not display an ambiguous picker placeholder.");
             AssertPrerequisite("contacts", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype));
             AssertPrerequisite("lifestyles", CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype));
             var disabledContacts = Element<Button>("karma-open-contacts");

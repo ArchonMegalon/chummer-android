@@ -82,7 +82,7 @@ internal static class CreationKarmaCopy
     public static string StartingCash(string name, int dice, decimal multiplier) => CreationAllocationStrings.Format("Karma.StartingCash", "{0}: roll {1}d6 · multiplier {2:N2} ¥", name, dice, multiplier);
     public static string CompletionTotals(decimal karma, decimal starting, decimal nuyen) => CreationAllocationStrings.Format("Karma.CompletionTotals", "Career Karma: {0} · creation funding: {1:N2} ¥ · Career nuyen: {2:N2} ¥", karma, starting, nuyen);
     public static string DeltaCost(decimal karma, decimal nuyen) => CreationAllocationStrings.Format("Karma.DeltaCost", "Cost: {0} Karma · {1:N2} ¥", karma, nuyen);
-    public static string Title => CreationAllocationStrings.Get("Karma.Title", "Karma foundation");
+    public static string Title => CreationAllocationStrings.Get("Karma.Title", "Karma creation");
     public static string Loading => CreationAllocationStrings.Get("Karma.Loading", "Checking rules and saved choices… Your draft is kept while this page loads.");
     public static string Metatype => CreationAllocationStrings.Get("Karma.Metatype", "Metatype");
     public static string Talent => CreationAllocationStrings.Get("Karma.Talent", "Talent");
@@ -112,10 +112,10 @@ internal static class CreationKarmaCopy
         karma.ToString("G29", System.Globalization.CultureInfo.CurrentCulture),
         nuyen.ToString("N2", System.Globalization.CultureInfo.CurrentCulture));
     public static string Review => CreationAllocationStrings.Get("Karma.Review", "Review draft");
-    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental Karma creation with source-validated magic purchases. Save the draft first, then separately review and confirm Career entry. Unsupported source options remain disabled; this is not all-method parity.");
+    public static string Scope => CreationAllocationStrings.Get("Karma.Scope", "Experimental: some options are not supported yet. Save your draft before reviewing Career entry.");
     public static string Stale => CreationAllocationStrings.Get("Karma.Stale", "This draft is no longer ready. Return to the runner and reopen it; no selection is applied automatically.");
     public static string Saved => CreationAllocationStrings.Get("Karma.Saved", "Pending Karma draft saved. The runner has not been finalized.");
-    public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose explicitly");
+    public static string Choose => CreationAllocationStrings.Get("Karma.Choose", "Choose an option");
     public static string Pending => CreationAllocationStrings.Get("Karma.Pending", "Selection changed — refresh the preview for current totals and costs.");
     public static string LevelHelp => CreationAllocationStrings.Get("Karma.LevelHelp", "Adjust purchased levels. Core recalculates final ratings, limits and costs when you refresh the preview.");
     public static string Preview => CreationAllocationStrings.Get("Karma.Preview", "Refresh preview");

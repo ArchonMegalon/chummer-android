@@ -134,7 +134,6 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         _body.Clear();
         _attributeValues.Clear();
         _body.IsEnabled = _session.FrameCurrent;
-        _body.Add(NativeTheme.Title(Title));
         if (!_session.FrameCurrent)
         { _body.Add(NativeTheme.Body(CreationKarmaCopy.Stale, NativeTheme.Danger)); return; }
         if (_step is CreationKarmaStep.Overview or CreationKarmaStep.Review)
@@ -157,7 +156,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         _body.Add(binding);
         _status = NativeTheme.Body(_session.QuoteCurrent && _session.Quote is { KarmaBudget.IsExact: true } quote
             ? CreationKarmaCopy.Budget(quote.KarmaBudget.Used, quote.KarmaBudget.Total, quote.KarmaBudget.Remaining)
-            : _session.Selection is null ? CreationKarmaCopy.Choose : CreationKarmaCopy.Pending, NativeTheme.Muted);
+            : _session.Selection is null ? CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype) : CreationKarmaCopy.Pending, NativeTheme.Muted);
         _status.AutomationId = "creation-karma-budget";
         _body.Add(_status);
         switch (_step)

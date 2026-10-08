@@ -1448,7 +1448,7 @@ public sealed class BuildPage : NativePageBase
         bool exact = budget is { IsExact: true };
         var values = NativeTheme.Body(exact
             ? CreationKarmaCopy.Budget(budget!.Used, budget.Total, budget.Remaining)
-            : session is { Ready: true, Selection: null } ? CreationKarmaCopy.Choose : CreationKarmaCopy.Stale,
+            : session is { Ready: true, Selection: null } ? CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype) : CreationKarmaCopy.Stale,
             exact || session is { Ready: true, Selection: null } ? NativeTheme.Text : NativeTheme.Danger);
         values.AutomationId = "creation-karma-dashboard-budget";
         _body.Add(NativeTheme.Card(values));
@@ -1471,7 +1471,7 @@ public sealed class BuildPage : NativePageBase
         // allocation/finalization placeholders are replaced by the Karma wizard.
         if (snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Basics && stage.IsAvailable))
             _body.Add(CreationNavigationRow(StageLabel(snapshot, CharacterCreationWizardStepIds.Basics),
-                "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract",
+                CreationAllocationStrings.BasicsSummary,
                 async () => { if (Current()) await OpenCreationBasicsAsync(); }, canOpen, "creation-stage-basics"));
     }
 
@@ -2693,7 +2693,7 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
             string detail = canOpenBasics
-                ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
+                ? CreationAllocationStrings.BasicsSummary
                 : identityStage
                 ? CreationFlowStrings.DashboardBlocker(identityRoute!.Blocker)
                 : lifeModuleOrigin

@@ -10,6 +10,8 @@ namespace Chummer.Android.Native;
 /// </summary>
 public static class CreationAllocationStrings
 {
+    public static string BasicsSummary => Get("Creation.BasicsSummary", "View your runner's rules and enabled sourcebooks. These settings cannot be changed here.");
+
     private static readonly ResourceManager Resources = new(
         "Chummer.Android.Resources.Localization.CreationAllocationStrings",
         typeof(CreationAllocationStrings).Assembly);

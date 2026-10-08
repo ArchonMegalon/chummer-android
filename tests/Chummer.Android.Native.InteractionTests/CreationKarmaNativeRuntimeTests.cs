@@ -354,7 +354,7 @@ internal static partial class AfterRunAuthorityHarness
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
             string? Budget() => IssuedElements(page).OfType<Microsoft.Maui.Controls.Label>()
                 .Single(label => label.AutomationId == "creation-karma-dashboard-budget").Text;
-            Require(Budget() == CreationKarmaCopy.Choose && probe!.OpenCalls == 1,
+            Require(Budget() == CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype) && probe!.OpenCalls == 1,
                 "SETUP: new Karma dashboard must freshly admit the pending bootstrap.");
             var save = page.ToolbarItems.Single(item => item.AutomationId == "build-save-runner");
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => save.Command.Execute(null)));
@@ -366,7 +366,7 @@ internal static partial class AfterRunAuthorityHarness
                 && after.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest
                 && probe!.ConfirmCalls == 0,
                 "Dashboard Save changed the pending choices or failed to persist its exact revision.");
-            Require(Budget() == CreationKarmaCopy.Choose && probe!.OpenCalls == 2 && alerts.Titles.Count == 0,
+            Require(Budget() == CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype) && probe!.OpenCalls == 2 && alerts.Titles.Count == 0,
                 "Dashboard Save must refresh its new saved-revision binding, not leave the valid pending Karma runner stale: "
                 + Budget() + "; opens=" + probe!.OpenCalls);
             // A failed post-save read cannot borrow the prior successful state.
@@ -380,7 +380,7 @@ internal static partial class AfterRunAuthorityHarness
             IssuedPageLifecycle(page, "OnDisappearing");
             probe.FailReads = false;
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
-            Require(Budget() == CreationKarmaCopy.Choose && probe.OpenCalls == 4
+            Require(Budget() == CreationKarmaCopy.ChooseStepFirst(CreationKarmaCopy.Metatype) && probe.OpenCalls == 4
                 && probe.ConfirmCalls == 0 && alerts.Titles.Count == 0,
                 "Reopening after a failed post-save read must recover without automatically choosing or confirming.");
             var reopened = store.Get(id).Value!;
