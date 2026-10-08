@@ -174,6 +174,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunOriginSuccessorAcceptanceAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--origin-reader-chapter-images-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginReaderChapterImagesAsync(args[1]);
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--origin-reader-local-text-content-root")
         {
             await AfterRunAuthorityHarness.RunOriginReaderLocalTextAsync(args[1], args.Length == 3 ? args[2] : null);
