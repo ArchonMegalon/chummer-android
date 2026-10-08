@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 144 is the latest [observed Internal availability](../play/evidence/preview144-internal-observation.md),
+Preview 145 is the latest [observed Internal availability](../play/evidence/preview145-internal-observation.md),
+confirmed on 8 October at 14:44 Europe/Vienna. Unsaved-switch feedback stays
+above the roster scroller, with readable EN/DE/ES copy and a guarded return to
+the current runner; the editor no longer repeats that notice with a workspace ID.
+Focused managed regression and final API36 feedback/return smoke passed; all
+seven saved runner files remained unchanged. One local ARM64 build, isolated
+existing-key signature, independent keyless checks and Internal upload/readback
+passed. Per-chapter app/EPUB illustrations remain included. **Physical Play145
+installation, complete Creation/Career and general startup reliability remain
+open.** Preview144 and earlier artifacts/evidence are unchanged.
+
+Preview 144's [observed Internal availability](../play/evidence/preview144-internal-observation.md),
 confirmed on 8 October at 13:41 Europe/Vienna. Karma's unsupported magic options
 have readable explanations; Career review names Mystic Adept power points.
 Focused managed regression and native Adept-catalog copy smoke passed; all six
