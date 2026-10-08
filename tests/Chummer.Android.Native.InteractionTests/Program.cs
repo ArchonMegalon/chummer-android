@@ -578,6 +578,12 @@ internal static class Program
             CreationMagicNativeRuntimeTests.RunSumToTen(args[1]);
             return;
         }
+        if (args.Length is 2 or 3 && args[0] == "--creation-sum-to-ten-career-content-root")
+        {
+            CreationMagicNativeRuntimeTests.RunSumToTen(args[1], finishCareer: true,
+                onlyTalent: args.Length == 3 ? args[2] : null);
+            return;
+        }
         if (args.Length == 3 && args[0] == "--creation-sum-to-ten-magic-seed")
         {
             CreationMagicNativeRuntimeTests.ExportSumToTenMagicSeed(args[1], args[2]);

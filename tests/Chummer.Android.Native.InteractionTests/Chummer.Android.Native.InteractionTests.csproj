@@ -59,6 +59,7 @@
     <Compile Include="RunnerDeletionRuntimeTests.cs" />
     <Compile Include="ReputationNativeRuntimeTests.cs" />
     <Compile Include="CreationMagicNativeRuntimeTests.cs" />
+    <Compile Include="CreationAwakenedFinalizationTests.cs" />
     <Compile Include="SkillsReReviewNativeRuntimeTests.cs" />
     <Compile Include="MagicReReviewNativeRuntimeTests.cs" />
     <Compile Include="../Chummer.Android.Sr5AfterRunReward.Tests/RealAfterRunRewardFixture.cs" Link="RealAfterRunRewardFixture.cs" />
