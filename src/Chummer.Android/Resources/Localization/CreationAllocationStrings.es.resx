@@ -203,14 +203,15 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>nativo</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Revisar las habilidades guardadas con las reglas actuales</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No hay ningún borrador anterior de habilidades compatible para este runner. No se ha cambiado nada.</value></data>
-  <data name="Karma.Title" xml:space="preserve"><value>Base de Karma</value></data>
+  <data name="Creation.BasicsSummary" xml:space="preserve"><value>Consulta las reglas y los libros habilitados para tu runner. Esta configuración no se puede cambiar aquí.</value></data>
+  <data name="Karma.Title" xml:space="preserve"><value>Creación con Karma</value></data>
   <data name="Karma.Metatype" xml:space="preserve"><value>Metatipo</value></data>
   <data name="Karma.Talent" xml:space="preserve"><value>Talento</value></data>
   <data name="Karma.Attributes" xml:space="preserve"><value>Atributos</value></data>
   <data name="Karma.Skills" xml:space="preserve"><value>Habilidades</value></data>
   <data name="Karma.Groups" xml:space="preserve"><value>Grupos de habilidades</value></data>
   <data name="Karma.Review" xml:space="preserve"><value>Revisar borrador</value></data>
-  <data name="Karma.Scope" xml:space="preserve"><value>Creación con Karma experimental con compras de magia validadas por las fuentes. Guarda el borrador y después revisa y confirma por separado el paso a Carrera. Las opciones no compatibles siguen desactivadas; no todos los métodos están completos.</value></data>
+  <data name="Karma.Scope" xml:space="preserve"><value>Experimental: algunas opciones aún no están disponibles. Guarda el borrador antes de revisar el paso a Carrera.</value></data>
   <data name="Karma.Resources" xml:space="preserve"><value>Recursos</value></data>
   <data name="Karma.ResourceInvestment" xml:space="preserve"><value>Karma para invertir</value></data>
   <data name="Karma.ResourceHelp" xml:space="preserve"><value>Vista previa de nuyen según la fórmula del perfil para el borrador de equipo. Aún no incluye modificadores de nuyen por cualidades ni el dinero inicial definitivo. Usa este importe en el borrador y revísalo para guardar.</value></data>
@@ -224,7 +225,7 @@
   <data name="Karma.ResourceFunding" xml:space="preserve"><value>Recursos: {0} Karma → {1} ¥ (financiación del perfil, antes del equipo)</value></data>
   <data name="Karma.Stale" xml:space="preserve"><value>Este borrador ya no está listo. Vuelve al personaje y ábrelo de nuevo; ninguna selección se aplica automáticamente.</value></data>
   <data name="Karma.Saved" xml:space="preserve"><value>Borrador de Karma guardado. El personaje aún no está finalizado.</value></data>
-  <data name="Karma.Choose" xml:space="preserve"><value>Elegir explícitamente</value></data>
+  <data name="Karma.Choose" xml:space="preserve"><value>Elegir opción</value></data>
   <data name="Karma.Pending" xml:space="preserve"><value>Selección modificada: actualiza la vista previa para ver los valores y costes actuales.</value></data>
   <data name="Karma.LevelHelp" xml:space="preserve"><value>Ajusta los niveles comprados. Core recalcula los valores finales, límites y costes al actualizar la vista previa.</value></data>
   <data name="Karma.Preview" xml:space="preserve"><value>Actualizar vista previa</value></data>
