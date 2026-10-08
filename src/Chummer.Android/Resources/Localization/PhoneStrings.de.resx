@@ -10,6 +10,8 @@
   <data name="ShellMore" xml:space="preserve"><value>Mehr</value></data>
   <data name="HomeYourRunners" xml:space="preserve"><value>Deine Runner</value></data>
   <data name="HomeLoading" xml:space="preserve"><value>Deine Runner werden geöffnet…</value></data>
+  <data name="HomeUnsavedSwitch" xml:space="preserve"><value>Speichere deinen aktuellen Runner vor dem Wechsel. Öffne ihn und tippe auf Speichern.</value></data>
+  <data name="HomeReviewCurrentRunner" xml:space="preserve"><value>Aktuellen Runner öffnen</value></data>
   <data name="HomeNoRunner" xml:space="preserve"><value>Kein Runner geöffnet</value></data>
   <data name="HomeStartDetail" xml:space="preserve"><value>Öffne eine Datei, verknüpfe dein Konto oder erstelle einen Runner.</value></data>
   <data name="HomeCurrent" xml:space="preserve"><value>Aktuell</value></data>

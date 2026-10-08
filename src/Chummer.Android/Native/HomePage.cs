@@ -20,6 +20,13 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         Padding = new Thickness(20, 20, 20, 36),
         Spacing = 18
     };
+    private readonly VerticalStackLayout _feedback = new()
+    {
+        AutomationId = "home-action-feedback",
+        Padding = new Thickness(20, 12),
+        Spacing = 8,
+        IsVisible = false
+    };
 
     public HomePage(RunnerSessionCoordinator coordinator) : this(coordinator, "//tablet-build", "Home")
     {
@@ -32,7 +39,15 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     {
         _runnerRoute = runnerRoute;
         Title = title;
-        Content = new ScrollView { Content = _body };
+        // Action feedback must remain in view even when the roster is long or
+        // scrolled. In particular, a refused switch must not look like a no-op.
+        var layout = new Grid
+        {
+            RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) }
+        };
+        layout.Add(_feedback);
+        layout.Add(new ScrollView { Content = _body }, 0, 1);
+        Content = layout;
         ShowStartupProgress();
     }
 
@@ -48,11 +63,13 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     protected override void OnDisappearing()
     {
         _startupProgress.IsRunning = false;
+        ClearFeedback();
         base.OnDisappearing();
     }
 
     private void ShowStartupProgress()
     {
+        ClearFeedback();
         _body.Clear();
         var status = NativeTheme.Title(PhoneStrings.Get("HomeLoading", "Opening your runners…"));
         status.AutomationId = "home-startup-status";
@@ -203,13 +220,50 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         }
 
         AddOnlineSection();
-        if (!string.IsNullOrWhiteSpace(Coordinator.Notice))
-        {
-            _body.Add(NativeTheme.Body(Coordinator.Notice, NativeTheme.Muted));
-        }
+        RefreshFeedback();
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         PublishApi36ProofState();
 #endif
+    }
+
+    private void ClearFeedback()
+    {
+        _feedback.Clear();
+        _feedback.IsVisible = false;
+    }
+
+    private void RefreshFeedback()
+    {
+        ClearFeedback();
+        string? notice = Coordinator.Notice;
+        if (string.IsNullOrWhiteSpace(notice)) return;
+        var state = Coordinator.State;
+        // Translate only this exact known presenter refusal. Keep its real
+        // identity and dirty-state admission in the presenter; never infer that
+        // another failure can be fixed by saving, or silently save/discard here.
+        bool unsavedSwitch = state.WorkspaceId is { } id
+            && state.Session.ActiveWorkspace?.IsDirty == true
+            && notice == $"Save or discard local changes for '{id.Value}' before you switch dossiers.";
+        var label = NativeTheme.Body(unsavedSwitch
+            ? PhoneStrings.Get("HomeUnsavedSwitch", "Save your current runner before switching. Open it and tap Save.")
+            : notice);
+        label.AutomationId = "home-action-notice";
+        _feedback.Add(label);
+        if (unsavedSwitch)
+        {
+            long appearance = CaptureAppearanceGeneration();
+            var open = NativeTheme.SecondaryButton(PhoneStrings.Get("HomeReviewCurrentRunner", "Open current runner"));
+            open.AutomationId = "home-review-current-runner";
+            open.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (!IsCurrentAppearanceGeneration(appearance) || !_feedback.Contains(open)
+                    || Coordinator.State.WorkspaceId != state.WorkspaceId
+                    || Coordinator.State.DisplayOwnerContext != state.DisplayOwnerContext) return;
+                await Shell.Current.GoToAsync(_runnerRoute);
+            });
+            _feedback.Add(open);
+        }
+        _feedback.IsVisible = true;
     }
 
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
