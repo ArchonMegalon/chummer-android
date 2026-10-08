@@ -53,3 +53,14 @@ bytes, 8/9/128-chapter capacity, malformed/oversized images, cold reopen, stale
 text and owner isolation. Synthetic capacity tests are separate from the real
 one-chapter smoke above. Neither proves a physical Play installation. Actual
 release and Play availability remain in the publication evidence, not here.
+
+On 8 October 2026, the focused native-control test
+`--origin-reader-chapter-images-content-root` verified four retained full
+chapters together: each image precedes its own chapter text, has an accessible
+description and uses uncropped private raster data. It opens the actual MAUI
+deferred image streams and compares their bytes with the actual reader-exported
+EPUB images. Reopening the reader without a linked account preserves all four
+images; leaving the page clears its content and retires the old image streams.
+The canonical runner document stays unchanged. This is a synthetic managed
+native-control check, not a new provider run, GPU-rendering observation or
+physical Play installation. No new image-generation or upload claim is implied.
