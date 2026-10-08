@@ -16,6 +16,7 @@
   <data name="HomeStartDetail" xml:space="preserve"><value>Open a file, link your account, or start a runner.</value></data>
   <data name="HomeCurrent" xml:space="preserve"><value>Current</value></data>
   <data name="HomeContinue" xml:space="preserve"><value>Continue building</value></data>
+  <data name="HomeOpenRunner" xml:space="preserve"><value>Open runner</value></data>
   <data name="DeleteRunner" xml:space="preserve"><value>Delete runner</value></data>
   <data name="DeleteRunnerNamed" xml:space="preserve"><value>Delete runner {0}</value></data>
   <data name="DeleteRunnerQuestion" xml:space="preserve"><value>Delete “{0}” from this device, including unsaved changes? This cannot be undone. Online copies, online books and exported files are kept.</value></data>

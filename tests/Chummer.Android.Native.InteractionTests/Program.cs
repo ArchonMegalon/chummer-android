@@ -448,6 +448,7 @@ internal static class Program
         }
         if (args.Length == 2 && args[0] == "--home-transition-feedback-content-root")
         {
+            await AfterRunAuthorityHarness.RunHomeRunnerActionAsync(args[1]);
             await AfterRunAuthorityHarness.RunHomeStartupFeedbackAsync(args[1]);
             await AfterRunAuthorityHarness.RunHomeTransitionFeedbackAsync(args[1]);
             return;
