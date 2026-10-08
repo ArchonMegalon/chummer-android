@@ -262,8 +262,9 @@ internal static partial class AfterRunAuthorityHarness
         await ui.RunAsync(async () =>
         {
             var account = DispatchProxy.Create<IAndroidAccountLinkService, LinkedRecoveryUnlinkedAccountProxy>();
+            var output = new LifeBookOutputProbe();
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
-                productionCreationOverview: true, accountService: account);
+                productionCreationOverview: true, accountService: account, outputDocuments: output);
             await runtime.Coordinator.InitializeAsync();
             await runtime.Coordinator.CreateRunnerAsync();
             await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Offline illustrated chapters", default);
@@ -330,6 +331,21 @@ internal static partial class AfterRunAuthorityHarness
                     await opened.CopyToAsync(bytes);
                     Require(bytes.ToArray().SequenceEqual(LifeSceneInputProbe.Png),
                         "The native reader's deferred image source differs from the EPUB's retained raster.");
+                }
+                await ui.BeginAsyncVoid(() => ((IButtonController)IssuedElements(page).OfType<Button>()
+                    .Single(b => b.AutomationId == "origin-book-export-epub")).SendClicked());
+                using (var epub = new ZipArchive(new MemoryStream(output.Epub)))
+                {
+                    var entries = epub.Entries.Where(entry => entry.FullName.StartsWith("EPUB/images/", StringComparison.Ordinal)).ToArray();
+                    Require(entries.Length == images.Length, "EPUB and native reader have different chapter image counts.");
+                    foreach (var entry in entries)
+                    {
+                        using var stream = entry.Open();
+                        using var bytes = new MemoryStream();
+                        await stream.CopyToAsync(bytes);
+                        Require(bytes.ToArray().SequenceEqual(LifeSceneInputProbe.Png),
+                            "EPUB and native reader use different retained chapter image bytes.");
+                    }
                 }
                 IssuedPageLifecycle(page, "OnDisappearing");
                 Require(!IssuedElements(page).Any(e => e is Image or Label), "A departed reader retained private chapter content.");
