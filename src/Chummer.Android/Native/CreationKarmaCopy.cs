@@ -18,6 +18,7 @@ internal static class CreationKarmaCopy
         CharacterCreationLifeModuleTalentCatalog.RestrictionsRequired => CreationAllocationStrings.Get("LifeCompletion.TalentRestrictionsRequired", "Choose a spell category and a spirit category for this talent, then save and review."),
         CharacterCreationLifeModuleTalentCatalog.SelectionInvalid => CreationAllocationStrings.Get("LifeCompletion.TalentSelectionInvalid", "Review this talent and its choices using the currently available options."),
         CharacterCreationLifeModuleResourcesQuote.SelectionRequired => CreationAllocationStrings.Get("LifeCompletion.ResourcesRequired", "Open Resources, choose how much Karma to spend (0 is allowed), then save and review."),
+        CharacterCreationGearBlockers.UnsupportedSemantics => CreationAllocationStrings.Get("Karma.GearUnsupported", "This item's rules are not supported by this equipment wizard yet."),
         "creation-skills-native-language-required" => CreationAllocationStrings.Get("Karma.NativeLanguageRequired", "Choose a language under Skills, mark it as your native language, then use that selection in the draft."),
         _ => code
     };
@@ -105,7 +106,7 @@ internal static class CreationKarmaCopy
     public static string GearLine(string name, int quantity, decimal cost) => CreationAllocationStrings.Format("Karma.GearLine", "{0} · {1} units · {2:N2} ¥", name, quantity, cost);
     public static string GearTotals(decimal total, decimal spent, decimal remaining, decimal overspend) => CreationAllocationStrings.Format("Karma.GearTotals", "Equipment: {0:N2} ¥ available · {1:N2} ¥ spent · {2:N2} ¥ remaining · {3:N2} ¥ over budget", total, spent, remaining, overspend);
     public static string ResourceInvestment => CreationAllocationStrings.Get("Karma.ResourceInvestment", "Karma to invest");
-    public static string ResourceHelp => CreationAllocationStrings.Get("Karma.ResourceHelp", "Preview profile-funded nuyen for the equipment draft. Quality-based nuyen modifiers and final starting cash are not included yet. Use this amount in the draft, then review to save.");
+    public static string ResourceHelp => CreationAllocationStrings.Get("Karma.ResourceHelp", "Trade Karma for equipment and lifestyle funds. Use the amount to see your nuyen, then review to save. Starting cash and quality-based modifiers are not included here.");
     public static string InvalidNumber => CreationAllocationStrings.Get("Karma.InvalidNumber", "Enter a non-negative number using your language's decimal separator, without thousands separators.");
     public static string ResourceLimit(decimal maximum) => CreationAllocationStrings.Format("Karma.ResourceLimit", "Profile limit: {0} Karma", maximum);
     public static string ResourceFunding(decimal karma, decimal nuyen) => CreationAllocationStrings.Format("Karma.ResourceFunding", "Resources: {0} Karma → {1} ¥ (profile funding, before equipment)",

@@ -357,10 +357,50 @@ internal static partial class AfterRunAuthorityHarness
                 await ui.BeginAsyncVoid(() => ((IButtonController)disabledContacts).SendClicked());
                 Require(ReferenceEquals(root, Current()), "An obsolete disabled Contacts callback navigated after unlock.");
                 await Click("karma-open-resources");
+                string fundingExpression = Session().Authority!.ResourcesPolicy!.FundingExpression;
+                Require(!string.IsNullOrWhiteSpace(fundingExpression)
+                    && !IssuedElements(Current()).OfType<Label>().Any(label => label.Text == fundingExpression),
+                    "Resources must show player guidance and Core's quoted amount, not a raw funding expression.");
                 Element<Entry>("karma-resource-investment").Text = "0";
                 await Click("karma-use-resources");
+                Require(Element<Label>("karma-resource-funding").Text == CreationKarmaCopy.ResourceFunding(0m, 0m)
+                    && Session().Authority!.ResourcesPolicy!.FundingExpression == fundingExpression,
+                    "Hiding the expression must preserve Core's funding policy and quoted amount.");
                 AssertPrerequisite("lifestyles", CreationKarmaCopy.ReviewOptionalStepFirst(CreationKarmaCopy.Gear));
                 await Click("karma-open-gear");
+                var unsupportedGear = Session().Authority!.GearAuthority!.Options.First(option =>
+                    !option.IsSelectable && option.Blockers.Contains(CharacterCreationGearBlockers.UnsupportedSemantics));
+                ReadableSearch("karma-gear-search").Text = unsupportedGear.Name;
+                await Click("karma-gear-search-go");
+                var disabledGear = Element<Button>("karma-add-gear-" + unsupportedGear.OptionId);
+                Require(!disabledGear.IsEnabled
+                    && IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains(
+                        "This item's rules are not supported by this equipment wizard yet.", StringComparison.Ordinal) == true)
+                    && !IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.Contains(
+                        CharacterCreationGearBlockers.UnsupportedSemantics, StringComparison.Ordinal) == true),
+                    "Unsupported equipment must explain its limitation without exposing the internal blocker code.");
+                var selectedBeforeDisabledGear = Session().Selection;
+                ((IButtonController)disabledGear).SendClicked();
+                Require(ReferenceEquals(selectedBeforeDisabledGear, Session().Selection),
+                    "Readable equipment guidance must not enable an unsupported selection.");
+                var copyCulture = CultureInfo.CurrentUICulture;
+                try
+                {
+                    foreach (var (language, expected) in new[]
+                    {
+                        ("en-US", "This item's rules are not supported by this equipment wizard yet."),
+                        ("de-AT", "Die Regeln dieses Gegenstands werden hier noch nicht unterstützt."),
+                        ("es-MX", "Este asistente de equipo aún no admite las reglas de este objeto.")
+                    })
+                    {
+                        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                        Require(CreationKarmaCopy.Blocker(CharacterCreationGearBlockers.UnsupportedSemantics) == expected,
+                            "Unsupported equipment guidance is missing for " + language);
+                    }
+                    Require(CreationKarmaCopy.Blocker("unknown-core-reason") == "unknown-core-reason",
+                        "This targeted display fix must not reinterpret unknown Core blockers.");
+                }
+                finally { CultureInfo.CurrentUICulture = copyCulture; }
                 await Back();
                 Require(Session().Selection!.GearSelections is { Count: 0 },
                     "Reviewing empty Gear must not purchase equipment.");
@@ -374,7 +414,7 @@ internal static partial class AfterRunAuthorityHarness
                     && probe.ConfirmCalls == 0,
                     "Prerequisite hints or empty-step review persisted without confirmation.");
                 ui.AssertHealthy();
-                Console.WriteLine("PASS Karma prerequisite hints: ordered blockers, explicit empty choices, zero resources, disabled/stale callbacks, no writes");
+                Console.WriteLine("PASS Karma prerequisite hints: ordered blockers, readable resources/equipment EN/DE/ES, explicit empty choices, zero resources, disabled/stale callbacks, no writes");
                 return;
             }
             await QualitySearch("Code of Honor");
