@@ -10,6 +10,7 @@ internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunCreationKarmaAsync(string contentRoot, string? onlyScenario = null)
     {
+        if (onlyScenario == "account-read-admission") { await RunKarmaAccountReadAdmissionAsync(contentRoot); return; }
         if (onlyScenario == "dashboard-save") { await RunKarmaDashboardSaveAsync(contentRoot); return; }
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
@@ -225,6 +226,106 @@ internal static partial class AfterRunAuthorityHarness
         });
     }
 
+    private static async Task RunKarmaAccountReadAdmissionAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            using var account = new ActualAccountFixture();
+            KarmaNativeProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: account.Owner, accountService: account.Account,
+                karmaDecorator: actual => probe = new(actual, ui));
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Karma account read", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", "Karma", default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            var owner = account.Owner.Capture();
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            var before = store.Get(id).Value!;
+
+            foreach (string scenario in new[] { "open", "load", "cancel-open", "cancel-load" })
+            {
+                var writerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var releaseWriter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var readEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                account.Metadata.BeforeReadWithCancellationAsync = async (key, token) =>
+                {
+                    if (key != "chummer.account.installation-grant.v1") return;
+                    writerEntered.TrySetResult();
+                    await releaseWriter.Task.WaitAsync(token);
+                };
+                // Actual local account hydration holds the real credential gate.
+                // No fake owner, imported error result or remote request is used.
+                Task hydration = account.Owner.InitializeAsync();
+                await writerEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                using var cancel = new CancellationTokenSource();
+                probe!.BeforeRead = () => readEntered.TrySetResult();
+                bool open = scenario.EndsWith("open", StringComparison.Ordinal);
+                Task<bool> reading = ReadAsync();
+                try
+                {
+                    await readEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                    var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ => heartbeat.TrySetResult(), null);
+                    await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    // A bounded observation while the writer is deliberately held;
+                    // not a retry, startup timeout or substitute for joining work.
+                    await Task.WhenAny(reading, Task.Delay(200));
+                    Require(!reading.IsCompleted,
+                        "Karma " + scenario + " returned unavailable while the unchanged account writer was held.");
+                    if (scenario.StartsWith("cancel-", StringComparison.Ordinal))
+                    {
+                        cancel.Cancel();
+                        bool canceled = false;
+                        try { await reading.WaitAsync(TimeSpan.FromSeconds(5)); }
+                        catch (OperationCanceledException) { canceled = true; }
+                        Require(canceled, "Cancellation did not release the waiting Karma read.");
+                    }
+                    else
+                    {
+                        releaseWriter.TrySetResult();
+                        await hydration.WaitAsync(TimeSpan.FromSeconds(10));
+                        Require(await reading.WaitAsync(TimeSpan.FromSeconds(10)),
+                            "Karma read did not admit the exact unchanged draft after account hydration.");
+                    }
+                }
+                finally
+                {
+                    releaseWriter.TrySetResult();
+                    await hydration.WaitAsync(TimeSpan.FromSeconds(10));
+                    cancel.Cancel();
+                    try { await reading.WaitAsync(TimeSpan.FromSeconds(10)); }
+                    catch (OperationCanceledException) { }
+                    account.Metadata.BeforeReadWithCancellationAsync = null;
+                    probe.BeforeRead = null;
+                }
+                var after = store.Get(id).Value!;
+                Require(account.Owner.Capture() == owner && account.Requests == 0
+                    && probe.ConfirmCalls == 0 && probe.FinalConfirmCalls == 0
+                    && after.ContentRevision == before.ContentRevision && after.SavedRevision == before.SavedRevision
+                    && after.Document.Content == before.Document.Content
+                    && after.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest,
+                    "Account-contended Karma read changed authority or persisted runner data.");
+                Console.WriteLine("PASS Karma actual account read admission: " + scenario);
+
+                async Task<bool> ReadAsync()
+                {
+                    if (open)
+                    {
+                        var result = await runtime.Coordinator.OpenCreationKarmaAsync(cancellationToken: cancel.Token);
+                        return result.Value is { } opened && runtime.Coordinator.IsCreationKarmaStateCurrent(opened.State);
+                    }
+                    var loaded = await runtime.Coordinator.LoadCreationKarmaAsync(cancellationToken: cancel.Token);
+                    return loaded.Value is { } state && runtime.Coordinator.IsCreationKarmaStateCurrent(state);
+                }
+            }
+        });
+    }
+
     private static async Task RunKarmaDashboardSaveAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();
@@ -299,6 +400,7 @@ internal static partial class AfterRunAuthorityHarness
         public TimeSpan LoadTime, PreviewTime, OpenTime;
         public int ConfirmCalls, FinalConfirmCalls;
         public bool FailReads;
+        public Action? BeforeRead;
         public Action? AfterLoad, AfterPreview, AfterConfirm, AfterOpen, AfterFinalConfirm;
         public Func<CharacterCreationKarmaMetatypeOpen, CharacterCreationKarmaMetatypeOpen>? TransformOpen;
         public Func<CharacterCreationKarmaMetatypeState, CharacterCreationKarmaMetatypeState>? TransformLoad;
@@ -309,6 +411,7 @@ internal static partial class AfterRunAuthorityHarness
             bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
         {
             AssertBackground(); OpenCalls++;
+            BeforeRead?.Invoke();
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -323,6 +426,7 @@ internal static partial class AfterRunAuthorityHarness
             bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
         {
             AssertBackground(); LoadCalls++;
+            BeforeRead?.Invoke();
             if (FailReads) return new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationKarmaMetatypeBlockers.StaleBinding]);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
