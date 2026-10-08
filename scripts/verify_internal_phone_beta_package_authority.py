@@ -38,17 +38,17 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "61d09850baa0753463b4fa36e353128cfb46c8d7"
-EXPECTED_PRESENTATION_TREE = "87bc1e28ccd652c7d0ac0dfbd69250d6aab3bb10"
+EXPECTED_PRESENTATION_COMMIT = "8dff197bf87958293f419bf25de8444b7c82848f"
+EXPECTED_PRESENTATION_TREE = "1526c0b1bbba1973986bc49863c585c402c53c9d"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "d98765ea3bb3c716abd9ddca204147e9d17d16bf237ee1d6fe0ff70b2de93d72"
+EXPECTED_LOCK_SHA256 = "e44bf7c3ac231ec24ff8a7835cc463d2940da5715b0fd140465129c9a077d35c"
 EXPECTED_LOCK_SIZE = 68354
-EXPECTED_LOCK_BLOB = "f7bce50cecd5f87d441667cd8a974ac9cda1e9a2"
-EXPECTED_RECEIPT_SHA256 = "05f871e16ff1b8d278fd62df2b8247a229ae0af842a7cfc28c95a21f8161d109"
+EXPECTED_LOCK_BLOB = "82751d755b9582512270d44917a496423d37ff74"
+EXPECTED_RECEIPT_SHA256 = "9e5223a9a457e14d46c58bab62ed3dfe8d5b0192693730088c9ec64fcf823181"
 EXPECTED_RECEIPT_SIZE = 81071
-EXPECTED_CACHE_KEY = "1202890a1e3a4261cafe3317503b6f97458fb80fbcd70675bba3506741315c55"
-EXPECTED_CACHE_MANIFEST_SHA256 = "0daec84362ea65ddc6b47405a6bdf9b999897fd8bd210f39e113fa60c76ca4a4"
+EXPECTED_CACHE_KEY = "ba250003f0a674a520253013fd679283aa1f147d1c25ceab7c441d11d92d7fd5"
+EXPECTED_CACHE_MANIFEST_SHA256 = "848b6700e799d6f1aa3f5d98f2d93f654f285fe0cef6527c3c05456449e99e93"
 EXPECTED_CACHE_MANIFEST_SIZE = 13789
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
@@ -108,7 +108,7 @@ EXISTING_OWNER_TEST_EXECUTIONS = (
     ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
     ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
     ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
-    ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 27),
+    ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 37),
 )
 
 
@@ -779,7 +779,7 @@ def validate_owner_test_executions(receipt: Mapping[str, Any]) -> None:
         or full["disableBuildServers"] is not True
         or full["useSharedCompilation"] is not False
         or type(full["maxCpuCount"]) is not int or full["maxCpuCount"] != 1
-        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 781
+        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 791
     ):
         raise ValueError("UI full Product test invocation is not exact")
     assembly = require_exact_object(full["testAssembly"], "UI Product test assembly", {"path", "sha256", "sizeBytes"})
