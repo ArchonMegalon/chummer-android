@@ -20,7 +20,7 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static async Task RunKarmaPhonePagesAsync(string contentRoot, bool prerequisitesOnly = false, bool magic = false,
-        string? attributeMetatype = null)
+        string? attributeMetatype = null, bool mystic = false)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -78,7 +78,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(ReferenceEquals(talentPage, Current()) && Session().Selection!.TalentOptionId is null,
                     "Explaining a disabled talent must not admit its callback.");
             }
-            await Click(magic ? "karma-talent-0e741331-d776-4be8-abc5-4101228abdef" : "karma-talent-mundane");
+            await Click(mystic ? "karma-talent-9d53e1e4-3f31-40cb-bfbe-4b94f5ba757e"
+                : magic ? "karma-talent-0e741331-d776-4be8-abc5-4101228abdef" : "karma-talent-mundane");
             AssertPrerequisite("contacts", CreationKarmaCopy.ReviewStepFirst(CreationKarmaCopy.Attributes));
             await Click("karma-open-attributes");
             if (attributeMetatype is not null)
@@ -281,13 +282,64 @@ internal static partial class AfterRunAuthorityHarness
                 var oldChoose = Element<Button>("karma-magic-add-" + tradition.Identity.SourceId);
                 await Click(oldChoose.AutomationId);
                 await Back();
+                string? adeptPowerSourceId = null;
+                if (mystic)
+                {
+                    await Click("karma-magic-pp-increase");
+                    Require(Session().Selection!.MagicSelections!.MysticAdeptPowerPoints == 1
+                        && Session().Quote!.Magic!.Cost.MysticPowerPoints is { PowerPoints: 1, KarmaCost: 5 },
+                        "Mystic Adept power points must retain the Core-owned purchase and price.");
+                    await Click("karma-magic-open-adept-power");
+                    ReadableSearch("karma-magic-search").Text = "Adept Spell";
+                    await Click("karma-magic-search-go");
+                    var unavailable = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "adept-power")
+                        .Options.Single(option => option.Name == "Adept Spell");
+                    const string unsupported = "creation-magic-resonance-option-semantics-unsupported";
+                    Require(!unavailable.IsEnabled && unavailable.Blockers.Contains(unsupported),
+                        "SETUP: this source option must carry the observed unsupported-rules blocker.");
+                    Require(IssuedElements(Current()).OfType<Label>()
+                            .Any(label => label.Text?.Contains(CreationFlowStrings.MagicBlocker(unsupported), StringComparison.Ordinal) == true)
+                        && !IssuedElements(Current()).OfType<Label>()
+                            .Any(label => label.Text?.Contains(unsupported, StringComparison.Ordinal) == true)
+                        && !IssuedElements(Current()).OfType<Button>()
+                            .Any(button => button.AutomationId == "karma-magic-add-" + unavailable.Identity.SourceId),
+                        "Unsupported Karma magic must explain the limitation without a raw blocker or an add action.");
+                    var culture = CultureInfo.CurrentUICulture;
+                    try
+                    {
+                        foreach (string language in new[] { "en-US", "de-AT", "es-MX" })
+                        {
+                            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                            Require(CreationKarmaCopy.Blocker(unsupported) == CreationFlowStrings.MagicBlocker(unsupported)
+                                && CreationKarmaCopy.Blocker("unknown-core-reason") == "unknown-core-reason",
+                                "Magic guidance must reuse the translations without discarding unknown Core reasons.");
+                        }
+                    }
+                    finally { CultureInfo.CurrentUICulture = culture; }
+                    ReadableSearch("karma-magic-search").Text = "Adept Accident";
+                    await Click("karma-magic-search-go");
+                    var power = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "adept-power")
+                        .Options.Single(option => option.Name == "Adept Accident");
+                    adeptPowerSourceId = power.Identity.SourceId;
+                    await Click("karma-magic-add-" + power.Identity.SourceId);
+                    Require(Session().Quote!.Magic is { PowerPointsUsed: 0.5m, PowerPointsTotal: 1m },
+                        "Selected adept power must consume the exact purchased power-point budget.");
+                    var selection = Session().Selection;
+                    var maxed = Element<Button>("karma-magic-add-" + power.Identity.SourceId);
+                    Require(!maxed.IsEnabled, "A one-level power must not offer another level.");
+                    // Rejection occurs before the asynchronous page action starts.
+                    ((IButtonController)maxed).SendClicked();
+                    Require(ReferenceEquals(selection, Session().Selection),
+                        "A disabled power callback changed the draft.");
+                    await Back();
+                }
                 await Click("karma-magic-open-spell");
                 var spell = Session().Authority!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == "spell")
                     .Options.First(option => option.IsEnabled);
                 ReadableSearch("karma-magic-search").Text = "  " + spell.Name + "  ";
                 await Click("karma-magic-search-go");
                 await Click("karma-magic-add-" + spell.Identity.SourceId);
-                Require(Session().Quote!.Magic!.Cost.TotalKarma == 5,
+                Require(Session().Quote!.Magic!.Cost.TotalKarma == (mystic ? 10 : 5),
                     "Karma magic must charge the profile price, without a Priority free slot.");
                 await ui.BeginAsyncVoid(() => ((IButtonController)oldChoose).SendClicked());
                 Require(Session().Selection!.MagicSelections!.Spells.Single() == spell.Identity,
@@ -300,7 +352,7 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("karma-open-gear");
                 await Back();
                 await Click("karma-open-review");
-                Require(Session().Quote!.Magic!.Cost.TotalKarma == 5 && probe!.ConfirmCalls == 0,
+                Require(Session().Quote!.Magic!.Cost.TotalKarma == (mystic ? 10 : 5) && probe!.ConfirmCalls == 0,
                     "Moving through later steps lost magic spending or saved without confirmation.");
                 await Click("karma-confirm");
                 var savedMagic = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
@@ -335,6 +387,11 @@ internal static partial class AfterRunAuthorityHarness
                     && xml.Element("spells")!.Elements("spell").Single().Element("sourceid")!.Value == spell.Identity.SourceId
                     && xml.Element("tradition")!.Element("sourceid")!.Value == tradition.Identity.SourceId,
                     "Native Career completion lost the selected magic or finalized more than once.");
+                if (mystic)
+                    Require(xml.Element("magsplitadept")!.Value == "1"
+                        && xml.Element("powers")!.Elements("power").Single().Element("sourceid")!.Value == adeptPowerSourceId
+                        && xml.Element("powers")!.Elements("power").Single().Element("rating")!.Value == "1",
+                        "Readable review must retain the purchased power point and exact adept-power identity.");
                 await runtime.Presenter.InitializeAsync(default);
                 await runtime.Presenter.LoadAsync(id, default);
                 Require(runtime.Coordinator.State.Profile?.Created == true
@@ -342,7 +399,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Cold native Career reopen lost the magical character.");
                 IssuedPageLifecycle(Current(), "OnDisappearing");
                 ui.AssertHealthy();
-                Console.WriteLine("PASS native Karma: phone-magic");
+                Console.WriteLine("PASS native Karma: " + (mystic ? "phone-mystic" : "phone-magic"));
                 return;
             }
             if (prerequisitesOnly)
@@ -1034,10 +1091,34 @@ internal static partial class AfterRunAuthorityHarness
                         "Karma final review omitted the exact Core-bound name: " + delta.Kind);
                 foreach (var delta in review.OrderedDeltas.Where(delta => delta.TargetId is
                     "magenabled" or "resenabled" or "depenabled" or "spells-karma" or "complex-forms-karma"
+                    or "magsplitadept"
                     or "startingnuyen" or "resource-karma-rounding" or "nuyen-carried" or "lifestyle-starting-nuyen"
                     or "contacts-karma" or "qualities-karma-adjustment"))
                     Require(!Element<Label>("karma-completion-delta-" + delta.Order).Text!.StartsWith(delta.TargetId + ":", StringComparison.Ordinal),
                         "Karma final review exposes an internal scalar field: " + delta.TargetId);
+                if (mystic)
+                {
+                    var points = review.OrderedDeltas.Single(delta => delta.TargetId == "magsplitadept");
+                    var culture = CultureInfo.CurrentUICulture;
+                    try
+                    {
+                        foreach (string language in new[] { "en-US", "de-AT", "es-MX" })
+                        {
+                            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                            typeof(CreationKarmaCompletionPage).GetMethod("Refresh",
+                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(Current(), null);
+                            Require(Element<Label>("karma-completion-delta-" + points.Order).Text
+                                    == CreationFlowStrings.Get("Magic.Mystic.Title", "Mystic Adept power points") + ": 0 → 1",
+                                "Mystic Adept completion must use the existing translated power-point vocabulary.");
+                        }
+                    }
+                    finally
+                    {
+                        CultureInfo.CurrentUICulture = culture;
+                        typeof(CreationKarmaCompletionPage).GetMethod("Refresh",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(Current(), null);
+                    }
+                }
                 Require(visible.Any(label => label.Text == CreationKarmaCopy.DiceTotalHelp),
                     "Karma starting-cash input must explain the dice sum, not just request a number.");
                 var input = Element<Entry>("karma-completion-roll");

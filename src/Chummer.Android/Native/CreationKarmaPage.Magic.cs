@@ -90,8 +90,11 @@ internal sealed partial class CreationKarmaPage
             _body.Add(NativeTheme.Body(option.SourceBook + " · " + option.Page, NativeTheme.Muted));
             if (!option.IsEnabled)
             {
-                _body.Add(NativeTheme.Body(CreationKarmaCopy.UnavailableInCurrentRules(option.Name)
-                    + " · " + string.Join(", ", option.Blockers), NativeTheme.Muted));
+                // Translate known reasons for display only. The original
+                // source option still controls admission; unknown reasons remain visible.
+                _body.Add(NativeTheme.Body(option.Blockers.Count == 0
+                    ? CreationKarmaCopy.UnavailableInCurrentRules(option.Name)
+                    : string.Join(" · ", option.Blockers.Select(CreationKarmaCopy.Blocker)), NativeTheme.Muted));
                 continue;
             }
             var id = option.Identity;

@@ -15,6 +15,7 @@ internal static partial class AfterRunAuthorityHarness
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
         if (onlyScenario == "phone-magic") { await RunKarmaPhonePagesAsync(contentRoot, magic: true); return; }
+        if (onlyScenario == "phone-mystic") { await RunKarmaPhonePagesAsync(contentRoot, magic: true, mystic: true); return; }
         if (onlyScenario == "phone-attribute-values")
         {
             await RunKarmaPhonePagesAsync(contentRoot, attributeMetatype: "Human");
