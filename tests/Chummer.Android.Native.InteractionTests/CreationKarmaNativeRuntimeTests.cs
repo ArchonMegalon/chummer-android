@@ -10,6 +10,7 @@ internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunCreationKarmaAsync(string contentRoot, string? onlyScenario = null)
     {
+        if (onlyScenario == "dashboard-save") { await RunKarmaDashboardSaveAsync(contentRoot); return; }
         if (onlyScenario == "phone") { await RunKarmaPhonePagesAsync(contentRoot); return; }
         if (onlyScenario == "phone-prerequisites") { await RunKarmaPhonePagesAsync(contentRoot, prerequisitesOnly: true); return; }
         if (onlyScenario == "phone-magic") { await RunKarmaPhonePagesAsync(contentRoot, magic: true); return; }
@@ -221,6 +222,73 @@ internal static partial class AfterRunAuthorityHarness
                 ui.AssertHealthy();
                 Console.WriteLine("PASS native Karma: " + scenario);
             }
+        });
+    }
+
+    private static async Task RunKarmaDashboardSaveAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            KarmaNativeProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, linkedOwners: new ControlledLinkedOwner(),
+                karmaDecorator: actual => probe = new(actual, ui));
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Karma dashboard save", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", "Karma", default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            var before = store.Get(id).Value!;
+            var page = new BuildPage(runtime.Coordinator);
+            var navigation = new Microsoft.Maui.Controls.NavigationPage(page);
+            var window = new Microsoft.Maui.Controls.Window(navigation);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            var scroll = (Microsoft.Maui.Controls.IScrollViewController)(Microsoft.Maui.Controls.ScrollView)page.Content!;
+            scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            string? Budget() => IssuedElements(page).OfType<Microsoft.Maui.Controls.Label>()
+                .Single(label => label.AutomationId == "creation-karma-dashboard-budget").Text;
+            Require(Budget() == CreationKarmaCopy.Choose && probe!.OpenCalls == 1,
+                "SETUP: new Karma dashboard must freshly admit the pending bootstrap.");
+            var save = page.ToolbarItems.Single(item => item.AutomationId == "build-save-runner");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => save.Command.Execute(null)));
+            await JoinIssuedPageAsync(ui.DrainDispatchedAsyncVoidAsync());
+            var after = store.Get(id).Value!;
+            Require(after.ContentRevision == before.ContentRevision
+                && after.SavedRevision == after.ContentRevision
+                && after.Document.Content == before.Document.Content
+                && after.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest
+                && probe!.ConfirmCalls == 0,
+                "Dashboard Save changed the pending choices or failed to persist its exact revision.");
+            Require(Budget() == CreationKarmaCopy.Choose && probe!.OpenCalls == 2 && alerts.Titles.Count == 0,
+                "Dashboard Save must refresh its new saved-revision binding, not leave the valid pending Karma runner stale: "
+                + Budget() + "; opens=" + probe!.OpenCalls);
+            // A failed post-save read cannot borrow the prior successful state.
+            probe!.FailReads = true;
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => save.Command.Execute(null)));
+            await JoinIssuedPageAsync(ui.DrainDispatchedAsyncVoidAsync());
+            Require(Budget() == CreationKarmaCopy.Stale && probe.OpenCalls == 3
+                && IssuedElements(page).OfType<Microsoft.Maui.Controls.Button>()
+                    .Single(button => button.AutomationId == "creation-stage-method").IsEnabled,
+                "A failed post-save read must retire the old authority while retaining the fresh-editor recovery route.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            probe.FailReads = false;
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            Require(Budget() == CreationKarmaCopy.Choose && probe.OpenCalls == 4
+                && probe.ConfirmCalls == 0 && alerts.Titles.Count == 0,
+                "Reopening after a failed post-save read must recover without automatically choosing or confirming.");
+            var reopened = store.Get(id).Value!;
+            Require(reopened.ContentRevision == after.ContentRevision && reopened.SavedRevision == after.SavedRevision
+                && reopened.Document.Content == before.Document.Content
+                && reopened.Document.AuxiliaryStateDigest == before.Document.AuxiliaryStateDigest,
+                "Post-save read recovery changed the persisted Karma draft.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Console.WriteLine("PASS Karma dashboard Save refreshes the exact saved revision without selecting or finalizing");
         });
     }
 

@@ -848,7 +848,7 @@ public sealed class BuildPage : NativePageBase
         {
             Text = "Save",
             AutomationId = "build-save-runner",
-            Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
+            Command = new Command(async () => await RunAsync(SaveRunnerAsync))
         };
         ToolbarItems.Add(_save);
         _creationPrerequisiteQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
@@ -913,6 +913,24 @@ public sealed class BuildPage : NativePageBase
     {
         BeginRunnerLoad();
         base.OnAppearing();
+    }
+
+    private async Task SaveRunnerAsync()
+    {
+        var original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        if (!IsCurrentAppearanceGeneration(appearance)) return;
+        bool refreshKarma = Coordinator.CanOpenCreationKarma();
+        await Coordinator.SaveAsync();
+        // Save changes the saved-revision binding even when no choices changed.
+        // This dashboard retains no editable draft: reopen the persisted Core
+        // authority, without rebasing a child editor or dispatching another save.
+        if (refreshKarma && IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.State.WorkspaceId == original.WorkspaceId
+            && Coordinator.State.DisplayOwnerContext == original.DisplayOwnerContext
+            && Coordinator.State.Session.OwnerContext == original.DisplayOwnerContext
+            && Coordinator.CanOpenCreationKarma())
+            await PrepareForAppearanceRefreshAsync(_creationDashboardRouteReadyLifetime!.Token);
     }
 
     private void BeginRunnerLoad()
