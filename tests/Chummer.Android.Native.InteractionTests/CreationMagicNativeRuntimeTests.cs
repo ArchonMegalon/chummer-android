@@ -747,12 +747,17 @@ internal static class CreationMagicNativeRuntimeTests
         finally { System.Globalization.CultureInfo.CurrentUICulture = previous; }
     }
 
-    public static void RunSumToTen(string contentRoot)
+    public static void RunSumToTen(string contentRoot, bool finishCareer = false, string? onlyTalent = null)
     {
-        RunTalent(contentRoot, technomancer: false, buildMethod: CharacterCreationBuildMethods.SumToTen);
-        RunTalent(contentRoot, technomancer: true, buildMethod: CharacterCreationBuildMethods.SumToTen);
-        RunTalent(contentRoot, technomancer: false, mysticAdept: true, buildMethod: CharacterCreationBuildMethods.SumToTen);
-        RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery", buildMethod: CharacterCreationBuildMethods.SumToTen);
+        Require(onlyTalent is null or "adept" or "technomancer" or "mystic-adept" or "aspected-magician", "Unknown Sum-to-Ten test talent.");
+        if (onlyTalent is null or "adept")
+            RunTalent(contentRoot, technomancer: false, buildMethod: CharacterCreationBuildMethods.SumToTen, finishCareer: finishCareer);
+        if (onlyTalent is null or "technomancer")
+            RunTalent(contentRoot, technomancer: true, buildMethod: CharacterCreationBuildMethods.SumToTen, finishCareer: finishCareer);
+        if (onlyTalent is null or "mystic-adept")
+            RunTalent(contentRoot, technomancer: false, mysticAdept: true, buildMethod: CharacterCreationBuildMethods.SumToTen, finishCareer: finishCareer);
+        if (onlyTalent is null or "aspected-magician")
+            RunTalent(contentRoot, technomancer: false, aspectedGroup: "Sorcery", buildMethod: CharacterCreationBuildMethods.SumToTen, finishCareer: finishCareer);
     }
 
     // Test-only fixture export for a bounded real Android editor/save/restart smoke.
@@ -794,7 +799,7 @@ internal static class CreationMagicNativeRuntimeTests
 
     private static void RunTalent(string contentRoot, bool technomancer, bool mysticAdept = false,
         string? aspectedGroup = null, string buildMethod = CharacterCreationBuildMethods.Priority,
-        string? seedDirectory = null, bool magicReReview = false, bool budgetFocus = false)
+        string? seedDirectory = null, bool magicReReview = false, bool budgetFocus = false, bool finishCareer = false)
     {
         Require(Path.IsPathFullyQualified(contentRoot) && Directory.Exists(Path.Combine(contentRoot, "data")),
             "Supply the explicit Core content directory.");
@@ -932,19 +937,19 @@ internal static class CreationMagicNativeRuntimeTests
             if (aspectedGroup is not null)
             {
                 RunAspected(store, resolver, service, state, id, directory, aspectedGroup);
-                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
+                RevisitAndFinish();
                 return;
             }
             if (technomancer)
             {
                 RunTechnomancer(store, resolver, service, state, id, directory);
-                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
+                RevisitAndFinish();
                 return;
             }
             if (mysticAdept)
             {
                 RunMysticAdept(store, resolver, service, state, id, directory, contentRoot);
-                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
+                RevisitAndFinish();
                 return;
             }
             Require(state.SelectedTalent!.Magic == 4 && state.AdeptPowerPointBudget.Total == 5,
@@ -1029,7 +1034,15 @@ internal static class CreationMagicNativeRuntimeTests
                     .GetAwaiter().GetResult();
                 return;
             }
-            RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
+            RevisitAndFinish();
+
+            void RevisitAndFinish()
+            {
+                RunSkillsRevisit(resolver, id, directory, firstSkillsCommand, technomancer);
+                if (finishCareer)
+                    AfterRunAuthorityHarness.RunAwakenedFinalizationAsync(contentRoot, directory, id)
+                        .GetAwaiter().GetResult();
+            }
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
@@ -1414,9 +1427,18 @@ internal static class CreationMagicNativeRuntimeTests
         var coldService = new CharacterCreationMagicResonanceService(coldStore, resolver);
         var cold = coldService.Load(new(id)).Value!;
         var reopened = CharacterCreationMagicResonanceWorkflow.Project(cold);
+        // Catalog display order is not persisted selection order. Core seals
+        // selections by kind/source ID; compare every identity in that order,
+        // retaining exact cardinality (including duplicate rejection).
+        var expectedForms = forms.Select(item => item.Identity).OrderBy(item => item.Kind, StringComparer.Ordinal)
+            .ThenBy(item => item.SourceId, StringComparer.Ordinal).ToArray();
         Require(reopened.CanEdit && reopened.Selections.Stream == stream.Identity
-            && reopened.Selections.ComplexForms.SequenceEqual(forms.Select(item => item.Identity)),
-            "Cold phone projection lost the user's stream/forms.");
+            && reopened.Selections.ComplexForms.SequenceEqual(expectedForms),
+            "Cold phone projection lost the user's stream/forms: " + JsonSerializer.Serialize(new
+            {
+                reopened.CanEdit, cold.Blockers, expectedStream = stream.Identity, actualStream = reopened.Selections.Stream,
+                expectedForms, actualForms = reopened.Selections.ComplexForms
+            }));
         var contribution = coldStore.Get(id).Value!.Document.AuxiliaryState.CharacterCreationMagicResonanceDraft!.FinalizationContribution!;
         var quality = contribution.Talent.GrantedQualitySources!.Single();
         Require(quality.GrantedGearSources!.Single().Name == "Living Persona"

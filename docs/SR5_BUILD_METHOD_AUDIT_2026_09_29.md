@@ -415,6 +415,48 @@ the display-only build is not presented as a rerun of all methods/talents.
 - This increment creates no new Release AAB or Play publication. Preview 52's
   existing release evidence remains unchanged. Origin/provider work is separate.
 
+## 8 October follow-up: awakened Sum-to-Ten finalization
+
+The existing magic/skills draft tests now optionally continue through real Core
+Qualities, Resources and Gear saves and the actual MAUI starting-cash, final
+review, confirmation, receipt and Career pages. The local run passed for:
+
+- Adept: five selected powers, including their exact levels.
+- Technomancer: the chosen stream and three complex forms.
+- Mystic Adept: the chosen tradition, two powers, five spells and the purchased
+  power points.
+- Sorcery-aspected Magician: the explicit aspect and chosen tradition.
+
+Each fixture uses repeated-rank Sum-to-Ten prerequisites, a raised MAG or RES,
+and a saved Skills revisit after Magic. Each finalized once to revision 10/10.
+Checks compare exact selection identities/cardinality, all enabled attribute
+allocations, power levels and tradition/stream with saved XML. Review is
+read-only; a fresh file-store read retains the same finalization receipt and
+saved bytes; a stale final review cannot apply another transition.
+
+The run exposed an outdated Technomancer test expectation, not a lost selection:
+Core deliberately stores complex forms sorted by kind/source ID, whereas the
+catalog displays them in another order. The corrected expectation retains every
+exact identity and cardinality and checks Core's canonical order. No production
+rule, timeout, persistence or admission check changed.
+
+Command: `--creation-sum-to-ten-career-content-root <explicit-Core-content>`;
+an optional final argument selects `adept`, `technomancer`, `mystic-adept` or
+`aspected-magician` for a focused rerun. The affected managed build passed with
+zero warnings/errors. Existing magic/skills admission, owner, replay and saved
+draft checks ran with these fixtures. The final local log SHA-256 is
+`b3966b1f0dd34871d1f8e0e8e94b72540be2283e5e803a22780fcb84fa58d3f3`.
+Android product sources match main `f8d6992b`; Presentation is `66b3185d`, Core
+runtime package `899be24c`, recipe/content `76e77b13`. Preliminary test setup
+errors and the ordering failure are retained separately, not reported as passes.
+
+This is managed actual-MAUI navigation and cold file-store evidence, **not** an
+Android Activity/process-restart or physical Play test. It does not prove every
+metatype/talent combination, full point allocation, or Career action. No new
+APK/AAB, signer execution, provider job or Play upload was needed; Preview148
+and its publication evidence remain unchanged. Native awakened Sum-to-Ten
+finalization/restart remains a separate follow-up.
+
 ## 8 October follow-up: Life Modules Apprentice into Career
 
 The existing Apprentice category test now has a separate
