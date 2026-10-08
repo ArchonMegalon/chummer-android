@@ -12,7 +12,7 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    internal static async Task RunLifeModuleApprenticePagesAsync(string contentRoot)
+    internal static async Task RunLifeModuleApprenticePagesAsync(string contentRoot, bool finishCareer = false)
     {
         const string talentId = "c1d4d7ec-9ebb-4e85-ae72-8155b0f27478";
         const string airId = "380a4860-e5b7-4d07-9b8f-24951c1d656a";
@@ -115,6 +115,75 @@ internal static partial class AfterRunAuthorityHarness
                     File.Copy(file, target, overwrite: false);
                 }
                 Console.WriteLine("Apprentice synthetic smoke fixture: " + id.Value);
+            }
+            if (finishCareer)
+            {
+                await Back();
+                await Click("life-open-attributes"); await Click("life-begin-attributes");
+                Element<Stepper>("life-attribute-MAG").Value = 2;
+                await Click("life-review-attributes"); await Back();
+                await Click("life-open-skills"); await Click("life-begin-skills");
+                Element<SearchBar>("life-search").Text = "English";
+                await Click("life-search-go");
+                await Click(IssuedElements(Current()).OfType<Button>().Single(button => button.Text == "English").AutomationId);
+                Element<Switch>("life-native-language").IsToggled = true;
+                await Click("life-use-skill"); await Back();
+                await Click("life-open-resources");
+                Element<Entry>("life-resource-investment").Text = "0";
+                await Click("life-use-resources"); await Back();
+                await Click("life-open-gear"); await Click("life-begin-gear"); await Back();
+                await Click("life-open-lifestyles"); await Click("life-begin-lifestyles"); await Back();
+                await Click("life-open-contacts"); await Click("life-begin-contacts"); await Back();
+                await Click("life-open-magic"); await Click("life-begin-magic");
+                await ChooseMagic("tradition", "Hermetic");
+                await ChooseMagic("spell", "Manabolt");
+                Require(Session().Preview!.MagicQuote is { Blockers.Count: 0, Sources.Count: 2 },
+                    "Apprentice's legal tradition and Combat spell could not be reviewed: " + string.Join(", ", Session().Blockers));
+                await Back();
+                string careerInput = JsonSerializer.Serialize(Session().Input);
+                Require(JsonSerializer.Serialize(store.Get(id).Value!) == before && probe!.ConfirmCalls == 0,
+                    "Reviewing the Apprentice's remaining choices changed the runner before confirmation.");
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await navigation.PushAsync(new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory)), false);
+                await Appear();
+                Require(Session().Reviewed && JsonSerializer.Serialize(Session().Input) == careerInput,
+                    "Fresh Apprentice draft reopen lost its talent, magic or other allocations.");
+                await Click("life-open-review");
+                Element<Entry>("life-starting-dice").Text = "6";
+                await Click("life-review-completion");
+                Require(Session().CanConfirm, "The complete Apprentice cannot enter Career: " + string.Join(", ", Session().Blockers));
+                var reviewed = Session().Preview!;
+                Element<Switch>("life-completion-confirmed").IsToggled = true;
+                await Click("life-confirm-completion");
+                Require(Session().Receipt is { CharacterCreated: true } && probe!.ConfirmCalls == 1,
+                    "The Apprentice was not finalized once from its reviewed choices.");
+                var saved = store.Get(id).Value!;
+                var xml = System.Xml.Linq.XDocument.Parse(saved.Document.Content);
+                Require(xml.Root!.Element("created")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) == true
+                    && xml.Descendants("spell").Any(row => row.Element("name")?.Value == "Manabolt")
+                    && xml.Descendants("tradition").Any(row => row.Element("name")?.Value == "Hermetic"),
+                    "The saved Career runner is missing the chosen magic or created state.");
+                string savedBytes = JsonSerializer.Serialize(saved);
+                await runtime.Presenter.LoadAsync(id, default);
+                Require(runtime.Coordinator.State.Profile?.Created == true
+                    && JsonSerializer.Serialize(new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!) == savedBytes
+                    && (await runtime.Coordinator.ConfirmLifeModuleCompletionAsync(reviewed, true)).Value is null
+                    && probe!.ConfirmCalls == 1 && owners.ActiveLeases == 0,
+                    "Career reopen changed the runner or admitted another finalization.");
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                Console.WriteLine("PASS Life Modules Apprentice: explicit Combat/Air categories, Magic allocation, native English, Hermetic/Manabolt, private draft reopen, one finalization, saved Career reread and replay rejection");
+                return;
+
+                async Task ChooseMagic(string kind, string name)
+                {
+                    await Click("life-magic-open-" + kind);
+                    Element<SearchBar>("life-search").Text = name;
+                    await Click("life-search-go");
+                    var option = Session().Preview!.MagicCatalog!.Catalogs.Single(slice => slice.Kind == kind)
+                        .Options.Single(row => row.Name == name);
+                    await Click("life-magic-add-" + option.Identity.SourceId);
+                    await Back();
+                }
             }
             var oldSpell = Element<Picker>("life-talent-spell-category");
             await Click("life-talent-mundane");
