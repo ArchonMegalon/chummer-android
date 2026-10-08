@@ -334,7 +334,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 781,
+            "minimumExpectedTests": 791,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -351,7 +351,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
             ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
             ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
-            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 27),
+            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 37),
         )
         rows = [{
             "coreProjectionContent": copy.deepcopy(content),
@@ -716,8 +716,8 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(781, receipt["testExecutions"][0]["minimumExpectedTests"])
-        self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 27],
+        self.assertEqual(791, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 37],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
         # The producer can validate the content checkout at either exact commit.
@@ -750,13 +750,13 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         self.assertEqual(8, len(rows))
         self.assertEqual(8, len(self.module.EXISTING_OWNER_TEST_EXECUTIONS))
         self.assertEqual(
-            ("WorkspaceOverviewFinalizationOwnerTests", source, 27),
+            ("WorkspaceOverviewFinalizationOwnerTests", source, 37),
             self.module.EXISTING_OWNER_TEST_EXECUTIONS[-1],
         )
         self.assertEqual({
             "coreProjectionContent": full["coreProjectionContent"],
             "filter": "FullyQualifiedName~WorkspaceOverviewFinalizationOwnerTests",
-            "minimumExpectedTests": 27,
+            "minimumExpectedTests": 37,
             "project": full["project"],
             "reuseFullSuiteBuild": True,
             "runner": "direct-exact-assembly",
@@ -766,6 +766,16 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         }, rows[-1])
         self.assertEqual(1, [row["path"] for row in receipt["sourceInventory"]].count(source))
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
+
+    def test_non_priority_restore_requires_current_invocation_floors(self) -> None:
+        # The exact UI seal adds ten restoration cases. Reject the previous
+        # invocation even if its older suite reports success.
+        for full_floor, focused_floor in ((781, 37), (791, 27), (781, 27)):
+            receipt = self.current_main_receipt_fixture()
+            receipt["testExecutions"][0]["minimumExpectedTests"] = full_floor
+            receipt["focusedExistingOwnerRegressionTestExecutions"][-1]["minimumExpectedTests"] = focused_floor
+            with self.subTest(full=full_floor, focused=focused_floor), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
 
     def test_previous_floor_or_missing_finalization_authority_is_rejected(self) -> None:
         source = "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs"
