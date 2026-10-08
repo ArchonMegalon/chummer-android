@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 145 is the latest [observed Internal availability](../play/evidence/preview145-internal-observation.md),
+Preview 146 is the latest [observed Internal availability](../play/evidence/preview146-internal-observation.md),
+confirmed on 8 October at 18:02 Europe/Vienna. Saved-character integrity checks
+use fewer temporary allocations without changing canonical digests or admission.
+Focused package/managed checks and actual API36 update/new-process Career reopen
+passed; all24saved files/eight synthetic runners stayed byte-identical. One local
+ARM64 build, isolated existing-key signature, independent keyless verification
+and Internal upload/readback passed. Per-chapter app/EPUB illustrations remain.
+**Physical Play146 installation, complete Creation/Career and general startup
+reliability remain open.** Earlier artifacts and evidence are unchanged.
+
+Preview 145's [observed Internal availability](../play/evidence/preview145-internal-observation.md),
 confirmed on 8 October at 14:44 Europe/Vienna. Unsaved-switch feedback stays
 above the roster scroller, with readable EN/DE/ES copy and a guarded return to
 the current runner; the editor no longer repeats that notice with a workspace ID.
