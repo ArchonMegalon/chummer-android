@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 147 is the latest [observed Internal availability](../play/evidence/preview147-internal-observation.md),
+Preview 148 is the latest [observed Internal availability](../play/evidence/preview148-internal-observation.md),
+confirmed on 8 October at 19:57 Europe/Vienna. Home distinguishes Open runner
+for Career from Continue building for Creation. Focused managed EN/DE/ES checks
+and native update/Home-to-Career smoke passed; all27 saved files/nine synthetic
+runners stayed unchanged. One local ARM64 build, isolated existing-key signing,
+independent keyless verification and one Internal upload/readback passed.
+Per-chapter images and full text remain in the app reader and EPUB. **Physical
+Play148 installation, complete Creation/Career and general startup reliability
+remain open.** Earlier artifacts and evidence are unchanged.
+
+Preview 147's [observed Internal availability](../play/evidence/preview147-internal-observation.md),
 confirmed on 8 October at 19:28 Europe/Vienna. Home/picker preserve runner names;
 Career hides opaque profile IDs; Life Modules has readable selection/dice/budget
 guidance. Focused managed controls and native update/runner-switch smoke passed;
