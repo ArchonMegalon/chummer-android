@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Chummer.Application.Characters;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Rulesets;
 using Chummer.Presentation;
@@ -121,6 +122,13 @@ public sealed partial class RunnerSessionCoordinator
            && _karmaStates.TryGetValue(state, out var original)
            && IsKarmaDisplayCurrent(original) && KarmaMatchesDisplay(state, State);
 
+    private Task<T> ReadKarmaAuthorityAsync<T>(OwnerContextStamp owner, Func<T> read, CancellationToken ct)
+        // Local account hydration briefly owns the same gate as Core reads.
+        // Join that writer off the UI thread, retaining the exact owner stamp
+        // and cancellation. Mutation admission remains non-blocking below.
+        => _damageJournalOwnerAccessor is AndroidAccountOwnerContextAccessor androidOwner
+            ? androidOwner.RunReadAsync(owner, read, ct) : Task.Run(read, ct);
+
     internal Task<CharacterCreationFoundationResult<CharacterCreationKarmaMetatypeState>> LoadCreationKarmaAsync(
         bool includeSkills = false, CancellationToken cancellationToken = default, Func<bool>? isCurrentPage = null,
         bool includeQualities = false, bool includeGear = false, bool includeLifestyles = false, bool includeMagic = false)
@@ -133,7 +141,8 @@ public sealed partial class RunnerSessionCoordinator
                 || original.DisplayOwnerContext is not { IsValid: true } owner
                 || original.WorkspaceId is not { } workspace)
                 return KarmaStale<CharacterCreationKarmaMetatypeState>();
-            var result = await Task.Run(() => service.Load(owner, workspace, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic), cancellationToken);
+            var result = await ReadKarmaAuthorityAsync(owner,
+                () => service.Load(owner, workspace, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original))
                 return KarmaStale<CharacterCreationKarmaMetatypeState>();
@@ -155,7 +164,8 @@ public sealed partial class RunnerSessionCoordinator
                 return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
             _karmaCurrentState = null;
             _karmaCurrentReview = null;
-            var result = await Task.Run(() => service.Open(owner, workspace, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic), cancellationToken);
+            var result = await ReadKarmaAuthorityAsync(owner,
+                () => service.Open(owner, workspace, includeSkills, includeQualities, includeGear, includeLifestyles, includeMagic), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (isCurrentPage?.Invoke() == false || !IsKarmaDisplayCurrent(original))
                 return KarmaStale<CharacterCreationKarmaMetatypeOpen>();
