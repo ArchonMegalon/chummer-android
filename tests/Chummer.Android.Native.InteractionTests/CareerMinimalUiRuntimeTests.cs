@@ -29,6 +29,11 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
                     var dashboard = new BuildPage(runtime.Coordinator);
+                    typeof(BuildPage).GetMethod("AddSummary",
+                        BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(dashboard, null);
+                    Require(MinimalVisibleText(dashboard).Contains("Native reward runner"),
+                        "Career summary lost the runner's name.");
+                    MinimalRequireNoMachineValues(dashboard);
                     typeof(BuildPage).GetMethod("AddSr5CareerWizardRoute",
                         BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(dashboard, null);
                     string dashboardText = MinimalVisibleText(dashboard);

@@ -15,6 +15,14 @@ internal static partial class AfterRunAuthorityHarness
 {
     public static async Task RunHomeTransitionFeedbackAsync(string contentRoot)
     {
+        foreach (var (name, alias, expected) in new[]
+        {
+            (" Alice ", " Runner ", "Alice"), ("Alice", "", "Alice"),
+            ("Alice", "alice", "Alice"), ("Alice", "Shade", "Shade · Alice"),
+            ("Bob", "Shade", "Shade · Bob"), ("", "Shade", "Shade"),
+            (" ", " ", PhoneStrings.Get("RunnerFallback", "Runner"))
+        })
+            Require(PhoneStrings.RunnerName(name, alias) == expected, "Runner label lost a human name or alias.");
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -22,12 +30,18 @@ internal static partial class AfterRunAuthorityHarness
             await account.Owner.InitializeAsync();
             await using var runtime = new NativeRewardRuntime(contentRoot,
                 linkedOwners: account.Owner, accountService: account.Account);
-            await runtime.LoadRunnerAsync();
+            await runtime.LoadRunnerAsync("""
+                <character><name>Native reward runner</name><alias>Runner</alias><gameedition>SR5</gameedition>
+                <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+                <buildmethod>Karma</buildmethod><createdversion>5.225.0</createdversion>
+                <appversion>5.225.0</appversion><created>True</created><karma>30</karma><nuyen>1000</nuyen>
+                <improvements/><contacts/><expenses/></character>
+                """);
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             var savedId = runtime.Id;
             var dirty = await runtime.Client.ImportAsync(new WorkspaceImportDocument("""
-                <character><name>Unsaved home fixture</name><gameedition>SR5</gameedition>
+                <character><name>Unsaved home fixture</name><alias>Runner</alias><gameedition>SR5</gameedition>
                 <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
                 <buildmethod>Karma</buildmethod><createdversion>5.225.0</createdversion>
                 <appversion>5.225.0</appversion><created>True</created><karma>30</karma><nuyen>1000</nuyen>
@@ -45,8 +59,25 @@ internal static partial class AfterRunAuthorityHarness
             using var alerts = new IssuedPageAlerts(page, window);
             await alerts.PreflightAsync();
             await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            Require(IssuedElements(page).OfType<Label>().Any(label => label.Text == "Unsaved home fixture"),
+                "The current runner name was hidden behind its default alias.");
+            var pickerPage = new BuildPage(runtime.Coordinator);
+            typeof(BuildPage).GetMethod("AddWorkspacePicker", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(pickerPage, new object?[] { null });
+            var picker = IssuedElements(pickerPage).OfType<Picker>()
+                .Single(control => control.AutomationId == "build-workspace-picker");
+            var expectedNames = runtime.Coordinator.State.OpenWorkspaces.Select(workspace => workspace.Name).ToArray();
+            Require(picker.Items.SequenceEqual(expectedNames) && picker.Items.Distinct().Count() == 2
+                && runtime.Coordinator.State.OpenWorkspaces[picker.SelectedIndex].Id == dirty.Id,
+                "Runner picker hid distinct names or changed the exact current-workspace index.");
             var switchButton = IssuedElements(page).OfType<Button>()
                 .Single(button => button.Text == "Native reward runner");
+            Require(switchButton.LineBreakMode == LineBreakMode.WordWrap && switchButton.HeightRequest == -1,
+                "Long runner labels must wrap without clipping the distinguishing name.");
+            Require(IssuedElements(page).OfType<Button>().Any(button =>
+                    button.AutomationId == "home-delete-runner"
+                    && SemanticProperties.GetDescription(button).Contains("Native reward runner", StringComparison.Ordinal)),
+                "The delete action's accessible name still hides which runner it affects.");
             await ui.BeginAsyncVoid(switchButton.SendClicked).WaitAsync(TimeSpan.FromSeconds(20));
             Require(runtime.Coordinator.State.WorkspaceId == dirty.Id
                 && runtime.Coordinator.State.Session.ActiveWorkspace?.IsDirty == true,

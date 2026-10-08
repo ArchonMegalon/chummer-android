@@ -943,4 +943,6 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Skills.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
   <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Choose native language</value></data>
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Use as native language</value></data>
+  <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Open the Career review and enter the sum of your starting-cash dice, then review again.</value></data>
+  <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>Career totals could not be verified. Review any remaining warnings and your starting-cash dice total, then review again.</value></data>
 </root>

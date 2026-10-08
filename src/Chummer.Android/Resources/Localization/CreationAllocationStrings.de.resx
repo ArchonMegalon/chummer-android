@@ -943,4 +943,6 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Skills.NativeLanguage" xml:space="preserve"><value>Muttersprache</value></data>
   <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Muttersprache wählen</value></data>
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Als Muttersprache verwenden</value></data>
+  <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Öffne die Karriereprüfung und gib die Augensumme deiner Startgeldwürfel ein. Prüfe danach erneut.</value></data>
+  <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>Die Karrierewerte konnten nicht bestätigt werden. Prüfe die übrigen Hinweise und deine Startgeld-Augensumme und prüfe danach erneut.</value></data>
 </root>

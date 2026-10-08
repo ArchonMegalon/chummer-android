@@ -74,6 +74,19 @@ internal static partial class AfterRunAuthorityHarness
                         != CharacterCreationLifeModuleTalentCatalog.RestrictionsRequired, "Missing readable category guidance: " + locale);
                     Require(CreationKarmaCopy.Blocker(CharacterCreationLifeModuleResourcesQuote.SelectionRequired)
                         != CharacterCreationLifeModuleResourcesQuote.SelectionRequired, "Missing readable Resources guidance: " + locale);
+                    foreach (string reason in new[]
+                    {
+                        CharacterCreationLifeModuleContactsQuote.SelectionRequired,
+                        CharacterCreationLifeModuleGearQuote.SelectionRequired,
+                        CharacterCreationLifeModuleLifestylesQuote.SelectionRequired,
+                        CharacterCreationLifeModuleMagicQuote.SelectionRequired,
+                        CharacterCreationLifeModuleFinalizationBudgetQuote.DiceRequired,
+                        CharacterCreationLifeModuleFinalizationBudgetQuote.BudgetInvalid,
+                        CharacterCreationGearBlockers.UnsupportedSemantics
+                    })
+                        Require(!string.IsNullOrWhiteSpace(CreationKarmaCopy.Blocker(reason))
+                            && CreationKarmaCopy.Blocker(reason) != reason,
+                            "Missing readable completion guidance: " + locale + " / " + reason);
                 }
                 finally { CultureInfo.CurrentUICulture = previousCulture; }
             }

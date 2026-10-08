@@ -92,9 +92,9 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         _body.Add(NativeTheme.Eyebrow("Chummer"));
         _body.Add(NativeTheme.Title(PhoneStrings.Get("HomeYourRunners", "Your runners")));
 
-        string runner = Coordinator.State.Profile?.Alias
-            ?? Coordinator.State.Profile?.Name
-            ?? PhoneStrings.Get("HomeNoRunner", "No runner open");
+        string runner = Coordinator.State.Profile is { } profile
+            ? PhoneStrings.RunnerName(profile.Name, profile.Alias)
+            : PhoneStrings.Get("HomeNoRunner", "No runner open");
         string detail = Coordinator.State.Profile is null
             ? PhoneStrings.Get(
                 "HomeStartDetail",
@@ -192,11 +192,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("OpenNow", "Open now")));
             foreach (OpenWorkspaceState workspace in otherRunners)
             {
-                string label = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
-                Button button = NativeTheme.SecondaryButton(
-                    string.IsNullOrWhiteSpace(label)
-                        ? PhoneStrings.Get("RunnerFallback", "Runner")
-                        : label);
+                Button button = NativeTheme.ReadingButton(PhoneStrings.RunnerName(workspace.Name, workspace.Alias));
                 button.Clicked += async (_, _) => await RunAsync(async () =>
                 {
                     NativeWorkspaceActivationReceipt? activation =
@@ -314,8 +310,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     private Button CreateDeleteButton(OpenWorkspaceState workspace, string automationId)
     {
         NativeRunnerDeletionRequest? request = Coordinator.CaptureRunnerDeletionRequest(workspace);
-        string name = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
-        if (string.IsNullOrWhiteSpace(name)) name = PhoneStrings.Get("RunnerFallback", "Runner");
+        string name = PhoneStrings.RunnerName(workspace.Name, workspace.Alias);
         var button = NativeTheme.SecondaryButton(PhoneStrings.Get("DeleteRunner", "Delete runner"));
         button.AutomationId = automationId;
         button.TextColor = NativeTheme.Danger;

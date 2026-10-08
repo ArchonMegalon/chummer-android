@@ -940,4 +940,6 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Skills.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
   <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Elegir lengua materna</value></data>
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Usar como lengua materna</value></data>
+  <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Abre la revisión de Carrera e introduce la suma de tus dados de dinero inicial. Después, revisa de nuevo.</value></data>
+  <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>No se pudieron verificar los totales de Carrera. Revisa los avisos pendientes y la suma de tus dados de dinero inicial; después, vuelve a revisar.</value></data>
 </root>
