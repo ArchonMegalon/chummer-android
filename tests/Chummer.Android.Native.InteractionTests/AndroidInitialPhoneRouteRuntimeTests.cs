@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using Chummer.Android.Native;
@@ -12,6 +13,93 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunHomeTransitionFeedbackAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            using var account = new ActualAccountFixture();
+            await account.Owner.InitializeAsync();
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account);
+            await runtime.LoadRunnerAsync();
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            var savedId = runtime.Id;
+            var dirty = await runtime.Client.ImportAsync(new WorkspaceImportDocument("""
+                <character><name>Unsaved home fixture</name><gameedition>SR5</gameedition>
+                <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+                <buildmethod>Karma</buildmethod><createdversion>5.225.0</createdversion>
+                <appversion>5.225.0</appversion><created>True</created><karma>30</karma><nuyen>1000</nuyen>
+                <improvements/><contacts/><expenses/><notes>Never discard this draft.</notes></character>
+                """, "sr5"), default);
+            await runtime.Presenter.LoadAsync(dirty.Id, default);
+            Require(runtime.Coordinator.State.WorkspaceId == dirty.Id
+                && runtime.Coordinator.State.Session.ActiveWorkspace?.IsDirty == true,
+                "Home transition fixture must really have unsaved local changes.");
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            string dirtyBefore = JsonSerializer.Serialize(store.Get(dirty.Id).Value!);
+            string savedBefore = JsonSerializer.Serialize(store.Get(savedId).Value!);
+            var page = new RunnersPage(runtime.Coordinator);
+            var window = new Window(page);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            var switchButton = IssuedElements(page).OfType<Button>()
+                .Single(button => button.Text == "Native reward runner");
+            await ui.BeginAsyncVoid(switchButton.SendClicked).WaitAsync(TimeSpan.FromSeconds(20));
+            Require(runtime.Coordinator.State.WorkspaceId == dirty.Id
+                && runtime.Coordinator.State.Session.ActiveWorkspace?.IsDirty == true,
+                "Blocked Home switch must not discard or activate another runner.");
+            string originalNotice = runtime.Coordinator.Notice!;
+            Require(originalNotice == $"Save or discard local changes for '{dirty.Id.Value}' before you switch dossiers.",
+                "The actual presenter did not produce the expected unsaved-transition notice.");
+            var priorCulture = CultureInfo.CurrentUICulture;
+            Button? retainedOpen = null;
+            try
+            {
+                foreach (var (culture, expected) in new[]
+                {
+                    ("en", "Save your current runner before switching."),
+                    ("de-AT", "Speichere deinen aktuellen Runner vor dem Wechsel."),
+                    ("es-MX", "Guarda el runner actual antes de cambiar.")
+                })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                    typeof(HomePage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(page, null);
+                    var notice = IssuedElements(page).OfType<Label>()
+                        .SingleOrDefault(label => label.AutomationId == "home-action-notice");
+                    Require(notice is not null && notice.IsVisible && notice.Text == expected
+                        && !notice.Text.Contains(dirty.Id.Value, StringComparison.Ordinal),
+                        "Blocked switch must expose a readable, localized notice without the workspace ID.");
+                    var scroll = IssuedElements(page).OfType<ScrollView>().Single();
+                    Require(!IssuedElements(scroll).Contains(notice),
+                        "Home action feedback must not disappear below the scrollable runner list.");
+                    retainedOpen = IssuedElements(page).OfType<Button>()
+                        .Single(button => button.AutomationId == "home-review-current-runner");
+                    Require(retainedOpen.IsEnabled, "Blocked switch needs a direct route back to the current runner.");
+                    var runnerPage = new BuildPage(runtime.Coordinator);
+                    typeof(BuildPage).GetMethod("AddFeedback", BindingFlags.NonPublic | BindingFlags.Instance)!
+                        .Invoke(runnerPage, null);
+                    var runnerNotice = IssuedElements(runnerPage).OfType<Label>().Single();
+                    Require(runnerNotice.Text == expected
+                        && !runnerNotice.Text.Contains(dirty.Id.Value, StringComparison.Ordinal),
+                        "Returning to the runner must not expose the same raw workspace ID again.");
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = priorCulture; }
+            Require(JsonSerializer.Serialize(store.Get(dirty.Id).Value!) == dirtyBefore
+                && JsonSerializer.Serialize(store.Get(savedId).Value!) == savedBefore,
+                "Showing a blocked transition must not save or change either runner.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Require(!IssuedElements(page).Any(element => element.AutomationId == "home-action-notice"),
+                "Departed Home must clear its previous-account feedback.");
+            await ui.BeginAsyncVoid(retainedOpen!.SendClicked);
+            Require(alerts.Titles.Count == 0, "Departed feedback action attempted navigation.");
+            Console.WriteLine("PASS Home blocked switch: visible EN/DE/ES feedback, no GUID, retained dirty runner, no writes, retired action");
+        });
+    }
+
     public static async Task RunHomeStartupFeedbackAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();

@@ -22,6 +22,17 @@ public abstract class NativePageBase : ContentPage
 
     protected RunnerSessionCoordinator Coordinator { get; }
 
+    // Display-only mapping of one known refusal; the presenter keeps the exact
+    // workspace identity and admission. Unknown notices must remain visible.
+    protected bool HasUnsavedWorkspaceSwitchNotice
+        => Coordinator.State.WorkspaceId is { } id
+           && Coordinator.State.Session.ActiveWorkspace?.IsDirty == true
+           && Coordinator.Notice == $"Save or discard local changes for '{id.Value}' before you switch dossiers.";
+
+    protected string? ReadableNotice => HasUnsavedWorkspaceSwitchNotice
+        ? PhoneStrings.Get("HomeUnsavedSwitch", "Save your current runner before switching.")
+        : Coordinator.Notice;
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
