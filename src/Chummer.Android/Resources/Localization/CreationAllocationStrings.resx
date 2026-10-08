@@ -938,4 +938,7 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Remove specialization</value></data>
   <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Remove skill choices</value></data>
   <data name="LifeCompletion.RemoveSkillHelp" xml:space="preserve"><value>Only your added choices for this skill are removed. Life Module grants stay.</value></data>
+  <data name="Skills.NativeLanguage" xml:space="preserve"><value>Native language</value></data>
+  <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Choose native language</value></data>
+  <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Use as native language</value></data>
 </root>

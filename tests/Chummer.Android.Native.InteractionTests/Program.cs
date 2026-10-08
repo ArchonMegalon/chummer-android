@@ -116,6 +116,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--creation-skills-review-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationSkillsReviewFeedbackAsync(args[1]);
+            await AfterRunAuthorityHarness.RunCreationNativeLanguageEntryAsync(args[1]);
             return;
         }
         if (args.Length == 2 && args[0] == "--life-module-completion-review-names-content-root")
