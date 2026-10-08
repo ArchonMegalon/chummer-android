@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 143 is the latest [observed Internal availability](../play/evidence/preview143-internal-observation.md),
+Preview 144 is the latest [observed Internal availability](../play/evidence/preview144-internal-observation.md),
+confirmed on 8 October at 13:41 Europe/Vienna. Karma's unsupported magic options
+have readable explanations; Career review names Mystic Adept power points.
+Focused managed regression and native Adept-catalog copy smoke passed; all six
+previous runner files stayed byte-identical. The native144 smoke did not repeat
+Career finalization. Local ARM64 build, isolated existing-key signing,
+independent keyless checks and one Internal upload/readback passed. Per-chapter
+app/EPUB images remain included. **Physical Play144 installation, complete
+Creation/Career and general startup reliability remain open.** Prior evidence
+and artifacts are unchanged.
+
+Preview 143's [observed Internal availability](../play/evidence/preview143-internal-observation.md),
 confirmed on 8 October at 12:33 Europe/Vienna. Karma Resources no longer shows a
 raw funding expression, and unsupported equipment has a readable explanation.
 The focused managed regression and actual API36 Resources/Equipment smoke
