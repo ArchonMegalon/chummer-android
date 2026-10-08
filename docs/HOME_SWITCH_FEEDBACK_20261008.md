@@ -47,3 +47,8 @@ this narrower concrete blocker was fixed first. No all-method, full Career,
 physical-device or finished-app claim. The owned emulator was stopped afterward.
 Per-chapter in-app/EPUB illustrations are unchanged; existing scoped reader
 evidence is reused only for those unchanged inputs.
+
+Later on 8 October, the combined Contacts/Lifestyle/Career route passed using
+the same final diagnostic APK, including process restart and exact saved-byte
+comparison. See the separate [combined route result](KARMA_CONTACTS_LIFESTYLE_CAREER_20261008.md);
+the narrower feedback-only observations above remain unchanged.
