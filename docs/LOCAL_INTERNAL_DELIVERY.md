@@ -126,7 +126,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 134 is the latest [observed Internal availability](../play/evidence/preview134-internal-observation.md),
+Preview 135 is the latest [observed Internal availability](../play/evidence/preview135-internal-observation.md),
+confirmed on 8 October at 02:45 Europe/Vienna. Creation Skills puts the first
+native-language picker and Review above the budget/catalog content. Focused
+managed/native checks and the actual API 36 minimal Priority route passed through
+one Skills save, one Career finalization and new-process reopening with identical
+saved bytes. The unchanged Core/UI graph was built locally for ARM64, signed with
+the existing isolated upload key and independently verified before one Internal
+upload. **Physical Play 135 installation, complete Creation coverage and native
+responsiveness remain open.** Earlier artifacts and evidence remain unchanged.
+
+Preview 134's [observed Internal availability](../play/evidence/preview134-internal-observation.md),
 confirmed on 8 October at 02:16 Europe/Vienna. Creation Gear shows only
 Core-eligible equipment with exact supported pricing/availability. Focused
 managed/native checks and the actual API 36 catalog/search/save/new-process
