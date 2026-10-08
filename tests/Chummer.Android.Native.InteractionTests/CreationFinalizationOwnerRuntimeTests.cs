@@ -376,6 +376,106 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    internal static async Task RunCreationReviewRoutesAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var app = new ReviewRouteApplication();
+            Application.Current = app;
+            // Use MAUI's window-created entry: OpenWindow alone queues a native
+            // request and does not register a window without a platform handler.
+            var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
+            foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+            {
+                var owners = new ControlledLinkedOwner();
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, productionCreationOverview: true);
+                var saved = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+                await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                var authority = runtime.Coordinator.LoadCreationFinalization();
+                Require(authority.Value is { CanReview: true }, "SETUP: saved runner must be reviewable.");
+                var snapshot = runtime.Coordinator.State.CreationWizard! with
+                {
+                    // Exercise Continue's Review entry independently of which earlier
+                    // optional step the generic overview currently highlights.
+                    ActiveStepId = CharacterCreationWizardStepIds.Review
+                };
+                foreach (string state in new[] { "loading", "blocked", "ready", "old-render", "owner-aba" })
+                foreach (string entry in new[] { "creation-stage-review", "creation-next-review", "creation-finalization-open-review" })
+                {
+                    await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                    authority = runtime.Coordinator.LoadCreationFinalization();
+                    var page = new BuildPage(runtime.Coordinator);
+                    var shell = new Shell();
+                    shell.Items.Add(new ShellContent { Content = page });
+                    var scroll = (ScrollView)page.Content!;
+                    scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+                    void Invoke(string methodName, params object?[] args) => typeof(BuildPage)
+                        .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, args);
+                    window.Page = shell;
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(ReferenceEquals(Shell.Current?.CurrentPage, page),
+                        $"SETUP: review dashboard is not the active Shell page (windows={app.Windows.Count}, currentApp={ReferenceEquals(Application.Current, app)}, localPage={ReferenceEquals(shell.CurrentPage, page)}).");
+                    // Settle native appearance work, then isolate the render-local
+                    // input under test from later background projection callbacks.
+                    Invoke("OnDisappearing");
+                    Invoke("BeginRunnerLoad");
+                    typeof(BuildPage).GetField("_creationFinalizationAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .SetValue(page, state == "loading" ? null : state == "blocked"
+                            ? authority with { Value = authority.Value! with { CanReview = false } } : authority);
+                    var readiness = new CreationDashboardRenderReadiness(
+                        () => false, () => false, () => false, () => false, () => false, () => false);
+                    var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)typeof(BuildPage)
+                        .GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .Invoke(page, [snapshot, null, null, null, null, null, null, readiness])!;
+                    Invoke("AddLegalNextSteps", snapshot, readiness, routes,
+                        new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []));
+                    Invoke("AddFinalizationReviewAction");
+                    bool available = state is not ("loading" or "blocked");
+                    var route = routes[CharacterCreationWizardStepIds.Review];
+                    Require(route.CanOpen == available, $"Review route {method}/{state} disagrees with exact finalization readiness.");
+                    if (!available)
+                        Require(route.Detail != "Available", "A blocked Review still claims to be available.");
+                    var button = IssuedElements(page).OfType<Button>().SingleOrDefault(row => row.AutomationId == entry);
+                    if (entry == "creation-finalization-open-review" && !available)
+                        Require(button is null, "Blocked finalization still exposes its primary action.");
+                    else
+                    {
+                        Require(button is not null && button.IsEnabled == available,
+                            $"Review control {entry}/{method}/{state} disagrees with the shared route.");
+                        if (state == "old-render") Invoke("BeginRunnerLoad");
+                        if (state == "owner-aba")
+                        {
+                            owners.Set(ContactsOwnerB);
+                            owners.Set(OwnerScope.LocalSingleUser);
+                        }
+                        using var alerts = new IssuedPageAlerts(page, window);
+                        if (available)
+                            await ui.BeginAsyncVoid(() => ((IButtonController)button!).SendClicked()).WaitAsync(TimeSpan.FromSeconds(30));
+                        else
+                            ((IButtonController)button!).SendClicked();
+                        Require(alerts.Titles.Count == 0, "Review navigation raised an unexpected alert: " + string.Join("; ", alerts.Messages));
+                        Require((page.Navigation.NavigationStack.LastOrDefault() is CreationStartingCashPage) == (state == "ready"),
+                            $"Review control {entry}/{method}/{state} reached the wrong destination.");
+                    }
+                    Invoke("OnDisappearing");
+                    window.Page = new ContentPage();
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(FinalizationDocumentDigest(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!)
+                        == FinalizationDocumentDigest(saved), "Opening or rejecting final review changed the saved runner.");
+                    Console.WriteLine($"PASS Review {method}/{entry}/{state}: exact admission and unchanged saved runner");
+                }
+            }
+            app.CloseWindow(window);
+        });
+    }
+
+    private sealed class ReviewRouteApplication : Application
+    {
+        protected override Window CreateWindow(Microsoft.Maui.IActivationState? activationState) => new();
+    }
+
     private static void AssertCreationReadinessCopy(RunnerSessionCoordinator coordinator)
     {
         var snapshot = coordinator.State.CreationWizard! with
