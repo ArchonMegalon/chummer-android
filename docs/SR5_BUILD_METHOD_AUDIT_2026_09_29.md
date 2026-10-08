@@ -454,8 +454,64 @@ This is managed actual-MAUI navigation and cold file-store evidence, **not** an
 Android Activity/process-restart or physical Play test. It does not prove every
 metatype/talent combination, full point allocation, or Career action. No new
 APK/AAB, signer execution, provider job or Play upload was needed; Preview148
-and its publication evidence remain unchanged. Native awakened Sum-to-Ten
-finalization/restart remains a separate follow-up.
+and its publication evidence remain unchanged. The following native check adds
+bounded device evidence for the Adept fixture, not the other three talents.
+
+### Native Adept finalization and process restart
+
+The same synthetic Sum-to-Ten Human/Adept fixture also passed on the local API36
+x64 emulator with the unchanged Preview148 SDK-test-signed Release APK:
+`e1ba5c35e4348dbc51c28aed70445cb27dea497d618ffee44861155047fffd61`.
+Its app producer is `18ea236872f10c3f5fde95d632d798eaa6605696`; no product-source
+delta exists between that producer and this test's base `76e781af`. Core and
+Presentation identities are unchanged from the managed run above.
+
+An optional test-only `CHUMMER_AWAKENED_SMOKE_DIRECTORY` export retains the
+Core-generated, finalization-ready draft before confirmation. It requires an
+absolute new directory and one selected talent. Only that synthetic runner's
+files were added to the existing emulator; no existing runner, app setting or
+installed APK was replaced. This is fixture setup, not proof that every preceding
+selection was entered through native controls.
+
+From revision 9/9 the real controls accepted a synthetic Street dice total of 6,
+showed the read-only final review, confirmed once, opened the receipt and entered
+Career at 10/10. Saved XML retains MAG 5 and all five exact powers/levels:
+Adrenaline Boost 5, Light Body 5, Missile Parry 4, Traceless Walk 1 and Wall Running
+1. All enabled attributes match the saved draft. Career has 7 Karma and 5,120 ¥
+(5,000 carryover plus 120 starting cash). There is one finalization receipt.
+
+After force-stop, the old app PID was absent. A new PID under the same Android
+system process restored the same runner, opened the Career wizard and displayed
+the exact 10/10 workspace binding. All 27 pre-existing workspace files remained
+byte-identical through review, save and restart; all 30 post-save files were
+byte-identical after restart and Career navigation. Saved workspace SHA-256:
+`d3a43b04060d92895421064d6ebf426cbeb2e20257c2878328818da6b2e31b30`.
+Finalization receipt digest:
+`sha256:01574781c19d458a73f9918b139df455d8bc7021a94314fff4b10f4736023bea`.
+The focused managed export/build also passed with zero warnings/errors; log
+SHA-256 `225a1bb253078eb2b54567bd31e7815e621b6dff681ebe9f84ce16542afdcefe`.
+
+Limits and observed follow-ups:
+
+- This minimal fixture leaves ordinary attribute/skill/resource budgets unspent;
+  it tests preservation and the final transition, not a fully allocated build,
+  every metatype/talent combination, or subsequent Career mutations.
+- Emulator boot had SystemUI, keyboard and other system-service ANRs. One
+  observed SystemUI Wait was used; no Chummer ANR/crash was found in retained
+  logcat. App startup stages totaled about 95 seconds during boot and 20 seconds
+  after process restart. This is not acceptable general-performance evidence.
+- The first cash-entry attempt returned to Creation after an early keyboard Back;
+  no confirmation occurred. The text was then entered after focus was observed.
+- The Creation dashboard shows two disabled “Review and finalize — Available”
+  cards, although the separate finalization action works farther down. It also
+  shows zero-capacity, inapplicable magic budgets. These are concrete remaining
+  discoverability/minimal-UI issues, not closed by this persistence result.
+
+Screenshots, complete hierarchies, read-only file comparisons, logcat and process
+observations are retained in the private local smoke packet. The owned emulator
+was stopped after testing; no provider job, new APK/AAB, signing or Play upload
+was needed. Preview148 remains the last recorded Internal build. Physical Play
+installation and full Creation/Career completion are still unproven.
 
 ## 8 October follow-up: Life Modules Apprentice into Career
 
