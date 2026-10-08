@@ -65,6 +65,20 @@ internal static partial class AfterRunAuthorityHarness
             var loaded = runtime.Coordinator.LoadCreationFinalization().Value!;
             Require(loaded.CanReview && loaded.StartingCashSource is not null,
                 "Awakened finalization blocked: " + string.Join(",", loaded.Blockers));
+            if (Environment.GetEnvironmentVariable("CHUMMER_AWAKENED_SMOKE_DIRECTORY") is { Length: > 0 } smokeDirectory)
+            {
+                Require(Path.IsPathFullyQualified(smokeDirectory)
+                    && !Directory.Exists(smokeDirectory) && !File.Exists(smokeDirectory),
+                    "Awakened smoke export requires a new explicit synthetic directory; select one talent per export.");
+                Directory.CreateDirectory(smokeDirectory);
+                foreach (string file in Directory.EnumerateFiles(runtime.StateDirectory, "*", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(smokeDirectory, Path.GetRelativePath(runtime.StateDirectory, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target, overwrite: false);
+                }
+                Console.WriteLine($"Awakened synthetic smoke fixture: {id.Value}; talent={editor.Talent.Kind}; revision={before.ContentRevision}/{before.SavedRevision}");
+            }
             var root = new BuildPage(runtime.Coordinator);
             // Headless MAUI has no scroll handler; supply geometry completion,
             // never rules, review results or route readiness.
