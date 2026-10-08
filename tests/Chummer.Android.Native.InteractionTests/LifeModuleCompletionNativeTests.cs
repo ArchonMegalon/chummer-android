@@ -303,7 +303,11 @@ internal static partial class AfterRunAuthorityHarness
                     BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
                 var images = IssuedElements(page).OfType<Image>().Where(image =>
                     image.AutomationId?.StartsWith("origin-book-scene-", StringComparison.Ordinal) == true).ToArray();
-                Require(images.Length == chapters.Length, "The native reader omitted a chapter illustration available in EPUB.");
+                Require(images.Length == chapters.Length,
+                    $"The native reader omitted a chapter illustration available in EPUB (appearance {appearance}; "
+                    + $"expected {chapters.Length}, got {images.Length}; "
+                    + $"labels: {string.Join(" | ", IssuedElements(page).OfType<Label>().Select(l => l.Text))}; "
+                    + $"alerts: {string.Join(" | ", alerts.Messages)}).");
                 var streams = new List<StreamImageSource>();
                 foreach (var chapter in chapters)
                 {
