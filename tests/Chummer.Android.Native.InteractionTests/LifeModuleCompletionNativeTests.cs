@@ -16,6 +16,7 @@ using Chummer.Presentation;
 using Chummer.Presentation.Shell;
 using System.Reflection;
 using System.Globalization;
+using System.IO.Compression;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
@@ -254,6 +255,112 @@ internal static partial class AfterRunAuthorityHarness
         Require(service.Restore(owners.Capture(), reopened.StoryCheckpoint!).Value is not null,
             "Returning owner could not restore the current persisted chapter with fresh admission.");
         Console.WriteLine("PASS linked-owner Life Modules start, review, commit, save, cold reopen, namespace isolation and ABA rejection");
+    }
+
+    internal static async Task RunOriginReaderChapterImagesAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var account = DispatchProxy.Create<IAndroidAccountLinkService, LinkedRecoveryUnlinkedAccountProxy>();
+            var output = new LifeBookOutputProbe();
+            await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+                productionCreationOverview: true, accountService: account, outputDocuments: output);
+            await runtime.Coordinator.InitializeAsync();
+            await runtime.Coordinator.CreateRunnerAsync();
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Offline illustrated chapters", default);
+            await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+            await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+            var id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await runtime.Coordinator.SaveAsync();
+            await Task.Run(() => SeedNativeLifeStory(runtime, id));
+            await runtime.Presenter.LoadAsync(id, default);
+            var before = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+            var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            var chapters = book.Chapters.Where(c => !book.IsOpeningSetup(c) && !book.IsSelectionFinish(c)).ToArray();
+            Require(chapters.Length > 1, "The inline-art fixture must cover multiple actual chapter identities.");
+            foreach (var chapter in chapters)
+            {
+                var prose = OriginBookProseDraft.Create(chapter, book.Locale,
+                    Chummer.Run.Contracts.Community.OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)),
+                    new string('e', 64), $"Complete synthetic chapter {chapter.Sequence}. Not provider-generated prose.");
+                book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, prose, () => true, default))!;
+                book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
+            }
+            var sceneStore = new OriginBookSceneStore(runtime.StateDirectory);
+            var empty = sceneStore.Load(book.Readings!.Owner, id.Value);
+            var scenes = chapters.Select(c => OriginBookScene.ForChapter(book, c,
+                $"Synthetic illustration for chapter {c.Sequence}", LifeSceneInputProbe.Png)).ToArray();
+            sceneStore.Save(empty, new(empty.Owner, empty.Workspace, scenes), () => true, default);
+            book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            Require(book.SceneExports().Count == chapters.Length, "The fixture must retain an image for every full chapter.");
+
+            var page = new RetainedOriginBookPage(runtime.Coordinator);
+            var window = new Window(new NavigationPage(page));
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            for (int appearance = 0; appearance < 2; appearance++)
+            {
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                ui.AssertHealthy();
+                var body = (VerticalStackLayout)typeof(RetainedOriginBookPage).GetField("_body",
+                    BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+                var images = IssuedElements(page).OfType<Image>().Where(image =>
+                    image.AutomationId?.StartsWith("origin-book-scene-", StringComparison.Ordinal) == true).ToArray();
+                Require(images.Length == chapters.Length,
+                    $"The native reader omitted a chapter illustration available in EPUB (appearance {appearance}; "
+                    + $"expected {chapters.Length}, got {images.Length}; "
+                    + $"labels: {string.Join(" | ", IssuedElements(page).OfType<Label>().Select(l => l.Text))}; "
+                    + $"alerts: {string.Join(" | ", alerts.Messages)}).");
+                var streams = new List<StreamImageSource>();
+                foreach (var chapter in chapters)
+                {
+                    var image = images.Single(i => i.AutomationId == $"origin-book-scene-{chapter.Sequence}");
+                    var text = IssuedElements(page).OfType<Label>().Single(label =>
+                        label.AutomationId == $"origin-retained-chapter-{chapter.Sequence}");
+                    Require(body.Children.IndexOf(image) >= 0 && body.Children.IndexOf(image) < body.Children.IndexOf(text)
+                        && SemanticProperties.GetDescription(image) == scenes.Single(s => s.Identity.ChapterId == chapter.ChapterId).Identity.AltText
+                        && image.IsVisible && image.Aspect == Aspect.AspectFit && image.HeightRequest > 0,
+                        "Chapter artwork was hidden, cropped or detached from its chapter/accessible description.");
+                    Require(image.Source is StreamImageSource, "Inline artwork is not backed by private retained bytes.");
+                    var source = (StreamImageSource)image.Source!;
+                    streams.Add(source);
+                    // Exercise the actual MAUI stream, not merely the presence
+                    // of an Image control whose deferred source could be empty.
+                    using var opened = await source.Stream(default);
+                    using var bytes = new MemoryStream();
+                    await opened.CopyToAsync(bytes);
+                    Require(bytes.ToArray().SequenceEqual(LifeSceneInputProbe.Png),
+                        "The native reader's deferred image source differs from the EPUB's retained raster.");
+                }
+                await ui.BeginAsyncVoid(() => ((IButtonController)IssuedElements(page).OfType<Button>()
+                    .Single(b => b.AutomationId == "origin-book-export-epub")).SendClicked());
+                using (var epub = new ZipArchive(new MemoryStream(output.Epub)))
+                {
+                    var entries = epub.Entries.Where(entry => entry.FullName.StartsWith("EPUB/images/", StringComparison.Ordinal)).ToArray();
+                    Require(entries.Length == images.Length, "EPUB and native reader have different chapter image counts.");
+                    foreach (var entry in entries)
+                    {
+                        using var stream = entry.Open();
+                        using var bytes = new MemoryStream();
+                        await stream.CopyToAsync(bytes);
+                        Require(bytes.ToArray().SequenceEqual(LifeSceneInputProbe.Png),
+                            "EPUB and native reader use different retained chapter image bytes.");
+                    }
+                }
+                IssuedPageLifecycle(page, "OnDisappearing");
+                Require(!IssuedElements(page).Any(e => e is Image or Label), "A departed reader retained private chapter content.");
+                foreach (var source in streams)
+                {
+                    using var retired = await source.Stream(default);
+                    Require(retired.ReadByte() == -1, "A retired image control could still reopen private chapter bytes.");
+                }
+            }
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+            Require(alerts.Titles.Count == 0, "Offline illustrated reading opened an unexpected error.");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS native full-chapter illustrations: every chapter, exact deferred image bytes, offline reopen and departed-page privacy; no provider job");
+        });
     }
 
     internal static async Task RunOriginReaderLocalTextAsync(string contentRoot, string? smokeDirectory = null,
