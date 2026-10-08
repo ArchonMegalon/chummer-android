@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 136 is the latest [observed Internal availability](../play/evidence/preview136-internal-observation.md),
+Preview 137 is the latest [observed Internal availability](../play/evidence/preview137-internal-observation.md),
+confirmed on 8 October at 03:51 Europe/Vienna. Karma Attributes adds a top
+Refresh preview and compact read-only rating/cost cards without losing the
+ability to remove invalid purchases. Focused managed/native checks and the
+actual API 36 Human/Mundane attribute route passed; three existing saved runner
+files stayed unchanged. The unchanged Core/UI graph was built locally for ARM64,
+signed with the existing isolated upload key and independently verified before
+one Internal upload. **Physical Play 137 installation, full Creation/Career
+coverage and native startup responsiveness remain open.** Earlier evidence is
+unchanged; the prior complete Karma restart smoke is not a rerun of this delta.
+
+Preview 136's [observed Internal availability](../play/evidence/preview136-internal-observation.md),
 confirmed on 8 October at 03:08 Europe/Vienna. Career entry uses shorter player
 guidance and collapses exact technical IDs/revisions/digests by default. All six
 destinations and Experimental warnings remain. Focused managed/native checks and
