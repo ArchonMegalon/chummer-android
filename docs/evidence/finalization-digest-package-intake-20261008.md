@@ -51,6 +51,14 @@ source-free package-only APK.
 
 ## Delivery boundary
 
+Subsequent delivery: [Preview146 is available on Play Internal](../../play/evidence/preview146-internal-observation.md).
+The exact candidate passed the bounded SDK-test x64 update/new-process Career
+reopen smoke, local ARM64 build, isolated existing-key signing, independent
+keyless inspection and actual Console readback. All24saved files/eight synthetic
+runners remained unchanged. Physical Play installation and broad performance
+remain unverified. The paragraphs below preserve the pre-build checkpoint;
+they are not the current release status.
+
 Preview 146 is a source candidate only at this checkpoint. Its APK/emulator
 startup and saved-runner process-restart smoke, ARM64 AAB, isolated signing and
 Play readback remain pending. A prior Preview145 cold-emulator attempt suffered
