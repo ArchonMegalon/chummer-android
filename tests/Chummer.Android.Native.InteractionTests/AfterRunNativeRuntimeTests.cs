@@ -575,7 +575,9 @@ internal static partial class AfterRunAuthorityHarness
             Func<Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService,
                 Chummer.Application.LifeModules.IOwnerBoundLifeModuleBookService>? lifeBookDecorator = null,
             bool localRunnerAdoption = false,
-            Func<IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleOriginService>? lifeOriginDecorator = null)
+            Func<IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleOriginService>? lifeOriginDecorator = null,
+            Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService,
+                IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -642,7 +644,9 @@ internal static partial class AfterRunAuthorityHarness
                         ownerBoundCreationContactsService: _provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>(),
                         ownerBoundCreationFinalizationService: productionFinalization,
                         ownerBoundCreationLifestylesReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesReader>(),
-                        ownerBoundFoundationReader: _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
+                        ownerBoundFoundationReader: foundationReaderDecorator?.Invoke(
+                            _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationLifeModuleFinalizationService>(),
                         ownerBoundCreationQualitiesService: _provider.GetRequiredService<IOwnerBoundCharacterCreationQualitiesService>(),
                         ownerBoundCreationMagicResonanceService: _provider.GetRequiredService<IOwnerBoundCharacterCreationMagicResonanceService>())
                         : creationContacts ? new WorkspaceOverviewStateFactory(
