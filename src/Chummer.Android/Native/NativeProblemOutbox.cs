@@ -7,7 +7,23 @@ namespace Chummer.Android.Native;
 internal sealed record NativeProblemSubmission(string Id, NativeProblemEntry Event);
 internal sealed record NativeProblemDeliveryItem(NativeProblemSubmission Submission, bool Terminal);
 internal sealed record NativeProblemDeliveryState(bool Enabled, DateTimeOffset RetryAfterUtc,
-    List<NativeProblemDeliveryItem> Items, DateTimeOffset EnabledAtUtc = default);
+    List<NativeProblemDeliveryItem> Items, DateTimeOffset EnabledAtUtc = default,
+    bool EnabledByInternalDefault = false);
+
+internal static class NativeProblemPolicy
+{
+    internal static bool InternalTestBuild
+    {
+        get
+        {
+#if CHUMMER_INTERNAL_TEST
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+}
 
 internal enum NativeProblemDeliveryDisposition { RetryLater, Accepted, Rejected }
 internal readonly record struct NativeProblemDeliveryResult(
@@ -21,7 +37,8 @@ internal readonly record struct NativeProblemDeliveryResult(
 }
 
 /// <summary>
-/// Bounded, opt-in, durable queue for technical observations, not crash claims. All I/O is called
+/// Bounded, durable queue for technical observations, not crash claims. Internal builds default
+/// on only when no saved choice exists; other builds default off. All I/O is called
 /// from background work, never while holding a page action or mutation lease.
 /// A callback may return Accepted only after validating the exact receipt ID.
 /// Unknown outcomes retain the same ID; the Hub adapter must be idempotent.
@@ -32,12 +49,14 @@ internal sealed class NativeProblemOutbox
     internal const int MaximumFileBytes = 16384;
     private readonly string _path;
     private readonly TimeProvider _clock;
+    private readonly bool _internalTestBuild;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public NativeProblemOutbox(string directory, TimeProvider? clock = null)
+    public NativeProblemOutbox(string directory, TimeProvider? clock = null, bool internalTestBuild = false)
     {
         _path = Path.Combine(directory, "technical-delivery.json");
         _clock = clock ?? TimeProvider.System;
+        _internalTestBuild = internalTestBuild;
     }
 
     public async Task<bool> SetEnabledAsync(bool enabled, CancellationToken ct = default)
@@ -45,10 +64,15 @@ internal sealed class NativeProblemOutbox
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // Changing consent never uploads old local history. Revocation
+            // Changing the preference never uploads old local history. Revocation
             // clears the queue; a later opt-in starts with new observations.
             var state = Load();
-            if (enabled && state.Enabled) return true;
+            if (enabled && state.Enabled)
+            {
+                // An explicit enable is distinct from an Internal-only default.
+                if (state.EnabledByInternalDefault) Save(state with { EnabledByInternalDefault = false });
+                return true;
+            }
             Save(new(enabled, DateTimeOffset.MinValue, new(), enabled ? _clock.GetUtcNow() : default));
             return true;
         }
@@ -128,8 +152,18 @@ internal sealed class NativeProblemOutbox
 
     private NativeProblemDeliveryState Load()
     {
-        if (!File.Exists(_path)) return new(false, DateTimeOffset.MinValue, new());
-        using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        FileStream opened;
+        try { opened = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete); }
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
+        {
+            var initial = new NativeProblemDeliveryState(_internalTestBuild, DateTimeOffset.MinValue, new(),
+                _internalTestBuild ? _clock.GetUtcNow() : default, _internalTestBuild);
+            // Persist the boundary before it can permit sending. Permission errors,
+            // malformed existing files and explicit false are never a fresh install.
+            if (_internalTestBuild) Save(initial);
+            return initial;
+        }
+        using var stream = opened;
         if (stream.Length > MaximumFileBytes) return new(false, DateTimeOffset.MinValue, new());
         NativeProblemDeliveryState? state;
         try { state = JsonSerializer.Deserialize(stream, NativeProblemDeliveryJsonContext.Default.NativeProblemDeliveryState); }
@@ -141,6 +175,8 @@ internal sealed class NativeProblemOutbox
             || state.Items.Any(item => !IsDeliverable(item.Submission.Event))
             || state.Items.Select(item => item.Submission.Id).Distinct(StringComparer.Ordinal).Count() != state.Items.Count)
             return new(false, DateTimeOffset.MinValue, new());
+        if (state.EnabledByInternalDefault && !_internalTestBuild)
+            state = state with { Enabled = false, EnabledAtUtc = default };
         state.Items.RemoveAll(item => item.Submission.Event.AtUtc < _clock.GetUtcNow().AddDays(-2)
             || item.Submission.Event.AtUtc < state.EnabledAtUtc || !state.Enabled);
         return state;

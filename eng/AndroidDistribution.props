@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Play track membership is not available to the app. Select the channel
+         when building; never infer Internal from Release or a preview version. -->
+    <ChummerDistributionChannel Condition="'$(ChummerDistributionChannel)' == ''">development</ChummerDistributionChannel>
+    <DefineConstants Condition="'$(ChummerDistributionChannel)' == 'internal'">$(DefineConstants);CHUMMER_INTERNAL_TEST</DefineConstants>
+  </PropertyGroup>
+  <Target Name="ValidateAndroidDistributionChannel" BeforeTargets="PrepareForBuild">
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerDistributionChannel)', '\A(development|internal|public)\z'))"
+           Text="ChummerDistributionChannel must be development, internal or public." />
+  </Target>
+</Project>

@@ -107,12 +107,15 @@ public sealed class ApplicationSettingsPage : NativePageBase
         {
             body.Add(NativeTheme.Title(PhoneStrings.Get("SettingsDiagnostics", "Technical diagnostics")));
             body.Add(NativeTheme.Body(PhoneStrings.Get("SettingsDiagnosticsLocal",
-                "Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text. Automatic sharing is off unless you enable it below."), NativeTheme.Muted));
+                "Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text."), NativeTheme.Muted));
             _reports = IPlatformApplication.Current?.Services.GetService<NativeProblemReporter>();
             if (_reports is not null)
             {
+                body.Add(NativeTheme.Body(NativeProblemPolicy.InternalTestBuild
+                    ? PhoneStrings.Get("SettingsDiagnosticsInternalDefault", "Internal test: automatic technical reports are on by default. A saved off choice stays off, including after updates. You can disable sending below.")
+                    : PhoneStrings.Get("SettingsDiagnosticsOtherDefault", "Automatic technical reports are off by default in this build. A saved explicit choice is retained."), NativeTheme.Muted));
                 body.Add(NativeTheme.Body(PhoneStrings.Get("SettingsDiagnosticsAutomaticDetail",
-                    "Optional: send new failures and operations over 30 seconds to the Chummer team at chummer.run, while the app is running. Up to eight reports per two days; no old history. Reports stay in the private inbox for up to two days. Disable anytime to clear unsent reports; already received reports expire separately."), NativeTheme.Muted));
+                    "When enabled, new failures and operations over 30 seconds are sent to the Chummer team at chummer.run while the app is running. Up to eight reports per two days; no old history. Reports stay in the private inbox for up to two days. Disable anytime to clear unsent reports; already received reports expire separately."), NativeTheme.Muted));
                 _diagnosticsStatus = NativeTheme.Body(PhoneStrings.Get("SettingsDiagnosticsLoading", "Loading diagnostic setting…"));
                 _diagnosticsStatus.AutomationId = "settings-diagnostics-status";
                 body.Add(_diagnosticsStatus);

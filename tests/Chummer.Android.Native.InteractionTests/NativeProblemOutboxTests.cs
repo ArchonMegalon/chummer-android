@@ -141,6 +141,33 @@ internal static class NativeProblemOutboxTests
             });
             Console.WriteLine("PASS diagnostic outbox: opt-in/revoke, bounds, expiry, invalid metadata, durable IDs, uncertainty backoff, restart dedupe, no non-failure/crash conflation");
             Console.WriteLine("PASS diagnostic delivery: serialized wake-ups, permanent rejection, uncertain cancellation identity");
+
+            string internalPath = Path.Combine(root, "internal");
+            var internalQueue = new NativeProblemOutbox(internalPath, clock, internalTestBuild: true);
+            Require(await internalQueue.IsEnabledAsync(), "Fresh Internal build did not default on.");
+            var initial = System.Text.Json.JsonSerializer.Deserialize(
+                File.ReadAllBytes(Path.Combine(internalPath, "technical-delivery.json")),
+                NativeProblemDeliveryJsonContext.Default.NativeProblemDeliveryState)!;
+            Require(initial.EnabledByInternalDefault && initial.EnabledAtUtc == clock.GetUtcNow(), "Default not durably identified.");
+            Require(!await internalQueue.EnqueueAsync(Failure() with { AtUtc = clock.GetUtcNow().AddSeconds(-1) }), "Default uploaded old history.");
+            Require(await internalQueue.EnqueueAsync(Failure()), "Internal default cannot queue new failures.");
+            Require(await new NativeProblemOutbox(internalPath, clock, true).IsEnabledAsync(), "Restart lost default.");
+            Require(!await new NativeProblemOutbox(internalPath, clock).IsEnabledAsync(), "Internal default leaked into public/development build.");
+            await new NativeProblemOutbox(internalPath, clock).DeliverOneAsync((_, _) => throw new InvalidOperationException("Cross-channel default sent data."));
+
+            Require(await internalQueue.SetEnabledAsync(true), "Explicit enable failed.");
+            Require(await new NativeProblemOutbox(internalPath, clock).IsEnabledAsync(), "Explicit preference lost outside Internal.");
+            Require(await internalQueue.SetEnabledAsync(false), "Internal disable failed.");
+            Require(!await new NativeProblemOutbox(internalPath, clock, true).IsEnabledAsync(), "Restart overrode explicit opt-out.");
+            Require(!await new NativeProblemOutbox(root, clock, true).IsEnabledAsync(), "Upgrade overrode earlier disabled state.");
+            foreach (string invalid in new[] { "{invalid", new string('x', NativeProblemOutbox.MaximumFileBytes + 1),
+                "{\"Enabled\":true,\"Items\":[],\"EnabledAtUtc\":\"0001-01-01T00:00:00+00:00\"}" })
+            {
+                await File.WriteAllTextAsync(Path.Combine(internalPath, "technical-delivery.json"), invalid);
+                Require(!await new NativeProblemOutbox(internalPath, clock, true).IsEnabledAsync(), "Invalid state treated as fresh Internal install.");
+            }
+            Require(!await new NativeProblemOutbox(unavailable, clock, true).IsEnabledAsync(), "Default sending allowed with unavailable disk.");
+            Console.WriteLine("PASS Internal defaults: durable first-run on, restart, opt-out/upgrade preservation, other-channel off, corrupt/unavailable state off");
         }
         finally { Directory.Delete(root, recursive: true); }
     }

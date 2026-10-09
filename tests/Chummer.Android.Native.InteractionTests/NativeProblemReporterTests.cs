@@ -119,6 +119,30 @@ internal static class NativeProblemReporterTests
                 JsonSerializer.Serialize(new NativeProblemDeliveryState(true, default, new()),
                     NativeProblemDeliveryJsonContext.Default.NativeProblemDeliveryState));
             Require(!await new NativeProblemOutbox(legacy, clock).IsEnabledAsync(), "Unversioned consent accepted.");
+
+            int internalCalls = 0;
+            string internalPath = Path.Combine(root, "internal-default");
+            using (var internalReporter = new NativeProblemReporter(log,
+                new NativeProblemOutbox(internalPath, clock, internalTestBuild: true), (_, _) =>
+                { internalCalls++; return Task.FromResult(NativeProblemDeliveryResult.Accepted); }))
+            {
+                Fail(NativeProblemArea.Book);
+                await internalReporter.RunOnceAsync();
+                Require(await internalReporter.IsEnabledAsync() && internalCalls == 0, "Internal default replayed old journal.");
+                Fail(NativeProblemArea.LifeModules);
+                await internalReporter.RunOnceAsync();
+                Require(internalCalls == 1, "Internal default did not send a new observation.");
+                Require(await internalReporter.SetEnabledAsync(false), "Cannot disable Internal default.");
+            }
+            using (var updated = new NativeProblemReporter(log, new NativeProblemOutbox(internalPath, clock, true), (_, _) =>
+                { internalCalls++; return Task.FromResult(NativeProblemDeliveryResult.Accepted); }))
+            {
+                Require(!await updated.IsEnabledAsync(), "Update/restart overrode Internal opt-out.");
+                Fail(NativeProblemArea.Career);
+                await updated.RunOnceAsync();
+                Require(internalCalls == 1, "Disabled Internal reporter sent a new event.");
+            }
+            Console.WriteLine("PASS Internal reporter: first-run on without history replay, new-event delivery, durable opt-out across update/restart");
             Console.WriteLine("PASS diagnostic reporter: opt-in boundary (same timestamp), off/re-enable, restart, offline stable ID, cancel in-flight, one scheduler, storage failure, old consent rejected");
         }
         finally

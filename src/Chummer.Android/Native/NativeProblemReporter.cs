@@ -2,7 +2,8 @@ namespace Chummer.Android.Native;
 
 /// <summary>
 /// Best-effort foreground-process reporting, not an Android background service.
-/// All disk/network work stays off the UI thread. Consent is off by default.
+/// All disk/network work stays off the UI thread. The outbox applies the build's
+/// initial preference without overriding a saved opt-out.
 /// </summary>
 internal sealed class NativeProblemReporter : IDisposable
 {

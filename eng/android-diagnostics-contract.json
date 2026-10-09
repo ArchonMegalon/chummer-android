@@ -12,5 +12,8 @@
   "publishedPackageAuthority": false,
   "productionTransportRegistered": true,
   "defaultCollectionEnabled": false,
+  "internalTestDefaultCollectionEnabled": true,
+  "internalTestBuildProperty": "ChummerDistributionChannel=internal",
+  "preserveSavedOptOut": true,
   "liveRemoteCollectionVerified": false
 }

@@ -38,7 +38,8 @@ public static class MauiProgram
             Path.Combine(FileSystem.AppDataDirectory, "diagnostics"),
             $"{AppInfo.Current.VersionString}+{AppInfo.Current.BuildString}"));
         builder.Services.AddSingleton(_ => new NativeProblemOutbox(
-            Path.Combine(FileSystem.AppDataDirectory, "diagnostics")));
+            Path.Combine(FileSystem.AppDataDirectory, "diagnostics"),
+            internalTestBuild: NativeProblemPolicy.InternalTestBuild));
         builder.Services.AddSingleton(_ => new NativeProblemHttpTransport(NativeProblemHttpTransport.CreateClient()));
         builder.Services.AddSingleton(provider => new NativeProblemReporter(
             provider.GetRequiredService<NativeProblemLog>(), provider.GetRequiredService<NativeProblemOutbox>(),

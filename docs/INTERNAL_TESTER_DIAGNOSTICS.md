@@ -1,11 +1,23 @@
 # Internal tester diagnostics
 
-Current source has **explicit opt-in automatic reporting**. It is not yet a
+Current source has **default-on automatic reporting for Internal test builds**
+(owner decision, 9 October 2026), with an immediately available opt-out. It is not yet a
 deployed or Play-delivered central reporting service.
 Native page appearance/actions/refreshes and Life Modules story-readiness checks
 record allowlisted technical events in app-private `diagnostics/technical-diagnostics.json`.
 The settings page explains this and offers an explicit Android share action.
-Automatic sharing is off by default. The separate settings action takes effect
+Build Internal candidates with `-p:ChummerDistributionChannel=internal`.
+The default channel is `development`; `public` and `development` default off.
+The app cannot discover its Google Play track. Do not promote the Internal AAB to
+a public track unchanged: rebuild with the public channel and its own release checks.
+The first-run Internal default is persisted only when no prior state exists.
+An existing disabled state (including the earlier off-by-default implementation)
+is preserved conservatively, even when its origin cannot be distinguished.
+Corrupt/inaccessible state never counts as a fresh install. An Internal default
+does not authorize sending after switching to a non-Internal build; an explicit
+saved enable remains a separate choice. The Home screen links directly to the
+diagnostic setting and discloses the default without claiming everyone has it on.
+The separate settings action takes effect
 immediately (not through the language/settings Save button). DE/EN/ES disclosures
 explain the first-party destination, metadata, two-day private inbox and withdrawal.
 Operator notification and actual private intake readback remain outstanding.
@@ -24,7 +36,7 @@ does not block an app action; writes back off for one minute. This is best-effor
 logging, not guaranteed crash capture: abrupt process death can lose pending writes.
 
 `NativeProblemOutbox` enforces the delivery boundary:
-explicit opt-in (off by default), a maximum of eight metadata-only reports per
+the build-scoped default and saved preference, a maximum of eight metadata-only reports per
 two-day window, category suppression across restart, a stable random submission
 ID persisted before delivery, at least five-minute persisted backoff, and one send per
 wake-up. Revocation clears pending reports. Unknown outcomes keep the same ID;
@@ -32,10 +44,10 @@ the adapter validates an exact receipt and uses idempotent intake. Failed action
 rejected dispatches and observations lasting at least 30 seconds are eligible.
 Slow remains a separate observation, never a crash claim. Busy taps, cancellations
 and ordinary story-not-ready observations are not sent. This app-private state is
-not a copied Hub wire DTO. Persisted consent has a start timestamp; old preparatory
+not a copied Hub wire DTO. Persisted enablement has a start timestamp; old preparatory
 states without it fail closed. `NativeProblemReporter` additionally holds an exact
-in-memory journal sequence boundary, excluding pre-consent events even if they
-share the consent timestamp. It never reimports the on-disk local journal.
+in-memory journal sequence boundary, excluding earlier events even if they
+share the enablement timestamp. It never reimports the on-disk local journal.
 
 The singleton reporter starts off-thread, checks every 30 seconds while the app
 process can run, and emits at most one eligible queued report per five minutes.
@@ -47,7 +59,7 @@ so this is not a remote deletion promise. A failed consent save stops sending in
 the current process and explicitly asks the tester to retry before restarting.
 It must not claim that an unsuccessful disk write changed durable consent.
 
-`NativeProblemHttpTransport` is registered for the opt-in reporter and locally tested.
+`NativeProblemHttpTransport` is registered for the preference-controlled reporter and locally tested.
 It uses the canonical `Chummer.Control.Contracts` package identified in
 `eng/android-diagnostics-contract.json`. That exact 38,598-byte package was built
 locally from Hub `fef48022f`, not copied from DTO source, published as an asset or

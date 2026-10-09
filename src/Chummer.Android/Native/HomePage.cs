@@ -78,6 +78,16 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         _body.Add(_startupProgress);
     }
 
+    private void AddDiagnosticNotice()
+    {
+        if (!NativeProblemPolicy.InternalTestBuild) return;
+        _body.Add(NativeTheme.NavigationRow(
+            PhoneStrings.Get("SettingsDiagnostics", "Technical diagnostics"),
+            PhoneStrings.Get("HomeDiagnosticsInternal", "Internal test: technical reports are on by default, unless you turn them off. No runner, book or account content. Tap to review or disable."),
+            () => Navigation.PushAsync(new ApplicationSettingsPage(Coordinator)),
+            automationId: "home-diagnostics-settings"));
+    }
+
 #if DEBUG
     protected override Task PrepareForAppearanceRefreshAsync(
         CancellationToken cancellationToken)
@@ -91,6 +101,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Chummer"));
         _body.Add(NativeTheme.Title(PhoneStrings.Get("HomeYourRunners", "Your runners")));
+        AddDiagnosticNotice();
 
         string runner = Coordinator.State.Profile is { } profile
             ? PhoneStrings.RunnerName(profile.Name, profile.Alias)
