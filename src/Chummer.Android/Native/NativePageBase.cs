@@ -256,6 +256,22 @@ public abstract class NativePageBase : ContentPage
         }
     }
 
+    /// <summary>
+    /// Requests a render for read results already admitted to this appearance.
+    /// Unlike a user action, that render must not be dropped while a picker or
+    /// another action owns the gate. Its release drains the coalesced request,
+    /// including after cancellation; departure retires it without replaying I/O.
+    /// </summary>
+    protected Task RefreshAfterBackgroundReadAsync(long appearanceGeneration)
+    {
+        if (!IsCurrentAppearanceGeneration(appearanceGeneration)) return Task.CompletedTask;
+        _coordinatorRefresh.MarkPending(appearanceGeneration);
+        if (_actionGate.IsClaimed || Volatile.Read(ref _appearanceRefreshActive) > 0)
+            return Task.CompletedTask;
+        return RunWithConditionalRefreshAsync(
+            () => Task.FromResult(IsCurrentAppearanceGeneration(appearanceGeneration)));
+    }
+
     protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
     {
         if (!_actionGate.TryClaim())
