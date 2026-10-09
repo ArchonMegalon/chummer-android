@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 157 is the latest [observed Internal availability](../play/evidence/preview157-internal-observation.md),
+Preview 158 is the latest [observed Internal availability](../play/evidence/preview158-internal-observation.md),
+confirmed on 9 October at 12:26 Europe/Vienna. Creation stages, budgets, status
+and route copy and the Attribute editor/review headings and units now use
+localized display resources. Focused source/managed checks and final-source
+German native display/navigation smoke passed; all 33 fixture runner files
+remained byte-identical. One local ARM64 build, isolated existing-key signature,
+independent keyless checks and one Internal upload/readback passed.
+**Complete German app/catalog localization, physical Play 158 installation and
+complete Creation/Career remain open; startup remains slow.** No full-app or
+speedup claim is made. Previous artifacts and evidence are unchanged.
+
+Preview 157's [observed Internal availability](../play/evidence/preview157-internal-observation.md),
 confirmed on 9 October at 11:20 Europe/Vienna. Settings now offers independent
 app-language and regional-format choices with a live preview. Save persists the
 choices; restart applies them. Back without saving discards them. Book language,
