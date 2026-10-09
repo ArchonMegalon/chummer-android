@@ -131,7 +131,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 167 is the latest [observed Internal availability](../play/evidence/preview167-internal-observation.md),
+Preview 168 is the latest [observed Internal availability](../play/evidence/preview168-internal-observation.md),
+confirmed on 10 October at 00:55 Europe/Vienna (Play displayed 00:54). Foundation
+and related SR5 Creation overview reads share one owner-bound composition;
+mutation and saved-state checks remain. Exact Core/UI package tests and Android
+managed page checks passed. A pre-repin private x64 API 36 smoke preserved four
+saved runners and diagnostic preference across a new process; it is not final
+ARM64 execution or proof of faster startup. Local ARM64 build, original-key
+signing, keyless verification and one Internal upload/readback passed.
+Diagnostics retain default-on Internal behavior and existing opt-outs.
+**Physical Play 168 installation, real tester-incident capture, startup-speed
+improvement and complete Creation/Career remain unverified.** Version168 is
+consumed; prior evidence and rollback artifacts are unchanged.
+
+Preview 167's [observed Internal availability](../play/evidence/preview167-internal-observation.md),
 confirmed on 9 October at 21:45 Europe/Vienna (Play displayed 21:44). Home now
 offers localized same-page retry after a failed initial restore, with visible
 loading feedback. Baseline/fixed managed page tests, native Release compile and
