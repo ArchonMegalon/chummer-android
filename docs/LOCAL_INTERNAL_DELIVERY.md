@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 162 is the latest [observed Internal availability](../play/evidence/preview162-internal-observation.md),
+Preview 163 is the latest [observed Internal availability](../play/evidence/preview163-internal-observation.md),
+confirmed on 9 October at 14:47 Europe/Vienna. Exact canonical restoration,
+save, settings-save and account-recovery status notices now use display-only
+EN/DE/ES resources; unknown errors/custom notices remain intact. Managed locale
+checks and native German restored-runner feedback smoke passed; all 33 retained
+runner files were unchanged. Local build, isolated original-key signing,
+independent keyless checks and one Internal upload/readback passed. **Whole-app
+German coverage, physical Play 163 installation and complete Creation/Career
+remain open; startup remains slow.** A retained System UI emulator boot ANR is
+explicitly distinguished from the final successful app display. Prior evidence
+remains unchanged.
+
+Preview 162's [observed Internal availability](../play/evidence/preview162-internal-observation.md),
 confirmed on 9 October at 14:22 Europe/Vienna. German Magic/Resonance names,
 talent/metatype/category captions and historical re-review display are localized;
 search accepts German and original names. Twenty source tests, focused managed
