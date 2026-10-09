@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 156 is the latest [observed Internal availability](../play/evidence/preview156-internal-observation.md),
+Preview 157 is the latest [observed Internal availability](../play/evidence/preview157-internal-observation.md),
+confirmed on 9 October at 11:20 Europe/Vienna. Settings now offers independent
+app-language and regional-format choices with a live preview. Save persists the
+choices; restart applies them. Back without saving discards them. Book language,
+rules and runner data are unchanged. Focused managed checks and final-source
+native cancel/save/German-Austria/new-process restore passed; all 33 fixture
+runner files stayed byte-identical. One local ARM64 build, isolated existing-key
+signature, independent keyless checks and one Internal upload/readback passed.
+**Physical Play 157 installation and complete Creation/Career remain open;
+startup remains slow.** No finished-app or native speedup claim is made.
+Previous artifacts and evidence are unchanged.
+
+Preview 156's [observed Internal availability](../play/evidence/preview156-internal-observation.md),
 confirmed on 9 October at 10:21 Europe/Vienna. Ordinary saved-runner reads reuse
 successful exact-byte historical validation while ownership, revisions, leases
 and mutation checks remain fresh. Exact package/managed checks and final-source
