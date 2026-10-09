@@ -33,6 +33,10 @@
   <data name="SettingsConfirmDelete" xml:space="preserve"><value>Ask before deleting items</value></data>
   <data name="SettingsConfirmDeleteDetail" xml:space="preserve"><value>Shown before destructive item removal. Wizard review steps always remain enabled.</value></data>
   <data name="SettingsLanguageRegion" xml:space="preserve"><value>Language &amp; region</value></data>
+  <data name="SettingsAppLanguage" xml:space="preserve"><value>App language</value></data>
+  <data name="SettingsRegionalFormats" xml:space="preserve"><value>Regional formats</value></data>
+  <data name="SettingsFollowPhone" xml:space="preserve"><value>Use phone setting</value></data>
+  <data name="SettingsLocaleRestart" xml:space="preserve"><value>Save, then restart Chummer to apply. Book language and game rules stay unchanged.</value></data>
   <data name="SettingsLanguageDeviceManaged" xml:space="preserve"><value>Chummer uses your phone language and regional date and time formats.</value></data>
   <data name="SettingsSupportedLanguages" xml:space="preserve"><value>Supported: Deutsch, English, Español</value></data>
   <data name="SettingsGooglePlay" xml:space="preserve"><value>Google Play</value></data>
