@@ -429,7 +429,11 @@ public sealed class CreationAttributesPage : NativePageBase
         => CreationAllocationStrings.AttributeName(attributeId);
 
     internal static string FormatBudget(decimal value, string unit)
-        => $"{value.ToString("0.##", CultureInfo.CurrentCulture)} {PhoneStrings.Get("CreationUnit." + unit, unit)}".TrimEnd();
+    {
+        string label = string.IsNullOrWhiteSpace(unit) ? string.Empty
+            : PhoneStrings.Get("CreationUnit." + unit, unit);
+        return $"{value.ToString("0.##", CultureInfo.CurrentCulture)} {label}".TrimEnd();
+    }
 
     internal static string Token(string value)
         => new(value.Trim().ToLowerInvariant().Select(character =>
