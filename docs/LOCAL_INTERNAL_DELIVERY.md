@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 158 is the latest [observed Internal availability](../play/evidence/preview158-internal-observation.md),
+Preview 159 is the latest [observed Internal availability](../play/evidence/preview159-internal-observation.md),
+confirmed on 9 October at 12:52 Europe/Vienna. Skills editor, confirmation and
+historical re-review budget headings and linked attributes use localized display
+labels; numeric formatting follows the independent region. Thirteen source
+tests, managed locale checks and final-source native German historical re-review
+passed; all 33 fixture runner files remained byte-identical. One final-source
+local ARM64 build, isolated existing-key signature, independent keyless checks
+and one Internal upload/readback passed. **Remaining English catalog labels,
+technical source references, physical Play 159 installation and complete
+Creation/Career remain open; startup remains slow.** No whole-app localization
+or speedup claim is made. Previous artifacts and evidence are unchanged.
+
+Preview 158's [observed Internal availability](../play/evidence/preview158-internal-observation.md),
 confirmed on 9 October at 12:26 Europe/Vienna. Creation stages, budgets, status
 and route copy and the Attribute editor/review headings and units now use
 localized display resources. Focused source/managed checks and final-source
