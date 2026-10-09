@@ -163,7 +163,7 @@ internal static class PhoneLocaleRuntimeTests
             NativeDialogScopedField display = NewRunnerDialogStrings.Project(dialog, field, new(true, field.Label, field.Options));
             Require(NewRunnerDialogStrings.MethodLabel(option) == german
                 && display.Options is { Count: 1 } && display.Options[0].Label == german
-                && display.Options[0].Value == value && field.Options[0] == option,
+                && display.Options[0].Value == value && field.Options is { Count: 1 } && field.Options[0] == option,
                 "Translated method changed option count/order/identity or canonical state.");
             Require(NewRunnerDialogStrings.PickerTitle(dialog.Id, field, display.Label) == "Erschaffungsmethode auswählen",
                 "Picker title leaked a canonical identifier.");
