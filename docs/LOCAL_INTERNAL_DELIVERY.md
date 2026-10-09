@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 154 is the latest [observed Internal availability](../play/evidence/preview154-internal-observation.md),
+Preview 155 is the latest [observed Internal availability](../play/evidence/preview155-internal-observation.md),
+confirmed on 9 October at 08:23 Europe/Vienna. Creation overview reads reuse one
+owner-bound observation and operation-local source context; mutation admission
+stays fresh. Exact package/managed checks and final-source native normal-point
+navigation, Body 2 to 3, explicit save and new-process restore passed. The draft
+advanced from revision 11/11 to 12/12; XML and other 32 files stayed unchanged,
+and all 33 saved/reopened files matched. One local ARM64 build, isolated existing-key
+signature, independent keyless checks and one Internal upload/readback passed.
+Full chapters and per-chapter images remain in the app reader and EPUB.
+**Startup remains slow; physical Play 155 installation and complete Creation/
+Career coverage remain open.** No native speedup or finished-app claim is made.
+Previous artifacts and evidence are unchanged.
+
+Preview 154's [observed Internal availability](../play/evidence/preview154-internal-observation.md),
 confirmed on 9 October at 06:07 Europe/Vienna. Canonical Magic catalog checks
 use bounded temporary sorting allocations without changing rule bytes, saved
 formats or admission. Exact package/managed checks and final-source native
