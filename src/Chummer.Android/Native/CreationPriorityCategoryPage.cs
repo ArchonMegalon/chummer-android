@@ -99,7 +99,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             string detail = JoinDetails(
                 isSelected ? WizardStrings.Get("Priority.CategoryPage.CurrentSelection", "Current draft selection") : null,
                 RankDisableReason(option.DisableReason),
-                projection.Label,
+                MagicCatalogStrings.OptionName("priority-rank", projection.SourceId, projection.Label),
                 WizardStrings.Format(
                     "Priority.CategoryPage.SumValue",
                     "Sum value {0}",

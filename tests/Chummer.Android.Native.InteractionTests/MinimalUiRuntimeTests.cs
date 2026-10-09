@@ -3694,14 +3694,18 @@ internal static partial class AfterRunAuthorityHarness
                     VerifyQualityDisclosure(configure, "creation-quality-configure-technical-details",
                         "creation-quality-configure-toggle", option.OptionId, option.SourceId.ToString("D"));
                     string configureText = MinimalVisibleText(configure);
-                    Require(configureText.Contains(option.Name) && configureText.Contains(CreationQualitiesPage.Signed(option.KarmaCost))
+                    Require(configureText.Contains(QualityCatalogStrings.Name(option.SourceId, option.Name)) && configureText.Contains(CreationQualitiesPage.Signed(option.KarmaCost))
                         && (string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel) || configureText.Contains(option.FollowUpChoiceLabel)),
                         "Configure lost the quality name, exact cost or readable follow-up.");
+                    var configuredSource = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
+                    string inlineExplanation = CreationQualityInfo.Effects(configuredSource.SourceNodeXml, option.Rating)[0];
+                    Require(configureText.Contains(inlineExplanation, StringComparison.Ordinal),
+                        "Configure must show the same source-bound explanation as ! without another page.");
                     VerifyQualityDisclosure(review, "creation-qualities-review-technical-details",
                         "creation-qualities-confirm-draft", checkpoint.TransactionId.ToString("D"), preview.PreviewDigest,
                         preview.AuthorityDigest, preview.Binding.RawCharacterXmlDigest, preview.Binding.AuxiliaryStateDigest,
                         option.OptionId, option.SourceId.ToString("D"));
-                    Require(MinimalVisibleText(review).Contains(option.Name)
+                    Require(MinimalVisibleText(review).Contains(QualityCatalogStrings.Name(option.SourceId, option.Name))
                         && MinimalVisible(review).OfType<Button>().Single(button => button.AutomationId == "creation-qualities-confirm-draft").Text
                             == CreationFlowStrings.Get("Qualities.Review.Confirm", "missing"),
                         "Review lost the selected name or localized save action.");
@@ -3898,7 +3902,7 @@ internal static partial class AfterRunAuthorityHarness
             button.AutomationId == "creation-quality-info-effects-toggle");
         string[] folded = effects.Skip(1).Where(line => !notices.Contains(line)).ToArray();
         string visible = MinimalVisibleText(page);
-        Require(visible.Contains(option.Name) && visible.Contains(effects[0])
+        Require(visible.Contains(QualityCatalogStrings.Name(option.SourceId, option.Name)) && visible.Contains(effects[0])
             && visible.Contains(CreationFlowStrings.Format("Qualities.Info.Cost", "", option.Rating,
                 CreationQualitiesPage.Signed(option.KarmaCost)))
             && (string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel) || visible.Contains(option.FollowUpChoiceLabel))

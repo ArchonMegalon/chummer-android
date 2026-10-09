@@ -9,6 +9,10 @@
   <ItemGroup>
     <Compile Include="IssuedArmConditionPageRuntimeTests.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="NativeProblemLogTests.cs" />
+    <Compile Include="NativeProblemOutboxTests.cs" />
+    <Compile Include="NativeProblemHttpTransportTests.cs" />
+    <Compile Include="NativeProblemReporterTests.cs" />
     <Compile Include="PhoneLocaleRuntimeTests.cs" />
     <Compile Include="CommerceSelectionRuntimeTests.cs" />
     <Compile Include="ArmConditionOwnerRuntimeTests.cs" />

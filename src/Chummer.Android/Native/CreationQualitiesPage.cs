@@ -916,7 +916,8 @@ public sealed class CreationQualityInfoPage : NativePageBase
         if (!string.IsNullOrWhiteSpace(_followUp))
             _body.Add(NativeTheme.Body(_followUp));
         if (_sourceXml is not null)
-            AddEffects(CreationQualityInfo.Effects(_sourceXml, _rating));
+            AddEffects(_body, CreationQualityInfo.Effects(_sourceXml, _rating), _rating,
+                "creation-quality-info", () => Coordinator.IsCreationCatalogDisplayCurrent(_original));
         else
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.MissingSource",
                 "The description for this granted quality is not available yet.")));
@@ -926,7 +927,8 @@ public sealed class CreationQualityInfoPage : NativePageBase
         _body.Add(back);
     }
 
-    private void AddEffects(IReadOnlyList<string> effects)
+    internal static void AddEffects(VerticalStackLayout body, IReadOnlyList<string> effects,
+        int rating, string automationPrefix, Func<bool> isCurrent)
     {
         // Keep the concise explanation (or first known effect) and every
         // completeness/level warning visible. Only the supporting values fold.
@@ -937,31 +939,31 @@ public sealed class CreationQualityInfoPage : NativePageBase
             CreationFlowStrings.Get("Qualities.Info.ChangedDefinition",
                 "This quality uses a different definition. Its full explanation is not available yet; any effects below come from this version."),
             CreationFlowStrings.Format("Qualities.Info.BaseEffects",
-                "Selected level: {0}. The values below are base effects, not the combined total for this level. One-time effects are marked separately.", _rating)
+                "Selected level: {0}. The values below are base effects, not the combined total for this level. One-time effects are marked separately.", rating)
         };
         var details = new VerticalStackLayout
         {
-            AutomationId = "creation-quality-info-effects", Spacing = 10, IsVisible = false
+            AutomationId = automationPrefix + "-effects", Spacing = 10, IsVisible = false
         };
         for (int i = 0; i < effects.Count; i++)
         {
             var label = NativeTheme.Body(effects[i]);
-            if (i == 0 || notices.Contains(effects[i])) _body.Add(label);
+            if (i == 0 || notices.Contains(effects[i])) body.Add(label);
             else details.Add(label);
         }
         if (details.Count == 0) return;
         Button toggle = NativeTheme.ReadingButton(CreationFlowStrings.Get("Qualities.Info.ShowEffects", "Show effect details"));
-        toggle.AutomationId = "creation-quality-info-effects-toggle";
+        toggle.AutomationId = automationPrefix + "-effects-toggle";
         toggle.Clicked += (_, _) =>
         {
-            if (!ReferenceEquals(toggle.Parent, _body) || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            if (!ReferenceEquals(toggle.Parent, body) || !isCurrent()) return;
             details.IsVisible = !details.IsVisible;
             toggle.Text = details.IsVisible
                 ? CreationFlowStrings.Get("Qualities.Info.HideEffects", "Hide effect details")
                 : CreationFlowStrings.Get("Qualities.Info.ShowEffects", "Show effect details");
         };
-        _body.Add(toggle);
-        _body.Add(details);
+        body.Add(toggle);
+        body.Add(details);
     }
 }
 
@@ -1603,6 +1605,14 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         Border detailCard = NativeTheme.Card(details);
         detailCard.AutomationId = "creation-quality-configure-authority";
         _body.Add(detailCard);
+
+        // Explain the exact catalog option next to its cost and add action.
+        // Use the same source-bound original summaries and level warnings as !.
+        var source = _state.Authority.Options.SingleOrDefault(item => item.OptionId == _option.OptionId);
+        if (source is not null)
+            CreationQualityInfoPage.AddEffects(_body,
+                CreationQualityInfo.Effects(source.SourceNodeXml, _option.Rating), _option.Rating,
+                "creation-quality-configure", () => Coordinator.IsCreationCatalogDisplayCurrent(_original));
 
         CharacterCreationQualitiesPreview preview = _draft.Preview ?? _state.Preview;
         _body.Add(NativeTheme.Body(

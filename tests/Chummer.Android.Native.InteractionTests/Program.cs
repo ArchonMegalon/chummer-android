@@ -13,6 +13,19 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--native-problem-log")
+        {
+            await NativeProblemLogTests.RunAsync();
+            await NativeProblemOutboxTests.RunAsync();
+            await NativeProblemHttpTransportTests.RunAsync();
+            await NativeProblemReporterTests.RunAsync();
+            return;
+        }
+        if (args.Length == 1 && args[0] == "--origin-decision-guidance")
+        {
+            await OriginDossierBookRuntimeTests.RunDecisionGuidanceAsync();
+            return;
+        }
         if (args.Length == 1 && args[0] == "--phone-locale")
         {
             PhoneLocaleRuntimeTests.Run();

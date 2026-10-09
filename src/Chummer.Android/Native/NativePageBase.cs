@@ -13,10 +13,13 @@ public abstract class NativePageBase : ContentPage
     private CancellationTokenSource? _linkedDataRefresh;
     private readonly NativeRefreshCoalescer _coordinatorRefresh = new();
     private readonly NativePageActionGate _actionGate = new();
+    private readonly NativeProblemLog? _diagnostics;
+    private NativeProblemArea DiagnosticArea => NativeProblemLog.AreaFor(GetType());
 
     protected NativePageBase(RunnerSessionCoordinator coordinator)
     {
         Coordinator = coordinator;
+        _diagnostics = IPlatformApplication.Current?.Services.GetService<NativeProblemLog>();
         BackgroundColor = NativeTheme.Paper;
     }
 
@@ -36,6 +39,7 @@ public abstract class NativePageBase : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        using var diagnostic = _diagnostics?.Begin(DiagnosticArea, NativeProblemOperation.Appearance);
         long appearanceGeneration = Interlocked.Increment(ref _appearanceGeneration);
         _coordinatorRefresh.AbandonThrough(appearanceGeneration - 1);
         Interlocked.Exchange(ref _appearanceRefreshActive, 1);
@@ -60,6 +64,7 @@ public abstract class NativePageBase : ContentPage
             ClearAppearanceRefreshIfCurrent(appearanceGeneration);
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await ShowActiveDialogAsync();
+            diagnostic?.Finish();
             await Task.Delay(TimeSpan.FromMilliseconds(750), appearanceToken);
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await NotifyPlayReviewSafeMomentAsync(
@@ -71,9 +76,11 @@ public abstract class NativePageBase : ContentPage
             || !IsCurrentAppearance(appearanceGeneration, appearanceLifetime))
         {
             // The page left before the deliberately deferred idle checkpoint.
+            diagnostic?.Finish(NativeProblemOutcome.Canceled);
         }
         catch (Exception ex)
         {
+            diagnostic?.Fail(ex);
             if (!IsCurrentAppearance(appearanceGeneration, appearanceLifetime))
             {
                 return;
@@ -97,6 +104,7 @@ public abstract class NativePageBase : ContentPage
 
     protected override void OnDisappearing()
     {
+        _diagnostics?.Record(DiagnosticArea, NativeProblemOperation.Appearance, NativeProblemOutcome.Departed);
         long departedGeneration = Interlocked.Increment(ref _appearanceGeneration) - 1;
         if (Interlocked.Exchange(ref _subscribed, 0) != 0)
         {
@@ -193,9 +201,11 @@ public abstract class NativePageBase : ContentPage
     {
         if (!_actionGate.TryClaim())
         {
+            _diagnostics?.Record(DiagnosticArea, NativeProblemOperation.Action, NativeProblemOutcome.Busy);
             return;
         }
 
+        using var diagnostic = _diagnostics?.Begin(DiagnosticArea, NativeProblemOperation.Action);
         long actionGeneration = Volatile.Read(ref _appearanceGeneration);
         PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
@@ -216,14 +226,17 @@ public abstract class NativePageBase : ContentPage
             {
                 await ShowActiveDialogAsync();
             }
+            diagnostic?.Finish();
             succeeded = true;
         }
         catch (OperationCanceledException)
         {
+            diagnostic?.Finish(NativeProblemOutcome.Canceled);
             // Android pickers and page transitions use cancellation for a normal back action.
         }
         catch (Exception ex)
         {
+            diagnostic?.Fail(ex);
             if (IsCurrentAppearanceGeneration(actionGeneration))
             {
                 await DisplayAlertAsync("Chummer", ex.Message, "OK");
@@ -247,9 +260,11 @@ public abstract class NativePageBase : ContentPage
     {
         if (!_actionGate.TryClaim())
         {
+            _diagnostics?.Record(DiagnosticArea, NativeProblemOperation.Action, NativeProblemOutcome.Busy);
             return;
         }
 
+        using var diagnostic = _diagnostics?.Begin(DiagnosticArea, NativeProblemOperation.Action);
         long actionGeneration = Volatile.Read(ref _appearanceGeneration);
         PlayReviewMeaningfulState before = default;
         PlayReviewInteractionGuard.EnterAction();
@@ -266,14 +281,17 @@ public abstract class NativePageBase : ContentPage
             {
                 await ShowActiveDialogAsync();
             }
+            diagnostic?.Finish();
             succeeded = true;
         }
         catch (OperationCanceledException)
         {
+            diagnostic?.Finish(NativeProblemOutcome.Canceled);
             // Android pickers and page transitions use cancellation for a normal back action.
         }
         catch (Exception ex)
         {
+            diagnostic?.Fail(ex);
             if (IsCurrentAppearanceGeneration(actionGeneration))
             {
                 await DisplayAlertAsync("Chummer", ex.Message, "OK");
@@ -378,6 +396,7 @@ public abstract class NativePageBase : ContentPage
                 // post. Release scheduling ownership so a later appearance cannot inherit a
                 // permanently scheduled refresh that will never execute.
                 _coordinatorRefresh.ReleaseSchedule(appearanceGeneration);
+                _diagnostics?.Record(DiagnosticArea, NativeProblemOperation.Refresh, NativeProblemOutcome.DispatchRejected);
             }
         }
         catch
@@ -392,6 +411,7 @@ public abstract class NativePageBase : ContentPage
 
     private async Task DrainCoordinatorRefreshAsync(long appearanceGeneration)
     {
+        using var diagnostic = _diagnostics?.Begin(DiagnosticArea, NativeProblemOperation.Refresh);
         try
         {
             if (!IsCurrentAppearanceGeneration(appearanceGeneration)
@@ -425,9 +445,11 @@ public abstract class NativePageBase : ContentPage
             {
                 await ShowActiveDialogAsync();
             }
+            diagnostic?.Finish();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            diagnostic?.Fail(ex);
             if (IsCurrentAppearanceGeneration(appearanceGeneration))
             {
                 await DisplayAlertAsync("Chummer", ex.Message, "OK");

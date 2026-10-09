@@ -86,6 +86,7 @@ internal static class PhoneLocaleRuntimeTests
             MagicCatalogCopy();
             QualityCatalogCopy();
             RunnerFeedbackCopy();
+            NewRunnerAndPrerequisiteCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -119,6 +120,83 @@ internal static class PhoneLocaleRuntimeTests
             Require(QualityCatalogStrings.Name(ambidextrous, "Ambidextrous") == "Ambidextrous",
                 "Missing quality translations must fall back to their original label.");
         }
+    }
+
+    private static void NewRunnerAndPrerequisiteCopy()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        DesktopDialogState dialog = new("dialog.new_character", "Select Build Method", null, [], []);
+        var settings = new DesktopDialogField("newCharacterSetting", "Character Setting", "Core Rulebook", "Core Rulebook");
+        var sr5 = dialog with { Fields = [new DesktopDialogField("newCharacterRulesetId", "Ruleset", "sr5", "")] };
+        Require(NewRunnerDialogStrings.FixedSettingsDescription(dialog.Id, settings, sr5)!.Contains("alle Quellen")
+            && NewRunnerDialogStrings.FixedSettingsDescription("custom", settings, sr5) is null
+            && NewRunnerDialogStrings.FixedSettingsDescription(dialog.Id, settings with { Value = "custom" }, sr5) is null,
+            "Fixed canonical profiles must be honest, localized and never overwrite custom values.");
+        foreach (var (id, canonical, german) in new[] {
+            ("newCharacterName", "Character Name", "Charaktername"),
+            ("newCharacterAlias", "Alias", "Alias"),
+            ("newCharacterRulesetId", "Ruleset", "Regelwerk"),
+            ("newCharacterBuildMethod", "Build Method", "Erschaffungsmethode"),
+            ("newCharacterSetting", "Character Setting", "Charakter-Einstellungsprofil"),
+            ("newCharacterIgnoreRules", "Ignore Character Creation Rules", "Erschaffungsregeln ignorieren") })
+        {
+            DesktopDialogField field = new(id, canonical, "user-owned value", "canonical placeholder");
+            NativeDialogScopedField original = new(true, field.Label, field.Options);
+            NativeDialogScopedField display = NewRunnerDialogStrings.Project(dialog, field, original);
+            Require(display.Label == german && display.IsVisible, $"New runner field untranslated: {id}");
+            Require(field.Label == canonical && field.Value == "user-owned value"
+                && field.Placeholder == "canonical placeholder", "Localization changed an editable field.");
+            Require(NewRunnerDialogStrings.Project(dialog with { Id = "custom" }, field, original) == original,
+                "Localization escaped the new runner dialog.");
+            var custom = field with { Label = "custom caption" };
+            Require(NewRunnerDialogStrings.Project(dialog, custom, original with { Label = custom.Label }).Label == custom.Label,
+                "Unknown/custom field caption was overwritten.");
+        }
+        foreach (var (value, canonical, german) in new[] {
+            ("Priority", "Priority", "Priorität"), ("SumToTen", "Sum-to-Ten", "Summe 10"),
+            ("Karma", "Karma", "Karma"), ("LifeModule", "Life Modules", "Lebensmodule"),
+            ("BP", "BP", "Generierungspunkte"),
+            (Sr6CharacterCreationBuildMethods.Priority, "Priority", "Priorität"),
+            (Sr6CharacterCreationBuildMethods.SumToTen, "Sum-to-Ten", "Summe 10"),
+            (Sr6CharacterCreationBuildMethods.PointBuy, "Point Buy", "Punktekauf"),
+            (Sr6CharacterCreationBuildMethods.LifePath, "Life Path", "Lebenspfad"),
+            (Sr6CharacterCreationBuildMethods.Karma, "Karma (SR6)", "Karma (SR6)") })
+        {
+            DesktopDialogFieldOption option = new(value, canonical);
+            DesktopDialogField field = new("newCharacterBuildMethod", "Build Method", value, value,
+                InputType: "select", Options: [option]);
+            NativeDialogScopedField display = NewRunnerDialogStrings.Project(dialog, field, new(true, field.Label, field.Options));
+            Require(NewRunnerDialogStrings.MethodLabel(option) == german
+                && display.Options is { Count: 1 } && display.Options[0].Label == german
+                && display.Options[0].Value == value && field.Options is { Count: 1 } && field.Options[0] == option,
+                "Translated method changed option count/order/identity or canonical state.");
+            Require(NewRunnerDialogStrings.PickerTitle(dialog.Id, field, display.Label) == "Erschaffungsmethode auswählen",
+                "Picker title leaked a canonical identifier.");
+            Require(NewRunnerDialogStrings.MethodLabel(option with { Label = "custom method" }) == "custom method"
+                && NewRunnerDialogStrings.MethodLabel(option with { Value = "unknown" }) == canonical,
+                "Method identity/name mismatch should retain original label.");
+        }
+        Require(NativeDialogPage.ProjectNotice(dialog.Id, "Restored 11 runner dossiers.", null) == "11 Runner-Dossiers wiederhergestellt."
+            && NativeDialogPage.ProjectNotice(dialog.Id, "Saved. Online sync failed.", null) == "Saved. Online sync failed."
+            && NativeDialogPage.ProjectNotice("custom", "Saved.", "workspace") == "Saved.",
+            "Dialog notice translation lost scope or concealed partial failure.");
+        const string rankId = "55bc32fb-e097-4234-bdd5-a70e4f043b3d";
+        Require(MagicCatalogStrings.OptionName("priority-rank", rankId, "A - Any metatype") == "A - Jeder Metatyp"
+            && MagicCatalogStrings.MetatypeName("Human") == "Mensch"
+            && MagicCatalogStrings.TalentName("Mundane") == "Mundan",
+            "Prerequisite rank/heritage/talent names bypass German resources.");
+        Require(MagicCatalogStrings.OptionName("priority-rank", rankId, "Custom heritage") == "Custom heritage"
+            && MagicCatalogStrings.OptionName("priority-rank", "unknown", "A - Any metatype") == "A - Any metatype",
+            "Changed or unknown rank authority acquired a misleading stock description.");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
+        Require(NewRunnerDialogStrings.MethodLabel(new("LifeModule", "Life Modules")) == "Life Modules"
+            && MagicCatalogStrings.OptionName("priority-rank", rankId, "A - Any metatype") == "A - Any metatype",
+            "Neutral fallback changed the supplied rank or method.");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
+        Require(NewRunnerDialogStrings.MethodLabel(new("LifeModule", "Life Modules")) == "Módulos de vida",
+            "New runner method lacks Spanish resources.");
+        Console.WriteLine("PASS new runner/prerequisite copy: exact identity/name, DE/EN/ES, stable typed values, custom fallback, no domain writes");
     }
 
     private static void RunnerFeedbackCopy()

@@ -1,0 +1,19 @@
+{
+  "packageId": "Chummer.Control.Contracts",
+  "packageVersion": "0.1.2-androiddiag.20261009.fef48022f",
+  "repository": "https://github.com/ArchonMegalon/chummer6-hub.git",
+  "commit": "fef48022f0c900509032c387d6b09c0b405f347b",
+  "tree": "17c1094b512d37b8e3302ad789a605d56012222f",
+  "fileName": "Chummer.Control.Contracts.0.1.2-androiddiag.20261009.fef48022f.nupkg",
+  "sizeBytes": 38598,
+  "sha256": "a0f59210e35abb9e88eda2b6b4f4ad497ea27577f77c294876120773e6aed7a2",
+  "assemblySha256": "9dec8f60ae593bfd79f4855fcd368ed601ed471fa84273a243f1c08a4f9f36eb",
+  "execution": "local-docker-sdk-10.0.103",
+  "publishedPackageAuthority": false,
+  "productionTransportRegistered": true,
+  "defaultCollectionEnabled": false,
+  "internalTestDefaultCollectionEnabled": true,
+  "internalTestBuildProperty": "ChummerDistributionChannel=internal",
+  "preserveSavedOptOut": true,
+  "liveRemoteCollectionVerified": false
+}

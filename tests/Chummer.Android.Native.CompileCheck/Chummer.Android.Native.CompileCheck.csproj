@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../eng/AndroidDistribution.props" />
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -13,6 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Chummer.Control.Contracts" Version="0.1.2-androiddiag.20261009.fef48022f" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj" />

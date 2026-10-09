@@ -150,10 +150,8 @@ internal static partial class AfterRunAuthorityHarness
                 int priorLoads = probe!.LoadCalls;
                 int priorPreviews = probe.PreviewCalls;
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
-                int expectedPreviews = new[] { (-1, 0), (1, 0), (0, -1), (0, 1) }
-                    .Count(change => draft.ChangedAllocations(state, attributeId, change.Item1, change.Item2) is not null);
-                Require(probe.LoadCalls - priorLoads == 1 && probe.PreviewCalls - priorPreviews == expectedPreviews,
-                    "Attribute controls must revalidate once, then use each fresh Core preview without redundant Load calls.");
+                Require(probe.LoadCalls - priorLoads == 1 && probe.PreviewCalls == priorPreviews,
+                    "Opening attributes must revalidate once without speculatively checking four next actions.");
                 var attribute = draft.Attribute(state, attributeId)!;
                 var plus = MinimalVisible(editor).OfType<Button>().Single(x =>
                     x.AutomationId == "creation-attribute-priority-increase-" + attributeId.ToLowerInvariant());
@@ -164,7 +162,11 @@ internal static partial class AfterRunAuthorityHarness
                     "Magic/Resonance special + does not match the actual Core cap with available points.");
                 if (plus.IsEnabled)
                 {
+                    priorLoads = probe.LoadCalls;
+                    priorPreviews = probe.PreviewCalls;
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                    Require(probe.LoadCalls == priorLoads && probe.PreviewCalls == priorPreviews + 1,
+                        "One point tap must request exactly one fresh Core preview and no redundant Load.");
                     Require(draft.Attribute(state, attributeId)!.Current == attribute.Current + 1
                         && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1,
                         "Magic/Resonance + did not allocate one special point.");
@@ -270,6 +272,24 @@ internal static partial class AfterRunAuthorityHarness
                 MinimalRender(page);
                 ((IButtonController)specialJump!).SendClicked();
                 Require(target is null, "Detached special points entry still navigates.");
+                int inlineInitial = state.Attributes.Single(item => item.AttributeId == "EDG").Current;
+                Button Inline(string direction) => MinimalVisible(page).OfType<Button>().Single(item =>
+                    item.AutomationId == "creation-attributes-inline-" + direction + "-edg");
+                string InlineValue() => MinimalVisible(page).OfType<Label>().Single(item =>
+                    item.AutomationId == "creation-attributes-open-edg-value").Text;
+                var retainedInline = Inline("increase");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retainedInline).SendClicked()));
+                Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
+                    "The attributes list must allocate Edge without opening a nested editor.");
+                // Disabled detached native controls do not enter an async handler.
+                ((IButtonController)retainedInline).SendClicked();
+                await Task.Yield();
+                Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
+                    "A detached inline stepper replayed a point.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Inline("decrease")).SendClicked()));
+                Require(InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
+                    "Inline minus failed to return the exact special point.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, coordinator.State);
                 var editor = new CreationAttributeAllocationPage(coordinator, draft, "EDG", state);
@@ -669,9 +689,9 @@ internal static partial class AfterRunAuthorityHarness
                 ((IButtonController)plus).SendClicked();
                 MinimalRender(page);
                 Require(reads == 1 && !pending.IsCompleted && rendered.SequenceEqual(body.Children)
-                    && plus.Text != label && draft.Attribute(state, "MAG")!.Current == initial + 1
-                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1,
-                    "A duplicate + or pending refresh repeated an adjustment or cleared visible feedback.");
+                    && plus.Text != label && draft.Attribute(state, "MAG")!.Current == initial
+                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining,
+                    "A pending request must not change a value before Core accepts it or dispatch duplicate work.");
                 if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
             }
             finally
@@ -767,10 +787,10 @@ internal static partial class AfterRunAuthorityHarness
                     finally { probe.BeforeRead = null; }
                 }
                 Require(Retry() is null && draft.Allocations(state).SequenceEqual(allocations)
-                    && draft.Attribute(state, "MAG")!.Current == initial + 1
-                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1
+                    && draft.Attribute(state, "MAG")!.Current == initial
+                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining
                     && MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == plus.AutomationId && x.IsEnabled),
-                    "Read-only recovery lost or replayed the admitted point instead of restoring fresh controls.");
+                    "Read-only recovery replayed the rejected request instead of restoring unchanged choices.");
             }
             else
                 Require(!MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == "creation-attribute-allocation-retry"),

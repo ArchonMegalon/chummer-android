@@ -1,6 +1,7 @@
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
 
@@ -29,6 +30,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
     private bool _checkingStory;
     private string? _presentedStoryDigest;
     private string? _selectedMetatypeOptionId;
+    private bool _choosingMetatype = true;
     private int _renderGeneration;
     private bool _actionInFlight;
     private string? _editingChoiceId;
@@ -97,6 +99,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _saveChapterRefinement = saveChapterRefinement;
         _selectedMetatypeOptionId = _state.Choices.Where(choice => choice.IsSelected)
             .Select(MetatypeEffect).SingleOrDefault()?.TargetId;
+        _choosingMetatype = _selectedMetatypeOptionId is null;
         Title = _copy["Origin.PageTitle"];
         // Review replaces the answer form; dismiss its keyboard on the tap
         // so it cannot cover the subsequent story choices and confirmation.
@@ -143,6 +146,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
     private async Task<bool> RefreshStoryReadinessAsync()
     {
+        using var diagnostic = IPlatformApplication.Current?.Services.GetService<NativeProblemLog>()
+            ?.Begin(NativeProblemArea.LifeModules, NativeProblemOperation.StoryReadiness);
         _storyReady = false;
         _checkingStory = NeedsStoryBeforeChoices;
         Content = new ScrollView { Content = BuildBody() };
@@ -159,15 +164,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             OriginBookReadingState? details = null;
             try { details = await _loadOpeningDetails(checkpoint, Current); }
             catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
-                or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+                or UnauthorizedAccessException or System.Text.Json.JsonException) { diagnostic?.Fail(error); }
             finally { _actionInFlight = wasInFlight; }
-            if (!Current()) return false;
+            if (!Current()) { diagnostic?.Finish(NativeProblemOutcome.Canceled); return false; }
             if (_openingDetails?.Digest != details?.Digest) _storyProfile = details?.StoryProfile ?? new();
             _openingDetails = details;
             Content = new ScrollView { Content = BuildBody() };
             generation = _renderGeneration;
         }
-        if (!_checkingStory) return false;
+        if (!_checkingStory) { diagnostic?.Finish(); return false; }
         bool ready = false;
         try
         {
@@ -176,12 +181,14 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         }
         catch (Exception error) when (error is OperationCanceledException or IOException or InvalidOperationException)
         {
+            diagnostic?.Fail(error);
             // No reading proof is no permission to advance. Keep the book and
             // explicit refresh available; never manufacture a read acceptance.
         }
-        if (!Current()) return false;
+        if (!Current()) { diagnostic?.Finish(NativeProblemOutcome.Canceled); return false; }
         _checkingStory = false;
         _storyReady = ready;
+        diagnostic?.Finish(ready ? NativeProblemOutcome.Completed : NativeProblemOutcome.NotReady);
         Content = new ScrollView { Content = BuildBody() };
         return true;
     }
@@ -277,11 +284,14 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         // The canonical wizard lead-in is not an authored chapter. Once the
         // reader returns from the full chapter, ask the next story question
         // without reintroducing the source template or its mechanics prompt.
+        // Keep the current task above language, optional setup and book links.
+        var choicesPanel = new VerticalStackLayout { Spacing = 12, AutomationId = "origin-life-choices" };
+        body.Insert(1, choicesPanel);
         Label prompt = NativeTheme.Title(OriginStoryDecisionText.Prompt(_state), 21);
         prompt.AutomationId = "origin-life-prompt";
-        body.Add(prompt);
+        choicesPanel.Add(prompt);
         if (!_state.Choices.Any(IsAffordable))
-            body.Add(NativeTheme.Body(_copy["Origin.NoStoryChoices"], NativeTheme.Danger));
+            choicesPanel.Add(NativeTheme.Body(_copy["Origin.NoStoryChoices"], NativeTheme.Danger));
 
         // This is a view filter over Core's exact composite Foundation choices,
         // not a metatype mutation. Only the subsequent explicit confirmation
@@ -294,26 +304,43 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             .ToArray();
         if (metatypes.Length > 0)
         {
-            body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseMetatype"]));
-            body.Add(NativeTheme.Body(_copy["Origin.MetatypeStoryDetail"], NativeTheme.Muted));
-            foreach (OriginDossierLifeModuleEffectState metatype in metatypes)
-            {
-                Button selectMetatype = _selectedMetatypeOptionId == metatype.TargetId
-                    ? NativeTheme.PrimaryButton(metatype.AfterValue)
-                    : NativeTheme.SecondaryButton(metatype.AfterValue);
-                selectMetatype.AutomationId = "origin-life-metatype-" + metatype.TargetId;
-                selectMetatype.Clicked += (_, _) =>
+            if (!_choosingMetatype && metatypes.FirstOrDefault(m => m.TargetId == _selectedMetatypeOptionId) is { } selectedMetatype)
+                choicesPanel.Add(NativeTheme.NavigationRow(selectedMetatype.AfterValue, _copy["Origin.ChangeMetatype"], () =>
                 {
-                    if (_actionInFlight || generation != _renderGeneration)
-                        return;
-                    _selectedMetatypeOptionId = metatype.TargetId;
-                    Content = new ScrollView { Content = BuildBody() };
-                };
-                body.Add(selectMetatype);
+                    if (!_actionInFlight && generation == _renderGeneration)
+                    {
+                        _choosingMetatype = true;
+                        _editingChoiceId = null;
+                        Content = new ScrollView { Content = BuildBody() };
+                    }
+                    return Task.CompletedTask;
+                }, automationId: "origin-life-change-metatype"));
+            else
+            {
+                choicesPanel.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseMetatype"]));
+                choicesPanel.Add(NativeTheme.Body(_copy["Origin.MetatypeStoryDetail"], NativeTheme.Muted));
+                foreach (OriginDossierLifeModuleEffectState metatype in metatypes)
+                {
+                    Button selectMetatype = _selectedMetatypeOptionId == metatype.TargetId
+                        ? NativeTheme.PrimaryButton(metatype.AfterValue)
+                        : NativeTheme.SecondaryButton(metatype.AfterValue);
+                    selectMetatype.AutomationId = "origin-life-metatype-" + metatype.TargetId;
+                    selectMetatype.Clicked += (_, _) =>
+                    {
+                        if (_actionInFlight || generation != _renderGeneration) return;
+                        _selectedMetatypeOptionId = metatype.TargetId;
+                        _choosingMetatype = false;
+                        _editingChoiceId = null;
+                        Content = new ScrollView { Content = BuildBody() };
+                    };
+                    choicesPanel.Add(selectMetatype);
+                }
             }
-            if (_selectedMetatypeOptionId is not null)
-                body.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseNationality"]));
+            if (!_choosingMetatype)
+                choicesPanel.Add(NativeTheme.Eyebrow(_copy["Origin.ChooseNationality"]));
         }
+        if (metatypes.Length == 0 || !_choosingMetatype)
+            choicesPanel.Add(NativeTheme.Body(_copy["Origin.TapPath"], NativeTheme.Muted));
 
         // A selection replaces the scroll content. Put its questions/review
         // immediately below the runner name, ahead of the long setup header as
@@ -326,7 +353,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                      .ThenByDescending(index => IsSelectionFinish(_state.Choices[index])))
         {
             OriginDossierLifeModuleChoiceState choice = _state.Choices[choiceIndex];
-            if (metatypes.Length > 0 && MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId)
+            if (metatypes.Length > 0 && (_choosingMetatype || MetatypeEffect(choice)?.TargetId != _selectedMetatypeOptionId))
                 continue;
             var card = new VerticalStackLayout { Spacing = 8 };
             string storyChoice = OriginStoryDecisionText.Choice(_state, choice.ChoiceId);
@@ -351,13 +378,14 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 _editingChoiceId = null;
                 _actionInFlight = true;
                 select.IsEnabled = false;
+                select.Text = _copy["Origin.PreparingChoice"];
                 try
                 {
                     OriginDossierLifeModulePhoneResult? prepared = await _prepareChoice(choiceId, null);
                     if (prepared is not null && generation == _renderGeneration && TryAdoptPrepared(prepared))
                         Content = new ScrollView { Content = BuildBody() };
                 }
-                finally { _actionInFlight = false; select.IsEnabled = true; }
+                finally { _actionInFlight = false; select.Text = storyChoice; select.IsEnabled = true; }
             };
             card.Add(select);
 
@@ -369,7 +397,9 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             }
             if (!choice.IsSelected || _editingChoiceId is not null)
             {
-                body.Add(NativeTheme.Card(card));
+                // No inert outer card/padding that looks like a second tap target.
+                card.Remove(select);
+                choicesPanel.Add(select);
                 continue;
             }
             if (_storyCheckpoint?.PendingPreview?.InputResolution is { } answers)
@@ -612,12 +642,43 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         bool copyingCity = false;
         var review = NativeTheme.PrimaryButton(_copy["Origin.ReviewAnswers"]);
         review.AutomationId = "origin-life-review-answers";
-        void UpdateReady() => review.IsEnabled = !_actionInFlight && prompts.All(prompt => !prompt.IsRequired
-            || _answers.TryGetValue(prompt.PromptId, out var answer) && !string.IsNullOrWhiteSpace(answer));
+        review.HeightRequest = -1;
+        review.MinimumHeightRequest = 50;
+        review.LineBreakMode = LineBreakMode.WordWrap;
+        var fields = new Dictionary<string, View>(StringComparer.Ordinal);
+        var guidance = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        guidance.AutomationId = "origin-life-answer-guidance";
+        LifeModuleFollowUpPromptDto? Missing() => prompts.FirstOrDefault(prompt => prompt.IsRequired
+            && (!_answers.TryGetValue(prompt.PromptId, out var answer) || string.IsNullOrWhiteSpace(answer)));
+        void UpdateReady()
+        {
+            var missing = Missing();
+            // Missing answers are navigable, not a dead disabled button.
+            review.IsEnabled = !_actionInFlight;
+            review.Text = _actionInFlight ? _copy["Origin.PreparingChoice"] : missing is null
+                ? _copy["Origin.ReviewAnswers"] : _copy.Format("Origin.MissingAnswer", missing.DisplayLabel ?? missing.Label);
+            guidance.Text = missing is null ? _copy["Origin.StoryChoiceReview"] : review.Text;
+        }
+        void AddField(Label label, View field, string id)
+        {
+            field.MinimumHeightRequest = 48;
+            SemanticProperties.SetDescription(field, label.Text);
+            fields.Add(id, field);
+            label.MinimumHeightRequest = 40;
+            label.VerticalTextAlignment = TextAlignment.Center;
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += (_, _) =>
+            {
+                if (!_actionInFlight && generation == _renderGeneration) field.Focus();
+            };
+            label.GestureRecognizers.Add(tap);
+            card.Add(label);
+            card.Add(field);
+        }
         card.Add(NativeTheme.Body(_copy["Origin.AnswersDetail"], NativeTheme.Muted));
         foreach (var prompt in prompts)
         {
-            card.Add(NativeTheme.Body((prompt.DisplayLabel ?? prompt.Label) + (prompt.IsRequired ? " *" : string.Empty)));
+            var label = NativeTheme.Body((prompt.DisplayLabel ?? prompt.Label) + (prompt.IsRequired ? " *" : string.Empty));
             string promptId = prompt.PromptId;
             _answers.TryGetValue(promptId, out var previous);
             if (prompt.InputKind == "single-select")
@@ -642,7 +703,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     else _answers.Remove(promptId);
                     UpdateReady();
                 };
-                card.Add(picker);
+                AddField(label, picker, promptId);
             }
             else
             {
@@ -677,15 +738,21 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                     cityFields.Add(entry);
                     if (_explicitCityAnswers.Contains(promptId)) editedCities.Add(entry);
                 }
-                card.Add(entry);
+                AddField(label, entry, promptId);
             }
         }
         UpdateReady();
         review.Clicked += async (_, _) =>
         {
             if (_actionInFlight || generation != _renderGeneration) return;
+            if (Missing() is { } missing && fields.TryGetValue(missing.PromptId, out var field))
+            {
+                field.Focus();
+                if (Content is ScrollView scroll) await scroll.ScrollToAsync(field, ScrollToPosition.Center, false);
+                return;
+            }
             _actionInFlight = true;
-            review.IsEnabled = false;
+            UpdateReady();
             try
             {
                 var answers = new Dictionary<string, string>(_answers, StringComparer.Ordinal);
@@ -698,6 +765,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             }
             finally { _actionInFlight = false; UpdateReady(); }
         };
+        card.Add(guidance);
         card.Add(review);
     }
 

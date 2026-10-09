@@ -34,6 +34,16 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>();
 
+        builder.Services.AddSingleton(_ => new NativeProblemLog(
+            Path.Combine(FileSystem.AppDataDirectory, "diagnostics"),
+            $"{AppInfo.Current.VersionString}+{AppInfo.Current.BuildString}"));
+        builder.Services.AddSingleton(_ => new NativeProblemOutbox(
+            Path.Combine(FileSystem.AppDataDirectory, "diagnostics"),
+            internalTestBuild: NativeProblemPolicy.InternalTestBuild));
+        builder.Services.AddSingleton(_ => new NativeProblemHttpTransport(NativeProblemHttpTransport.CreateClient()));
+        builder.Services.AddSingleton(provider => new NativeProblemReporter(
+            provider.GetRequiredService<NativeProblemLog>(), provider.GetRequiredService<NativeProblemOutbox>(),
+            provider.GetRequiredService<NativeProblemHttpTransport>().SendAsync));
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         builder.Services.AddSingleton<Api36ProofStatePublisher>();
@@ -233,7 +243,9 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        return builder.Build();
+        MauiApp app = builder.Build();
+        app.Services.GetRequiredService<NativeProblemReporter>().Start();
+        return app;
     }
 
     private static bool AutomaticPlayReviewEnabled()

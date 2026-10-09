@@ -21,7 +21,7 @@ public sealed class NativeDialogPage : ContentPage
     private DesktopDialogState? _renderedDialog;
     private ActivityIndicator? _busyIndicator;
     private Label? _busyLabel;
-    private HorizontalStackLayout? _busyContainer;
+    private Grid? _busyContainer;
     private bool _interactionBusy;
     private long _renderGeneration;
 
@@ -89,8 +89,10 @@ public sealed class NativeDialogPage : ContentPage
         DesktopDialogField? methodField = newRunner
             ? dialog.Fields.SingleOrDefault(field => field.Id == "newCharacterBuildMethod")
             : null;
-        string? selectedMethod = methodField?.Options?.FirstOrDefault(option =>
-            string.Equals(option.Value, methodField.Value, StringComparison.Ordinal))?.Label;
+        DesktopDialogFieldOption? selectedMethodOption = methodField?.Options?.FirstOrDefault(option =>
+            string.Equals(option.Value, methodField.Value, StringComparison.Ordinal));
+        string? selectedMethod = selectedMethodOption is null ? null
+            : NewRunnerDialogStrings.MethodLabel(selectedMethodOption);
         string dialogMessage = newRunner && selectedMethod is not null
             ? PhoneStrings.Format("NewRunnerSelectedBuildMethod",
                 "Build method: {0}. Tap Create runner to continue.", selectedMethod)
@@ -130,6 +132,7 @@ public sealed class NativeDialogPage : ContentPage
             }
 
             NativeDialogScopedField scopedField = AndroidDialogSettingsScope.Project(dialog, field);
+            scopedField = NewRunnerDialogStrings.Project(dialog, field, scopedField);
             if (scopedField.IsVisible)
             {
                 body.Add(CreateField(dialog.Id, _renderGeneration, field, scopedField));
@@ -151,6 +154,8 @@ public sealed class NativeDialogPage : ContentPage
         {
             string actionLabel = newRunner && action.Id == CreateCharacterActionId
                 ? PhoneStrings.Get("NewRunnerCreate", "Create runner")
+                : newRunner && action.Id == "cancel" && action.Label == "Cancel"
+                ? PhoneStrings.Get("Cancel", "Cancel")
                 : AndroidDialogSettingsScope.ActionLabel(dialog, action);
             NativeDialogActionBinding binding = new(
                 _renderGeneration,
@@ -161,6 +166,9 @@ public sealed class NativeDialogPage : ContentPage
             Button button = action.IsPrimary
                 ? NativeTheme.PrimaryButton(actionLabel)
                 : NativeTheme.SecondaryButton(actionLabel);
+            button.HeightRequest = -1;
+            button.MinimumHeightRequest = 50;
+            button.LineBreakMode = LineBreakMode.WordWrap;
             button.AutomationId = $"dialog-action-{Token(action.Id)}";
             TrackInteractive(button, enabledWhenIdle: true);
             button.Clicked += async (_, _) => await ExecuteAsync(binding);
@@ -173,10 +181,13 @@ public sealed class NativeDialogPage : ContentPage
             body.Insert(actionsInsertIndex, actions);
         }
 
-        HorizontalStackLayout busy = new()
+        // A horizontal stack measures text at unlimited width and clips long
+        // localized progress messages. Give the label the remaining phone width.
+        Grid busy = new()
         {
             AutomationId = "dialog-busy",
-            Spacing = 10,
+            ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star) },
+            ColumnSpacing = 10,
             IsVisible = _interactionBusy,
             VerticalOptions = LayoutOptions.Center
         };
@@ -194,8 +205,8 @@ public sealed class NativeDialogPage : ContentPage
         _busyLabel.AutomationId = "dialog-busy-label";
         _busyLabel.IsVisible = _interactionBusy;
         SemanticProperties.SetDescription(_busyLabel, _busyLabel.Text);
-        busy.Add(_busyIndicator);
-        busy.Add(_busyLabel);
+        busy.Add(_busyIndicator, 0);
+        busy.Add(_busyLabel, 1);
         _busyContainer = busy;
         body.Insert(actionsInsertIndex, busy);
 
@@ -207,8 +218,10 @@ public sealed class NativeDialogPage : ContentPage
     // Keep presenter diagnostics and arbitrary user-authored text unchanged.
     internal static string ProjectNotice(string dialogId, string notice, string? workspaceId)
     {
-        if (dialogId != "dialog.new_character" || string.IsNullOrEmpty(workspaceId))
+        if (dialogId != "dialog.new_character")
             return notice;
+        if (string.IsNullOrEmpty(workspaceId))
+            return PhoneStrings.RunnerNotice(notice)!;
 
         if (notice == $"Save or discard local changes for '{workspaceId}' before you create another dossier.")
             return PhoneStrings.Get("NewRunnerUnsavedChanges",
@@ -217,7 +230,7 @@ public sealed class NativeDialogPage : ContentPage
             return PhoneStrings.Get("NewRunnerRevisionConflict",
                 "Resolve the save conflict for your current runner before creating another. Cancel to return to it.");
 
-        return notice;
+        return PhoneStrings.RunnerNotice(notice)!;
     }
 
     private View CreateField(
@@ -232,6 +245,14 @@ public sealed class NativeDialogPage : ContentPage
         fieldLayout.Add(label);
         NativeDialogFieldBinding binding = CreateFieldBinding(dialogId, renderGeneration, field);
 
+        if (NewRunnerDialogStrings.FixedSettingsDescription(dialogId, field, _renderedDialog) is { } settingsDescription)
+        {
+            Label description = NativeTheme.Body(settingsDescription);
+            description.AutomationId = "dialog-new-runner-fixed-settings";
+            fieldLayout.Add(description);
+            return NativeTheme.Card(fieldLayout, new Thickness(14));
+        }
+
         if (string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase))
         {
             IReadOnlyList<DesktopDialogFieldOption> options = scopedField.Options ?? [];
@@ -240,9 +261,7 @@ public sealed class NativeDialogPage : ContentPage
             Picker picker = new()
             {
                 AutomationId = $"dialog-field-{Token(field.Id)}",
-                Title = string.IsNullOrWhiteSpace(field.Placeholder)
-                    ? $"Choose {scopedField.Label}"
-                    : field.Placeholder,
+                Title = NewRunnerDialogStrings.PickerTitle(dialogId, field, scopedField.Label),
                 ItemsSource = options.Select(static option => option.Label).ToArray(),
                 SelectedIndex = selectedIndex,
                 IsEnabled = !field.IsReadOnly && !_interactionBusy,
@@ -269,13 +288,10 @@ public sealed class NativeDialogPage : ContentPage
 
         if (string.Equals(field.InputType, "checkbox", StringComparison.OrdinalIgnoreCase))
         {
-            Switch toggle = new()
-            {
-                AutomationId = $"dialog-field-{Token(field.Id)}",
-                IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled,
-                IsEnabled = !field.IsReadOnly && !_interactionBusy,
-                OnColor = NativeTheme.Signal
-            };
+            Switch toggle = NativeTheme.ReadableSwitch();
+            toggle.AutomationId = $"dialog-field-{Token(field.Id)}";
+            toggle.IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled;
+            toggle.IsEnabled = !field.IsReadOnly && !_interactionBusy;
             NativeDialogAccessibility.BindFieldLabel(label, toggle, scopedField.Label);
             TrackInteractive(toggle, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)

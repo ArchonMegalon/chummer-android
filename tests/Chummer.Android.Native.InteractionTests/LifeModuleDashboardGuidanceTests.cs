@@ -70,15 +70,49 @@ internal static partial class AfterRunAuthorityHarness
             await Observe(CreationAllocationStrings.Get("LifeDashboard.StoryHelp", ""), true, "read chapter reopened from disk");
             Dump("read");
             Require(alerts.Titles.Count == 0, "Dashboard guidance raised an unexpected blocking alert.");
+            // A real dirty workspace refusal used to look like a broken picker:
+            // its only explanation was below the entire creation dashboard.
+            var previousRunner = runtime.Coordinator.State.WorkspaceId;
+            await CreateRunner(save: false);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            var dirty = runtime.Coordinator.State;
+            Require(dirty.Session.ActiveWorkspace?.IsDirty == true, "SETUP: expected unsaved runner.");
+            int target = dirty.OpenWorkspaces.ToList().FindIndex(w => w.Id == previousRunner);
+            Require(target >= 0, "SETUP: previous runner is missing.");
+            var picker = IssuedElements(page).OfType<Picker>().Single(p => p.AutomationId == "build-workspace-picker");
+            await ui.BeginAsyncVoid(() => picker.SelectedIndex = target);
+            await ui.DrainDispatchedAsyncVoidAsync();
+            Require(alerts.Titles.Count == 1 && alerts.Messages.Last() == PhoneStrings.Get("HomeUnsavedSwitch", "Save your current runner before switching."),
+                "A refused workspace switch needs an immediate, readable explanation.");
+            Require(runtime.Coordinator.State.WorkspaceId == dirty.WorkspaceId
+                && runtime.Coordinator.State.ContentRevision == dirty.ContentRevision
+                && runtime.Coordinator.State.SavedRevision == dirty.SavedRevision
+                && runtime.Coordinator.State.Session.ActiveWorkspace?.IsDirty == true,
+                "Explaining the refusal must not save, discard or switch the runner.");
+            var body = (VerticalStackLayout)scroll.Content!;
+            Require(body.Children.OfType<Label>().Take(2).Any(l => l.Text == alerts.Messages.Last()),
+                "The refusal must remain above the dashboard after dismissing the alert.");
+            // Explicit Save is the recovery path, not a silent mutation during selection.
+            var save = page.ToolbarItems.Single(item => item.AutomationId == "build-save-runner");
+            await ui.BeginAsyncVoid(() => save.Command.Execute(null));
+            await ui.DrainDispatchedAsyncVoidAsync();
+            picker = IssuedElements(page).OfType<Picker>().Single(p => p.AutomationId == "build-workspace-picker");
+            target = runtime.Coordinator.State.OpenWorkspaces.ToList().FindIndex(w => w.Id == previousRunner);
+            await ui.BeginAsyncVoid(() => picker.SelectedIndex = target);
+            await ui.DrainDispatchedAsyncVoidAsync();
+            Require(runtime.Coordinator.State.WorkspaceId == previousRunner && alerts.Titles.Count == 1,
+                "An explicitly saved runner should switch without another refusal.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Console.WriteLine("PASS workspace picker: dirty refusal visible, no implicit save/discard, explicit save then switch");
             ui.AssertHealthy();
 
-            async Task CreateRunner()
+            async Task CreateRunner(bool save = true)
             {
                 await runtime.Coordinator.CreateRunnerAsync();
                 await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Opening guidance fixture", default);
                 await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
                 await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
-                await runtime.Coordinator.SaveAsync();
+                if (save) await runtime.Coordinator.SaveAsync();
             }
 
             void Dump(string name)

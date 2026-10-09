@@ -6,6 +6,11 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Category.priority-rank.382af9d17561042b137ae1ee1395444734a27849540a22a39981f70f7e3aa027" xml:space="preserve"><value>Heritage</value></data>
+  <data name="Category.priority-rank.4b0ed88f7d99420fb3ba2c68e20992280f6dcac4afaf32da17bee89c656c2ccf" xml:space="preserve"><value>Attributes</value></data>
+  <data name="Category.priority-rank.66d0f523a379b2de6f8d5fba3a817ebc395f7bcaa54cc132ca9dfa665d1e9378" xml:space="preserve"><value>Skills</value></data>
+  <data name="Category.priority-rank.caa2e08f4f55222b71dd94e55788c995024e6139ed00a60a67d944522c22b697" xml:space="preserve"><value>Talent</value></data>
+  <data name="Category.priority-rank.e89b30aa1dc30a6ad8c34610689bede83b3ef645a24c3a84a0990826687fb735" xml:space="preserve"><value>Resources</value></data>
   <data name="Category.spell.49fcf2c78b506b3e32115f752124e4ee1b998f4f578cc2d35425e6ee3eb203a6" xml:space="preserve"><value>Combat</value></data>
   <data name="Category.spell.55898449eb74fb2e348d13e5a5d84ab019bb87ea92687b50b3d3302eb409b784" xml:space="preserve"><value>Health</value></data>
   <data name="Category.spell.61b1ba4f2bc2559d39b0df955f1aedd4f06febfe5655d82322dac391a3fee35a" xml:space="preserve"><value>Illusion</value></data>
@@ -185,6 +190,41 @@
   <data name="Option.complex-form.f89957e0-9c70-4503-b47d-0511b7bca5b6.Name" xml:space="preserve"><value>Search History</value></data>
   <data name="Option.complex-form.f9a63582-6858-4b83-a76f-6daa52b127c5.Name" xml:space="preserve"><value>Coriolis</value></data>
   <data name="Option.complex-form.f9dc77ad-bc06-4a1b-a967-0e78efe136e4.Name" xml:space="preserve"><value>Tattletale</value></data>
+  <data name="Option.priority-rank.0a224d86-d355-4cd6-8e4e-b94e31f97c4b.Name" xml:space="preserve"><value>C - 16 (8) Attributes</value></data>
+  <data name="Option.priority-rank.0fdfe7f7-119d-4971-a629-4a4dea938c6c.Name" xml:space="preserve"><value>C - 210,000¥</value></data>
+  <data name="Option.priority-rank.1c4a7955-1ae1-4a5b-9ed4-5ab8525d13b0.Name" xml:space="preserve"><value>A - 24 (12) Attributes</value></data>
+  <data name="Option.priority-rank.1da0e4d3-e75b-40ab-b366-e1eba499e8ca.Name" xml:space="preserve"><value>B - 325,000¥</value></data>
+  <data name="Option.priority-rank.255da2ba-8d21-4a73-9f81-37156901db72.Name" xml:space="preserve"><value>D - Human or Elf</value></data>
+  <data name="Option.priority-rank.2cbe209a-ae97-4985-b42f-4839613dfb28.Name" xml:space="preserve"><value>D - 150,000¥</value></data>
+  <data name="Option.priority-rank.45a5f7b4-c152-4e05-839f-1b3d14e56058.Name" xml:space="preserve"><value>A - 46 Skills/10 Skill Groups</value></data>
+  <data name="Option.priority-rank.521c1f60-f382-479e-af3b-a3eda5201f22.Name" xml:space="preserve"><value>B - 20 (10) Attributes</value></data>
+  <data name="Option.priority-rank.55bc32fb-e097-4234-bdd5-a70e4f043b3d.Name" xml:space="preserve"><value>A - Any metatype</value></data>
+  <data name="Option.priority-rank.57c52154-489e-4e8a-b885-13b341700deb.Name" xml:space="preserve"><value>C - 28 Skills/2 Skill Groups</value></data>
+  <data name="Option.priority-rank.61e1758f-e4ca-4e53-ad45-bb88a0e5ac04.Name" xml:space="preserve"><value>D - 22 Skills/0 Skill Groups</value></data>
+  <data name="Option.priority-rank.774fd89a-ecea-4f5f-ad2b-c4476ca46f70.Name" xml:space="preserve"><value>B - Adept, Magician, or Technomancer</value></data>
+  <data name="Option.priority-rank.7e4c5695-52c8-4b16-b233-058af14a41d1.Name" xml:space="preserve"><value>A - 500,000¥</value></data>
+  <data name="Option.priority-rank.860a9601-e06f-424f-8f40-bee843a6b5dc.Name" xml:space="preserve"><value>E - 100,000¥</value></data>
+  <data name="Option.priority-rank.91dccab9-c3fc-4868-abf8-1825b70e8a6c.Name" xml:space="preserve"><value>E - Human</value></data>
+  <data name="Option.priority-rank.9753a254-94b0-46e8-83f4-e7627bdb8571.Name" xml:space="preserve"><value>E - Mundane</value></data>
+  <data name="Option.priority-rank.984600d8-5b2f-437c-86eb-693a5bbff030.Name" xml:space="preserve"><value>D - 14 (7) Attributes</value></data>
+  <data name="Option.priority-rank.988b7ce3-5739-4300-bc21-a6c92b869262.Name" xml:space="preserve"><value>C - Human, Dwarf, Elf, Ork, or A.I.</value></data>
+  <data name="Option.priority-rank.9aecfa32-4d5c-4ba9-a88e-9a04f83e516b.Name" xml:space="preserve"><value>C - 25,000¥</value></data>
+  <data name="Option.priority-rank.9d58a295-7c59-4d3f-8001-a5565da6b836.Name" xml:space="preserve"><value>A - Magician or Technomancer</value></data>
+  <data name="Option.priority-rank.aae3a140-d306-4811-a9d2-874140600150.Name" xml:space="preserve"><value>C - Adept, Magician, or Technomancer</value></data>
+  <data name="Option.priority-rank.b1ca5551-46a4-4ef0-9d07-c33ae0abbcd1.Name" xml:space="preserve"><value>E - 18 Skills/0 Skill Groups</value></data>
+  <data name="Option.priority-rank.b977475b-9728-45a0-9873-a77bb036fb99.Name" xml:space="preserve"><value>D - 50,000¥</value></data>
+  <data name="Option.priority-rank.b97be625-a732-4c3c-80e4-06c4d88bac91.Name" xml:space="preserve"><value>D - Adept or Aspected Magician</value></data>
+  <data name="Option.priority-rank.bde37645-6789-4401-bcec-4c0e61c7fe17.Name" xml:space="preserve"><value>B - 36 Skills/5 Skill Groups</value></data>
+  <data name="Option.priority-rank.be69802a-5379-457b-8084-87b22d2e9ea6.Name" xml:space="preserve"><value>C - 140,000¥</value></data>
+  <data name="Option.priority-rank.c5b45f74-3396-45c7-afa9-b69c0c8db6ee.Name" xml:space="preserve"><value>D - 15,000¥</value></data>
+  <data name="Option.priority-rank.cb4060e7-61b9-40d7-b97f-9ab9129bfc26.Name" xml:space="preserve"><value>E - 6,000¥</value></data>
+  <data name="Option.priority-rank.dc72a445-a956-4ea5-b383-0f775c638f05.Name" xml:space="preserve"><value>A - 75,000¥</value></data>
+  <data name="Option.priority-rank.dd4eb137-e218-4d92-9ac2-db4d6bad4704.Name" xml:space="preserve"><value>E - 6,000¥</value></data>
+  <data name="Option.priority-rank.ddb56487-f6ef-480d-9812-cf6077111c2b.Name" xml:space="preserve"><value>B - 275,000¥</value></data>
+  <data name="Option.priority-rank.edc5db00-8d4c-4510-85d2-8d82d6c66ed6.Name" xml:space="preserve"><value>B - 50,000¥</value></data>
+  <data name="Option.priority-rank.ee17af88-5564-4009-b0a1-4c8632bffaf4.Name" xml:space="preserve"><value>A - 450,000¥</value></data>
+  <data name="Option.priority-rank.f6a36071-41ab-4f8e-884d-3cee92d8f181.Name" xml:space="preserve"><value>E - 12 (6) Attributes</value></data>
+  <data name="Option.priority-rank.f9aa712d-7140-4ddd-9e88-4a06e8bae222.Name" xml:space="preserve"><value>B - Any metatype</value></data>
   <data name="Option.spell.02b38262-db06-4698-b4b2-7a9e7f2452a9.Name" xml:space="preserve"><value>Pulse</value></data>
   <data name="Option.spell.02de7f2a-3c8e-48a5-b7d1-0bf9854271aa.Name" xml:space="preserve"><value>Flamethrower</value></data>
   <data name="Option.spell.036b3b19-caa7-4da1-b2de-f887ac3a6d20.Name" xml:space="preserve"><value>Magic Fingers</value></data>

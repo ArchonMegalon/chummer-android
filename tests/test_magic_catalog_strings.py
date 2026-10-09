@@ -12,7 +12,7 @@ class MagicCatalogStringsTests(unittest.TestCase):
         self.de = {r.get("name"): r.findtext("value") for r in ET.parse(RESOURCE / "MagicCatalogStrings.de.resx").getroot().findall("data")}
 
     def test_every_pinned_catalog_name_has_german_display(self):
-        for kind, count in (("tradition", 74), ("stream", 1), ("adept-power", 109), ("spell", 363), ("complex-form", 38)):
+        for kind, count in (("tradition", 74), ("stream", 1), ("adept-power", 109), ("spell", 363), ("complex-form", 38), ("priority-rank", 35)):
             keys = [key for key in self.en if key.startswith(f"Option.{kind}.")]
             self.assertEqual(len(keys), count)
             self.assertTrue(all(self.de.get(key) for key in keys))
@@ -46,6 +46,16 @@ class MagicCatalogStringsTests(unittest.TestCase):
         self.assertIn(".Single(row => row.Identity == identity).Name", body)
         self.assertIn("name = MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, name);", body)
         self.assertIn('"{0} · level {1}", name, levels', body)
+
+    def test_prerequisite_pages_translate_display_not_selection_identity(self):
+        for name in ("CreationPrerequisitePage", "CreationPriorityCategoryPage"):
+            source = (ROOT / f"src/Chummer.Android/Native/{name}.cs").read_text()
+            self.assertIn('MagicCatalogStrings.OptionName("priority-rank",', source)
+        detail = (ROOT / "src/Chummer.Android/Native/CreationPriorityDetailPage.cs").read_text()
+        self.assertIn("MagicCatalogStrings.MetatypeName(option.MetatypeName)", detail)
+        self.assertIn("MagicCatalogStrings.TalentName(option.Name)", detail)
+        self.assertIn("SelectHeritageAsync(state, option.SelectionId)", detail)
+        self.assertIn("SelectTalentAsync(state, option.SelectionId)", detail)
 
 
 if __name__ == "__main__":

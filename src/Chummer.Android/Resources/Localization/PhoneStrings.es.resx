@@ -385,4 +385,35 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Recursos no disponibles</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>No se pudieron cargar con seguridad los recursos de tu runner. No se cambió nada. Vuelve a abrir el runner e inténtalo de nuevo.</value></data>
   <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Contactos influyentes</value></data>
+  <data name="NewRunnerFieldName" xml:space="preserve"><value>Nombre del personaje</value></data>
+  <data name="NewRunnerFieldAlias" xml:space="preserve"><value>Alias</value></data>
+  <data name="NewRunnerFieldRuleset" xml:space="preserve"><value>Sistema de reglas</value></data>
+  <data name="NewRunnerFieldMethod" xml:space="preserve"><value>Método de creación</value></data>
+  <data name="NewRunnerFieldSettings" xml:space="preserve"><value>Perfil de configuración del personaje</value></data>
+  <data name="NewRunnerFieldIgnoreRules" xml:space="preserve"><value>Ignorar las reglas de creación</value></data>
+  <data name="NewRunnerChooseField" xml:space="preserve"><value>Elegir {0}</value></data>
+  <data name="NewRunnerMethodPriority" xml:space="preserve"><value>Prioridad</value></data>
+  <data name="NewRunnerMethodSumToTen" xml:space="preserve"><value>Suma diez</value></data>
+  <data name="NewRunnerMethodKarma" xml:space="preserve"><value>Karma</value></data>
+  <data name="NewRunnerMethodLifeModules" xml:space="preserve"><value>Módulos de vida</value></data>
+  <data name="NewRunnerMethodPointBuy" xml:space="preserve"><value>Compra por puntos</value></data>
+  <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Trayectoria vital</value></data>
+  <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
+  <data name="NewRunnerMethodBp" xml:space="preserve"><value>Puntos de creación</value></data>
+  <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Reglas de creación estándar · todas las fuentes activadas. El perfil sigue tu método de creación.</value></data>
+  <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Reglas de creación estándar. El perfil sigue tu sistema de reglas y método de creación.</value></data>
+  <data name="SettingsDiagnostics" xml:space="preserve"><value>Diagnóstico técnico</value></data>
+  <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer guarda hasta 128 eventos técnicos durante dos días en este teléfono: versión, categoría de página, operación, duración y categoría de error. Sin datos de personajes, libros, cuentas ni textos de error.</value></data>
+  <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Compartir informe técnico</value></data>
+  <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>Si está activado, se envían errores nuevos y operaciones de más de 30 segundos al equipo de Chummer en chummer.run mientras la app está abierta. Hasta ocho informes cada dos días; sin historial anterior. Se conservan hasta dos días en la bandeja privada. Desactivar borra los informes pendientes; los ya recibidos caducan por separado.</value></data>
+  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Prueba interna: los informes técnicos automáticos están activados por defecto. Si los desactivas, tu elección se conserva, también tras actualizar. Puedes desactivar el envío abajo.</value></data>
+  <data name="SettingsDiagnosticsOtherDefault" xml:space="preserve"><value>Los informes técnicos automáticos están desactivados por defecto en esta versión. Se conserva cualquier elección explícita guardada.</value></data>
+  <data name="HomeDiagnosticsInternal" xml:space="preserve"><value>Prueba interna: los informes técnicos están activados por defecto, salvo que los desactives. Sin contenido de personajes, libros ni cuentas. Pulsa para revisar o desactivar.</value></data>
+  <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Cargando ajuste de diagnóstico…</value></data>
+  <data name="SettingsDiagnosticsEnable" xml:space="preserve"><value>Activar informes técnicos automáticos</value></data>
+  <data name="SettingsDiagnosticsDisable" xml:space="preserve"><value>Desactivar y borrar informes pendientes</value></data>
+  <data name="SettingsDiagnosticsSaveFailed" xml:space="preserve"><value>No se pudo guardar esta opción. El envío está detenido durante esta sesión. Inténtalo de nuevo antes de reiniciar Chummer.</value></data>
+  <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Informes técnicos automáticos: activados. Los cambios se aplican al instante.</value></data>
+  <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Informes técnicos automáticos: desactivados. Los cambios se aplican al instante.</value></data>
+  <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Volver a guardar la opción de diagnóstico</value></data>
 </root>

@@ -16,6 +16,15 @@ using Microsoft.Maui.Controls;
 
 internal static class OriginDossierBookRuntimeTests
 {
+    public static async Task RunDecisionGuidanceAsync()
+    {
+        await RunFollowUpPageAsync();
+        await RunMetatypePageAsync();
+        await RunReadBeforeNextChoiceAsync();
+        await RunLiveContinuationPageAsync();
+        await RunCitySuggestionsAsync();
+    }
+
     public static async Task RunCanonicalLanguageFollowUpsAsync(string contentRoot)
     {
         var catalog = new XmlLifeModulesCatalogService(Path.Combine(contentRoot, "data", "lifemodules.xml"));
@@ -1437,8 +1446,10 @@ internal static class OriginDossierBookRuntimeTests
                 FoundationSnapshotDigest = "sha256:" + Digest("foundation-" + result.State!.WorkspaceRevision)
             };
             int requests = 0;
+            TaskCompletionSource? preparation = null;
             var page = new OriginDossierLifeModuleDecisionPage(Display(await runtime.OpenAsync(TestOwner, "workspace-1")), "en-US",
-                async (id, values) => { requests++; return Display(await runtime.PrepareAsync(TestOwner, "workspace-1", id, followUpValues: values)); },
+                async (id, values) => { requests++; if (preparation is not null) await preparation.Task;
+                    return Display(await runtime.PrepareAsync(TestOwner, "workspace-1", id, followUpValues: values)); },
                 async (id, digest) => Display(await runtime.ConfirmAsync(TestOwner, "workspace-1", id, digest)));
             Require(page.BackgroundColor == NativeTheme.Paper,
                 "Life Modules' fixed dark text must not inherit a system-dark page background.");
@@ -1450,13 +1461,28 @@ internal static class OriginDossierBookRuntimeTests
             Require(Array.IndexOf(editingElements, review) < Array.FindIndex(editingElements,
                     element => element.AutomationId == "origin-life-locale"),
                 "Selected follow-up questions remain below the setup header after the scroll content resets.");
-            Require(!review.IsEnabled && requests == 0 && authority.MutationCount == 0,
+            Require(review.IsEnabled && review.Text.Contains("Street · Arcology", StringComparison.Ordinal)
+                && requests == 0 && authority.MutationCount == 0,
                 "Opening the form invented required answers or a mutation.");
             Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology *")
                 && Elements(page).OfType<Label>().Any(label => label.Text == "Language *"),
                 "The form lost fresh display context or the canonical-label fallback.");
             var answer = Elements(page).OfType<Entry>().Single();
             var options = Elements(page).OfType<Picker>().Single();
+            var scroll = (ScrollView)page.Content!;
+            Element? target = null;
+            ((IScrollViewController)scroll).ScrollToRequested += (_, e) =>
+            {
+                target = e.Element;
+                ((IScrollViewController)scroll).SendScrollFinished();
+            };
+            await Click(review);
+            Require(ReferenceEquals(target, answer) && requests == 0,
+                "Tapping Continue with missing answers must lead to the field without preparing a choice.");
+            Require(Elements(page).OfType<Label>().Where(label => label.Text is "Street · Arcology *" or "Language *")
+                .All(label => label.GestureRecognizers.OfType<TapGestureRecognizer>().Count() == 1)
+                && answer.MinimumHeightRequest >= 48 && options.MinimumHeightRequest >= 48,
+                "Question labels must focus their field and inputs must remain tappable.");
             var displayedLanguages = options.ItemsSource!.Cast<LifeModuleFollowUpOptionDto>().ToArray();
             if (languageOptions is not null)
                 Require(displayedLanguages.SequenceEqual(languageOptions),
@@ -1468,10 +1494,22 @@ internal static class OriginDossierBookRuntimeTests
                 && options.BackgroundColor == NativeTheme.Surface,
                 "A Life Modules choice must retain contrasting selected text and title on its light card in dark mode.");
             answer.Text = "Renraku";
-            Require(!review.IsEnabled, "A required unselected answer was treated as a default choice.");
+            Require(review.IsEnabled && review.Text.Contains("Language", StringComparison.Ordinal),
+                "The next missing answer is not explained.");
+            await Click(review);
+            Require(ReferenceEquals(target, options) && requests == 0,
+                "The missing language was defaulted instead of being shown to the user.");
             options.SelectedIndex = Array.FindIndex(displayedLanguages, option => option.SourceValue == "English");
             Require(review.IsEnabled, "Explicit complete answers did not enable review.");
-            await Click(review);
+            preparation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task preparing = Click(review);
+            Require(!review.IsEnabled && review.Text == AndroidSurfaceStrings.Resolve("en-US")["Origin.PreparingChoice"],
+                "Preparing answers lacks immediate in-place feedback.");
+            ((IButtonController)review).SendClicked();
+            Require(requests == 1, "A pending review was submitted twice.");
+            preparation.SetResult();
+            await preparing;
+            preparation = null;
             Require(requests == 1 && authority.MutationCount == 0 && store.Checkpoint.PendingPreview is not null,
                 "Review must only persist the bound preview.");
             Require(Elements(page).OfType<Label>().Any(label => label.Text == "Street · Arcology: Renraku")
@@ -2491,10 +2529,19 @@ internal static class OriginDossierBookRuntimeTests
             ((IButtonController)Button("origin-life-metatype-Elf")).SendClicked();
             Require(Visible(elfControl) && !Visible(humanControl) && prepared == 0,
                 "Metatype filtering exposed the wrong nationality or dispatched a mechanics action.");
+            Require(!Visible("origin-life-metatype-Human") && Visible("origin-life-change-metatype"),
+                "The full race list still obscures the next question.");
+            var selectionElements = Elements(page).ToArray();
+            Require(Array.IndexOf(selectionElements, Button(elfControl)) < Array.FindIndex(selectionElements,
+                element => element.AutomationId == "origin-life-locale")
+                && Button(elfControl).Parent is VerticalStackLayout { AutomationId: "origin-life-choices" },
+                "The next path must precede settings and have no inert card around its button.");
             var oldElf = Button(elfControl);
             await Click(oldElf);
             Require(prepared == 1 && Visible("origin-life-confirm") && confirmed == 0, "Explicit preview was skipped.");
             var oldConfirm = Button("origin-life-confirm");
+            await Click(Button("origin-life-change-metatype"));
+            Require(!Visible("origin-life-confirm"), "Changing metatype left the old review active.");
             ((IButtonController)Button("origin-life-metatype-Human")).SendClicked();
             Require(!Visible("origin-life-confirm") && Visible(humanControl),
                 "A hidden Elf preview remained confirmable after choosing Human.");

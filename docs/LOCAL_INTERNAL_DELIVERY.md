@@ -83,7 +83,12 @@ here changes protected merge checks, signing or Play authorization.
    AAB or emulator run. Broad device suites are manual/impact-driven, not the
    default double-run prerequisite.
 3. Build the exact ARM64 Release AAB in the existing local keyless Docker
-   toolchain. Record its toolchain, source/content/package identities and unsigned
+   toolchain with `-p:ChummerDistributionChannel=internal`. This explicitly selects
+   default-on, metadata-only technical reporting for Internal testing; saved
+   opt-outs remain off. Record this build property and verify the Home/settings
+   disclosure. Other build channels default off. Do not promote this same AAB to
+   a public track; see `INTERNAL_TESTER_DIAGNOSTICS.md` for the channel boundary.
+   Record its toolchain, source/content/package identities and unsigned
    digest; retain logs and inputs outside served directories. No signing key,
    cloud credentials, Docker socket or private credential store in the builder.
 4. Inspect the unsigned bundle using the existing bundle, content, private-key

@@ -2117,7 +2117,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("!FieldShapeMatches(previousField, nextField)", update)
         self.assertIn("!previous.Actions.SequenceEqual(next.Actions)", update)
         self.assertIn("Render(next)", update)
-        self.assertIn('NativeTheme.Metric("Metavariant"', build)
+        self.assertIn('NativeTheme.Metric(PhoneStrings.Get("RunnerMetavariant", "Metavariant")', build)
         self.assertIn("Coordinator.State.Profile?.Metavariant", build)
 
     def test_android_handoffs_use_canonical_public_routes(self) -> None:

@@ -59,6 +59,26 @@ internal static class NativeTheme
         return button;
     }
 
+    public static Switch ReadableSwitch()
+    {
+        var toggle = new Switch { OnColor = Success, ThumbColor = Ink };
+#if ANDROID
+        // Android's default light off-track disappears against our white cards.
+        // Keep an explicit off state; do not rely on OnColor (which only sets on).
+        void ApplyContrast()
+        {
+            if (toggle.Handler?.PlatformView is not global::AndroidX.AppCompat.Widget.SwitchCompat view) return;
+            view.TrackTintList = new global::Android.Content.Res.ColorStateList(
+                new[] { new[] { global::Android.Resource.Attribute.StateChecked }, System.Array.Empty<int>() },
+                new[] { global::Android.Graphics.Color.ParseColor("#27715E").ToArgb(),
+                    global::Android.Graphics.Color.ParseColor("#61706E").ToArgb() });
+        }
+        toggle.HandlerChanged += (_, _) => ApplyContrast();
+        toggle.Toggled += (_, _) => ApplyContrast();
+#endif
+        return toggle;
+    }
+
     public static Button PrimaryButton(string text) => WithAvailabilityStates(new Button
     {
         Text = text,

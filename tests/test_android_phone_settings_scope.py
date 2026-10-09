@@ -19,6 +19,19 @@ RUNTIME_CAPABILITIES = (
 )
 
 
+def test_new_runner_progress_wraps_and_switch_off_state_is_visible() -> None:
+    dialog = NATIVE_DIALOG.read_text(encoding="utf-8")
+    theme = (ROOT / "src/Chummer.Android/Native/NativeTheme.cs").read_text(encoding="utf-8")
+    assert "Grid busy = new()" in dialog
+    assert "new(GridLength.Auto), new(GridLength.Star)" in dialog
+    assert "busy.Add(_busyLabel, 1)" in dialog
+    assert "button.LineBreakMode = LineBreakMode.WordWrap" in dialog
+    assert "button.MinimumHeightRequest = 50" in dialog
+    assert "Switch toggle = NativeTheme.ReadableSwitch()" in dialog
+    assert "TrackTintList" in theme and 'ParseColor("#61706E")' in theme
+    assert "NewRunnerDialogStrings.FixedSettingsDescription" in dialog
+
+
 def test_phone_more_exposes_only_the_phone_owned_settings_surface() -> None:
     more_source = MORE_PAGE.read_text(encoding="utf-8")
     phone_source = PHONE_SHELL_PAGES.read_text(encoding="utf-8")
@@ -31,12 +44,38 @@ def test_phone_more_exposes_only_the_phone_owned_settings_surface() -> None:
     assert "showUnrestrictedActions: false" in phone_source
 
 
+def test_internal_diagnostics_default_has_visible_control_and_explicit_build_scope() -> None:
+    import xml.etree.ElementTree as ET
+
+    policy = ET.parse(ROOT / "eng/AndroidDistribution.props").getroot()
+    channel = policy.find("./PropertyGroup/ChummerDistributionChannel")
+    assert channel is not None and channel.text == "development"
+    symbol = policy.find("./PropertyGroup/DefineConstants")
+    assert symbol is not None and symbol.attrib["Condition"] == "'$(ChummerDistributionChannel)' == 'internal'"
+    assert "CHUMMER_INTERNAL_TEST" in symbol.text
+    settings = APPLICATION_SETTINGS.read_text(encoding="utf-8")
+    home = (ROOT / "src/Chummer.Android/Native/HomePage.cs").read_text(encoding="utf-8")
+    assert 'automationId: "home-diagnostics-settings"' in home
+    assert "if (!NativeProblemPolicy.InternalTestBuild) return;" in home
+    assert "new ApplicationSettingsPage(Coordinator)" in home
+    assert "NativeProblemPolicy.InternalTestBuild" in settings
+    assert '"SettingsDiagnosticsInternalDefault"' in settings
+    assert '"SettingsDiagnosticsOtherDefault"' in settings
+    for locale in ("", ".de", ".es"):
+        resources = ET.parse(ROOT / f"src/Chummer.Android/Resources/Localization/PhoneStrings{locale}.resx").getroot()
+        for key in ("HomeDiagnosticsInternal", "SettingsDiagnosticsInternalDefault", "SettingsDiagnosticsOtherDefault"):
+            assert resources.find(f"./data[@name='{key}']/value").text
+
+
 def test_phone_settings_do_not_render_the_legacy_character_settings_catalog() -> None:
     settings_source = APPLICATION_SETTINGS.read_text(encoding="utf-8")
 
     assert 'AutomationId = "application-settings-page"' in settings_source
     assert 'AutomationId = "settings-confirm-delete"' in settings_source
-    assert 'AutomationId = "settings-language-device-managed"' in settings_source
+    # Language and regional formats are now independent, persisted phone controls.
+    assert '"settings-language", PhoneStrings.Get("SettingsAppLanguage"' in settings_source
+    assert '"settings-region", PhoneStrings.Get("SettingsRegionalFormats"' in settings_source
+    assert "PhoneLocalePolicy.SavePreferences(Preferences.Default, new(language.Value, region.Value))" in settings_source
     assert 'AutomationId = "settings-updates-play-managed"' in settings_source
     assert "NativeDialogPage" not in settings_source
     assert "ActiveDialog" not in settings_source

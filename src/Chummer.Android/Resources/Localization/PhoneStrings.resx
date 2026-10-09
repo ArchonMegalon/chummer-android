@@ -385,4 +385,35 @@ No change has been saved yet.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Resources unavailable</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Your runner's resources could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
   <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Friends in High Places contacts</value></data>
+  <data name="NewRunnerFieldName" xml:space="preserve"><value>Character name</value></data>
+  <data name="NewRunnerFieldAlias" xml:space="preserve"><value>Alias</value></data>
+  <data name="NewRunnerFieldRuleset" xml:space="preserve"><value>Ruleset</value></data>
+  <data name="NewRunnerFieldMethod" xml:space="preserve"><value>Build method</value></data>
+  <data name="NewRunnerFieldSettings" xml:space="preserve"><value>Character settings profile</value></data>
+  <data name="NewRunnerFieldIgnoreRules" xml:space="preserve"><value>Ignore character creation rules</value></data>
+  <data name="NewRunnerChooseField" xml:space="preserve"><value>Choose {0}</value></data>
+  <data name="NewRunnerMethodPriority" xml:space="preserve"><value>Priority</value></data>
+  <data name="NewRunnerMethodSumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="NewRunnerMethodKarma" xml:space="preserve"><value>Karma</value></data>
+  <data name="NewRunnerMethodLifeModules" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="NewRunnerMethodPointBuy" xml:space="preserve"><value>Point Buy</value></data>
+  <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Life Path</value></data>
+  <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
+  <data name="NewRunnerMethodBp" xml:space="preserve"><value>BP</value></data>
+  <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Standard creation rules · all sources enabled. The profile follows your build method.</value></data>
+  <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Standard creation rules. The profile follows your ruleset and build method.</value></data>
+  <data name="SettingsDiagnostics" xml:space="preserve"><value>Technical diagnostics</value></data>
+  <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text.</value></data>
+  <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Share technical report</value></data>
+  <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>When enabled, new failures and operations over 30 seconds are sent to the Chummer team at chummer.run while the app is running. Up to eight reports per two days; no old history. Reports stay in the private inbox for up to two days. Disable anytime to clear unsent reports; already received reports expire separately.</value></data>
+  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Internal test: automatic technical reports are on by default. A saved off choice stays off, including after updates. You can disable sending below.</value></data>
+  <data name="SettingsDiagnosticsOtherDefault" xml:space="preserve"><value>Automatic technical reports are off by default in this build. A saved explicit choice is retained.</value></data>
+  <data name="HomeDiagnosticsInternal" xml:space="preserve"><value>Internal test: technical reports are on by default, unless you turn them off. No runner, book or account content. Tap to review or disable.</value></data>
+  <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Loading diagnostic setting…</value></data>
+  <data name="SettingsDiagnosticsEnable" xml:space="preserve"><value>Enable automatic technical reports</value></data>
+  <data name="SettingsDiagnosticsDisable" xml:space="preserve"><value>Disable and clear unsent reports</value></data>
+  <data name="SettingsDiagnosticsSaveFailed" xml:space="preserve"><value>Could not save this choice. Sending is stopped for this session. Try again before restarting Chummer.</value></data>
+  <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Automatic technical reports: on. Changes apply immediately.</value></data>
+  <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Automatic technical reports: off. Changes apply immediately.</value></data>
+  <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Retry saving diagnostic choice</value></data>
 </root>
