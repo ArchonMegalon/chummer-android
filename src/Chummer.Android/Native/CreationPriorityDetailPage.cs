@@ -117,8 +117,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                                   option.SelectionId,
                                   StringComparison.Ordinal);
             string title = string.IsNullOrWhiteSpace(option.MetavariantName)
-                ? option.MetatypeName
-                : $"{option.MetatypeName} · {option.MetavariantName}";
+                ? MagicCatalogStrings.MetatypeName(option.MetatypeName)
+                : $"{MagicCatalogStrings.MetatypeName(option.MetatypeName)} · {option.MetavariantName}";
             string detail = JoinDetails(
                 isSelected ? WizardStrings.Get("Priority.DetailPage.CurrentSelection", "Current typed draft selection") : null,
                 WizardStrings.PriorityHeritageKind(
@@ -228,7 +228,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                         string.Join(" · ", option.SourceAnchorIds))
                     : null), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
-                option.Name,
+                MagicCatalogStrings.TalentName(option.Name),
                 detail,
                 () => IsCurrentSelection(render, appearance)
                     ? SelectTalentAsync(state, option.SelectionId) : Task.CompletedTask,

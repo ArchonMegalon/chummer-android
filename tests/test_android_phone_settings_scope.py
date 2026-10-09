@@ -36,7 +36,10 @@ def test_phone_settings_do_not_render_the_legacy_character_settings_catalog() ->
 
     assert 'AutomationId = "application-settings-page"' in settings_source
     assert 'AutomationId = "settings-confirm-delete"' in settings_source
-    assert 'AutomationId = "settings-language-device-managed"' in settings_source
+    # Language and regional formats are now independent, persisted phone controls.
+    assert '"settings-language", PhoneStrings.Get("SettingsAppLanguage"' in settings_source
+    assert '"settings-region", PhoneStrings.Get("SettingsRegionalFormats"' in settings_source
+    assert "PhoneLocalePolicy.SavePreferences(Preferences.Default, new(language.Value, region.Value))" in settings_source
     assert 'AutomationId = "settings-updates-play-managed"' in settings_source
     assert "NativeDialogPage" not in settings_source
     assert "ActiveDialog" not in settings_source

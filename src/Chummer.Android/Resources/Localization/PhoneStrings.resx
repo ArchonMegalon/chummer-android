@@ -385,4 +385,19 @@ No change has been saved yet.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Resources unavailable</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Your runner's resources could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
   <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Friends in High Places contacts</value></data>
+  <data name="NewRunnerFieldName" xml:space="preserve"><value>Character name</value></data>
+  <data name="NewRunnerFieldAlias" xml:space="preserve"><value>Alias</value></data>
+  <data name="NewRunnerFieldRuleset" xml:space="preserve"><value>Ruleset</value></data>
+  <data name="NewRunnerFieldMethod" xml:space="preserve"><value>Build method</value></data>
+  <data name="NewRunnerFieldSettings" xml:space="preserve"><value>Character settings profile</value></data>
+  <data name="NewRunnerFieldIgnoreRules" xml:space="preserve"><value>Ignore character creation rules</value></data>
+  <data name="NewRunnerChooseField" xml:space="preserve"><value>Choose {0}</value></data>
+  <data name="NewRunnerMethodPriority" xml:space="preserve"><value>Priority</value></data>
+  <data name="NewRunnerMethodSumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="NewRunnerMethodKarma" xml:space="preserve"><value>Karma</value></data>
+  <data name="NewRunnerMethodLifeModules" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="NewRunnerMethodPointBuy" xml:space="preserve"><value>Point Buy</value></data>
+  <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Life Path</value></data>
+  <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
+  <data name="NewRunnerMethodBp" xml:space="preserve"><value>BP</value></data>
 </root>

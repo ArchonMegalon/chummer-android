@@ -89,8 +89,10 @@ public sealed class NativeDialogPage : ContentPage
         DesktopDialogField? methodField = newRunner
             ? dialog.Fields.SingleOrDefault(field => field.Id == "newCharacterBuildMethod")
             : null;
-        string? selectedMethod = methodField?.Options?.FirstOrDefault(option =>
-            string.Equals(option.Value, methodField.Value, StringComparison.Ordinal))?.Label;
+        DesktopDialogFieldOption? selectedMethodOption = methodField?.Options?.FirstOrDefault(option =>
+            string.Equals(option.Value, methodField.Value, StringComparison.Ordinal));
+        string? selectedMethod = selectedMethodOption is null ? null
+            : NewRunnerDialogStrings.MethodLabel(selectedMethodOption);
         string dialogMessage = newRunner && selectedMethod is not null
             ? PhoneStrings.Format("NewRunnerSelectedBuildMethod",
                 "Build method: {0}. Tap Create runner to continue.", selectedMethod)
@@ -130,6 +132,7 @@ public sealed class NativeDialogPage : ContentPage
             }
 
             NativeDialogScopedField scopedField = AndroidDialogSettingsScope.Project(dialog, field);
+            scopedField = NewRunnerDialogStrings.Project(dialog, field, scopedField);
             if (scopedField.IsVisible)
             {
                 body.Add(CreateField(dialog.Id, _renderGeneration, field, scopedField));
@@ -151,6 +154,8 @@ public sealed class NativeDialogPage : ContentPage
         {
             string actionLabel = newRunner && action.Id == CreateCharacterActionId
                 ? PhoneStrings.Get("NewRunnerCreate", "Create runner")
+                : newRunner && action.Id == "cancel" && action.Label == "Cancel"
+                ? PhoneStrings.Get("Cancel", "Cancel")
                 : AndroidDialogSettingsScope.ActionLabel(dialog, action);
             NativeDialogActionBinding binding = new(
                 _renderGeneration,
@@ -207,8 +212,10 @@ public sealed class NativeDialogPage : ContentPage
     // Keep presenter diagnostics and arbitrary user-authored text unchanged.
     internal static string ProjectNotice(string dialogId, string notice, string? workspaceId)
     {
-        if (dialogId != "dialog.new_character" || string.IsNullOrEmpty(workspaceId))
+        if (dialogId != "dialog.new_character")
             return notice;
+        if (string.IsNullOrEmpty(workspaceId))
+            return PhoneStrings.RunnerNotice(notice)!;
 
         if (notice == $"Save or discard local changes for '{workspaceId}' before you create another dossier.")
             return PhoneStrings.Get("NewRunnerUnsavedChanges",
@@ -217,7 +224,7 @@ public sealed class NativeDialogPage : ContentPage
             return PhoneStrings.Get("NewRunnerRevisionConflict",
                 "Resolve the save conflict for your current runner before creating another. Cancel to return to it.");
 
-        return notice;
+        return PhoneStrings.RunnerNotice(notice)!;
     }
 
     private View CreateField(
@@ -240,9 +247,7 @@ public sealed class NativeDialogPage : ContentPage
             Picker picker = new()
             {
                 AutomationId = $"dialog-field-{Token(field.Id)}",
-                Title = string.IsNullOrWhiteSpace(field.Placeholder)
-                    ? $"Choose {scopedField.Label}"
-                    : field.Placeholder,
+                Title = NewRunnerDialogStrings.PickerTitle(dialogId, field, scopedField.Label),
                 ItemsSource = options.Select(static option => option.Label).ToArray(),
                 SelectedIndex = selectedIndex,
                 IsEnabled = !field.IsReadOnly && !_interactionBusy,

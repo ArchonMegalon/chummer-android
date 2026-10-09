@@ -385,4 +385,19 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Ressourcen nicht verfügbar</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Die Ressourcen deines Runners konnten nicht sicher geladen werden. Es wurde nichts geändert. Öffne den Runner erneut und versuche es noch einmal.</value></data>
   <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Hochrangige Connections</value></data>
+  <data name="NewRunnerFieldName" xml:space="preserve"><value>Charaktername</value></data>
+  <data name="NewRunnerFieldAlias" xml:space="preserve"><value>Alias</value></data>
+  <data name="NewRunnerFieldRuleset" xml:space="preserve"><value>Regelwerk</value></data>
+  <data name="NewRunnerFieldMethod" xml:space="preserve"><value>Erschaffungsmethode</value></data>
+  <data name="NewRunnerFieldSettings" xml:space="preserve"><value>Charakter-Einstellungsprofil</value></data>
+  <data name="NewRunnerFieldIgnoreRules" xml:space="preserve"><value>Erschaffungsregeln ignorieren</value></data>
+  <data name="NewRunnerChooseField" xml:space="preserve"><value>{0} auswählen</value></data>
+  <data name="NewRunnerMethodPriority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="NewRunnerMethodSumToTen" xml:space="preserve"><value>Summe 10</value></data>
+  <data name="NewRunnerMethodKarma" xml:space="preserve"><value>Karma</value></data>
+  <data name="NewRunnerMethodLifeModules" xml:space="preserve"><value>Lebensmodule</value></data>
+  <data name="NewRunnerMethodPointBuy" xml:space="preserve"><value>Punktekauf</value></data>
+  <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Lebenspfad</value></data>
+  <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
+  <data name="NewRunnerMethodBp" xml:space="preserve"><value>Generierungspunkte</value></data>
 </root>

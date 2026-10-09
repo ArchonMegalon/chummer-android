@@ -17,6 +17,7 @@ CATALOGS = (
     ("powers.xml", "powers", "adept-power"),
     ("spells.xml", "spells", "spell"),
     ("complexforms.xml", "complexforms", "complex-form"),
+    ("priorities.xml", "priorities", "priority-rank"),
 )
 
 # Short independent labels only for missing/renamed legacy translation rows.

@@ -494,7 +494,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                     index + 1)
                 : JoinDetails(
                     WizardStrings.Format("Priority.Categories.Rank", "{0}. Rank {1}", index + 1, selected.Rank),
-                    selected.Label,
+                    MagicCatalogStrings.OptionName("priority-rank", selected.SourceId, selected.Label),
                     string.Equals(
                         category,
                         CharacterCreationPriorityCategoryIds.Attributes,
@@ -528,7 +528,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                             "Priority.Heritage.Prompt",
                             "Select an exact Core-projected metatype or metavariant")
                         : JoinDetails(
-                            selectedHeritage.MetatypeName,
+                            MagicCatalogStrings.MetatypeName(selectedHeritage.MetatypeName),
                             selectedHeritage.MetavariantName),
                     () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
@@ -561,7 +561,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
                             "Priority.Talent.Prompt",
                             "Select an exact Core-projected Talent and complete any required grants")
                         : JoinDetails(
-                            selectedTalent.Name,
+                            MagicCatalogStrings.TalentName(selectedTalent.Name),
                             selectedTalent.Value,
                             TalentGrantProgress(selectedTalent, state)),
                     () => IsCurrentEditor(state, render, appearance) ? Navigation.PushAsync(new CreationPriorityDetailPage(
