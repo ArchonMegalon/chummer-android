@@ -8,6 +8,21 @@ internal static class NewRunnerDialogStrings
 {
     internal const string DialogId = "dialog.new_character";
 
+    // The presenter accepts only the canonical method-specific profile. The
+    // legacy Core Rulebook value is an alias, not a free-form settings chooser.
+    internal static string? FixedSettingsDescription(string dialogId, DesktopDialogField field,
+        DesktopDialogState? dialog)
+    {
+        if (dialogId != DialogId || field.Id != "newCharacterSetting"
+            || field.Label != "Character Setting" || field.Value != "Core Rulebook") return null;
+        bool sr5 = dialog?.Fields.SingleOrDefault(item => item.Id == "newCharacterRulesetId")?.Value == "sr5";
+        return sr5
+            ? PhoneStrings.Get("NewRunnerFixedSettingsAllSources",
+                "Standard creation rules · all sources enabled. The profile follows your build method.")
+            : PhoneStrings.Get("NewRunnerFixedSettings",
+                "Standard creation rules. The profile follows your ruleset and build method.");
+    }
+
     internal static NativeDialogScopedField Project(DesktopDialogState dialog, DesktopDialogField field,
         NativeDialogScopedField original)
     {

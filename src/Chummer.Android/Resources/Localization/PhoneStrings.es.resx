@@ -400,4 +400,6 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Trayectoria vital</value></data>
   <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
   <data name="NewRunnerMethodBp" xml:space="preserve"><value>Puntos de creación</value></data>
+  <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Reglas de creación estándar · todas las fuentes activadas. El perfil sigue tu método de creación.</value></data>
+  <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Reglas de creación estándar. El perfil sigue tu sistema de reglas y método de creación.</value></data>
 </root>

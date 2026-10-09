@@ -23,6 +23,8 @@ public sealed class CreationAttributesPage : NativePageBase
     private Label? _specialAttributesHeading;
     private Button? _reviewButton;
     private CancellationTokenSource? _reviewPreparation;
+    private CancellationTokenSource? _inlinePreparation;
+    private readonly List<Button> _inlineButtons = [];
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
@@ -39,8 +41,9 @@ public sealed class CreationAttributesPage : NativePageBase
     {
         // Keep the pressed review control visible while its read runs off-thread.
         // The action gate excludes other mutations; leaving cancels this read.
-        if (_reviewPreparation is not null) return;
+        if (_reviewPreparation is not null || _inlinePreparation is not null) return;
         _reviewButton = null;
+        _inlineButtons.Clear();
         _body.Clear();
         // The previous disclosure still owns its native child after _body.Clear().
         // Never attach that child to a new parent during a refresh.
@@ -120,6 +123,8 @@ public sealed class CreationAttributesPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _inlinePreparation?.Cancel();
+        _inlinePreparation = null;
         var pending = _reviewPreparation;
         _reviewPreparation = null;
         _reviewButton = null;
@@ -258,10 +263,10 @@ public sealed class CreationAttributesPage : NativePageBase
                         "Not enabled by this Talent")));
             foreach (string reason in attribute.DisableReasons)
                 _technicalDetails.Add(NativeTheme.Body(attribute.AttributeId + ": " + reason, NativeTheme.Muted));
-            _body.Add(NativeTheme.NavigationRow(
+            Border row = NativeTheme.NavigationRow(
                 AttributeLabel(attribute.AttributeId),
                 detail,
-                () => !Coordinator.IsCreationAttributesStateCurrent(state) ? Task.CompletedTask
+                () => _inlinePreparation is not null || !Coordinator.IsCreationAttributesStateCurrent(state) ? Task.CompletedTask
                     : Navigation.PushAsync(new CreationAttributeAllocationPage(
                     Coordinator,
                     _draft,
@@ -269,8 +274,70 @@ public sealed class CreationAttributesPage : NativePageBase
                     state)),
                 enabled: attribute.IsEnabled,
                 automationId: $"creation-attributes-open-{Token(attribute.AttributeId)}",
-                value: attribute.Current.ToString(CultureInfo.InvariantCulture)));
+                value: attribute.Current.ToString(CultureInfo.InvariantCulture));
+            // Spend normal/special points directly in this list. The existing
+            // detail route remains available for Karma and less common options.
+            if (attribute.IsEnabled)
+            {
+                var grid = (Grid)row.Content!;
+                grid.ColumnSpacing = 8;
+                grid.ColumnDefinitions.Add(new(GridLength.Auto));
+                grid.ColumnDefinitions.Add(new(GridLength.Auto));
+                AddInlineAdjustment(state, attribute, row, grid, -1, 2);
+                AddInlineAdjustment(state, attribute, row, grid, 1, 3);
+            }
+            _body.Add(row);
         }
+    }
+
+    private void AddInlineAdjustment(CharacterCreationAttributesState state,
+        CharacterCreationAttributeProjection attribute, Border row, Grid grid, int delta, int column)
+    {
+        var expected = _draft.Allocations(state).ToArray();
+        var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, delta, 0);
+        Button button = NativeTheme.SecondaryButton(delta < 0 ? "−" : "+");
+        button.AutomationId = $"creation-attributes-inline-{(delta < 0 ? "decrease" : "increase")}-{Token(attribute.AttributeId)}";
+        button.WidthRequest = 48;
+        button.Padding = 0;
+        button.FontSize = 24;
+        button.VerticalOptions = LayoutOptions.Center;
+        var pointBudget = attribute.Category == CharacterCreationAttributeCategories.Special
+            ? _draft.SpecialBudget(state) : _draft.NormalBudget(state);
+        button.IsEnabled = allocations is not null
+            && (delta < 0 || attribute.Current < attribute.Maximum && pointBudget.Remaining >= 1);
+        SemanticProperties.SetDescription(button, AttributeLabel(attribute.AttributeId) + " · " +
+            CreationAllocationStrings.Get(delta < 0 ? "AttributeAllocation.PriorityDecrease" : "AttributeAllocation.PriorityIncrease",
+                delta < 0 ? "Point −" : "Point +"));
+        _inlineButtons.Add(button);
+        long appearance = CaptureAppearanceGeneration();
+        button.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(row.Parent, _body)
+                && Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State)
+                && _draft.Allocations(state).SequenceEqual(expected);
+            if (!button.IsEnabled || allocations is null || !Current()) return;
+            var original = Coordinator.State;
+            using var lifetime = new CancellationTokenSource();
+            _inlinePreparation = lifetime;
+            foreach (var control in _inlineButtons) control.IsEnabled = false;
+            if (_reviewButton is not null) _reviewButton.IsEnabled = false;
+            button.Text = "…";
+            try
+            {
+                var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                    () => Coordinator.PreviewCreationAttributes(state.Binding, allocations), lifetime.Token), lifetime.Token);
+                lifetime.Token.ThrowIfCancellationRequested();
+                if (!Current()) return;
+                _previewBlockers = _draft.TryAdopt(state, Coordinator.State, result, allocations)
+                    ? [] : result.Value?.Blockers ?? result.Blockers;
+            }
+            finally
+            {
+                button.Text = delta < 0 ? "−" : "+";
+                if (ReferenceEquals(_inlinePreparation, lifetime)) _inlinePreparation = null;
+            }
+        });
+        grid.Add(button, column);
     }
 
     private void AddReviewAction(CharacterCreationAttributesState state)
@@ -441,8 +508,8 @@ public sealed class CreationAttributesPage : NativePageBase
 }
 
 /// <summary>
-/// One-attribute drill-in. Candidate +/- operations are enabled only when Core returns an
-/// adoptable immutable preview for the complete allocation ledger.
+/// One-attribute editor. A tap requests one Core preview; only its exact accepted
+/// projection changes the local draft. Never precompute all four next actions.
 /// </summary>
 public sealed class CreationAttributeAllocationPage : NativePageBase
 {
@@ -463,6 +530,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private bool _canRetryPreparation;
     private Button? _retryButton;
     private string? _failure;
+    private IReadOnlyList<string> _adjustmentBlockers = [];
     private readonly Label _progress = new()
     {
         Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…"),
@@ -536,22 +604,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
                         [CharacterCreationAttributesBlockers.WorkspaceUnavailable]);
                 if (load.Value is not { } state || !draft.Matches(state, original))
                     return (Value: (PreparedAllocation?)null, Failure: load.Blockers.FirstOrDefault());
-                var choices = new List<Adjustment>();
-                foreach (var (token, priority, karma) in new[]
-                {
-                    ("priority-decrease", -1, 0), ("priority-increase", 1, 0),
-                    ("karma-decrease", 0, -1), ("karma-increase", 0, 1)
-                })
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var allocations = draft.ChangedAllocations(state, _attributeId, priority, karma);
-                    var result = allocations is null ? null
-                        : Coordinator.PreviewCreationAttributes(state.Binding, allocations);
-                    bool enabled = allocations is not null && result is not null
-                        && CreationAttributesPhoneAuthority.CanAdoptPreview(state, original, result, allocations);
-                    choices.Add(new(token, allocations, result, enabled));
-                }
-                return (Value: new PreparedAllocation(state, draft.Allocations(state), choices), Failure: (string?)null);
+                return (Value: BuildPrepared(state, draft), Failure: (string?)null);
             }, ct), ct);
             ct.ThrowIfCancellationRequested();
             if (generation != _preparationGeneration) return;
@@ -589,6 +642,80 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
            && _draft.Matches(prepared.State, Coordinator.State)
            && _draft.Allocations(prepared.State).SequenceEqual(prepared.Allocations);
 
+    private PreparedAllocation BuildPrepared(CharacterCreationAttributesState state, CreationAttributesPhoneDraft draft)
+    {
+        var attribute = draft.Attribute(state, _attributeId);
+        var choices = new List<Adjustment>();
+        foreach (var (token, priority, karma) in new[]
+        {
+            ("priority-decrease", -1, 0), ("priority-increase", 1, 0),
+            ("karma-decrease", 0, -1), ("karma-increase", 0, 1)
+        })
+        {
+            var allocations = draft.ChangedAllocations(state, _attributeId, priority, karma);
+            // These are request affordances, not rules admission. Only Core's
+            // returned preview may alter the displayed value, pools or draft.
+            bool enabled = allocations is not null && attribute is { IsEnabled: true }
+                && (priority + karma < 0 || attribute.Current < attribute.Maximum)
+                && (priority <= 0 || (attribute.Category == CharacterCreationAttributeCategories.Special
+                    ? draft.SpecialBudget(state) : draft.NormalBudget(state)).Remaining >= 1);
+            choices.Add(new(token, allocations, null, enabled));
+        }
+        return new(state, draft.Allocations(state), choices);
+    }
+
+    private async Task AdjustAsync(PreparedAllocation prepared, Adjustment choice, Button button, string label)
+    {
+        if (!ReferenceEquals(_prepared, prepared) || !IsCurrent(prepared) || choice.Allocations is null) return;
+        long generation = ++_preparationGeneration;
+        using var lifetime = new CancellationTokenSource();
+        _preparation = lifetime;
+        var ct = lifetime.Token;
+        var original = Coordinator.State;
+        _loading = true;
+        _canRetryPreparation = false;
+        _adjustmentBlockers = [];
+        button.Text = CreationAllocationStrings.Get("AttributeAllocation.Checking", "Checking points…");
+        Refresh();
+        try
+        {
+            // Core Preview already rereads the exact owner's workspace and
+            // source binding. No redundant Load and no speculative other +/-s.
+            var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                () => Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations), ct), ct);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _preparationGeneration || !IsCurrent(prepared)) return;
+            if (_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations))
+                _prepared = BuildPrepared(prepared.State, _draft);
+            else
+            {
+                _adjustmentBlockers = result.Value?.Blockers ?? result.Blockers;
+                // A refused request has not changed the local draft. Retained
+                // UI cannot bypass Core on a subsequent tap or confirmation.
+                _prepared = BuildPrepared(prepared.State, _draft);
+            }
+        }
+        catch (Exception error) when (error is not OutOfMemoryException && !ct.IsCancellationRequested)
+        {
+            if (generation == _preparationGeneration)
+            {
+                _failure = error.GetType().Name;
+                _prepared = null;
+                _canRetryPreparation = true;
+            }
+        }
+        finally
+        {
+            button.Text = label;
+            if (generation == _preparationGeneration)
+            {
+                _loading = false;
+                _progress.IsVisible = false;
+            }
+            if (ReferenceEquals(_preparation, lifetime)) _preparation = null;
+        }
+    }
+
     protected override void Refresh()
     {
         // A plus/minus preparation must not collapse the scrolled page.
@@ -623,6 +750,8 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         var state = prepared.State;
         AddProjection(attribute);
         AddBudgetSummary(state);
+        foreach (string blocker in _adjustmentBlockers.Distinct(StringComparer.Ordinal))
+            _body.Add(NativeTheme.Body(CreationAllocationStrings.AttributeBlocker(blocker), NativeTheme.Danger));
         AddAdjustment(
             state,
             attribute.Category == CharacterCreationAttributeCategories.Special
@@ -756,29 +885,21 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         button.IsEnabled = enabled;
         if (enabled)
         {
-            button.Clicked += async (_, _) => await RunAsync(async () =>
-            {
-                if (ReferenceEquals(_prepared, prepared) && IsCurrent(prepared)
-                    && _draft.TryAdopt(state, Coordinator.State, result!, allocations!))
-                {
-                    // Keep feedback on the control the user just pressed: the page's
-                    // loading message can be above the current scroll position.
-                    button.Text = CreationAllocationStrings.Get(
-                        "AttributeAllocation.Checking", "Checking points…");
-                    try { await PrepareAsync(CancellationToken.None); }
-                    finally
-                    {
-                        // Never re-enable this retained control. Only a newly rendered,
-                        // current Core preview may admit the next adjustment.
-                        button.Text = label;
-                    }
-                }
-            });
+            button.Clicked += async (_, _) => await RunAsync(() => AdjustAsync(prepared, choice, button, label));
         }
         _body.Add(button);
 
         if (!enabled && allocations is not null)
         {
+            if (_draft.Attribute(state, _attributeId) is { IsEnabled: true } current
+                && current.Current >= current.Maximum && automationToken.EndsWith("increase", StringComparison.Ordinal))
+            {
+                Label maximum = NativeTheme.Body(CreationAllocationStrings.Format("Attributes.MaximumReached",
+                    "{0} has reached its creation maximum of {1}. Remaining points cannot raise it further.",
+                    CreationAttributesPage.AttributeLabel(_attributeId), current.Maximum), NativeTheme.Muted);
+                maximum.AutomationId = $"{button.AutomationId}-reason";
+                _body.Add(maximum);
+            }
             var blockers = (result?.Value?.Blockers ?? result?.Blockers ?? [])
                 .Where(code => !string.IsNullOrWhiteSpace(code)).Distinct(StringComparer.Ordinal).ToArray();
             if (blockers.Length > 0)

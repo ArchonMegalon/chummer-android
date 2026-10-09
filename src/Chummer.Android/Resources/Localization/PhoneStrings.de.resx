@@ -400,4 +400,6 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Lebenspfad</value></data>
   <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
   <data name="NewRunnerMethodBp" xml:space="preserve"><value>Generierungspunkte</value></data>
+  <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Standard-Erschaffungsregeln · alle Quellen aktiviert. Das Profil folgt deiner Erschaffungsmethode.</value></data>
+  <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Standard-Erschaffungsregeln. Das Profil folgt deinem Regelwerk und deiner Erschaffungsmethode.</value></data>
 </root>

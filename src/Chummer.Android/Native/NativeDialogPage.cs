@@ -21,7 +21,7 @@ public sealed class NativeDialogPage : ContentPage
     private DesktopDialogState? _renderedDialog;
     private ActivityIndicator? _busyIndicator;
     private Label? _busyLabel;
-    private HorizontalStackLayout? _busyContainer;
+    private Grid? _busyContainer;
     private bool _interactionBusy;
     private long _renderGeneration;
 
@@ -166,6 +166,9 @@ public sealed class NativeDialogPage : ContentPage
             Button button = action.IsPrimary
                 ? NativeTheme.PrimaryButton(actionLabel)
                 : NativeTheme.SecondaryButton(actionLabel);
+            button.HeightRequest = -1;
+            button.MinimumHeightRequest = 50;
+            button.LineBreakMode = LineBreakMode.WordWrap;
             button.AutomationId = $"dialog-action-{Token(action.Id)}";
             TrackInteractive(button, enabledWhenIdle: true);
             button.Clicked += async (_, _) => await ExecuteAsync(binding);
@@ -178,10 +181,13 @@ public sealed class NativeDialogPage : ContentPage
             body.Insert(actionsInsertIndex, actions);
         }
 
-        HorizontalStackLayout busy = new()
+        // A horizontal stack measures text at unlimited width and clips long
+        // localized progress messages. Give the label the remaining phone width.
+        Grid busy = new()
         {
             AutomationId = "dialog-busy",
-            Spacing = 10,
+            ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star) },
+            ColumnSpacing = 10,
             IsVisible = _interactionBusy,
             VerticalOptions = LayoutOptions.Center
         };
@@ -199,8 +205,8 @@ public sealed class NativeDialogPage : ContentPage
         _busyLabel.AutomationId = "dialog-busy-label";
         _busyLabel.IsVisible = _interactionBusy;
         SemanticProperties.SetDescription(_busyLabel, _busyLabel.Text);
-        busy.Add(_busyIndicator);
-        busy.Add(_busyLabel);
+        busy.Add(_busyIndicator, 0);
+        busy.Add(_busyLabel, 1);
         _busyContainer = busy;
         body.Insert(actionsInsertIndex, busy);
 
@@ -239,6 +245,14 @@ public sealed class NativeDialogPage : ContentPage
         fieldLayout.Add(label);
         NativeDialogFieldBinding binding = CreateFieldBinding(dialogId, renderGeneration, field);
 
+        if (NewRunnerDialogStrings.FixedSettingsDescription(dialogId, field, _renderedDialog) is { } settingsDescription)
+        {
+            Label description = NativeTheme.Body(settingsDescription);
+            description.AutomationId = "dialog-new-runner-fixed-settings";
+            fieldLayout.Add(description);
+            return NativeTheme.Card(fieldLayout, new Thickness(14));
+        }
+
         if (string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase))
         {
             IReadOnlyList<DesktopDialogFieldOption> options = scopedField.Options ?? [];
@@ -274,13 +288,10 @@ public sealed class NativeDialogPage : ContentPage
 
         if (string.Equals(field.InputType, "checkbox", StringComparison.OrdinalIgnoreCase))
         {
-            Switch toggle = new()
-            {
-                AutomationId = $"dialog-field-{Token(field.Id)}",
-                IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled,
-                IsEnabled = !field.IsReadOnly && !_interactionBusy,
-                OnColor = NativeTheme.Signal
-            };
+            Switch toggle = NativeTheme.ReadableSwitch();
+            toggle.AutomationId = $"dialog-field-{Token(field.Id)}";
+            toggle.IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled;
+            toggle.IsEnabled = !field.IsReadOnly && !_interactionBusy;
             NativeDialogAccessibility.BindFieldLabel(label, toggle, scopedField.Label);
             TrackInteractive(toggle, enabledWhenIdle: !field.IsReadOnly);
             if (!field.IsReadOnly)

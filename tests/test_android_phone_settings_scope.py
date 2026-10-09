@@ -19,6 +19,19 @@ RUNTIME_CAPABILITIES = (
 )
 
 
+def test_new_runner_progress_wraps_and_switch_off_state_is_visible() -> None:
+    dialog = NATIVE_DIALOG.read_text(encoding="utf-8")
+    theme = (ROOT / "src/Chummer.Android/Native/NativeTheme.cs").read_text(encoding="utf-8")
+    assert "Grid busy = new()" in dialog
+    assert "new(GridLength.Auto), new(GridLength.Star)" in dialog
+    assert "busy.Add(_busyLabel, 1)" in dialog
+    assert "button.LineBreakMode = LineBreakMode.WordWrap" in dialog
+    assert "button.MinimumHeightRequest = 50" in dialog
+    assert "Switch toggle = NativeTheme.ReadableSwitch()" in dialog
+    assert "TrackTintList" in theme and 'ParseColor("#61706E")' in theme
+    assert "NewRunnerDialogStrings.FixedSettingsDescription" in dialog
+
+
 def test_phone_more_exposes_only_the_phone_owned_settings_surface() -> None:
     more_source = MORE_PAGE.read_text(encoding="utf-8")
     phone_source = PHONE_SHELL_PAGES.read_text(encoding="utf-8")

@@ -127,6 +127,12 @@ internal static class PhoneLocaleRuntimeTests
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
         DesktopDialogState dialog = new("dialog.new_character", "Select Build Method", null, [], []);
+        var settings = new DesktopDialogField("newCharacterSetting", "Character Setting", "Core Rulebook", "Core Rulebook");
+        var sr5 = dialog with { Fields = [new DesktopDialogField("newCharacterRulesetId", "Ruleset", "sr5", "")] };
+        Require(NewRunnerDialogStrings.FixedSettingsDescription(dialog.Id, settings, sr5)!.Contains("alle Quellen")
+            && NewRunnerDialogStrings.FixedSettingsDescription("custom", settings, sr5) is null
+            && NewRunnerDialogStrings.FixedSettingsDescription(dialog.Id, settings with { Value = "custom" }, sr5) is null,
+            "Fixed canonical profiles must be honest, localized and never overwrite custom values.");
         foreach (var (id, canonical, german) in new[] {
             ("newCharacterName", "Character Name", "Charaktername"),
             ("newCharacterAlias", "Alias", "Alias"),

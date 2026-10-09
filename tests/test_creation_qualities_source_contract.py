@@ -12,18 +12,28 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         help_page = page[page.index("public sealed class CreationQualityInfoPage"):
                          page.index("internal static class CreationQualityInfo")]
-        self.assertIn("AddEffects(CreationQualityInfo.Effects(_sourceXml, _rating));", help_page)
+        self.assertIn("AddEffects(_body, CreationQualityInfo.Effects(_sourceXml, _rating)", help_page)
         self.assertIn("IsVisible = false", help_page)
         self.assertIn("i == 0 || notices.Contains(effects[i])", help_page)
         for notice in ("Manual", "Additional", "ChangedDefinition", "BaseEffects"):
             self.assertIn(f'"Qualities.Info.{notice}"', help_page)
-        self.assertIn("ReferenceEquals(toggle.Parent, _body)", help_page)
+        self.assertIn("ReferenceEquals(toggle.Parent, body)", help_page)
+        self.assertIn("!isCurrent()", help_page)
         self.assertIn("Coordinator.IsCreationCatalogDisplayCurrent(_original)", help_page)
         for locale in ("", ".de", ".es"):
             path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
             copy = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
             self.assertTrue(copy["Qualities.Info.ShowEffects"])
             self.assertTrue(copy["Qualities.Info.HideEffects"])
+
+    def test_configure_shows_same_exact_option_help_beside_add(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        configure = page[page.index("public sealed class CreationQualityConfigurePage"):
+                         page.index("public sealed class CreationQualitiesReviewPage")]
+        self.assertIn("_state.Authority.Options.SingleOrDefault(item => item.OptionId == _option.OptionId)", configure)
+        self.assertIn("CreationQualityInfoPage.AddEffects(_body", configure)
+        self.assertIn("CreationQualityInfo.Effects(source.SourceNodeXml, _option.Rating)", configure)
+        self.assertLess(configure.index("CreationQualityInfoPage.AddEffects"), configure.index('"creation-quality-configure-toggle"'))
 
     def test_authored_quality_summaries_remain_short_in_every_locale(self) -> None:
         # A copy-editing guard, not evidence of original authorship or permission.

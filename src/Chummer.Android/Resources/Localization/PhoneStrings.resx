@@ -400,4 +400,6 @@ No change has been saved yet.</value></data>
   <data name="NewRunnerMethodLifePath" xml:space="preserve"><value>Life Path</value></data>
   <data name="NewRunnerMethodKarmaSr6" xml:space="preserve"><value>Karma (SR6)</value></data>
   <data name="NewRunnerMethodBp" xml:space="preserve"><value>BP</value></data>
+  <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Standard creation rules · all sources enabled. The profile follows your build method.</value></data>
+  <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Standard creation rules. The profile follows your ruleset and build method.</value></data>
 </root>
