@@ -40,6 +40,13 @@ class MagicCatalogStringsTests(unittest.TestCase):
         for prefix, count in (("Talent.", 27), ("Category.spell.", 7), ("Metatype.", 21), ("MetatypeCategory.", 4)):
             self.assertEqual(sum(key.startswith(prefix) for key in self.en), count)
 
+    def test_saved_magic_rereview_uses_exact_identity_display_translation(self):
+        source = (ROOT / "src/Chummer.Android/Native/CreationMagicReReviewPage.cs").read_text()
+        body = source.split("private void AddChoice(", 1)[1].split("private void AddExit()", 1)[0]
+        self.assertIn(".Single(row => row.Identity == identity).Name", body)
+        self.assertIn("name = MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, name);", body)
+        self.assertIn('"{0} · level {1}", name, levels', body)
+
 
 if __name__ == "__main__":
     unittest.main()
