@@ -131,7 +131,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 166 is the latest [observed Internal availability](../play/evidence/preview166-internal-observation.md),
+Preview 167 is the latest [observed Internal availability](../play/evidence/preview167-internal-observation.md),
+confirmed on 9 October at 21:45 Europe/Vienna (Play displayed 21:44). Home now
+offers localized same-page retry after a failed initial restore, with visible
+loading feedback. Baseline/fixed managed page tests, native Release compile and
+existing-runner/new-process API 36 smoke passed; all saved workspace hashes were
+unchanged. Local ARM64 build, isolated original-key signing, independent keyless
+verification and one Internal upload/readback passed. Diagnostics retain their
+Internal default-on policy and existing opt-outs. **Injected startup failure is
+managed-page evidence; native remote diagnostic delivery, physical Play 167
+installation and complete Creation/Career remain unverified.** This is not a
+startup-speed improvement or conclusive attribution of the original incident.
+Prior evidence and rollback artifacts remain unchanged.
+
+Preview 166's [observed Internal availability](../play/evidence/preview166-internal-observation.md),
 confirmed on 9 October at 21:15 Europe/Vienna. A reproduced reader background
 refresh lost during export cancellation is fixed without replaying provider work.
 Baseline/fixed managed checks and a native full-chapter, picker-cancel and
