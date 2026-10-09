@@ -305,7 +305,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Talent.ReadOnly", "Talent · read only")));
-        card.Add(NativeTheme.Title(talent.Name, 22));
+        card.Add(NativeTheme.Title(MagicCatalogStrings.TalentName(talent.Name), 22));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), KindLabel(talent.Kind)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PriorityRank", "Priority rank"), talent.Rank));
         _technicalDetails.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PrioritySourceId", "Priority source id"), talent.Identity.PrioritySourceId));
@@ -313,9 +313,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Magic", "Magic"), talent.Magic.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Resonance", "Resonance"), talent.Resonance.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Depth", "Depth"), talent.Depth.ToString(CultureInfo.InvariantCulture)));
-        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredMetatypes", "Required metatypes"), talent.RequiredMetatypeNames);
-        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredCategories", "Required metatype categories"), talent.RequiredMetatypeCategories);
-        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames);
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredMetatypes", "Required metatypes"), talent.RequiredMetatypeNames.Select(MagicCatalogStrings.MetatypeName).ToArray());
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredCategories", "Required metatype categories"), talent.RequiredMetatypeCategories.Select(MagicCatalogStrings.MetatypeCategory).ToArray());
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames.Select(MagicCatalogStrings.MetatypeName).ToArray());
         AddSources(card, talent.SourceAnchorIds, _technicalDetails);
         foreach (string blocker in talent.Blockers)
             AddBlocker(card, blocker, _technicalDetails, _shownBlockerMessages);
@@ -1021,9 +1021,8 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         // Filter the retained, validated projection only. Browsing neither reads
         // Core again nor edits selections; option actions still preview through Core.
         var matches = _options.Where(option => (option.IsEnabled && option.Blockers.Count == 0 || _draft.IsSelected(option.Identity))
-            && (string.IsNullOrEmpty(_filter)
-            || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
-            || option.SourceBook.Contains(_filter, StringComparison.CurrentCultureIgnoreCase))).ToArray();
+            && MagicCatalogStrings.MatchesSearch(option.Identity.Kind, option.Identity.SourceId,
+                option.Name, option.SourceBook, _filter)).ToArray();
         _catalogOffset = Math.Min(_catalogOffset, Math.Max(0, matches.Length - 1) / CatalogPageSize * CatalogPageSize);
         int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
         rows.Clear();
@@ -1074,7 +1073,7 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
             if (_kind == CharacterCreationMagicResonanceKinds.Spell)
                 detail += "\n" + CreationSpellInfo.Summary(CreationSpellInfo.Resolve(_display?.CreationMagicResonance, option));
             Border row = NativeTheme.NavigationRow(
-                option.Name,
+                MagicCatalogStrings.OptionName(option.Identity.Kind, option.Identity.SourceId, option.Name),
                 detail,
                 () => CanUseRows() ? Navigation.PushAsync(new CreationMagicResonanceOptionPage(
                     Coordinator,
@@ -1176,7 +1175,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Magic.Option.Eyebrow",
             "SR5 · Draft · Choice")));
-        _body.Add(NativeTheme.Title(_option.Name));
+        _body.Add(NativeTheme.Title(MagicCatalogStrings.OptionName(_option.Identity.Kind, _option.Identity.SourceId, _option.Name)));
         if (_option.Identity.Kind == CharacterCreationMagicResonanceKinds.Spell
             && _display is not null && Coordinator.IsCreationCatalogDisplayCurrent(_display))
         {
@@ -1189,7 +1188,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         VerticalStackLayout diagnostics = new() { Spacing = 6 };
         diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
         diagnostics.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), _option.Identity.SourceId));
-        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Category", "Category"), _option.Category));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Category", "Category"), MagicCatalogStrings.CategoryName(_option.Identity.Kind, _option.Category)));
         details.Add(NativeTheme.Metric(
             CreationFlowStrings.Get("Magic.Option.PointCost", "Point cost"),
             CreationMagicResonancePage.Decimal(_option.PointCost)));
@@ -1624,7 +1623,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         // Names belong to the exact reviewed catalog, never a newer ambient
         // catalog or a name-based lookup used to reconstruct a mutation.
         var matches = _reviewOptions.Where(option => option.Identity == identity).ToArray();
-        string name = matches.Length == 1 ? matches[0].Name
+        string name = matches.Length == 1 ? MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, matches[0].Name)
             : CreationFlowStrings.Get("Magic.Review.UnavailableChoice", "Reopen Magic / Resonance to view this choice.");
         card.Add(NativeTheme.Title(name, 18));
         _technicalDetails.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), identity.SourceId));
