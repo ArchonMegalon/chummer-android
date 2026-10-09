@@ -95,6 +95,20 @@ public sealed class ApplicationSettingsPage : NativePageBase
             NativeTheme.Muted));
         body.Add(NativeTheme.Card(languageCard));
 
+        NativeProblemLog? diagnostics = IPlatformApplication.Current?.Services.GetService<NativeProblemLog>();
+        var system = IPlatformApplication.Current?.Services.GetService<Chummer.Android.Platform.IAndroidSystemService>();
+        if (diagnostics is not null && system is not null)
+        {
+            body.Add(NativeTheme.Title(PhoneStrings.Get("SettingsDiagnostics", "Technical diagnostics")));
+            body.Add(NativeTheme.Body(PhoneStrings.Get("SettingsDiagnosticsLocal",
+                "Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text. Nothing is sent automatically."), NativeTheme.Muted));
+            Button shareDiagnostics = NativeTheme.SecondaryButton(PhoneStrings.Get("SettingsDiagnosticsShare", "Share technical report"));
+            shareDiagnostics.AutomationId = "settings-share-diagnostics";
+            shareDiagnostics.Clicked += async (_, _) => await RunAsync(async () =>
+                await system.ShareTextAsync(await diagnostics.ExportAsync()));
+            body.Add(shareDiagnostics);
+        }
+
         Label updateAuthority = NativeTheme.Body(
             PhoneStrings.Get(
                 "SettingsUpdatesPlayManaged",

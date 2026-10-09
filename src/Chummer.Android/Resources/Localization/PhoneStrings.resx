@@ -402,4 +402,7 @@ No change has been saved yet.</value></data>
   <data name="NewRunnerMethodBp" xml:space="preserve"><value>BP</value></data>
   <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Standard creation rules · all sources enabled. The profile follows your build method.</value></data>
   <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Standard creation rules. The profile follows your ruleset and build method.</value></data>
+  <data name="SettingsDiagnostics" xml:space="preserve"><value>Technical diagnostics</value></data>
+  <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text. Nothing is sent automatically.</value></data>
+  <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Share technical report</value></data>
 </root>

@@ -1,6 +1,7 @@
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.OriginBooks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
 
@@ -145,6 +146,8 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 
     private async Task<bool> RefreshStoryReadinessAsync()
     {
+        using var diagnostic = IPlatformApplication.Current?.Services.GetService<NativeProblemLog>()
+            ?.Begin(NativeProblemArea.LifeModules, NativeProblemOperation.StoryReadiness);
         _storyReady = false;
         _checkingStory = NeedsStoryBeforeChoices;
         Content = new ScrollView { Content = BuildBody() };
@@ -161,15 +164,15 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             OriginBookReadingState? details = null;
             try { details = await _loadOpeningDetails(checkpoint, Current); }
             catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException
-                or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+                or UnauthorizedAccessException or System.Text.Json.JsonException) { diagnostic?.Fail(error); }
             finally { _actionInFlight = wasInFlight; }
-            if (!Current()) return false;
+            if (!Current()) { diagnostic?.Finish(NativeProblemOutcome.Canceled); return false; }
             if (_openingDetails?.Digest != details?.Digest) _storyProfile = details?.StoryProfile ?? new();
             _openingDetails = details;
             Content = new ScrollView { Content = BuildBody() };
             generation = _renderGeneration;
         }
-        if (!_checkingStory) return false;
+        if (!_checkingStory) { diagnostic?.Finish(); return false; }
         bool ready = false;
         try
         {
@@ -178,12 +181,14 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         }
         catch (Exception error) when (error is OperationCanceledException or IOException or InvalidOperationException)
         {
+            diagnostic?.Fail(error);
             // No reading proof is no permission to advance. Keep the book and
             // explicit refresh available; never manufacture a read acceptance.
         }
-        if (!Current()) return false;
+        if (!Current()) { diagnostic?.Finish(NativeProblemOutcome.Canceled); return false; }
         _checkingStory = false;
         _storyReady = ready;
+        diagnostic?.Finish(ready ? NativeProblemOutcome.Completed : NativeProblemOutcome.NotReady);
         Content = new ScrollView { Content = BuildBody() };
         return true;
     }

@@ -34,6 +34,9 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>();
 
+        builder.Services.AddSingleton(_ => new NativeProblemLog(
+            Path.Combine(FileSystem.AppDataDirectory, "diagnostics"),
+            $"{AppInfo.Current.VersionString}+{AppInfo.Current.BuildString}"));
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         builder.Services.AddSingleton<Api36ProofStatePublisher>();
