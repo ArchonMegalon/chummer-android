@@ -378,4 +378,5 @@ No change has been saved yet.</value></data>
   <data name="CreationQualitiesUnavailable" xml:space="preserve"><value>Your runner's qualities could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Resources unavailable</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Your runner's resources could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
+  <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Friends in High Places contacts</value></data>
 </root>

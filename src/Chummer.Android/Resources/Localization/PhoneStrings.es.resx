@@ -378,4 +378,5 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="CreationQualitiesUnavailable" xml:space="preserve"><value>No se pudieron cargar con seguridad las cualidades de tu runner. No se cambió nada. Vuelve a abrir el runner e inténtalo de nuevo.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Recursos no disponibles</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>No se pudieron cargar con seguridad los recursos de tu runner. No se cambió nada. Vuelve a abrir el runner e inténtalo de nuevo.</value></data>
+  <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Contactos influyentes</value></data>
 </root>

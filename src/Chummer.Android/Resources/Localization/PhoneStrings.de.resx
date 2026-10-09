@@ -378,4 +378,5 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="CreationQualitiesUnavailable" xml:space="preserve"><value>Die Vor- und Nachteile deines Runners konnten nicht sicher geladen werden. Es wurde nichts geändert. Öffne den Runner erneut und versuche es noch einmal.</value></data>
   <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Ressourcen nicht verfügbar</value></data>
   <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Die Ressourcen deines Runners konnten nicht sicher geladen werden. Es wurde nichts geändert. Öffne den Runner erneut und versuche es noch einmal.</value></data>
+  <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Hochrangige Connections</value></data>
 </root>

@@ -140,6 +140,8 @@ internal static class PhoneLocaleRuntimeTests
         }
         Require(BuildPageUiProjection.BudgetLabel(budget with { BudgetId = CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints }) == "Kraftpunkte",
             "Adept budget leaked English.");
+        Require(BuildPageUiProjection.BudgetLabel(budget with { BudgetId = "friends-in-high-places-contacts", Label = "Friends in High Places contacts" }) == "Hochrangige Connections",
+            "Additional contact budget leaked English.");
         Require(BuildPageUiProjection.StageLabel("future-custom-stage", "My Custom Stage") == "My Custom Stage",
             "Unknown/custom labels must not be guessed or rewritten.");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
