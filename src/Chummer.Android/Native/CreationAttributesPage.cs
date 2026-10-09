@@ -153,13 +153,13 @@ public sealed class CreationAttributesPage : NativePageBase
             "Available points")));
         AddBudgetCard(
             _draft.NormalBudget(state),
-            "creation-attributes-budget-normal", state);
+            CharacterCreationBudgetIds.NormalAttributes, "creation-attributes-budget-normal", state);
         AddBudgetCard(
             _draft.SpecialBudget(state),
-            "creation-attributes-budget-special", state, CharacterCreationAttributeCategories.Special);
+            CharacterCreationBudgetIds.SpecialAttributes, "creation-attributes-budget-special", state, CharacterCreationAttributeCategories.Special);
         AddBudgetCard(
             _draft.KarmaBudget(state),
-            "creation-attributes-budget-karma");
+            CharacterCreationBudgetIds.Karma, "creation-attributes-budget-karma");
     }
 
     private void AddLimits(CharacterCreationAttributesState state)
@@ -348,18 +348,19 @@ public sealed class CreationAttributesPage : NativePageBase
         _body.Add(note);
     }
 
-    private void AddBudgetCard(CharacterCreationBudgetState budget, string automationId,
+    private void AddBudgetCard(CharacterCreationBudgetState budget, string canonicalBudgetId, string automationId,
         CharacterCreationAttributesState? scrollAuthority = null,
         string category = CharacterCreationAttributeCategories.Normal)
     {
+        string label = BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId);
         VerticalStackLayout card = new() { Spacing = 6 };
         if (scrollAuthority is null)
-            card.Add(NativeTheme.Title(budget.Label, 18));
+            card.Add(NativeTheme.Title(label, 18));
         else
         {
-            Button jump = NativeTheme.ReadingButton(budget.Label + " ↓");
+            Button jump = NativeTheme.ReadingButton(label + " ↓");
             jump.AutomationId = automationId + "-jump";
-            SemanticProperties.SetDescription(jump, budget.Label);
+            SemanticProperties.SetDescription(jump, label);
             long appearance = CaptureAppearanceGeneration();
             jump.Clicked += async (_, _) =>
             {
@@ -393,7 +394,7 @@ public sealed class CreationAttributesPage : NativePageBase
             CreationAllocationStrings.Format(
                 "Common.BudgetSemanticDescription",
                 "{0}. Total {1}. Used {2}. Remaining {3}.",
-                budget.Label,
+                label,
                 FormatBudget(budget.Total, budget.Unit),
                 FormatBudget(budget.Used, budget.Unit),
                 FormatBudget(budget.Remaining, budget.Unit)));
@@ -428,7 +429,11 @@ public sealed class CreationAttributesPage : NativePageBase
         => CreationAllocationStrings.AttributeName(attributeId);
 
     internal static string FormatBudget(decimal value, string unit)
-        => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
+    {
+        string label = string.IsNullOrWhiteSpace(unit) ? string.Empty
+            : PhoneStrings.Get("CreationUnit." + unit, unit);
+        return $"{value.ToString("0.##", CultureInfo.CurrentCulture)} {label}".TrimEnd();
+    }
 
     internal static string Token(string value)
         => new(value.Trim().ToLowerInvariant().Select(character =>
@@ -896,15 +901,15 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.FinalDraftLedgers",
             "Points after saving")));
-        foreach (CharacterCreationBudgetState budget in new[]
+        foreach (var (budget, canonicalBudgetId) in new[]
                  {
-                     _preview.NormalPointBudget,
-                     _preview.SpecialPointBudget,
-                     _preview.CreationKarmaBudget
+                     (_preview.NormalPointBudget, CharacterCreationBudgetIds.NormalAttributes),
+                     (_preview.SpecialPointBudget, CharacterCreationBudgetIds.SpecialAttributes),
+                     (_preview.CreationKarmaBudget, CharacterCreationBudgetIds.Karma)
                  })
         {
             VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(budget.Label, 18));
+            card.Add(NativeTheme.Title(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId), 18));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.Total", "Total"),
                 CreationAttributesPage.FormatBudget(budget.Total, budget.Unit)));

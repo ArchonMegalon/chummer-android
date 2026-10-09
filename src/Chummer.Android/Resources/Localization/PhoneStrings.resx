@@ -300,4 +300,83 @@ No change has been saved yet.</value></data>
   <data name="StoriesPrivateDetail" xml:space="preserve"><value>Read your runner’s Origin chapters and illustrations. Finished chapters can be saved as a book.</value></data>
   <data name="StoriesChooseRunnerDetail" xml:space="preserve"><value>Open an SR5 Life Modules runner to read its Origin book. Your book stays with that runner.</value></data>
   <data name="StoriesChooseRunner" xml:space="preserve"><value>Choose a runner</value></data>
+  <data name="RunnerEmpty" xml:space="preserve"><value>No runner loaded</value></data>
+  <data name="RunnerCreation" xml:space="preserve"><value>Creation runner</value></data>
+  <data name="RunnerCareer" xml:space="preserve"><value>Career runner</value></data>
+  <data name="RunnerSaved" xml:space="preserve"><value>Saved.</value></data>
+  <data name="RunnerOpenFirst" xml:space="preserve"><value>Open a runner first</value></data>
+  <data name="RunnerLocalFile" xml:space="preserve"><value>Your file stays on this device unless you choose to link it.</value></data>
+  <data name="RunnerCreate" xml:space="preserve"><value>Create</value></data>
+  <data name="RunnerSheet" xml:space="preserve"><value>Sheet</value></data>
+  <data name="RunnerCareerUnavailable" xml:space="preserve"><value>Career editing on this phone is available for SR5 runners only.</value></data>
+  <data name="RunnerUnsaved" xml:space="preserve"><value>Unsaved changes</value></data>
+  <data name="RunnerMetavariant" xml:space="preserve"><value>Metavariant</value></data>
+  <data name="RunnerRules" xml:space="preserve"><value>Rules</value></data>
+  <data name="RunnerRuleProfile" xml:space="preserve"><value>Character Setting</value></data>
+  <data name="CreationSteps" xml:space="preserve"><value>Generation steps</value></data>
+  <data name="CreationContinue" xml:space="preserve"><value>Continue</value></data>
+  <data name="CreationRemaining" xml:space="preserve"><value>{0:0.##} left</value></data>
+  <data name="CreationMethodTitle" xml:space="preserve"><value>Build method · {0}</value></data>
+  <data name="CreationOriginNext" xml:space="preserve"><value>Read the chapter, review its effects, then continue.</value></data>
+  <data name="CreationFoundationNext" xml:space="preserve"><value>Choose a metatype and nationality.</value></data>
+  <data name="CreationResourcesDetail" xml:space="preserve"><value>Invest 0–{0:0.##} Karma · {1:N0} starting nuyen</value></data>
+  <data name="CreationPrioritiesChoose" xml:space="preserve"><value>Assign your five {0} priorities.</value></data>
+  <data name="CreationPrioritiesResume" xml:space="preserve"><value>Review your saved {0} choices.</value></data>
+  <data name="CreationAttributesChoose" xml:space="preserve"><value>Allocate attributes · {0:0.##} normal points left</value></data>
+  <data name="CreationAttributesResume" xml:space="preserve"><value>Review saved attributes · {0:0.##} normal points left</value></data>
+  <data name="CreationSkillsChoose" xml:space="preserve"><value>Choose skills · {0:0.##} active skill points left</value></data>
+  <data name="CreationSkillsResume" xml:space="preserve"><value>Review saved skills · {0:0.##} active skill points left</value></data>
+  <data name="CreationQualitiesChoose" xml:space="preserve"><value>Choose qualities · {0:0.##} positive / {1:0.##} negative Karma available</value></data>
+  <data name="CreationQualitiesResume" xml:space="preserve"><value>Review saved qualities · {0:0.##} creation Karma left</value></data>
+  <data name="CreationMagicResume" xml:space="preserve"><value>Review saved choices for {0}.</value></data>
+  <data name="CreationMagicChoose" xml:space="preserve"><value>Choose options for {0}.</value></data>
+  <data name="CreationMethod.Priority" xml:space="preserve"><value>Priority</value></data>
+  <data name="CreationMethod.SumtoTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="CreationMethod.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="CreationMethod.LifeModule" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="CreationStep.basics" xml:space="preserve"><value>Basics</value></data>
+  <data name="CreationStep.method" xml:space="preserve"><value>Build method</value></data>
+  <data name="CreationStep.foundation" xml:space="preserve"><value>Metatype</value></data>
+  <data name="CreationStep.life-modules" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="CreationStep.attributes" xml:space="preserve"><value>Attributes</value></data>
+  <data name="CreationStep.qualities" xml:space="preserve"><value>Qualities</value></data>
+  <data name="CreationStep.skills" xml:space="preserve"><value>Skills</value></data>
+  <data name="CreationStep.magic-resonance" xml:space="preserve"><value>Magic / Resonance</value></data>
+  <data name="CreationStep.resources" xml:space="preserve"><value>Resources</value></data>
+  <data name="CreationStep.contacts-lifestyles" xml:space="preserve"><value>Contacts &amp; lifestyles</value></data>
+  <data name="CreationStep.identity-story" xml:space="preserve"><value>Identity &amp; story</value></data>
+  <data name="CreationStep.review" xml:space="preserve"><value>Review</value></data>
+  <data name="CreationStatus.not-started" xml:space="preserve"><value>Not started</value></data>
+  <data name="CreationStatus.available" xml:space="preserve"><value>Available</value></data>
+  <data name="CreationStatus.in-progress" xml:space="preserve"><value>In progress</value></data>
+  <data name="CreationStatus.blocked" xml:space="preserve"><value>Blocked</value></data>
+  <data name="CreationStatus.complete" xml:space="preserve"><value>Complete</value></data>
+  <data name="CreationStatus.needs-review" xml:space="preserve"><value>Needs review</value></data>
+  <data name="CreationBudget.karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="CreationBudget.positive-qualities" xml:space="preserve"><value>Positive qualities</value></data>
+  <data name="CreationBudget.negative-qualities" xml:space="preserve"><value>Negative qualities</value></data>
+  <data name="CreationBudget.normal-attributes" xml:space="preserve"><value>Normal attributes</value></data>
+  <data name="CreationBudget.special-attributes" xml:space="preserve"><value>Special attributes</value></data>
+  <data name="CreationBudget.active-skills" xml:space="preserve"><value>Active skills</value></data>
+  <data name="CreationBudget.skill-groups" xml:space="preserve"><value>Skill groups</value></data>
+  <data name="CreationBudget.knowledge-skills" xml:space="preserve"><value>Knowledge skills</value></data>
+  <data name="CreationBudget.contacts" xml:space="preserve"><value>Contacts</value></data>
+  <data name="CreationBudget.resources" xml:space="preserve"><value>Resources</value></data>
+  <data name="CreationBudget.spells-forms-programs" xml:space="preserve"><value>Spells / forms / programs</value></data>
+  <data name="CreationBudget.life-modules" xml:space="preserve"><value>Life Modules</value></data>
+  <data name="CreationUnit.points" xml:space="preserve"><value>points</value></data>
+  <data name="CreationUnit.karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="CreationUnit.nuyen" xml:space="preserve"><value>nuyen</value></data>
+  <data name="CreationUnit.choices" xml:space="preserve"><value>choices</value></data>
+  <data name="CreationUnit.slots" xml:space="preserve"><value>slots</value></data>
+  <data name="CreationUnit.power-points" xml:space="preserve"><value>power points</value></data>
+  <data name="CreationFinish" xml:space="preserve"><value>Review and finish creation</value></data>
+  <data name="CreationPowerPoints" xml:space="preserve"><value>Power points</value></data>
+  <data name="CreationBudgets" xml:space="preserve"><value>Budgets</value></data>
+  <data name="CreationBudgetsUnavailable" xml:space="preserve"><value>Your available points could not be determined. Reopen the runner and try again.</value></data>
+  <data name="CreationQualitiesUnavailableTitle" xml:space="preserve"><value>Qualities unavailable</value></data>
+  <data name="CreationQualitiesUnavailable" xml:space="preserve"><value>Your runner's qualities could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
+  <data name="CreationResourcesUnavailableTitle" xml:space="preserve"><value>Resources unavailable</value></data>
+  <data name="CreationResourcesUnavailable" xml:space="preserve"><value>Your runner's resources could not be loaded safely. Nothing was changed. Reopen the runner and try again.</value></data>
+  <data name="CreationBudget.friends-in-high-places-contacts" xml:space="preserve"><value>Friends in High Places contacts</value></data>
 </root>
