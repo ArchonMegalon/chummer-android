@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 152 is the latest [observed Internal availability](../play/evidence/preview152-internal-observation.md),
+Preview 153 is the latest [observed Internal availability](../play/evidence/preview153-internal-observation.md),
+confirmed on 9 October at 04:42 Europe/Vienna. Creation heritage projection
+reuses parsed source fields within one operation, retaining canonical values,
+detached results and owner/source checks. Exact package/managed checks and the
+final-source native normal-attribute jump, Body +1, explicit save and new-process
+reopen passed. The selected draft persisted at revision 10/10; its XML and the
+other 32 workspace files stayed unchanged. One local ARM64 build, isolated
+existing-key signature, independent keyless checks and one Internal upload/
+readback passed. Full chapters and chapter images remain in the reader and EPUB.
+**Startup remains slow; physical Play 153 installation and complete Creation/
+Career coverage remain open.** No native speedup or finished-app claim is made.
+Previous artifacts and evidence are unchanged.
+
+Preview 152's [observed Internal availability](../play/evidence/preview152-internal-observation.md),
 confirmed on 9 October at 02:54 Europe/Vienna. Synchronous Contacts reads reuse
 source construction while retaining fresh source admission, detached results and
 owner/revision checks. Exact package/managed checks and the final-source native
