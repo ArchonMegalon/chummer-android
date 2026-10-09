@@ -123,6 +123,11 @@ internal static class PhoneLocaleRuntimeTests
             && BuildPageUiProjection.BudgetRemaining(budget.Remaining) == "2,5 übrig", "Budget copy or regional number failed.");
         Require(budget == original && budget.Label == "Normal attributes" && budget.Unit == "points",
             "Display localization mutated the authority.");
+        Require(CreationAttributesPage.FormatBudget(2.5m, "points") == "2,5 Punkte"
+            && CreationAttributesPage.FormatBudget(25, "karma") == "25 Karma"
+            && CreationAttributesPage.FormatBudget(2.5m, "custom") == "2,5 custom"
+            && CreationAttributesPage.FormatBudget(2.5m, "") == "2,5",
+            "Attribute editor units bypassed German resources or changed unknown units.");
         // Ready Attributes/Skills replace snapshot budgets with editor-owned
         // ledgers. Their IDs need not equal the snapshot's display identity.
         foreach (var (canonicalId, expectedLabel) in new[] {
@@ -146,6 +151,8 @@ internal static class PhoneLocaleRuntimeTests
             "Unknown/custom labels must not be guessed or rewritten.");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
         Require(BuildPageUiProjection.BudgetRemaining(2.5m) == "2.5 übrig", "App language overrode the chosen region.");
+        Require(CreationAttributesPage.FormatBudget(2.5m, "points") == "2.5 Punkte",
+            "Attribute editor ignored the separately selected region.");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
         Require(BuildPageUiProjection.StageLabel("skills", "MISSING") == "Skills", "English fallback changed.");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");

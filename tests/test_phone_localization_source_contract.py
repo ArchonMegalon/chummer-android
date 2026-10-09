@@ -138,6 +138,15 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertIn('CreationNavigationRow($"{budgetLabel} · {amount}"', source)
         self.assertIn("DisplayAlertAsync(budgetLabel,", source)
 
+    def test_attribute_editor_and_review_localize_budgets_without_rewriting_ledgers(self) -> None:
+        source = (PROJECT / "Native" / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        for canonical in ("NormalAttributes", "SpecialAttributes", "Karma"):
+            self.assertGreaterEqual(source.count("CharacterCreationBudgetIds." + canonical), 2)
+        self.assertIn("BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)", source)
+        self.assertNotIn("budget.Label", source)
+        self.assertIn('SemanticProperties.SetDescription(jump, label)', source)
+        self.assertIn('PhoneStrings.Get("CreationUnit." + unit, unit)', source)
+
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
             "en": load_resx("PhoneStrings.resx"),
