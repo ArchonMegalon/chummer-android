@@ -126,7 +126,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 155 is the latest [observed Internal availability](../play/evidence/preview155-internal-observation.md),
+Preview 156 is the latest [observed Internal availability](../play/evidence/preview156-internal-observation.md),
+confirmed on 9 October at 10:21 Europe/Vienna. Ordinary saved-runner reads reuse
+successful exact-byte historical validation while ownership, revisions, leases
+and mutation checks remain fresh. Exact package/managed checks and final-source
+native normal-point navigation, Body 3 to 4, explicit save and new-process restore
+passed. Revision 12/12 became 13/13; only the selected JSON changed, and all 33
+saved/reopened files matched. The smoke used a separate SDK-key package with
+copied synthetic fixtures, not an in-place upgrade. One local ARM64 build,
+isolated existing-key signature, independent keyless checks and one Internal
+upload/readback passed. Existing full-chapter and inline-image coverage is reused.
+**Startup remains slow; physical Play 156 installation and complete Creation/
+Career coverage remain open.** No native speedup or finished-app claim is made.
+Previous artifacts and evidence are unchanged.
+
+Preview 155's [observed Internal availability](../play/evidence/preview155-internal-observation.md),
 confirmed on 9 October at 08:23 Europe/Vienna. Creation overview reads reuse one
 owner-bound observation and operation-local source context; mutation admission
 stays fresh. Exact package/managed checks and final-source native normal-point
