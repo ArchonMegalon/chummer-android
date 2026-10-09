@@ -11,6 +11,19 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_refused_workspace_switch_is_visible_without_scrolling_or_auto_save(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        refresh = source.split("protected override void Refresh()", 1)[1].split("private void AddRouteMarker", 1)[0]
+        self.assertEqual(1, refresh.count("AddFeedback();"))
+        self.assertLess(refresh.index("AddFeedback();"), refresh.index("AddCreationWizardDashboard();"))
+        picker = source.split("private bool AddWorkspacePicker(", 1)[1].split("private ", 1)[0]
+        self.assertLess(picker.index("await Task.Yield();"), picker.index("BeginRunnerLoad();"))
+        refused = picker.split("if (activated is null)", 1)[1].split("if (Coordinator.State.WorkspaceId", 1)[0]
+        self.assertIn("HasUnsavedWorkspaceSwitchNotice", refused)
+        self.assertIn('DisplayAlertAsync("Chummer", ReadableNotice!, "OK")', refused)
+        self.assertNotIn("SaveAsync", picker)
+        self.assertNotIn("Discard", picker)
+
     def test_workspace_picker_pairs_its_light_surface_with_readable_text(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         picker = source.split("private bool AddWorkspacePicker(", 1)[1].split("private ", 1)[0]

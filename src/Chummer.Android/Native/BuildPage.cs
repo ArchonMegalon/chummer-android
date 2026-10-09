@@ -1055,6 +1055,9 @@ public sealed class BuildPage : NativePageBase
         BuildPageRouteMarker routeMarker = BuildPageUiProjection.RouteMarker(Coordinator.State.Profile);
         AddRouteMarker(routeMarker.AutomationId, routeMarker.Label);
         ResetScrollForCurrentAppearance();
+        // A refused action must be visible before the long creation dashboard,
+        // not several screens below it. Keep the exact existing state/notice.
+        AddFeedback();
         if (Coordinator.State.Profile is null)
         {
             Title = "Runner";
@@ -1092,12 +1095,10 @@ public sealed class BuildPage : NativePageBase
                     _body.Add(open);
                 }
                 else _body.Add(NativeTheme.Body(Sr6CreationCopy.Text("OtherMethods"), NativeTheme.Muted));
-                AddFeedback();
                 return;
             }
             AddRetainedOriginBookRoute();
             AddCreationWizardDashboard();
-            AddFeedback();
             return;
         }
 
@@ -1116,7 +1117,6 @@ public sealed class BuildPage : NativePageBase
             AddRetainedOriginBookRoute();
             AddSr5CareerWizardRoute();
             AddSummary();
-            AddFeedback();
             return;
         }
 
@@ -1126,7 +1126,6 @@ public sealed class BuildPage : NativePageBase
             NativeTheme.Danger);
         unavailable.AutomationId = "build-career-wizard-unavailable";
         _body.Add(NativeTheme.Card(unavailable));
-        AddFeedback();
     }
 
     private void AddRouteMarker(string automationId, string label)
@@ -3830,6 +3829,9 @@ public sealed class BuildPage : NativePageBase
             if (selected.Id == displayed.WorkspaceId) return;
             await RunAsync(async () =>
             {
+                // Let Android dismiss the native Picker before any render can
+                // detach its handler (including a refused workspace switch).
+                await Task.Yield();
                 if (!Current()) return;
                 // The retained page does not receive OnAppearing for a Picker
                 // switch. Retire the old controls and reload the target's same
@@ -3844,9 +3846,19 @@ public sealed class BuildPage : NativePageBase
                 try
                 {
                     var activated = await Coordinator.SwitchWorkspaceAsync(selected, cancellation);
-                    if (activated is null || cancellation.IsCancellationRequested
-                        || !IsCurrentAppearanceGeneration(appearance)
-                        || Coordinator.State.WorkspaceId != selected.Id
+                    if (cancellation.IsCancellationRequested
+                        || !IsCurrentAppearanceGeneration(appearance)) return;
+                    if (activated is null)
+                    {
+                        // In particular, a dirty runner correctly refuses the
+                        // switch. Do not silently return to the previous runner
+                        // with the reason below the fold, and never auto-save or
+                        // discard the user's changes to make selection succeed.
+                        if (HasUnsavedWorkspaceSwitchNotice)
+                            await DisplayAlertAsync("Chummer", ReadableNotice!, "OK");
+                        return;
+                    }
+                    if (Coordinator.State.WorkspaceId != selected.Id
                         || Coordinator.State.DisplayOwnerContext != displayed.DisplayOwnerContext
                         || Coordinator.State.Session.OwnerContext != displayed.Session.OwnerContext) return;
                     await PrepareForAppearanceRefreshAsync(cancellation);
