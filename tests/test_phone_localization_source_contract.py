@@ -160,6 +160,15 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         for field in ("ActivePointsRemaining", "SkillGroupPointsRemaining", "KnowledgePointsRemaining"):
             self.assertIn(f"receipt.{field}.ToString(CultureInfo.CurrentCulture)", source)
 
+    def test_historical_skills_review_uses_the_same_localized_budget_identity(self) -> None:
+        source = (PROJECT / "Native" / "CreationSkillsReReviewPage.cs").read_text(encoding="utf-8")
+        for canonical in ("ActiveSkills", "SkillGroups", "KnowledgeSkills"):
+            self.assertIn("CharacterCreationBudgetIds." + canonical, source)
+        self.assertIn("BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)", source)
+        self.assertNotIn("budget.Label", source)
+        self.assertIn('"creation-skills-rereview-budget-" + Token(canonicalBudgetId)', source)
+        self.assertIn("budget.Used, budget.Total, budget.Remaining", source)
+
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
             "en": load_resx("PhoneStrings.resx"),
