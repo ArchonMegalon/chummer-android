@@ -126,7 +126,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 159 is the latest [observed Internal availability](../play/evidence/preview159-internal-observation.md),
+Preview 160 is the latest [observed Internal availability](../play/evidence/preview160-internal-observation.md),
+confirmed on 9 October at 13:21 Europe/Vienna. Skills blocker and historical
+re-review guidance is localized; exact reason codes, IDs, source anchors and
+receipt/binding details are behind optional collapsed diagnostics. Fourteen
+locale source tests, affected managed runtime checks and final-source native
+German disclosure/re-review smoke passed; all 33 fixture files were unchanged.
+The local ARM64 build, isolated existing-key signature, independent keyless
+verification and one Internal upload/readback passed. **English catalog names,
+physical Play 160 installation and complete Creation/Career remain open;
+startup remains slow.** No whole-app localization or speedup claim is made.
+Previous artifacts and evidence are unchanged.
+
+Preview 159's [observed Internal availability](../play/evidence/preview159-internal-observation.md),
 confirmed on 9 October at 12:52 Europe/Vienna. Skills editor, confirmation and
 historical re-review budget headings and linked attributes use localized display
 labels; numeric formatting follows the independent region. Thirteen source
