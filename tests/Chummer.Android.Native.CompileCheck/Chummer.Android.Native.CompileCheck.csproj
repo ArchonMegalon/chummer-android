@@ -47,6 +47,8 @@
   <ItemGroup>
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/SkillCatalogStrings.resx" Link="Resources/Localization/SkillCatalogStrings.resx" />
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/SkillCatalogStrings.de.resx" Link="Resources/Localization/SkillCatalogStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/MagicCatalogStrings.resx" Link="Resources/Localization/MagicCatalogStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/MagicCatalogStrings.de.resx" Link="Resources/Localization/MagicCatalogStrings.de.resx" />
   </ItemGroup>
   <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">
     <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ChummerNativeProofCaptureTests)', '\A(true|false)\z'))"

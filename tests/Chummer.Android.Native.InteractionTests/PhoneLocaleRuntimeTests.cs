@@ -83,6 +83,7 @@ internal static class PhoneLocaleRuntimeTests
             RegionalCreationCopy();
             SkillsBlockerCopy();
             SkillsCatalogCopy();
+            MagicCatalogCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -215,6 +216,47 @@ internal static class PhoneLocaleRuntimeTests
         Require(CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.ActiveBudgetExceeded)
             .Contains("Fertigkeitspunkte", StringComparison.Ordinal), "German budget guidance is still English.");
         Console.WriteLine("PASS all canonical Skills/re-review reasons: EN/DE/ES player guidance, unknown-code fallback, distinct save outcomes");
+    }
+
+    private static void MagicCatalogCopy()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        var cases = new[] {
+            (CharacterCreationMagicResonanceKinds.Spell, "c78d91cc-fa02-48c3-a243-28823a2038ef", "Acid Stream", "Säurestrahl"),
+            (CharacterCreationMagicResonanceKinds.AdeptPower, "8caaadf4-75b4-4535-928a-5648d395c13a", "Adrenaline Boost", "Adrenalinschub"),
+            (CharacterCreationMagicResonanceKinds.Tradition, "19320625-bc1a-492f-8904-da6a847e5700", "Hermetic", "Hermetisch"),
+            (CharacterCreationMagicResonanceKinds.Stream, "7a3ecfbe-616e-425d-b204-329de37ffdbb", "Default", "Normal"),
+            (CharacterCreationMagicResonanceKinds.ComplexForm, "373638b9-4334-4645-99f5-c3673e4f809b", "Cleaner", "Reiniger")
+        };
+        foreach (var (kind, id, name, german) in cases)
+        {
+            Require(MagicCatalogStrings.OptionName(kind, id, name) == german,
+                "Magic catalog still displays English: " + kind);
+            Require(MagicCatalogStrings.MatchesSearch(kind, id, name, "SR5", german.ToLowerInvariant())
+                && MagicCatalogStrings.MatchesSearch(kind, id, name, "SR5", name)
+                && MagicCatalogStrings.MatchesSearch(kind, id, name, "SR5", "sr5")
+                && !MagicCatalogStrings.MatchesSearch(kind, id, name, "SR5", "no such entry"),
+                "Search must accept displayed German, original names and source books.");
+            Require(MagicCatalogStrings.OptionName(kind, id, "My custom choice") == "My custom choice"
+                && MagicCatalogStrings.OptionName(kind, "new-source", name) == name
+                && MagicCatalogStrings.OptionName("other-kind", id, name) == name,
+                "Localization borrowed a label for a renamed/custom/different-kind identity.");
+        }
+        Require(MagicCatalogStrings.CategoryName(CharacterCreationMagicResonanceKinds.Spell, "Combat") == "Kampfzauber"
+            && MagicCatalogStrings.CategoryName(CharacterCreationMagicResonanceKinds.Spell, "Custom category") == "Custom category"
+            && MagicCatalogStrings.TalentName("Adept - 6 Magic") == "Adept - 6 Magie"
+            && MagicCatalogStrings.MetatypeName("Human") == "Mensch"
+            && MagicCatalogStrings.TalentName("My custom talent") == "My custom talent",
+            "Talent, metatype or category labels were not preserved/localized correctly.");
+        foreach (string language in new[] { "en-GB", "es-MX", "ja-JP" })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            foreach (var (kind, id, name, _) in cases)
+                Require(MagicCatalogStrings.OptionName(kind, id, name) == name,
+                    "Non-German catalog fallback changed.");
+        }
+        Console.WriteLine("PASS Magic catalog: five canonical kinds, DE/AT independent of US region, localized/original/book search, custom identity isolation and EN/ES fallback");
     }
 
     private static void SkillsCatalogCopy()

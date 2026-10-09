@@ -105,6 +105,7 @@ public sealed class CreationMagicReReviewPage : NativePageBase
         var authority = _state.CurrentState.Authority;
         var name = authority.Traditions.Concat(authority.Streams).Concat(authority.AdeptPowers)
             .Concat(authority.Spells).Concat(authority.ComplexForms).Single(row => row.Identity == identity).Name;
+        name = MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, name);
         _body.Add(NativeTheme.Body(levels is null ? name
             : CreationAllocationStrings.Format("MagicReReview.Power", "{0} · level {1}", name, levels)));
     }
