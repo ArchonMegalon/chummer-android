@@ -329,13 +329,39 @@ public static class BuildPageUiProjection
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
         => profile switch
         {
-            null => new("phone-runner-empty", "No runner loaded"),
-            { Created: false } => new("phone-runner-create", "Creation runner"),
-            _ => new("phone-runner-sheet", "Career runner")
+            null => new("phone-runner-empty", PhoneStrings.Get("RunnerEmpty", "No runner loaded")),
+            { Created: false } => new("phone-runner-create", PhoneStrings.Get("RunnerCreation", "Creation runner")),
+            _ => new("phone-runner-sheet", PhoneStrings.Get("RunnerCareer", "Career runner"))
         };
 
     public static string SaveToolbarText(bool hasDurableSaveNotice)
-        => hasDurableSaveNotice ? "Saved." : "Save";
+        => hasDurableSaveNotice ? PhoneStrings.Get("RunnerSaved", "Saved.") : PhoneStrings.Get("Save", "Save");
+
+    // Display only: localize canonical identifiers, never rewrite the retained
+    // projection, labels supplied by the user, or the IDs used by navigation/admission.
+    public static string StageLabel(string stepId, string fallback)
+        => PhoneStrings.Get("CreationStep." + stepId, fallback);
+
+    public static string MethodLabel(string method)
+        => PhoneStrings.Get("CreationMethod." + method, RunnerSessionCoordinator.HumanizeId(method));
+
+    public static string BudgetLabel(CharacterCreationBudgetState budget)
+        => budget.BudgetId switch
+        {
+            CharacterCreationMagicResonancePresentationBudgetIds.Tradition => CreationKarmaCopy.Tradition,
+            CharacterCreationMagicResonancePresentationBudgetIds.Stream => CreationKarmaCopy.Stream,
+            CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints => PhoneStrings.Get("CreationPowerPoints", "Power points"),
+            CharacterCreationMagicResonancePresentationBudgetIds.Spells => CreationKarmaCopy.Spells,
+            CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms => CreationKarmaCopy.ComplexForms,
+            _ => PhoneStrings.Get("CreationBudget." + budget.BudgetId, budget.Label)
+        };
+
+    public static string BudgetUnit(string unit)
+        => PhoneStrings.Get("CreationUnit." + (string.IsNullOrWhiteSpace(unit) ? "points" : unit),
+            string.IsNullOrWhiteSpace(unit) ? "points" : unit);
+
+    public static string BudgetRemaining(decimal remaining)
+        => PhoneStrings.Format("CreationRemaining", "{0:0.##} left", remaining);
 
     public static bool ShowCreationBudget(
         CharacterCreationBudgetState budget,
@@ -846,7 +872,7 @@ public sealed class BuildPage : NativePageBase
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
         {
-            Text = "Save",
+            Text = PhoneStrings.Get("Save", "Save"),
             AutomationId = "build-save-runner",
             Command = new Command(async () => await RunAsync(SaveRunnerAsync))
         };
@@ -1032,9 +1058,9 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile is null)
         {
             Title = "Runner";
-            _body.Add(NativeTheme.Title("Open a runner first"));
-            _body.Add(NativeTheme.Body("Your file stays on this device unless you choose to link it.", NativeTheme.Muted));
-            Button open = NativeTheme.PrimaryButton("Open file");
+            _body.Add(NativeTheme.Title(PhoneStrings.Get("RunnerOpenFirst", "Open a runner first")));
+            _body.Add(NativeTheme.Body(PhoneStrings.Get("RunnerLocalFile", "Your file stays on this device unless you choose to link it."), NativeTheme.Muted));
+            Button open = NativeTheme.PrimaryButton(PhoneStrings.Get("OpenFile", "Open file"));
             open.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenLocalAsync());
             _body.Add(open);
             return;
@@ -1042,7 +1068,7 @@ public sealed class BuildPage : NativePageBase
 
         if (Coordinator.State.Profile.Created == false)
         {
-            Title = "Create";
+            Title = PhoneStrings.Get("RunnerCreate", "Create");
             if (string.Equals(Coordinator.State.Rules?.GameEdition, "SR6", StringComparison.OrdinalIgnoreCase))
             {
                 AddWorkspacePicker();
@@ -1075,7 +1101,7 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
-        Title = "Sheet";
+        Title = PhoneStrings.Get("RunnerSheet", "Sheet");
         AddWorkspacePicker();
         bool isSr5CareerRunner = Sr5CareerWizardCatalog.IsSr5CareerRunner(
             Coordinator.State.Profile.Created,
@@ -1096,8 +1122,7 @@ public sealed class BuildPage : NativePageBase
 
         AddSummary();
         Label unavailable = NativeTheme.Body(
-            "The phone beta exposes created-runner changes only through the SR5 Career wizards. " +
-            "This runner's edition has no authorized Career wizard, so no generic editor is opened.",
+            PhoneStrings.Get("RunnerCareerUnavailable", "Career editing on this phone is available for SR5 runners only."),
             NativeTheme.Danger);
         unavailable.AutomationId = "build-career-wizard-unavailable";
         _body.Add(NativeTheme.Card(unavailable));
@@ -1216,8 +1241,8 @@ public sealed class BuildPage : NativePageBase
         else
         {
             await DisplayAlertAsync(
-                "Quality authority unavailable",
-                "This build does not have a complete atomic SR5 quality workspace. No fallback mutation is available.",
+                PhoneStrings.Get("CreationQualitiesUnavailableTitle", "Qualities unavailable"),
+                PhoneStrings.Get("CreationQualitiesUnavailable", "Your runner's qualities could not be loaded safely. Nothing was changed. Reopen the runner and try again."),
                 "OK");
         }
     }
@@ -1686,18 +1711,18 @@ public sealed class BuildPage : NativePageBase
                                 StringComparison.Ordinal))?.Blockers.FirstOrDefault()
                           ?? "sr5-life-module-origin-authority-unavailable"
                         : "creation-build-method-editor-unavailable";
-        string method = RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod);
+        string method = BuildPageUiProjection.MethodLabel(snapshot.BuildMethod);
         string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
         string detail = canOpen ? activeStage : CreationFlowStrings.DashboardBlocker(blocker);
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
         _body.Add(CreationNavigationRow(
-            $"Build method · {method}",
+            PhoneStrings.Format("CreationMethodTitle", "Build method · {0}", method),
             detail,
             selected,
             enabled: canOpen,
             automationId: "creation-stage-method"));
-        return new($"Build method · {method}", detail, canOpen, selected, canOpen ? [] : [blocker]);
+        return new(PhoneStrings.Format("CreationMethodTitle", "Build method · {0}", method), detail, canOpen, selected, canOpen ? [] : [blocker]);
     }
 
     private Border CreationNavigationRow(
@@ -1929,7 +1954,7 @@ public sealed class BuildPage : NativePageBase
             return;
 
         Button review = NativeTheme.PrimaryButton(
-            CurrentPhoneWizardScope.MarkExperimental("Review and finish creation"));
+            CurrentPhoneWizardScope.MarkExperimental(PhoneStrings.Get("CreationFinish", "Review and finish creation")));
         review.AutomationId = "creation-finalization-open-review";
         long pressGeneration = 0;
         review.Pressed += (_, _) => pressGeneration = BeginCreationNavigationPress();
@@ -1954,7 +1979,7 @@ public sealed class BuildPage : NativePageBase
                 : CreationFlowStrings.Get("Finalization.Blocked", "Finish the required steps and resolve the warnings before reviewing your runner.");
         // All visible Review entries use this exact, already-loaded authority.
         // Generic wizard availability alone never grants finalization access.
-        return new("Review and finish creation", detail, canOpen,
+        return new(PhoneStrings.Get("CreationFinish", "Review and finish creation"), detail, canOpen,
             () => canOpen && generation == _dossierRenderGeneration
                 && IsCurrentCreationDashboardPage()
                 && Coordinator.IsCreationFinalizationStateCurrent(authority!.Value!)
@@ -2019,7 +2044,7 @@ public sealed class BuildPage : NativePageBase
                     : step.IsRequired
                         ? CreationFlowStrings.Get("Finalization.Required", "needs attention")
                         : CreationFlowStrings.Get("Finalization.Optional", "optional");
-                Label row = NativeTheme.Body($"{RunnerSessionCoordinator.HumanizeId(step.StepId)} · {status}",
+                Label row = NativeTheme.Body($"{BuildPageUiProjection.StageLabel(step.StepId, RunnerSessionCoordinator.HumanizeId(step.StepId))} · {status}",
                     step.IsRequired && !step.IsComplete ? NativeTheme.Danger : NativeTheme.Muted);
                 row.AutomationId = $"creation-finalization-step-{Token(step.StepId)}";
                 card.Add(row);
@@ -2423,11 +2448,11 @@ public sealed class BuildPage : NativePageBase
     {
         int index = insertAt ?? _body.Count;
         var prerequisite = projection?.Prerequisite;
-        _body.Insert(index++, NativeTheme.Eyebrow("Budgets"));
+        _body.Insert(index++, NativeTheme.Eyebrow(PhoneStrings.Get("CreationBudgets", "Budgets")));
         if (snapshot.Budgets.Count == 0)
         {
             _body.Insert(index, NativeTheme.Body(
-                "No authoritative budgets are available. Chummer will not invent a remainder.",
+                PhoneStrings.Get("CreationBudgetsUnavailable", "Your available points could not be determined. Reopen the runner and try again."),
                 NativeTheme.Danger));
             return;
         }
@@ -2484,13 +2509,13 @@ public sealed class BuildPage : NativePageBase
                         == CharacterCreationMagicResonanceKinds.Mundane))
                 continue;
             hasInexactBudget |= !budget.IsExact;
-            string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
+            string unit = BuildPageUiProjection.BudgetUnit(budget.Unit);
             string amount = budget.IsExact
-                ? $"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left"
+                ? BuildPageUiProjection.BudgetRemaining(budget.Remaining)
                 : CreationAllocationStrings.Get("Common.NotExact", "Not exact");
             string detail = budget.IsExact
-                    ? $"{budget.Used.ToString("0.##", CultureInfo.InvariantCulture)} / "
-                        + $"{budget.Total.ToString("0.##", CultureInfo.InvariantCulture)} {unit}"
+                    ? $"{budget.Used.ToString("0.##", CultureInfo.CurrentCulture)} / "
+                        + $"{budget.Total.ToString("0.##", CultureInfo.CurrentCulture)} {unit}"
                     : string.Empty;
             // Use the SAME admitted destination as the corresponding wizard step.
             // In particular, the generic snapshot's budget can be inexact while
@@ -2524,7 +2549,7 @@ public sealed class BuildPage : NativePageBase
                 ? CreationAllocationStrings.Format("Budget.Open", "Review {0}", route.Title)
                 : CreationAllocationStrings.Get("Budget.Check", "Check what is missing");
             var displayed = Coordinator.State;
-            Border budgetCard = CreationNavigationRow($"{budget.Label} · {amount}",
+            Border budgetCard = CreationNavigationRow($"{BuildPageUiProjection.BudgetLabel(budget)} · {amount}",
                 budget.IsExact ? $"{detail}\n{action}" : action, async () =>
                 {
                     if (displayed.Profile?.Created != false
@@ -2538,7 +2563,7 @@ public sealed class BuildPage : NativePageBase
                         if (_creationProjection?.Progress.HasLoading == true)
                             RequestCreationAuthorityRefresh();
                         else RetryCreationProjection();
-                        await DisplayAlertAsync(budget.Label,
+                        await DisplayAlertAsync(BuildPageUiProjection.BudgetLabel(budget),
                             CreationAllocationStrings.Get("Budget.Refreshing",
                                 "Checking this budget again. Finish priorities and metatype first; then review the matching creation step. No points or choices have been changed.")
                             + (route is { Detail.Length: > 0 } ? $"\n\n{route.Detail}" : string.Empty), "OK");
@@ -2572,7 +2597,7 @@ public sealed class BuildPage : NativePageBase
     {
         Dictionary<string, CreationBudgetRoute> routes = new(StringComparer.Ordinal);
         CreationBudgetRoute finalization = CreationFinalizationReviewRoute();
-        _body.Add(NativeTheme.Eyebrow("Generation steps"));
+        _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("CreationSteps", "Generation steps")));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
             // The build method has one canonical route above the generated stage list.  Core
@@ -2711,7 +2736,7 @@ public sealed class BuildPage : NativePageBase
                 : identityStage
                 ? CreationFlowStrings.DashboardBlocker(identityRoute!.Blocker)
                 : lifeModuleOrigin
-                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
+                ? PhoneStrings.Get("CreationOriginNext", "Read the chapter, review its effects, then continue.")
                 : canOpenResources
                 ? CreationResourcesStageDetail(creationResources!.State!)
                 : canOpenPrerequisite
@@ -2734,7 +2759,7 @@ public sealed class BuildPage : NativePageBase
                 : contactsPrerequisite is not null
                     ? contactsPrerequisite.Detail
                 : canOpenFoundation
-                    ? "Choose an exact metatype and Nationality Life Module"
+                    ? PhoneStrings.Get("CreationFoundationNext", "Choose a metatype and nationality.")
                     : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
                         ? CreationFlowStrings.DashboardBlocker(projectionBlocker)
                     : priorityPrerequisite && prerequisite is not null
@@ -2768,12 +2793,12 @@ public sealed class BuildPage : NativePageBase
                 detail = CurrentPhoneWizardScope.MarkExperimental(detail);
             // A section hint belongs only to the admitted ordinary editor.
             // Recovery and prerequisite fallbacks keep their own destination.
-            routes[stage.StepId] = new(contactsPrerequisite?.Title ?? stage.Label, detail, canOpen, selected,
+            routes[stage.StepId] = new(contactsPrerequisite?.Title ?? StageLabel(snapshot, stage.StepId), detail, canOpen, selected,
                 contactsStage ? stage.Blockers.Concat(creationContacts?.Blockers ?? [])
                     .Distinct(StringComparer.Ordinal).ToArray() : stage.Blockers,
                 canOpenMagicResonance ? budgetId => OpenCreationMagicResonanceAsync(budgetId) : null);
             Border row = CreationNavigationRow(
-                stage.Label,
+                StageLabel(snapshot, stage.StepId),
                 detail,
                 selected,
                 enabled: canOpen,
@@ -2946,7 +2971,7 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
-        _body.Add(NativeTheme.Eyebrow("Continue"));
+        _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("CreationContinue", "Continue")));
         foreach (string stepId in candidateIds)
         {
             CharacterCreationWizardStageState? stage = snapshot.Steps.FirstOrDefault(candidate =>
@@ -2963,7 +2988,7 @@ public sealed class BuildPage : NativePageBase
                 ? methodRoute
                 : routes.GetValueOrDefault(stepId);
             _body.Add(CreationNavigationRow(
-                stage.Label,
+                StageLabel(snapshot, stage.StepId),
                 route?.Detail ?? CreationFlowStrings.DashboardBlocker(stage.Blockers.FirstOrDefault()
                     ?? "creation-route-unavailable"),
                 route?.CanOpen == true ? route.Open : static () => Task.CompletedTask,
@@ -3270,8 +3295,8 @@ public sealed class BuildPage : NativePageBase
         if (_resourcesPresenter is null || _overviewPresenter is null)
         {
             await DisplayAlertAsync(
-                "Resources authority unavailable",
-                "The typed Resources/overview presenters are unavailable. No fallback budget or purchase mutation is allowed.",
+                PhoneStrings.Get("CreationResourcesUnavailableTitle", "Resources unavailable"),
+                PhoneStrings.Get("CreationResourcesUnavailable", "Your runner's resources could not be loaded safely. Nothing was changed. Reopen the runner and try again."),
                 "OK");
             return;
         }
@@ -3291,21 +3316,15 @@ public sealed class BuildPage : NativePageBase
 
     private static string CreationResourcesStageDetail(
         CharacterCreationResourcesInteractionState state)
-        => $"Choose 0–{state.Authority.MaximumKarmaInvestment.ToString(CultureInfo.InvariantCulture)} Karma · "
-           + $"{state.Budget.TotalStartingNuyen.ToString("N0", CultureInfo.InvariantCulture)} exact starting nuyen";
+        => PhoneStrings.Format("CreationResourcesDetail", "Invest 0–{0:0.##} Karma · {1:N0} starting nuyen",
+            state.Authority.MaximumKarmaInvestment, state.Budget.TotalStartingNuyen);
 
     private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
     {
-        string method = string.Equals(
-            state.BuildMethod,
-            CharacterCreationBuildMethods.SumToTen,
-            StringComparison.Ordinal)
-            ? "Sum-to-Ten"
-            : state.BuildMethod;
+        string method = BuildPageUiProjection.MethodLabel(state.BuildMethod);
         return state.PendingDraft is null
-            ? $"Choose five ordered {method} ranks from exact Core authority"
-            : $"Resume saved {method} draft · raw Attribute grant "
-              + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "unavailable");
+            ? PhoneStrings.Format("CreationPrioritiesChoose", "Assign your five {0} priorities.", method)
+            : PhoneStrings.Format("CreationPrioritiesResume", "Review your saved {0} choices.", method);
     }
 
     private static string AttributeGateDetail(CharacterCreationPrerequisiteState state)
@@ -3320,37 +3339,35 @@ public sealed class BuildPage : NativePageBase
 
     private static string AttributeStageDetail(CharacterCreationAttributesState state)
         => state.PendingDraft is null
-            ? $"Allocate exact Core ledgers · {state.NormalPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} "
-              + "normal points left"
-            : $"Resume saved Attributes draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · "
-              + $"{state.NormalPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} normal points left";
+            ? PhoneStrings.Format("CreationAttributesChoose", "Allocate attributes · {0:0.##} normal points left", state.NormalPointBudget.Remaining)
+            : PhoneStrings.Format("CreationAttributesResume", "Review saved attributes · {0:0.##} normal points left", state.NormalPointBudget.Remaining);
 
     private static string SkillsStageDetail(CharacterCreationSkillsState state)
         => state.PendingDraft is null
-            ? $"Allocate exact Core ledgers · {state.ActiveSkillPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} active points left"
-            : $"Resume saved Skills draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · "
-              + $"{state.ActiveSkillPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} active points left";
+            ? PhoneStrings.Format("CreationSkillsChoose", "Choose skills · {0:0.##} active skill points left", state.ActiveSkillPointBudget.Remaining)
+            : PhoneStrings.Format("CreationSkillsResume", "Review saved skills · {0:0.##} active skill points left", state.ActiveSkillPointBudget.Remaining);
 
     private static string QualitiesStageDetail(CharacterCreationQualitiesState state)
         => state.PendingDraft is null
-            ? $"Choose exact Core options · +{state.Preview.PositiveQualityBudget.Remaining.ToString(CultureInfo.InvariantCulture)} positive / -{state.Preview.NegativeQualityBudget.Remaining.ToString(CultureInfo.InvariantCulture)} negative Karma available"
-            : $"Resume saved Qualities draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · {state.Preview.KarmaRemaining.ToString(CultureInfo.InvariantCulture)} Creation Karma left";
+            ? PhoneStrings.Format("CreationQualitiesChoose", "Choose qualities · {0:0.##} positive / {1:0.##} negative Karma available",
+                state.Preview.PositiveQualityBudget.Remaining, state.Preview.NegativeQualityBudget.Remaining)
+            : PhoneStrings.Format("CreationQualitiesResume", "Review saved qualities · {0:0.##} creation Karma left", state.Preview.KarmaRemaining);
 
     private static string MagicResonanceStageDetail(
         CharacterCreationMagicResonanceEditorState state)
     {
-        decimal remaining = state.Budgets.Sum(static budget => budget.Remaining);
         return state.HasPendingDraft
-            ? $"Resume saved {CreationMagicResonancePage.KindLabel(state.Talent.Kind)} draft · {remaining.ToString("0.##", CultureInfo.InvariantCulture)} exact budget remaining"
-            : $"Choose typed {CreationMagicResonancePage.KindLabel(state.Talent.Kind)} follow-ups · {remaining.ToString("0.##", CultureInfo.InvariantCulture)} exact budget remaining";
+            ? PhoneStrings.Format("CreationMagicResume", "Review saved choices for {0}.", CreationMagicResonancePage.KindLabel(state.Talent.Kind))
+            : PhoneStrings.Format("CreationMagicChoose", "Choose options for {0}.", CreationMagicResonancePage.KindLabel(state.Talent.Kind));
     }
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
-        => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label
-            ?? RunnerSessionCoordinator.HumanizeId(stepId);
+        => BuildPageUiProjection.StageLabel(stepId,
+            snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label
+            ?? RunnerSessionCoordinator.HumanizeId(stepId));
 
     private static string HumanizeStatus(string status)
-        => RunnerSessionCoordinator.HumanizeId(status);
+        => PhoneStrings.Get("CreationStatus." + status, RunnerSessionCoordinator.HumanizeId(status));
 
     private static string ShortDigest(string digest)
         => string.IsNullOrWhiteSpace(digest)
@@ -3848,16 +3865,16 @@ public sealed class BuildPage : NativePageBase
     {
         string name = PhoneStrings.RunnerName(Coordinator.State.Profile?.Name, Coordinator.State.Profile?.Alias);
         VerticalStackLayout summary = new() { Spacing = 10 };
-        summary.Add(NativeTheme.Eyebrow(Coordinator.State.IsDirty ? "Unsaved changes" : "Runner"));
+        summary.Add(NativeTheme.Eyebrow(Coordinator.State.IsDirty ? PhoneStrings.Get("RunnerUnsaved", "Unsaved changes") : "Runner"));
         summary.Add(NativeTheme.Title(name, 24));
-        summary.Add(NativeTheme.Metric("Metatype", Coordinator.State.Profile?.Metatype ?? string.Empty));
-        summary.Add(NativeTheme.Metric("Metavariant", Coordinator.State.Profile?.Metavariant ?? string.Empty));
-        summary.Add(NativeTheme.Metric("Rules", Coordinator.State.Rules?.GameEdition ?? string.Empty));
+        summary.Add(NativeTheme.Metric(CreationKarmaCopy.Metatype, Coordinator.State.Profile?.Metatype ?? string.Empty));
+        summary.Add(NativeTheme.Metric(PhoneStrings.Get("RunnerMetavariant", "Metavariant"), Coordinator.State.Profile?.Metavariant ?? string.Empty));
+        summary.Add(NativeTheme.Metric(PhoneStrings.Get("RunnerRules", "Rules"), Coordinator.State.Rules?.GameEdition ?? string.Empty));
         // Some imported runners expose a human profile name; others only its
         // opaque ID. Do not invent a name or put that implementation ID on the sheet.
         string? settings = Coordinator.State.Rules?.Settings;
         if (!string.IsNullOrWhiteSpace(settings) && !Guid.TryParse(settings, out _))
-            summary.Add(NativeTheme.Metric("Character Setting", settings));
+            summary.Add(NativeTheme.Metric(PhoneStrings.Get("RunnerRuleProfile", "Character Setting"), settings));
         summary.Add(NativeTheme.Metric("Karma", Coordinator.State.Progress?.Karma.ToString() ?? string.Empty));
         summary.Add(NativeTheme.Metric("Nuyen", Coordinator.State.Progress?.Nuyen.ToString() ?? string.Empty));
         _body.Add(NativeTheme.Card(summary));

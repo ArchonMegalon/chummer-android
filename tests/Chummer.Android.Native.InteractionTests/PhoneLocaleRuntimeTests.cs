@@ -1,5 +1,7 @@
 using System.Globalization;
 using Chummer.Android.Native;
+using Chummer.Contracts.Characters;
+using Chummer.Presentation.Overview;
 using Microsoft.Maui.Storage;
 
 internal static class PhoneLocaleRuntimeTests
@@ -77,6 +79,7 @@ internal static class PhoneLocaleRuntimeTests
             catch (ArgumentException) { }
             Require(preferences.Get(PhoneLocalePolicy.PreferencesKey, "") == stored,
                 "Rejected selection changed stored preferences.");
+            GermanCreationCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -86,6 +89,51 @@ internal static class PhoneLocaleRuntimeTests
             CultureInfo.DefaultThreadCurrentUICulture = originalDefaultUi;
             CultureInfo.DefaultThreadCurrentCulture = originalDefaultFormats;
         }
+    }
+
+    private static void GermanCreationCopy()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-AT");
+        Require(BuildPageUiProjection.SaveToolbarText(false) == "Speichern"
+            && BuildPageUiProjection.SaveToolbarText(true) == "Gespeichert.", "Toolbar leaked English.");
+        Require(BuildPageUiProjection.RouteMarker(null).Label == "Kein Runner geöffnet", "Empty route leaked English.");
+        Require(BuildPageUiProjection.StageLabel(CharacterCreationWizardStepIds.Skills, "Skills") == "Fertigkeiten"
+            && BuildPageUiProjection.MethodLabel(CharacterCreationBuildMethods.Priority) == "Priorität"
+            && BuildPageUiProjection.MethodLabel(CharacterCreationBuildMethods.LifeModules) == "Lebensmodule",
+            "Canonical creation labels bypassed German resources.");
+
+        // Check every canonical stage, method and budget, not only one attractive screenshot.
+        foreach (var (type, prefix) in new[] {
+            (typeof(CharacterCreationWizardStepIds), "CreationStep."),
+            (typeof(CharacterCreationBuildMethods), "CreationMethod."),
+            (typeof(CharacterCreationWizardStepStatuses), "CreationStatus."),
+            (typeof(CharacterCreationBudgetIds), "CreationBudget.") })
+        foreach (var field in type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+        {
+            if (!field.IsLiteral || field.FieldType != typeof(string)) continue;
+            string id = (string)field.GetRawConstantValue()!;
+            Require(PhoneStrings.Get(prefix + id, "MISSING") != "MISSING", $"Untranslated canonical label: {prefix}{id}");
+        }
+        var budget = new CharacterCreationBudgetState(CharacterCreationBudgetIds.NormalAttributes,
+            "Normal attributes", 20, 17.5m, 2.5m, true, [], "points");
+        var original = budget with { };
+        Require(BuildPageUiProjection.BudgetLabel(budget) == "Normale Attribute"
+            && BuildPageUiProjection.BudgetUnit(budget.Unit) == "Punkte"
+            && BuildPageUiProjection.BudgetRemaining(budget.Remaining) == "2,5 übrig", "Budget copy or regional number failed.");
+        Require(budget == original && budget.Label == "Normal attributes" && budget.Unit == "points",
+            "Display localization mutated the authority.");
+        Require(BuildPageUiProjection.BudgetLabel(budget with { BudgetId = CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints }) == "Kraftpunkte",
+            "Adept budget leaked English.");
+        Require(BuildPageUiProjection.StageLabel("future-custom-stage", "My Custom Stage") == "My Custom Stage",
+            "Unknown/custom labels must not be guessed or rewritten.");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        Require(BuildPageUiProjection.BudgetRemaining(2.5m) == "2.5 übrig", "App language overrode the chosen region.");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
+        Require(BuildPageUiProjection.StageLabel("skills", "MISSING") == "Skills", "English fallback changed.");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
+        Require(BuildPageUiProjection.StageLabel("skills", "MISSING") == "Habilidades", "Spanish fallback changed.");
+        Console.WriteLine("PASS localized creation dashboard: all canonical labels, toolbar, DE/AT and DE/US numbers, immutable authority, custom fallback, EN/ES");
     }
 
     private static void Require(bool condition, string message)

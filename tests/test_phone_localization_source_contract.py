@@ -48,12 +48,16 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             self.assertIn(language, policy)
         self.assertIn("EnglishLocale", policy)
         self.assertIn("UsesEnglishFallback", policy)
-        self.assertNotIn("CurrentCulture =", policy)
-        self.assertNotIn("DefaultThreadCurrentCulture =", policy)
+        # Only UI initialization leaves formatting alone; saved region selection
+        # intentionally applies both current/default formatting on the next launch.
+        ui_initialize = policy[policy.index("public static PhoneLocaleSelection InitializeFromSystemCulture"):]
+        self.assertNotIn("CurrentCulture =", ui_initialize)
+        self.assertNotIn("DefaultThreadCurrentCulture =", ui_initialize)
+        self.assertIn("InitializeFromPreferences", policy)
 
     def test_ui_locale_is_initialized_before_content_and_page_composition(self) -> None:
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
-        initialize = program.index("PhoneLocalePolicy.InitializeFromSystemCulture()")
+        initialize = program.index("PhoneLocalePolicy.InitializeFromPreferences(")
         materialize = program.index("AndroidBundledContentMaterializer.Materialize()")
         build = program.index("return builder.Build()")
         self.assertLess(initialize, materialize)
@@ -88,7 +92,9 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('AutomationId = "settings-confirm-delete"', settings)
-        self.assertIn('AutomationId = "settings-language-device-managed"', settings)
+        self.assertIn('"settings-language"', settings)
+        self.assertIn('"settings-region"', settings)
+        self.assertIn("PhoneLocalePolicy.SavePreferences", settings)
         self.assertIn('AutomationId = "settings-updates-play-managed"', settings)
         self.assertIn('"settings-confirm-delete-experimental"', settings)
         self.assertIn("CurrentPhoneWizardScope.MarkExperimental(", settings)
@@ -110,6 +116,21 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(f'AutomationId = "{desktop_only_id}"', settings)
         self.assertNotIn("SaveApplicationSettingsAsync", coordinator)
+
+    def test_creation_dashboard_resources_preserve_placeholders_and_no_duplicate_keys(self) -> None:
+        import re
+        catalogs = [load_resx(f"PhoneStrings{suffix}.resx") for suffix in ("", ".de", ".es")]
+        for suffix in ("", ".de", ".es"):
+            names = [row.attrib["name"] for row in ET.parse(RESOURCES / f"PhoneStrings{suffix}.resx").getroot().findall("data")]
+            self.assertEqual(len(names), len(set(names)), suffix)
+        for key, english in catalogs[0].items():
+            if not key.startswith(("Creation", "Runner")):
+                continue
+            placeholders = re.findall(r"\{\d+(?::[^}]+)?\}", english)
+            for catalog in catalogs[1:]:
+                self.assertEqual(placeholders, re.findall(r"\{\d+(?::[^}]+)?\}", catalog[key]), key)
+        self.assertEqual("Bauart · {0}", catalogs[1]["CreationMethodTitle"])
+        self.assertEqual("Vor- und Nachteile", catalogs[1]["CreationStep.qualities"])
 
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
