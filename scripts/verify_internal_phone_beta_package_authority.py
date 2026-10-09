@@ -65,8 +65,8 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "8df7507634d6d6111f6c58a40e60bb4fcbd9ef377702c220899aa8f3d8276da4",
-        70708,
+        "4e48c8a3bb66af6be258317a3cb9cbcd9400d4cb79711fe40a43d2fe1cac125d",
+        71019,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",

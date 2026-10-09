@@ -72,8 +72,8 @@
     {
       "project": "src/Chummer.Android/Chummer.Android.csproj",
       "path": "src/Chummer.Android/packages.lock.json",
-      "sha256": "8df7507634d6d6111f6c58a40e60bb4fcbd9ef377702c220899aa8f3d8276da4",
-      "sizeBytes": 70708
+      "sha256": "4e48c8a3bb66af6be258317a3cb9cbcd9400d4cb79711fe40a43d2fe1cac125d",
+      "sizeBytes": 71019
     },
     {
       "project": "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",

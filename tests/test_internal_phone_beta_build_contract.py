@@ -133,6 +133,32 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             self.authority.sha256(lock),
         )
 
+    def test_tracked_authority_matches_actual_android_consumer_locks(self) -> None:
+        # Matching manifest/constants alone can preserve a stale pre-repin hash.
+        manifest = self.authority.validate_manifest(AUTHORITY_MANIFEST)
+        self.authority.validate_android_sdk_authority(REPO, manifest)
+        self.assertEqual(
+            self.receipt.AUTHORITY_BINDING_SHA256,
+            self.authority.sha256(AUTHORITY_MANIFEST),
+        )
+
+    def test_android_consumer_lock_drift_still_fails_closed(self) -> None:
+        manifest = self.authority.validate_manifest(AUTHORITY_MANIFEST)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = ["global.json", ".github/workflows/preview9-arm64-aab.yml"]
+            paths.extend(row[1] for row in self.authority.EXPECTED_ANDROID_LOCKS)
+            for relative in paths:
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((REPO / relative).read_bytes())
+            lock = root / "src/Chummer.Android/packages.lock.json"
+            # Same size, different bytes: both size and digest must be enforced.
+            original = lock.read_bytes()
+            lock.write_bytes(b" " + original[1:])
+            with self.assertRaisesRegex(ValueError, "Android consumer lock bytes drifted"):
+                self.authority.validate_android_sdk_authority(root, manifest)
+
     def test_compile_check_pass_cannot_satisfy_api36_or_play_beta_gates(self) -> None:
         compile_contract = "chummer.android.internal-phone-beta-native-compile/v2"
         aggregate = (REPO / "scripts/verify-api36-editing-e2e-aggregate.py").read_text(encoding="utf-8")
