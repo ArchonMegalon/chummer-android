@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0-android36.0": {
+      "Chummer.Control.Contracts": {
+        "type": "Direct",
+        "requested": "[0.1.2-androiddiag.20261009.fef48022f, )",
+        "resolved": "0.1.2-androiddiag.20261009.fef48022f",
+        "contentHash": "cvZzZLrDkASKAjPbF6HTQvmmXLNIPJMsuTmjM7xNr1vV4BXxHGA/12e6I0GZi6qMijWO76dlyXddbMCou7/s+g=="
+      },
       "Microsoft.Extensions.Logging.Debug": {
         "type": "Direct",
         "requested": "[10.0.0, )",

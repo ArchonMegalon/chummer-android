@@ -1,8 +1,8 @@
 # Internal tester diagnostics
 
 Current source has **default-on automatic reporting for Internal test builds**
-(owner decision, 9 October 2026), with an immediately available opt-out. It is not yet a
-deployed or Play-delivered central reporting service.
+(owner decision, 9 October 2026), with an immediately available opt-out. The private
+Hub intake is deployed; this Android increment is not yet delivered through Play.
 Native page appearance/actions/refreshes and Life Modules story-readiness checks
 record allowlisted technical events in app-private `diagnostics/technical-diagnostics.json`.
 The settings page explains this and offers an explicit Android share action.
@@ -20,7 +20,9 @@ diagnostic setting and discloses the default without claiming everyone has it on
 The separate settings action takes effect
 immediately (not through the language/settings Save button). DE/EN/ES disclosures
 explain the first-party destination, metadata, two-day private inbox and withdrawal.
-Operator notification and actual private intake readback remain outstanding.
+On 9 October a synthetic HTTPS report was accepted, deduplicated and read back
+through the private reader. This proves server intake, not native tester delivery.
+Bounded operator notification remains outstanding.
 
 Records contain app version, UTC time, coarse page category, operation kind,
 process-local operation counter, elapsed time, outcome and coarse error category.
@@ -77,16 +79,17 @@ Remaining central-delivery work:
 
 - Complete release/package admission for the locally tested canonical contract;
   do not imply that a draft/local package is a protected published package seal.
-- Deploy and configure the separate private Hub diagnostic reader. The read-only
-  live probe on 9 October found no existing crash automation reader configured.
-- The deployed Docker service uses Teable support storage. Its current crash
-  intake creates support work and grows incident/cluster history. Hub draft PR303
-  adds a separate bounded two-day diagnostic intake with private readback and
-  no automatic crash-case creation, but it is not deployed or activated.
-- Verify actual private intake/readback and bounded operator notification.
+- The separate private Hub diagnostic reader is deployed from PR303 producer
+  `b88e8dfd0b59292349cf8b76139b9b4d376d41bb`, with a mounted reader credential
+  and a bounded, private two-day inbox. The inbox is temporary storage, excluded
+  from backups; a host reboot can discard pending diagnostic reports.
+  Account/Origin storage remains unchanged. Intake does not create Teable support
+  cases or copy reports into incident history.
+- Verify native remote delivery and bounded operator notification.
   Never embed the private reader credential in Android.
-- Reconcile current privacy/Play disclosures before remote collection; the old
-  preview.7 worksheet is not current disclosure authority.
+- The generated privacy disclosure is publicly visible at `https://chummer.run/privacy`
+  and canonical Design PR33 is merged. Verify the actual Play scope/disclosures
+  before delivery; the old preview.7 worksheet is not current authority.
 
 This metadata-only request body does not imply that the HTTPS ingress has no
 connection metadata. Review ingress/access-log retention and actual published
