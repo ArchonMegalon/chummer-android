@@ -110,6 +110,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <!-- Exact locally built canonical support contract; see eng/android-diagnostics-contract.json. -->
+    <PackageReference Include="Chummer.Control.Contracts" Version="0.1.2-androiddiag.20261009.fef48022f" />
     <PackageReference Include="Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19" />
     <!-- Microsoft .NET binding for Google's com.google.android.play:review:2.0.2 artifact. -->
     <PackageReference Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.9" />

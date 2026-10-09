@@ -17,6 +17,7 @@ internal static class Program
         {
             await NativeProblemLogTests.RunAsync();
             await NativeProblemOutboxTests.RunAsync();
+            await NativeProblemHttpTransportTests.RunAsync();
             return;
         }
         if (args.Length == 1 && args[0] == "--origin-decision-guidance")

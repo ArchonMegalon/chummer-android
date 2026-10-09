@@ -22,23 +22,39 @@ logging, not guaranteed crash capture: abrupt process death can lose pending wri
 The **unregistered** `NativeProblemOutbox` now prepares the delivery boundary:
 explicit opt-in (off by default), a maximum of eight metadata-only reports per
 two-day window, category suppression across restart, a stable random submission
-ID persisted before delivery, five-minute persisted backoff, and one send per
+ID persisted before delivery, at least five-minute persisted backoff, and one send per
 wake-up. Revocation clears pending reports. Unknown outcomes keep the same ID;
-the future Hub adapter must validate an exact receipt and use idempotent intake.
-Slow operations, busy taps, cancellations and story-not-ready observations are
-not submitted as crashes. This app-private state is not a copied Hub wire DTO.
-No production callback, scheduler or settings opt-in is connected yet.
+the adapter validates an exact receipt and uses idempotent intake. Failed actions,
+rejected dispatches and observations lasting at least 30 seconds are eligible.
+Slow remains a separate observation, never a crash claim. Busy taps, cancellations
+and ordinary story-not-ready observations are not sent. This app-private state is
+not a copied Hub wire DTO. No production registration, scheduler or settings opt-in
+is connected yet.
+
+`NativeProblemHttpTransport` is implemented and locally tested but **unregistered**.
+It uses the canonical `Chummer.Control.Contracts` package identified in
+`eng/android-diagnostics-contract.json`. That exact 38,598-byte package was built
+locally from Hub `fef48022f`, not copied from DTO source, published as an asset or
+represented as a protected package-plane seal. Retain the exact local feed when
+building this preparation; the existing public feed does not supply it yet.
+
+The adapter uses only the fixed first-party HTTPS diagnostic endpoint, no account
+client, cookies, credentials or automatic redirects. It caps receipt bodies at
+2048 bytes before deserialization, requires 202 plus matching report ID and a
+valid receipt time, and persists server Retry-After across process restart.
+Unknown outcomes keep the same ID. Permanent rejections are terminal, not success.
+No production request was made by the synthetic managed tests.
 
 Remaining central-delivery work:
 
-- Admit the canonical Hub support contract through the exact dependency graph;
-  do not duplicate a Hub DTO or reuse raw desktop diagnostics/ambient credentials.
-- Complete the private Hub diagnostic-reader configuration. The read-only live
-  probe on 9 October returned 503: internal crash automation auth not configured.
+- Complete release/package admission for the locally tested canonical contract;
+  do not imply that a draft/local package is a protected published package seal.
+- Deploy and configure the separate private Hub diagnostic reader. The read-only
+  live probe on 9 October found no existing crash automation reader configured.
 - The deployed Docker service uses Teable support storage. Its current crash
-  intake creates support work and grows incident/cluster history; bounded
-  diagnostic retention and Android-specific routing have not been established.
-  Do not turn ordinary slow/busy observations into automatic crash cases.
+  intake creates support work and grows incident/cluster history. Hub draft PR303
+  adds a separate bounded two-day diagnostic intake with private readback and
+  no automatic crash-case creation, but it is not deployed or activated.
 - Add bounded consent/disclosure-aware submission and verify actual private
   intake/readback. Never embed the private reader credential in Android.
 - Reconcile current privacy/Play disclosures before remote collection; the old

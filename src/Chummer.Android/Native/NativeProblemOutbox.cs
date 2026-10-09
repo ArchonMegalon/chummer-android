@@ -10,10 +10,19 @@ internal sealed record NativeProblemDeliveryItem(NativeProblemSubmission Submiss
 internal sealed record NativeProblemDeliveryState(bool Enabled, DateTimeOffset RetryAfterUtc,
     List<NativeProblemDeliveryItem> Items);
 
-internal enum NativeProblemDeliveryResult { Accepted, RetryLater, Rejected }
+internal enum NativeProblemDeliveryDisposition { RetryLater, Accepted, Rejected }
+internal readonly record struct NativeProblemDeliveryResult(
+    NativeProblemDeliveryDisposition Disposition, TimeSpan RetryAfter)
+{
+    public static NativeProblemDeliveryResult Accepted => new(NativeProblemDeliveryDisposition.Accepted, TimeSpan.Zero);
+    public static NativeProblemDeliveryResult Rejected => new(NativeProblemDeliveryDisposition.Rejected, TimeSpan.Zero);
+    public static NativeProblemDeliveryResult RetryLater => Defer(TimeSpan.FromMinutes(5));
+    public static NativeProblemDeliveryResult Defer(TimeSpan delay) => new(NativeProblemDeliveryDisposition.RetryLater,
+        TimeSpan.FromSeconds(Math.Clamp(delay.TotalSeconds, 300, 172800)));
+}
 
 /// <summary>
-/// Bounded, opt-in, durable queue for technical failures only. All I/O is called
+/// Bounded, opt-in, durable queue for technical observations, not crash claims. All I/O is called
 /// from background work, never while holding a page action or mutation lease.
 /// A callback may return Accepted only after validating the exact receipt ID.
 /// Unknown outcomes retain the same ID; the Hub adapter must be idempotent.
@@ -51,8 +60,8 @@ internal sealed class NativeProblemOutbox
     public async Task<bool> EnqueueAsync(NativeProblemEntry entry, CancellationToken ct = default)
     {
         if (!IsValid(entry) || entry.AtUtc < _clock.GetUtcNow().AddDays(-2)
-            || entry.Outcome is not (NativeProblemOutcome.Failed or NativeProblemOutcome.DispatchRejected))
-            return false; // Slow, not-ready, busy and cancellation are not crashes.
+            || !IsDeliverable(entry))
+            return false; // Busy, cancellation and ordinary not-ready states are not failures.
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -92,12 +101,18 @@ internal sealed class NativeProblemOutbox
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             { return; }
-            if (result is NativeProblemDeliveryResult.Accepted or NativeProblemDeliveryResult.Rejected)
+            if (result.Disposition is NativeProblemDeliveryDisposition.Accepted or NativeProblemDeliveryDisposition.Rejected)
             {
                 // A permanent rejection must not be replayed either. This flag
                 // means terminal, not "success"; it is not shown as delivery truth.
                 state.Items[index] = state.Items[index] with { Terminal = true };
                 Save(state);
+            }
+            else if (result.RetryAfter > TimeSpan.FromMinutes(5))
+            {
+                // Honor the receiver's backoff across process restarts as well.
+                // Reports expire after two days, so longer delays need no wake-up.
+                Save(state with { RetryAfterUtc = _clock.GetUtcNow() + NativeProblemDeliveryResult.Defer(result.RetryAfter).RetryAfter });
             }
         }
         catch (Exception e) when (IsStorageFailure(e)) { }
@@ -115,8 +130,7 @@ internal sealed class NativeProblemOutbox
         if (state?.Items is null || state.Items.Count > MaximumItems
             || state.Items.Any(item => item?.Submission is not { Id.Length: 32, Event: not null } submission
                 || !Guid.TryParseExact(submission.Id, "N", out _) || !IsValid(submission.Event))
-            || state.Items.Any(item => item.Submission.Event.Outcome is not
-                (NativeProblemOutcome.Failed or NativeProblemOutcome.DispatchRejected))
+            || state.Items.Any(item => !IsDeliverable(item.Submission.Event))
             || state.Items.Select(item => item.Submission.Id).Distinct(StringComparer.Ordinal).Count() != state.Items.Count)
             return new(false, DateTimeOffset.MinValue, new());
         state.Items.RemoveAll(item => item.Submission.Event.AtUtc < _clock.GetUtcNow().AddDays(-2));
@@ -147,6 +161,10 @@ internal sealed class NativeProblemOutbox
     private static bool SameCategory(NativeProblemEntry first, NativeProblemEntry second)
         => first.Version == second.Version && first.Area == second.Area && first.Operation == second.Operation
             && first.Outcome == second.Outcome && first.Error == second.Error;
+
+    private static bool IsDeliverable(NativeProblemEntry entry)
+        => entry.Outcome is NativeProblemOutcome.Failed or NativeProblemOutcome.DispatchRejected
+            || entry.Outcome == NativeProblemOutcome.Slow && entry.ElapsedMilliseconds >= 30000;
 
     private static bool IsStorageFailure(Exception error)
         => error is IOException or UnauthorizedAccessException or JsonException or System.Security.SecurityException;
