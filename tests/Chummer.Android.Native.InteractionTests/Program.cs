@@ -16,6 +16,7 @@ internal static class Program
         if (args.Length == 1 && args[0] == "--native-problem-log")
         {
             await NativeProblemLogTests.RunAsync();
+            await NativeProblemOutboxTests.RunAsync();
             return;
         }
         if (args.Length == 1 && args[0] == "--origin-decision-guidance")
