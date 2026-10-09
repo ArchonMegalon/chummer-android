@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 163 is the latest [observed Internal availability](../play/evidence/preview163-internal-observation.md),
+Preview 164 is the latest [observed Internal availability](../play/evidence/preview164-internal-observation.md),
+confirmed on 9 October at 15:39 Europe/Vienna. The quality catalog has 803 German
+display names and German/original-name search, with localized help/configuration
+headings and unchanged rules. Twenty focused Python tests, managed locale checks
+and a native German catalog/search/help/configure smoke passed; all 33 original
+runner files remained unchanged. Local ARM64 build, original-key isolated signing,
+keyless verification and one Internal upload/readback passed. **Whole-app German
+coverage, complete Creation/Career and physical Play 164 installation remain
+open.** Remaining New runner/prerequisite English labels and slow startup/System
+UI emulator boot ANR are recorded honestly. Prior evidence remains unchanged.
+
+Preview 163's [observed Internal availability](../play/evidence/preview163-internal-observation.md),
 confirmed on 9 October at 14:47 Europe/Vienna. Exact canonical restoration,
 save, settings-save and account-recovery status notices now use display-only
 EN/DE/ES resources; unknown errors/custom notices remain intact. Managed locale
