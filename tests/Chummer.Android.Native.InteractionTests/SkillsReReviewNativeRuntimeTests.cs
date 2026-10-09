@@ -289,8 +289,9 @@ internal static partial class AfterRunAuthorityHarness
                 "Dashboard recovery did not reach the comparison page or used the ordinary invalid Skills editor.");
             var target = (CreationSkillsReReviewPage)navigation.CurrentPage;
             RefreshSkillsReReview(target);
-            Require(((VerticalStackLayout)((ScrollView)target.Content!).Content).Children.OfType<Label>()
-                .Any(label => label.AutomationId == "creation-skills-rereview-binding"),
+            Require(SkillsReviewTechnicalContent(target).Children.OfType<Label>()
+                .Any(label => label.AutomationId == "creation-skills-rereview-binding")
+                && !SkillsReviewTechnicalContent(target).IsVisible,
                 "The dashboard-created destination did not retain the exact Core review binding.");
         }
         finally { disappear.Invoke(build, null); }
