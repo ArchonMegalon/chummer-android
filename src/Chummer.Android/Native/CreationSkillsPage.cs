@@ -112,7 +112,7 @@ public sealed class CreationSkillsPage : NativePageBase
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Skills.NativeLanguage", "Native language")));
         string[] chosen = options.Where(option => _draft.Skills.Any(item =>
                 item.Kind == option.Kind && item.SourceSkillId == option.SourceSkillId && item.IsNativeLanguage))
-            .Select(option => option.Name).ToArray();
+            .Select(option => SkillCatalogStrings.SkillName(option.Kind, option.SourceSkillId, option.Name)).ToArray();
         if (chosen.Length > 0)
         {
             card.Add(NativeTheme.Title(string.Join(", ", chosen), 18));
@@ -122,7 +122,7 @@ public sealed class CreationSkillsPage : NativePageBase
             Picker picker = new()
             {
                 Title = CreationAllocationStrings.Get("Skills.ChooseNativeLanguage", "Choose native language"),
-                ItemsSource = options.Select(option => option.Name).ToArray(),
+                ItemsSource = options.Select(option => SkillCatalogStrings.SkillName(option.Kind, option.SourceSkillId, option.Name)).ToArray(),
                 SelectedIndex = -1,
                 TextColor = NativeTheme.Text,
                 TitleColor = NativeTheme.Muted,
@@ -224,11 +224,11 @@ public sealed class CreationSkillsPage : NativePageBase
             CharacterCreationSkillAllocation? selected = _draft.Skills.SingleOrDefault(item =>
                 item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
             VerticalStackLayout card = new() { Spacing = 7 };
-            card.Add(NativeTheme.Title(source.Name, 18));
+            card.Add(NativeTheme.Title(SkillCatalogStrings.SkillName(source.Kind, source.SourceSkillId, source.Name), 18));
             card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
                     "Skills.SkillDetail",
                     "{0} · {1} · rating {2}",
-                    source.Category,
+                    SkillCatalogStrings.CategoryName(source.Category),
                     CreationAllocationStrings.AttributeName(source.DefaultAttribute),
                     selected?.IsNativeLanguage == true
                         ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
@@ -330,7 +330,7 @@ public sealed class CreationSkillsPage : NativePageBase
         {
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
             VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(source.Name, 18));
+            card.Add(NativeTheme.Title(SkillCatalogStrings.GroupName(source.Name), 18));
             card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
                 "Skills.GroupDetail",
                 "Rating {0} · {1} skills",
@@ -383,7 +383,8 @@ public sealed class CreationSkillsPage : NativePageBase
         {
             Title = CreationAllocationStrings.Get("SkillsReReview.ChooseSpecialization", "Choose specialization"),
             ItemsSource = new[] { CreationAllocationStrings.Get("SkillsReReview.NoSpecialization", "No specialization") }
-                .Concat(options.Select(option => option.Name)).ToArray(),
+                .Concat(options.Select(option => SkillCatalogStrings.SpecializationName(
+                    source.Kind, source.SourceSkillId, source.Name, option.Name))).ToArray(),
             SelectedIndex = currentIndex,
             TextColor = NativeTheme.Text,
             TitleColor = NativeTheme.Muted,
@@ -663,7 +664,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         foreach (CharacterCreationSkillProjection skill in _preview.Skills)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Title(skill.Name, 18));
+            card.Add(NativeTheme.Title(SkillCatalogStrings.SkillName(skill.Kind, skill.SourceSkillId, skill.Name), 18));
             _technicalDetails.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.Kind", "Kind"),
                 skill.Name + " · " + skill.Kind));
@@ -676,13 +677,13 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             if (!string.IsNullOrWhiteSpace(skill.SpecializationName))
                 card.Add(NativeTheme.Metric(
                     CreationAllocationStrings.Get("SkillsPreview.Specialization", "Specialization"),
-                    skill.SpecializationName));
+                    SkillCatalogStrings.SpecializationName(skill.Kind, skill.SourceSkillId, skill.Name, skill.SpecializationName)));
             _body.Add(NativeTheme.Card(card));
         }
         foreach (CharacterCreationSkillGroupProjection group in _preview.SkillGroups)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Title(group.Name, 18));
+            card.Add(NativeTheme.Title(SkillCatalogStrings.GroupName(group.Name), 18));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.GroupRating", "Group rating"),
                 group.Rating.ToString(CultureInfo.CurrentCulture)));
