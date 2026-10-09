@@ -9,6 +9,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
 {
     private readonly CreationSkillsReReviewPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20), Spacing = 12 };
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private IReadOnlyList<string> _requestBlockers = [];
     private CreationSkillsPhoneConfirmResult? _confirmation;
     private long _generation;
@@ -43,6 +44,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(Text("Title", "Review older Skills choices")));
         if (_confirmation?.Receipt is { } receipt && Coordinator.CanDisplayCreationSkillsReReviewReceipt(receipt))
         {
@@ -53,15 +55,16 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             _body.Add(saved);
             var receiptLabel = NativeTheme.Body(receipt.ReceiptDigest, NativeTheme.Muted);
             receiptLabel.AutomationId = "creation-skills-rereview-receipt";
-            _body.Add(receiptLabel);
+            _technicalDetails.Add(receiptLabel);
+            AddTechnicalDetails();
             AddExit();
             return;
         }
         if (_confirmation is not null)
         {
-            foreach (string blocker in _confirmation.Blockers)
-                _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+            AddBlockers(_body, _confirmation.Blockers);
             _body.Add(NativeTheme.Body(Text("CheckSave", "Reopen the runner to check the save result before trying again."), NativeTheme.Danger));
+            AddTechnicalDetails();
             AddExit();
             return;
         }
@@ -77,7 +80,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
         var binding = NativeTheme.Body(Format("Binding", "Revision {0} · historical draft {1}",
             state.Binding.Current.ContentRevision, state.HistoricalDraft.DraftRevision), NativeTheme.Muted);
         binding.AutomationId = "creation-skills-rereview-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
         foreach (var (budget, canonicalBudgetId) in new[] {
                      (preview.CurrentPreview.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
                      (preview.CurrentPreview.SkillGroupPointBudget, CharacterCreationBudgetIds.SkillGroups),
@@ -90,8 +93,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
         }
         foreach (var change in preview.Changes) AddChange(state, change);
         AddCatalogChoice(state);
-        foreach (string blocker in preview.CurrentPreview.Blockers.Concat(_requestBlockers).Distinct(StringComparer.Ordinal))
-            _body.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        AddBlockers(_body, preview.CurrentPreview.Blockers.Concat(_requestBlockers));
         var confirm = NativeTheme.PrimaryButton(Text("Confirm", "Review and confirm these changes"));
         confirm.AutomationId = "creation-skills-rereview-confirm";
         confirm.IsEnabled = _attached && _confirmation is null && _requestBlockers.Count == 0 && _draft.CanConfirm(Coordinator.State);
@@ -114,6 +116,7 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             _requestBlockers = _confirmation.Blockers;
         });
         _body.Add(confirm);
+        AddTechnicalDetails();
         AddExit();
     }
 
@@ -128,9 +131,14 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             card.Add(NativeTheme.Body(Format("Specialization", "Specialization: {0} → {1}",
                 SpecializationName(state, change, change.HistoricalSpecializationOptionId),
                 SpecializationName(state, change, change.CandidateSpecializationOptionId)), NativeTheme.Muted));
-        foreach (string blocker in change.Blockers) card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        AddBlockers(card, change.Blockers);
         if (change.SourceAnchorIds.Count > 0)
-            card.Add(NativeTheme.Body(Format("Sources", "Source anchors: {0}", string.Join(", ", change.SourceAnchorIds)), NativeTheme.Muted));
+            _technicalDetails.Add(NativeTheme.Body(change.Name + " · " + Format("Sources", "Source anchors: {0}",
+                string.Join(", ", change.SourceAnchorIds)), NativeTheme.Muted));
+        if (change.HistoricalSpecializationOptionId is not null || change.CandidateSpecializationOptionId is not null)
+            _technicalDetails.Add(NativeTheme.Body(change.Name + " · " + Format("Specialization", "Specialization: {0} → {1}",
+                change.HistoricalSpecializationOptionId ?? Text("None", "none"),
+                change.CandidateSpecializationOptionId ?? Text("None", "none")), NativeTheme.Muted));
         HorizontalStackLayout controls = new() { Spacing = 8 };
         bool group = change.Kind == "skill-group";
         var skill = _draft.Skills.SingleOrDefault(row => row.Kind == change.Kind && row.SourceSkillId == change.SourceId);
@@ -253,11 +261,34 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
         _body.Add(back);
     }
 
+    private void AddBlockers(VerticalStackLayout target, IEnumerable<string> blockers)
+    {
+        string[] exact = blockers.Distinct(StringComparer.Ordinal).ToArray();
+        foreach (string message in exact.Select(CreationAllocationStrings.SkillBlocker).Distinct(StringComparer.Ordinal))
+            target.Add(NativeTheme.Body(message, NativeTheme.Danger));
+        foreach (string code in exact)
+            _technicalDetails.Add(NativeTheme.Body(code, NativeTheme.Muted));
+    }
+
+    private void AddTechnicalDetails()
+    {
+        VerticalStackLayout details = _technicalDetails;
+        if (details.Count == 0) return;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(details, "creation-skills-rereview-details",
+            () => _attached && ReferenceEquals(details, _technicalDetails)
+                && IsCurrentAppearanceGeneration(appearance)
+                && (_confirmation?.Receipt is { } receipt
+                    ? Coordinator.CanDisplayCreationSkillsReReviewReceipt(receipt)
+                    : _draft.State is { } state && Coordinator.IsCreationSkillsReReviewStateCurrent(state))));
+    }
+
     private static string SpecializationName(CharacterCreationSkillsReReviewState state,
         CharacterCreationSkillsReReviewChange change, string? id) => id is null ? Text("None", "none")
         : state.CurrentState.Authority.ActiveSkills.Concat(state.CurrentState.Authority.KnowledgeSkills)
             .SingleOrDefault(row => row.Kind == change.Kind && row.SourceSkillId == change.SourceId)?.Specializations
-            .SingleOrDefault(row => row.OptionId == id)?.Name ?? id;
+            .SingleOrDefault(row => row.OptionId == id)?.Name
+            ?? Text("UnavailableSpecialization", "Previously selected specialization (not in the current catalog)");
     private static string Rating(int? rating, bool native) => native ? Text("Native", "native")
         : rating?.ToString(CultureInfo.CurrentCulture) ?? Text("None", "none");
     private static string Token(string value) => new(value.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());

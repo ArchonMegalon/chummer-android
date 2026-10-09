@@ -945,4 +945,28 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Use as native language</value></data>
   <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Open the Career review and enter the sum of your starting-cash dice, then review again.</value></data>
   <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>Career totals could not be verified. Review any remaining warnings and your starting-cash dice total, then review again.</value></data>
+  <data name="Skills.Message.Duplicate" xml:space="preserve"><value>A skill or group is selected more than once. Remove the duplicate choice.</value></data>
+  <data name="Skills.Message.Allocation" xml:space="preserve"><value>Check this skill's rating and selection against the current limits.</value></data>
+  <data name="Skills.Message.ActivePoints" xml:space="preserve"><value>Not enough active skill points remain. Lower an allocation before reviewing again.</value></data>
+  <data name="Skills.Message.GroupPoints" xml:space="preserve"><value>Not enough skill group points remain. Lower a group rating before reviewing again.</value></data>
+  <data name="Skills.Message.KnowledgePoints" xml:space="preserve"><value>Not enough knowledge skill points remain. Review your knowledge and language allocations.</value></data>
+  <data name="Skills.Message.GroupMixed" xml:space="preserve"><value>The group and its individual skill choices conflict. Review their ratings and specializations together.</value></data>
+  <data name="Skills.Message.GroupUnavailable" xml:space="preserve"><value>This skill group is not available with the current choices.</value></data>
+  <data name="Skills.Message.Specialization" xml:space="preserve"><value>Choose an available specialization for this skill, or remove the specialization.</value></data>
+  <data name="Skills.Message.NativeChoice" xml:space="preserve"><value>Check the selected native language. It cannot also have a purchased rating or specialization.</value></data>
+  <data name="Skills.Message.NativeLimit" xml:space="preserve"><value>Too many native languages are selected. Remove one before reviewing again.</value></data>
+  <data name="Skills.Message.Exotic" xml:space="preserve"><value>This exotic skill is not supported by this editor. Your saved choices are not changed by opening it.</value></data>
+  <data name="Skills.Message.Movement" xml:space="preserve"><value>This skill's movement requirement is not met by the current runner.</value></data>
+  <data name="Skills.Message.Talent" xml:space="preserve"><value>The current Talent does not grant access to this skill.</value></data>
+  <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>This knowledge-point calculation is not supported here yet. Do not change the saved draft to work around it.</value></data>
+  <data name="Skills.Message.Attributes" xml:space="preserve"><value>Review and save your Attributes before reviewing Skills again.</value></data>
+  <data name="Skills.Message.Unavailable" xml:space="preserve"><value>The current runner or its rules could not be loaded safely. Reopen the runner before continuing.</value></data>
+  <data name="Skills.Message.History" xml:space="preserve"><value>The saved Skills history needs checking. Reopen the runner; do not repeat a save whose result is uncertain.</value></data>
+  <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>This save request cannot be confirmed. Reopen the runner and check what was saved before trying again.</value></data>
+  <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Your skills were saved, but this view could not refresh. Reopen the runner; do not save these choices again.</value></data>
+  <data name="Skills.Message.Reopen" xml:space="preserve"><value>The runner or rules changed since this view was prepared. Reopen Skills to review the current choices.</value></data>
+  <data name="Skills.Message.Review" xml:space="preserve"><value>Review the complete proposal and confirm it explicitly. Opening this page does not save changes.</value></data>
+  <data name="Skills.Message.Unknown" xml:space="preserve"><value>This choice cannot be confirmed. Check the current choices; technical details contain the exact reason.</value></data>
+  <data name="Skills.CheckChoices" xml:space="preserve"><value>Check your choices</value></data>
+  <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Previously selected specialization (not in the current catalog)</value></data>
 </root>

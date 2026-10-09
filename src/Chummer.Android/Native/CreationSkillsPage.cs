@@ -501,13 +501,17 @@ public sealed class CreationSkillsPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.CoreBlockers",
-            "Core blockers")));
+            "Skills.CheckChoices",
+            "Check your choices")));
+        foreach (string message in blockers.Select(CreationAllocationStrings.SkillBlocker).Distinct(StringComparer.Ordinal))
+            card.Add(NativeTheme.Body(message, NativeTheme.Danger));
+        VerticalStackLayout technical = new() { Spacing = 5 };
         foreach (string blocker in blockers)
-            card.Add(NativeTheme.Body(blocker == CharacterCreationSkillsBlockers.NativeLanguageRequired
-                ? CreationAllocationStrings.Get("Skills.NativeLanguageRequired",
-                    "Your skill choices are not saved yet. Choose a native language under Knowledge & languages before reviewing and saving.")
-                : $"• {blocker}", NativeTheme.Danger));
+            technical.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+        long generation = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        card.Add(NativeTheme.TechnicalDetails(technical, (automationId ?? "creation-skills-blockers") + "-details",
+            () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
         _body.Add(border);
@@ -697,10 +701,12 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             return;
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.CoreBlockers",
-            "Core blockers")));
+            "Skills.CheckChoices",
+            "Check your choices")));
+        foreach (string message in blockers.Select(CreationAllocationStrings.SkillBlocker).Distinct(StringComparer.Ordinal))
+            card.Add(NativeTheme.Body(message, NativeTheme.Danger));
         foreach (string blocker in blockers)
-            card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+            _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
         _body.Add(NativeTheme.Card(card));
     }
 

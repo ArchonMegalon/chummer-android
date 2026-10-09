@@ -81,6 +81,7 @@ internal static class PhoneLocaleRuntimeTests
                 "Rejected selection changed stored preferences.");
             GermanCreationCopy();
             RegionalCreationCopy();
+            SkillsBlockerCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -183,6 +184,36 @@ internal static class PhoneLocaleRuntimeTests
             && CreationAllocationStrings.AttributeName("custom-attribute") == "custom-attribute",
             "Skill-linked attribute labels were untranslated or unknown labels were rewritten.");
         Console.WriteLine("PASS Creation regional formatting: independent DE/US, EN/AT, ES/DE, explicit override and canonical skill attributes");
+    }
+
+    private static void SkillsBlockerCopy()
+    {
+        string[] codes = typeof(CharacterCreationSkillsBlockers)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .Concat([CharacterCreationSkillsReReviewSchemas.Unavailable, CharacterCreationSkillsReReviewSchemas.Stale,
+                CharacterCreationSkillsReReviewSchemas.ExplicitReviewRequired]).ToArray();
+        foreach (string language in new[] { "de-AT", "en-GB", "es-MX" })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            string unknown = CreationAllocationStrings.SkillBlocker("future-code-1a2b3c4d");
+            Require(unknown.Length > 20 && !unknown.Contains("future-code", StringComparison.Ordinal),
+                "Unknown diagnostic code leaked into player copy.");
+            foreach (string code in codes)
+            {
+                string message = CreationAllocationStrings.SkillBlocker(code);
+                Require(message != unknown && !message.Contains(code, StringComparison.Ordinal),
+                    $"Known Skills blocker lacks useful localized copy: {language}/{code}");
+            }
+            Require(CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.PostCommitRefreshRequired)
+                != CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.IdempotencyConflict),
+                "Saved-but-refresh-failed was confused with an uncertain/rejected save.");
+        }
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        Require(CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.ActiveBudgetExceeded)
+            .Contains("Fertigkeitspunkte", StringComparison.Ordinal), "German budget guidance is still English.");
+        Console.WriteLine("PASS all canonical Skills/re-review reasons: EN/DE/ES player guidance, unknown-code fallback, distinct save outcomes");
     }
 
     private static void Require(bool condition, string message)

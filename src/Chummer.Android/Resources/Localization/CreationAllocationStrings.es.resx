@@ -942,4 +942,28 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Usar como lengua materna</value></data>
   <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Abre la revisión de Carrera e introduce la suma de tus dados de dinero inicial. Después, revisa de nuevo.</value></data>
   <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>No se pudieron verificar los totales de Carrera. Revisa los avisos pendientes y la suma de tus dados de dinero inicial; después, vuelve a revisar.</value></data>
+  <data name="Skills.Message.Duplicate" xml:space="preserve"><value>Una habilidad o grupo está seleccionado más de una vez. Elimina la selección duplicada.</value></data>
+  <data name="Skills.Message.Allocation" xml:space="preserve"><value>Revisa el nivel y la selección de esta habilidad según los límites actuales.</value></data>
+  <data name="Skills.Message.ActivePoints" xml:space="preserve"><value>No quedan suficientes puntos de habilidades activas. Reduce una asignación y vuelve a revisar.</value></data>
+  <data name="Skills.Message.GroupPoints" xml:space="preserve"><value>No quedan suficientes puntos de grupos de habilidades. Reduce el nivel de un grupo y vuelve a revisar.</value></data>
+  <data name="Skills.Message.KnowledgePoints" xml:space="preserve"><value>No quedan suficientes puntos de conocimientos. Revisa las asignaciones de conocimientos e idiomas.</value></data>
+  <data name="Skills.Message.GroupMixed" xml:space="preserve"><value>El grupo y sus habilidades individuales entran en conflicto. Revisa juntos sus niveles y especializaciones.</value></data>
+  <data name="Skills.Message.GroupUnavailable" xml:space="preserve"><value>Este grupo de habilidades no está disponible con las selecciones actuales.</value></data>
+  <data name="Skills.Message.Specialization" xml:space="preserve"><value>Elige una especialización disponible para esta habilidad o elimina la especialización.</value></data>
+  <data name="Skills.Message.NativeChoice" xml:space="preserve"><value>Revisa el idioma nativo elegido. No puede tener además un nivel comprado ni una especialización.</value></data>
+  <data name="Skills.Message.NativeLimit" xml:space="preserve"><value>Hay demasiados idiomas nativos seleccionados. Elimina uno y vuelve a revisar.</value></data>
+  <data name="Skills.Message.Exotic" xml:space="preserve"><value>Este editor aún no admite esta habilidad exótica. Abrirlo no modifica tus selecciones guardadas.</value></data>
+  <data name="Skills.Message.Movement" xml:space="preserve"><value>Tu personaje no cumple el requisito de movimiento de esta habilidad.</value></data>
+  <data name="Skills.Message.Talent" xml:space="preserve"><value>El talento actual no permite esta habilidad.</value></data>
+  <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>Este cálculo de puntos de conocimiento aún no está disponible aquí. No cambies el borrador guardado para eludirlo.</value></data>
+  <data name="Skills.Message.Attributes" xml:space="preserve"><value>Revisa y guarda primero tus atributos. Después vuelve a revisar las habilidades.</value></data>
+  <data name="Skills.Message.Unavailable" xml:space="preserve"><value>No se pudo cargar de forma segura el personaje o sus reglas. Vuelve a abrirlo antes de continuar.</value></data>
+  <data name="Skills.Message.History" xml:space="preserve"><value>Hay que comprobar el historial de habilidades. Vuelve a abrir el personaje; no repitas un guardado de resultado incierto.</value></data>
+  <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>No se puede confirmar esta solicitud de guardado. Vuelve a abrir el personaje y comprueba lo guardado antes de intentarlo otra vez.</value></data>
+  <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Tus habilidades se guardaron, pero la vista no pudo actualizarse. Vuelve a abrir el personaje; no guardes de nuevo estas selecciones.</value></data>
+  <data name="Skills.Message.Reopen" xml:space="preserve"><value>El personaje o las reglas cambiaron desde que se preparó esta vista. Vuelve a abrir Habilidades para revisar las selecciones actuales.</value></data>
+  <data name="Skills.Message.Review" xml:space="preserve"><value>Revisa la propuesta completa y confírmala expresamente. Abrir esta página no guarda cambios.</value></data>
+  <data name="Skills.Message.Unknown" xml:space="preserve"><value>No se puede confirmar esta selección. Revísala; los detalles técnicos contienen el motivo exacto.</value></data>
+  <data name="Skills.CheckChoices" xml:space="preserve"><value>Revisa tus selecciones</value></data>
+  <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Especialización anterior (no está en el catálogo actual)</value></data>
 </root>
