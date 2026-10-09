@@ -403,6 +403,14 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="NewRunnerFixedSettingsAllSources" xml:space="preserve"><value>Standard-Erschaffungsregeln · alle Quellen aktiviert. Das Profil folgt deiner Erschaffungsmethode.</value></data>
   <data name="NewRunnerFixedSettings" xml:space="preserve"><value>Standard-Erschaffungsregeln. Das Profil folgt deinem Regelwerk und deiner Erschaffungsmethode.</value></data>
   <data name="SettingsDiagnostics" xml:space="preserve"><value>Technische Diagnose</value></data>
-  <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer speichert bis zu 128 technische Ereignisse für zwei Tage auf diesem Handy: App-Version, Seitenkategorie, Vorgang, Dauer und Fehlerkategorie. Keine Runner-, Buch- oder Kontodaten und keine Fehlertexte. Es wird nichts automatisch gesendet.</value></data>
+  <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer speichert bis zu 128 technische Ereignisse für zwei Tage auf diesem Handy: App-Version, Seitenkategorie, Vorgang, Dauer und Fehlerkategorie. Keine Runner-, Buch- oder Kontodaten und keine Fehlertexte. Automatisches Senden bleibt aus, bis du es unten einschaltest.</value></data>
   <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Technischen Bericht teilen</value></data>
+  <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>Optional: Neue Fehler und Vorgänge über 30 Sekunden an das Chummer-Team bei chummer.run senden, solange die App läuft. Höchstens acht Berichte pro zwei Tage; keine alten Protokolle. Die Berichte bleiben bis zu zwei Tage im privaten Eingang. Ausschalten löscht ungesendete Berichte; bereits empfangene laufen separat ab.</value></data>
+  <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Diagnose-Einstellung wird geladen…</value></data>
+  <data name="SettingsDiagnosticsEnable" xml:space="preserve"><value>Automatische technische Berichte einschalten</value></data>
+  <data name="SettingsDiagnosticsDisable" xml:space="preserve"><value>Ausschalten und ungesendete Berichte löschen</value></data>
+  <data name="SettingsDiagnosticsSaveFailed" xml:space="preserve"><value>Die Auswahl konnte nicht gespeichert werden. Für diese Sitzung ist das Senden gestoppt. Versuche es vor dem Neustart von Chummer erneut.</value></data>
+  <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Automatische technische Berichte: an. Änderungen gelten sofort.</value></data>
+  <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Automatische technische Berichte: aus. Änderungen gelten sofort.</value></data>
+  <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Diagnose-Auswahl erneut speichern</value></data>
 </root>

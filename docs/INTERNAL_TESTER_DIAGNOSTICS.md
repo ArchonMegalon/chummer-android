@@ -1,10 +1,14 @@
 # Internal tester diagnostics
 
-Current implementation is **local only**, not automatic central reporting.
+Current source has **explicit opt-in automatic reporting**. It is not yet a
+deployed or Play-delivered central reporting service.
 Native page appearance/actions/refreshes and Life Modules story-readiness checks
 record allowlisted technical events in app-private `diagnostics/technical-diagnostics.json`.
 The settings page explains this and offers an explicit Android share action.
-No background upload or operator notification is enabled.
+Automatic sharing is off by default. The separate settings action takes effect
+immediately (not through the language/settings Save button). DE/EN/ES disclosures
+explain the first-party destination, metadata, two-day private inbox and withdrawal.
+Operator notification and actual private intake readback remain outstanding.
 
 Records contain app version, UTC time, coarse page category, operation kind,
 process-local operation counter, elapsed time, outcome and coarse error category.
@@ -19,7 +23,7 @@ bounded temporary file. Writes are asynchronous and coalesced. Storage failure
 does not block an app action; writes back off for one minute. This is best-effort
 logging, not guaranteed crash capture: abrupt process death can lose pending writes.
 
-The **unregistered** `NativeProblemOutbox` now prepares the delivery boundary:
+`NativeProblemOutbox` enforces the delivery boundary:
 explicit opt-in (off by default), a maximum of eight metadata-only reports per
 two-day window, category suppression across restart, a stable random submission
 ID persisted before delivery, at least five-minute persisted backoff, and one send per
@@ -28,10 +32,22 @@ the adapter validates an exact receipt and uses idempotent intake. Failed action
 rejected dispatches and observations lasting at least 30 seconds are eligible.
 Slow remains a separate observation, never a crash claim. Busy taps, cancellations
 and ordinary story-not-ready observations are not sent. This app-private state is
-not a copied Hub wire DTO. No production registration, scheduler or settings opt-in
-is connected yet.
+not a copied Hub wire DTO. Persisted consent has a start timestamp; old preparatory
+states without it fail closed. `NativeProblemReporter` additionally holds an exact
+in-memory journal sequence boundary, excluding pre-consent events even if they
+share the consent timestamp. It never reimports the on-disk local journal.
 
-`NativeProblemHttpTransport` is implemented and locally tested but **unregistered**.
+The singleton reporter starts off-thread, checks every 30 seconds while the app
+process can run, and emits at most one eligible queued report per five minutes.
+It is not an Android WorkManager/foreground service and does not guarantee work
+while Android suspends/kills the process. Durable pending reports resume on the
+next app launch with their original IDs and backoff. Opt-out cancels an in-flight
+request and clears the queue; a receiver may already have accepted that request,
+so this is not a remote deletion promise. A failed consent save stops sending in
+the current process and explicitly asks the tester to retry before restarting.
+It must not claim that an unsuccessful disk write changed durable consent.
+
+`NativeProblemHttpTransport` is registered for the opt-in reporter and locally tested.
 It uses the canonical `Chummer.Control.Contracts` package identified in
 `eng/android-diagnostics-contract.json`. That exact 38,598-byte package was built
 locally from Hub `fef48022f`, not copied from DTO source, published as an asset or
@@ -55,10 +71,14 @@ Remaining central-delivery work:
   intake creates support work and grows incident/cluster history. Hub draft PR303
   adds a separate bounded two-day diagnostic intake with private readback and
   no automatic crash-case creation, but it is not deployed or activated.
-- Add bounded consent/disclosure-aware submission and verify actual private
-  intake/readback. Never embed the private reader credential in Android.
+- Verify actual private intake/readback and bounded operator notification.
+  Never embed the private reader credential in Android.
 - Reconcile current privacy/Play disclosures before remote collection; the old
   preview.7 worksheet is not current disclosure authority.
+
+This metadata-only request body does not imply that the HTTPS ingress has no
+connection metadata. Review ingress/access-log retention and actual published
+privacy/Play disclosures before enabling collection in a distributed build.
 
 The reported reload recovery after leaving/re-entering a page is still not
 reproduced. Instrumentation is not evidence of its cause or a claimed fix.

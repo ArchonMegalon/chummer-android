@@ -3,12 +3,11 @@ using System.Text.Json.Serialization;
 
 namespace Chummer.Android.Native;
 
-// App-private delivery state, NOT a Hub wire contract. No production transport
-// is registered yet. The eventual adapter must use Chummer.Control.Contracts.
+// App-private delivery state, NOT a Hub wire contract.
 internal sealed record NativeProblemSubmission(string Id, NativeProblemEntry Event);
 internal sealed record NativeProblemDeliveryItem(NativeProblemSubmission Submission, bool Terminal);
 internal sealed record NativeProblemDeliveryState(bool Enabled, DateTimeOffset RetryAfterUtc,
-    List<NativeProblemDeliveryItem> Items);
+    List<NativeProblemDeliveryItem> Items, DateTimeOffset EnabledAtUtc = default);
 
 internal enum NativeProblemDeliveryDisposition { RetryLater, Accepted, Rejected }
 internal readonly record struct NativeProblemDeliveryResult(
@@ -50,9 +49,17 @@ internal sealed class NativeProblemOutbox
             // clears the queue; a later opt-in starts with new observations.
             var state = Load();
             if (enabled && state.Enabled) return true;
-            Save(new(enabled, DateTimeOffset.MinValue, new()));
+            Save(new(enabled, DateTimeOffset.MinValue, new(), enabled ? _clock.GetUtcNow() : default));
             return true;
         }
+        catch (Exception e) when (IsStorageFailure(e)) { return false; }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<bool> IsEnabledAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { return Load().Enabled; }
         catch (Exception e) when (IsStorageFailure(e)) { return false; }
         finally { _gate.Release(); }
     }
@@ -66,7 +73,7 @@ internal sealed class NativeProblemOutbox
         try
         {
             var state = Load();
-            if (!state.Enabled || state.Items.Count >= MaximumItems) return false;
+            if (!state.Enabled || entry.AtUtc < state.EnabledAtUtc || state.Items.Count >= MaximumItems) return false;
             // One matching category per retention window. Completed entries
             // remain as bounded suppression markers across process restarts.
             if (state.Items.Any(item => SameCategory(item.Submission.Event, entry))) return false;
@@ -128,12 +135,14 @@ internal sealed class NativeProblemOutbox
         try { state = JsonSerializer.Deserialize(stream, NativeProblemDeliveryJsonContext.Default.NativeProblemDeliveryState); }
         catch (JsonException) { return new(false, DateTimeOffset.MinValue, new()); }
         if (state?.Items is null || state.Items.Count > MaximumItems
+            || (state.Enabled && (state.EnabledAtUtc == default || state.EnabledAtUtc > _clock.GetUtcNow()))
             || state.Items.Any(item => item?.Submission is not { Id.Length: 32, Event: not null } submission
                 || !Guid.TryParseExact(submission.Id, "N", out _) || !IsValid(submission.Event))
             || state.Items.Any(item => !IsDeliverable(item.Submission.Event))
             || state.Items.Select(item => item.Submission.Id).Distinct(StringComparer.Ordinal).Count() != state.Items.Count)
             return new(false, DateTimeOffset.MinValue, new());
-        state.Items.RemoveAll(item => item.Submission.Event.AtUtc < _clock.GetUtcNow().AddDays(-2));
+        state.Items.RemoveAll(item => item.Submission.Event.AtUtc < _clock.GetUtcNow().AddDays(-2)
+            || item.Submission.Event.AtUtc < state.EnabledAtUtc || !state.Enabled);
         return state;
     }
 

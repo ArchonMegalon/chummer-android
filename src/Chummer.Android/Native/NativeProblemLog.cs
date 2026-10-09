@@ -22,6 +22,7 @@ public sealed class NativeProblemLog : IDisposable
     private readonly string _version;
     private readonly TimeProvider _clock;
     private readonly List<NativeProblemEntry> _entries = new();
+    private readonly Queue<(long Revision, NativeProblemEntry Entry)> _observations = new();
     private readonly HashSet<Operation> _active = new();
     private readonly Timer _timer;
     private Task _writer = Task.CompletedTask;
@@ -74,6 +75,8 @@ public sealed class NativeProblemLog : IDisposable
                 Math.Max(0, operationId), Math.Clamp(elapsedMilliseconds, 0, 86400000), error));
             Trim(_entries, _clock.GetUtcNow());
             ++_revision;
+            _observations.Enqueue((_revision, _entries[^1]));
+            while (_observations.Count > MaximumEntries) _observations.Dequeue();
             if (_writing || _clock.GetUtcNow() < _retryWriteAfter) return;
             _writing = true;
             _writer = Task.Run(PersistAsync);
@@ -110,6 +113,18 @@ public sealed class NativeProblemLog : IDisposable
     }
 
     internal Task FlushAsync() { lock (_gate) return _writer; }
+
+    // Current-process events only: never read the pre-consent journal from disk.
+    internal long CurrentRevision { get { lock (_gate) return _revision; } }
+    internal NativeProblemEntry[] ReadAfter(ref long revision)
+    {
+        lock (_gate)
+        {
+            long previous = revision;
+            revision = _revision;
+            return _observations.Where(row => row.Revision > previous).Select(row => row.Entry).ToArray();
+        }
+    }
 
     private async Task PersistAsync()
     {

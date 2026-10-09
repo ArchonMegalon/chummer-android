@@ -24,6 +24,8 @@ internal static class NativeProblemOutboxTests
             await queue.DeliverOneAsync(Accept);
             Require(calls == 0, "Sent without opt-in.");
             Require(await queue.SetEnabledAsync(true), "Opt-in not saved.");
+            Require(!await queue.EnqueueAsync(Failure() with { AtUtc = clock.GetUtcNow().AddSeconds(-1) }),
+                "Old event crossed the consent boundary.");
             foreach (var outcome in new[] { NativeProblemOutcome.Slow, NativeProblemOutcome.Busy,
                 NativeProblemOutcome.Canceled, NativeProblemOutcome.NotReady, NativeProblemOutcome.Completed })
                 Require(!await queue.EnqueueAsync(Failure() with { Outcome = outcome }), "Non-failure submitted as crash.");

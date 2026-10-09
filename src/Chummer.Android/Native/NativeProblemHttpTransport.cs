@@ -7,10 +7,10 @@ using Chummer.Control.Contracts.Support;
 
 namespace Chummer.Android.Native;
 
-// Unregistered until explicit tester opt-in, disclosure and private intake are
-// connected. Never use the account client: no account tokens, cookies or identity.
-internal sealed class NativeProblemHttpTransport(HttpClient client, TimeProvider? clock = null)
+// Never use the account client: no account tokens, cookies or identity.
+internal sealed class NativeProblemHttpTransport(HttpClient client, TimeProvider? clock = null) : IDisposable
 {
+    public void Dispose() => client.Dispose();
     internal static readonly Uri Endpoint = new("https://chummer.run/api/v1/support/android-diagnostics");
     private const int MaximumResponseBytes = 2048;
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;

@@ -10,5 +10,7 @@
   "assemblySha256": "9dec8f60ae593bfd79f4855fcd368ed601ed471fa84273a243f1c08a4f9f36eb",
   "execution": "local-docker-sdk-10.0.103",
   "publishedPackageAuthority": false,
-  "productionTransportRegistered": false
+  "productionTransportRegistered": true,
+  "defaultCollectionEnabled": false,
+  "liveRemoteCollectionVerified": false
 }
