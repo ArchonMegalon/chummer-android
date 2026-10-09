@@ -469,6 +469,12 @@ internal static class Program
             await AfterRunAuthorityHarness.RunHomeStartupFeedbackAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--home-startup-recovery-content-root")
+        {
+            await AfterRunAuthorityHarness.RunHomeStartupRecoveryAsync(args[1]);
+            await AfterRunAuthorityHarness.RunHomeStartupFeedbackAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--home-transition-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunHomeRunnerActionAsync(args[1]);

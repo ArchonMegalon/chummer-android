@@ -10,6 +10,9 @@
   <data name="ShellMore" xml:space="preserve"><value>Mehr</value></data>
   <data name="HomeYourRunners" xml:space="preserve"><value>Deine Runner</value></data>
   <data name="HomeLoading" xml:space="preserve"><value>Deine Runner werden geöffnet…</value></data>
+  <data name="HomeLoadFailed" xml:space="preserve"><value>Deine Runner konnten nicht geöffnet werden.</value></data>
+  <data name="HomeLoadRetryDetail" xml:space="preserve"><value>Versuche das Laden hier erneut. Deine gespeicherten Runner werden nicht ersetzt.</value></data>
+  <data name="HomeLoadRetry" xml:space="preserve"><value>Erneut versuchen</value></data>
   <data name="RunnerNoticeRestoredOne" xml:space="preserve"><value>1 Runner-Dossier wiederhergestellt.</value></data>
   <data name="RunnerNoticeRestoredMany" xml:space="preserve"><value>{0} Runner-Dossiers wiederhergestellt.</value></data>
   <data name="RunnerNoticeSaved" xml:space="preserve"><value>Gespeichert.</value></data>

@@ -193,6 +193,115 @@ internal static partial class AfterRunAuthorityHarness
         });
     }
 
+    public static async Task RunHomeStartupRecoveryAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            bool failRead = true;
+            int reads = 0;
+            using var account = new ActualAccountFixture();
+            await account.Owner.InitializeAsync();
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account,
+                beforeShellWorkspaceList: () =>
+                {
+                    Interlocked.Increment(ref reads);
+                    if (failRead) throw new IOException("Deliberate startup read failure.");
+                });
+            var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument("""
+                <character><name>Startup retry fixture</name><gameedition>SR5</gameedition>
+                <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings><metatype>Human</metatype>
+                <buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion>
+                <appversion>5.225.0</appversion><created>False</created><karma>30</karma><nuyen>1000</nuyen>
+                <improvements/><contacts/><expenses/><notes>Keep this saved runner.</notes></character>
+                """, "sr5"), default);
+            Require((await runtime.Client.SaveAsync(imported.Id, default)).Success, "Startup retry fixture did not save.");
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            string before = JsonSerializer.Serialize(store.Get(imported.Id).Value!);
+            var page = new RunnersPage(runtime.Coordinator);
+            var window = new Window(page);
+            using var alerts = new IssuedPageAlerts(page, window);
+            await alerts.PreflightAsync();
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            Button Retry()
+            {
+                var actions = IssuedElements(page).OfType<Button>().ToArray();
+                Require(actions.Length == 1 && actions[0].AutomationId == "home-startup-retry",
+                    "Failed startup exposes runner actions instead of one visible retry on the same page.");
+                Require(!IssuedElements(page).OfType<ActivityIndicator>().Any(indicator => indicator.IsRunning),
+                    "Failed startup still looks like a running operation.");
+                return actions[0];
+            }
+            var retiredRetry = Retry();
+            var cultureBefore = CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (var (culture, expected) in new[]
+                {
+                    ("en", "Your runners could not be opened."),
+                    ("de-AT", "Deine Runner konnten nicht geöffnet werden."),
+                    ("es-MX", "No se pudieron abrir tus runners.")
+                })
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                    typeof(HomePage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(page, null);
+                    Require(IssuedElements(page).OfType<Label>().Any(label =>
+                        label.AutomationId == "home-startup-error" && label.Text == expected),
+                        "Startup failure lacks localized, content-free feedback.");
+                    Retry();
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = cultureBefore; }
+            int readsBeforeRetired = reads;
+            await ui.BeginAsyncVoid(retiredRetry.SendClicked);
+            Require(reads == readsBeforeRetired, "Replaced retry control started a new read.");
+            var departedRetry = Retry();
+            IssuedPageLifecycle(page, "OnDisappearing");
+            await ui.BeginAsyncVoid(departedRetry.SendClicked);
+            Require(reads == readsBeforeRetired, "Departed retry control started a new read.");
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+            var retry = Retry();
+            failRead = false;
+            var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_initializeGate",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+            await gate.WaitAsync();
+            Task retryTask;
+            try
+            {
+                retryTask = ui.BeginAsyncVoid(retry.SendClicked);
+                Require(!retryTask.IsCompleted && IssuedElements(page).OfType<ActivityIndicator>()
+                    .Any(indicator => indicator.IsRunning), "Explicit retry lacks immediate progress.");
+                Require(!IssuedElements(page).OfType<Button>().Any(), "Retry exposes actions before initialization.");
+                // Keep the first callback's completion tracker. A retained
+                // second tap must return synchronously while that retry waits.
+                int readsBeforeDoubleTap = reads;
+                retry.SendClicked();
+                Require(reads == readsBeforeDoubleTap && !retryTask.IsCompleted,
+                    "Retained double tap read again or completed the pending retry.");
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            }
+            finally { gate.Release(); }
+            await retryTask.WaitAsync(TimeSpan.FromSeconds(20));
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            Require(runtime.Coordinator.State.WorkspaceId == imported.Id
+                && runtime.Coordinator.State.Profile?.Name == "Startup retry fixture"
+                && runtime.Coordinator.State.Error is null
+                && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Ready,
+                "Same-page retry did not restore the exact saved runner and owner.");
+            Require(IssuedElements(page).OfType<Button>().Any(button => button.AutomationId == "home-open-current-runner")
+                && !IssuedElements(page).Any(element => element.AutomationId == "home-startup-error"),
+                "Recovered Home still displays a failed or pending load.");
+            Require(JsonSerializer.Serialize(store.Get(imported.Id).Value!) == before,
+                "Startup recovery changed saved runner data.");
+            Require(alerts.Titles.Count == 0, "Inline startup recovery opened an unrelated modal error.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+            Console.WriteLine("PASS Home failed restore: localized same-page retry, stale/double taps inert, progress heartbeat, exact owner and unchanged saved runner");
+        });
+    }
+
     public static async Task RunHomeStartupFeedbackAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();

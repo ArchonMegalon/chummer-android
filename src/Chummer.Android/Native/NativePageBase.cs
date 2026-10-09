@@ -48,6 +48,7 @@ public abstract class NativePageBase : ContentPage
             Interlocked.Exchange(ref _appearanceLifetime, appearanceLifetime);
         previousAppearance?.Cancel();
         CancellationToken appearanceToken = appearanceLifetime.Token;
+        bool initializationCompleted = false;
         if (Interlocked.CompareExchange(ref _subscribed, 1, 0) == 0)
         {
             Coordinator.Changed += OnCoordinatorChanged;
@@ -56,6 +57,7 @@ public abstract class NativePageBase : ContentPage
         try
         {
             await Coordinator.InitializeAsync();
+            initializationCompleted = true;
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
             await PrepareForAppearanceRefreshAsync(appearanceToken);
             ThrowIfAppearanceIsStale(appearanceGeneration, appearanceToken);
@@ -87,9 +89,10 @@ public abstract class NativePageBase : ContentPage
             }
 
             _coordinatorRefresh.DiscardPendingThrough(appearanceGeneration);
-            Refresh();
+            bool inlineFailure = !initializationCompleted && TryShowInitializationFailure();
+            if (!inlineFailure) Refresh();
             ClearAppearanceRefreshIfCurrent(appearanceGeneration);
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
+            if (!inlineFailure) await DisplayAlertAsync("Chummer", ex.Message, "OK");
         }
         finally
         {
@@ -121,6 +124,11 @@ public abstract class NativePageBase : ContentPage
     }
 
     protected abstract void Refresh();
+
+    // A startup page can retain an explicit retry instead of displaying normal
+    // runner controls after initialization failed. Other pages keep their existing
+    // failure behavior; an already initialized page error is not a startup failure.
+    protected virtual bool TryShowInitializationFailure() => false;
 
     protected virtual Task PrepareForAppearanceRefreshAsync(
         CancellationToken cancellationToken)

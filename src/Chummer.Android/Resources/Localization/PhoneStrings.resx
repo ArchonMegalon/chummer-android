@@ -10,6 +10,9 @@
   <data name="ShellMore" xml:space="preserve"><value>More</value></data>
   <data name="HomeYourRunners" xml:space="preserve"><value>Your runners</value></data>
   <data name="HomeLoading" xml:space="preserve"><value>Opening your runners…</value></data>
+  <data name="HomeLoadFailed" xml:space="preserve"><value>Your runners could not be opened.</value></data>
+  <data name="HomeLoadRetryDetail" xml:space="preserve"><value>Try loading again here. Your saved runners will not be replaced.</value></data>
+  <data name="HomeLoadRetry" xml:space="preserve"><value>Try again</value></data>
   <data name="RunnerNoticeRestoredOne" xml:space="preserve"><value>Restored 1 runner dossier.</value></data>
   <data name="RunnerNoticeRestoredMany" xml:space="preserve"><value>Restored {0} runner dossiers.</value></data>
   <data name="RunnerNoticeSaved" xml:space="preserve"><value>Saved.</value></data>
