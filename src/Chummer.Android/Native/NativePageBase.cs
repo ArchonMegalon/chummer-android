@@ -31,7 +31,7 @@ public abstract class NativePageBase : ContentPage
 
     protected string? ReadableNotice => HasUnsavedWorkspaceSwitchNotice
         ? PhoneStrings.Get("HomeUnsavedSwitch", "Save your current runner before switching.")
-        : Coordinator.Notice;
+        : PhoneStrings.RunnerNotice(Coordinator.Notice);
 
     protected override async void OnAppearing()
     {

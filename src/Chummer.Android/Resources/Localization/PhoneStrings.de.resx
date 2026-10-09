@@ -10,6 +10,12 @@
   <data name="ShellMore" xml:space="preserve"><value>Mehr</value></data>
   <data name="HomeYourRunners" xml:space="preserve"><value>Deine Runner</value></data>
   <data name="HomeLoading" xml:space="preserve"><value>Deine Runner werden geöffnet…</value></data>
+  <data name="RunnerNoticeRestoredOne" xml:space="preserve"><value>1 Runner-Dossier wiederhergestellt.</value></data>
+  <data name="RunnerNoticeRestoredMany" xml:space="preserve"><value>{0} Runner-Dossiers wiederhergestellt.</value></data>
+  <data name="RunnerNoticeSaved" xml:space="preserve"><value>Gespeichert.</value></data>
+  <data name="RunnerNoticeSettingsSaved" xml:space="preserve"><value>Einstellungen gespeichert.</value></data>
+  <data name="RunnerNoticeAccountRecovery" xml:space="preserve"><value>Die Kontowiederherstellung wird noch abgeschlossen.</value></data>
+  <data name="RunnerNoticeVerificationUnavailable" xml:space="preserve"><value>Der Arbeitsstand konnte nicht überprüft werden. Die Zuordnung zur zuletzt geöffneten Datei wurde nicht gespeichert.</value></data>
   <data name="HomeUnsavedSwitch" xml:space="preserve"><value>Speichere deinen aktuellen Runner vor dem Wechsel.</value></data>
   <data name="HomeReviewCurrentRunner" xml:space="preserve"><value>Aktuellen Runner öffnen</value></data>
   <data name="HomeNoRunner" xml:space="preserve"><value>Kein Runner geöffnet</value></data>
