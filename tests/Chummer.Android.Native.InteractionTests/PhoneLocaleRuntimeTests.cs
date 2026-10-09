@@ -80,6 +80,7 @@ internal static class PhoneLocaleRuntimeTests
             Require(preferences.Get(PhoneLocalePolicy.PreferencesKey, "") == stored,
                 "Rejected selection changed stored preferences.");
             GermanCreationCopy();
+            RegionalCreationCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -158,6 +159,30 @@ internal static class PhoneLocaleRuntimeTests
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
         Require(BuildPageUiProjection.StageLabel("skills", "MISSING") == "Habilidades", "Spanish fallback changed.");
         Console.WriteLine("PASS localized creation dashboard: all canonical labels, toolbar, DE/AT and DE/US numbers, immutable authority, custom fallback, EN/ES");
+    }
+
+    private static void RegionalCreationCopy()
+    {
+        foreach (var (language, region) in new[] { ("de-AT", "en-US"), ("en-GB", "de-AT"), ("es-MX", "de-DE") })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(region);
+            string template = CreationAllocationStrings.Get("Skills.BudgetLeft", "MISSING");
+            Require(template != "MISSING", "Actual Skills satellite resource missing.");
+            Require(CreationAllocationStrings.Format("Skills.BudgetLeft", "MISSING", 2.5m)
+                == string.Format(CultureInfo.CurrentCulture, template, 2.5m),
+                "Creation formatting ignored the independently selected region.");
+            var explicitCulture = CultureInfo.GetCultureInfo("de-DE");
+            Require(CreationAllocationStrings.Format(explicitCulture, "Skills.BudgetLeft", "MISSING", 2.5m)
+                == string.Format(explicitCulture, CreationAllocationStrings.Get("Skills.BudgetLeft", "MISSING", explicitCulture), 2.5m),
+                "An explicit locale override changed behavior.");
+        }
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        Require(CreationAllocationStrings.AttributeName("AGI") == "Geschicklichkeit"
+            && CreationAllocationStrings.AttributeName("LOG") == "Logik"
+            && CreationAllocationStrings.AttributeName("custom-attribute") == "custom-attribute",
+            "Skill-linked attribute labels were untranslated or unknown labels were rewritten.");
+        Console.WriteLine("PASS Creation regional formatting: independent DE/US, EN/AT, ES/DE, explicit override and canonical skill attributes");
     }
 
     private static void Require(bool condition, string message)

@@ -5,8 +5,8 @@ namespace Chummer.Android.Native;
 
 /// <summary>
 /// Resource-backed UI copy for the native SR5 creation Attribute, Skills, and Metatype
-/// allocation surfaces. Core-projected labels, identifiers, digests, and blockers deliberately
-/// retain their exact values; blocker guidance is display-only, never admission logic.
+/// allocation surfaces. Core-projected identifiers, digests, and blockers deliberately
+/// retain their exact values; translated labels and guidance are display-only, never admission logic.
 /// </summary>
 public static class CreationAllocationStrings
 {
@@ -41,7 +41,8 @@ public static class CreationAllocationStrings
     }
 
     public static string Format(string key, string englishFallback, params object?[] arguments)
-        => Format(CultureInfo.CurrentUICulture, key, englishFallback, arguments);
+        // App language and regional number/date formats are independent settings.
+        => string.Format(CultureInfo.CurrentCulture, Get(key, englishFallback), arguments);
 
     public static string Format(
         CultureInfo culture,

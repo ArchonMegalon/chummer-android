@@ -147,6 +147,28 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertIn('SemanticProperties.SetDescription(jump, label)', source)
         self.assertIn('PhoneStrings.Get("CreationUnit." + unit, unit)', source)
 
+    def test_skills_editor_and_review_localize_display_without_changing_typed_ids(self) -> None:
+        source = (PROJECT / "Native" / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        for canonical in ("ActiveSkills", "SkillGroups", "KnowledgeSkills"):
+            self.assertEqual(2, source.count("CharacterCreationBudgetIds." + canonical))
+        self.assertEqual(2, source.count("BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)"))
+        self.assertNotIn("budget.Label", source)
+        self.assertIn("CreationAllocationStrings.AttributeName(source.DefaultAttribute)", source)
+        self.assertIn('Token(budget.BudgetId)', source)
+        self.assertIn('budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)', source)
+        self.assertNotIn('budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)', source)
+        for field in ("ActivePointsRemaining", "SkillGroupPointsRemaining", "KnowledgePointsRemaining"):
+            self.assertIn(f"receipt.{field}.ToString(CultureInfo.CurrentCulture)", source)
+
+    def test_historical_skills_review_uses_the_same_localized_budget_identity(self) -> None:
+        source = (PROJECT / "Native" / "CreationSkillsReReviewPage.cs").read_text(encoding="utf-8")
+        for canonical in ("ActiveSkills", "SkillGroups", "KnowledgeSkills"):
+            self.assertIn("CharacterCreationBudgetIds." + canonical, source)
+        self.assertIn("BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)", source)
+        self.assertNotIn("budget.Label", source)
+        self.assertIn('"creation-skills-rereview-budget-" + Token(canonicalBudgetId)', source)
+        self.assertIn("budget.Used, budget.Total, budget.Remaining", source)
+
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
             "en": load_resx("PhoneStrings.resx"),

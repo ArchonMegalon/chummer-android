@@ -78,10 +78,16 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             state.Binding.Current.ContentRevision, state.HistoricalDraft.DraftRevision), NativeTheme.Muted);
         binding.AutomationId = "creation-skills-rereview-binding";
         _body.Add(binding);
-        foreach (var budget in new[] { preview.CurrentPreview.ActiveSkillPointBudget,
-                     preview.CurrentPreview.SkillGroupPointBudget, preview.CurrentPreview.KnowledgeSkillPointBudget })
-            _body.Add(NativeTheme.Body(Format("Budget", "{0}: {1} / {2} points; {3} left",
-                budget.Label, budget.Used, budget.Total, budget.Remaining)));
+        foreach (var (budget, canonicalBudgetId) in new[] {
+                     (preview.CurrentPreview.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
+                     (preview.CurrentPreview.SkillGroupPointBudget, CharacterCreationBudgetIds.SkillGroups),
+                     (preview.CurrentPreview.KnowledgeSkillPointBudget, CharacterCreationBudgetIds.KnowledgeSkills) })
+        {
+            var budgetLabel = NativeTheme.Body(Format("Budget", "{0}: {1} / {2} points; {3} left",
+                BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId), budget.Used, budget.Total, budget.Remaining));
+            budgetLabel.AutomationId = "creation-skills-rereview-budget-" + Token(canonicalBudgetId);
+            _body.Add(budgetLabel);
+        }
         foreach (var change in preview.Changes) AddChange(state, change);
         AddCatalogChoice(state);
         foreach (string blocker in preview.CurrentPreview.Blockers.Concat(_requestBlockers).Distinct(StringComparer.Ordinal))
