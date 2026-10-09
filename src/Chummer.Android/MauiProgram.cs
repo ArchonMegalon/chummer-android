@@ -23,7 +23,7 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        PhoneLocalePolicy.InitializeFromSystemCulture();
+        PhoneLocalePolicy.InitializeFromPreferences(Preferences.Default);
         string contentPath = AndroidBundledContentMaterializer.Materialize();
         Environment.SetEnvironmentVariable("CHUMMER_REQUIRE_CONTENT_BUNDLE", "true");
         string statePath = Path.Combine(FileSystem.AppDataDirectory, "state");

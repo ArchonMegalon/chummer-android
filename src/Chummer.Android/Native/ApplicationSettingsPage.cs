@@ -1,4 +1,5 @@
 using Chummer.Contracts.Api;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
@@ -9,9 +10,11 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
 {
-    private readonly ApplicationDeleteConfirmationState _baseline;
+    private ApplicationDeleteConfirmationState _baseline;
     private readonly IPlayReviewService? _playReview;
     private readonly Switch _confirmDelete;
+    private readonly Picker _language;
+    private readonly Picker _region;
 
     public ApplicationSettingsPage(RunnerSessionCoordinator coordinator)
         : this(
@@ -57,21 +60,38 @@ public sealed class ApplicationSettingsPage : NativePageBase
             _confirmDelete,
             "settings-confirm-delete-experimental"));
 
-        Label languageAuthority = NativeTheme.Body(
-            PhoneStrings.Get(
-                "SettingsLanguageDeviceManaged",
-                "Chummer uses your phone language and regional date and time formats."),
-            NativeTheme.Muted);
-        languageAuthority.AutomationId = "settings-language-device-managed";
+        PhoneLocalePreferences locale = PhoneLocalePolicy.ReadPreferences(Preferences.Default);
         VerticalStackLayout languageCard = new() { Spacing = 5 };
         languageCard.Add(NativeTheme.Title(
             PhoneStrings.Get("SettingsLanguageRegion", "Language & region"),
             20));
-        languageCard.Add(languageAuthority);
+        _language = CreateLocalePicker(
+            "settings-language", PhoneStrings.Get("SettingsAppLanguage", "App language"),
+            PhoneLocalePolicy.LanguageChoices(), locale.Language);
+        _region = CreateLocalePicker(
+            "settings-region", PhoneStrings.Get("SettingsRegionalFormats", "Regional formats"),
+            PhoneLocalePolicy.RegionChoices(), locale.Region);
+        languageCard.Add(NativeTheme.Body(_language.Title));
+        languageCard.Add(_language);
+        languageCard.Add(NativeTheme.Body(_region.Title));
+        languageCard.Add(_region);
+        Label formatPreview = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        formatPreview.AutomationId = "settings-region-preview";
+        void RefreshFormatPreview()
+        {
+            string selectedRegion = (_region.SelectedItem as PhoneLocaleChoice)?.Value ?? string.Empty;
+            CultureInfo formats = selectedRegion.Length == 0
+                ? PhoneLocalePolicy.SystemFormatCulture
+                : CultureInfo.GetCultureInfo(selectedRegion);
+            formatPreview.Text = $"{new DateTime(2026, 2, 21).ToString("d", formats)} · {1234.56m.ToString("N2", formats)}";
+        }
+        _region.SelectedIndexChanged += (_, _) => RefreshFormatPreview();
+        RefreshFormatPreview();
+        languageCard.Add(formatPreview);
         languageCard.Add(NativeTheme.Body(
             PhoneStrings.Get(
-                "SettingsSupportedLanguages",
-                "Supported: Deutsch, English, Español"),
+                "SettingsLocaleRestart",
+                "Save, then restart Chummer to apply. Book language and game rules stay unchanged."),
             NativeTheme.Muted));
         body.Add(NativeTheme.Card(languageCard));
 
@@ -96,9 +116,13 @@ public sealed class ApplicationSettingsPage : NativePageBase
         save.AutomationId = "settings-save";
         save.Clicked += async (_, _) => await RunAsync(async () =>
         {
+            if (_language.SelectedItem is not PhoneLocaleChoice language
+                || _region.SelectedItem is not PhoneLocaleChoice region) return;
             await Coordinator.SaveDeleteConfirmationSettingAsync(
                 _confirmDelete.IsToggled,
                 _baseline.Revision);
+            _baseline = Coordinator.ApplicationSettings;
+            PhoneLocalePolicy.SavePreferences(Preferences.Default, new(language.Value, region.Value));
             await Navigation.PopAsync();
         });
         body.Add(save);
@@ -108,8 +132,26 @@ public sealed class ApplicationSettingsPage : NativePageBase
 
     protected override void Refresh()
     {
-        // This page stages one phone setting. The baseline is intentionally held stable until Save
+        // This page stages phone settings. The baseline is intentionally held stable until Save
         // so a concurrent settings update fails through the coordinator's expected-revision check.
+    }
+
+    private static Picker CreateLocalePicker(string automationId, string title,
+        PhoneLocaleChoice[] choices, string selectedValue)
+    {
+        Picker picker = new()
+        {
+            AutomationId = automationId,
+            Title = title,
+            ItemsSource = choices,
+            ItemDisplayBinding = new Binding(nameof(PhoneLocaleChoice.Label)),
+            SelectedItem = choices.First(choice => choice.Value == selectedValue),
+            TextColor = NativeTheme.Text,
+            BackgroundColor = NativeTheme.Surface,
+            MinimumHeightRequest = 52
+        };
+        SemanticProperties.SetDescription(picker, title);
+        return picker;
     }
 
     private static Border CreateSwitchCard(

@@ -26,6 +26,10 @@
   <data name="SettingsConfirmDelete" xml:space="preserve"><value>Preguntar antes de eliminar elementos</value></data>
   <data name="SettingsConfirmDeleteDetail" xml:space="preserve"><value>Se muestra antes de eliminar un elemento de forma definitiva. Los pasos de revisión de los asistentes siempre permanecen activos.</value></data>
   <data name="SettingsLanguageRegion" xml:space="preserve"><value>Idioma y región</value></data>
+  <data name="SettingsAppLanguage" xml:space="preserve"><value>Idioma de la app</value></data>
+  <data name="SettingsRegionalFormats" xml:space="preserve"><value>Formatos regionales</value></data>
+  <data name="SettingsFollowPhone" xml:space="preserve"><value>Usar ajuste del teléfono</value></data>
+  <data name="SettingsLocaleRestart" xml:space="preserve"><value>Guarda y reinicia Chummer para aplicar los cambios. El idioma del libro y las reglas no cambian.</value></data>
   <data name="SettingsLanguageDeviceManaged" xml:space="preserve"><value>Chummer usa el idioma y los formatos regionales de fecha y hora del teléfono.</value></data>
   <data name="SettingsSupportedLanguages" xml:space="preserve"><value>Idiomas disponibles: Deutsch, English, Español</value></data>
   <data name="SettingsGooglePlay" xml:space="preserve"><value>Google Play</value></data>
