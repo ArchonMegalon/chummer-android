@@ -426,7 +426,8 @@ public sealed class CreationQualitiesPage : NativePageBase
         foreach (CharacterCreationGrantedQuality grant in state.Authority.GrantedQualities)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Title(grant.Name, 18));
+            string name = QualityCatalogStrings.Name(grant.SourceId, grant.Name);
+            card.Add(NativeTheme.Title(name, 18));
             card.Add(NativeTheme.Body(
                 CreationFlowStrings.Format(
                     "Qualities.GrantedDetail",
@@ -449,7 +450,7 @@ public sealed class CreationQualitiesPage : NativePageBase
             info.Padding = 0;
             info.VerticalOptions = LayoutOptions.Center;
             SemanticProperties.SetDescription(info, CreationFlowStrings.Format(
-                "Qualities.Info.Accessible", "Explain {0}", grant.Name));
+                "Qualities.Info.Accessible", "Explain {0}", name));
             info.Clicked += async (_, _) =>
             {
                 if (!ReferenceEquals(border.Parent, _body) || _loadedDisplay is not { } original
@@ -502,9 +503,8 @@ public sealed class CreationQualitiesPage : NativePageBase
         _catalog.Clear();
 
         CharacterCreationQualitiesDesktopOption[] matches = _availableOptions
-            .Where(option => string.IsNullOrWhiteSpace(_filter)
-                             || option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
-                             || (option.FollowUpChoiceLabel?.Contains(_filter, StringComparison.CurrentCultureIgnoreCase) ?? false))
+            .Where(option => QualityCatalogStrings.MatchesSearch(
+                option.SourceId, option.Name, option.FollowUpChoiceLabel, _filter))
             .OrderBy(option => option.Type)
             .ThenBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(option => option.OptionId, StringComparer.Ordinal)
@@ -571,8 +571,9 @@ public sealed class CreationQualitiesPage : NativePageBase
                     followUp);
                 if (!exact)
                     detail += $" · {UnavailableReason(option.DisableReasonKey)}";
+                string name = QualityCatalogStrings.Name(option.SourceId, option.Name);
                 Border row = NativeTheme.NavigationRow(
-                    option.Name,
+                    name,
                     detail,
                     () => Navigation.PushAsync(new CreationQualityConfigurePage(
                         Coordinator,
@@ -592,7 +593,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                 info.Padding = 0;
                 info.VerticalOptions = LayoutOptions.Center;
                 SemanticProperties.SetDescription(info, CreationFlowStrings.Format(
-                    "Qualities.Info.Accessible", "Explain {0}", option.Name));
+                    "Qualities.Info.Accessible", "Explain {0}", name));
                 info.Clicked += async (_, _) =>
                 {
                     if (!ReferenceEquals(row.Parent, _catalog) || !ReferenceEquals(_catalog.Parent, _body)
@@ -873,14 +874,14 @@ public sealed class CreationQualityInfoPage : NativePageBase
     private readonly VerticalStackLayout _body = new() { Padding = 20, Spacing = 14 };
 
     internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
-        CharacterCreationQualityCatalogOption option) : this(coordinator, original, option.Name,
+        CharacterCreationQualityCatalogOption option) : this(coordinator, original, QualityCatalogStrings.Name(option.SourceId, option.Name),
             CreationFlowStrings.Format("Qualities.Info.Cost", "Rating {0} · Karma {1}",
                 option.Rating, CreationQualitiesPage.Signed(option.KarmaCost)), option.FollowUpChoiceLabel, option.SourceNodeXml, option.Rating)
     {
     }
 
     internal CreationQualityInfoPage(RunnerSessionCoordinator coordinator, CharacterOverviewState original,
-        CharacterCreationGrantedQuality grant, string? sourceXml) : this(coordinator, original, grant.Name,
+        CharacterCreationGrantedQuality grant, string? sourceXml) : this(coordinator, original, QualityCatalogStrings.Name(grant.SourceId, grant.Name),
             CreationFlowStrings.Format("Qualities.GrantedDetail", "{0} · rating {1} · Karma {2}",
                 grant.Origin, grant.Rating, CreationQualitiesPage.Signed(grant.KarmaCost)), null, sourceXml, grant.Rating)
     {
@@ -1579,7 +1580,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
                 "Reopen Qualities for the current runner."), NativeTheme.Muted));
             return;
         }
-        _body.Add(NativeTheme.Title(_option.Name));
+        _body.Add(NativeTheme.Title(QualityCatalogStrings.Name(_option.SourceId, _option.Name)));
         VerticalStackLayout details = new() { Spacing = 6 };
         VerticalStackLayout technical = new() { Spacing = 6 };
         technical.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.StableOption", "Stable option"), _option.OptionId));
@@ -1745,7 +1746,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         foreach (CharacterCreationQualitySelection selection in preview.Selections)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Title(selection.Name, 18));
+            card.Add(NativeTheme.Title(QualityCatalogStrings.Name(selection.SourceId, selection.Name), 18));
             technical.Add(NativeTheme.Title(selection.Name, 18));
             technical.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.OptionId", "Option id"), selection.OptionId));
             technical.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceId", "Source id"), selection.SourceId.ToString("D")));

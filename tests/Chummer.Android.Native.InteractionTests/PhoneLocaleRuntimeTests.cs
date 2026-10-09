@@ -84,6 +84,7 @@ internal static class PhoneLocaleRuntimeTests
             SkillsBlockerCopy();
             SkillsCatalogCopy();
             MagicCatalogCopy();
+            QualityCatalogCopy();
             RunnerFeedbackCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
@@ -93,6 +94,30 @@ internal static class PhoneLocaleRuntimeTests
             CultureInfo.CurrentCulture = originalFormats;
             CultureInfo.DefaultThreadCurrentUICulture = originalDefaultUi;
             CultureInfo.DefaultThreadCurrentCulture = originalDefaultFormats;
+        }
+    }
+
+    private static void QualityCatalogCopy()
+    {
+        Guid ambidextrous = Guid.Parse("68cfe94a-fa7e-4129-a9b9-b5d73e3ced99");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        Require(QualityCatalogStrings.Name(ambidextrous, "Ambidextrous") == "Beidhändigkeit",
+            "Quality names must follow UI language, not regional number formats.");
+        Require(QualityCatalogStrings.MatchesSearch(ambidextrous, "Ambidextrous", null, "beidhändig")
+            && QualityCatalogStrings.MatchesSearch(ambidextrous, "Ambidextrous", null, "ambidextrous")
+            && QualityCatalogStrings.MatchesSearch(ambidextrous, "Ambidextrous", "Custom choice", "custom")
+            && !QualityCatalogStrings.MatchesSearch(ambidextrous, "Ambidextrous", null, "no match"),
+            "Quality search must retain German, original and follow-up labels.");
+        Require(QualityCatalogStrings.Name(Guid.Empty, "Ambidextrous") == "Ambidextrous"
+            && QualityCatalogStrings.Name(ambidextrous, "My custom quality") == "My custom quality"
+            && QualityCatalogStrings.Name(ambidextrous, "ambidextrous") == "ambidextrous",
+            "Unknown, renamed and case-changed quality names must remain unchanged.");
+        foreach (string language in new[] { "en-US", "es-MX", "ja-JP" })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            Require(QualityCatalogStrings.Name(ambidextrous, "Ambidextrous") == "Ambidextrous",
+                "Missing quality translations must fall back to their original label.");
         }
     }
 
