@@ -77,9 +77,10 @@ roots plus locked runtime packages, not ambient siblings or a source-free APK.
 
 ## Delivery boundary
 
-Preview155 is a candidate version. Final-source native save/reopen/process
-restart, signed ARM64 AAB and Play readback are not established by this document.
-Preview154 remains the immutable observed Internal build. Full chapters and
-per-chapter images remain in the reader and EPUB. No new provider-generation,
-physical Play installation, Windows delivery, full Creation/Career coverage or
-finished-app claim is made here.
+Preview155's subsequent final-source native Attributes edit/save/new-process
+smoke, signed ARM64 AAB and observed Internal availability are recorded separately
+in the [Play record](../../play/evidence/preview155-internal-observation.md).
+Core138, UI383 and Android595 merged normally. Preview154 remains immutable.
+Full chapters and per-chapter images remain in the reader and EPUB. No new
+provider-generation, physical Play installation, Windows delivery, native startup
+speedup, full Creation/Career coverage or finished-app claim is made here.
