@@ -123,6 +123,21 @@ internal static class PhoneLocaleRuntimeTests
             && BuildPageUiProjection.BudgetRemaining(budget.Remaining) == "2,5 übrig", "Budget copy or regional number failed.");
         Require(budget == original && budget.Label == "Normal attributes" && budget.Unit == "points",
             "Display localization mutated the authority.");
+        // Ready Attributes/Skills replace snapshot budgets with editor-owned
+        // ledgers. Their IDs need not equal the snapshot's display identity.
+        foreach (var (canonicalId, expectedLabel) in new[] {
+            (CharacterCreationBudgetIds.NormalAttributes, "Normale Attribute"),
+            (CharacterCreationBudgetIds.SpecialAttributes, "Spezialattribute"),
+            (CharacterCreationBudgetIds.ActiveSkills, "Aktive Fertigkeiten"),
+            (CharacterCreationBudgetIds.SkillGroups, "Fertigkeitsgruppen"),
+            (CharacterCreationBudgetIds.KnowledgeSkills, "Wissensfertigkeiten") })
+        {
+            var typedLedger = budget with { BudgetId = "editor-owned-ledger", Label = "English editor points" };
+            Require(BuildPageUiProjection.BudgetLabel(typedLedger, canonicalId) == expectedLabel,
+                $"Typed ledger bypassed canonical German display identity: {canonicalId}");
+            Require(typedLedger.Remaining == 2.5m && typedLedger.BudgetId == "editor-owned-ledger",
+                "Localization changed typed ledger values or identity.");
+        }
         Require(BuildPageUiProjection.BudgetLabel(budget with { BudgetId = CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints }) == "Kraftpunkte",
             "Adept budget leaked English.");
         Require(BuildPageUiProjection.StageLabel("future-custom-stage", "My Custom Stage") == "My Custom Stage",

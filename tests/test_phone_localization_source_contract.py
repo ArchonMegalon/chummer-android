@@ -132,6 +132,12 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertEqual("Bauart · {0}", catalogs[1]["CreationMethodTitle"])
         self.assertEqual("Vor- und Nachteile", catalogs[1]["CreationStep.qualities"])
 
+    def test_typed_budget_labels_keep_canonical_snapshot_display_identity(self) -> None:
+        source = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        self.assertIn("BuildPageUiProjection.BudgetLabel(budget, projectedBudget.BudgetId)", source)
+        self.assertIn('CreationNavigationRow($"{budgetLabel} · {amount}"', source)
+        self.assertIn("DisplayAlertAsync(budgetLabel,", source)
+
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
             "en": load_resx("PhoneStrings.resx"),

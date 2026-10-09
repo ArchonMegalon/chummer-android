@@ -345,15 +345,15 @@ public static class BuildPageUiProjection
     public static string MethodLabel(string method)
         => PhoneStrings.Get("CreationMethod." + method, RunnerSessionCoordinator.HumanizeId(method));
 
-    public static string BudgetLabel(CharacterCreationBudgetState budget)
-        => budget.BudgetId switch
+    public static string BudgetLabel(CharacterCreationBudgetState budget, string? canonicalBudgetId = null)
+        => (canonicalBudgetId ?? budget.BudgetId) switch
         {
             CharacterCreationMagicResonancePresentationBudgetIds.Tradition => CreationKarmaCopy.Tradition,
             CharacterCreationMagicResonancePresentationBudgetIds.Stream => CreationKarmaCopy.Stream,
             CharacterCreationMagicResonancePresentationBudgetIds.AdeptPowerPoints => PhoneStrings.Get("CreationPowerPoints", "Power points"),
             CharacterCreationMagicResonancePresentationBudgetIds.Spells => CreationKarmaCopy.Spells,
             CharacterCreationMagicResonancePresentationBudgetIds.ComplexForms => CreationKarmaCopy.ComplexForms,
-            _ => PhoneStrings.Get("CreationBudget." + budget.BudgetId, budget.Label)
+            _ => PhoneStrings.Get("CreationBudget." + (canonicalBudgetId ?? budget.BudgetId), budget.Label)
         };
 
     public static string BudgetUnit(string unit)
@@ -2509,6 +2509,9 @@ public sealed class BuildPage : NativePageBase
                         == CharacterCreationMagicResonanceKinds.Mundane))
                 continue;
             hasInexactBudget |= !budget.IsExact;
+            // Typed ledgers can use a different ID and an English source label.
+            // Keep the snapshot's canonical display identity and the exact typed values.
+            string budgetLabel = BuildPageUiProjection.BudgetLabel(budget, projectedBudget.BudgetId);
             string unit = BuildPageUiProjection.BudgetUnit(budget.Unit);
             string amount = budget.IsExact
                 ? BuildPageUiProjection.BudgetRemaining(budget.Remaining)
@@ -2549,7 +2552,7 @@ public sealed class BuildPage : NativePageBase
                 ? CreationAllocationStrings.Format("Budget.Open", "Review {0}", route.Title)
                 : CreationAllocationStrings.Get("Budget.Check", "Check what is missing");
             var displayed = Coordinator.State;
-            Border budgetCard = CreationNavigationRow($"{BuildPageUiProjection.BudgetLabel(budget)} · {amount}",
+            Border budgetCard = CreationNavigationRow($"{budgetLabel} · {amount}",
                 budget.IsExact ? $"{detail}\n{action}" : action, async () =>
                 {
                     if (displayed.Profile?.Created != false
@@ -2563,7 +2566,7 @@ public sealed class BuildPage : NativePageBase
                         if (_creationProjection?.Progress.HasLoading == true)
                             RequestCreationAuthorityRefresh();
                         else RetryCreationProjection();
-                        await DisplayAlertAsync(BuildPageUiProjection.BudgetLabel(budget),
+                        await DisplayAlertAsync(budgetLabel,
                             CreationAllocationStrings.Get("Budget.Refreshing",
                                 "Checking this budget again. Finish priorities and metatype first; then review the matching creation step. No points or choices have been changed.")
                             + (route is { Detail.Length: > 0 } ? $"\n\n{route.Detail}" : string.Empty), "OK");
