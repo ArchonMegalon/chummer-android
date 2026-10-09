@@ -126,7 +126,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 161 is the latest [observed Internal availability](../play/evidence/preview161-internal-observation.md),
+Preview 162 is the latest [observed Internal availability](../play/evidence/preview162-internal-observation.md),
+confirmed on 9 October at 14:22 Europe/Vienna. German Magic/Resonance names,
+talent/metatype/category captions and historical re-review display are localized;
+search accepts German and original names. Twenty source tests, focused managed
+checks and final-source native read-only smoke passed; all 33 fixture files
+stayed unchanged. Local build, isolated original-key signing, independent
+keyless verification and one Internal upload/readback passed. **Whole-app German
+coverage, remaining status/system/custom labels, physical Play 162 installation
+and complete Creation/Career remain open; startup remains slow.** The earlier
+unsigned diagnostic was excluded from signing. Previous evidence is unchanged.
+
+Preview 161's [observed Internal availability](../play/evidence/preview161-internal-observation.md),
 confirmed on 9 October at 13:43 Europe/Vienna. German skill/language names,
 groups, categories and exactly matched specializations are now localized in
 Creation Skills and historical review. Nineteen source tests, affected managed
