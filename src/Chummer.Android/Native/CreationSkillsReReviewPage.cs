@@ -123,7 +123,9 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     private void AddChange(CharacterCreationSkillsReReviewState state, CharacterCreationSkillsReReviewChange change)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Title(change.Name, 18));
+        card.Add(NativeTheme.Title(change.Kind == "skill-group"
+            ? SkillCatalogStrings.GroupName(change.Name)
+            : SkillCatalogStrings.SkillName(change.Kind, change.SourceId, change.Name), 18));
         card.Add(NativeTheme.Body(Format("Comparison", "Saved: {0} ({1} points) → proposal: {2} ({3} points)",
             Rating(change.HistoricalRating, change.HistoricalNativeLanguage), change.HistoricalPointCost,
             change.Removed ? Text("Removed", "removed") : Rating(change.CandidateRating, change.CandidateNativeLanguage), change.CandidatePointCost)));
@@ -193,7 +195,9 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             }
             if (!skill.IsNativeLanguage && source.Specializations.Count > 0)
             {
-                var options = new[] { Text("NoSpecialization", "No specialization") }.Concat(source.Specializations.Select(row => row.Name)).ToArray();
+                var options = new[] { Text("NoSpecialization", "No specialization") }
+                    .Concat(source.Specializations.Select(row => SkillCatalogStrings.SpecializationName(
+                        source.Kind, source.SourceSkillId, source.Name, row.Name))).ToArray();
                 var picker = new Picker { Title = Text("ChooseSpecialization", "Choose specialization"), ItemsSource = options };
                 var choose = NativeTheme.SecondaryButton(Text("SetSpecialization", "Preview specialization"));
                 choose.Clicked += async (_, _) =>
@@ -218,8 +222,9 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             .Where(source => !_draft.Skills.Any(row => row.Kind == source.Kind && row.SourceSkillId == source.SourceSkillId)).ToArray();
         var groups = CreationSkillsPhoneAuthority.AvailableGroups(state.CurrentState)
             .Where(source => !_draft.Groups.Any(row => row.GroupId == source.GroupId)).ToArray();
-        var options = skills.Select(row => row.Name + " · " + row.Category)
-            .Concat(groups.Select(row => row.Name + " · " + Text("Group", "skill group"))).ToArray();
+        var options = skills.Select(row => SkillCatalogStrings.SkillName(row.Kind, row.SourceSkillId, row.Name)
+                + " · " + SkillCatalogStrings.CategoryName(row.Category))
+            .Concat(groups.Select(row => SkillCatalogStrings.GroupName(row.Name) + " · " + Text("Group", "skill group"))).ToArray();
         var picker = new Picker { Title = Text("AddChoice", "Add a current catalog choice"), ItemsSource = options };
         picker.AutomationId = "creation-skills-rereview-catalog";
         var add = NativeTheme.SecondaryButton(Text("AddPreview", "Preview added choice"));
@@ -284,11 +289,16 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     }
 
     private static string SpecializationName(CharacterCreationSkillsReReviewState state,
-        CharacterCreationSkillsReReviewChange change, string? id) => id is null ? Text("None", "none")
-        : state.CurrentState.Authority.ActiveSkills.Concat(state.CurrentState.Authority.KnowledgeSkills)
-            .SingleOrDefault(row => row.Kind == change.Kind && row.SourceSkillId == change.SourceId)?.Specializations
-            .SingleOrDefault(row => row.OptionId == id)?.Name
-            ?? Text("UnavailableSpecialization", "Previously selected specialization (not in the current catalog)");
+        CharacterCreationSkillsReReviewChange change, string? id)
+    {
+        if (id is null) return Text("None", "none");
+        var source = state.CurrentState.Authority.ActiveSkills.Concat(state.CurrentState.Authority.KnowledgeSkills)
+            .SingleOrDefault(row => row.Kind == change.Kind && row.SourceSkillId == change.SourceId);
+        string? name = source?.Specializations.SingleOrDefault(row => row.OptionId == id)?.Name;
+        return source is not null && name is not null
+            ? SkillCatalogStrings.SpecializationName(source.Kind, source.SourceSkillId, source.Name, name)
+            : Text("UnavailableSpecialization", "Previously selected specialization (not in the current catalog)");
+    }
     private static string Rating(int? rating, bool native) => native ? Text("Native", "native")
         : rating?.ToString(CultureInfo.CurrentCulture) ?? Text("None", "none");
     private static string Token(string value) => new(value.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());

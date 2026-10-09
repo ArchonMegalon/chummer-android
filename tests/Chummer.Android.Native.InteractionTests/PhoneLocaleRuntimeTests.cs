@@ -82,6 +82,7 @@ internal static class PhoneLocaleRuntimeTests
             GermanCreationCopy();
             RegionalCreationCopy();
             SkillsBlockerCopy();
+            SkillsCatalogCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -214,6 +215,38 @@ internal static class PhoneLocaleRuntimeTests
         Require(CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.ActiveBudgetExceeded)
             .Contains("Fertigkeitspunkte", StringComparison.Ordinal), "German budget guidance is still English.");
         Console.WriteLine("PASS all canonical Skills/re-review reasons: EN/DE/ES player guidance, unknown-code fallback, distinct save outcomes");
+    }
+
+    private static void SkillsCatalogCopy()
+    {
+        const string mechanic = "b52f7575-eebf-41c4-938d-df3397b5ee68";
+        const string arabic = "05eb2251-81aa-4dfb-8619-75102fc7b895";
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        Require(SkillCatalogStrings.SkillName("active", mechanic, "Aeronautics Mechanic") == "Luftfahrtmechanik",
+            "Canonical active skill still displays English.");
+        Require(SkillCatalogStrings.SkillName("knowledge", arabic, "Arabic") == "Arabisch"
+            && SkillCatalogStrings.GroupName("Engineering") == "Mechanik"
+            && SkillCatalogStrings.CategoryName("Technical Active") == "Technische Aktionsfertigkeiten",
+            "Language, group or category ignored German UI culture.");
+        Require(SkillCatalogStrings.SpecializationName("active", mechanic, "Aeronautics Mechanic", "Fixed Wing") == "Starrflügler",
+            "Admitted specialization ignored German catalog.");
+        Require(SkillCatalogStrings.SkillName("active", mechanic, "My renamed skill") == "My renamed skill"
+            && SkillCatalogStrings.SkillName("active", "custom-id", "Aeronautics Mechanic") == "Aeronautics Mechanic"
+            && SkillCatalogStrings.SkillName("knowledge", mechanic, "Aeronautics Mechanic") == "Aeronautics Mechanic"
+            && SkillCatalogStrings.SpecializationName("active", mechanic, "My renamed skill", "Fixed Wing") == "Fixed Wing"
+            && SkillCatalogStrings.SpecializationName("active", mechanic, "Aeronautics Mechanic", "My custom spec") == "My custom spec",
+            "Custom, renamed, unknown or different-kind catalog data was rewritten.");
+        Require(SkillCatalogStrings.GroupName("My custom group") == "My custom group"
+            && SkillCatalogStrings.CategoryName("My custom category") == "My custom category", "Custom label changed.");
+        foreach (string language in new[] { "en-US", "es-MX", "fr-FR" })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            Require(SkillCatalogStrings.SkillName("active", mechanic, "Aeronautics Mechanic") == "Aeronautics Mechanic"
+                && SkillCatalogStrings.SpecializationName("active", mechanic, "Aeronautics Mechanic", "Fixed Wing") == "Fixed Wing",
+                "Unavailable translation must preserve canonical English, not leak German or an ID.");
+        }
+        Console.WriteLine("PASS skill catalog labels: DE/US, active/knowledge/native language/group/category/spec, exact ID/name/kind matching, custom fallback, EN/ES fallback");
     }
 
     private static void Require(bool condition, string message)

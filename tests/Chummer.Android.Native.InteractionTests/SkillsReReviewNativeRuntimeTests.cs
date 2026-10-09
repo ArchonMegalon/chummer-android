@@ -95,6 +95,27 @@ internal static partial class AfterRunAuthorityHarness
             Require(body.Children.OfType<Border>().Any(row => row.AutomationId?.StartsWith("creation-skills-rereview-change-", StringComparison.Ordinal) == true),
                 "Actual native page omitted the historical/current comparison.");
             Require(SkillsReviewButton(page).IsEnabled == !obsolete, "Native Apply ignored Core blockers.");
+            CultureInfo previousLanguage = CultureInfo.CurrentUICulture;
+            try
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+                string digestBeforeDisplay = state.InitialPreview.PreviewDigest;
+                RefreshSkillsReReview(page);
+                foreach (var change in state.InitialPreview.Changes)
+                {
+                    string expected = change.Kind == "skill-group" ? SkillCatalogStrings.GroupName(change.Name)
+                        : SkillCatalogStrings.SkillName(change.Kind, change.SourceId, change.Name);
+                    Require(SkillsReviewVisibleLabels(body).Any(label => label.Text == expected),
+                        "Historical review bypassed localized catalog names: " + change.Name);
+                }
+                Require(state.InitialPreview.PreviewDigest == digestBeforeDisplay && File.ReadAllBytes(path!).SequenceEqual(before),
+                    "Displaying German catalog names changed review identity or persisted runner bytes.");
+            }
+            finally
+            {
+                CultureInfo.CurrentUICulture = previousLanguage;
+                RefreshSkillsReReview(page);
+            }
             var details = SkillsReviewTechnicalContent(page);
             Require(!details.IsVisible && details.Children.OfType<Label>()
                 .Any(label => label.AutomationId == "creation-skills-rereview-binding"),
