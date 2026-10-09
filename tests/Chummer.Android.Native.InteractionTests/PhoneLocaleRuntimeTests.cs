@@ -84,6 +84,7 @@ internal static class PhoneLocaleRuntimeTests
             SkillsBlockerCopy();
             SkillsCatalogCopy();
             MagicCatalogCopy();
+            RunnerFeedbackCopy();
             Console.WriteLine("PASS phone language/region: EN/DE/ES, independent formats, save/reopen, system reset, corrupt-value fallback; no domain writes");
         }
         finally
@@ -93,6 +94,43 @@ internal static class PhoneLocaleRuntimeTests
             CultureInfo.DefaultThreadCurrentUICulture = originalDefaultUi;
             CultureInfo.DefaultThreadCurrentCulture = originalDefaultFormats;
         }
+    }
+
+    private static void RunnerFeedbackCopy()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        foreach (var (canonical, german) in new[]
+        {
+            ("Restored 0 runner dossiers.", "0 Runner-Dossiers wiederhergestellt."),
+            ("Restored 1 runner dossier.", "1 Runner-Dossier wiederhergestellt."),
+            ("Restored 11 runner dossiers.", "11 Runner-Dossiers wiederhergestellt."),
+            ("Saved.", "Gespeichert."),
+            ("Application settings saved.", "Einstellungen gespeichert."),
+            ("Account recovery is still finishing.", "Die Kontowiederherstellung wird noch abgeschlossen."),
+            ("Workspace verification unavailable. Recent-file attribution was not recorded.",
+                "Der Arbeitsstand konnte nicht überprüft werden. Die Zuordnung zur zuletzt geöffneten Datei wurde nicht gespeichert.")
+        })
+            Require(PhoneStrings.RunnerNotice(canonical) == german,
+                $"Canonical runner feedback bypassed German display resources: {canonical}");
+
+        // No substring replacement: preserve unknown failures, user text and
+        // malformed counts verbatim. They must not become a success notice.
+        foreach (string? unknown in new string?[] { null, "", " ", "Cannot save runner: disk full.",
+            "Restored 1 runner dossiers.", "Restored 2 runner dossier.", "Restored 01 runner dossiers.",
+            "Restored -2 runner dossiers.", "Restored +2 runner dossiers.", "Restored  2 runner dossiers.",
+            "Restored 2147483648 runner dossiers.", "Restored 2 runner dossiers. Some files failed.",
+            "Saved. Online sync failed.", "My runner is named Restored 11 runner dossiers." })
+            Require(PhoneStrings.RunnerNotice(unknown) == unknown, "Unknown feedback was rewritten or lost.");
+
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-GB");
+        Require(PhoneStrings.RunnerNotice("Restored 11 runner dossiers.") == "Restored 11 runner dossiers.",
+            "English feedback changed.");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es-MX");
+        Require(PhoneStrings.RunnerNotice("Restored 1 runner dossier.") == "Se ha restaurado 1 expediente de runner."
+            && PhoneStrings.RunnerNotice("Restored 11 runner dossiers.") == "Se han restaurado 11 expedientes de runner.",
+            "Spanish feedback resources are missing.");
+        Console.WriteLine("PASS runner feedback: DE/EN/ES, singular/plural/zero, unknown and partial failures retained; display only");
     }
 
     private static void GermanCreationCopy()

@@ -5,6 +5,12 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="ShellRunners" xml:space="preserve"><value>Runners</value></data>
+  <data name="RunnerNoticeRestoredOne" xml:space="preserve"><value>Se ha restaurado 1 expediente de runner.</value></data>
+  <data name="RunnerNoticeRestoredMany" xml:space="preserve"><value>Se han restaurado {0} expedientes de runner.</value></data>
+  <data name="RunnerNoticeSaved" xml:space="preserve"><value>Guardado.</value></data>
+  <data name="RunnerNoticeSettingsSaved" xml:space="preserve"><value>Ajustes guardados.</value></data>
+  <data name="RunnerNoticeAccountRecovery" xml:space="preserve"><value>La recuperación de la cuenta aún está finalizando.</value></data>
+  <data name="RunnerNoticeVerificationUnavailable" xml:space="preserve"><value>No se ha podido verificar el espacio de trabajo. No se ha guardado la asociación con el archivo reciente.</value></data>
   <data name="ShellRunner" xml:space="preserve"><value>Runner</value></data>
   <data name="ShellStories" xml:space="preserve"><value>Historias</value></data>
   <data name="ShellMore" xml:space="preserve"><value>Más</value></data>

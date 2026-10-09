@@ -10,6 +10,12 @@
   <data name="ShellMore" xml:space="preserve"><value>More</value></data>
   <data name="HomeYourRunners" xml:space="preserve"><value>Your runners</value></data>
   <data name="HomeLoading" xml:space="preserve"><value>Opening your runners…</value></data>
+  <data name="RunnerNoticeRestoredOne" xml:space="preserve"><value>Restored 1 runner dossier.</value></data>
+  <data name="RunnerNoticeRestoredMany" xml:space="preserve"><value>Restored {0} runner dossiers.</value></data>
+  <data name="RunnerNoticeSaved" xml:space="preserve"><value>Saved.</value></data>
+  <data name="RunnerNoticeSettingsSaved" xml:space="preserve"><value>Application settings saved.</value></data>
+  <data name="RunnerNoticeAccountRecovery" xml:space="preserve"><value>Account recovery is still finishing.</value></data>
+  <data name="RunnerNoticeVerificationUnavailable" xml:space="preserve"><value>Workspace verification unavailable. Recent-file attribution was not recorded.</value></data>
   <data name="HomeUnsavedSwitch" xml:space="preserve"><value>Save your current runner before switching.</value></data>
   <data name="HomeReviewCurrentRunner" xml:space="preserve"><value>Open current runner</value></data>
   <data name="HomeNoRunner" xml:space="preserve"><value>No runner open</value></data>
