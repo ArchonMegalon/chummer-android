@@ -131,7 +131,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 165 is the latest [observed Internal availability](../play/evidence/preview165-internal-observation.md),
+Preview 166 is the latest [observed Internal availability](../play/evidence/preview166-internal-observation.md),
+confirmed on 9 October at 21:15 Europe/Vienna. A reproduced reader background
+refresh lost during export cancellation is fixed without replaying provider work.
+Baseline/fixed managed checks and a native full-chapter, picker-cancel and
+new-process reopen smoke passed. Stale lock-authority metadata was reconciled
+without runtime/lock changes; 35 focused contract tests passed. Local ARM64 build,
+isolated original-key signing, keyless verification and one Internal upload/
+readback passed. Internal diagnostics still default on; saved opt-outs stay off.
+**The original tester incident is not conclusively attributed; live-linked native
+polling, native remote diagnostic delivery, physical Play 166 installation and
+complete Creation/Career remain unverified.** Startup remains slow. Prior
+evidence and rollback artifacts are preserved.
+
+Preview 165's [observed Internal availability](../play/evidence/preview165-internal-observation.md),
 confirmed on 9 October at 20:23 Europe/Vienna. Internal technical diagnostics
 default on only when no prior preference exists; saved opt-outs remain off.
 The private Hub intake and bounded Telegram alert worker are deployed. Focused
