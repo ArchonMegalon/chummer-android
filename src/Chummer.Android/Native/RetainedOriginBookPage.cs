@@ -434,9 +434,10 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 _sceneStatus.TryGetValue(chapter.ChapterId, out var previous);
                 _book = updated;
                 _sceneStatus[chapter.ChapterId] = result;
-                if (!ReferenceEquals(book, updated) || result != previous)
-                    await RunWithConditionalRefreshAsync(() => Task.FromResult(!lifetime.IsCancellationRequested
-                        && IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_book, updated)));
+                if ((!ReferenceEquals(book, updated) || result != previous)
+                    && !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance)
+                    && ReferenceEquals(_book, updated))
+                    await RefreshAfterBackgroundReadAsync(appearance);
                 if (result.RetryableReadFailure && ++failures >= 3) { _sceneObservationPaused = true; break; }
                 if (!result.RetryableReadFailure) failures = 0;
                 if (result.State is "dispatching" or "uncertain" || result.UnknownRemoteOutcome || result.RetryableReadFailure)
@@ -463,8 +464,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 _sceneObservationPaused = true;
             if (ReferenceEquals(_sceneLifetime, lifetime)) _sceneLifetime = null;
             if (_sceneObservationPaused && !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance))
-                await RunWithConditionalRefreshAsync(() => Task.FromResult(!lifetime.IsCancellationRequested
-                    && IsCurrentAppearanceGeneration(appearance)));
+                await RefreshAfterBackgroundReadAsync(appearance);
             // A simultaneous full-text read can issue a newer retained edition.
             // Reacquire that handle; _sceneChecked still forbids another write
             // for the image whose response belonged to the retired edition.
@@ -568,13 +568,11 @@ internal sealed class RetainedOriginBookPage : NativePageBase
                 if (elapsed.Elapsed >= TimeSpan.FromMinutes(10)) break;
                 await PollChapterOnceAsync(appearance, lifetime.Token);
             }
-            if (_watchPending && IsCurrentAppearanceGeneration(appearance))
-                await RunWithConditionalRefreshAsync(() =>
-                {
-                    if (lifetime.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)) return Task.FromResult(false);
-                    _watchPending = false; _notice = _copy["Origin.AuthoringStatusPaused"];
-                    return Task.FromResult(true);
-                });
+            if (_watchPending && !lifetime.IsCancellationRequested && IsCurrentAppearanceGeneration(appearance))
+            {
+                _watchPending = false; _notice = _copy["Origin.AuthoringStatusPaused"];
+                await RefreshAfterBackgroundReadAsync(appearance);
+            }
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         finally
@@ -596,7 +594,7 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             // Do not silently reject Read/Export actions for the duration of a
             // provider read. Only the short render uses the normal action gate.
             bool changed = await ReadMissingChapterAsync(appearance, ct);
-            await RunWithConditionalRefreshAsync(() => Task.FromResult(changed && Current()));
+            if (changed && Current()) await RefreshAfterBackgroundReadAsync(appearance);
         }
         catch (OperationCanceledException) { }
         catch (Exception error)

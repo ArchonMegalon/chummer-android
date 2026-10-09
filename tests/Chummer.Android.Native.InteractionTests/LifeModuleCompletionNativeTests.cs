@@ -606,6 +606,53 @@ internal static partial class AfterRunAuthorityHarness
                 && IssuedElements(page).OfType<Button>().Any(e => e.AutomationId == "origin-book-export-epub" && e.IsEnabled),
                 "Recovering the inline notice replayed paid work or lost saved prose/export.");
             Console.WriteLine("PASS bounded reader pause: unchanged pending job clears inline status without paid replay");
+            // A status read may finish while the native export picker owns the
+            // action gate. Canceling that picker does not render the page. The
+            // completed read must leave one pending display refresh instead of
+            // losing it until the user leaves and reopens the reader.
+            var pickerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pickerReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            output.BeforeReadAsync = async () =>
+            {
+                pickerEntered.TrySetResult();
+                await pickerReleased.Task;
+                throw new OperationCanceledException();
+            };
+            var pickerExport = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-book-export-epub");
+            Task canceledExport = ui.BeginAsyncVoid(() => ((IButtonController)pickerExport).SendClicked());
+            try
+            {
+                await pickerEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                remote.SuccessorReadFailure = new(AndroidOriginChapterOutcome.Unavailable,
+                    RetryableReadFailure: true);
+                await page.PollChapterOnceAsync(generation, default);
+                Require((string?)typeof(RetainedOriginBookPage).GetField("_notice",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(page)
+                    == copy["Origin.AuthoringStatusRetrying"],
+                    "The overlapping status read did not update the reader model.");
+                Require(ReferenceEquals(pickerExport, IssuedElements(page).OfType<Button>().Single(b =>
+                    b.AutomationId == "origin-book-export-epub")),
+                    "A background read rebuilt controls while the native export picker was active.");
+            }
+            finally
+            {
+                remote.SuccessorReadFailure = null;
+                pickerReleased.TrySetResult();
+                await canceledExport.WaitAsync(TimeSpan.FromSeconds(15));
+                output.BeforeReadAsync = null;
+            }
+            await ui.DrainDispatchedAsyncVoidAsync();
+            Require(readerBody.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusRetrying"]),
+                "Canceling export lost the completed status render; the reader still requires leaving and reopening.");
+            var recoverAfterPicker = IssuedElements(page).OfType<Button>().Single(b =>
+                b.AutomationId == "origin-reader-refresh" && b.IsEnabled);
+            await ui.BeginAsyncVoid(() => ((IButtonController)recoverAfterPicker).SendClicked());
+            Require(!readerBody.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusRetrying"])
+                && remote.Requests == requests && remote.Acceptances == acceptances
+                && output.EpubDeliveries == 0 && output.Deliveries == 0,
+                "Reader recovery after a canceled picker stayed stale, exported or replayed paid work.");
+            Console.WriteLine("PASS reader overlap: deferred status renders after picker cancellation; same-page recovery without paid replay");
             // An unexpected read/storage exception stops observation, not the
             // provider job. The pinned UI must stop claiming that it is still
             // checking, preserve saved prose, and allow an explicit read-only
