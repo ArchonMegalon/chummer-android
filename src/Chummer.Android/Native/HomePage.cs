@@ -9,6 +9,7 @@ namespace Chummer.Android.Native;
 public class HomePage : NativePageBase, IPlayReviewSafeSurface
 {
     private readonly string _runnerRoute;
+    private bool _startupFailed;
     private readonly ActivityIndicator _startupProgress = new()
     {
         AutomationId = "home-startup-progress",
@@ -56,6 +57,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
         // The first frame must not wait for local owner/workspace restoration.
         // Do not render runner data or enable actions before the base lifecycle
         // has admitted the current appearance and completed initialization.
+        _startupFailed = false;
         ShowStartupProgress();
         base.OnAppearing();
     }
@@ -88,6 +90,49 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             automationId: "home-diagnostics-settings"));
     }
 
+    protected override bool TryShowInitializationFailure()
+    {
+        _startupFailed = true;
+        ShowStartupFailure();
+        return true;
+    }
+
+    private void ShowStartupFailure()
+    {
+        ClearFeedback();
+        _startupProgress.IsRunning = false;
+        _body.Clear();
+        var status = NativeTheme.Title(PhoneStrings.Get("HomeLoadFailed", "Your runners could not be opened."));
+        status.AutomationId = "home-startup-error";
+        _body.Add(status);
+        _body.Add(NativeTheme.Body(PhoneStrings.Get("HomeLoadRetryDetail",
+            "Try loading again here. Your saved runners will not be replaced.")));
+        long appearance = CaptureAppearanceGeneration();
+        var retry = NativeTheme.PrimaryButton(PhoneStrings.Get("HomeLoadRetry", "Try again"));
+        retry.AutomationId = "home-startup-retry";
+        retry.Clicked += async (_, _) =>
+        {
+            // Discard events from a replaced control, departure, or an old
+            // appearance. RunAsync also rejects overlapping admitted actions.
+            if (!IsCurrentAppearanceGeneration(appearance) || !_body.Contains(retry)) return;
+            await RunAsync(async () =>
+            {
+                ShowStartupProgress();
+                try
+                {
+                    await Coordinator.InitializeAsync();
+                    if (IsCurrentAppearanceGeneration(appearance)) _startupFailed = false;
+                }
+                catch
+                {
+                    if (IsCurrentAppearanceGeneration(appearance)) ShowStartupFailure();
+                    throw;
+                }
+            });
+        };
+        _body.Add(retry);
+    }
+
 #if DEBUG
     protected override Task PrepareForAppearanceRefreshAsync(
         CancellationToken cancellationToken)
@@ -97,6 +142,11 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
 
     protected override void Refresh()
     {
+        if (_startupFailed)
+        {
+            ShowStartupFailure();
+            return;
+        }
         _startupProgress.IsRunning = false;
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Chummer"));
