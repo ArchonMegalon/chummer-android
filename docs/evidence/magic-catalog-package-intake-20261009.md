@@ -57,10 +57,16 @@ content files match; rule-data bytes are unchanged. APK assembly uses explicitly
 pinned Presentation source and Core content with locked runtime packages, not
 ambient sibling discovery or a source-free package-only build.
 
-## Remaining delivery boundary
+## Delivery boundary at intake
 
 Preview 154 is a candidate version only. Final-source native-device smoke,
 signed ARM64 AAB and Play readback remain pending. Preview 153 stays immutable
 and available. Full chapters and chapter images in the reader and EPUB are
 unchanged. No new provider generation, physical Play installation, Windows work,
 complete Creation/Career coverage or finished-app claim is made here.
+
+Later on 9 October, final-source native Magic review/save/new-process smoke,
+the local ARM64 build, isolated signing and Internal availability readback
+completed. The [Preview 154 delivery record](../../play/evidence/preview154-internal-observation.md)
+holds the actual results and hashes; the intake-time status above is historical,
+not a current blocker or a substitute for those later observations.

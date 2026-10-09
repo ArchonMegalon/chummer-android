@@ -126,7 +126,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 153 is the latest [observed Internal availability](../play/evidence/preview153-internal-observation.md),
+Preview 154 is the latest [observed Internal availability](../play/evidence/preview154-internal-observation.md),
+confirmed on 9 October at 06:07 Europe/Vienna. Canonical Magic catalog checks
+use bounded temporary sorting allocations without changing rule bytes, saved
+formats or admission. Exact package/managed checks and final-source native
+Magic rereview, explicit save and new-process restore passed. Saved choices,
+the earlier receipt and all 33 saved/reopened files were preserved; the selected
+draft advanced to revision 11/11. One local ARM64 build, isolated existing-key
+signature, independent keyless checks and one Internal upload/readback passed.
+Full chapters and per-chapter images remain in the app reader and EPUB.
+**Startup remains slow; physical Play 154 installation and complete Creation/
+Career coverage remain open.** Emulator resource limits changed during the smoke,
+so no native speedup claim is made. Previous artifacts/evidence are unchanged.
+
+Preview 153's [observed Internal availability](../play/evidence/preview153-internal-observation.md),
 confirmed on 9 October at 04:42 Europe/Vienna. Creation heritage projection
 reuses parsed source fields within one operation, retaining canonical values,
 detached results and owner/source checks. Exact package/managed checks and the
