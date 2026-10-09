@@ -78,9 +78,9 @@ public sealed class CreationSkillsPage : NativePageBase
         }
         AddBinding(state);
         CharacterCreationSkillsPreview? projection = _draft.Preview;
-        AddBudget(projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active");
-        AddBudget(projection?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups");
-        AddBudget(projection?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge");
+        AddBudget(projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active", CharacterCreationBudgetIds.ActiveSkills);
+        AddBudget(projection?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups", CharacterCreationBudgetIds.SkillGroups);
+        AddBudget(projection?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge", CharacterCreationBudgetIds.KnowledgeSkills);
         if (!CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State) || !_draft.Matches(state, Coordinator.State))
         {
             AddBlockers(state.Blockers);
@@ -168,20 +168,20 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(binding);
     }
 
-    private void AddBudget(CharacterCreationBudgetState budget, string token)
+    private void AddBudget(CharacterCreationBudgetState budget, string token, string canonicalBudgetId)
     {
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow(budget.Label));
+        card.Add(NativeTheme.Eyebrow(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)));
         card.Add(NativeTheme.Title(CreationAllocationStrings.Format(
             "Skills.BudgetLeft",
             "{0} left",
-            budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)), 20));
+            budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)), 20));
         card.Add(NativeTheme.Body(
             CreationAllocationStrings.Format(
                 "Skills.BudgetUsed",
                 "{0} / {1} points",
-                budget.Used.ToString("0.##", CultureInfo.InvariantCulture),
-                budget.Total.ToString("0.##", CultureInfo.InvariantCulture)),
+                budget.Used.ToString("0.##", CultureInfo.CurrentCulture),
+                budget.Total.ToString("0.##", CultureInfo.CurrentCulture)),
             NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = $"creation-skills-budget-{token}";
@@ -229,10 +229,10 @@ public sealed class CreationSkillsPage : NativePageBase
                     "Skills.SkillDetail",
                     "{0} · {1} · rating {2}",
                     source.Category,
-                    source.DefaultAttribute,
+                    CreationAllocationStrings.AttributeName(source.DefaultAttribute),
                     selected?.IsNativeLanguage == true
                         ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
-                        : (selected?.Rating ?? 0).ToString(CultureInfo.InvariantCulture)),
+                        : (selected?.Rating ?? 0).ToString(CultureInfo.CurrentCulture)),
                 NativeTheme.Muted));
             AddTalentGrant(card, _draft.MinimumRating(source));
             HorizontalStackLayout controls = new() { Spacing = 8 };
@@ -627,24 +627,24 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.FinalCoreLedgers",
             "Points after saving")));
-        foreach (CharacterCreationBudgetState budget in new[]
+        foreach (var (budget, canonicalBudgetId) in new[]
                  {
-                     _preview.ActiveSkillPointBudget,
-                     _preview.SkillGroupPointBudget,
-                     _preview.KnowledgeSkillPointBudget
+                     (_preview.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
+                     (_preview.SkillGroupPointBudget, CharacterCreationBudgetIds.SkillGroups),
+                     (_preview.KnowledgeSkillPointBudget, CharacterCreationBudgetIds.KnowledgeSkills)
                  })
         {
             VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(budget.Label, 18));
+            card.Add(NativeTheme.Title(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId), 18));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.Total", "Total"),
-                budget.Total.ToString("0.##", CultureInfo.InvariantCulture)));
+                budget.Total.ToString("0.##", CultureInfo.CurrentCulture)));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.Used", "Used"),
-                budget.Used.ToString("0.##", CultureInfo.InvariantCulture)));
+                budget.Used.ToString("0.##", CultureInfo.CurrentCulture)));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
-                budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
+                budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)));
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-skills-preview-budget-{Token(budget.BudgetId)}";
             _body.Add(border);
@@ -665,10 +665,10 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                 skill.Name + " · " + skill.Kind));
             card.Add(NativeTheme.Metric(CreationAllocationStrings.Get("SkillsPreview.Rating", "Rating"), skill.IsNativeLanguage
                 ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
-                : skill.Rating.GetValueOrDefault().ToString(CultureInfo.InvariantCulture)));
+                : skill.Rating.GetValueOrDefault().ToString(CultureInfo.CurrentCulture)));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.PointCost", "Point cost"),
-                skill.PointCost.ToString(CultureInfo.InvariantCulture)));
+                skill.PointCost.ToString(CultureInfo.CurrentCulture)));
             if (!string.IsNullOrWhiteSpace(skill.SpecializationName))
                 card.Add(NativeTheme.Metric(
                     CreationAllocationStrings.Get("SkillsPreview.Specialization", "Specialization"),
@@ -681,10 +681,10 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             card.Add(NativeTheme.Title(group.Name, 18));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.GroupRating", "Group rating"),
-                group.Rating.ToString(CultureInfo.InvariantCulture)));
+                group.Rating.ToString(CultureInfo.CurrentCulture)));
             card.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("SkillsPreview.PointCost", "Point cost"),
-                group.PointCost.ToString(CultureInfo.InvariantCulture)));
+                group.PointCost.ToString(CultureInfo.CurrentCulture)));
             _body.Add(NativeTheme.Card(card));
         }
     }
@@ -790,13 +790,13 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("SkillsPreview.ActivePointsRemaining", "Active points remaining"),
-            receipt.ActivePointsRemaining.ToString(CultureInfo.InvariantCulture)));
+            receipt.ActivePointsRemaining.ToString(CultureInfo.CurrentCulture)));
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("SkillsPreview.GroupPointsRemaining", "Group points remaining"),
-            receipt.SkillGroupPointsRemaining.ToString(CultureInfo.InvariantCulture)));
+            receipt.SkillGroupPointsRemaining.ToString(CultureInfo.CurrentCulture)));
         card.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("SkillsPreview.KnowledgePointsRemaining", "Knowledge points remaining"),
-            receipt.KnowledgePointsRemaining.ToString(CultureInfo.InvariantCulture)));
+            receipt.KnowledgePointsRemaining.ToString(CultureInfo.CurrentCulture)));
         _technicalDetails.Add(NativeTheme.Metric(
             CreationAllocationStrings.Get("Common.CharacterDocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
