@@ -2,7 +2,8 @@
 
 Current source has **default-on automatic reporting for Internal test builds**
 (owner decision, 9 October 2026), with an immediately available opt-out. The private
-Hub intake is deployed; this Android increment is not yet delivered through Play.
+Hub intake is deployed; [Preview 165 is available on Play Internal](../play/evidence/preview165-internal-observation.md).
+Physical Play installation and a real native report reaching the operator remain unverified.
 Native page appearance/actions/refreshes and Life Modules story-readiness checks
 record allowlisted technical events in app-private `diagnostics/technical-diagnostics.json`.
 The settings page explains this and offers an explicit Android share action.
@@ -22,7 +23,9 @@ immediately (not through the language/settings Save button). DE/EN/ES disclosure
 explain the first-party destination, metadata, two-day private inbox and withdrawal.
 On 9 October a synthetic HTTPS report was accepted, deduplicated and read back
 through the private reader. This proves server intake, not native tester delivery.
-Bounded operator notification remains outstanding.
+A separate bounded operator worker is deployed. A clearly labelled synthetic
+integration notification reached the existing verified private Telegram operator
+chat. This is not a real tester report or proof of native end-to-end delivery.
 
 Records contain app version, UTC time, coarse page category, operation kind,
 process-local operation counter, elapsed time, outcome and coarse error category.
@@ -75,18 +78,29 @@ valid receipt time, and persists server Retry-After across process restart.
 Unknown outcomes keep the same ID. Permanent rejections are terminal, not success.
 No production request was made by the synthetic managed tests.
 
-Remaining central-delivery work:
+Deployment and remaining verification:
 
-- Complete release/package admission for the locally tested canonical contract;
-  do not imply that a draft/local package is a protected published package seal.
+- Preview 165's locked local build consumes the exact canonical contract above;
+  the missing lock entry was regenerated without changing other dependencies.
+  This is still a local package, not a protected published package-plane seal.
 - The separate private Hub diagnostic reader is deployed from PR303 producer
   `b88e8dfd0b59292349cf8b76139b9b4d376d41bb`, with a mounted reader credential
   and a bounded, private two-day inbox. The inbox is temporary storage, excluded
   from backups; a host reboot can discard pending diagnostic reports.
   Account/Origin storage remains unchanged. Intake does not create Teable support
   cases or copy reports into incident history.
-- Verify native remote delivery and bounded operator notification.
-  Never embed the private reader credential in Android.
+- Hub PR303 is merged as `033fb07adefcb102ec7fdb49e8be2c963eafd338`.
+  The separate alert worker polls the private reader once per minute, with at
+  most one attempt per 15 minutes, four per hour and twelve per day. It sends
+  only allowlisted version/category/outcome counts, not IDs or raw reports;
+  counts do not identify distinct users. Slow observations are not called ANRs.
+  The first poll baselines existing reports without sending historical alerts.
+  Two-day dedupe state is bounded and persisted before sending; uncertain sends
+  are never blindly replayed after restart. Its private reader and scoped
+  Telegram credentials exist only in private runtime mounts, never Android.
+  Eleven focused worker tests and one synthetic live notification passed.
+- Native remote delivery remains unverified. The native opt-out/restart smoke
+  blocked HTTPS intentionally; the live server and Telegram probes are separate.
 - The generated privacy disclosure is publicly visible at `https://chummer.run/privacy`
   and canonical Design PR33 is merged. Verify the actual Play scope/disclosures
   before delivery; the old preview.7 worksheet is not current authority.
