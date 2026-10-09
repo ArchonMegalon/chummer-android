@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using Chummer.Android.Native;
+using Chummer.Application.Characters;
 using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Owners;
@@ -379,12 +380,14 @@ internal static partial class AfterRunAuthorityHarness
             owners.Set(OwnerScope.LocalSingleUser);
             var metrics = new List<BootstrapProductionStage>();
             ProductionFinalizationLoadProbe? finalization = null;
+            StartupFoundationOverviewProbe? foundation = null;
             await using var runtime = new NativeRewardRuntime(contentRoot,
                 // Exercise the same owner-bound Creation projections as MauiProgram.
                 // The default reduced factory cannot establish real restore behavior.
                 productionCreationOverview: true,
                 linkedOwners: owners,
                 finalizationDecorator: actual => finalization = new(actual, owners.Capture(), metrics),
+                foundationReaderDecorator: actual => foundation = new(actual, owners.Capture(), metrics),
                 beforeShellWorkspaceList: () => Interlocked.Increment(ref rosterReads));
             var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument($"""
                 <character><name>Cold restore fixture</name><gameedition>SR5</gameedition>
@@ -404,9 +407,36 @@ internal static partial class AfterRunAuthorityHarness
             Console.WriteLine($"Cold restore method={method} created={created}: shell roster reads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
             foreach (var metric in metrics)
                 Console.WriteLine("STARTUP_PRODUCTION_STAGE " + JsonSerializer.Serialize(metric));
-            Require(finalization is not null && finalization.LoadCalls == (created ? 0 : 1)
+            bool sharedFoundation = !created && method == CharacterCreationBuildMethods.LifeModules;
+            Require(finalization is not null && finalization.LoadCalls == (created || sharedFoundation ? 0 : 1)
                     && finalization.ReviewCalls == 0 && finalization.ConfirmCalls == 0 && finalization.LookupCalls == 0,
-                "Cold restore must load the actual Creation finalization projection once, without executing an action.");
+                "Cold restore must not duplicate a shared finalization read or execute a finalization action.");
+            Require(foundation is not null && foundation.OverviewCalls == (sharedFoundation ? 1 : 0)
+                    && foundation.LoadCalls == 0,
+                "Life Modules must share one Foundation overview read; unrelated methods must not load its catalog.");
+            if (sharedFoundation)
+            {
+                Require(foundation!.LastOverview?.Foundation?.Value is not null
+                        && ReferenceEquals(state.CreationFoundation, foundation.LastOverview.Foundation.Value)
+                        && ReferenceEquals(state.CreationContacts, foundation.LastOverview.Contacts.Value)
+                        && ReferenceEquals(state.CreationLifestyles, foundation.LastOverview.Lifestyles.Value),
+                    "Cold restore must display the actual owner-bound shared Core results, not discard or replace them.");
+                // The shared reader includes the Priority finalizer's explicit
+                // capability rejection. Life Modules uses its own typed
+                // Foundation finalizer, not a synthetic Priority completion.
+                Require(foundation.LastOverview!.Finalization.Outcome == CharacterCreationFinalizationOutcomes.Blocked
+                        && foundation.LastOverview.Finalization.Blockers.Contains(CharacterCreationFinalizationBlockers.BuildMethodNotReady)
+                        && state.CreationFinalization is null,
+                    "Life Modules restore promoted an unevaluated Priority finalization rejection.");
+            }
+            else if (!created && method == CharacterCreationBuildMethods.Karma)
+                Require(finalization!.LastLoad?.Outcome == CharacterCreationFinalizationOutcomes.Blocked
+                        && finalization.LastLoad.Blockers.Contains(CharacterCreationFinalizationBlockers.BuildMethodUnsupported)
+                        && state.CreationFinalization is null,
+                    "Karma restore promoted an unsupported Priority finalization projection.");
+            else
+                Require(ReferenceEquals(state.CreationFinalization, finalization!.LastLoad?.Value),
+                    "Cold restore discarded or replaced the independently loaded Core finalization projection.");
             Require(state is { IsBusy: false, Error: null, Profile: not null }
                 && state.Profile.Created == created && state.WorkspaceId == imported.Id
                 && state.Profile.BuildMethod == method
@@ -474,6 +504,51 @@ internal static partial class AfterRunAuthorityHarness
             Console.WriteLine("PASS cold runner restore reuses completed owner-bound shell synchronization without mutation");
         }
         await RunStartupShellFailureFallbackAsync(contentRoot);
+    }
+
+    private sealed class StartupFoundationOverviewProbe(
+        IOwnerBoundCharacterCreationLifeModuleFinalizationService actual,
+        OwnerContextStamp expectedOwner, List<BootstrapProductionStage> metrics)
+        : IOwnerBoundCharacterCreationLifeModuleFinalizationService, IOwnerBoundCharacterCreationOverviewReader
+    {
+        public int OverviewCalls { get; private set; }
+        public int LoadCalls { get; private set; }
+        public CharacterCreationOverviewRead? LastOverview { get; private set; }
+
+        public CharacterCreationOverviewRead? LoadOverview(OwnerContextStamp owner,
+            CharacterWorkspaceId workspaceId, bool includePriorityDrafts)
+        {
+            Require(owner == expectedOwner, "Shared Foundation restore recaptured another owner.");
+            Require(!includePriorityDrafts, "Life Modules restore requested unrelated Priority drafts.");
+            OverviewCalls++;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                return LastOverview = ((IOwnerBoundCharacterCreationOverviewReader)actual)
+                    .LoadOverview(owner, workspaceId, includePriorityDrafts);
+            }
+            finally
+            {
+                metrics.Add(new("foundation-shared-overview",
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds));
+            }
+        }
+
+        public CharacterCreationFoundationResult<CharacterCreationFoundationState> Load(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId)
+        {
+            Require(owner == expectedOwner, "Independent Foundation restore recaptured another owner.");
+            LoadCalls++;
+            return actual.Load(owner, workspaceId);
+        }
+
+        public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationPreview> Preview(
+            OwnerContextStamp owner, CharacterCreationFoundationFinalizationPreviewRequest request)
+            => throw new InvalidOperationException("Startup must not preview Life Modules finalization.");
+
+        public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationReceipt> Confirm(
+            OwnerContextStamp owner, CharacterCreationFoundationFinalizationConfirmRequest request)
+            => throw new InvalidOperationException("Startup must not confirm Life Modules finalization.");
     }
 
     private static async Task RunStartupShellFailureFallbackAsync(string contentRoot)

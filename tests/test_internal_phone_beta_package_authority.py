@@ -334,7 +334,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 801,
+            "minimumExpectedTests": 814,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -351,7 +351,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             ("WorkspaceSessionPresenterTests", "Chummer.Tests/Presentation/WorkspaceSessionPresenterTests.cs", 23),
             ("WorkspaceViewStateStoreTests", "Chummer.Tests/Presentation/WorkspaceViewStateStoreTests.cs", 6),
             ("RestartSafeWorkspacePersistenceTests", "Chummer.Tests/RestartSafeWorkspacePersistenceTests.cs", 1),
-            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 47),
+            ("WorkspaceOverviewFinalizationOwnerTests", "Chummer.CreationWizard.Presentation.Tests/WorkspaceOverviewFinalizationOwnerTests.cs", 60),
         )
         rows = [{
             "coreProjectionContent": copy.deepcopy(content),
@@ -716,8 +716,8 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(801, receipt["testExecutions"][0]["minimumExpectedTests"])
-        self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 47],
+        self.assertEqual(814, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 60],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
         # The producer can validate the content checkout at either exact commit.
@@ -750,13 +750,13 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         self.assertEqual(8, len(rows))
         self.assertEqual(8, len(self.module.EXISTING_OWNER_TEST_EXECUTIONS))
         self.assertEqual(
-            ("WorkspaceOverviewFinalizationOwnerTests", source, 47),
+            ("WorkspaceOverviewFinalizationOwnerTests", source, 60),
             self.module.EXISTING_OWNER_TEST_EXECUTIONS[-1],
         )
         self.assertEqual({
             "coreProjectionContent": full["coreProjectionContent"],
             "filter": "FullyQualifiedName~WorkspaceOverviewFinalizationOwnerTests",
-            "minimumExpectedTests": 47,
+            "minimumExpectedTests": 60,
             "project": full["project"],
             "reuseFullSuiteBuild": True,
             "runner": "direct-exact-assembly",
@@ -803,6 +803,16 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                     row for row in receipt["sourceInventory"] if row["path"] != source
                 ]
             with self.subTest(change=change), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+
+    def test_foundation_shared_read_requires_all_new_owner_cases(self) -> None:
+        # The shared Foundation recipe adds thirteen cases. Neither an older
+        # complete receipt nor a partially raised invocation qualifies it.
+        for full_floor, focused_floor in ((801, 47), (813, 60), (814, 59), (801, 60), (814, 47)):
+            receipt = self.current_main_receipt_fixture()
+            receipt["testExecutions"][0]["minimumExpectedTests"] = full_floor
+            receipt["focusedExistingOwnerRegressionTestExecutions"][-1]["minimumExpectedTests"] = focused_floor
+            with self.subTest(full=full_floor, focused=focused_floor), self.assertRaises(ValueError):
                 self.validate_receipt_copy(receipt)
 
     def test_new_owner_receipt_fields_are_required_and_unknown_fields_stay_denied(self) -> None:
