@@ -131,7 +131,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 164 is the latest [observed Internal availability](../play/evidence/preview164-internal-observation.md),
+Preview 165 is the latest [observed Internal availability](../play/evidence/preview165-internal-observation.md),
+confirmed on 9 October at 20:23 Europe/Vienna. Internal technical diagnostics
+default on only when no prior preference exists; saved opt-outs remain off.
+The private Hub intake and bounded Telegram alert worker are deployed. Focused
+managed checks, native preference/opt-out/restart checks, separate synthetic
+HTTPS intake and a clearly labelled synthetic operator alert passed. Local
+ARM64 build, isolated original-key signing, independent keyless verification and
+one Internal upload/readback passed. **The reported reload defect is unresolved;
+native remote report delivery, physical Play 165 installation and whole-app
+Creation/Career coverage remain unverified.** Existing UI guidance/readability
+changes are included without claiming exhaustive device coverage. Prior evidence
+and rollback artifacts remain unchanged.
+
+Preview 164's [observed Internal availability](../play/evidence/preview164-internal-observation.md),
 confirmed on 9 October at 15:39 Europe/Vienna. The quality catalog has 803 German
 display names and German/original-name search, with localized help/configuration
 headings and unchanged rules. Twenty focused Python tests, managed locale checks
