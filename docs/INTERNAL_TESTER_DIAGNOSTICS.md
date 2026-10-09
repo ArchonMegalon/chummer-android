@@ -3,7 +3,9 @@
 Current source has **default-on automatic reporting for Internal test builds**
 (owner decision, 9 October 2026), with an immediately available opt-out. The private
 Hub intake is deployed; [Preview 165 is available on Play Internal](../play/evidence/preview165-internal-observation.md).
-Physical Play installation and a real native report reaching the operator remain unverified.
+Physical Play installation and a real tester report reaching the operator remain unverified.
+A controlled native queued-report receipt/restart check passed on 9 October;
+its deliberately synthetic scope is recorded below.
 Native page appearance/actions/refreshes and Life Modules story-readiness checks
 record allowlisted technical events in app-private `diagnostics/technical-diagnostics.json`.
 The settings page explains this and offers an explicit Android share action.
@@ -99,8 +101,24 @@ Deployment and remaining verification:
   are never blindly replayed after restart. Its private reader and scoped
   Telegram credentials exist only in private runtime mounts, never Android.
   Eleven focused worker tests and one synthetic live notification passed.
-- Native remote delivery remains unverified. The native opt-out/restart smoke
-  blocked HTTPS intentionally; the live server and Telegram probes are separate.
+- Native queued-report transport was verified at 20:26 UTC on 9 October in the
+  retained API-36 emulator. An observation-only private build wrapped the unchanged
+  sender to record its result, and the existing reporter automatically resumed a
+  seeded, pending synthetic report. It received `Accepted`: the transport requires
+  HTTP 202, bounded JSON and the matching report ID/time before returning that result.
+  The report was the already-accepted version-165 fixture, not a new tester incident;
+  private Hub readback retained one record and the original receipt time.
+  After force-stop/new process, the terminal item persisted and the sender was not
+  called again during the observed 35-second interval (HTTPS was blocked after the
+  first acceptance). The operator worker stayed quiet because it already knew that ID.
+  This checks native durable-queue delivery, not fresh UI failure capture, a new
+  Telegram send, physical Play installation or guaranteed background/crash delivery.
+  All four synthetic runner files remained byte-identical; the original disabled
+  diagnostic preference was restored byte-for-byte and the emulator stopped.
+  The final screenshot contains an Android **Process system isn't responding**
+  dialog; the transport result is not a healthy-UI or startup-performance claim.
+  The private SDK-test APK was `79141600573a80c78ef116b12a5d0bd5eac254fd8566c3c8a69da70154b7f63a`.
+  It is not a Play artifact; tracing was removed from the private source afterward.
 - The generated privacy disclosure is publicly visible at `https://chummer.run/privacy`
   and canonical Design PR33 is merged. Verify the actual Play scope/disclosures
   before delivery; the old preview.7 worksheet is not current authority.
