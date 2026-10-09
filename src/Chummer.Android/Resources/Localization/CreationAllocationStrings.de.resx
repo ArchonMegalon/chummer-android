@@ -945,4 +945,28 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Skills.UseNativeLanguage" xml:space="preserve"><value>Als Muttersprache verwenden</value></data>
   <data name="LifeCompletion.DiceRequired" xml:space="preserve"><value>Öffne die Karriereprüfung und gib die Augensumme deiner Startgeldwürfel ein. Prüfe danach erneut.</value></data>
   <data name="LifeCompletion.BudgetInvalid" xml:space="preserve"><value>Die Karrierewerte konnten nicht bestätigt werden. Prüfe die übrigen Hinweise und deine Startgeld-Augensumme und prüfe danach erneut.</value></data>
+  <data name="Skills.Message.Duplicate" xml:space="preserve"><value>Eine Fertigkeit oder Gruppe ist mehrfach ausgewählt. Entferne die doppelte Auswahl.</value></data>
+  <data name="Skills.Message.Allocation" xml:space="preserve"><value>Prüfe den Wert und die Auswahl dieser Fertigkeit anhand der aktuellen Grenzen.</value></data>
+  <data name="Skills.Message.ActivePoints" xml:space="preserve"><value>Es sind nicht genügend aktive Fertigkeitspunkte übrig. Verringere eine Zuteilung und prüfe erneut.</value></data>
+  <data name="Skills.Message.GroupPoints" xml:space="preserve"><value>Es sind nicht genügend Fertigkeitsgruppenpunkte übrig. Verringere einen Gruppenwert und prüfe erneut.</value></data>
+  <data name="Skills.Message.KnowledgePoints" xml:space="preserve"><value>Es sind nicht genügend Wissensfertigkeitspunkte übrig. Prüfe deine Zuteilung für Wissen und Sprachen.</value></data>
+  <data name="Skills.Message.GroupMixed" xml:space="preserve"><value>Die Gruppe und ihre einzelnen Fertigkeiten widersprechen sich. Prüfe ihre Werte und Spezialisierungen gemeinsam.</value></data>
+  <data name="Skills.Message.GroupUnavailable" xml:space="preserve"><value>Diese Fertigkeitsgruppe ist mit der aktuellen Auswahl nicht verfügbar.</value></data>
+  <data name="Skills.Message.Specialization" xml:space="preserve"><value>Wähle eine verfügbare Spezialisierung für diese Fertigkeit oder entferne die Spezialisierung.</value></data>
+  <data name="Skills.Message.NativeChoice" xml:space="preserve"><value>Prüfe die gewählte Muttersprache. Sie kann nicht zugleich einen gekauften Wert oder eine Spezialisierung haben.</value></data>
+  <data name="Skills.Message.NativeLimit" xml:space="preserve"><value>Es sind zu viele Muttersprachen ausgewählt. Entferne eine und prüfe erneut.</value></data>
+  <data name="Skills.Message.Exotic" xml:space="preserve"><value>Diese exotische Fertigkeit wird von diesem Editor noch nicht unterstützt. Das Öffnen verändert deine gespeicherte Auswahl nicht.</value></data>
+  <data name="Skills.Message.Movement" xml:space="preserve"><value>Dein Runner erfüllt die Bewegungsvoraussetzung dieser Fertigkeit nicht.</value></data>
+  <data name="Skills.Message.Talent" xml:space="preserve"><value>Das aktuelle Talent erlaubt diese Fertigkeit nicht.</value></data>
+  <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>Diese Berechnung der Wissenspunkte wird hier noch nicht unterstützt. Ändere den gespeicherten Entwurf nicht, um dies zu umgehen.</value></data>
+  <data name="Skills.Message.Attributes" xml:space="preserve"><value>Prüfe und speichere zuerst deine Attribute. Prüfe danach die Fertigkeiten erneut.</value></data>
+  <data name="Skills.Message.Unavailable" xml:space="preserve"><value>Der aktuelle Runner oder seine Regeln konnten nicht sicher geladen werden. Öffne den Runner erneut, bevor du weitermachst.</value></data>
+  <data name="Skills.Message.History" xml:space="preserve"><value>Die gespeicherte Fertigkeitenhistorie muss geprüft werden. Öffne den Runner erneut; wiederhole keinen Speichervorgang mit unklarem Ergebnis.</value></data>
+  <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>Dieser Speicherauftrag kann nicht bestätigt werden. Öffne den Runner erneut und prüfe vor einem weiteren Versuch, was gespeichert wurde.</value></data>
+  <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Deine Fertigkeiten sind gespeichert, aber die Ansicht konnte nicht aktualisiert werden. Öffne den Runner erneut; speichere diese Auswahl nicht nochmals.</value></data>
+  <data name="Skills.Message.Reopen" xml:space="preserve"><value>Der Runner oder die Regeln haben sich seit dem Laden geändert. Öffne die Fertigkeiten erneut, um die aktuelle Auswahl zu prüfen.</value></data>
+  <data name="Skills.Message.Review" xml:space="preserve"><value>Prüfe den vollständigen Vorschlag und bestätige ihn ausdrücklich. Das Öffnen dieser Seite speichert keine Änderungen.</value></data>
+  <data name="Skills.Message.Unknown" xml:space="preserve"><value>Diese Auswahl kann nicht bestätigt werden. Prüfe die aktuelle Auswahl; die technischen Details enthalten den genauen Grund.</value></data>
+  <data name="Skills.CheckChoices" xml:space="preserve"><value>Auswahl prüfen</value></data>
+  <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Frühere Spezialisierung (nicht im aktuellen Katalog)</value></data>
 </root>

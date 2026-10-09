@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Resources;
+using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
@@ -69,6 +70,78 @@ public static class CreationAllocationStrings
             "DEP" => Get("Attribute.DEP", "Depth"),
             _ => attributeId
         };
+
+    // Display-only explanations: no code, identity, permission or saved data is
+    // changed. Every exact reason remains in the page's technical disclosure.
+    public static string SkillBlocker(string code) => code switch
+    {
+            CharacterCreationSkillsBlockers.AllocationDuplicate
+                or CharacterCreationSkillsBlockers.GroupAllocationDuplicate
+                => Get("Skills.Message.Duplicate", "A skill or group is selected more than once. Remove the duplicate choice."),
+            CharacterCreationSkillsBlockers.AllocationInvalid
+                or CharacterCreationSkillsBlockers.RatingInvalid
+                => Get("Skills.Message.Allocation", "Check this skill's rating and selection against the current limits."),
+            CharacterCreationSkillsBlockers.ActiveBudgetExceeded
+                => Get("Skills.Message.ActivePoints", "Not enough active skill points remain. Lower an allocation before reviewing again."),
+            CharacterCreationSkillsBlockers.GroupBudgetExceeded
+                => Get("Skills.Message.GroupPoints", "Not enough skill group points remain. Lower a group rating before reviewing again."),
+            CharacterCreationSkillsBlockers.KnowledgeBudgetExceeded
+                => Get("Skills.Message.KnowledgePoints", "Not enough knowledge skill points remain. Review your knowledge and language allocations."),
+            CharacterCreationSkillsBlockers.GroupBroken
+                => Get("Skills.Message.GroupMixed", "The group and its individual skill choices conflict. Review their ratings and specializations together."),
+            CharacterCreationSkillsBlockers.GroupInvalid
+                => Get("Skills.Message.GroupUnavailable", "This skill group is not available with the current choices."),
+            CharacterCreationSkillsBlockers.SpecializationInvalid
+                => Get("Skills.Message.Specialization", "Choose an available specialization for this skill, or remove the specialization."),
+            CharacterCreationSkillsBlockers.NativeLanguageInvalid
+                => Get("Skills.Message.NativeChoice", "Check the selected native language. It cannot also have a purchased rating or specialization."),
+            CharacterCreationSkillsBlockers.NativeLanguageLimitExceeded
+                => Get("Skills.Message.NativeLimit", "Too many native languages are selected. Remove one before reviewing again."),
+            CharacterCreationSkillsBlockers.ExoticSkillUnsupported
+                => Get("Skills.Message.Exotic", "This exotic skill is not supported by this editor. Your saved choices are not changed by opening it."),
+            CharacterCreationSkillsBlockers.MovementRequirementUnmet
+                => Get("Skills.Message.Movement", "This skill's movement requirement is not met by the current runner."),
+            CharacterCreationSkillsBlockers.TalentAccessRequired
+                => Get("Skills.Message.Talent", "The current Talent does not grant access to this skill."),
+            CharacterCreationSkillsBlockers.KnowledgeContributionAuthorityUnsupported
+                => Get("Skills.Message.KnowledgeRule", "This knowledge-point calculation is not supported here yet. Do not change the saved draft to work around it."),
+            CharacterCreationSkillsBlockers.AttributesDraftInvalid
+                or CharacterCreationSkillsBlockers.AttributesDraftRequired
+                => Get("Skills.Message.Attributes", "Review and save your Attributes before reviewing Skills again."),
+            CharacterCreationSkillsBlockers.AuthorityUnavailable
+                or CharacterCreationSkillsBlockers.WorkspaceUnavailable
+                or CharacterCreationSkillsBlockers.PersistenceAuthorityRequired
+                => Get("Skills.Message.Unavailable", "The current runner or its rules could not be loaded safely. Reopen the runner before continuing."),
+            CharacterCreationSkillsBlockers.DraftConflict
+                or CharacterCreationSkillsBlockers.DraftDuplicate
+                or CharacterCreationSkillsBlockers.DraftInvalid
+                or CharacterCreationSkillsBlockers.ReceiptLedgerInvalid
+                => Get("Skills.Message.History", "The saved Skills history needs checking. Reopen the runner; do not repeat a save whose result is uncertain."),
+            CharacterCreationSkillsBlockers.IdempotencyConflict
+                or CharacterCreationSkillsBlockers.IdempotencyKeyInvalid
+                => Get("Skills.Message.SaveCheck", "This save request cannot be confirmed. Reopen the runner and check what was saved before trying again."),
+            CharacterCreationSkillsBlockers.PostCommitRefreshRequired
+                => Get("Skills.Message.SavedReopen", "Your skills were saved, but this view could not refresh. Reopen the runner; do not save these choices again."),
+            CharacterCreationSkillsBlockers.PrerequisiteSourceDrift
+                or CharacterCreationSkillsBlockers.PreviewDigestMismatch
+                or CharacterCreationSkillsBlockers.RuntimeDrift
+                or CharacterCreationSkillsBlockers.SkillsPriorityAuthorityInvalid
+                or CharacterCreationSkillsBlockers.SkillsSourceDrift
+                or CharacterCreationSkillsBlockers.StaleRawCharacterXmlDigest
+                or CharacterCreationSkillsBlockers.StaleWorkspaceRevision
+                => Get("Skills.Message.Reopen", "The runner or rules changed since this view was prepared. Reopen Skills to review the current choices."),
+            CharacterCreationSkillsBlockers.ExplicitConfirmationRequired
+                => Get("Skills.Message.Review", "Review the complete proposal and confirm it explicitly. Opening this page does not save changes."),
+            CharacterCreationSkillsBlockers.NativeLanguageRequired
+                => Get("Skills.NativeLanguageRequired", "Your skill choices are not saved yet. Choose a native language under Knowledge & languages before reviewing and saving."),
+            CharacterCreationSkillsReReviewSchemas.Unavailable
+                => Get("Skills.Message.Unavailable", "The current runner or its rules could not be loaded safely. Reopen the runner before continuing."),
+            CharacterCreationSkillsReReviewSchemas.Stale
+                => Get("Skills.Message.Reopen", "The runner or rules changed since this view was prepared. Reopen Skills to review the current choices."),
+            CharacterCreationSkillsReReviewSchemas.ExplicitReviewRequired
+                => Get("Skills.Message.Review", "Review the complete proposal and confirm it explicitly. Opening this page does not save changes."),
+            _ => Get("Skills.Message.Unknown", "This choice cannot be confirmed. Check the current choices; technical details contain the exact reason.")
+    };
 
     // Exact blocker codes remain in the technical disclosure. Unknown codes never
     // become permission to spend points or a guessed rule explanation.

@@ -169,6 +169,30 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         self.assertIn('"creation-skills-rereview-budget-" + Token(canonicalBudgetId)', source)
         self.assertIn("budget.Used, budget.Total, budget.Remaining", source)
 
+    def test_skills_guidance_resources_are_complete_and_display_only(self) -> None:
+        catalogs = [load_resx(f"CreationAllocationStrings{suffix}.resx") for suffix in ("", ".de", ".es")]
+        keys = {key for key in catalogs[0] if key.startswith("Skills.Message.")}
+        self.assertGreaterEqual(len(keys), 20)
+        for suffix, catalog in zip(("", ".de", ".es"), catalogs):
+            names = [row.attrib["name"] for row in ET.parse(RESOURCES / f"CreationAllocationStrings{suffix}.resx").getroot().findall("data")]
+            self.assertEqual(len(names), len(set(names)), suffix)
+            self.assertTrue(keys.issubset(catalog), suffix)
+            self.assertTrue(all(catalog[key] for key in keys), suffix)
+        for key in keys:
+            self.assertNotEqual(catalogs[0][key], catalogs[1][key], key)
+        for name in ("CreationSkillsPage.cs", "CreationSkillsReReviewPage.cs"):
+            source = (PROJECT / "Native" / name).read_text(encoding="utf-8")
+            self.assertIn("Select(CreationAllocationStrings.SkillBlocker)", source)
+            self.assertNotIn("NativeTheme.Body(blocker, NativeTheme.Danger)", source)
+        review = (PROJECT / "Native" / "CreationSkillsReReviewPage.cs").read_text(encoding="utf-8")
+        self.assertIn("_technicalDetails.Add(receiptLabel)", review)
+        self.assertIn("_technicalDetails.Add(binding)", review)
+        self.assertIn('"creation-skills-rereview-details"', review)
+        self.assertIn("Coordinator.CanDisplayCreationSkillsReReviewReceipt(receipt)", review)
+        self.assertIn("ReferenceEquals(details, _technicalDetails)", review)
+        self.assertNotIn("?.Name ?? id", review)
+        self.assertIn("SkillsReReview.UnavailableSpecialization", catalogs[1])
+
     def test_character_settings_scope_is_explicit_in_all_supported_languages(self) -> None:
         catalogs = {
             "en": load_resx("PhoneStrings.resx"),

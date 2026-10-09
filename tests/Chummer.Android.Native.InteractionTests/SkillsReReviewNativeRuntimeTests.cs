@@ -95,6 +95,17 @@ internal static partial class AfterRunAuthorityHarness
             Require(body.Children.OfType<Border>().Any(row => row.AutomationId?.StartsWith("creation-skills-rereview-change-", StringComparison.Ordinal) == true),
                 "Actual native page omitted the historical/current comparison.");
             Require(SkillsReviewButton(page).IsEnabled == !obsolete, "Native Apply ignored Core blockers.");
+            var details = SkillsReviewTechnicalContent(page);
+            Require(!details.IsVisible && details.Children.OfType<Label>()
+                .Any(label => label.AutomationId == "creation-skills-rereview-binding"),
+                "Historical review exposed technical binding or discarded diagnostic data.");
+            Require(!SkillsReviewVisibleLabels(body).Any(label => state.InitialPreview.Changes
+                .SelectMany(change => change.SourceAnchorIds).Any(anchor => label.Text?.Contains(anchor, StringComparison.Ordinal) == true)),
+                "Exact source anchors were visible outside the collapsed diagnostic panel.");
+            if (obsolete)
+                Require(SkillsReviewVisibleLabels(body).Any(label => label.Text ==
+                    CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.TalentAccessRequired)),
+                    "Historical Talent conflict did not display actionable localized guidance.");
             var nativeDraft = (CreationSkillsReReviewPhoneDraft)typeof(CreationSkillsReReviewPage)
                 .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
             Require((await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(draft.Preview!, draft.Skills, draft.Groups, false)).Receipt is null,
@@ -166,7 +177,9 @@ internal static partial class AfterRunAuthorityHarness
                 typeof(CreationSkillsReReviewPage).GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, confirmed);
                 RefreshSkillsReReview(page);
                 Require(!body.Children.OfType<Button>().Any(button => button.AutomationId == "creation-skills-rereview-confirm")
-                    && body.Children.OfType<Label>().Any(label => label.AutomationId == "creation-skills-rereview-receipt"),
+                    && SkillsReviewTechnicalContent(page).Children.OfType<Label>().Any(label =>
+                        label.AutomationId == "creation-skills-rereview-receipt" && label.Text == confirmed.Receipt!.ReceiptDigest)
+                    && !SkillsReviewTechnicalContent(page).IsVisible,
                     "The native receipt-bearing failure view offered another apply.");
                 await runtime.Presenter.LoadAsync(id, default); // Explicit reopen, not a retry of the mutation.
             }
@@ -215,6 +228,22 @@ internal static partial class AfterRunAuthorityHarness
                 + (failCommittedRead ? " → failed committed read retains receipt → explicit reopen" : " → real presenter/shell")
                 + " → cold reopen/replay (managed; no Activity proof)");
         }
+    }
+
+    private static VerticalStackLayout SkillsReviewTechnicalContent(CreationSkillsReReviewPage page) =>
+        ((VerticalStackLayout)((ScrollView)page.Content!).Content).Children.OfType<VerticalStackLayout>()
+            .Single(panel => panel.AutomationId == "creation-skills-rereview-details")
+            .Children.OfType<VerticalStackLayout>().Single();
+
+    private static IEnumerable<Label> SkillsReviewVisibleLabels(View view)
+    {
+        if (!view.IsVisible) yield break;
+        if (view is Label label) yield return label;
+        if (view is Layout layout)
+            foreach (var child in layout.Children.OfType<View>())
+                foreach (var nested in SkillsReviewVisibleLabels(child)) yield return nested;
+        if (view is Border { Content: View content })
+            foreach (var nested in SkillsReviewVisibleLabels(content)) yield return nested;
     }
 
     private static void RefreshSkillsReReview(CreationSkillsReReviewPage page) => typeof(CreationSkillsReReviewPage)
