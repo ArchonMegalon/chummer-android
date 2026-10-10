@@ -336,14 +336,20 @@ internal static partial class AfterRunAuthorityHarness
                     var methodRoute = (CreationBudgetRoute)methodRender.Invoke(page, [snapshot, null, typed])!;
                     var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
                         [snapshot, null, typed, null, null, null, null, readiness])!;
-                    nextRender.Invoke(page, [snapshot, readiness, routes, methodRoute]);
+                    nextRender.Invoke(page, [snapshot, readiness, routes, methodRoute, 0]);
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
                     var cards = body.Children.OfType<Border>().Where(border => border.Content is Grid)
                         .Select(border => (Grid)border.Content!).ToArray();
                     var methodButton = cards.SelectMany(grid => grid.Children.OfType<Button>())
-                        .Single(button => button.AutomationId == "creation-next-method");
-                    Require(methodButton.IsEnabled == available && methodRoute.CanOpen == available,
+                        .SingleOrDefault(button => button.AutomationId == "creation-next-method");
+                    Require((methodButton is { IsEnabled: true }) == available && methodRoute.CanOpen == available,
                         "Continue must agree with the canonical method route and never borrow generic legality.");
+                    Require(cards.SelectMany(grid => grid.Children.OfType<Button>()).Count(button =>
+                        button.AutomationId?.StartsWith("creation-next-", StringComparison.Ordinal) == true) <= 1,
+                        "Continue repeated the full stage index instead of offering one next step.");
+                    if (available)
+                        Require(((Grid)((Border)body.Children[0]).Content!).Children.OfType<Button>().Contains(methodButton!),
+                            "The admitted continuation must precede setup and budget cards.");
                     foreach (var grid in cards)
                     {
                         var button = grid.Children.OfType<Button>().Single();
@@ -356,15 +362,15 @@ internal static partial class AfterRunAuthorityHarness
                     }
                     if (available)
                     {
-                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton!).SendClicked());
                         Require(nav.CurrentPage is CreationPrerequisitePage,
                             "Continue did not open the real typed Creation method editor.");
                         await nav.PopAsync(false);
                         owners.Set(ContactsOwnerB);
                         owners.Set(ContactsOwnerA);
-                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton!).SendClicked());
                     }
-                    else ((IButtonController)methodButton).SendClicked();
+                    else Require(methodButton is null, "Blocked method must not be offered as the continuation.");
                     Require(nav.Navigation.NavigationStack.Count == 1,
                         "A blocked or stale-owner Continue link still navigated.");
                 }
@@ -431,7 +437,7 @@ internal static partial class AfterRunAuthorityHarness
                         .GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!
                         .Invoke(page, [snapshot, null, null, null, null, null, null, readiness])!;
                     Invoke("AddLegalNextSteps", snapshot, readiness, routes,
-                        new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []));
+                        new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []), 0);
                     Invoke("AddFinalizationReviewAction");
                     bool available = state is not ("loading" or "blocked");
                     var route = routes[CharacterCreationWizardStepIds.Review];
@@ -439,7 +445,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (!available)
                         Require(route.Detail != "Available", "A blocked Review still claims to be available.");
                     var button = IssuedElements(page).OfType<Button>().SingleOrDefault(row => row.AutomationId == entry);
-                    if (entry == "creation-finalization-open-review" && !available)
+                    if (entry is "creation-finalization-open-review" or "creation-next-review" && !available)
                         Require(button is null, "Blocked finalization still exposes its primary action.");
                     else
                     {

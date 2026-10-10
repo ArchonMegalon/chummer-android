@@ -25,6 +25,8 @@ public sealed class CreationAttributesPage : NativePageBase
     private CancellationTokenSource? _reviewPreparation;
     private CancellationTokenSource? _inlinePreparation;
     private readonly List<Button> _inlineButtons = [];
+    private string? _expandedAttributeId;
+    private Grid? _expandedKarmaOptions;
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
@@ -44,6 +46,7 @@ public sealed class CreationAttributesPage : NativePageBase
         if (_reviewPreparation is not null || _inlinePreparation is not null) return;
         _reviewButton = null;
         _inlineButtons.Clear();
+        _expandedKarmaOptions = null;
         _body.Clear();
         // The previous disclosure still owns its native child after _body.Clear().
         // Never attach that child to a new parent during a refresh.
@@ -57,9 +60,8 @@ public sealed class CreationAttributesPage : NativePageBase
             "Attributes.Heading",
             "Allocate Attributes")));
         _body.Add(NativeTheme.Body(
-            CreationAllocationStrings.Get(
-                "Attributes.Intro",
-                "Choose an attribute to spend points. Normal and special attributes use separate pools."),
+            PhoneStrings.Get("CreationAttributesInlineHelp",
+                "Spend points with − and +. Tap an attribute for Karma options on this page."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
@@ -94,8 +96,6 @@ public sealed class CreationAttributesPage : NativePageBase
         _draft.Bind(state, Coordinator.State);
         AddBinding(state);
         AddBudgets(state);
-        AddLimits(state);
-        AddPendingDraft(state.PendingDraft);
         if (!CreationAttributesPhoneAuthority.IsReady(state, Coordinator.State)
             || !_draft.Matches(state, Coordinator.State))
         {
@@ -118,6 +118,8 @@ public sealed class CreationAttributesPage : NativePageBase
         if (_previewBlockers.Count > 0)
             AddBlockers(_previewBlockers, "creation-attributes-preview-blockers");
         AddReviewAction(state);
+        AddPendingDraft(state.PendingDraft);
+        AddLimits(state);
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-details"));
     }
 
@@ -263,20 +265,32 @@ public sealed class CreationAttributesPage : NativePageBase
                         "Not enabled by this Talent")));
             foreach (string reason in attribute.DisableReasons)
                 _technicalDetails.Add(NativeTheme.Body(attribute.AttributeId + ": " + reason, NativeTheme.Muted));
-            Border row = NativeTheme.NavigationRow(
+            Grid? karmaOptions = null;
+            Border? row = null;
+            long appearance = CaptureAppearanceGeneration();
+            row = NativeTheme.NavigationRow(
                 AttributeLabel(attribute.AttributeId),
-                detail,
-                () => _inlinePreparation is not null || !Coordinator.IsCreationAttributesStateCurrent(state) ? Task.CompletedTask
-                    : Navigation.PushAsync(new CreationAttributeAllocationPage(
-                    Coordinator,
-                    _draft,
-                    attribute.AttributeId,
-                    state)),
+                attribute.IsEnabled ? detail + " · " + PhoneStrings.Get("CreationKarmaOptions", "Karma options") + " ▾" : detail,
+                () =>
+                {
+                    if (_inlinePreparation is not null || !IsCurrentAppearanceGeneration(appearance)
+                        || !ReferenceEquals(row?.Parent, _body) || !Coordinator.IsCreationAttributesStateCurrent(state)
+                        || !_draft.Matches(state, Coordinator.State) || karmaOptions is null)
+                        return Task.CompletedTask;
+                    karmaOptions.IsVisible = !karmaOptions.IsVisible;
+                    if (karmaOptions.IsVisible && !ReferenceEquals(_expandedKarmaOptions, karmaOptions))
+                    {
+                        if (_expandedKarmaOptions is not null) _expandedKarmaOptions.IsVisible = false;
+                        _expandedKarmaOptions = karmaOptions;
+                    }
+                    _expandedAttributeId = karmaOptions.IsVisible ? attribute.AttributeId : null;
+                    return Task.CompletedTask;
+                },
                 enabled: attribute.IsEnabled,
                 automationId: $"creation-attributes-open-{Token(attribute.AttributeId)}",
                 value: attribute.Current.ToString(CultureInfo.InvariantCulture));
-            // Spend normal/special points directly in this list. The existing
-            // detail route remains available for Karma and less common options.
+            // Both point pools and Karma stay on this page. Only the explicit
+            // review/confirmation opens another page; all changes still use Core.
             if (attribute.IsEnabled)
             {
                 var grid = (Grid)row.Content!;
@@ -285,18 +299,37 @@ public sealed class CreationAttributesPage : NativePageBase
                 grid.ColumnDefinitions.Add(new(GridLength.Auto));
                 AddInlineAdjustment(state, attribute, row, grid, -1, 2);
                 AddInlineAdjustment(state, attribute, row, grid, 1, 3);
+                grid.RowDefinitions.Add(new(GridLength.Auto));
+                grid.RowDefinitions.Add(new(GridLength.Auto));
+                karmaOptions = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitionCollection
+                    {
+                        new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto)
+                    },
+                    ColumnSpacing = 8,
+                    Margin = new Thickness(0, 10, 0, 0),
+                    IsVisible = _expandedAttributeId == attribute.AttributeId,
+                    AutomationId = $"creation-attributes-karma-{Token(attribute.AttributeId)}"
+                };
+                karmaOptions.Add(NativeTheme.Body(PhoneStrings.Get("CreationKarmaOptions", "Karma options")));
+                if (karmaOptions.IsVisible) _expandedKarmaOptions = karmaOptions;
+                AddInlineAdjustment(state, attribute, row, karmaOptions, -1, 1, karma: true);
+                AddInlineAdjustment(state, attribute, row, karmaOptions, 1, 2, karma: true);
+                grid.Add(karmaOptions, 0, 1);
+                Grid.SetColumnSpan(karmaOptions, 4);
             }
             _body.Add(row);
         }
     }
 
     private void AddInlineAdjustment(CharacterCreationAttributesState state,
-        CharacterCreationAttributeProjection attribute, Border row, Grid grid, int delta, int column)
+        CharacterCreationAttributeProjection attribute, Border row, Grid grid, int delta, int column, bool karma = false)
     {
         var expected = _draft.Allocations(state).ToArray();
-        var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, delta, 0);
+        var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
         Button button = NativeTheme.SecondaryButton(delta < 0 ? "−" : "+");
-        button.AutomationId = $"creation-attributes-inline-{(delta < 0 ? "decrease" : "increase")}-{Token(attribute.AttributeId)}";
+        button.AutomationId = $"creation-attributes-inline-{(karma ? "karma-" : string.Empty)}{(delta < 0 ? "decrease" : "increase")}-{Token(attribute.AttributeId)}";
         button.WidthRequest = 48;
         button.Padding = 0;
         button.FontSize = 24;
@@ -304,15 +337,19 @@ public sealed class CreationAttributesPage : NativePageBase
         var pointBudget = attribute.Category == CharacterCreationAttributeCategories.Special
             ? _draft.SpecialBudget(state) : _draft.NormalBudget(state);
         button.IsEnabled = allocations is not null
-            && (delta < 0 || attribute.Current < attribute.Maximum && pointBudget.Remaining >= 1);
+            && (delta < 0 || attribute.Current < attribute.Maximum
+                && (karma ? _draft.KarmaBudget(state).Remaining > 0 : pointBudget.Remaining >= 1));
         SemanticProperties.SetDescription(button, AttributeLabel(attribute.AttributeId) + " · " +
-            CreationAllocationStrings.Get(delta < 0 ? "AttributeAllocation.PriorityDecrease" : "AttributeAllocation.PriorityIncrease",
+            CreationAllocationStrings.Get(karma
+                    ? delta < 0 ? "AttributeAllocation.KarmaDecrease" : "AttributeAllocation.KarmaIncrease"
+                    : delta < 0 ? "AttributeAllocation.PriorityDecrease" : "AttributeAllocation.PriorityIncrease",
                 delta < 0 ? "Point −" : "Point +"));
         _inlineButtons.Add(button);
         long appearance = CaptureAppearanceGeneration();
         button.Clicked += async (_, _) => await RunAsync(async () =>
         {
             bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(row.Parent, _body)
+                && (!karma || _expandedAttributeId == attribute.AttributeId)
                 && Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State)
                 && _draft.Allocations(state).SequenceEqual(expected);
             if (!button.IsEnabled || allocations is null || !Current()) return;
@@ -420,7 +457,12 @@ public sealed class CreationAttributesPage : NativePageBase
         string category = CharacterCreationAttributeCategories.Normal)
     {
         string label = BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId);
-        VerticalStackLayout card = new() { Spacing = 6 };
+        Grid card = new()
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Auto) },
+            RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Auto) },
+            ColumnSpacing = 10
+        };
         if (scrollAuthority is null)
             card.Add(NativeTheme.Title(label, 18));
         else
@@ -440,21 +482,20 @@ public sealed class CreationAttributesPage : NativePageBase
             };
             card.Add(jump);
         }
-        card.Add(NativeTheme.Metric(
-            CreationAllocationStrings.Get("Common.Total", "Total"),
-            FormatBudget(budget.Total, budget.Unit)));
-        card.Add(NativeTheme.Metric(
-            CreationAllocationStrings.Get("Common.Used", "Used"),
-            FormatBudget(budget.Used, budget.Unit)));
-        card.Add(NativeTheme.Metric(
-            CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
-            FormatBudget(budget.Remaining, budget.Unit)));
-        card.Add(NativeTheme.Body(
-            budget.IsExact
-                ? CreationAllocationStrings.Get("Common.ExactCoreBudget", "Exact Core budget")
-                : CreationAllocationStrings.Get("Common.BudgetNotExact", "Budget is not exact"),
-            budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
+        Label remaining = NativeTheme.Title(FormatBudget(budget.Remaining, budget.Unit), 24);
+        remaining.AutomationId = automationId + "-remaining";
+        card.Add(remaining, 1);
+        Label detail = NativeTheme.Body(
+            CreationAllocationStrings.Get("Common.Remaining", "Remaining") + " · "
+            + CreationAllocationStrings.Get("Common.Used", "Used") + " " + FormatBudget(budget.Used, budget.Unit)
+            + " / " + FormatBudget(budget.Total, budget.Unit)
+            + (budget.IsExact ? string.Empty : " · " + CreationAllocationStrings.Get("Common.BudgetNotExact", "Budget is not exact")),
+            budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger);
+        detail.FontSize = 13;
+        card.Add(detail, 0, 1);
+        Grid.SetColumnSpan(detail, 2);
         Border border = NativeTheme.Card(card);
+        border.Padding = 12;
         border.AutomationId = automationId;
         SemanticProperties.SetDescription(
             border,

@@ -421,4 +421,6 @@ No change has been saved yet.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Retry saving diagnostic choice</value></data>
   <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Automatic technical reports</value></data>
   <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Changes apply immediately. Switching off clears unsent reports.</value></data>
+  <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Spend points with − and +. Tap an attribute for Karma options on this page.</value></data>
+  <data name="CreationKarmaOptions" xml:space="preserve"><value>Karma options</value></data>
 </root>

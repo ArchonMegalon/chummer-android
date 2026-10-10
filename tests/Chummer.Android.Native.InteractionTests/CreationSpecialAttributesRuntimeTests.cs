@@ -289,6 +289,40 @@ internal static partial class AfterRunAuthorityHarness
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Inline("decrease")).SendClicked()));
                 Require(InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
                     "Inline minus failed to return the exact special point.");
+                var pageDraft = (CreationAttributesPhoneDraft)typeof(CreationAttributesPage).GetField("_draft",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
+                int navigationDepth = page.Navigation.NavigationStack.Count;
+                Button Karma(string direction) => MinimalVisible(page).OfType<Button>().Single(item =>
+                    item.AutomationId == "creation-attributes-inline-karma-" + direction + "-bod");
+                Button KarmaToggle() => MinimalVisible(page).OfType<Button>().Single(item =>
+                    item.AutomationId == "creation-attributes-open-bod");
+                Require(!MinimalVisible(page).OfType<Button>().Any(item =>
+                    item.AutomationId == "creation-attributes-inline-karma-increase-bod"),
+                    "Karma options must start folded, not crowd out the point steppers.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)KarmaToggle()).SendClicked()));
+                Require(page.Navigation.NavigationStack.Count == navigationDepth && Karma("increase").IsEnabled,
+                    "Opening Karma must stay on the same attributes page.");
+                int initialBody = pageDraft.Attribute(state, "BOD")!.Current;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Karma("increase")).SendClicked()));
+                Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody + 1
+                    && pageDraft.NormalBudget(state) == state.NormalPointBudget
+                    && pageDraft.SpecialBudget(state) == state.SpecialPointBudget
+                    && pageDraft.KarmaBudget(state).Remaining < state.CreationKarmaBudget.Remaining,
+                    "In-page Karma must adopt Core's result without spending normal or special points.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Karma("decrease")).SendClicked()));
+                Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody
+                    && pageDraft.KarmaBudget(state) == state.CreationKarmaBudget,
+                    "In-page Karma minus must restore the exact Core budget.");
+                var hiddenKarma = Karma("increase");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)KarmaToggle()).SendClicked()));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)hiddenKarma).SendClicked()));
+                Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody,
+                    "A folded Karma control must not apply a retained action.");
+                var compactRemaining = MinimalVisible(page).OfType<Label>().Single(item =>
+                    item.AutomationId == "creation-attributes-budget-normal-remaining");
+                Require(compactRemaining.FontAttributes.HasFlag(FontAttributes.Bold) && compactRemaining.FontSize >= 24,
+                    "Compact budget must retain a readable bold remaining-point value.");
+                Console.WriteLine("PASS flat attributes: compact budgets, in-page Karma +/-, separate pools and folded-action rejection: " + method);
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, coordinator.State);

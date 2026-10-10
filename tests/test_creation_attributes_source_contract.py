@@ -7,6 +7,23 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationAttributesSourceContractTests(unittest.TestCase):
+    def test_attribute_choices_stay_on_one_page_with_compact_budgets(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        entry = page.split("public sealed class CreationAttributeAllocationPage", 1)[0]
+        self.assertNotIn("new CreationAttributeAllocationPage(", entry)
+        self.assertIn("karmaOptions.IsVisible = !karmaOptions.IsVisible", entry)
+        self.assertIn("karma: true", entry)
+        self.assertIn("karma ? 0 : delta, karma ? delta : 0", entry)
+        self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", entry)
+        self.assertIn("_draft.Allocations(state).SequenceEqual(expected)", entry)
+        self.assertIn("(!karma || _expandedAttributeId == attribute.AttributeId)", entry)
+        refresh = entry.split("protected override void Refresh()", 1)[1].split("protected override", 1)[0]
+        self.assertLess(refresh.index("AddAttributeGroup("), refresh.index("AddLimits(state)"))
+        self.assertLess(refresh.index("AddReviewAction(state)"), refresh.index("AddPendingDraft(state.PendingDraft)"))
+        budget = entry.split("private void AddBudgetCard(", 1)[1].split("private void", 1)[0]
+        self.assertIn('automationId + "-remaining"', budget)
+        self.assertNotIn("NativeTheme.Metric(", budget)
+
     def test_completed_allocation_returns_through_attached_phone_shell(self) -> None:
         for name in ("CreationAttributesPage.cs", "CreationSkillsPage.cs"):
             with self.subTest(page=name):
@@ -109,9 +126,9 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
 
         self.assertIn("var draft = _draft.Copy()", allocation)
         self.assertIn("draft.ChangedAllocations(", allocation)
-        self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", allocation)
-        self.assertIn("CreationAttributesPhoneAuthority.CanAdoptPreview(", allocation)
-        self.assertIn("_draft.TryAdopt(state, Coordinator.State, result!, allocations!)", allocation)
+        self.assertIn("Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations)", allocation)
+        self.assertIn("if (generation != _preparationGeneration || !IsCurrent(prepared)) return;", allocation)
+        self.assertIn("_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations)", allocation)
         self.assertNotIn("KarmaAttribute", allocation)
         self.assertNotIn("PriorityPointCost +", allocation)
 

@@ -421,4 +421,6 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Volver a guardar la opción de diagnóstico</value></data>
   <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Informes técnicos automáticos</value></data>
   <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Los cambios se aplican al instante. Desactivar borra los informes pendientes.</value></data>
+  <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Reparte puntos con − y +. Toca un atributo para ver las opciones de Karma en esta página.</value></data>
+  <data name="CreationKarmaOptions" xml:space="preserve"><value>Opciones de Karma</value></data>
 </root>
