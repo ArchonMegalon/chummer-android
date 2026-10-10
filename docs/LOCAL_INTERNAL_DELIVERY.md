@@ -132,7 +132,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 176 is the latest [observed Internal availability](../play/evidence/preview176-internal-observation.md),
+Preview 177 is the latest [observed Internal availability](../play/evidence/preview177-internal-observation.md),
+confirmed on 10 October at 13:46 Europe/Vienna. Skills allocation/review combine
+three budget cards into one wrapping summary, retaining bold remaining points,
+usage/totals, controls, Core rules and explicit saving. Focused managed checks,
+native normal/130% font and changed-draft review, local ARM64 build, original-key
+signing, independent keyless verification and one Internal upload/readback passed.
+**Physical Play 177 installation, real tester-incident intake, faster cold startup
+and complete Creation/Career remain unverified.** Preexisting unchanged-review
+wording remains a follow-up. Version 177 is consumed; previous evidence retained.
+
+Preview 176's [observed Internal availability](../play/evidence/preview176-internal-observation.md),
 confirmed on 10 October around 13:15 Europe/Vienna (Play displayed 13:14).
 Skills rating adjustments retain controls, scroll and a pending specialization;
 feedback stays on the pressed button. Required Core previews and explicit saving
