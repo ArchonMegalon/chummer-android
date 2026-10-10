@@ -33,28 +33,28 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "focusedContinuationTestExecution", "focusedOwnerShellTestExecution",
     "focusedExistingOwnerRegressionTestExecutions",
     "generatedAt", "localCompatibilityTree", "mode", "nugetConfigSha256",
-    "ownerPackageArtifactCache", "ownerSources", "packageCacheWasFresh",
+    "ownerPackageArtifactCache", "ownerSourceAcquisition", "ownerSources", "packageCacheWasFresh",
     "packageFeedInventorySha256", "packageInventory", "packageSources",
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "f531648f0ba7a1ee8623e71a4f69d0e74a30c9e0"
-EXPECTED_PRESENTATION_TREE = "41e136abdc0fb1a68bbfc8a99ef08471e43499b2"
+EXPECTED_PRESENTATION_COMMIT = "73185db34dc2160370d5c876962800b21b05eac9"
+EXPECTED_PRESENTATION_TREE = "18eb0784dd75173af95d035831125a1279b9377e"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "c5569fbe1dd220a1a6eaf2a30b646f4664e13ba96ebb547e220ad4aa200f4af8"
+EXPECTED_LOCK_SHA256 = "94e7e192761e4db111941c0b2ff57e666452f4092b2432b84e990c5584c9a208"
 EXPECTED_LOCK_SIZE = 68354
-EXPECTED_LOCK_BLOB = "dd0f83bb27a788845030f67fa33880fc801ab084"
-EXPECTED_RECEIPT_SHA256 = "fe9425c83bded660eb560ceec7dd1e3ea92e9237eda30cf9ba4e251438ba966c"
-EXPECTED_RECEIPT_SIZE = 81071
-EXPECTED_CACHE_KEY = "babd3795307049a94814f26f11d91f9bef36c6bcdc2c7549d015ab16b92bc305"
-EXPECTED_CACHE_MANIFEST_SHA256 = "8c9721d7e689eab1d3d4fbc68400c7e96f3da2aad8407b76acecbe68e6d0fa98"
+EXPECTED_LOCK_BLOB = "2a6f02040ea26d4e8c4a2510685b1d113d529182"
+EXPECTED_RECEIPT_SHA256 = "50931344aa416f2ed44494143c8ff4a3ec25fb54634afdd09a353869cc4f3912"
+EXPECTED_RECEIPT_SIZE = 81120
+EXPECTED_CACHE_KEY = "b15e64e37c9c79fec90c290f2d3797cb13d47446ada858a7e8ec48bf11b34ef5"
+EXPECTED_CACHE_MANIFEST_SHA256 = "424ef3154a09df62e2ae7e01dbf48d4dcfe6c586fd424b37068bc404f84a29f6"
 EXPECTED_CACHE_MANIFEST_SIZE = 13789
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
 EXPECTED_SOURCE_GRAPH = {
-    "corePackageRecipeCommit": "48e1849e80b9bdf0359007b7d125f0e88999cbac",
-    "coreRuntimeSourceCommit": "1fbea12d95e7fcf946571d15f144c8c3126bad03",
+    "corePackageRecipeCommit": "0e03f6affc030cffdabcde70bfe0a65b331ad1a7",
+    "coreRuntimeSourceCommit": "c8e7f795d8796ed3b52280fa7a9003e988cd5213",
     "hubProducerCommit": "c77395de9f733427ef952c851f4a95b063cb5573",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
@@ -65,17 +65,17 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "e6f7c5e7183b45ab504850f88ff1d59ca8c2800f4c9f279edb3b5344505ca666",
+        "efc2e23f665799a90174b3ff6f2b30b6adbf5fcea993f7de31bc2c6d16aa0e55",
         71019,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "5ad0e15b851ddff381924cdff8e9bb5b978b281921ca444224449e68b4d7eb51",
+        "91107c30d1bbe0a1e79f82e3fb3c7adcaf1c20a979c47f95c54541b5d7620261",
         16822,
     ),
 )
-CORE_VERSION = "0.0.0-packageplane.candidate.v20261010.3.sh1fbea12d95e7f"
+CORE_VERSION = "0.0.0-packageplane.candidate.v20261010.5.shc8e7f795d8796"
 HUB_VERSION = "0.1.1-packageplane.20260927.1"
 CAMPAIGN_VERSION = "0.1.0-preview"
 UI_KIT_VERSION = "0.1.0-preview"
@@ -874,6 +874,10 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
         raise ValueError("UI current-graph receipt did not pass integration mode")
     if receipt.get("consumerCommit") != EXPECTED_PRESENTATION_COMMIT:
         raise ValueError("UI current-graph receipt consumer drifted")
+    # Provenance from the exact authenticated UI receipt, never a path to load
+    # sources from. Local snapshots do not become anonymous/hosted acquisition.
+    if receipt.get("ownerSourceAcquisition") not in ("anonymous-fetch", "local-exact-cache"):
+        raise ValueError("UI current-graph receipt owner source acquisition is not supported")
     if (receipt.get("localCompatibilityTree") is not False
         or receipt.get("packageCacheWasFresh") is not True
         or receipt.get("stubPackagesAllowed") is not False):

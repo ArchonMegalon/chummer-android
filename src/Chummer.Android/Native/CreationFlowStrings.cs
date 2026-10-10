@@ -9,6 +9,23 @@ namespace Chummer.Android.Native;
 /// </summary>
 public static class CreationFlowStrings
 {
+    // Choice-list copy only. Keep exact codes in the page's technical disclosure;
+    // Core's enabled state and blockers, not this explanation, govern selection.
+    internal static string PrerequisiteChoiceBlocker(string code) => code switch
+    {
+        "creation-prerequisite-heritage-selection-unsupported"
+            or "creation-prerequisite-talent-selection-unsupported"
+            or "creation-prerequisite-talent-skill-grant-authority-unsupported"
+            or "creation-prerequisite-metatype-custom-data-unsupported"
+            or "creation-prerequisite-metatype-overlay-unsupported"
+            => Get("Priority.Choice.Unsupported", "This wizard does not yet support all rules for this choice. Choose an available option to continue."),
+        "creation-prerequisite-metatype-source-drift"
+            or "creation-prerequisite-skills-source-drift"
+            or "creation-prerequisite-stale-workspace-revision"
+            => Get("Priority.Choice.Changed", "Your runner or rules changed. Return to Build method and reopen the choices."),
+        _ => Get("Priority.Choice.Unavailable", "This choice is unavailable. Open Technical details for the exact reason.")
+    };
+
     // Dashboard display only. Callers retain the original codes in technical
     // details and use Core readiness, never this text, to admit actions.
     internal static string DashboardBlocker(string code)

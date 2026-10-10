@@ -314,6 +314,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunSumToTenFinalizationAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-priority-racial-content-root")
+        {
+            await AfterRunAuthorityHarness.RunPriorityRacialFinalizationAsync(args[1]);
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--creation-karma-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationKarmaAsync(args[1], args.Length == 3 ? args[2] : null);

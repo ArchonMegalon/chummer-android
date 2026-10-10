@@ -409,7 +409,7 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer guarda hasta 128 eventos técnicos durante dos días en este teléfono: versión, categoría de página, operación, duración y categoría de error. Sin datos de personajes, libros, cuentas ni textos de error.</value></data>
   <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Compartir informe técnico</value></data>
   <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>Si está activado, se envían errores nuevos y operaciones de más de 30 segundos al equipo de Chummer en chummer.run mientras la app está abierta. Hasta ocho informes cada dos días; sin historial anterior. Se conservan hasta dos días en la bandeja privada. Desactivar borra los informes pendientes; los ya recibidos caducan por separado.</value></data>
-  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Prueba interna: los informes técnicos automáticos están activados por defecto. Si los desactivas, tu elección se conserva, también tras actualizar. Puedes desactivar el envío abajo.</value></data>
+  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Prueba interna: los informes técnicos automáticos están activados por defecto. Si los desactivas, tu elección se conserva, también tras actualizar. Puedes desactivar el envío con el interruptor.</value></data>
   <data name="SettingsDiagnosticsOtherDefault" xml:space="preserve"><value>Los informes técnicos automáticos están desactivados por defecto en esta versión. Se conserva cualquier elección explícita guardada.</value></data>
   <data name="HomeDiagnosticsInternal" xml:space="preserve"><value>Prueba interna: los informes técnicos están activados por defecto, salvo que los desactives. Sin contenido de personajes, libros ni cuentas. Pulsa para revisar o desactivar.</value></data>
   <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Cargando ajuste de diagnóstico…</value></data>
@@ -419,4 +419,8 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Informes técnicos automáticos: activados. Los cambios se aplican al instante.</value></data>
   <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Informes técnicos automáticos: desactivados. Los cambios se aplican al instante.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Volver a guardar la opción de diagnóstico</value></data>
+  <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Informes técnicos automáticos</value></data>
+  <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Los cambios se aplican al instante. Desactivar borra los informes pendientes.</value></data>
+  <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Reparte puntos con − y +. Toca un atributo para ver las opciones de Karma en esta página.</value></data>
+  <data name="CreationKarmaOptions" xml:space="preserve"><value>Opciones de Karma</value></data>
 </root>

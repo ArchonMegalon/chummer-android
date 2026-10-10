@@ -291,6 +291,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "status": "passed",
             "mode": "integration",
             "consumerCommit": self.module.EXPECTED_PRESENTATION_COMMIT,
+            "ownerSourceAcquisition": "anonymous-fetch",
             "localCompatibilityTree": False,
             "packageCacheWasFresh": True,
             "stubPackagesAllowed": False,
@@ -706,6 +707,37 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "used": False,
         }, validated["ownerPackageArtifactCache"])
         self.assertIs(validated["ownerPackageArtifactCache"]["used"], False)
+
+    def test_owner_source_acquisition_is_explicit_provenance_not_source_admission(self) -> None:
+        for acquisition in ("anonymous-fetch", "local-exact-cache"):
+            with self.subTest(acquisition=acquisition):
+                receipt = self.current_main_receipt_fixture()
+                receipt["ownerSourceAcquisition"] = acquisition
+                original = copy.deepcopy(receipt)
+                self.assertEqual(original, self.validate_receipt_copy(receipt))
+                self.assertEqual(original, receipt)
+                # Source acquisition does not imply owner-package cache reuse.
+                self.assertIs(receipt["ownerPackageArtifactCache"]["used"], False)
+                receipt["localCompatibilityTree"] = True
+                with self.assertRaisesRegex(ValueError, "local tree or stale cache"):
+                    self.validate_receipt_copy(receipt)
+
+    def test_owner_source_acquisition_rejects_missing_unknown_and_path_values(self) -> None:
+        for value in (None, True, 1, [], {}, "", "ambient-sibling", "/local/source",
+                      "local-exact-cache ", "anonymous-fetch-with-credentials"):
+            with self.subTest(value=value):
+                receipt = self.current_main_receipt_fixture()
+                receipt["ownerSourceAcquisition"] = value
+                with self.assertRaisesRegex(ValueError, "source acquisition"):
+                    self.validate_receipt_copy(receipt)
+        receipt = self.current_main_receipt_fixture()
+        del receipt["ownerSourceAcquisition"]
+        with self.assertRaisesRegex(ValueError, "schema is not exact"):
+            self.validate_receipt_copy(receipt)
+        receipt = self.current_main_receipt_fixture()
+        receipt["ownerSourceCache"] = "/do-not-read"
+        with self.assertRaisesRegex(ValueError, "schema is not exact"):
+            self.validate_receipt_copy(receipt)
 
     def owner_execution_rows(self, receipt):
         return [receipt["focusedContinuationTestExecution"], receipt["focusedOwnerShellTestExecution"],

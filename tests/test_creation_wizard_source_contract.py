@@ -58,17 +58,24 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertEqual(5, len(calls))
         for route, (step, predicate) in expected.items():
             self.assertEqual(1, calls.count((route, step, predicate)), route)
-        self.assertIn("AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute);", source)
+        self.assertIn("AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute, continueIndex);", source)
         continuation = source.split("private void AddLegalNextSteps(", 1)[1].split("private ", 1)[0]
         self.assertIn("? methodRoute", continuation)
         self.assertIn("routes.GetValueOrDefault(stepId)", continuation)
-        self.assertIn("route?.CanOpen == true ? route.Open : static () => Task.CompletedTask", continuation)
+        self.assertIn("if (route?.CanOpen != true) continue;", continuation)
+        self.assertIn("route.Open,", continuation)
+        self.assertIn("_body.Insert(insertAt, CreationNavigationRow(", continuation)
+        self.assertIn("break;", continuation)
+        self.assertNotIn(".Concat(readiness.", continuation)
 
     def test_readiness_is_local_to_one_dashboard_render(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         self.assertEqual(1, source.count("new CreationDashboardRenderReadiness("))
         self.assertIn("var readiness = new CreationDashboardRenderReadiness(", source)
-        self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex)", source)
+        self.assertIn("AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection)", source)
+        dashboard = source.split("private void AddCreationWizardDashboard()", 1)[1].split("private ", 1)[0]
+        self.assertLess(dashboard.index("int continueIndex = _body.Count;"), dashboard.index("AddCreationMethodRoute("))
+        self.assertLess(dashboard.index("AddWizardStages("), dashboard.index("AddBudgetRibbon("))
         self.assertEqual(1, source.count("creationResources, readiness);"))
         for method in ("AddBudgetRibbon", "AddWizardStages", "AddLegalNextSteps"):
             return_type = "IReadOnlyDictionary<string, CreationBudgetRoute>" if method == "AddWizardStages" else "void"
@@ -407,7 +414,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         start = source.index("if (Coordinator.State.Profile.Created == false)")
-        end = source.index('Title = "Sheet";', start)
+        end = source.index('Title = PhoneStrings.Get("RunnerSheet", "Sheet");', start)
         creation_branch = source[start:end]
 
         self.assertNotIn("SetExhaustiveActionsVisible", source)
@@ -440,7 +447,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "CharacterCreationBuildMethods.LifeModules",
             "lifeModuleStage.IsAvailable",
             "will not substitute or claim",
-            "No authoritative budgets are available",
+            'PhoneStrings.Get("CreationBudgetsUnavailable",',
         ):
             self.assertIn(marker, source)
         self.assertNotIn("new CharacterCreationBudgetState", source)

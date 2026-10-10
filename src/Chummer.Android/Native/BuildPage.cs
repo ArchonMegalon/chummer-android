@@ -1396,6 +1396,7 @@ public sealed class BuildPage : NativePageBase
             projection?.Contacts;
         CharacterCreationResourcesInteractionLoadResult? creationResources =
             projection?.Resources;
+        int continueIndex = _body.Count;
         var methodRoute = AddCreationMethodRoute(snapshot, projection, prerequisite);
         foreach (string code in methodRoute.Blockers)
             diagnosticValues.Add(NativeTheme.Body(code, NativeTheme.Muted));
@@ -1446,7 +1447,6 @@ public sealed class BuildPage : NativePageBase
             HasAuthoritativeQualities, HasAuthoritativeMagicResonance,
             () => HasAuthoritativeCreationContacts(creationContacts),
             () => HasAuthoritativeResources(creationResources));
-        int budgetIndex = _body.Count;
         var budgetRoutes = AddWizardStages(
             snapshot,
             projection,
@@ -1455,10 +1455,10 @@ public sealed class BuildPage : NativePageBase
             skills,
             creationContacts,
             creationResources, readiness);
-        AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection, budgetIndex);
-        AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute);
+        AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute, continueIndex);
         AddFinalizationReviewAction();
+        AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection);
+        AddCompletionBlockers(snapshot);
         _body.Add(diagnostics);
     }
 
@@ -2931,7 +2931,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationWizardSnapshot snapshot,
         CreationDashboardRenderReadiness readiness,
         IReadOnlyDictionary<string, CreationBudgetRoute> routes,
-        CreationBudgetRoute methodRoute)
+        CreationBudgetRoute methodRoute,
+        int insertAt)
     {
         if (!readiness.Skills
             && routes.GetValueOrDefault(CharacterCreationWizardStepIds.Skills)?.CanOpen != true
@@ -2947,24 +2948,6 @@ public sealed class BuildPage : NativePageBase
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
             .Concat(active?.LegalNextStepIds ?? [])
-            .Concat(readiness.Attributes
-                ? [CharacterCreationWizardStepIds.Attributes]
-                : [])
-            .Concat(readiness.Skills
-                ? [CharacterCreationWizardStepIds.Skills]
-                : [])
-            .Concat(readiness.Qualities
-                ? [CharacterCreationWizardStepIds.Qualities]
-                : [])
-            .Concat(readiness.MagicResonance
-                ? [CharacterCreationWizardStepIds.MagicResonance]
-                : [])
-            .Concat(readiness.Contacts
-                ? [CharacterCreationWizardStepIds.ContactsLifestyles]
-                : [])
-            .Concat(readiness.Resources
-                ? [CharacterCreationWizardStepIds.Resources]
-                : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -2973,7 +2956,6 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
-        _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("CreationContinue", "Continue")));
         foreach (string stepId in candidateIds)
         {
             CharacterCreationWizardStageState? stage = snapshot.Steps.FirstOrDefault(candidate =>
@@ -2989,13 +2971,16 @@ public sealed class BuildPage : NativePageBase
             CreationBudgetRoute? route = stepId == CharacterCreationWizardStepIds.Method
                 ? methodRoute
                 : routes.GetValueOrDefault(stepId);
-            _body.Add(CreationNavigationRow(
-                StageLabel(snapshot, stage.StepId),
-                route?.Detail ?? CreationFlowStrings.DashboardBlocker(stage.Blockers.FirstOrDefault()
-                    ?? "creation-route-unavailable"),
-                route?.CanOpen == true ? route.Open : static () => Task.CompletedTask,
-                route?.CanOpen == true,
+            if (route?.CanOpen != true) continue;
+            // One direct continuation, ahead of setup and budgets. The stage
+            // list remains the complete index; don't repeat it as "Continue".
+            _body.Insert(insertAt, CreationNavigationRow(
+                PhoneStrings.Get("CreationContinue", "Continue") + " · " + StageLabel(snapshot, stage.StepId),
+                route.Detail,
+                route.Open,
+                enabled: true,
                 $"creation-next-{Token(stepId)}"));
+            break;
         }
     }
 

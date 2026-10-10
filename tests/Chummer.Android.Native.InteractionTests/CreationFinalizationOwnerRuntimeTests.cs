@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Xml.Linq;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
@@ -87,11 +88,12 @@ internal static partial class AfterRunAuthorityHarness
                 string expectedDetail = ready
                     ? expected.Used.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " / "
                         + expected.Total.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
-                        + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points" : expected.Unit)
+                        + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points"
+                            : expected.Unit == "karma" ? "Karma" : expected.Unit)
                         + "\nCheck what is missing"
                     : "Check what is missing";
                 Require(labels[1] == expectedDetail,
-                    "Budget cards must retain exact numbers without repeated paragraphs or duplicate chevrons.");
+                    $"Budget {expected.BudgetId} detail mismatch. Expected [{expectedDetail}], actual [{labels[1]}].");
                 Require(((Grid)cards[index].Content!).Children.OfType<Button>().Single() is
                     { IsEnabled: true, AutomationId: not null }, "Budget is still a non-interactive label.");
             }
@@ -290,7 +292,7 @@ internal static partial class AfterRunAuthorityHarness
                     Require(labels[0].EndsWith(exact ? number + " left" : "Not exact", StringComparison.Ordinal),
                         $"{method}: saved Qualities Karma {number} was replaced by the earlier Attributes budget; exact={exact}, attributes={attributesReady}.");
                     Require(!exact || labels[1].StartsWith(
-                        $"{karma.Used} / {karma.Total} karma", StringComparison.Ordinal),
+                        $"{karma.Used} / {karma.Total} Karma", StringComparison.Ordinal),
                         "Cumulative Karma used/total must match the same projection as its remainder.");
                     Require(body.Children.OfType<Label>().Count(label => label.AutomationId == "creation-budget-status")
                         == (exact ? 0 : 1), "An inexact cumulative budget must not become exact from earlier Attributes.");
@@ -335,14 +337,20 @@ internal static partial class AfterRunAuthorityHarness
                     var methodRoute = (CreationBudgetRoute)methodRender.Invoke(page, [snapshot, null, typed])!;
                     var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
                         [snapshot, null, typed, null, null, null, null, readiness])!;
-                    nextRender.Invoke(page, [snapshot, readiness, routes, methodRoute]);
+                    nextRender.Invoke(page, [snapshot, readiness, routes, methodRoute, 0]);
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
                     var cards = body.Children.OfType<Border>().Where(border => border.Content is Grid)
                         .Select(border => (Grid)border.Content!).ToArray();
                     var methodButton = cards.SelectMany(grid => grid.Children.OfType<Button>())
-                        .Single(button => button.AutomationId == "creation-next-method");
-                    Require(methodButton.IsEnabled == available && methodRoute.CanOpen == available,
+                        .SingleOrDefault(button => button.AutomationId == "creation-next-method");
+                    Require((methodButton is { IsEnabled: true }) == available && methodRoute.CanOpen == available,
                         "Continue must agree with the canonical method route and never borrow generic legality.");
+                    Require(cards.SelectMany(grid => grid.Children.OfType<Button>()).Count(button =>
+                        button.AutomationId?.StartsWith("creation-next-", StringComparison.Ordinal) == true) <= 1,
+                        "Continue repeated the full stage index instead of offering one next step.");
+                    if (available)
+                        Require(((Grid)((Border)body.Children[0]).Content!).Children.OfType<Button>().Contains(methodButton!),
+                            "The admitted continuation must precede setup and budget cards.");
                     foreach (var grid in cards)
                     {
                         var button = grid.Children.OfType<Button>().Single();
@@ -355,15 +363,15 @@ internal static partial class AfterRunAuthorityHarness
                     }
                     if (available)
                     {
-                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton!).SendClicked());
                         Require(nav.CurrentPage is CreationPrerequisitePage,
                             "Continue did not open the real typed Creation method editor.");
                         await nav.PopAsync(false);
                         owners.Set(ContactsOwnerB);
                         owners.Set(ContactsOwnerA);
-                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton).SendClicked());
+                        await ui.BeginAsyncVoid(() => ((IButtonController)methodButton!).SendClicked());
                     }
-                    else ((IButtonController)methodButton).SendClicked();
+                    else Require(methodButton is null, "Blocked method must not be offered as the continuation.");
                     Require(nav.Navigation.NavigationStack.Count == 1,
                         "A blocked or stale-owner Continue link still navigated.");
                 }
@@ -430,7 +438,7 @@ internal static partial class AfterRunAuthorityHarness
                         .GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!
                         .Invoke(page, [snapshot, null, null, null, null, null, null, readiness])!;
                     Invoke("AddLegalNextSteps", snapshot, readiness, routes,
-                        new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []));
+                        new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []), 0);
                     Invoke("AddFinalizationReviewAction");
                     bool available = state is not ("loading" or "blocked");
                     var route = routes[CharacterCreationWizardStepIds.Review];
@@ -438,7 +446,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (!available)
                         Require(route.Detail != "Available", "A blocked Review still claims to be available.");
                     var button = IssuedElements(page).OfType<Button>().SingleOrDefault(row => row.AutomationId == entry);
-                    if (entry == "creation-finalization-open-review" && !available)
+                    if (entry is "creation-finalization-open-review" or "creation-next-review" && !available)
                         Require(button is null, "Blocked finalization still exposes its primary action.");
                     else
                     {
@@ -3234,8 +3242,18 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    public static async Task RunPriorityRacialFinalizationAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        await RunPriorityChoiceGuidanceAsync(contentRoot);
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        foreach (string metatype in new[] { "Elf", "Ork" })
+            await RunCreationFinalizationLocalBaselineAsync(contentRoot, method, metatype);
+    }
+
     private static async Task RunCreationFinalizationLocalBaselineAsync(string contentRoot,
-        string method = CharacterCreationBuildMethods.Priority)
+        string method = CharacterCreationBuildMethods.Priority, string metatype = "Human")
     {
         var owners = new ControlledLinkedOwner();
         var uiContext = new SynchronizationContext();
@@ -3243,7 +3261,7 @@ internal static partial class AfterRunAuthorityHarness
         await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true,
             finalizationDecorator: actual => threadProbe = new FinalizationThreadProbe(actual, uiContext));
         Require(owners.Current == OwnerScope.LocalSingleUser, "Local positive control did not retain the trusted local scope.");
-        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, metatypeName: metatype);
         await HydrateFinalizationOwnerAsync(runtime, owners, before);
         var qualities = runtime.Services.GetRequiredService<ICharacterCreationQualitiesService>()
             .Load(new(runtime.Id));
@@ -3277,6 +3295,17 @@ internal static partial class AfterRunAuthorityHarness
             && runtime.Coordinator.State.ContentRevision == cold.ContentRevision
             && runtime.Coordinator.State.SavedRevision == cold.SavedRevision,
             "Local baseline did not preserve the actual atomic finalization receipt/checkpoint and live owner.");
+        if (metatype is "Elf" or "Ork")
+        {
+            XElement savedCharacter = XDocument.Parse(cold.Document.Content).Root!;
+            XElement[] racial = savedCharacter.Element("qualities")!.Elements("quality")
+                .Where(item => item.Element("name")?.Value == "Low-Light Vision").ToArray();
+            Require(savedCharacter.Element("metatype")?.Value == metatype
+                && racial.Length == 1 && racial[0].Element("qualitysource")?.Value == "Metatype"
+                && review.Value!.OrderedDeltas.Any(delta => delta.TargetName == "Low-Light Vision"
+                    && delta.KarmaCost == 0),
+                "Native finalization lost, duplicated or charged for the exact racial quality.");
+        }
         threadProbe!.RequireOffContextLoads = true;
         var retained = await StartFromUiContext(uiContext, () =>
             runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(runtime.Coordinator.State, default));
@@ -3324,12 +3353,12 @@ internal static partial class AfterRunAuthorityHarness
             "A prior account generation must not display or reload a retained receipt after A->B->A.");
         Console.WriteLine("FINALIZATION_LOCAL_BASELINE " + JsonSerializer.Serialize(new
         {
-            applied.Outcome, applied.Value.BuildMethod, before.ContentRevision, before.SavedRevision,
+            applied.Outcome, applied.Value.BuildMethod, metatype, before.ContentRevision, before.SavedRevision,
             afterContentRevision = cold.ContentRevision, afterSavedRevision = cold.SavedRevision,
             receiptDigest = applied.Value!.ReceiptDigest,
             beforeDigest = FinalizationDocumentDigest(before), afterDigest = FinalizationDocumentDigest(cold)
         }));
-        Console.WriteLine("PASS actual local native/Core finalization baseline");
+        Console.WriteLine("PASS actual local native/Core finalization baseline: " + method + "/" + metatype);
     }
 
     private static void AssertFinalReviewNames(RunnerSessionCoordinator coordinator, CharacterCreationFinalizationReview review)
@@ -3698,10 +3727,10 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
-        bool stopBeforeResources = false, bool stopBeforeSkills = false)
+        bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human")
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
-        // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
+        // canonical Priority or Sum-to-Ten; repeated ranks for Human, distinct ranks for Elf/Ork;
         // actual services issue every draft and receipt.
         // No manual auxiliary state, fake admission, finalization plan or receipt.
         var services = runtime.Services;
@@ -3725,7 +3754,7 @@ internal static partial class AfterRunAuthorityHarness
             [CharacterCreationPriorityCategoryIds.Skills] = "C",
             [CharacterCreationPriorityCategoryIds.Resources] = "D"
         };
-        if (buildMethod == CharacterCreationBuildMethods.SumToTen)
+        if (buildMethod == CharacterCreationBuildMethods.SumToTen && metatypeName == "Human")
         {
             ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
             ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
@@ -3741,9 +3770,9 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "D";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "E";
         }
-        var human = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
-                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null
-                && item.MetatypeName == "Human");
+        var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled
+                && item.MetavariantSourceId is null && item.MetavariantName is null && item.MetatypeName == metatypeName);
         var talentOption = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Talent]).TalentOptions.First(item => item.IsEnabled
                 && item.Value.Equals(attributeTalent ?? CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
@@ -3754,11 +3783,11 @@ internal static partial class AfterRunAuthorityHarness
         var talentGroups = talentOption.SkillGroupGrant?.Options
             .Take(talentOption.SkillGroupGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
         var prerequisitePreview = prerequisites.Preview(new(initial.Binding, ranks)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+            { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talentOption.SelectionId,
                 TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups }).Value!;
         var prerequisiteReceipt = prerequisites.Confirm(new(prerequisitePreview.Binding, ranks,
             prerequisitePreview.PreviewDigest, ExplicitlyConfirmed: true)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+            { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talentOption.SelectionId,
                 TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups });
         Require(prerequisiteReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));

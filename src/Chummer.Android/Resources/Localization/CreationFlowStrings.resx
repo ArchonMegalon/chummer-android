@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>This wizard does not yet support all rules for this choice. Choose an available option to continue.</value></data>
+  <data name="Priority.Choice.Changed" xml:space="preserve"><value>Your runner or rules changed. Return to Build method and reopen the choices.</value></data>
+  <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>This choice is unavailable. Open Technical details for the exact reason.</value></data>
   <data name="Finalization.BeforeFinish" xml:space="preserve"><value>Before you can finish</value></data>
   <data name="Creation.RouteUnavailable" xml:space="preserve"><value>This creation step is not available yet.</value></data>
   <data name="Purchases.SavedReopen" xml:space="preserve"><value>Saved. Reopen the character to refresh this view.</value></data>

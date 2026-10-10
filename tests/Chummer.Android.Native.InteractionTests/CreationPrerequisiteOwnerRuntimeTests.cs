@@ -13,6 +13,82 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    private static async Task RunPriorityChoiceGuidanceAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationPrerequisite: true);
+            await runtime.Coordinator.InitializeAsync();
+            await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+            var seed = PreparePrerequisiteOwnerFixture(runtime, CharacterCreationBuildMethods.Priority);
+            CloneFinalizationRecordFixture(runtime, ContactsOwnerA, seed);
+            CloneFinalizationRecordFixture(runtime, ContactsOwnerB, seed);
+            await HydrateFinalizationOwnerAsync(runtime, owners, seed);
+            var loaded = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+            var state = loaded.Value ?? throw new InvalidOperationException("SETUP: prerequisite choices missing.");
+            var draft = new CreationPrerequisitePhoneDraft();
+            Require(draft.Bind(state, runtime.Coordinator.State)
+                && draft.TrySelect(state, runtime.Coordinator.State, CharacterCreationPriorityCategoryIds.Heritage, "A"),
+                "SETUP: heritage rank missing.");
+            var options = draft.HeritageOptions(state, runtime.Coordinator.State);
+            Require(options.Any(option => option.IsEnabled && option.MetatypeName == "Elf")
+                && options.Any(option => !option.IsEnabled && option.Blockers.Contains(
+                    CharacterCreationPrerequisiteBlockers.HeritageSelectionUnsupported)),
+                "SETUP: both supported and unsupported Core choices are required.");
+            var before = PrerequisiteColdRows(runtime);
+            var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(locale);
+                    var page = new CreationPriorityDetailPage(runtime.Coordinator, draft, state,
+                        CharacterCreationPriorityCategoryIds.Heritage);
+                    MinimalRender(page);
+                    string text = MinimalVisibleText(page);
+                    string explanation = CreationFlowStrings.Get("Priority.Choice.Unsupported", "missing");
+                    Require(explanation != "missing" && text.Contains(explanation)
+                        && !text.Contains("creation-prerequisite-"),
+                        "Choice guidance must be localized and keep raw blocker codes out of ordinary text/accessibility: " + locale);
+                    MinimalRequireNoMachineValues(page);
+                    foreach (var option in options)
+                    {
+                        string token = new(option.SelectionId.Trim().ToLowerInvariant()
+                            .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+                        var row = MinimalVisible(page).Single(element =>
+                            element.AutomationId == "creation-prerequisite-heritage-option-" + token);
+                        Require(row.IsEnabled == (option.IsEnabled && option.Blockers.Count == 0),
+                            "Friendly explanations changed Core choice admission.");
+                        if (!option.IsEnabled || option.Blockers.Count != 0)
+                            Require(!draft.TrySelectHeritage(state, runtime.Coordinator.State, option.SelectionId),
+                                "A disabled heritage became selectable after changing its displayed explanation.");
+                    }
+                    var disclosure = MinimalVisible(page).Single(element =>
+                        element.AutomationId == "creation-prerequisite-detail-diagnostics");
+                    var toggle = MinimalVisible(disclosure).OfType<Button>().Single();
+                    ((IButtonController)toggle).SendClicked();
+                    Require(options.SelectMany(option => option.Blockers).All(code => MinimalVisibleText(page).Contains(code)),
+                        "Technical details must retain the exact Core blockers.");
+                    foreach (string key in new[] { "Priority.Choice.Changed", "Priority.Choice.Unavailable" })
+                        Require(CreationFlowStrings.Get(key, "missing") != "missing", "Missing choice guidance: " + locale + "/" + key);
+                    Require(CreationFlowStrings.PrerequisiteChoiceBlocker("unknown-choice-blocker")
+                            == CreationFlowStrings.Get("Priority.Choice.Unavailable", "missing"),
+                        "Unknown choice blockers must not invent a rule explanation or expose raw codes.");
+                }
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+            }
+            Require(PrerequisiteColdRows(runtime).All(pair => pair.Value.Digest == before[pair.Key].Digest),
+                "Rendering choice explanations changed saved runner data.");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS actual Core/native Priority choice guidance: EN/DE/ES, disabled admission, exact technical codes, unchanged storage");
+        });
+    }
+
     public static async Task RunCreationRankCorrectionAsync(string contentRoot)
     {
         foreach (var (locale, expected) in new[] { ("en-GB", "Clear this rank"), ("de-AT", "Diesen Rang freigeben"), ("es-MX", "Quitar este rango") })
