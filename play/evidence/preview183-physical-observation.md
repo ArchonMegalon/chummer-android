@@ -61,3 +61,53 @@ does not repeat the upload, and leaves version 183 unchanged.
 
 The earlier [Internal availability record](preview183-internal-observation.json)
 retains its observation-time limits. This later physical check supplements it.
+
+## Later physical startup baseline and normal reader re-entry
+
+At 21:54:54 UTC on 10 October, the same Play-installed Preview 183 was
+force-stopped and relaunched for a bounded physical-device measurement. The old
+process was verified absent and a new process observed. The first fresh
+hierarchy capture still showed startup loading. The next showed the exact
+selected runner, no startup loading, and an enabled Read your story button by
+6.714 seconds from launch-command dispatch. This is an observation upper bound
+including ADB and hierarchy-capture overhead, not the exact first usable frame.
+The Activity alone reported 667 ms; these two measurements are not equivalent.
+
+Existing metadata-only startup phase logs from that new process recorded:
+
+| Local phase | Duration |
+| --- | ---: |
+| Local identity | 533 ms |
+| Local settings | 3 ms |
+| Local adoption recovery | 6 ms |
+| Shell initialization | 1,175 ms |
+| Presenter initialization | 11 ms |
+| Selected-workspace restoration | 1,204 ms |
+| Shell finalization | 2 ms |
+| Workspace authority refresh | 1 ms |
+| Play-state restoration | 4 ms |
+| Sum of recorded local phases | 2,939 ms |
+
+Normal Read your story entry, Back to Create, and Read your story again were
+then exercised through 21:59:05 UTC without restarting the app or switching
+runners. Both reader entries displayed the illustration and the same complete
+17,196-character, 2,447-word accepted chapter, matching the text hash above.
+Returning to Create retained the selected runner and enabled reader button.
+The original uncertain successor fence remained byte-identical. No new paid
+generation, decision, reading acknowledgement, export or finalization was
+requested. The runtime configuration, including the retained GC mitigation,
+was not changed.
+
+This is one current-build baseline and successful normal re-entry, not a
+before/after performance comparison or reproduction of the separately reported
+failed-refresh incident. It does not establish complete live multi-chapter
+Creation/Career acceptance. No new build, signing or upload was needed.
+
+The private `physical-startup183-20261010.xMHnSu86` packet retains the observation
+helper, exact hierarchy captures, screenshots and metadata-only timings.
+Measurement SHA-256:
+`e90137f808b19e8a7a1d038401938c875f778452c9f315432d6d99b32db6ee0c`.
+Verified startup/re-entry result SHA-256:
+`c110e82c147c659d375c3a903cb15d9e2fe5e16a82bf25583c212a5624ffea24`.
+Screenshot/hierarchy non-atomicity and private-data retention limits above still
+apply. No raw character prose, account or device identifiers are published.
