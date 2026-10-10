@@ -132,7 +132,17 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 175 is the latest [observed Internal availability](../play/evidence/preview175-internal-observation.md),
+Preview 176 is the latest [observed Internal availability](../play/evidence/preview176-internal-observation.md),
+confirmed on 10 October around 13:15 Europe/Vienna (Play displayed 13:14).
+Skills rating adjustments retain controls, scroll and a pending specialization;
+feedback stays on the pressed button. Required Core previews and explicit saving
+remain. Focused managed checks, native specialization/save/new-process reopen,
+local ARM64 build, original-key signing, independent keyless verification and
+one Internal upload/readback passed. **Physical Play 176 installation, real tester
+incident intake, faster cold startup and complete Creation/Career remain
+unverified.** Version 176 is consumed; previous artifacts/evidence are retained.
+
+Preview 175's [observed Internal availability](../play/evidence/preview175-internal-observation.md),
 confirmed on 10 October at 12:38 Europe/Vienna. Creation now summarizes required
 steps and removes duplicate completion warnings while keeping stage/budget links
 and required guidance. The reviewed Core missing-draft optimization is consumed.
