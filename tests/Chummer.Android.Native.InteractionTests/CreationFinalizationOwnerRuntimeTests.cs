@@ -65,7 +65,7 @@ internal static partial class AfterRunAuthorityHarness
                 () => false, () => false, () => false);
             render.Invoke(page, [snapshot, attributes, skills, readiness, null, null, null]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-            var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
+            var cards = CreationBudgetRows(body).ToArray();
             Require(cards.Length == 6, "A saved budget disappeared from the ribbon.");
             var sharedHints = body.Children.OfType<Label>()
                 .Where(label => label.AutomationId == "creation-budget-status").ToArray();
@@ -85,17 +85,20 @@ internal static partial class AfterRunAuthorityHarness
                         ? expected.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " left"
                         : "Not exact", StringComparison.Ordinal),
                     $"Budget {expected.BudgetId} lost its own readiness: attributes={attributesReady}, skills={skillsReady}.");
-                string expectedDetail = ready
+                string? expectedDetail = ready
                     ? expected.Used.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " / "
                         + expected.Total.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
                         + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points"
                             : expected.Unit == "karma" ? "Karma" : expected.Unit)
-                        + "\nCheck what is missing"
-                    : "Check what is missing";
-                Require(labels[1] == expectedDetail,
-                    $"Budget {expected.BudgetId} detail mismatch. Expected [{expectedDetail}], actual [{labels[1]}].");
-                Require(((Grid)cards[index].Content!).Children.OfType<Button>().Single() is
+                    : null;
+                Require(labels.Length == (ready ? 2 : 1)
+                    && (!ready || labels[1] == expectedDetail),
+                    $"Budget {expected.BudgetId} lost values or repeats its action text.");
+                var interaction = ((Grid)cards[index].Content!).Children.OfType<Button>().Single();
+                Require(interaction is
                     { IsEnabled: true, AutomationId: not null }, "Budget is still a non-interactive label.");
+                Require(SemanticProperties.GetDescription(interaction).EndsWith("Check what is missing", StringComparison.Ordinal),
+                    "Screen readers lost the budget action when repeated visible copy was removed.");
             }
         }
         Require(CreationDashboardProjectionBinding.TryCreate(runtime.Coordinator.State,
@@ -140,7 +143,7 @@ internal static partial class AfterRunAuthorityHarness
             render.Invoke(page, [snapshot with { Budgets = [.. snapshot.Budgets, .. emptyMagic] },
                 attributes, skills, readiness, null, null, null]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-            var cards = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().ToArray();
+            var cards = CreationBudgetRows(body).ToArray();
             Require(cards.Length == (magicReady ? snapshot.Budgets.Count : snapshot.Budgets.Count + 6),
                 "The rendered ribbon did not follow current Mundane authority.");
             Require(body.Children.OfType<Label>().Any(label => label.AutomationId == "creation-budget-status"),
@@ -158,7 +161,7 @@ internal static partial class AfterRunAuthorityHarness
             render.Invoke(page, [snapshot with { Budgets = [resourceFallback] },
                 attributes, skills, readiness, null, projection, null]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-            var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+            var card = CreationBudgetRows(body).Single();
             Require(body.Children.OfType<Label>().Count(label => label.AutomationId == "creation-budget-status")
                 == (ready ? 0 : 1), "The shared hint must follow typed Resources authority too.");
             var label = ((Grid)card.Content!).Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();
@@ -184,7 +187,7 @@ internal static partial class AfterRunAuthorityHarness
                 () => false, () => false, () => false, () => false, () => false, () => false);
             render.Invoke(page, [snapshot, attributes, skills, pending, routes, null, 0]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-            var buttons = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>()
+            var buttons = CreationBudgetRows(body)
                 .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).ToArray();
             foreach (int i in new[] { 0, 1, 3, 4, 5 })
             {
@@ -198,7 +201,7 @@ internal static partial class AfterRunAuthorityHarness
             // Its budget link must still open the real Resources page.
             render.Invoke(page, [snapshot with { Budgets = [resourceFallback] },
                 attributes, skills, pending, routes, projection, null]);
-            var resourceButton = body.Children.OfType<FlexLayout>().Last().Children.OfType<Border>()
+            var resourceButton = CreationBudgetRows(body)
                 .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).Single();
             await ui.BeginAsyncVoid(() => ((IButtonController)resourceButton).SendClicked());
             Require(nav.Navigation.NavigationStack.Last() is CreationResourcesPage,
@@ -208,7 +211,7 @@ internal static partial class AfterRunAuthorityHarness
                 with { Blockers = [CharacterCreationQualitiesBlockers.AttributesDraftRequired] };
             render.Invoke(page, [snapshot with { Budgets = [karma] },
                 attributes, skills, pending, routes, projection, null]);
-            var dependencyButton = body.Children.OfType<FlexLayout>().Last().Children.OfType<Border>()
+            var dependencyButton = CreationBudgetRows(body)
                 .Select(card => ((Grid)card.Content!).Children.OfType<Button>().Single()).Single();
             await ui.BeginAsyncVoid(() => ((IButtonController)dependencyButton).SendClicked());
             Require(nav.Navigation.NavigationStack.Last() is CreationAttributesPage,
@@ -226,8 +229,26 @@ internal static partial class AfterRunAuthorityHarness
         var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
             "Rendering mixed budget families changed the saved runner.");
-        Console.WriteLine("PASS budget ribbon: compact cards, one effective-readiness hint, typed family readiness, actual editors, stale owner rejection, saved bytes unchanged");
+        Console.WriteLine("PASS budget list: one flat card, accessible full-row buttons, no repeated action copy, typed family readiness, actual editors, stale owner rejection, saved bytes unchanged");
         await VerifySavedQualitiesKarmaBudgetAsync(contentRoot);
+    }
+
+    private static IEnumerable<Border> CreationBudgetRows(VerticalStackLayout body)
+    {
+        var list = body.Children.OfType<Border>().Select(card => card.Content)
+            .OfType<VerticalStackLayout>().Last(stack => stack.AutomationId == "creation-budget-list");
+        var rows = list.Children.OfType<Border>().ToArray();
+        Require(list.Spacing == 0 && list.Children.OfType<BoxView>().Count() == Math.Max(0, rows.Length - 1),
+            "Budget list must use simple dividers instead of spaced nested cards.");
+        foreach (var row in rows)
+        {
+            var grid = (Grid)row.Content!;
+            var title = grid.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();
+            Require(row.StrokeThickness == 0 && grid.MinimumHeightRequest >= 48
+                && title.FontAttributes == FontAttributes.Bold && title.LineBreakMode == LineBreakMode.WordWrap,
+                "Compact budgets must keep bold wrapping values and a usable full-row touch target.");
+        }
+        return rows;
     }
 
     private static async Task VerifySavedQualitiesKarmaBudgetAsync(string contentRoot)
@@ -285,7 +306,7 @@ internal static partial class AfterRunAuthorityHarness
                     render.Invoke(page, [snapshot with { Budgets = [karma with { IsExact = exact }] },
                         attributes, null, readiness, null, null, null]);
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                    var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+                    var card = CreationBudgetRows(body).Single();
                     var labels = ((Grid)card.Content!).Children.OfType<VerticalStackLayout>().Single()
                         .Children.OfType<Label>().Select(label => label.Text).ToArray();
                     string number = karma.Remaining.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
