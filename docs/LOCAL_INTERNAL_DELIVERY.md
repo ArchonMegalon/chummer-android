@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 183 is the latest [observed Internal availability](../play/evidence/preview183-internal-observation.json),
+Preview 184 is the latest [observed Internal availability](../play/evidence/preview184-internal-observation.json),
+released on 11 October at 00:55 Europe/Vienna. Creation's explicit Retry can
+recover an abandoned navigation press without leaving the page; active navigation
+and current owner/appearance/render checks remain protected. Five actual-handler
+and ten lease regressions passed on the current dependency graph. The affected
+API36 x64 Release/Internal smoke navigated the retained Priority runner, saved,
+verified a new process and reopened the same runner; four saved file hashes and
+revision5/5 were unchanged. The fault itself is managed-handler evidence, not
+native fault injection or definitive attribution of the original tester report.
+The version-only delta reuses that product evidence. Local ARM64 build,
+original-key signing, independent keyless verification and one Internal upload/
+readback passed. **Physical Play 184 installation remains unverified.**
+SystemUI boot stalls, startup performance, complete Creation/Career and the
+same-character live manuscript acceptance remain open. The diagnostics contract
+still requires its exact retained local package. The original uncertain FirstBook
+successor remains fenced; no paid replay occurred. Version184 is consumed;
+previous artifacts and evidence are preserved.
+
+Preview 183's [observed Internal availability](../play/evidence/preview183-internal-observation.json) was
 confirmed on 10 October at 23:18 Europe/Vienna. Pinned Origin reading status is
 shorter in English, German and Spanish; full prose, readable scaling, detailed
 accessibility explanations and existing rules/export/recovery behavior remain.
