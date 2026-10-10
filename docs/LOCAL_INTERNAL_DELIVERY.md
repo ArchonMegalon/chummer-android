@@ -131,7 +131,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 168 is the latest [observed Internal availability](../play/evidence/preview168-internal-observation.md),
+Preview 169 is the latest [observed Internal availability](../play/evidence/preview169-internal-observation.md),
+confirmed on 10 October at 02:29 Europe/Vienna (Play displayed 02:29). Saved
+Origin-history projections use fewer transient allocations with unchanged rules
+and stored bytes. Exact package/intake tests and native x64 full saved-chapter/
+new-process smoke passed; all four workspace and diagnostic preference hashes
+were unchanged. Local ARM64 build, original-key signing, independent keyless
+verification and one Internal upload/readback passed. Internal diagnostics retain
+default-on behavior and saved opt-outs. **Physical Play 169 installation, real
+tester-incident capture, native startup-speed improvement and complete Creation/
+Career remain unverified.** Startup remains slow. Version169 is consumed;
+prior evidence and rollback artifacts remain unchanged.
+
+Preview 168's [observed Internal availability](../play/evidence/preview168-internal-observation.md),
 confirmed on 10 October at 00:55 Europe/Vienna (Play displayed 00:54). Foundation
 and related SR5 Creation overview reads share one owner-bound composition;
 mutation and saved-state checks remain. Exact Core/UI package tests and Android
