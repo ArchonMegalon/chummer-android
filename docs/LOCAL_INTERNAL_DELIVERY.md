@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 181 is the latest [observed Internal availability](../play/evidence/preview181-internal-observation.json),
+Preview 182 is the latest [observed Internal availability](../play/evidence/preview182-internal-observation.json),
+confirmed on 10 October at 18:20 Europe/Vienna. Read-only Life Modules resume
+prepares nationality and selected modules without loading the entire catalog.
+Full next-module choices, mutation checks, ownership, budgets and saved data
+remain unchanged. Core regression/package checks, exact UI consumer and Android
+managed intake passed. API36 German 130% font smoke reopened a retained synthetic
+runner and its full short stored fixture chapter after a verified new process;
+the later version-only change explicitly reuses those results. Local ARM64 build,
+original-key signing, independent keyless verification and one Internal upload/
+readback passed. **Physical Play 182 installation, real tester-incident intake,
+faster native cold startup and complete Creation/Career remain unverified.**
+The observed SystemUI boot stall and slow restoration are retained, not called
+fixed. Version182 is consumed; previous evidence and rollback artifacts remain.
+
+Preview 181's [observed Internal availability](../play/evidence/preview181-internal-observation.json),
 confirmed on 10 October at 16:24 Europe/Vienna. Experimental-route and locked
 build-method guidance is shorter in English, German and Spanish. Budgets,
 actions, scope, route admission and rule safeguards remain unchanged. Focused
