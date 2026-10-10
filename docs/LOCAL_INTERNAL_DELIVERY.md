@@ -85,8 +85,9 @@ here changes protected merge checks, signing or Play authorization.
 3. Build the exact ARM64 Release AAB in the existing local keyless Docker
    toolchain with `-p:ChummerDistributionChannel=internal`. This explicitly selects
    default-on, metadata-only technical reporting for Internal testing; saved
-   opt-outs remain off. Record this build property and verify the Home/settings
-   disclosure. Other build channels default off. Do not promote this same AAB to
+   opt-outs remain off. Record this build property and verify the Settings
+   disclosure/toggle and absence of technical diagnostics from Home. Other build
+   channels default off. Do not promote this same AAB to
    a public track; see `INTERNAL_TESTER_DIAGNOSTICS.md` for the channel boundary.
    Record its toolchain, source/content/package identities and unsigned
    digest; retain logs and inputs outside served directories. No signing key,
@@ -131,7 +132,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 171 is the latest [observed Internal availability](../play/evidence/preview171-internal-observation.md),
+Preview 172 is the latest [observed Internal availability](../play/evidence/preview172-internal-observation.md),
+confirmed on 10 October at 09:25 Europe/Vienna. Creation now offers one admitted
+Continue action, compact Attribute budgets and inline Karma controls; technical
+diagnostics live only in Settings as a native switch. Focused checks and native
+points/Karma/save/new-process reopen passed, including retained opt-out. Exact
+package intake includes Elf/Ork Priority/Sum-to-Ten finalization checks. Local
+ARM64 build, original-key signing, independent keyless verification and one
+Internal upload/readback passed. **Physical Play 172 installation, real tester
+incident capture, faster cold startup and complete Creation/Career remain
+unverified.** Slow restoration/System UI stalls remain recorded. Version172 is
+consumed; previous evidence and rollback artifacts remain unchanged.
+
+Preview 171's [observed Internal availability](../play/evidence/preview171-internal-observation.md),
 confirmed on 10 October at 05:38 Europe/Vienna (Play displayed 05:38). Repeated
 metatype catalog projections use fewer temporary allocations, with unchanged
 rule results and saved bytes. Exact package/intake checks and native bounded
