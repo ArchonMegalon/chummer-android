@@ -131,7 +131,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 170 is the latest [observed Internal availability](../play/evidence/preview170-internal-observation.md),
+Preview 171 is the latest [observed Internal availability](../play/evidence/preview171-internal-observation.md),
+confirmed on 10 October at 05:38 Europe/Vienna (Play displayed 05:38). Repeated
+metatype catalog projections use fewer temporary allocations, with unchanged
+rule results and saved bytes. Exact package/intake checks and native bounded
+Human draft, Save and full saved-chapter/new-process smoke passed; four workspace
+hashes and the diagnostic opt-out were unchanged. Local ARM64 build, original-key
+signing, independent keyless verification and one Internal upload/readback passed.
+**Physical Play 171 installation, real tester-incident capture, native startup
+speedup and complete Creation/Career remain unverified.** Nonhuman admission/raw
+blockers in the retained fixture and slow restoration remain open. Version171 is
+consumed; prior evidence and rollback artifacts remain unchanged.
+
+Preview 170's [observed Internal availability](../play/evidence/preview170-internal-observation.md),
 confirmed on 10 October at 03:47 Europe/Vienna (Play displayed 03:47). Origin
 digest calculation uses less temporary memory while preserving canonical and
 saved bytes. Exact package/intake checks and native full saved-chapter/new-process
