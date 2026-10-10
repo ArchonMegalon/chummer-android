@@ -586,13 +586,16 @@ public sealed class CreationSkillsPage : NativePageBase
             : CreationAllocationStrings.Get("Skills.CheckChoices", "Check your choices")));
         foreach (string message in blockers.Select(CreationAllocationStrings.SkillBlocker).Distinct(StringComparer.Ordinal))
             card.Add(NativeTheme.Body(message, unchanged ? NativeTheme.Text : NativeTheme.Danger));
-        VerticalStackLayout technical = new() { Spacing = 5 };
-        foreach (string blocker in blockers)
-            technical.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
-        long generation = _renderGeneration;
-        long appearance = CaptureAppearanceGeneration();
-        card.Add(NativeTheme.TechnicalDetails(technical, (automationId ?? "creation-skills-blockers") + "-details",
-            () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
+        if (!unchanged)
+        {
+            VerticalStackLayout technical = new() { Spacing = 5 };
+            foreach (string blocker in blockers)
+                technical.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            long generation = _renderGeneration;
+            long appearance = CaptureAppearanceGeneration();
+            card.Add(NativeTheme.TechnicalDetails(technical, (automationId ?? "creation-skills-blockers") + "-details",
+                () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
+        }
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
         _body.Add(border);

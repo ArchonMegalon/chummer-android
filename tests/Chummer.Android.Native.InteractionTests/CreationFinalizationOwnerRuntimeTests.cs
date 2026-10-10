@@ -925,6 +925,10 @@ internal static partial class AfterRunAuthorityHarness
                     Require(MinimalVisible(page).OfType<Label>().Count(label =>
                         label.Text.StartsWith(message, StringComparison.Ordinal)) == 2,
                         "Skills feedback must appear beside the two Review actions, without a redundant middle notice.");
+                    Require(!MinimalVisible(page).OfType<Button>().Any(item =>
+                        item.AutomationId == "creation-skills-review-top-blockers-details-toggle"
+                        || item.AutomationId == "creation-skills-review-blockers-details-toggle"),
+                        "A harmless unchanged allocation still offers technical-error controls.");
                     MinimalRequireNoMachineValues(page);
                 }
             }
@@ -1128,6 +1132,9 @@ internal static partial class AfterRunAuthorityHarness
             Require(labels[0].Text == (unchanged ? "Already saved" : "Check your choices").ToUpperInvariant()
                 && labels.Skip(1).All(label => label.TextColor == (unchanged ? NativeTheme.Text : NativeTheme.Danger)),
                 "Only a sole unchanged-allocation result may become informational; real/mixed errors must remain warnings.");
+            Require(content.Children.OfType<VerticalStackLayout>().Any(item =>
+                    item.AutomationId == "creation-skills-review-blockers-details") == !unchanged,
+                "Technical details must remain available for real/mixed errors, not for the harmless no-change notice.");
             if (blockers.Contains(CharacterCreationSkillsBlockers.DraftConflict)
                 || blockers.Contains(CharacterCreationSkillsBlockers.DraftInvalid)
                 || blockers.Contains(CharacterCreationSkillsBlockers.ReceiptLedgerInvalid))
