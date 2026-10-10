@@ -131,7 +131,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 169 is the latest [observed Internal availability](../play/evidence/preview169-internal-observation.md),
+Preview 170 is the latest [observed Internal availability](../play/evidence/preview170-internal-observation.md),
+confirmed on 10 October at 03:47 Europe/Vienna (Play displayed 03:47). Origin
+digest calculation uses less temporary memory while preserving canonical and
+saved bytes. Exact package/intake checks and native full saved-chapter/new-process
+smoke passed; four workspace hashes and the saved diagnostic opt-out were
+unchanged. Local ARM64 build, original-key signing, independent keyless
+verification and one Internal upload/readback passed. **Physical Play 170
+installation, real tester-incident capture, native startup-speed improvement and
+complete Creation/Career remain unverified.** Emulator Launcher/System UI stalls
+and slow startup are recorded limitations. Version170 is consumed; prior
+evidence and rollback artifacts remain unchanged.
+
+Preview 169's [observed Internal availability](../play/evidence/preview169-internal-observation.md),
 confirmed on 10 October at 02:29 Europe/Vienna (Play displayed 02:29). Saved
 Origin-history projections use fewer transient allocations with unchanged rules
 and stored bytes. Exact package/intake tests and native x64 full saved-chapter/
