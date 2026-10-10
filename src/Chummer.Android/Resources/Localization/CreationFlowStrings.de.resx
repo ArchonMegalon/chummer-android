@@ -2179,4 +2179,5 @@
   <data name="Contacts.Field.family" xml:space="preserve"><value>Familie</value></data>
   <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Erpressung</value></data>
   <data name="Gear.AvailableCatalog" xml:space="preserve"><value>Hier erscheint nur für diesen Charakter verfügbare Ausrüstung. Prüfe vor dem Kauf die Gesamtkosten deiner Auswahl.</value></data>
+  <data name="Finalization.Progress" xml:space="preserve"><value>{0} von {1} Pflichtschritten abgeschlossen</value></data>
 </root>
