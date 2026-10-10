@@ -112,8 +112,9 @@ public static class CreationAllocationStrings
                 or CharacterCreationSkillsBlockers.WorkspaceUnavailable
                 or CharacterCreationSkillsBlockers.PersistenceAuthorityRequired
                 => Get("Skills.Message.Unavailable", "The current runner or its rules could not be loaded safely. Reopen the runner before continuing."),
+            CharacterCreationSkillsBlockers.DraftDuplicate
+                => Get("Skills.Message.Unchanged", "These skill choices are already saved. Change a selection or return to character creation."),
             CharacterCreationSkillsBlockers.DraftConflict
-                or CharacterCreationSkillsBlockers.DraftDuplicate
                 or CharacterCreationSkillsBlockers.DraftInvalid
                 or CharacterCreationSkillsBlockers.ReceiptLedgerInvalid
                 => Get("Skills.Message.History", "The saved Skills history needs checking. Reopen the runner; do not repeat a save whose result is uncertain."),

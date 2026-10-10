@@ -184,8 +184,9 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertIn("CreationSkillsPhoneAuthority.CanStagePreview(", draft)
         self.assertIn("CreationSkillsPhoneAuthority.CanAdoptPreview(", page)
         self.assertIn("CreationSkillsPhoneAuthority.CanConfirmPreview(", page)
-        self.assertLess(page.index("if (_blockers.Count > 0) AddBlockers(_blockers)"),
+        self.assertLess(page.index('AddBlockers(_blockers, "creation-skills-review-top-blockers")'),
                         page.index("        AddCatalog("))
+        self.assertNotIn("if (_blockers.Count > 0) AddBlockers(_blockers);", page)
         # The page delegates blocker copy to the shared localization mapper.
         self.assertIn("blockers.Select(CreationAllocationStrings.SkillBlocker)", page)
         self.assertIn('Get("Skills.NativeLanguageRequired",',

@@ -961,6 +961,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>This knowledge-point calculation is not supported here yet. Do not change the saved draft to work around it.</value></data>
   <data name="Skills.Message.Attributes" xml:space="preserve"><value>Review and save your Attributes before reviewing Skills again.</value></data>
   <data name="Skills.Message.Unavailable" xml:space="preserve"><value>The current runner or its rules could not be loaded safely. Reopen the runner before continuing.</value></data>
+  <data name="Skills.Message.Unchanged" xml:space="preserve"><value>These skill choices are already saved. Change a selection or return to character creation.</value></data>
+  <data name="Skills.AlreadySaved" xml:space="preserve"><value>Already saved</value></data>
   <data name="Skills.Message.History" xml:space="preserve"><value>The saved Skills history needs checking. Reopen the runner; do not repeat a save whose result is uncertain.</value></data>
   <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>This save request cannot be confirmed. Reopen the runner and check what was saved before trying again.</value></data>
   <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Your skills were saved, but this view could not refresh. Reopen the runner; do not save these choices again.</value></data>

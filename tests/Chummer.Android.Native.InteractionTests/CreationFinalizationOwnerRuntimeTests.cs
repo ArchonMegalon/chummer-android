@@ -898,6 +898,53 @@ internal static partial class AfterRunAuthorityHarness
             Require(Chosen().SpecializationOptionId == source.Specializations.Last().OptionId
                 && Picker().SelectedIndex == source.Specializations.Count && !Choose().IsEnabled,
                 "Fresh page did not restore the saved last specialization by ID.");
+            var savedNavigation = page.Navigation.NavigationStack.ToArray();
+            try
+            {
+                foreach (var (culture, heading, message) in new[]
+                {
+                    ("en", "Already saved", "These skill choices are already saved."),
+                    ("de", "Bereits gespeichert", "Diese Fertigkeitsauswahl ist bereits gespeichert."),
+                    ("es", "Ya guardado", "Estas habilidades ya están guardadas.")
+                })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = new(culture);
+                    MinimalRender(page);
+                    await ClickAsync(MinimalVisible(page).OfType<Button>().Single(item =>
+                        item.AutomationId == "creation-skills-review-top"));
+                    var notice = MinimalVisible(page).OfType<Border>().Single(item =>
+                        item.AutomationId == "creation-skills-review-blockers");
+                    var labels = ((VerticalStackLayout)notice.Content!).Children.OfType<Label>().ToArray();
+                    Require(labels[0].Text == heading.ToUpperInvariant()
+                        && labels[1].Text.StartsWith(message, StringComparison.Ordinal)
+                        && labels[1].TextColor == NativeTheme.Text,
+                        "Reviewing unchanged saved Skills reported a corrupt history instead of a neutral no-change notice: " + culture);
+                    Require(page.Navigation.NavigationStack.SequenceEqual(savedNavigation)
+                        && JsonSerializer.Serialize(readSaved()) == JsonSerializer.Serialize(saved),
+                        "Reviewing unchanged Skills opened a save proposal or changed the persisted runner.");
+                    Require(MinimalVisible(page).OfType<Label>().Count(label =>
+                        label.Text.StartsWith(message, StringComparison.Ordinal)) == 2,
+                        "Skills feedback must appear beside the two Review actions, without a redundant middle notice.");
+                    Require(!MinimalVisible(page).OfType<Button>().Any(item =>
+                        item.AutomationId == "creation-skills-review-top-blockers-details-toggle"
+                        || item.AutomationId == "creation-skills-review-blockers-details-toggle"),
+                        "A harmless unchanged allocation still offers technical-error controls.");
+                    MinimalRequireNoMachineValues(page);
+                }
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = originalCulture;
+                MinimalRender(page);
+            }
+            plus = ((VerticalStackLayout)Card()!.Content!).Children.OfType<HorizontalStackLayout>()
+                .Single().Children.OfType<Button>().Single(item => item.Text == "+");
+            await ClickAsync(plus);
+            Require(Draft().Preview is { CanConfirm: true }
+                && !MinimalVisible(page).OfType<Border>().Any(item =>
+                    item.AutomationId == "creation-skills-review-blockers")
+                && JsonSerializer.Serialize(readSaved()) == JsonSerializer.Serialize(saved),
+                "An unchanged-review notice blocked a subsequent valid edit or saved it implicitly.");
             var departedPicker = Picker();
             var departedChoose = Choose();
             IssuedPageLifecycle(page, "OnDisappearing");
@@ -1064,6 +1111,35 @@ internal static partial class AfterRunAuthorityHarness
                     && label.Text.Contains("not saved yet", StringComparison.Ordinal)),
                     "Review did not explain the missing native language and unsaved draft.");
             }
+        }
+        foreach (string[] blockers in new[]
+        {
+            new[] { CharacterCreationSkillsBlockers.DraftDuplicate },
+            new[] { CharacterCreationSkillsBlockers.DraftDuplicate, CharacterCreationSkillsBlockers.DraftConflict },
+            new[] { CharacterCreationSkillsBlockers.DraftInvalid },
+            new[] { CharacterCreationSkillsBlockers.ReceiptLedgerInvalid },
+            new[] { CharacterCreationSkillsBlockers.IdempotencyConflict },
+            new[] { CharacterCreationSkillsBlockers.PostCommitRefreshRequired }
+        })
+        {
+            var page = new CreationSkillsPage(runtime.Coordinator);
+            blockersField.SetValue(page, blockers);
+            addReview.Invoke(page, new object?[] { null });
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var content = (VerticalStackLayout)((Border)body.Children[0]).Content!;
+            var labels = content.Children.OfType<Label>().ToArray();
+            bool unchanged = blockers.Length == 1 && blockers[0] == CharacterCreationSkillsBlockers.DraftDuplicate;
+            Require(labels[0].Text == (unchanged ? "Already saved" : "Check your choices").ToUpperInvariant()
+                && labels.Skip(1).All(label => label.TextColor == (unchanged ? NativeTheme.Text : NativeTheme.Danger)),
+                "Only a sole unchanged-allocation result may become informational; real/mixed errors must remain warnings.");
+            Require(content.Children.OfType<VerticalStackLayout>().Any(item =>
+                    item.AutomationId == "creation-skills-review-blockers-details") == !unchanged,
+                "Technical details must remain available for real/mixed errors, not for the harmless no-change notice.");
+            if (blockers.Contains(CharacterCreationSkillsBlockers.DraftConflict)
+                || blockers.Contains(CharacterCreationSkillsBlockers.DraftInvalid)
+                || blockers.Contains(CharacterCreationSkillsBlockers.ReceiptLedgerInvalid))
+                Require(labels.Any(label => label.Text.Contains("history needs checking", StringComparison.Ordinal)),
+                    "A real history error lost its recovery instruction.");
         }
         Console.WriteLine("PASS Skills review: missing-language explanation beside action, absent when unblocked");
     }

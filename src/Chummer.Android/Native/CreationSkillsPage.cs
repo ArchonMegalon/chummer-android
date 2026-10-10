@@ -97,7 +97,6 @@ public sealed class CreationSkillsPage : NativePageBase
             AddBlockers(state.Blockers);
             return;
         }
-        if (_blockers.Count > 0) AddBlockers(_blockers);
         AddCatalog(
             state,
             CreationSkillsPhoneAuthority.AvailableActiveSkills(state),
@@ -577,19 +576,26 @@ public sealed class CreationSkillsPage : NativePageBase
 
     private void AddBlockers(IReadOnlyList<string> blockers, string? automationId = null)
     {
+        // Core rejects a duplicate save even when the current choices are valid.
+        // Only that sole no-change result is informational; mixed errors stay warnings.
+        bool unchanged = blockers.Count > 0
+            && blockers.All(blocker => blocker == CharacterCreationSkillsBlockers.DraftDuplicate);
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Skills.CheckChoices",
-            "Check your choices")));
+        card.Add(NativeTheme.Eyebrow(unchanged
+            ? CreationAllocationStrings.Get("Skills.AlreadySaved", "Already saved")
+            : CreationAllocationStrings.Get("Skills.CheckChoices", "Check your choices")));
         foreach (string message in blockers.Select(CreationAllocationStrings.SkillBlocker).Distinct(StringComparer.Ordinal))
-            card.Add(NativeTheme.Body(message, NativeTheme.Danger));
-        VerticalStackLayout technical = new() { Spacing = 5 };
-        foreach (string blocker in blockers)
-            technical.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
-        long generation = _renderGeneration;
-        long appearance = CaptureAppearanceGeneration();
-        card.Add(NativeTheme.TechnicalDetails(technical, (automationId ?? "creation-skills-blockers") + "-details",
-            () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
+            card.Add(NativeTheme.Body(message, unchanged ? NativeTheme.Text : NativeTheme.Danger));
+        if (!unchanged)
+        {
+            VerticalStackLayout technical = new() { Spacing = 5 };
+            foreach (string blocker in blockers)
+                technical.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            long generation = _renderGeneration;
+            long appearance = CaptureAppearanceGeneration();
+            card.Add(NativeTheme.TechnicalDetails(technical, (automationId ?? "creation-skills-blockers") + "-details",
+                () => generation == _renderGeneration && IsCurrentAppearanceGeneration(appearance)));
+        }
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
         _body.Add(border);

@@ -961,6 +961,8 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>Diese Berechnung der Wissenspunkte wird hier noch nicht unterstützt. Ändere den gespeicherten Entwurf nicht, um dies zu umgehen.</value></data>
   <data name="Skills.Message.Attributes" xml:space="preserve"><value>Prüfe und speichere zuerst deine Attribute. Prüfe danach die Fertigkeiten erneut.</value></data>
   <data name="Skills.Message.Unavailable" xml:space="preserve"><value>Der aktuelle Runner oder seine Regeln konnten nicht sicher geladen werden. Öffne den Runner erneut, bevor du weitermachst.</value></data>
+  <data name="Skills.Message.Unchanged" xml:space="preserve"><value>Diese Fertigkeitsauswahl ist bereits gespeichert. Ändere eine Auswahl oder kehre zur Charaktererstellung zurück.</value></data>
+  <data name="Skills.AlreadySaved" xml:space="preserve"><value>Bereits gespeichert</value></data>
   <data name="Skills.Message.History" xml:space="preserve"><value>Die gespeicherte Fertigkeitenhistorie muss geprüft werden. Öffne den Runner erneut; wiederhole keinen Speichervorgang mit unklarem Ergebnis.</value></data>
   <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>Dieser Speicherauftrag kann nicht bestätigt werden. Öffne den Runner erneut und prüfe vor einem weiteren Versuch, was gespeichert wurde.</value></data>
   <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Deine Fertigkeiten sind gespeichert, aber die Ansicht konnte nicht aktualisiert werden. Öffne den Runner erneut; speichere diese Auswahl nicht nochmals.</value></data>

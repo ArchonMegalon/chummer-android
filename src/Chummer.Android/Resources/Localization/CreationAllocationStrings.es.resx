@@ -958,6 +958,8 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Skills.Message.KnowledgeRule" xml:space="preserve"><value>Este cálculo de puntos de conocimiento aún no está disponible aquí. No cambies el borrador guardado para eludirlo.</value></data>
   <data name="Skills.Message.Attributes" xml:space="preserve"><value>Revisa y guarda primero tus atributos. Después vuelve a revisar las habilidades.</value></data>
   <data name="Skills.Message.Unavailable" xml:space="preserve"><value>No se pudo cargar de forma segura el personaje o sus reglas. Vuelve a abrirlo antes de continuar.</value></data>
+  <data name="Skills.Message.Unchanged" xml:space="preserve"><value>Estas habilidades ya están guardadas. Cambia una selección o vuelve a la creación del personaje.</value></data>
+  <data name="Skills.AlreadySaved" xml:space="preserve"><value>Ya guardado</value></data>
   <data name="Skills.Message.History" xml:space="preserve"><value>Hay que comprobar el historial de habilidades. Vuelve a abrir el personaje; no repitas un guardado de resultado incierto.</value></data>
   <data name="Skills.Message.SaveCheck" xml:space="preserve"><value>No se puede confirmar esta solicitud de guardado. Vuelve a abrir el personaje y comprueba lo guardado antes de intentarlo otra vez.</value></data>
   <data name="Skills.Message.SavedReopen" xml:space="preserve"><value>Tus habilidades se guardaron, pero la vista no pudo actualizarse. Vuelve a abrir el personaje; no guardes de nuevo estas selecciones.</value></data>
