@@ -13,6 +13,22 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-reload-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationReloadAsync(args[1]);
+            await CreationNavigationRefreshDefersUntilSuccessfulDepartureAsync();
+            await CreationReleasedCleanupIsDeferredAndClickedPromotionWinsAsync();
+            await RejectedCreationReleasePostRetainsLeaseForClickedAsync();
+            await StaleCreationReleaseGenerationCannotCancelNewerPressAsync();
+            await CancelledCreationNavigationPressFlushesExactlyOnceAsync();
+            await FailedCreationNavigationFlushesExactlyOnceAsync();
+            await ThrowingCreationNavigationIsContainedAndFlushesOnceAsync();
+            await ThrowingCreationDepartureObservationCannotStrandLeaseAsync();
+            await DuplicateCreationNavigationClickIsRejectedAsync();
+            await CreationNavigationRefreshCoalescesTypedAndFinalizationCompletionsAsync();
+            Console.WriteLine("PASS 10 existing Creation navigation lease regressions");
+            return;
+        }
         if (args.Length == 1 && args[0] == "--native-problem-log")
         {
             await NativeProblemLogTests.RunAsync();

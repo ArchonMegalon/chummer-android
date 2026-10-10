@@ -677,6 +677,23 @@ public sealed class CreationNavigationRefreshLease
         }
     }
 
+    public bool TryPrepareExplicitRefresh()
+    {
+        lock (_sync)
+        {
+            // An explicit retry supersedes an abandoned press (for example when
+            // Released could not post its settlement and no Clicked followed).
+            // Never release a Clicked action that has already claimed navigation.
+            if (_state == LeaseState.Navigating)
+                return false;
+
+            // The caller refreshes immediately. Late callbacks carrying the old
+            // non-zero press generation remain rejected while this lease is idle.
+            Release(discardPending: true);
+            return true;
+        }
+    }
+
     public bool CompleteNavigation(long navigationGeneration, bool departed)
     {
         lock (_sync)
@@ -1442,7 +1459,19 @@ public sealed class BuildPage : NativePageBase
             failure.Add(failed);
             Button retry = NativeTheme.SecondaryButton(CreationFlowStrings.Get("Dashboard.Retry", "Try loading again"));
             retry.AutomationId = "creation-dashboard-authority-retry";
-            retry.Clicked += (_, _) => RetryCreationProjection();
+            long retryRender = _dossierRenderGeneration;
+            long retryAppearance = CaptureAppearanceGeneration();
+            var retryDisplay = Coordinator.State;
+            retry.Clicked += (_, _) =>
+            {
+                if (retryRender != _dossierRenderGeneration
+                    || !IsCurrentAppearanceGeneration(retryAppearance)
+                    || !IsCurrentCreationDashboardPage()
+                    || !Coordinator.IsCreationFinalizationDisplayCurrent(retryDisplay)
+                    || !_creationNavigationRefreshLease.TryPrepareExplicitRefresh())
+                    return;
+                RetryCreationProjection();
+            };
             failure.Add(retry);
             _body.Add(NativeTheme.Card(failure));
         }
