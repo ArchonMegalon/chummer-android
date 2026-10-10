@@ -132,7 +132,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 177 is the latest [observed Internal availability](../play/evidence/preview177-internal-observation.md),
+Preview 178 is the latest [observed Internal availability](../play/evidence/preview178-internal-observation.md),
+confirmed on 10 October at 14:26 Europe/Vienna (Play displayed 14:24). Skills
+removes duplicate feedback and gives unchanged selections a neutral "Already
+saved" notice without a technical button. Genuine errors retain their warning
+and disclosure; choices, budgets, rules and explicit saving remain. Focused
+managed/source checks, affected native 130% German-font smoke, local ARM64 build,
+original-key signing, independent keyless verification and one Internal upload/
+readback passed. **Physical Play 178 installation, real tester-incident intake,
+faster cold startup and complete Creation/Career remain unverified.** Version
+178 is consumed; previous evidence and rollback artifacts are retained.
+
+Preview 177's [observed Internal availability](../play/evidence/preview177-internal-observation.md),
 confirmed on 10 October at 13:46 Europe/Vienna. Skills allocation/review combine
 three budget cards into one wrapping summary, retaining bold remaining points,
 usage/totals, controls, Core rules and explicit saving. Focused managed checks,
