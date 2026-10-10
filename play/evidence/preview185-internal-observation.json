@@ -77,6 +77,22 @@
     "internalTestLink": "https://play.google.com/apps/internaltest/4700678198570024687"
   },
   "retention": "Exact local source/build/signer/verifier and browser packet retained privately; previous artifacts preserved; version185 consumed",
+  "physicalFollowup": {
+    "observedAtUtc": "2026-10-10T23:48:41.762405+00:00",
+    "requestedVersionCode": 185,
+    "installedVersionCode": 184,
+    "outcome": "Play update failed; physical185 acceptance could not run",
+    "updateButtonDispatches": 2,
+    "secondAttempt": "First terminal failure reconciled; fresh Play Store process and Internal listing, then one controlled retry; same terminal failure, no further retry",
+    "uiMessage": "Can't update Chummer",
+    "playInstallerStatus": 1010,
+    "nearbyPlayDeliveryStatus": 2,
+    "failureReceiptSha256": "5e9c5739d09a6d0bb7b4765b83135cfdc89a7a9c6b6e764a7f59da26502afe2a",
+    "limits": "Delivery-layer failure observed, root cause not established; no signature or credential defect inferred",
+    "dataClearedOrSideloaded": false,
+    "accountOrSecuritySettingsChanged": false,
+    "previousAppPreserved": "Play184, existing process and exact accepted2447-word chapter reopened; this is not a185 test"
+  },
   "physicalPlayInstallationVerified": false,
   "playAppSigningCertificateObserved": false,
   "realTesterDiagnosticsIntakeVerified": false,
