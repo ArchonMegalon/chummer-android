@@ -36,6 +36,16 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
                 self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", route)
                 self.assertNotIn("Navigation.Pop", route)
 
+    def test_accepted_inline_points_update_existing_controls_only_after_core(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        inline = page.split("private void AddInlineAdjustment(", 1)[1].split("private void AddReviewAction(", 1)[0]
+        self.assertIn("RunWithConditionalRefreshAsync", inline)
+        self.assertLess(inline.index("_draft.TryAdopt("), inline.index("!TryUpdateProjection(state)"))
+        self.assertIn("!accepted || hadBlockers || !TryUpdateProjection(state)", inline)
+        self.assertIn("pair.First.DisableReasons.SequenceEqual(pair.Second.DisableReasons)", inline)
+        self.assertNotIn("_body.Clear()", inline)
+        self.assertIn("foreach (var update in _projectionUpdates) update();", inline)
+
     def test_phone_stage_is_core_projected_typed_and_draft_only(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         draft = (NATIVE / "CreationAttributesPhoneDraft.cs").read_text(encoding="utf-8")
