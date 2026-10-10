@@ -1567,7 +1567,9 @@ public sealed class BuildPage : NativePageBase
                 ? CreationAllocationStrings.Get("LifeDashboard.FinishHelp", "Module selection is saved. Review cumulative grants and additional allocations in the Life Modules wizard before confirming Career entry.")
                 : CreationAllocationStrings.Get("LifeDashboard.StoryHelp", "Continue your background one decision at a time. These costs cover confirmed modules and metatype only; additional allocations and Career entry still require final review.")
             : story.HasUnacknowledgedChapter
-                ? copy["Origin.MechanicsAfterReading"] : copy["Origin.ReaderFullTextPending"];
+                ? copy["Origin.MechanicsAfterReading"]
+            : story.ReadingEdition is { HasExportableChapters: true }
+                ? copy["Origin.ReaderNextChapterPending"] : copy["Origin.ReaderFullTextPending"];
         var scope = NativeTheme.Body(guidance, NativeTheme.Muted);
         scope.AutomationId = "creation-life-module-scope";
         _body.Add(scope);
