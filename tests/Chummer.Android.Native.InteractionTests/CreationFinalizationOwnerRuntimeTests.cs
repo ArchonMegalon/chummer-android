@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Xml.Linq;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
@@ -3234,8 +3235,18 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    public static async Task RunPriorityRacialFinalizationAsync(string contentRoot)
+    {
+        if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
+            throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
+        await RunPriorityChoiceGuidanceAsync(contentRoot);
+        foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        foreach (string metatype in new[] { "Elf", "Ork" })
+            await RunCreationFinalizationLocalBaselineAsync(contentRoot, method, metatype);
+    }
+
     private static async Task RunCreationFinalizationLocalBaselineAsync(string contentRoot,
-        string method = CharacterCreationBuildMethods.Priority)
+        string method = CharacterCreationBuildMethods.Priority, string metatype = "Human")
     {
         var owners = new ControlledLinkedOwner();
         var uiContext = new SynchronizationContext();
@@ -3243,7 +3254,7 @@ internal static partial class AfterRunAuthorityHarness
         await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true,
             finalizationDecorator: actual => threadProbe = new FinalizationThreadProbe(actual, uiContext));
         Require(owners.Current == OwnerScope.LocalSingleUser, "Local positive control did not retain the trusted local scope.");
-        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
+        var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method, metatypeName: metatype);
         await HydrateFinalizationOwnerAsync(runtime, owners, before);
         var qualities = runtime.Services.GetRequiredService<ICharacterCreationQualitiesService>()
             .Load(new(runtime.Id));
@@ -3277,6 +3288,17 @@ internal static partial class AfterRunAuthorityHarness
             && runtime.Coordinator.State.ContentRevision == cold.ContentRevision
             && runtime.Coordinator.State.SavedRevision == cold.SavedRevision,
             "Local baseline did not preserve the actual atomic finalization receipt/checkpoint and live owner.");
+        if (metatype is "Elf" or "Ork")
+        {
+            XElement savedCharacter = XDocument.Parse(cold.Document.Content).Root!;
+            XElement[] racial = savedCharacter.Element("qualities")!.Elements("quality")
+                .Where(item => item.Element("name")?.Value == "Low-Light Vision").ToArray();
+            Require(savedCharacter.Element("metatype")?.Value == metatype
+                && racial.Length == 1 && racial[0].Element("qualitysource")?.Value == "Metatype"
+                && review.Value!.OrderedDeltas.Any(delta => delta.TargetName == "Low-Light Vision"
+                    && delta.KarmaCost == 0),
+                "Native finalization lost, duplicated or charged for the exact racial quality.");
+        }
         threadProbe!.RequireOffContextLoads = true;
         var retained = await StartFromUiContext(uiContext, () =>
             runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(runtime.Coordinator.State, default));
@@ -3324,12 +3346,12 @@ internal static partial class AfterRunAuthorityHarness
             "A prior account generation must not display or reload a retained receipt after A->B->A.");
         Console.WriteLine("FINALIZATION_LOCAL_BASELINE " + JsonSerializer.Serialize(new
         {
-            applied.Outcome, applied.Value.BuildMethod, before.ContentRevision, before.SavedRevision,
+            applied.Outcome, applied.Value.BuildMethod, metatype, before.ContentRevision, before.SavedRevision,
             afterContentRevision = cold.ContentRevision, afterSavedRevision = cold.SavedRevision,
             receiptDigest = applied.Value!.ReceiptDigest,
             beforeDigest = FinalizationDocumentDigest(before), afterDigest = FinalizationDocumentDigest(cold)
         }));
-        Console.WriteLine("PASS actual local native/Core finalization baseline");
+        Console.WriteLine("PASS actual local native/Core finalization baseline: " + method + "/" + metatype);
     }
 
     private static void AssertFinalReviewNames(RunnerSessionCoordinator coordinator, CharacterCreationFinalizationReview review)
@@ -3698,10 +3720,10 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
-        bool stopBeforeResources = false, bool stopBeforeSkills = false)
+        bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human")
     {
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
-        // canonical Priority or repeated-rank Sum-to-Ten/Human/Mundane;
+        // canonical Priority or Sum-to-Ten; repeated ranks for Human, distinct ranks for Elf/Ork;
         // actual services issue every draft and receipt.
         // No manual auxiliary state, fake admission, finalization plan or receipt.
         var services = runtime.Services;
@@ -3725,7 +3747,7 @@ internal static partial class AfterRunAuthorityHarness
             [CharacterCreationPriorityCategoryIds.Skills] = "C",
             [CharacterCreationPriorityCategoryIds.Resources] = "D"
         };
-        if (buildMethod == CharacterCreationBuildMethods.SumToTen)
+        if (buildMethod == CharacterCreationBuildMethods.SumToTen && metatypeName == "Human")
         {
             ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
             ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
@@ -3741,9 +3763,9 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "D";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "E";
         }
-        var human = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
-                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null
-                && item.MetatypeName == "Human");
+        var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled
+                && item.MetavariantSourceId is null && item.MetavariantName is null && item.MetatypeName == metatypeName);
         var talentOption = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Talent]).TalentOptions.First(item => item.IsEnabled
                 && item.Value.Equals(attributeTalent ?? CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
@@ -3754,11 +3776,11 @@ internal static partial class AfterRunAuthorityHarness
         var talentGroups = talentOption.SkillGroupGrant?.Options
             .Take(talentOption.SkillGroupGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
         var prerequisitePreview = prerequisites.Preview(new(initial.Binding, ranks)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+            { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talentOption.SelectionId,
                 TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups }).Value!;
         var prerequisiteReceipt = prerequisites.Confirm(new(prerequisitePreview.Binding, ranks,
             prerequisitePreview.PreviewDigest, ExplicitlyConfirmed: true)
-            { HeritageSelectionId = human.SelectionId, TalentSelectionId = talentOption.SelectionId,
+            { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talentOption.SelectionId,
                 TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups });
         Require(prerequisiteReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
             "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>Este asistente aún no admite todas las reglas de esta elección. Elige una opción disponible para continuar.</value></data>
+  <data name="Priority.Choice.Changed" xml:space="preserve"><value>Tu personaje o las reglas han cambiado. Vuelve al método de creación y abre las opciones de nuevo.</value></data>
+  <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>Esta elección no está disponible. Abre Detalles técnicos para conocer el motivo exacto.</value></data>
   <data name="Purchases.SavedReopen" xml:space="preserve"><value>Guardado. Vuelve a abrir el personaje para actualizar esta vista.</value></data>
   <data name="Purchases.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Vuelve a abrir el personaje antes de realizar otra compra.</value></data>
   <data name="Qualities.Loading" xml:space="preserve"><value>Cargando ventajas y desventajas…</value></data>

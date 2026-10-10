@@ -135,7 +135,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 option.HalvesNormalAttributePoints
                     ? WizardStrings.Get("Priority.DetailPage.HalvesAttributes", "Halves normal Attribute points")
                     : null,
-                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null);
+                ChoiceBlockerDetails(option.Blockers));
             _technicalDetails.Add(NativeTheme.Body(JoinDetails(
                 option.SelectionId,
                 option.SourceAnchorIds.Count > 0
@@ -143,7 +143,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", option.SourceAnchorIds))
-                    : null), NativeTheme.Muted));
+                    : null,
+                string.Join(" · ", option.Blockers)), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 title,
                 detail,
@@ -217,8 +218,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                         selectedGrantCount.ToString(CultureInfo.InvariantCulture),
                         required.ToString(CultureInfo.InvariantCulture))
                     : null,
-                grantBlockers.Count > 0 ? string.Join(" · ", grantBlockers) : null,
-                option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null);
+                ChoiceBlockerDetails(grantBlockers),
+                ChoiceBlockerDetails(option.Blockers));
             _technicalDetails.Add(NativeTheme.Body(JoinDetails(
                 option.SelectionId,
                 option.SourceAnchorIds.Count > 0
@@ -226,7 +227,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                         "Common.Anchors",
                         "Anchors {0}",
                         string.Join(" · ", option.SourceAnchorIds))
-                    : null), NativeTheme.Muted));
+                    : null,
+                string.Join(" · ", option.Blockers.Concat(grantBlockers))), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 MagicCatalogStrings.TalentName(option.Name),
                 detail,
@@ -291,6 +293,10 @@ public sealed class CreationPriorityDetailPage : NativePageBase
         => string.IsNullOrWhiteSpace(digest)
             ? WizardStrings.Get("Common.Unavailable", "unavailable")
             : digest[..Math.Min(12, digest.Length)];
+
+    private static string ChoiceBlockerDetails(IReadOnlyList<string> blockers)
+        => string.Join(" · ", blockers.Select(CreationFlowStrings.PrerequisiteChoiceBlocker)
+            .Distinct(StringComparer.Ordinal));
 
     private static string JoinDetails(params string?[] parts)
         => string.Join(
