@@ -81,7 +81,8 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
         assert "enabled: canOpen" in stages
         # Continue preserves the already-labelled exact stage/method route;
         # it must not calculate a second, conflicting scope/admission table.
-        assert "route?.Detail" in next_steps
+        # Continue has already rejected null/non-admitted routes here.
+        assert "route.Detail" in next_steps
         assert "routes.GetValueOrDefault(stepId)" in next_steps
         assert "? methodRoute" in next_steps
         assert "route?.CanOpen == true" in next_steps

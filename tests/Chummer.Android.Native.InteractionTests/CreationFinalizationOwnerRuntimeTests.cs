@@ -323,6 +323,32 @@ internal static partial class AfterRunAuthorityHarness
                 var snapshot = runtime.Coordinator.State.CreationWizard!;
                 Require(snapshot.ActiveStepId == CharacterCreationWizardStepIds.Method,
                     "SETUP: fresh runner must actually be at Creation method.");
+                string snapshotBefore = JsonSerializer.Serialize(snapshot);
+                string[] otherJourneySteps = [CharacterCreationWizardStepIds.Foundation,
+                    CharacterCreationWizardStepIds.LifeModules];
+                Require(otherJourneySteps.All(id => snapshot.Steps.Any(stage => stage.StepId == id)),
+                    "SETUP: shared inventory must contain the irrelevant cards exposed on the phone.");
+                foreach (var other in new[]
+                {
+                    snapshot with { RulesetId = "sr6" },
+                    snapshot with { BuildMethod = CharacterCreationBuildMethods.Karma },
+                    snapshot with { BuildMethod = CharacterCreationBuildMethods.LifeModules },
+                    snapshot with { BuildMethod = "unknown-method" }
+                })
+                    Require(other.Steps.All(stage => BuildPageUiProjection.ShowCreationStage(other, stage)),
+                        "Priority navigation filtering must not hide another ruleset/method's steps.");
+                foreach (var stage in snapshot.Steps.Where(stage => otherJourneySteps.Contains(stage.StepId, StringComparer.Ordinal)))
+                foreach (var requiredOrActive in new[]
+                {
+                    stage with { IsRequired = true },
+                    stage with { IsAvailable = true },
+                    stage with { IsComplete = true },
+                    stage with { Blockers = ["fixture-required-review"] },
+                    stage with { Warnings = ["fixture-review-warning"] },
+                    stage with { Status = CharacterCreationWizardStepStatuses.Blocked }
+                })
+                    Require(BuildPageUiProjection.ShowCreationStage(snapshot, requiredOrActive),
+                        "Filtering must preserve a required, active, blocked or inconsistent step.");
                 var readiness = new CreationDashboardRenderReadiness(
                     () => false, () => false, () => false, () => false, () => false, () => false);
                 var methodRender = typeof(BuildPage).GetMethod("AddCreationMethodRoute", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -341,6 +367,16 @@ internal static partial class AfterRunAuthorityHarness
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
                     var cards = body.Children.OfType<Border>().Where(border => border.Content is Grid)
                         .Select(border => (Grid)border.Content!).ToArray();
+                    var stageButtons = cards.SelectMany(grid => grid.Children.OfType<Button>())
+                        .Where(button => button.AutomationId?.StartsWith("creation-stage-", StringComparison.Ordinal) == true)
+                        .ToArray();
+                    foreach (var stage in snapshot.Steps.Where(stage => stage.StepId != CharacterCreationWizardStepIds.Method))
+                    {
+                        bool relevant = !otherJourneySteps.Contains(stage.StepId, StringComparer.Ordinal);
+                        Require(routes.ContainsKey(stage.StepId) == relevant
+                            && stageButtons.Any(button => button.AutomationId == "creation-stage-" + stage.StepId) == relevant,
+                            $"{buildMethod}: irrelevant cards must disappear; required/blocked {stage.StepId} must stay visible.");
+                    }
                     var methodButton = cards.SelectMany(grid => grid.Children.OfType<Button>())
                         .SingleOrDefault(button => button.AutomationId == "creation-next-method");
                     Require((methodButton is { IsEnabled: true }) == available && methodRoute.CanOpen == available,
@@ -374,13 +410,15 @@ internal static partial class AfterRunAuthorityHarness
                     else Require(methodButton is null, "Blocked method must not be offered as the continuation.");
                     Require(nav.Navigation.NavigationStack.Count == 1,
                         "A blocked or stale-owner Continue link still navigated.");
+                    Require(JsonSerializer.Serialize(snapshot) == snapshotBefore,
+                        "Filtering the phone navigation changed canonical rules or finalization blockers.");
                 }
                 ui.AssertHealthy();
             });
             var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
             Require(FinalizationDocumentDigest(cold) == FinalizationDocumentDigest(saved),
                 "Continue navigation changed the saved runner.");
-            Console.WriteLine($"PASS Continue {buildMethod}: actual method editor, blocked/stale-owner rejection, shared detail, saved bytes unchanged");
+            Console.WriteLine($"PASS Continue {buildMethod}: relevant stage cards, required blocked stages retained, actual method editor, stale-owner rejection, snapshot/saved bytes unchanged");
         }
     }
 

@@ -345,6 +345,22 @@ public static class BuildPageUiProjection
     public static string MethodLabel(string method)
         => PhoneStrings.Get("CreationMethod." + method, RunnerSessionCoordinator.HumanizeId(method));
 
+    public static bool ShowCreationStage(CharacterCreationWizardSnapshot snapshot, CharacterCreationWizardStageState stage)
+    {
+        // Priority chooses metatype in the typed method editor. The shared
+        // inventory's Foundation/Life Modules cards belong to the other journey,
+        // not to unfinished Priority work. This only filters navigation: retain
+        // the snapshot, blockers, budgets and finalization authority unchanged.
+        return snapshot.RulesetId != "sr5"
+            || snapshot.BuildMethod is not (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen)
+            || stage.StepId is not (CharacterCreationWizardStepIds.Foundation
+                or CharacterCreationWizardStepIds.LifeModules)
+            || stage.IsRequired || stage.IsAvailable || stage.IsComplete
+            || stage.Blockers.Count != 0 || stage.Warnings.Count != 0
+            || stage.Status != CharacterCreationWizardStepStatuses.NotStarted;
+    }
+
     public static string BudgetLabel(CharacterCreationBudgetState budget, string? canonicalBudgetId = null)
         => (canonicalBudgetId ?? budget.BudgetId) switch
         {
@@ -2602,6 +2618,9 @@ public sealed class BuildPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("CreationSteps", "Generation steps")));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
+            if (!BuildPageUiProjection.ShowCreationStage(snapshot, stage))
+                continue;
+
             // The build method has one canonical route above the generated stage list.  Core
             // snapshots may include or omit a method step, but the phone surface must never
             // duplicate its automation identity or present two competing method editors.
