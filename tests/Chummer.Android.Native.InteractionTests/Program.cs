@@ -464,6 +464,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunInitialPhoneRouteCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 4 && args[0] == "--startup-saved-roster-content-root")
+        {
+            await AfterRunAuthorityHarness.RunSavedRosterStartupAsync(args[1], args[2], args[3]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--startup-shell-reuse-content-root")
         {
             await AfterRunAuthorityHarness.RunStartupShellReuseAsync(args[1]);
