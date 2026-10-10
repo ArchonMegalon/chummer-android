@@ -295,7 +295,10 @@ internal static partial class AfterRunAuthorityHarness
                         .Contains((inlineInitial + 1).ToString(CultureInfo.CurrentUICulture), StringComparison.Ordinal),
                     "An accepted point must update values, budgets and accessibility without rebuilding the native list.");
                 MinimalRender(page);
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retainedInline).SendClicked()));
+                // At the metatype cap MAUI suppresses the disabled native
+                // event entirely; otherwise the detached guard returns inline.
+                ((IButtonController)retainedInline).SendClicked();
+                await Task.Yield();
                 Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
                     "A detached inline stepper replayed a point.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Inline("decrease")).SendClicked()));
