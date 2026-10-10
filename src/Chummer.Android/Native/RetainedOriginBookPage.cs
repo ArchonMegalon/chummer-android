@@ -280,15 +280,26 @@ internal sealed class RetainedOriginBookPage : NativePageBase
         _progress.IsVisible = true;
         _progress.Add(new ActivityIndicator { IsRunning = active, IsVisible = active,
             AutomationId = "origin-reader-writing-spinner" });
-        string status = !active && _notice == _copy["Origin.AuthoringStatusPaused"] ? _notice
-            : _copy[result?.UnknownRemoteOutcome == true ? "Origin.AuthoringOutcomeUnconfirmed"
+        string detailKey = !active && _notice == _copy["Origin.AuthoringStatusPaused"] ? "Origin.AuthoringStatusPaused"
+            : result?.UnknownRemoteOutcome == true ? "Origin.AuthoringOutcomeUnconfirmed"
             : result?.Outcome == AndroidOriginChapterOutcome.NotFound && book.Reading(chapter)?.AuthoringSource is not null
                 ? "Origin.AuthoringOutcomeUnconfirmed"
             : result?.Job?.State == OriginChapterAuthoringStates.AwaitingAuthoring ? "Origin.AuthoringQueued"
             : result?.Job?.State == OriginChapterAuthoringStates.ReconciliationRequired ? "Origin.AuthoringOutcomeUnconfirmed"
-            : "Origin.ReaderFullTextPending"];
-        var message = NativeTheme.Body(status);
+            : "Origin.ReaderFullTextPending";
+        string compactKey = detailKey switch
+        {
+            "Origin.AuthoringStatusPaused" => "Origin.ReaderChecksPausedCompact",
+            "Origin.AuthoringOutcomeUnconfirmed" => "Origin.ReaderOutcomeUnknownCompact",
+            "Origin.AuthoringQueued" => "Origin.ReaderQueuedCompact",
+            _ => "Origin.ReaderPendingCompact"
+        };
+        // This stays above the scrolling book. Keep full explanations in the
+        // chapter body and accessibility description, not over the saved prose.
+        // Preserve wrapping/font scaling rather than clipping enlarged text.
+        var message = NativeTheme.Body(_copy[compactKey]);
         message.AutomationId = "origin-reader-writing-status";
+        SemanticProperties.SetDescription(message, _copy[detailKey]);
         _progress.Add(message);
         var progress = new ProgressBar { Progress = result?.Job?.State switch
             {
@@ -298,7 +309,10 @@ internal sealed class RetainedOriginBookPage : NativePageBase
             }, ProgressColor = NativeTheme.Ink, AutomationId = "origin-reader-writing-progress" };
         SemanticProperties.SetDescription(progress, _copy["Origin.ReaderProgressStages"]);
         _progress.Add(progress);
-        _progress.Add(NativeTheme.Body(_copy["Origin.AuthoringEtaUnknown"], NativeTheme.Muted));
+        var eta = NativeTheme.Body(_copy["Origin.ReaderEtaUnknownCompact"], NativeTheme.Muted);
+        eta.AutomationId = "origin-reader-writing-eta";
+        SemanticProperties.SetDescription(eta, _copy["Origin.AuthoringEtaUnknown"]);
+        _progress.Add(eta);
     }
 
     private async Task ConfirmReadAsync(RetainedOriginBook book, OriginBookProseDraft prose, long appearance)

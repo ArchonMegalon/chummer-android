@@ -185,6 +185,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunOriginIllustrationAcceptanceAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--origin-illustration-after-decision-content-root")
+        {
+            await AfterRunAuthorityHarness.RunOriginIllustrationAfterDecisionAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--origin-illustration-read-recovery-content-root")
         {
             await AfterRunAuthorityHarness.RunOriginIllustrationAcceptanceAsync(args[1], transientReadBeforeCreation: true);

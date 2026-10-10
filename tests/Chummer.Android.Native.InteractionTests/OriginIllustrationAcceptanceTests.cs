@@ -1,15 +1,92 @@
 using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Android.Platform;
+using Chummer.Application.Characters;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Owners;
+using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Run.Contracts.Community;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunOriginIllustrationAfterDecisionAsync(string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        var account = DispatchProxy.Create<IAndroidAccountLinkService, OriginIllustrationAcceptanceAccount>();
+        var remote = (OriginIllustrationAcceptanceAccount)account;
+        remote.AfterAcceptance = () => remote.Accepted = true;
+        await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
+            productionCreationOverview: true, linkedOwners: owners, accountService: account);
+        await runtime.Coordinator.InitializeAsync();
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        await runtime.Coordinator.CreateRunnerAsync();
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterName", "Delayed childhood illustration", default);
+        await runtime.Presenter.UpdateDialogFieldAsync("newCharacterBuildMethod", CharacterCreationBuildMethods.LifeModules, default);
+        await runtime.Coordinator.ExecuteDialogActionAsync("create_character");
+        var id = runtime.Coordinator.State.WorkspaceId!.Value;
+        await runtime.Coordinator.SaveAsync();
+        await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 2));
+        await runtime.Presenter.LoadAsync(id, default);
+        var book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        var chapter = book.Chapters.Single(c => !book.IsOpeningSetup(c));
+        var source = book.AuthoringSource(chapter);
+        var prose = OriginBookProseDraft.Create(chapter, book.Locale, OriginChapterSourceIdentity.RequestId(source),
+            new string('d', 64), "The accepted childhood chapter remains unchanged when the next decision is committed.");
+        remote.Seed(source, prose);
+        book = (await runtime.Coordinator.SyncOriginChapterAsync(book, chapter, source, true, () => true,
+            default, consentToAutomaticIllustrations: true)).Book!;
+        book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, prose, true, true, () => true, default))!;
+        Require(runtime.Coordinator.CanAutomaticallyIllustrateOriginBook(book)
+            && runtime.Coordinator.CanRequestOriginBookScene(book, chapter), "Initial accepted illustration is not eligible.");
+
+        // Reproduce leaving the reader and committing the next real Core
+        // decision before the first illustration has been admitted. No provider
+        // generation is performed by this isolated account adapter.
+        var timeline = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
+        var checkpoint = (await timeline.LoadAsync(owners.Capture().Owner.Value, id.Value))!;
+        var advanced = await Task.Run(() =>
+        {
+            var interaction = new LifeModuleOriginDossierInteractionService(new LifeModuleOriginDossierService(
+                new CharacterCreationFoundationLifeModuleDecisionAuthority(
+                    runtime.Services.GetRequiredService<IWorkspaceStore>(),
+                    runtime.Services.GetRequiredService<ICharacterCreationFoundationService>(),
+                    runtime.Services.GetRequiredService<ICharacterFileQueries>(), () => "de-DE")));
+            var restored = interaction.Restore(checkpoint).Value!;
+            var choice = restored.Projection.CurrentTurn.LegalChoices.First(c => c.ChoiceId != "finish-life-module-selection");
+            var answers = choice.FollowUps?.ToDictionary(prompt => prompt.PromptId,
+                prompt => prompt.Options.FirstOrDefault(option => option.IsEnabled)?.SourceValue ?? "Renraku");
+            var prepared = interaction.Prepare(restored, choice.ChoiceId, answers).Value!;
+            return interaction.Confirm(prepared, prepared.PendingPreview!.PreviewDigest,
+                "illustration-after-next-decision", true).Value!.Checkpoint;
+        });
+        await timeline.SaveAsync(advanced);
+        await runtime.Presenter.LoadAsync(id, default);
+        var afterDecision = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
+        book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        chapter = book.Chapters.Single(c => c.ChapterId == chapter.ChapterId);
+        Require(book.Reading(chapter)?.Selected?.DraftDigest == prose.DraftDigest
+            && book.Readings?.IllustrationPolicy == OriginBookReadingState.AutomaticIllustrations,
+            "The next module lost the accepted prose or saved automatic illustration policy.");
+        Require(runtime.Coordinator.CanAutomaticallyIllustrateOriginBook(book)
+            && runtime.Coordinator.CanRequestOriginBookScene(book, chapter),
+            "Committing the next module silently disabled the previous chapter's illustration.");
+        var recovered = await runtime.Coordinator.SyncAutomaticOriginBookSceneAsync(book, chapter, true, () => true, default);
+        Require(recovered.Book?.Scene(chapter) is not null && remote.ImageRequests == 1
+            && remote.Requests == 0 && remote.Accepted,
+            "The previous chapter's image did not recover exactly once after the next decision.");
+        book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+        var reopened = await runtime.Coordinator.SyncAutomaticOriginBookSceneAsync(book, chapter, true, () => true, default);
+        Require(reopened.Book?.Scene(chapter) is not null && remote.ImageRequests == 1 && remote.Requests == 0,
+            "File-backed reader reload replayed image or chapter generation.");
+        RequireSameRewardDocument(afterDecision, new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!);
+        Console.WriteLine("PASS next Core decision preserves accepted prose, automatic illustration eligibility and file-backed no-replay recovery");
+    }
+
     internal static async Task RunOriginIllustrationAcceptanceAsync(string contentRoot,
         bool transientReadBeforeCreation = false, bool lostResultAfterCreation = false,
         bool existingRemoteAdmission = false)
