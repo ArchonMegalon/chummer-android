@@ -141,8 +141,12 @@ managed intake passed. API36 German 130% font smoke reopened a retained syntheti
 runner and its full short stored fixture chapter after a verified new process;
 the later version-only change explicitly reuses those results. Local ARM64 build,
 original-key signing, independent keyless verification and one Internal upload/
-readback passed. **Physical Play 182 installation, real tester-incident intake,
-faster native cold startup and complete Creation/Career remain unverified.**
+readback passed. A later [physical Play 182 observation](../play/evidence/preview182-physical-observation.md)
+verified installed version, base-APK Play signing identity, retained Priority
+Skills entry and Life Modules re-entry/new-process visible-state restoration.
+No new decision, save, provider generation or complete book route was exercised.
+**Real tester-incident intake, faster native cold startup and complete
+Creation/Career remain unverified.**
 The observed SystemUI boot stall and slow restoration are retained, not called
 fixed. Version182 is consumed; previous evidence and rollback artifacts remain.
 
@@ -1488,8 +1492,11 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 89](../play/evidence/preview89-physical-observation.md) is the latest
-physically observed Play version, with the bounded affected-route coverage above.
+[Preview 182](../play/evidence/preview182-physical-observation.md) is the latest
+physically observed Play version, with bounded retained-runner route coverage.
+The [Preview 89 update observation](../play/evidence/preview89-physical-observation.md)
+remains historical; its in-place update evidence is not reused as a Preview 182
+update transaction.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
 restart passed. The observed unlinked account route settled without a stale
