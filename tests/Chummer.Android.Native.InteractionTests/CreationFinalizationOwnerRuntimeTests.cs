@@ -92,7 +92,7 @@ internal static partial class AfterRunAuthorityHarness
                         + "\nCheck what is missing"
                     : "Check what is missing";
                 Require(labels[1] == expectedDetail,
-                    "Budget cards must retain exact numbers without repeated paragraphs or duplicate chevrons.");
+                    $"Budget {expected.BudgetId} detail mismatch. Expected [{expectedDetail}], actual [{labels[1]}].");
                 Require(((Grid)cards[index].Content!).Children.OfType<Button>().Single() is
                     { IsEnabled: true, AutomationId: not null }, "Budget is still a non-interactive label.");
             }
