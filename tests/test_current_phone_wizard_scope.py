@@ -85,10 +85,10 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
         assert "route.Detail" in next_steps
         assert "routes.GetValueOrDefault(stepId)" in next_steps
         assert "? methodRoute" in next_steps
-        assert "route?.CanOpen == true" in next_steps
+        assert "if (route?.CanOpen != true) continue;" in next_steps
         assert "canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod)" in method
         assert "detail = CurrentPhoneWizardScope.MarkExperimental(detail);" in method
-        assert 'CurrentPhoneWizardScope.MarkExperimental("Review and finish creation")' in finalization
+        assert 'CurrentPhoneWizardScope.MarkExperimental(PhoneStrings.Get("CreationFinish", "Review and finish creation"))' in finalization
 
 
     def test_every_visible_uncovered_career_route_is_marked_without_being_hidden(self) -> None:
