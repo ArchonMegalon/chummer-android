@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 184 is the latest [observed Internal availability](../play/evidence/preview184-internal-observation.json),
+Preview 185 is the latest [observed Internal availability](../play/evidence/preview185-internal-observation.json),
+released on 11 October at 01:41 Europe/Vienna. Creation now distinguishes saved,
+readable Origin chapters from an unavailable successor, in English, German and
+Spanish. No generation, acknowledgement, next-choice admission or rule behavior
+changed. Actual MAUI/Core red/green regression and eleven dashboard states passed.
+An API36 x64 Release/Internal synthetic partial-book route preserved the full
+stored chapter and eight saved files through Back and verified process restart.
+The later version-only delta explicitly reuses those results. Local ARM64 build,
+original-key signing, independent keyless verification and one Internal upload/
+readback passed. **Physical Play185 installation, startup improvement and complete
+Creation/Career/live manuscript acceptance remain unverified.** The original
+uncertain FirstBook successor remains fenced; no paid replay occurred. Version185
+is consumed; previous artifacts and evidence remain.
+
+Preview 184's [observed Internal availability](../play/evidence/preview184-internal-observation.json) was
 released on 11 October at 00:55 Europe/Vienna. Creation's explicit Retry can
 recover an abandoned navigation press without leaving the page; active navigation
 and current owner/appearance/render checks remain protected. Five actual-handler
