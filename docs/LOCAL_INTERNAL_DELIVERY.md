@@ -146,6 +146,14 @@ Creation/Career/live manuscript acceptance remain unverified.** The original
 uncertain FirstBook successor remains fenced; no paid replay occurred. Version185
 is consumed; previous artifacts and evidence remain.
 
+Physical follow-up at 01:48 Vienna: the phone's Play update failed twice with
+"Can't update Chummer", installer status1010 and nearby delivery response2.
+The second attempt followed reconciliation of the first terminal failure and a
+fresh Play Store process/listing; there was no third attempt. Root cause is not
+established. The phone retained Play184 and its exact accepted2447-word chapter;
+no data clear, sideload, account/security change or replacement upload occurred.
+This is **not** a physical185 pass, and Console availability does not override it.
+
 Preview 184's [observed Internal availability](../play/evidence/preview184-internal-observation.json) was
 released on 11 October at 00:55 Europe/Vienna. Creation's explicit Retry can
 recover an abandoned navigation press without leaving the page; active navigation
