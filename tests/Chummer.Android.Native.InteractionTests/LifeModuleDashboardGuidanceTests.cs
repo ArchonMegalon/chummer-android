@@ -69,6 +69,35 @@ internal static partial class AfterRunAuthorityHarness
             Require(book.HasReadCurrentStory, "The fixture failed to acknowledge the chapter.");
             await Observe(CreationAllocationStrings.Get("LifeDashboard.StoryHelp", ""), true, "read chapter reopened from disk");
             Dump("read");
+
+            // A completed earlier chapter remains readable when a later module
+            // awaits prose (including an uncertain provider outcome). The local
+            // dashboard must not claim either an empty book or a running job.
+            await CreateRunner();
+            id = runtime.Coordinator.State.WorkspaceId!.Value;
+            await Task.Run(() => SeedNativeLifeStory(runtime, id, stopAfterDecisions: 3));
+            await runtime.Presenter.LoadAsync(id, default);
+            await Observe(copy["Origin.ReaderFullTextPending"], false, "another runner has no prose");
+            book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            chapter = book.Chapters[1];
+            draft = OriginBookProseDraft.Create(chapter, book.Locale,
+                OriginChapterSourceIdentity.RequestId(book.AuthoringSource(chapter)), new string('e', 64),
+                "The accepted first chapter remains readable while its successor is unavailable.");
+            book = (await runtime.Coordinator.StageOriginBookProseDraftAsync(book, draft, () => true, default))!;
+            await Observe(copy["Origin.MechanicsAfterReading"], false, "earlier chapter awaits reading");
+            book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            book = (await runtime.Coordinator.ReviewOriginBookProseDraftAsync(book, draft, true, true, () => true, default))!;
+            Require(book.HasExportableChapters && !book.HasReadCurrentStory
+                && book.ReadableChapter(book.Chapters.Last()) is null,
+                "SETUP: expected a saved first chapter and an unavailable successor.");
+            string readingDigest = book.Readings!.Digest;
+            await Observe(copy["Origin.ReaderNextChapterPending"], false, "saved chapter with unavailable successor");
+            await Observe(copy["Origin.ReaderNextChapterPending"], false, "partial book re-entry from disk");
+            book = (await runtime.Coordinator.LoadRetainedOriginBookAsync(default, () => true))!;
+            Require(book.Readings!.Digest == readingDigest && book.ReadableChapter(chapter)?.Text == draft.Text
+                && !book.HasReadCurrentStory,
+                "Dashboard guidance changed the reading edition or acknowledged missing prose.");
+            Dump("partial-book");
             Require(alerts.Titles.Count == 0, "Dashboard guidance raised an unexpected blocking alert.");
             // A real dirty workspace refusal used to look like a broken picker:
             // its only explanation was below the entire creation dashboard.
