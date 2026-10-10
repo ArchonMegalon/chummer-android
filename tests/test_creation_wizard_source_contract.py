@@ -11,6 +11,19 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_dashboard_budgets_use_one_flat_card_without_repeated_action_copy(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        ribbon = source.split("private void AddBudgetRibbon(", 1)[1].split("private ", 1)[0]
+        self.assertIn("VerticalStackLayout ribbon", ribbon)
+        self.assertNotIn("FlexLayout ribbon", ribbon)
+        self.assertIn('AutomationId = "creation-budget-list"', ribbon)
+        self.assertIn("NativeTheme.Card(ribbon, new Thickness(0))", ribbon)
+        self.assertIn("budgetCard.StrokeThickness = 0", ribbon)
+        self.assertIn("budget.IsExact ? detail : null", ribbon)
+        self.assertIn("SemanticProperties.SetDescription(interaction, accessibleCopy)", ribbon)
+        self.assertNotIn("MinimumWidthRequest = 164", ribbon)
+        self.assertIn("route.OpenBudgetAsync(projectedBudget.BudgetId)", ribbon)
+
     def test_compact_readiness_preserves_navigation_and_render_local_warnings(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         dashboard = source.split("private void AddCreationWizardDashboard()", 1)[1].split("private ", 1)[0]

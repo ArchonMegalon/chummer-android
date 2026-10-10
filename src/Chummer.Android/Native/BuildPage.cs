@@ -2487,12 +2487,10 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
-        FlexLayout ribbon = new()
+        VerticalStackLayout ribbon = new()
         {
-            Direction = FlexDirection.Row,
-            Wrap = FlexWrap.Wrap,
-            JustifyContent = FlexJustify.SpaceBetween,
-            AlignItems = FlexAlignItems.Stretch
+            AutomationId = "creation-budget-list",
+            Spacing = 0
         };
         bool hasInexactBudget = false;
         foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
@@ -2583,7 +2581,7 @@ public sealed class BuildPage : NativePageBase
                 : CreationAllocationStrings.Get("Budget.Check", "Check what is missing");
             var displayed = Coordinator.State;
             Border budgetCard = CreationNavigationRow($"{budgetLabel} · {amount}",
-                budget.IsExact ? $"{detail}\n{action}" : action, async () =>
+                budget.IsExact ? detail : null, async () =>
                 {
                     if (displayed.Profile?.Created != false
                         || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed)) return;
@@ -2602,9 +2600,22 @@ public sealed class BuildPage : NativePageBase
                             + (route is { Detail.Length: > 0 } ? $"\n\n{route.Detail}" : string.Empty), "OK");
                     }
                 }, enabled: true, automationId: $"creation-budget-open-{Token(projectedBudget.BudgetId)}");
-            budgetCard.MinimumWidthRequest = 164;
-            budgetCard.Margin = new Thickness(0, 0, 8, 10);
+            // One flat list rather than a card and repeated instruction for
+            // every ledger. Reuse the same native button and press lease: the
+            // entire row remains accessible and follows the admitted route.
+            budgetCard.StrokeThickness = 0;
+            budgetCard.Padding = new Thickness(14, 8);
+            Grid budgetRow = (Grid)budgetCard.Content!;
+            budgetRow.MinimumHeightRequest = 48;
+            Button interaction = budgetRow.Children.OfType<Button>().Single();
+            string accessibleCopy = $"{budgetLabel}. {amount}. "
+                + (budget.IsExact ? $"{detail}. " : string.Empty) + action;
+            SemanticProperties.SetDescription(budgetCard, accessibleCopy);
+            SemanticProperties.SetDescription(interaction, accessibleCopy);
             budgetCard.AutomationId = $"creation-budget-{Token(projectedBudget.BudgetId)}";
+            if (ribbon.Count > 0)
+                ribbon.Add(new BoxView { Color = NativeTheme.Line, HeightRequest = 1,
+                    Margin = new Thickness(14, 0), InputTransparent = true });
             ribbon.Add(budgetCard);
         }
         if (hasInexactBudget)
@@ -2615,7 +2626,7 @@ public sealed class BuildPage : NativePageBase
             status.AutomationId = "creation-budget-status";
             _body.Insert(index++, status);
         }
-        _body.Insert(index, ribbon);
+        _body.Insert(index, NativeTheme.Card(ribbon, new Thickness(0)));
     }
 
     private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(
