@@ -132,7 +132,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 173 is the latest [observed Internal availability](../play/evidence/preview173-internal-observation.md),
+Preview 174 is the latest [observed Internal availability](../play/evidence/preview174-internal-observation.md),
+confirmed on 10 October around 11:03 Europe/Vienna (Play displayed 11:03).
+Inline attribute adjustments retain controls, expanded Karma options and scroll
+position while updating values/budgets from a fresh Core preview. Focused managed
+checks and native normal/Karma/Edge, explicit save and new-process reopen passed;
+other runners and the diagnostic opt-out remained unchanged. Local ARM64 build,
+original-key signing, independent keyless verification and one Internal
+upload/readback passed. **Physical Play 174 installation, real tester-incident
+capture, faster cold startup and complete Creation/Career remain unverified.**
+Version 174 is consumed; previous evidence and rollback artifacts remain unchanged.
+
+Preview 173's [observed Internal availability](../play/evidence/preview173-internal-observation.md),
 confirmed on 10 October around 10:29 Europe/Vienna (Play displayed 10:28).
 Priority/Sum-to-Ten hide unrelated inactive Foundation/Life Modules cards while
 required, available and warned steps remain visible. Focused managed checks,
