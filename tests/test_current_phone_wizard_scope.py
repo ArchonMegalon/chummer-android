@@ -117,14 +117,35 @@ class CurrentPhoneWizardScopeTests(unittest.TestCase):
 
     def test_experimental_route_marker_is_explicit_in_all_supported_languages(self) -> None:
         expected = {
-            "WizardStrings.resx": "Experimental — not covered by the current Preview authority",
-            "WizardStrings.de.resx": "Experimentell — nicht durch die aktuelle Preview-Autorität abgedeckt",
-            "WizardStrings.es.resx": "Experimental — no cubierto por la autoridad de la vista previa actual",
+            "WizardStrings.resx": "Experimental — not fully tested",
+            "WizardStrings.de.resx": "Experimentell — noch nicht vollständig geprüft",
+            "WizardStrings.es.resx": "Experimental — aún no verificado por completo",
         }
         for filename, phrase in expected.items():
             value = resource(LOCALIZATION / filename, "CurrentPhoneWizard.ExperimentalRoute")
             assert phrase in value
-            assert "{0}" in value
+            # Compact, never clipped: keep the complete caller-supplied budget,
+            # route explanation and the explicit experimental qualification.
+            assert value == "{0} · " + phrase + "."
+            assert len(value) <= 55
+            assert "\n" not in value
+
+    def test_locked_method_copy_keeps_the_reason_and_next_action_concise(self) -> None:
+        expected = {
+            "CreationFlowStrings.resx": ("Attributes", "Locked", "next step"),
+            "CreationFlowStrings.de.resx": ("Attribute", "gesperrt", "nächsten Schritt"),
+            "CreationFlowStrings.es.resx": ("atributos", "Bloqueado", "siguiente paso"),
+        }
+        for filename, required in expected.items():
+            value = resource(LOCALIZATION / filename, "Dashboard.MethodLocked")
+            assert all(part in value for part in required)
+            assert len(value) <= 80
+            assert "\n" not in value
+
+        source = (NATIVE / "CreationFlowStrings.cs").read_text(encoding="utf-8")
+        assert '"creation-prerequisite-dependent-attributes-draft-exists"' in source
+        assert resource(LOCALIZATION / "CreationFlowStrings.resx", "Dashboard.MethodLocked") in source
+        assert resource(LOCALIZATION / "WizardStrings.resx", "CurrentPhoneWizard.ExperimentalRoute") in SCOPE.read_text(encoding="utf-8")
 
     def test_native_interaction_gate_embeds_wizard_localizations(self) -> None:
         project = NATIVE_COMPILE_CHECK.read_text(encoding="utf-8")

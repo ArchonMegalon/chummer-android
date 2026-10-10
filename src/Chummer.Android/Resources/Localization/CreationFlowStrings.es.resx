@@ -287,7 +287,7 @@
   <data name="Dashboard.LoadFailed" xml:space="preserve"><value>No se pudieron cargar algunas opciones. Vuelve a cargarlas o abre de nuevo este runner.</value></data>
   <data name="Dashboard.PartialFailed" xml:space="preserve"><value>No se pudieron cargar algunos pasos. Puedes usar los pasos disponibles o volver a cargar los demás.</value></data>
   <data name="Dashboard.Retry" xml:space="preserve"><value>Volver a cargar</value></data>
-  <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Tus Atributos guardados dependen de estas elecciones, por lo que el método de creación está bloqueado. Continúa con los pasos restantes.</value></data>
+  <data name="Dashboard.MethodLocked" xml:space="preserve"><value>Bloqueado por los atributos guardados. Continúa con el siguiente paso.</value></data>
   <data name="Dashboard.IdentityUnavailable" xml:space="preserve"><value>La historia de fondo no se puede editar en esta versión.</value></data>
   <data name="Dashboard.StepBlocked" xml:space="preserve"><value>Revisa este paso antes de continuar. Consulta los detalles técnicos para conocer el motivo exacto.</value></data>
   <data name="Qualities.Info.MissingSource" xml:space="preserve"><value>La descripción de esta cualidad otorgada aún no está disponible.</value></data>

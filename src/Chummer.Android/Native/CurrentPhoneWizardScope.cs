@@ -30,12 +30,12 @@ public static class CurrentPhoneWizardScope
         => culture is null
             ? WizardStrings.Format(
                 "CurrentPhoneWizard.ExperimentalRoute",
-                "{0} · Experimental — not covered by the current Preview authority.",
+                "{0} · Experimental — not fully tested.",
                 detail)
             : WizardStrings.Format(
                 culture,
                 "CurrentPhoneWizard.ExperimentalRoute",
-                "{0} · Experimental — not covered by the current Preview authority.",
+                "{0} · Experimental — not fully tested.",
                 detail);
 
     public static string ContainsExperimentalRoutes(string detail)

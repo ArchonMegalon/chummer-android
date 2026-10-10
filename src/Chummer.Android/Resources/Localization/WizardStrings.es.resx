@@ -12,7 +12,7 @@
   <data name="Common.PreviewBlockers" xml:space="preserve"><value>Bloqueos de vista previa</value></data>
   <data name="CurrentPhoneWizard.CareerHubDetail" xml:space="preserve"><value>Elige tu siguiente acción. Las funciones experimentales están marcadas.</value></data>
   <data name="CurrentPhoneWizard.ContainsExperimentalRoutes" xml:space="preserve"><value>{0} · Contiene rutas experimentales no cubiertas por la autoridad de la vista previa actual.</value></data>
-  <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — no cubierto por la autoridad de la vista previa actual.</value></data>
+  <data name="CurrentPhoneWizard.ExperimentalRoute" xml:space="preserve"><value>{0} · Experimental — aún no verificado por completo.</value></data>
   <data name="Creation.Dashboard.PartialLoading" xml:space="preserve"><value>Se están actualizando {0} proyecciones de reglas restantes en segundo plano. Los pasos listos siguen siendo interactivos y esta página se actualiza automáticamente.</value></data>
   <data name="Common.Rank" xml:space="preserve"><value>Rango {0}</value></data>
   <data name="Common.RankLabel" xml:space="preserve"><value>Rango</value></data>

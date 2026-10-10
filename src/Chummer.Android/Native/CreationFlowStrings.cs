@@ -35,7 +35,7 @@ public static class CreationFlowStrings
         return code switch
         {
             "creation-prerequisite-dependent-attributes-draft-exists"
-                => Get("Dashboard.MethodLocked", "Your saved Attributes depend on these choices, so Build method is locked. Continue with the remaining creation steps."),
+                => Get("Dashboard.MethodLocked", "Locked because Attributes are saved. Continue with the next step."),
             "creation-authority-loading"
                 => Get("Dashboard.Loading", "Loading your creation choices…"),
             "creation-prerequisite-authority-load-failed" or "creation-attributes-authority-load-failed"
