@@ -132,7 +132,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 174 is the latest [observed Internal availability](../play/evidence/preview174-internal-observation.md),
+Preview 175 is the latest [observed Internal availability](../play/evidence/preview175-internal-observation.md),
+confirmed on 10 October at 12:38 Europe/Vienna. Creation now summarizes required
+steps and removes duplicate completion warnings while keeping stage/budget links
+and required guidance. The reviewed Core missing-draft optimization is consumed.
+Focused managed checks and native display/navigation/new-process reopen passed;
+four synthetic saved files and the diagnostic opt-out stayed unchanged. Local
+ARM64 build, original-key signing, independent keyless verification and one
+Internal upload/readback passed. **Physical Play 175 installation, real tester
+incident intake, faster cold startup and complete Creation/Career remain
+unverified.** Version 175 is consumed; previous artifacts/evidence are retained.
+
+Preview 174's [observed Internal availability](../play/evidence/preview174-internal-observation.md),
 confirmed on 10 October around 11:03 Europe/Vienna (Play displayed 11:03).
 Inline attribute adjustments retain controls, expanded Karma options and scroll
 position while updating values/budgets from a fresh Core preview. Focused managed
