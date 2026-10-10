@@ -659,6 +659,38 @@ internal static partial class AfterRunAuthorityHarness
         finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
     }
 
+    private static void AssertCompactSkillsBudgets(Page page, string summaryId,
+        params (CharacterCreationBudgetState Budget, string CanonicalId)[] expected)
+    {
+        var summary = MinimalVisible(page).OfType<Border>().Single(item => item.AutomationId == summaryId);
+        var rows = ((VerticalStackLayout)summary.Content!).Children;
+        Require(rows.Count == 3 && rows.All(item => item is Grid),
+            "Skills budgets must be three flat rows in one card, not hidden or nested cards.");
+        for (int index = 0; index < expected.Length; index++)
+        {
+            var (budget, canonicalId) = expected[index];
+            var row = (Grid)rows[index];
+            var title = row.Children.OfType<Label>().Single();
+            var labels = row.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().ToArray();
+            Require(title.Text == BuildPageUiProjection.BudgetLabel(budget, canonicalId)
+                && title.FontAttributes == FontAttributes.Bold && title.FontSize >= 15
+                && labels[0].Text == CreationAllocationStrings.Format("Skills.BudgetLeft", "{0} left",
+                    budget.Remaining.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture))
+                && labels[0].FontAttributes == FontAttributes.Bold && labels[0].FontSize >= 20
+                && labels[0].TextColor == (budget.Remaining < 0 ? NativeTheme.Danger : NativeTheme.Text)
+                && labels[1].Text == CreationAllocationStrings.Format("Skills.BudgetUsed", "{0} / {1} points",
+                    budget.Used.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture),
+                    budget.Total.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)),
+                "Compact Skills ledger lost its name, remaining points, used/total or readable emphasis.");
+            Require(row.ColumnDefinitions.Count == 2
+                && row.ColumnDefinitions.All(column => column.Width.IsStar)
+                && row.HeightRequest < 0 && title.HeightRequest < 0
+                && title.LineBreakMode == LineBreakMode.WordWrap
+                && labels.All(label => label.HeightRequest < 0 && label.LineBreakMode == LineBreakMode.WordWrap),
+                "Compact ledger constrains wrapping or clips large-font/translated values.");
+        }
+    }
+
     internal static async Task RunCreationSpecializationPickerAsync(string contentRoot)
     {
         var owners = new ControlledLinkedOwner();
@@ -730,6 +762,11 @@ internal static partial class AfterRunAuthorityHarness
                 && ReferenceEquals(picker, Picker()) && ReferenceEquals(choose, Choose())
                 && picker.SelectedIndex == source.Specializations.Count && choose.IsEnabled,
                 "A rating-only preview rebuilt the Skills catalog or discarded the pending specialization choice.");
+            var updatedBudgets = Draft().Preview!;
+            AssertCompactSkillsBudgets(page, "creation-skills-budgets",
+                (updatedBudgets.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
+                (updatedBudgets.SkillGroupPointBudget, CharacterCreationBudgetIds.SkillGroups),
+                (updatedBudgets.KnowledgeSkillPointBudget, CharacterCreationBudgetIds.KnowledgeSkills));
             var minus = ((VerticalStackLayout)Card()!.Content!).Children.OfType<HorizontalStackLayout>()
                 .Single().Children.OfType<Button>().Single(item => item.Text == "−");
             await ClickAsync(minus);
@@ -816,6 +853,10 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     System.Globalization.CultureInfo.CurrentUICulture = new(culture);
                     MinimalRender(review);
+                    AssertCompactSkillsBudgets(review, "creation-skills-preview-budgets",
+                        (preview.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
+                        (preview.SkillGroupPointBudget, CharacterCreationBudgetIds.SkillGroups),
+                        (preview.KnowledgeSkillPointBudget, CharacterCreationBudgetIds.KnowledgeSkills));
                     Require(MinimalVisibleText(review).Contains(heading.ToUpperInvariant(), StringComparison.Ordinal)
                         && MinimalVisible(review).OfType<Button>().Any(item =>
                             item.AutomationId == "creation-skills-confirm" && item.Text == save && item.IsEnabled),
@@ -1057,7 +1098,7 @@ internal static partial class AfterRunAuthorityHarness
             var choose = Choose();
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var entry = body.Children.Single(item => item is Border { AutomationId: "creation-skills-native-language" });
-            var budget = body.Children.Single(item => item is Border { AutomationId: "creation-skills-budget-active" });
+            var budget = body.Children.Single(item => item is Border { AutomationId: "creation-skills-budgets" });
             Require(body.Children.IndexOf(entry) < body.Children.IndexOf(budget)
                 && picker.ItemsSource.Cast<string>().SequenceEqual(options.Select(item => item.Name))
                 && picker.SelectedIndex == -1 && !choose.IsEnabled && picker.TextColor == NativeTheme.Text,
