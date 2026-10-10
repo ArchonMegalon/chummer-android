@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 182 is the latest [observed Internal availability](../play/evidence/preview182-internal-observation.json),
+Preview 183 is the latest [observed Internal availability](../play/evidence/preview183-internal-observation.json),
+confirmed on 10 October at 23:18 Europe/Vienna. Pinned Origin reading status is
+shorter in English, German and Spanish; full prose, readable scaling, detailed
+accessibility explanations and existing rules/export/recovery behavior remain.
+Focused managed reader suites and source checks passed; API36 130% font smoke
+displayed an entire short stored synthetic chapter without changing four saved
+runner hashes. The native fixture was unlinked: compact provider-ribbon visuals
+are covered by managed tests, not a native linked-reader observation. The
+version-only delta explicitly reuses those results. Local ARM64 build,
+original-key signing, independent keyless verification and one Internal upload/
+readback passed. **Physical Play 183 installation, real tester-incident intake,
+startup reliability and complete Creation/Career remain unverified.** Initial
+System/SystemUI stalls remain recorded, not declared fixed. The separate
+uncertain FirstBook successor stays fenced; this release makes no new live
+generation or complete manuscript claim. Version183 is consumed; previous
+evidence and rollback artifacts remain.
+
+Preview 182's [observed Internal availability](../play/evidence/preview182-internal-observation.json),
 confirmed on 10 October at 18:20 Europe/Vienna. Read-only Life Modules resume
 prepares nationality and selected modules without loading the entire catalog.
 Full next-module choices, mutation checks, ownership, budgets and saved data
