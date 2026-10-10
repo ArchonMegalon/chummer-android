@@ -11,7 +11,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         self.assertNotIn("source.Specializations.Take(", page)
         self.assertIn("source.Specializations.ToArray()", page)
-        self.assertIn("options.Select(option => option.Name)", page)
+        self.assertIn("options.Select(option => SkillCatalogStrings.SpecializationName(", page)
         self.assertIn("options[index - 1].OptionId", page)
         self.assertIn("index == currentIndex", page)
         self.assertIn("renderGeneration != _renderGeneration", page)
@@ -53,9 +53,9 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "CreationSkillsCatalogPaging.NormalizeOffset(",
             ".Take(CatalogPageSize)",
             'AutomationId = $"creation-skills-{catalogToken}-catalog-range"',
-            "projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget",
-            "projection?.SkillGroupPointBudget ?? state.SkillGroupPointBudget",
-            "projection?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget",
+            "_draft.Preview?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget",
+            "_draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget",
+            "_draft.Preview?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget",
             "await Task.Run(() => Coordinator.PreviewCreationSkills(",
             "new CreationSkillsPreviewPage(",
             'AutomationId = "creation-skills-preview-page"',
@@ -152,6 +152,22 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertNotIn("ActivePointTotal =", page)
         self.assertNotIn("KnowledgePointTotal =", page)
 
+    def test_rating_preview_retains_controls_only_after_current_core_acceptance(self) -> None:
+        page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        rating = page[page.index("    private void BindRatingAdjustment("):
+                      page.index("    private async Task PreviewAsync(")]
+        for marker in ("RunWithConditionalRefreshAsync", "render == _renderGeneration",
+                       "IsCurrentAppearanceGeneration(appearance)",
+                       "Coordinator.ReadCreationAuthority(original,", "lifetime.Token.ThrowIfCancellationRequested()",
+                       "if (!Current()) return false;", "_draft.TryAdopt(",
+                       "!adopted || !sameBlockers || !_ratingShapeChecks.All(check => check())",
+                       'button.Text = "…"', "control.IsEnabled = false"):
+            self.assertIn(marker, rating)
+        self.assertLess(rating.index("_draft.TryAdopt("), rating.index("foreach (var update"))
+        self.assertNotIn("ConfirmCreationSkills", rating)
+        self.assertNotIn("error.Message", rating)
+        self.assertIn("_ratingPreparation?.Cancel();", page)
+
     def test_incomplete_selection_is_local_only_and_explained_before_catalogs(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         draft = (NATIVE / "CreationSkillsPhoneDraft.cs").read_text(encoding="utf-8")
@@ -160,7 +176,10 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertIn("CreationSkillsPhoneAuthority.CanConfirmPreview(", page)
         self.assertLess(page.index("if (_blockers.Count > 0) AddBlockers(_blockers)"),
                         page.index("        AddCatalog("))
-        self.assertIn('"Skills.NativeLanguageRequired"', page)
+        # The page delegates blocker copy to the shared localization mapper.
+        self.assertIn("blockers.Select(CreationAllocationStrings.SkillBlocker)", page)
+        self.assertIn('Get("Skills.NativeLanguageRequired",',
+                      (NATIVE / "CreationAllocationStrings.cs").read_text(encoding="utf-8"))
 
     def test_confirmation_reprojects_then_validates_receipt_before_activation(self) -> None:
         coordinator = (NATIVE / "RunnerSessionCoordinator.CreationSkills.cs").read_text(

@@ -719,6 +719,22 @@ internal static partial class AfterRunAuthorityHarness
             Require(choose.IsEnabled && JsonSerializer.Serialize(Draft().Skills) == untouched
                 && FinalizationDocumentDigest(readSaved()) == FinalizationDocumentDigest(before),
                 "Picker selection itself spent points or persisted a draft.");
+            // A rating-only preview must not replace the catalog or lose a
+            // specialization selection the player has not previewed yet.
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var retainedRows = body.Children.ToArray();
+            plus = ((VerticalStackLayout)Card()!.Content!).Children.OfType<HorizontalStackLayout>()
+                .Single().Children.OfType<Button>().Single(item => item.Text == "+");
+            await ClickAsync(plus);
+            Require(Chosen().Rating == 2 && retainedRows.SequenceEqual(body.Children)
+                && ReferenceEquals(picker, Picker()) && ReferenceEquals(choose, Choose())
+                && picker.SelectedIndex == source.Specializations.Count && choose.IsEnabled,
+                "A rating-only preview rebuilt the Skills catalog or discarded the pending specialization choice.");
+            var minus = ((VerticalStackLayout)Card()!.Content!).Children.OfType<HorizontalStackLayout>()
+                .Single().Children.OfType<Button>().Single(item => item.Text == "−");
+            await ClickAsync(minus);
+            Require(Chosen().Rating == 1 && retainedRows.SequenceEqual(body.Children)
+                && ReferenceEquals(picker, Picker()), "A skill decrease replaced otherwise unchanged native controls.");
             await ClickAsync(choose);
             Require(Chosen().SpecializationOptionId == source.Specializations.Last().OptionId
                 && Picker().SelectedIndex == source.Specializations.Count && !Choose().IsEnabled,
@@ -757,11 +773,13 @@ internal static partial class AfterRunAuthorityHarness
             {
                 MinimalRequireNoMachineValues(review);
                 string visible = MinimalVisibleText(review);
-                Require(visible.Contains(source.Name, StringComparison.Ordinal)
-                    && visible.Contains(source.Specializations.Last().Name, StringComparison.Ordinal)
+                Require(visible.Contains(SkillCatalogStrings.SkillName(source.Kind, source.SourceSkillId, source.Name), StringComparison.Ordinal)
+                    && visible.Contains(SkillCatalogStrings.SpecializationName(source.Kind, source.SourceSkillId,
+                        source.Name, source.Specializations.Last().Name), StringComparison.Ordinal)
                     && visible.Contains(CreationAllocationStrings.Get("SkillsPreview.PointCost", ""), StringComparison.Ordinal)
                     && !visible.Contains(CreationAllocationStrings.Get("Common.ContentRevision", ""), StringComparison.Ordinal),
-                    "Review hid a player choice/cost or exposed receipt internals.");
+                    "Review hid a localized player choice/cost or exposed receipt internals: "
+                        + System.Globalization.CultureInfo.CurrentUICulture.Name);
                 var details = Details();
                 var toggle = details.Children.OfType<Button>().Single();
                 var content = details.Children.OfType<VerticalStackLayout>().Single();
@@ -861,6 +879,118 @@ internal static partial class AfterRunAuthorityHarness
             ui.AssertHealthy();
         });
         Console.WriteLine($"PASS Skills picker/review: all {source.Specializations.Count} options for {source.Name}, EN/DE/ES readable review, collapsed exact diagnostics, explicit save/receipt/reopen, no implicit mutation, explicit removal, stale render/appearance/owner rejection");
+        await VerifySkillRatingPendingAsync(contentRoot);
+    }
+
+    private static async Task VerifySkillRatingPendingAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (string outcome in new[] { "ready", "error", "cancel", "leave", "owner-aba" })
+            {
+                var owners = new ControlledLinkedOwner();
+                SkillsRatingProbe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, creationAttributes: true, creationSkills: true,
+                    productionCreationOverview: true, skillsDecorator: actual => probe = new(actual));
+                var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+                await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var state = runtime.Coordinator.LoadCreationSkills().Value!;
+                var source = CreationSkillsPhoneAuthority.AvailableActiveSkills(state).First();
+                string token = new(source.SourceSkillId.ToLowerInvariant()
+                    .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+                var page = new CreationSkillsPage(runtime.Coordinator, state);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                Border Card() => MinimalVisible(page).OfType<Border>().Single(x => x.AutomationId == "creation-skill-" + token);
+                Button Plus() => ((VerticalStackLayout)Card().Content!).Children.OfType<HorizontalStackLayout>()
+                    .Single().Children.OfType<Button>().Single(x => x.Text == "+");
+                CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
+                    .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Plus()).SendClicked()));
+                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                var rows = body.Children.ToArray();
+                var plus = Plus();
+                string initial = JsonSerializer.Serialize(Draft().Skills);
+                int loads = probe!.LoadCalls, previews = probe.PreviewCalls, confirms = probe.ConfirmCalls;
+                using var release = new ManualResetEventSlim();
+                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                probe.BeforePreview = () =>
+                {
+                    entered.TrySetResult();
+                    Require(release.Wait(TimeSpan.FromSeconds(10)), "Skills preview was not released.");
+                    if (outcome == "error") throw new InvalidOperationException("private-skills-error");
+                    if (outcome == "cancel") throw new OperationCanceledException();
+                };
+                Task pending = ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked());
+                try
+                {
+                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    Require(!pending.IsCompleted && !plus.IsEnabled && plus.Text == "…"
+                        && rows.SequenceEqual(body.Children) && JsonSerializer.Serialize(Draft().Skills) == initial,
+                        "Pending Skills calculation replaced controls, hid feedback or optimistically spent points.");
+                    ((IButtonController)plus).SendClicked();
+                    MinimalRender(page);
+                    var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ => heartbeat.SetResult(), null);
+                    await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                    // The admitted preview retains its one fresh Core load;
+                    // duplicate taps and renders must not add another one.
+                    Require(probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads + 1
+                        && rows.SequenceEqual(body.Children), "Duplicate tap/render repeated Skills reads or blocked the UI.");
+                    if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
+                    if (outcome == "owner-aba")
+                    {
+                        var owner = owners.Current;
+                        owners.Set(ContactsOwnerB);
+                        owners.Set(owner);
+                    }
+                }
+                finally
+                {
+                    release.Set();
+                    try { await JoinIssuedPageAsync(pending); }
+                    finally { probe.BeforePreview = null; }
+                }
+                if (outcome == "ready")
+                    Require(rows.SequenceEqual(body.Children) && plus.IsEnabled && plus.Text == "+"
+                        && Draft().Skills.Single(x => x.Kind == source.Kind && x.SourceSkillId == source.SourceSkillId).Rating == 2
+                        && probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads + 1,
+                        "Successful Skills preview did not retain the same controls with a fresh Core result.");
+                else
+                {
+                    Require(JsonSerializer.Serialize(Draft().Skills) == initial && !plus.IsEnabled,
+                        "A failed, departed or owner-stale Skills preview changed the draft: " + outcome);
+                    Require(!MinimalVisibleText(page).Contains("private-skills-error", StringComparison.Ordinal),
+                        "Skills error exposed raw exception text.");
+                    if (outcome is "error" or "cancel")
+                    {
+                        var retry = Plus();
+                        Require(retry.IsEnabled && !ReferenceEquals(retry, plus), "Skills error stranded the controls.");
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked()));
+                        Require(Draft().Skills.Single(x => x.Kind == source.Kind && x.SourceSkillId == source.SourceSkillId).Rating == 2,
+                            "A fresh guarded Skills retry failed.");
+                    }
+                }
+                Require(probe.ConfirmCalls == confirms, "Skills rating preview dispatched a save.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                if (outcome != "leave") IssuedPageLifecycle(page, "OnDisappearing");
+            }
+        });
+        Console.WriteLine("PASS Skills stable controls, fresh preview, duplicate tap, UI heartbeat, failure recovery, departure and owner ABA");
+    }
+
+    private sealed class SkillsRatingProbe(IOwnerBoundCharacterCreationSkillsService inner)
+        : IOwnerBoundCharacterCreationSkillsService
+    {
+        public int LoadCalls, PreviewCalls, ConfirmCalls;
+        public Action? BeforePreview;
+        public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request)
+        { Interlocked.Increment(ref LoadCalls); return inner.Load(owner, request); }
+        public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(OwnerContextStamp owner, CharacterCreationSkillsPreviewRequest request)
+        { Interlocked.Increment(ref PreviewCalls); BeforePreview?.Invoke(); return inner.Preview(owner, request); }
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request)
+        { Interlocked.Increment(ref ConfirmCalls); return inner.Confirm(owner, request); }
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)

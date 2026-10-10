@@ -20,6 +20,10 @@ public sealed class CreationSkillsPage : NativePageBase
     private int _activeCatalogOffset;
     private int _knowledgeCatalogOffset;
     private long _renderGeneration;
+    private CancellationTokenSource? _ratingPreparation;
+    private readonly List<Action> _projectionUpdates = [];
+    private readonly List<Func<bool>> _ratingShapeChecks = [];
+    private readonly List<Button> _ratingButtons = [];
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
@@ -34,7 +38,11 @@ public sealed class CreationSkillsPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_ratingPreparation is not null) return;
         _renderGeneration++;
+        _projectionUpdates.Clear();
+        _ratingShapeChecks.Clear();
+        _ratingButtons.Clear();
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
@@ -77,10 +85,9 @@ public sealed class CreationSkillsPage : NativePageBase
             _body.Add(CreateReviewButton(state, "creation-skills-review-top"));
         }
         AddBinding(state);
-        CharacterCreationSkillsPreview? projection = _draft.Preview;
-        AddBudget(projection?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active", CharacterCreationBudgetIds.ActiveSkills);
-        AddBudget(projection?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups", CharacterCreationBudgetIds.SkillGroups);
-        AddBudget(projection?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge", CharacterCreationBudgetIds.KnowledgeSkills);
+        AddBudget(() => _draft.Preview?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active", CharacterCreationBudgetIds.ActiveSkills);
+        AddBudget(() => _draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups", CharacterCreationBudgetIds.SkillGroups);
+        AddBudget(() => _draft.Preview?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge", CharacterCreationBudgetIds.KnowledgeSkills);
         if (!CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State) || !_draft.Matches(state, Coordinator.State))
         {
             AddBlockers(state.Blockers);
@@ -99,6 +106,13 @@ public sealed class CreationSkillsPage : NativePageBase
             CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"),
             "knowledge");
         AddReview(state);
+    }
+
+    protected override void OnDisappearing()
+    {
+        _ratingPreparation?.Cancel();
+        _ratingPreparation = null;
+        base.OnDisappearing();
     }
 
     private void AddNativeLanguage(CharacterCreationSkillsState state)
@@ -168,21 +182,30 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(binding);
     }
 
-    private void AddBudget(CharacterCreationBudgetState budget, string token, string canonicalBudgetId)
+    private void AddBudget(Func<CharacterCreationBudgetState> readBudget, string token, string canonicalBudgetId)
     {
+        var budget = readBudget();
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)));
-        card.Add(NativeTheme.Title(CreationAllocationStrings.Format(
-            "Skills.BudgetLeft",
-            "{0} left",
-            budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)), 20));
-        card.Add(NativeTheme.Body(
-            CreationAllocationStrings.Format(
+        Label remaining = NativeTheme.Title(string.Empty, 20);
+        Label used = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        void Update()
+        {
+            var current = readBudget();
+            remaining.Text = CreationAllocationStrings.Format(
+                "Skills.BudgetLeft",
+                "{0} left",
+                current.Remaining.ToString("0.##", CultureInfo.CurrentCulture));
+            used.Text = CreationAllocationStrings.Format(
                 "Skills.BudgetUsed",
                 "{0} / {1} points",
-                budget.Used.ToString("0.##", CultureInfo.CurrentCulture),
-                budget.Total.ToString("0.##", CultureInfo.CurrentCulture)),
-            NativeTheme.Muted));
+                current.Used.ToString("0.##", CultureInfo.CurrentCulture),
+                current.Total.ToString("0.##", CultureInfo.CurrentCulture));
+        }
+        Update();
+        _projectionUpdates.Add(Update);
+        card.Add(remaining);
+        card.Add(used);
         Border border = NativeTheme.Card(card);
         border.AutomationId = $"creation-skills-budget-{token}";
         _body.Add(border);
@@ -223,17 +246,32 @@ public sealed class CreationSkillsPage : NativePageBase
         {
             CharacterCreationSkillAllocation? selected = _draft.Skills.SingleOrDefault(item =>
                 item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
+            CharacterCreationSkillAllocation? CurrentSelection() => _draft.Skills.SingleOrDefault(item =>
+                item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
+            bool hasSpecialization = source.Specializations.Count > 0
+                && selected is { Rating: > 0, IsNativeLanguage: false };
+            bool isNative = selected?.IsNativeLanguage == true;
+            _ratingShapeChecks.Add(() => isNative == (CurrentSelection()?.IsNativeLanguage == true)
+                && hasSpecialization == (source.Specializations.Count > 0
+                    && CurrentSelection() is { Rating: > 0, IsNativeLanguage: false }));
             VerticalStackLayout card = new() { Spacing = 7 };
             card.Add(NativeTheme.Title(SkillCatalogStrings.SkillName(source.Kind, source.SourceSkillId, source.Name), 18));
-            card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
+            Label detail = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+            void UpdateDetail()
+            {
+                selected = CurrentSelection();
+                detail.Text = CreationAllocationStrings.Format(
                     "Skills.SkillDetail",
                     "{0} · {1} · rating {2}",
                     SkillCatalogStrings.CategoryName(source.Category),
                     CreationAllocationStrings.AttributeName(source.DefaultAttribute),
                     selected?.IsNativeLanguage == true
                         ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
-                        : (selected?.Rating ?? 0).ToString(CultureInfo.CurrentCulture)),
-                NativeTheme.Muted));
+                        : (selected?.Rating ?? 0).ToString(CultureInfo.CurrentCulture));
+            }
+            UpdateDetail();
+            _projectionUpdates.Add(UpdateDetail);
+            card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
@@ -241,17 +279,12 @@ public sealed class CreationSkillsPage : NativePageBase
                 "−"));
             minus.IsEnabled = selected is { IsNativeLanguage: false }
                 && selected.Rating > _draft.MinimumRating(source);
-            minus.Clicked += async (_, _) => await PreviewAsync(
-                state,
-                _draft.WithSkill(source, -1),
-                _draft.Groups);
+            BindRatingAdjustment(minus, state, () => _draft.WithSkill(source, -1), () => _draft.Groups,
+                () => CurrentSelection() is { IsNativeLanguage: false } value && value.Rating > _draft.MinimumRating(source));
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            plus.Clicked += async (_, _) => await PreviewAsync(
-                state,
-                _draft.WithSkill(source, 1),
-                _draft.Groups);
+            BindRatingAdjustment(plus, state, () => _draft.WithSkill(source, 1), () => _draft.Groups, () => true);
             controls.Add(minus); controls.Add(plus);
             if (source.CanBeNativeLanguage)
             {
@@ -281,6 +314,7 @@ public sealed class CreationSkillsPage : NativePageBase
         previous.IsEnabled = offset > 0;
         previous.Clicked += (_, _) =>
         {
+            if (_ratingPreparation is not null) return;
             SetCatalogOffset(
                 catalogToken,
                 CreationSkillsCatalogPaging.PreviousOffset(offset, CatalogPageSize));
@@ -294,6 +328,7 @@ public sealed class CreationSkillsPage : NativePageBase
         next.IsEnabled = end < catalog.Count;
         next.Clicked += (_, _) =>
         {
+            if (_ratingPreparation is not null) return;
             SetCatalogOffset(
                 catalogToken,
                 CreationSkillsCatalogPaging.NextOffset(offset, catalog.Count, CatalogPageSize));
@@ -331,28 +366,31 @@ public sealed class CreationSkillsPage : NativePageBase
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
             VerticalStackLayout card = new() { Spacing = 6 };
             card.Add(NativeTheme.Title(SkillCatalogStrings.GroupName(source.Name), 18));
-            card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
-                "Skills.GroupDetail",
-                "Rating {0} · {1} skills",
-                selected?.Rating ?? 0,
-                source.MemberSkillSourceIds.Count), NativeTheme.Muted));
+            Label detail = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+            void UpdateDetail()
+            {
+                selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
+                detail.Text = CreationAllocationStrings.Format(
+                    "Skills.GroupDetail",
+                    "Rating {0} · {1} skills",
+                    selected?.Rating ?? 0,
+                    source.MemberSkillSourceIds.Count);
+            }
+            UpdateDetail();
+            _projectionUpdates.Add(UpdateDetail);
+            card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Decrease",
                 "−"));
             minus.IsEnabled = selected?.Rating > _draft.MinimumRating(source);
-            minus.Clicked += async (_, _) => await PreviewAsync(
-                state,
-                _draft.Skills,
-                _draft.WithGroup(source, -1));
+            BindRatingAdjustment(minus, state, () => _draft.Skills, () => _draft.WithGroup(source, -1),
+                () => _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating > _draft.MinimumRating(source));
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            plus.Clicked += async (_, _) => await PreviewAsync(
-                state,
-                _draft.Skills,
-                _draft.WithGroup(source, 1));
+            BindRatingAdjustment(plus, state, () => _draft.Skills, () => _draft.WithGroup(source, 1), () => true);
             controls.Add(minus); controls.Add(plus); card.Add(controls);
             _body.Add(NativeTheme.Card(card));
         }
@@ -400,6 +438,10 @@ public sealed class CreationSkillsPage : NativePageBase
             && picker.SelectedIndex <= options.Length && picker.SelectedIndex != currentIndex;
         long renderGeneration = _renderGeneration;
         long appearanceGeneration = CaptureAppearanceGeneration();
+        // Rating-only previews retain this picker and any unsubmitted selection.
+        // Refresh only its accepted allocation, never its pending SelectedIndex.
+        _projectionUpdates.Add(() => selected = _draft.Skills.Single(item =>
+            item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId));
         choose.Clicked += async (_, _) =>
         {
             int index = picker.SelectedIndex;
@@ -418,6 +460,59 @@ public sealed class CreationSkillsPage : NativePageBase
         };
         card.Add(picker);
         card.Add(choose);
+    }
+
+    private void BindRatingAdjustment(Button button, CharacterCreationSkillsState state,
+        Func<IReadOnlyList<CharacterCreationSkillAllocation>> skills,
+        Func<IReadOnlyList<CharacterCreationSkillGroupAllocation>> groups, Func<bool> enabled)
+    {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        string label = button.Text;
+        void Update() => button.IsEnabled = enabled();
+        Update();
+        _projectionUpdates.Add(Update);
+        _ratingButtons.Add(button);
+        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(async () =>
+        {
+            bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+                && Coordinator.IsCreationSkillsStateCurrent(state) && _draft.Matches(state, Coordinator.State);
+            if (!button.IsEnabled || !Current()) return false;
+            var requestedSkills = skills().ToArray();
+            var requestedGroups = groups().ToArray();
+            var original = Coordinator.State;
+            using var lifetime = new CancellationTokenSource();
+            _ratingPreparation = lifetime;
+            foreach (var control in _ratingButtons) control.IsEnabled = false;
+            button.Text = "…";
+            try
+            {
+                var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                    () => Coordinator.PreviewCreationSkills(state.Binding, requestedSkills, requestedGroups), lifetime.Token), lifetime.Token);
+                lifetime.Token.ThrowIfCancellationRequested();
+                if (!Current()) return false;
+                bool adopted = _draft.TryAdopt(state, Coordinator.State, result, requestedSkills, requestedGroups);
+                bool sameBlockers = _blockers.SequenceEqual(result.Blockers);
+                _blockers = result.Blockers;
+                // Preserve controls only when Core accepted the proposal and
+                // no native-language, specialization or warning surface changes.
+                if (!adopted || !sameBlockers || !_ratingShapeChecks.All(check => check())) return true;
+                foreach (var update in _projectionUpdates) update();
+                return false;
+            }
+            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { return false; }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                if (!IsCurrentAppearanceGeneration(appearance)) return false;
+                _blockers = [CharacterCreationSkillsBlockers.AuthorityUnavailable];
+                return true;
+            }
+            finally
+            {
+                button.Text = label;
+                if (ReferenceEquals(_ratingPreparation, lifetime)) _ratingPreparation = null;
+            }
+        });
     }
 
     private async Task PreviewAsync(
