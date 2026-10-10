@@ -2843,7 +2843,8 @@ public sealed class BuildPage : NativePageBase
             routes[stage.StepId] = new(contactsPrerequisite?.Title ?? StageLabel(snapshot, stage.StepId), detail, canOpen, selected,
                 contactsStage ? stage.Blockers.Concat(creationContacts?.Blockers ?? [])
                     .Distinct(StringComparer.Ordinal).ToArray() : stage.Blockers,
-                canOpenMagicResonance ? budgetId => OpenCreationMagicResonanceAsync(budgetId) : null);
+                canOpenAttributes ? budgetId => OpenCreationAttributesAsync(attributes!.Value!, budgetId)
+                : canOpenMagicResonance ? budgetId => OpenCreationMagicResonanceAsync(budgetId) : null);
             Border row = CreationNavigationRow(
                 StageLabel(snapshot, stage.StepId),
                 detail,
@@ -3276,8 +3277,8 @@ public sealed class BuildPage : NativePageBase
             ? Navigation.PushAsync(new CreationPrerequisitePage(Coordinator, authority))
             : Task.CompletedTask;
 
-    private Task OpenCreationAttributesAsync(CharacterCreationAttributesState authority)
-        => Navigation.PushAsync(new CreationAttributesPage(Coordinator, authority));
+    private Task OpenCreationAttributesAsync(CharacterCreationAttributesState authority, string? budgetId = null)
+        => Navigation.PushAsync(new CreationAttributesPage(Coordinator, authority, budgetId));
 
     private Task OpenCreationSkillsAsync(CharacterCreationSkillsState authority)
         => Navigation.PushAsync(new CreationSkillsPage(Coordinator, authority));

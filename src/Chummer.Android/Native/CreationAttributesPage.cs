@@ -29,16 +29,59 @@ public sealed class CreationAttributesPage : NativePageBase
     private IReadOnlyList<CharacterCreationAttributeProjection> _renderedAttributes = [];
     private string? _expandedAttributeId;
     private Grid? _expandedKarmaOptions;
+    private readonly CharacterCreationAttributesState? _budgetFocusAuthority;
+    private string? _pendingBudgetId;
+    private Label? _budgetFocusTarget;
+    private Label? _queuedFocusTarget;
+    private long _renderGeneration;
 
     public CreationAttributesPage(
         RunnerSessionCoordinator coordinator,
-        CharacterCreationAttributesState? authority = null) : base(coordinator)
+        CharacterCreationAttributesState? authority = null,
+        string? budgetId = null) : base(coordinator)
     {
         _authority = authority;
         _revalidationAuthority = authority;
+        _budgetFocusAuthority = authority;
+        _pendingBudgetId = budgetId is CharacterCreationBudgetIds.NormalAttributes
+            or CharacterCreationBudgetIds.SpecialAttributes ? budgetId : null;
         Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
         Content = _scroll = new ScrollView { Content = _body };
+        _scroll.SizeChanged += (_, _) => QueueBudgetFocus();
+        _scroll.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ScrollView.ContentSize)) QueueBudgetFocus();
+        };
+    }
+
+    private void QueueBudgetFocus()
+    {
+        if (_pendingBudgetId is null || _budgetFocusTarget is not { } target
+            || ReferenceEquals(_queuedFocusTarget, target)) return;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _renderGeneration;
+        _queuedFocusTarget = target;
+        if (!Dispatcher.Dispatch(async () =>
+        {
+            if (ReferenceEquals(_queuedFocusTarget, target)) _queuedFocusTarget = null;
+            if (_pendingBudgetId is null || render != _renderGeneration
+                || !ReferenceEquals(_budgetFocusTarget, target)
+                || !ReferenceEquals(target.Parent, _body)
+                || !IsCurrentAppearanceGeneration(appearance)
+                || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                || _budgetFocusAuthority is not { } original || _authority is not { } current
+                || !Coordinator.IsCreationAttributesStateCurrent(original)
+                || !Coordinator.IsCreationAttributesStateCurrent(current)
+                || !CreationAttributesPhoneAuthority.IsReady(current, Coordinator.State)
+                || target.Height <= 0 || _scroll.Height <= 0 || _scroll.ContentSize.Height <= 0) return;
+            _pendingBudgetId = null;
+            try { await _scroll.ScrollToAsync(target, ScrollToPosition.Start, animated: false); }
+            catch (InvalidOperationException)
+            {
+                System.Diagnostics.Debug.WriteLine("Attribute budget focus unavailable after navigation.");
+            }
+        })) _queuedFocusTarget = null;
     }
 
     protected override void Refresh()
@@ -46,6 +89,9 @@ public sealed class CreationAttributesPage : NativePageBase
         // Keep the pressed review control visible while its read runs off-thread.
         // The action gate excludes other mutations; leaving cancels this read.
         if (_reviewPreparation is not null || _inlinePreparation is not null) return;
+        ++_renderGeneration;
+        _budgetFocusTarget = null;
+        _queuedFocusTarget = null;
         _reviewButton = null;
         _inlineButtons.Clear();
         _projectionUpdates.Clear();
@@ -122,10 +168,16 @@ public sealed class CreationAttributesPage : NativePageBase
         AddPendingDraft(state.PendingDraft);
         AddLimits(state);
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-details"));
+        QueueBudgetFocus();
     }
 
     protected override void OnDisappearing()
     {
+        // A dashboard hint is only for first entry, not a later return from
+        // Review or an app resume. Late layouts cannot revive that request.
+        _pendingBudgetId = null;
+        _budgetFocusTarget = null;
+        _queuedFocusTarget = null;
         _inlinePreparation?.Cancel();
         _inlinePreparation = null;
         var pending = _reviewPreparation;
@@ -236,6 +288,14 @@ public sealed class CreationAttributesPage : NativePageBase
             _specialAttributesHeading = heading;
         }
         _body.Add(heading);
+        if ((_pendingBudgetId == CharacterCreationBudgetIds.NormalAttributes
+                && category == CharacterCreationAttributeCategories.Normal)
+            || (_pendingBudgetId == CharacterCreationBudgetIds.SpecialAttributes
+                && category == CharacterCreationAttributeCategories.Special))
+        {
+            _budgetFocusTarget = heading;
+            heading.SizeChanged += (_, _) => QueueBudgetFocus();
+        }
         if (category == CharacterCreationAttributeCategories.Special)
             _body.Add(NativeTheme.Body(CreationAllocationStrings.Get(
                 "Attributes.SpecialHelp",

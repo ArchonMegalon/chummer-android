@@ -181,6 +181,9 @@ internal static partial class AfterRunAuthorityHarness
             var stages = typeof(BuildPage).GetMethod("AddWizardStages", BindingFlags.Instance | BindingFlags.NonPublic)!;
             var routes = (IReadOnlyDictionary<string, CreationBudgetRoute>)stages.Invoke(page,
                 [snapshot, null, null, attributes, skills, null, resources, readiness])!;
+            var attributeRoute = routes[CharacterCreationWizardStepIds.Attributes];
+            Require(attributeRoute.CanOpen && attributeRoute.OpenForBudget is not null,
+                "The admitted Attributes route lost its normal/special section hint.");
             // Feed the real shared stage routes to the budget cards. Generic
             // budget readiness is not a grant to a different destination.
             var pending = new CreationDashboardRenderReadiness(
@@ -195,6 +198,18 @@ internal static partial class AfterRunAuthorityHarness
                 Require(i < 2 ? nav.Navigation.NavigationStack.Last() is CreationAttributesPage
                     : nav.Navigation.NavigationStack.Last() is CreationSkillsPage,
                     $"Budget {ids[i]} did not open its actual typed editor.");
+                if (nav.CurrentPage is CreationAttributesPage attributePage)
+                    await AssertAttributeBudgetFocusAsync(ui, attributePage,
+                        i == 0 ? "creation-attributes-normal-heading" : "creation-attributes-special-heading");
+                await nav.PopAsync(false);
+            }
+            // Opening the general stage (or an unrelated budget hint) must
+            // retain the ordinary top-of-page entry rather than guessing.
+            foreach (bool ordinary in new[] { true, false })
+            {
+                if (ordinary) await attributeRoute.Open();
+                else await attributeRoute.OpenBudgetAsync("unknown-budget");
+                await AssertAttributeBudgetFocusAsync(ui, (CreationAttributesPage)nav.CurrentPage, null);
                 await nav.PopAsync(false);
             }
             // Resources remains generically inexact before the typed overlay.
@@ -216,7 +231,30 @@ internal static partial class AfterRunAuthorityHarness
             await ui.BeginAsyncVoid(() => ((IButtonController)dependencyButton).SendClicked());
             Require(nav.Navigation.NavigationStack.Last() is CreationAttributesPage,
                 "A blocked Qualities/Karma budget did not lead to its missing Attributes prerequisite.");
+            await AssertAttributeBudgetFocusAsync(ui, (CreationAttributesPage)nav.CurrentPage, null);
             await nav.PopAsync(false);
+            foreach (string interruption in new[] { "departure", "covered", "owner-aba" })
+            {
+                await attributeRoute.OpenBudgetAsync(CharacterCreationBudgetIds.SpecialAttributes);
+                var attributePage = (CreationAttributesPage)nav.CurrentPage;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(attributePage, "OnAppearing")));
+                var scroll = (ScrollView)attributePage.Content!;
+                int requests = 0;
+                ((IScrollViewController)scroll).ScrollToRequested += (_, _) =>
+                {
+                    requests++;
+                    ((IScrollViewController)scroll).SendScrollFinished();
+                };
+                LayoutAttributeBudgetPage(attributePage);
+                if (interruption == "departure") IssuedPageLifecycle(attributePage, "OnDisappearing");
+                else if (interruption == "covered") await nav.PushAsync(new ContentPage(), false);
+                else { owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA); }
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(requests == 0, "A queued attribute jump survived " + interruption);
+                if (interruption == "covered") await nav.PopAsync(false);
+                IssuedPageLifecycle(attributePage, "OnDisappearing");
+                await nav.PopAsync(false);
+            }
             // The card is retained across an A→B→A switch. Matching names must
             // not revive the old click or navigate to another runner's editor.
             owners.Set(ContactsOwnerB);
@@ -231,6 +269,45 @@ internal static partial class AfterRunAuthorityHarness
             "Rendering mixed budget families changed the saved runner.");
         Console.WriteLine("PASS budget list: one flat card, accessible full-row buttons, no repeated action copy, typed family readiness, actual editors, stale owner rejection, saved bytes unchanged");
         await VerifySavedQualitiesKarmaBudgetAsync(contentRoot);
+    }
+
+    private static void LayoutAttributeBudgetPage(CreationAttributesPage page)
+    {
+        var scroll = (ScrollView)page.Content!;
+        ((IView)scroll).Arrange(new Microsoft.Maui.Graphics.Rect(0, 0, 400, 600));
+        foreach (var heading in ((VerticalStackLayout)scroll.Content!).Children.OfType<Label>()
+            .Where(label => label.AutomationId is "creation-attributes-normal-heading" or "creation-attributes-special-heading"))
+            ((IView)heading).Arrange(new Microsoft.Maui.Graphics.Rect(0,
+                heading.AutomationId == "creation-attributes-normal-heading" ? 500 : 1600, 400, 90));
+        typeof(ScrollView).GetProperty(nameof(ScrollView.ContentSize))!.SetValue(scroll,
+            new Microsoft.Maui.Graphics.Size(400, 3000));
+    }
+
+    private static async Task AssertAttributeBudgetFocusAsync(IssuedPageUiContext ui,
+        CreationAttributesPage page, string? expected)
+    {
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+        var scroll = (ScrollView)page.Content!;
+        var requests = new List<Element?>();
+        ((IScrollViewController)scroll).ScrollToRequested += (_, request) =>
+        {
+            requests.Add(request.Element);
+            ((IScrollViewController)scroll).SendScrollFinished();
+        };
+        LayoutAttributeBudgetPage(page);
+        MinimalRender(page);
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(requests.Count == 0, "An old or unlaid-out Attributes heading received focus.");
+        LayoutAttributeBudgetPage(page);
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(expected is null ? requests.Count == 0
+                : requests.Count == 1 && requests[0]?.AutomationId == expected,
+            "Attributes budget did not focus its current exact section: " + expected);
+        MinimalRender(page);
+        LayoutAttributeBudgetPage(page);
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(requests.Count == (expected is null ? 0 : 1), "Attributes refreshed back to an already-consumed budget hint.");
+        IssuedPageLifecycle(page, "OnDisappearing");
     }
 
     private static IEnumerable<Border> CreationBudgetRows(VerticalStackLayout body)
