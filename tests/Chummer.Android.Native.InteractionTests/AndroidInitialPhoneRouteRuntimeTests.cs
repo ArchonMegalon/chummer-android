@@ -364,6 +364,60 @@ internal static partial class AfterRunAuthorityHarness
         await RunEmptyAndUnknownInitialPhoneRouteCasesAsync(contentRoot);
     }
 
+    // Opt-in diagnostic using copied synthetic workspace records. Never open
+    // the source store for mutation or include its contents in diagnostic logs.
+    public static async Task RunSavedRosterStartupAsync(string contentRoot, string fixtureDirectory, string selectedId)
+    {
+        Require(Guid.TryParseExact(selectedId, "N", out _), "Expected a synthetic workspace ID.");
+        string[] files = Directory.GetFiles(fixtureDirectory, "*.json");
+        Require(files.Length is > 0 and <= 20, "Expected a bounded synthetic roster.");
+        int rosterReads = 0;
+        var owners = new ControlledLinkedOwner();
+        owners.Set(OwnerScope.LocalSingleUser);
+        var metrics = new List<BootstrapProductionStage>();
+        await using var runtime = new NativeRewardRuntime(contentRoot,
+            productionCreationOverview: true, linkedOwners: owners,
+            finalizationDecorator: actual => new ProductionFinalizationLoadProbe(actual, owners.Capture(), metrics),
+            foundationReaderDecorator: actual => new StartupFoundationOverviewProbe(actual, owners.Capture(), metrics),
+            beforeShellWorkspaceList: () => Interlocked.Increment(ref rosterReads));
+        string destination = Path.Combine(runtime.StateDirectory, "workspaces");
+        Directory.CreateDirectory(destination);
+        var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string path in files)
+        {
+            string name = Path.GetFileName(path);
+            Require(Guid.TryParseExact(Path.GetFileNameWithoutExtension(path), "N", out _)
+                && new FileInfo(path).LinkTarget is null, "Expected regular synthetic workspace records.");
+            hashes.Add(name, Hash(path));
+            File.Copy(path, Path.Combine(destination, name), overwrite: false);
+        }
+        Require(hashes.ContainsKey(selectedId + ".json"), "Selected fixture is absent from the roster.");
+        runtime.Settings.Set("chummer.android.selected-workspace.v1", selectedId);
+        Require(runtime.Presenter.State.Profile is null, "Saved fixture was warmed before startup.");
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        await runtime.Coordinator.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(20));
+        await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+        var state = runtime.Coordinator.State;
+        Console.WriteLine($"Saved synthetic roster: count={files.Length}, rosterReads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
+        foreach (var metric in metrics)
+            Console.WriteLine("STARTUP_PRODUCTION_STAGE " + JsonSerializer.Serialize(metric));
+        Require(state is { IsBusy: false, Error: null, Profile: not null }
+            && state.WorkspaceId?.Value == selectedId && state.DisplayOwnerContext == owners.Capture()
+            && state.OpenWorkspaces.Count == files.Length && rosterReads == 1
+            && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Ready,
+            "Saved roster startup lost a runner, selection, owner, readiness or one-read bound.");
+        foreach (var (name, hash) in hashes)
+            Require(Hash(Path.Combine(destination, name)) == hash && Hash(Path.Combine(fixtureDirectory, name)) == hash,
+                "Read-only startup changed a saved fixture or the retained source bytes.");
+        Console.WriteLine("PASS exact saved roster restore: selected owner-bound runner, no saved-byte changes");
+
+        static string Hash(string path)
+        {
+            using var stream = File.OpenRead(path);
+            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+        }
+    }
+
     public static async Task RunStartupShellReuseAsync(string contentRoot)
     {
         foreach (var (method, created) in new[]
