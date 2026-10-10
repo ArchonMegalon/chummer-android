@@ -132,7 +132,18 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 172 is the latest [observed Internal availability](../play/evidence/preview172-internal-observation.md),
+Preview 173 is the latest [observed Internal availability](../play/evidence/preview173-internal-observation.md),
+confirmed on 10 October around 10:29 Europe/Vienna (Play displayed 10:28).
+Priority/Sum-to-Ten hide unrelated inactive Foundation/Life Modules cards while
+required, available and warned steps remain visible. Focused managed checks,
+native Continue-to-Skills and new-process reopen passed with four workspace
+files and saved settings unchanged. Local ARM64 build, original-key signing,
+independent keyless verification and one Internal upload/readback passed.
+**Physical Play 173 installation, real tester-incident capture, faster cold
+startup and complete Creation/Career remain unverified.** Version173 is consumed;
+previous evidence and rollback artifacts remain unchanged.
+
+Preview 172's [observed Internal availability](../play/evidence/preview172-internal-observation.md),
 confirmed on 10 October at 09:25 Europe/Vienna. Creation now offers one admitted
 Continue action, compact Attribute budgets and inline Karma controls; technical
 diagnostics live only in Settings as a native switch. Focused checks and native
