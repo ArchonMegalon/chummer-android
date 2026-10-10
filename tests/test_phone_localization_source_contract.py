@@ -59,7 +59,7 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         initialize = program.index("PhoneLocalePolicy.InitializeFromPreferences(")
         materialize = program.index("AndroidBundledContentMaterializer.Materialize()")
-        build = program.index("return builder.Build()")
+        build = program.index("builder.Build()")
         self.assertLess(initialize, materialize)
         self.assertLess(initialize, build)
 
@@ -151,12 +151,13 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
         source = (PROJECT / "Native" / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         for canonical in ("ActiveSkills", "SkillGroups", "KnowledgeSkills"):
             self.assertEqual(2, source.count("CharacterCreationBudgetIds." + canonical))
-        self.assertEqual(2, source.count("BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)"))
+        self.assertEqual(2, source.count("CreationSkillsBudgetRow.Create("))
+        self.assertEqual(1, source.count("BuildPageUiProjection.BudgetLabel(readBudget(), canonicalBudgetId)"))
         self.assertNotIn("budget.Label", source)
         self.assertIn("CreationAllocationStrings.AttributeName(source.DefaultAttribute)", source)
         self.assertIn('Token(budget.BudgetId)', source)
-        self.assertIn('budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)', source)
-        self.assertNotIn('budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)', source)
+        self.assertIn('current.Remaining.ToString("0.##", CultureInfo.CurrentCulture)', source)
+        self.assertNotIn('current.Remaining.ToString("0.##", CultureInfo.InvariantCulture)', source)
         for field in ("ActivePointsRemaining", "SkillGroupPointsRemaining", "KnowledgePointsRemaining"):
             self.assertIn(f"receipt.{field}.ToString(CultureInfo.CurrentCulture)", source)
 
