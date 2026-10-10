@@ -622,6 +622,32 @@ internal static partial class AfterRunAuthorityHarness
 
     private static void AssertCreationReadinessCopy(RunnerSessionCoordinator coordinator)
     {
+        var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (var copy in new[]
+            {
+                (Locale: "en", Warning: "Experimental — not fully tested.",
+                    Locked: "Locked because Attributes are saved. Continue with the next step."),
+                (Locale: "de", Warning: "Experimentell — noch nicht vollständig geprüft.",
+                    Locked: "Durch gespeicherte Attribute gesperrt. Fahre mit dem nächsten Schritt fort."),
+                (Locale: "es", Warning: "Experimental — aún no verificado por completo.",
+                    Locked: "Bloqueado por los atributos guardados. Continúa con el siguiente paso.")
+            })
+            {
+                var culture = System.Globalization.CultureInfo.GetCultureInfo(copy.Locale);
+                System.Globalization.CultureInfo.CurrentUICulture = culture;
+                Require(CurrentPhoneWizardScope.MarkExperimental("25 / 25", culture)
+                        == "25 / 25 · " + copy.Warning
+                    && CurrentPhoneWizardScope.MarkExperimental("25 / 25")
+                        == "25 / 25 · " + copy.Warning,
+                    "Concise preview copy lost values, qualification or the selected language.");
+                Require(CreationFlowStrings.DashboardBlocker(
+                        "creation-prerequisite-dependent-attributes-draft-exists") == copy.Locked,
+                    "Locked Build method lost its concise reason or next action.");
+            }
+        }
+        finally { System.Globalization.CultureInfo.CurrentUICulture = originalCulture; }
         var snapshot = coordinator.State.CreationWizard! with
         {
             CompletionBlockers = ["creation-finalization-attributes-draft-required",
