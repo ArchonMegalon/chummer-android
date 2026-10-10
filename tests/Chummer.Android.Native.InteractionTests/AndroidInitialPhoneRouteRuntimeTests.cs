@@ -375,9 +375,10 @@ internal static partial class AfterRunAuthorityHarness
         var owners = new ControlledLinkedOwner();
         owners.Set(OwnerScope.LocalSingleUser);
         var metrics = new List<BootstrapProductionStage>();
+        StartupFinalizationOverviewProbe? finalization = null;
         await using var runtime = new NativeRewardRuntime(contentRoot,
             productionCreationOverview: true, linkedOwners: owners,
-            finalizationDecorator: actual => new ProductionFinalizationLoadProbe(actual, owners.Capture(), metrics),
+            finalizationDecorator: actual => finalization = new(actual, owners.Capture(), metrics),
             foundationReaderDecorator: actual => new StartupFoundationOverviewProbe(actual, owners.Capture(), metrics),
             beforeShellWorkspaceList: () => Interlocked.Increment(ref rosterReads));
         string destination = Path.Combine(runtime.StateDirectory, "workspaces");
@@ -406,6 +407,9 @@ internal static partial class AfterRunAuthorityHarness
             && state.OpenWorkspaces.Count == files.Length && rosterReads == 1
             && runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind == PhoneInitialRouteReadinessKind.Ready,
             "Saved roster startup lost a runner, selection, owner, readiness or one-read bound.");
+        Require(finalization is { OverviewCalls: 1, LastOverview: not null }
+            && ReferenceEquals(state.CreationFinalization, finalization.LastOverview.Finalization.Value),
+            "Saved Priority roster must exercise the shared Core overview used by the app.");
         foreach (var (name, hash) in hashes)
             Require(Hash(Path.Combine(destination, name)) == hash && Hash(Path.Combine(fixtureDirectory, name)) == hash,
                 "Read-only startup changed a saved fixture or the retained source bytes.");
@@ -433,7 +437,7 @@ internal static partial class AfterRunAuthorityHarness
             var owners = new ControlledLinkedOwner();
             owners.Set(OwnerScope.LocalSingleUser);
             var metrics = new List<BootstrapProductionStage>();
-            ProductionFinalizationLoadProbe? finalization = null;
+            StartupFinalizationOverviewProbe? finalization = null;
             StartupFoundationOverviewProbe? foundation = null;
             await using var runtime = new NativeRewardRuntime(contentRoot,
                 // Exercise the same owner-bound Creation projections as MauiProgram.
@@ -462,9 +466,8 @@ internal static partial class AfterRunAuthorityHarness
             foreach (var metric in metrics)
                 Console.WriteLine("STARTUP_PRODUCTION_STAGE " + JsonSerializer.Serialize(metric));
             bool sharedFoundation = !created && method == CharacterCreationBuildMethods.LifeModules;
-            Require(finalization is not null && finalization.LoadCalls == (created || sharedFoundation ? 0 : 1)
-                    && finalization.ReviewCalls == 0 && finalization.ConfirmCalls == 0 && finalization.LookupCalls == 0,
-                "Cold restore must not duplicate a shared finalization read or execute a finalization action.");
+            Require(finalization is not null && finalization.OverviewCalls == (created || sharedFoundation ? 0 : 1),
+                "Cold restore must preserve the app's shared Core overview composition.");
             Require(foundation is not null && foundation.OverviewCalls == (sharedFoundation ? 1 : 0)
                     && foundation.LoadCalls == 0,
                 "Life Modules must share one Foundation overview read; unrelated methods must not load its catalog.");
@@ -484,13 +487,17 @@ internal static partial class AfterRunAuthorityHarness
                     "Life Modules restore promoted an unevaluated Priority finalization rejection.");
             }
             else if (!created && method == CharacterCreationBuildMethods.Karma)
-                Require(finalization!.LastLoad?.Outcome == CharacterCreationFinalizationOutcomes.Blocked
-                        && finalization.LastLoad.Blockers.Contains(CharacterCreationFinalizationBlockers.BuildMethodUnsupported)
+                Require(finalization!.LastOverview?.Finalization.Outcome == CharacterCreationFinalizationOutcomes.Blocked
+                        && finalization.LastOverview.Finalization.Blockers.Contains(CharacterCreationFinalizationBlockers.BuildMethodUnsupported)
                         && state.CreationFinalization is null,
                     "Karma restore promoted an unsupported Priority finalization projection.");
             else
-                Require(ReferenceEquals(state.CreationFinalization, finalization!.LastLoad?.Value),
-                    "Cold restore discarded or replaced the independently loaded Core finalization projection.");
+                Require(ReferenceEquals(state.CreationFinalization, finalization!.LastOverview?.Finalization.Value),
+                    "Cold restore discarded or replaced the shared Core finalization projection.");
+            if (!created && !sharedFoundation)
+                Require(ReferenceEquals(state.CreationContacts, finalization!.LastOverview!.Contacts.Value)
+                    && ReferenceEquals(state.CreationLifestyles, finalization.LastOverview.Lifestyles.Value),
+                    "Startup must display the exact shared contact and lifestyle projections.");
             Require(state is { IsBusy: false, Error: null, Profile: not null }
                 && state.Profile.Created == created && state.WorkspaceId == imported.Id
                 && state.Profile.BuildMethod == method
@@ -558,6 +565,51 @@ internal static partial class AfterRunAuthorityHarness
             Console.WriteLine("PASS cold runner restore reuses completed owner-bound shell synchronization without mutation");
         }
         await RunStartupShellFailureFallbackAsync(contentRoot);
+    }
+
+    // A decorator that hides this interface silently selects independent reads
+    // in WorkspaceOverviewStateFactory and no longer profiles MauiProgram's path.
+    private sealed class StartupFinalizationOverviewProbe(
+        IOwnerBoundCharacterCreationFinalizationService actual,
+        OwnerContextStamp expectedOwner, List<BootstrapProductionStage> metrics)
+        : IOwnerBoundCharacterCreationFinalizationService, IOwnerBoundCharacterCreationOverviewReader
+    {
+        public int OverviewCalls { get; private set; }
+        public CharacterCreationOverviewRead? LastOverview { get; private set; }
+
+        public CharacterCreationOverviewRead? LoadOverview(OwnerContextStamp owner,
+            CharacterWorkspaceId workspaceId, bool includePriorityDrafts)
+        {
+            Require(owner == expectedOwner, "Shared startup overview recaptured another owner.");
+            OverviewCalls++;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                return LastOverview = ((IOwnerBoundCharacterCreationOverviewReader)actual)
+                    .LoadOverview(owner, workspaceId, includePriorityDrafts);
+            }
+            finally
+            {
+                metrics.Add(new("finalization-shared-overview",
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds));
+            }
+        }
+
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationState> Load(
+            OwnerContextStamp owner, CharacterCreationFinalizationLoadRequest request)
+            => throw new InvalidOperationException("Startup must share its finalization overview read.");
+
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> Review(
+            OwnerContextStamp owner, CharacterCreationFinalizationReviewRequest request)
+            => throw new InvalidOperationException("Startup must not review finalization.");
+
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> Confirm(
+            OwnerContextStamp owner, CharacterCreationFinalizationConfirmRequest request)
+            => throw new InvalidOperationException("Startup must not confirm finalization.");
+
+        public CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> LookupReceipt(
+            OwnerContextStamp owner, CharacterCreationFinalizationReceiptLookupRequest request)
+            => throw new InvalidOperationException("Startup must not look up a finalization receipt.");
     }
 
     private sealed class StartupFoundationOverviewProbe(
