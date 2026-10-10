@@ -635,9 +635,9 @@ internal static partial class AfterRunAuthorityHarness
                     Locked: "Bloqueado por los atributos guardados. Continúa con el siguiente paso.")
             })
             {
-                var culture = System.Globalization.CultureInfo.GetCultureInfo(copy.Locale);
-                System.Globalization.CultureInfo.CurrentUICulture = culture;
-                Require(CurrentPhoneWizardScope.MarkExperimental("25 / 25", culture)
+                var guidanceCulture = System.Globalization.CultureInfo.GetCultureInfo(copy.Locale);
+                System.Globalization.CultureInfo.CurrentUICulture = guidanceCulture;
+                Require(CurrentPhoneWizardScope.MarkExperimental("25 / 25", guidanceCulture)
                         == "25 / 25 · " + copy.Warning
                     && CurrentPhoneWizardScope.MarkExperimental("25 / 25")
                         == "25 / 25 · " + copy.Warning,
