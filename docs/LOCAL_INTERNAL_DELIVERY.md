@@ -142,8 +142,12 @@ runner hashes. The native fixture was unlinked: compact provider-ribbon visuals
 are covered by managed tests, not a native linked-reader observation. The
 version-only delta explicitly reuses those results. Local ARM64 build,
 original-key signing, independent keyless verification and one Internal upload/
-readback passed. **Physical Play 183 installation, real tester-incident intake,
-startup reliability and complete Creation/Career remain unverified.** Initial
+readback passed. A later [physical Play 183 update](../play/evidence/preview183-physical-observation.md)
+verified the installed version and Play certificate, linked-reader compact
+status at font scale 1.3, the exact full stored 2,447-word chapter and illustration
+restoration after a verified new process. No new chapter, decision, export or
+finalization was performed. **Real tester-incident intake, startup reliability
+and complete Creation/Career remain unverified.** Initial
 System/SystemUI stalls remain recorded, not declared fixed. The separate
 uncertain FirstBook successor stays fenced; this release makes no new live
 generation or complete manuscript claim. Version183 is consumed; previous
