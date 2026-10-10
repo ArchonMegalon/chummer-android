@@ -22,13 +22,13 @@ public sealed record Sr5CareerQualityRuntimeAuthority(
     public const string CurrentContractName =
         "chummer.android.sr5-career-quality-runtime/v1";
     public const string CurrentCoreRevision =
-        "c8e7f795d8796ed3b52280fa7a9003e988cd5213";
+        "4e638129e3d8c672adf31e53211dc9c458634ec5";
     public const string CurrentPresentationRevision =
-        "73185db34dc2160370d5c876962800b21b05eac9";
+        "ddcf2f83a3d8ff9fc7052a9ea76966cc485749c3";
     public const string CurrentContentDigest =
-        "d3b319e89c6d212c9914795d91319a14cbaedf83ab6ff7cc532a2c9b124868fa";
+        "97aae8b5e8295e28f636da56690ec5ba43da5679848473ac1335762249661d6a";
     public const string CurrentRuntimeDigest =
-        "1c4d14cffe83c59d237118d8148fea969fdb4d23d059dd33993159b2aed7a2af";
+        "23597bc60af59e85fc2fec1879e86e460fb52dbb47f5aac5b50b2c38413914b2";
 
     public static Sr5CareerQualityRuntimeAuthority Embedded { get; } = new(
         CurrentContractName,

@@ -3474,4 +3474,5 @@
   <data name="Contacts.Field.family" xml:space="preserve"><value>Family</value></data>
   <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Blackmail</value></data>
   <data name="Gear.AvailableCatalog" xml:space="preserve"><value>Only equipment available for this character is shown. Review your basket to check its total cost.</value></data>
+  <data name="Finalization.Progress" xml:space="preserve"><value>{0} of {1} required steps complete</value></data>
 </root>

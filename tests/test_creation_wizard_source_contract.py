@@ -11,6 +11,22 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_compact_readiness_preserves_navigation_and_render_local_warnings(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        dashboard = source.split("private void AddCreationWizardDashboard()", 1)[1].split("private ", 1)[0]
+        self.assertIn("AddWizardStages(", dashboard)
+        self.assertIn("AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute, continueIndex)", dashboard)
+        self.assertIn("var shownCompletionWarnings = new HashSet<string>(StringComparer.Ordinal)", dashboard)
+        self.assertIn("AddFinalizationReviewAction(shownCompletionWarnings)", dashboard)
+        self.assertIn("AddCompletionBlockers(snapshot, shownCompletionWarnings)", dashboard)
+        self.assertIn(".Concat(snapshot.CompletionBlockers)", dashboard)
+        readiness = source.split("private void AddCreationFinalizationStatus(", 1)[1].split("private ", 1)[0]
+        self.assertIn('"creation-finalization-progress"', readiness)
+        self.assertIn("progress.FontAttributes = FontAttributes.Bold", readiness)
+        self.assertIn("diagnostics.Add(row)", readiness)
+        self.assertNotIn("card.Add(row)", readiness)
+        self.assertIn("projection.CanOpenReview", readiness)
+
     def test_refused_workspace_switch_is_visible_without_scrolling_or_auto_save(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         refresh = source.split("protected override void Refresh()", 1)[1].split("private void AddRouteMarker", 1)[0]

@@ -1345,7 +1345,8 @@ public sealed class BuildPage : NativePageBase
         binding.AutomationId = "creation-wizard-binding";
         var diagnosticValues = new VerticalStackLayout { Spacing = 6, Children = { binding } };
         var diagnostics = NativeTheme.TechnicalDetails(diagnosticValues, "creation-wizard-details");
-        foreach (string code in snapshot.Steps.SelectMany(step => step.Blockers).Distinct(StringComparer.Ordinal))
+        foreach (string code in snapshot.Steps.SelectMany(step => step.Blockers)
+                     .Concat(snapshot.CompletionBlockers).Distinct(StringComparer.Ordinal))
             diagnosticValues.Add(NativeTheme.Body(code, NativeTheme.Muted));
 
         if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.Karma)
@@ -1472,9 +1473,10 @@ public sealed class BuildPage : NativePageBase
             creationContacts,
             creationResources, readiness);
         AddLegalNextSteps(snapshot, readiness, budgetRoutes, methodRoute, continueIndex);
-        AddFinalizationReviewAction();
+        var shownCompletionWarnings = new HashSet<string>(StringComparer.Ordinal);
+        AddFinalizationReviewAction(shownCompletionWarnings);
         AddBudgetRibbon(snapshot, attributes, skills, readiness, budgetRoutes, projection);
-        AddCompletionBlockers(snapshot);
+        AddCompletionBlockers(snapshot, shownCompletionWarnings);
         _body.Add(diagnostics);
     }
 
@@ -1961,10 +1963,10 @@ public sealed class BuildPage : NativePageBase
         }
     }
 
-    private void AddFinalizationReviewAction()
+    private void AddFinalizationReviewAction(HashSet<string> shownWarnings)
     {
         CreationBudgetRoute route = CreationFinalizationReviewRoute();
-        AddCreationFinalizationStatus(CreationPriorityLegalPathProjection.From(_creationFinalizationAuthority));
+        AddCreationFinalizationStatus(CreationPriorityLegalPathProjection.From(_creationFinalizationAuthority), shownWarnings);
         if (!route.CanOpen)
             return;
 
@@ -2003,7 +2005,7 @@ public sealed class BuildPage : NativePageBase
             legalPath.Blockers);
     }
 
-    private void AddCreationFinalizationStatus(CreationPriorityLegalPathProjection projection)
+    private void AddCreationFinalizationStatus(CreationPriorityLegalPathProjection projection, HashSet<string> shownWarnings)
     {
         CharacterOverviewState displayed = Coordinator.State;
         long generation = _dossierRenderGeneration;
@@ -2041,7 +2043,6 @@ public sealed class BuildPage : NativePageBase
                 diagnostics.Add(NativeTheme.Body($"Revision: {contentRevision.ToString(CultureInfo.InvariantCulture)}", NativeTheme.Muted));
             if (!string.IsNullOrWhiteSpace(projection.SnapshotDigest))
                 diagnostics.Add(NativeTheme.Body($"Snapshot: {projection.SnapshotDigest}", NativeTheme.Muted));
-            HashSet<string> shownWarnings = new(StringComparer.Ordinal);
             HashSet<string> diagnosticWarnings = new(StringComparer.Ordinal);
             void AddWarning(string blocker)
             {
@@ -2050,6 +2051,20 @@ public sealed class BuildPage : NativePageBase
                     card.Add(NativeTheme.Body(message, NativeTheme.Danger));
                 if (diagnosticWarnings.Add(blocker))
                     diagnostics.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            }
+
+            // The clickable stage index already shows every step. Summarize
+            // Core's required steps here, without deriving review admission
+            // from the count (other blockers can still prevent review).
+            int required = projection.Steps.Count(step => step.IsRequired);
+            if (required > 0)
+            {
+                Label progress = NativeTheme.Body(CreationFlowStrings.Format(
+                    "Finalization.Progress", "{0} of {1} required steps complete",
+                    projection.Steps.Count(step => step.IsRequired && step.IsComplete), required));
+                progress.FontAttributes = FontAttributes.Bold;
+                progress.AutomationId = "creation-finalization-progress";
+                card.Add(progress);
             }
 
             foreach (CreationPriorityLegalPathStep step in projection.Steps)
@@ -2062,7 +2077,7 @@ public sealed class BuildPage : NativePageBase
                 Label row = NativeTheme.Body($"{BuildPageUiProjection.StageLabel(step.StepId, RunnerSessionCoordinator.HumanizeId(step.StepId))} · {status}",
                     step.IsRequired && !step.IsComplete ? NativeTheme.Danger : NativeTheme.Muted);
                 row.AutomationId = $"creation-finalization-step-{Token(step.StepId)}";
-                card.Add(row);
+                diagnostics.Add(row);
                 foreach (string blocker in step.Blockers)
                     AddWarning(blocker);
                 diagnostics.Add(NativeTheme.Body(
@@ -2905,20 +2920,21 @@ public sealed class BuildPage : NativePageBase
         return null;
     }
 
-    private void AddCompletionBlockers(CharacterCreationWizardSnapshot snapshot)
+    private void AddCompletionBlockers(CharacterCreationWizardSnapshot snapshot, HashSet<string> shownWarnings)
     {
-        if (snapshot.CompletionBlockers.Count == 0)
-        {
+        string[] messages = snapshot.CompletionBlockers.Select(CreationFlowStrings.DashboardBlocker)
+            .Where(shownWarnings.Add).ToArray();
+        // Already-shown guidance needs no second card. Exact codes are also
+        // retained in the dashboard's technical details for this render.
+        if (messages.Length == 0)
             return;
-        }
 
         CharacterOverviewState displayed = Coordinator.State;
         long generation = _dossierRenderGeneration;
         VerticalStackLayout blockers = new() { Spacing = 6 };
         blockers.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Finalization.BeforeFinish", "Before you can finish")));
-        foreach (string message in snapshot.CompletionBlockers
-                     .Select(CreationFlowStrings.DashboardBlocker).Distinct(StringComparer.Ordinal))
+        foreach (string message in messages)
             blockers.Add(NativeTheme.Body(message, NativeTheme.Danger));
         Border card = NativeTheme.Card(blockers);
         card.AutomationId = "creation-wizard-blockers";

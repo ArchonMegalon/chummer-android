@@ -477,7 +477,7 @@ internal static partial class AfterRunAuthorityHarness
                         .Invoke(page, [snapshot, null, null, null, null, null, null, readiness])!;
                     Invoke("AddLegalNextSteps", snapshot, readiness, routes,
                         new CreationBudgetRoute("Method", "", false, () => Task.CompletedTask, []), 0);
-                    Invoke("AddFinalizationReviewAction");
+                    Invoke("AddFinalizationReviewAction", new HashSet<string>(StringComparer.Ordinal));
                     bool available = state is not ("loading" or "blocked");
                     var route = routes[CharacterCreationWizardStepIds.Review];
                     Require(route.CanOpen == available, $"Review route {method}/{state} disagrees with exact finalization readiness.");
@@ -532,7 +532,7 @@ internal static partial class AfterRunAuthorityHarness
         string snapshotBefore = JsonSerializer.Serialize(snapshot);
         var legacyPage = new BuildPage(coordinator);
         typeof(BuildPage).GetMethod("AddCompletionBlockers", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(legacyPage, [snapshot]);
+            .Invoke(legacyPage, [snapshot, new HashSet<string>(StringComparer.Ordinal)]);
         var legacyBody = (VerticalStackLayout)((ScrollView)legacyPage.Content!).Content!;
         var legacyCard = (VerticalStackLayout)legacyBody.Children.OfType<Border>().Single().Content!;
         var legacyLabels = legacyCard.Children.OfType<Label>().ToArray();
@@ -559,6 +559,9 @@ internal static partial class AfterRunAuthorityHarness
         foreach (var projection in new[]
         {
             actual,
+            actual with { Steps = [] },
+            actual with { Steps = actual.Steps.Select(step => step with { IsRequired = false }).ToArray() },
+            actual with { CanOpenReview = false, Blockers = ["fixture-whole-build-blocker"] },
             actual with
             {
                 CanOpenReview = false,
@@ -574,13 +577,22 @@ internal static partial class AfterRunAuthorityHarness
         {
             string before = JsonSerializer.Serialize(projection);
             var page = new BuildPage(coordinator);
-            render.Invoke(page, [projection]);
+            var shownWarnings = new HashSet<string>(StringComparer.Ordinal);
+            render.Invoke(page, [projection, shownWarnings]);
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var card = (VerticalStackLayout)body.Children.OfType<Border>().Single().Content!;
             var rows = card.Children.OfType<Label>().ToArray();
-            Require(rows.Where(row => row.AutomationId?.StartsWith("creation-finalization-step-", StringComparison.Ordinal) == true)
-                .All(row => !row.Text.Contains("source anchor", StringComparison.OrdinalIgnoreCase)),
-                "Completed step rows still present diagnostic source counts as gameplay feedback.");
+            Require(!rows.Any(row => row.AutomationId?.StartsWith("creation-finalization-step-", StringComparison.Ordinal) == true),
+                "The readiness card repeats the entire clickable stage index.");
+            int required = projection.Steps.Count(step => step.IsRequired);
+            var progress = rows.SingleOrDefault(row => row.AutomationId == "creation-finalization-progress");
+            Require(required == 0 ? progress is null : progress is { FontAttributes: FontAttributes.Bold }
+                && progress.Text == CreationFlowStrings.Format("Finalization.Progress", "{0} of {1} required steps complete",
+                    projection.Steps.Count(step => step.IsRequired && step.IsComplete), required),
+                "Readiness must summarize only required steps, in bold, and must not claim 0/0 progress.");
+            Require(rows.Any(row => row.AutomationId == (projection.CanOpenReview
+                    ? "creation-finalization-authority-ready" : "creation-finalization-authority-blocked")),
+                "The progress count must not replace Core review admission, even when every step is complete.");
             Require(projection.Steps.SelectMany(step => step.Blockers).Concat(projection.Blockers)
                 .All(blocker => rows.Any(row => row.IsVisible && row.Text == CreationFlowStrings.DashboardBlocker(blocker))),
                 "Readability must not hide any step or whole-build blocker.");
@@ -589,6 +601,9 @@ internal static partial class AfterRunAuthorityHarness
             var diagnostics = card.Children.OfType<VerticalStackLayout>().Single(
                 child => child.AutomationId == "creation-finalization-readiness-details");
             Require(!diagnostics.IsVisible, "Technical readiness metadata must start collapsed.");
+            Require(diagnostics.Children.OfType<Label>().Count(row =>
+                row.AutomationId?.StartsWith("creation-finalization-step-", StringComparison.Ordinal) == true) == projection.Steps.Count,
+                "The detailed Core step projection was lost when compacting readiness.");
             var toggle = card.Children.OfType<Button>().Single();
             ((IButtonController)toggle).SendClicked();
             Require(diagnostics.IsVisible, "Readiness details did not expand.");
@@ -603,6 +618,26 @@ internal static partial class AfterRunAuthorityHarness
                     "Technical details lost an exact source anchor.");
             ((IButtonController)toggle).SendClicked();
             Require(!diagnostics.IsVisible, "Readiness details did not collapse.");
+
+            var completion = snapshot with
+            {
+                CompletionBlockers = snapshot.CompletionBlockers
+                    .Append("creation-finalization-resources-draft-required").ToArray()
+            };
+            var renderCompletion = typeof(BuildPage).GetMethod("AddCompletionBlockers",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            renderCompletion.Invoke(page, [completion, shownWarnings]);
+            var visibleLabels = body.Children.OfType<Border>()
+                .SelectMany(border => ((VerticalStackLayout)border.Content!).Children.OfType<Label>()).ToArray();
+            foreach (string message in completion.CompletionBlockers
+                         .Concat(projection.Steps.SelectMany(step => step.Blockers)).Concat(projection.Blockers)
+                         .Select(CreationFlowStrings.DashboardBlocker).Distinct(StringComparer.Ordinal))
+                Require(visibleLabels.Count(row => row.Text == message) == 1,
+                    "Every readable warning must remain visible exactly once across completion cards.");
+            int cardCount = body.Children.OfType<Border>().Count();
+            renderCompletion.Invoke(page, [completion, shownWarnings]);
+            Require(body.Children.OfType<Border>().Count() == cardCount,
+                "Already-visible warnings produced an empty or duplicate completion card.");
             body.Clear();
             ((IButtonController)toggle).SendClicked();
             Require(!diagnostics.IsVisible, "A detached readiness card still accepted a click.");
@@ -618,6 +653,8 @@ internal static partial class AfterRunAuthorityHarness
                 "The German readiness action was not localized.");
             Require(CreationFlowStrings.FinalizationBlocker("unknown-exact-blocker") == "unknown-exact-blocker",
                 "An unknown blocker was hidden by a guessed translation.");
+            Require(CreationFlowStrings.Format("Finalization.Progress", "{0} of {1} required steps complete", 3, 7)
+                == "3 von 7 Pflichtschritten abgeschlossen", "The compact progress summary was not localized.");
         }
         finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
     }
