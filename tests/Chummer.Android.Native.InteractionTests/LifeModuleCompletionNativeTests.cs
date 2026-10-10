@@ -518,6 +518,18 @@ internal static partial class AfterRunAuthorityHarness
                     && Grid.GetRow(pinned) == 0 && IssuedElements(page).OfType<ActivityIndicator>()
                         .Any(e => e.AutomationId == "origin-reader-writing-spinner" && e.IsRunning),
                     "The active generation/status spinner can scroll off screen.");
+                var ribbon = (VerticalStackLayout)pinned;
+                var pinnedCopy = AndroidSurfaceStrings.Resolve(CultureInfo.CurrentUICulture.Name);
+                Require(ribbon.Children.OfType<Label>().Count() == 2
+                    && ribbon.Children.OfType<Label>().All(label => label.Text is { Length: <= 60 }
+                        && label.FontSize >= 15 && label.LineBreakMode == LineBreakMode.WordWrap
+                        && label.HeightRequest < 0 && label.FontAutoScalingEnabled)
+                    && ribbon.Children.OfType<Label>().Single(label => label.AutomationId == "origin-reader-writing-eta")
+                        .Text == pinnedCopy["Origin.ReaderEtaUnknownCompact"],
+                    "Pinned status must keep room for prose without shrinking, clipping or disabling font scaling.");
+                Require(SemanticProperties.GetDescription(ribbon.Children.OfType<Label>().Single(label =>
+                        label.AutomationId == "origin-reader-writing-eta")) == pinnedCopy["Origin.AuthoringEtaUnknown"],
+                    "Compact ETA lost the honest unknown-estimate explanation for screen readers.");
             }
             finally
             {
@@ -670,7 +682,8 @@ internal static partial class AfterRunAuthorityHarness
                 "A stopped chapter observer left its pinned spinner running after an exception.");
             var pinnedStatus = (VerticalStackLayout)IssuedElements(page).Single(e =>
                 e.AutomationId == "origin-reader-pinned-progress");
-            Require(pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+            Require(pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.ReaderChecksPausedCompact"]
+                && SemanticProperties.GetDescription(e) == copy["Origin.AuthoringStatusPaused"]),
                 "The observation pause is not explained in the always-visible reader status.");
             Require(ReferenceEquals(displayedProse, IssuedElements(page).OfType<Label>().Single(e =>
                     e.AutomationId == $"origin-retained-chapter-{first.Sequence}"))
@@ -690,7 +703,7 @@ internal static partial class AfterRunAuthorityHarness
             {
                 await recoveryEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
                 Require(pinnedStatus.Children.OfType<ActivityIndicator>().Any(e => e.IsRunning && e.IsVisible)
-                    && !pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.AuthoringStatusPaused"]),
+                    && !pinnedStatus.Children.OfType<Label>().Any(e => e.Text == copy["Origin.ReaderChecksPausedCompact"]),
                     "An explicit active status check still presents itself as paused.");
             }
             finally
@@ -759,6 +772,10 @@ internal static partial class AfterRunAuthorityHarness
                     "Reopening an admitted but missing/uncertain job spent credits a second time.");
                 Require(!IssuedElements(reopened).Any(e => e.AutomationId == $"origin-read-chapter-effects-{next.Sequence}"),
                     "An unread or ungenerated chapter exposed its rule changes.");
+                Require(IssuedElements(reopened).OfType<Label>().Any(e =>
+                    e.AutomationId == "origin-reader-writing-status" && e.Text == copy["Origin.ReaderOutcomeUnknownCompact"]
+                    && SemanticProperties.GetDescription(e) == copy["Origin.AuthoringOutcomeUnconfirmed"]),
+                    "An uncertain successor must not claim that writing is running or erase the no-replay explanation.");
                 Require(IssuedElements(reopened).OfType<Button>().Count(b => b.IsEnabled
                     && b.AutomationId is "origin-book-export" or "origin-book-export-epub") == 2,
                     "Reopening a book with completed prose and a missing successor hid its HTML/EPUB actions.");
