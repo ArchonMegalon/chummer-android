@@ -53,12 +53,8 @@ public sealed class CreationAttributesPage : NativePageBase
         _technicalDetails = new() { Spacing = 6 };
         _normalAttributesHeading = null;
         _specialAttributesHeading = null;
-        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.CharacterCreation",
-            "Character creation")));
-        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
-            "Attributes.Heading",
-            "Allocate Attributes")));
+        // The navigation bar already names Attributes; put the controls above
+        // the fold instead of repeating two headings before three budgets.
         _body.Add(NativeTheme.Body(
             PhoneStrings.Get("CreationAttributesInlineHelp",
                 "Spend points with − and +. Tap an attribute for Karma options on this page."),
@@ -482,7 +478,7 @@ public sealed class CreationAttributesPage : NativePageBase
             };
             card.Add(jump);
         }
-        Label remaining = NativeTheme.Title(FormatBudget(budget.Remaining, budget.Unit), 24);
+        Label remaining = NativeTheme.Title(budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture), 24);
         remaining.AutomationId = automationId + "-remaining";
         card.Add(remaining, 1);
         Label detail = NativeTheme.Body(

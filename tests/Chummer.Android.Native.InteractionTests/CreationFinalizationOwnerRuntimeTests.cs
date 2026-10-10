@@ -88,7 +88,8 @@ internal static partial class AfterRunAuthorityHarness
                 string expectedDetail = ready
                     ? expected.Used.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " / "
                         + expected.Total.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
-                        + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points" : expected.Unit)
+                        + " " + (string.IsNullOrWhiteSpace(expected.Unit) ? "points"
+                            : expected.Unit == "karma" ? "Karma" : expected.Unit)
                         + "\nCheck what is missing"
                     : "Check what is missing";
                 Require(labels[1] == expectedDetail,
@@ -291,7 +292,7 @@ internal static partial class AfterRunAuthorityHarness
                     Require(labels[0].EndsWith(exact ? number + " left" : "Not exact", StringComparison.Ordinal),
                         $"{method}: saved Qualities Karma {number} was replaced by the earlier Attributes budget; exact={exact}, attributes={attributesReady}.");
                     Require(!exact || labels[1].StartsWith(
-                        $"{karma.Used} / {karma.Total} karma", StringComparison.Ordinal),
+                        $"{karma.Used} / {karma.Total} Karma", StringComparison.Ordinal),
                         "Cumulative Karma used/total must match the same projection as its remainder.");
                     Require(body.Children.OfType<Label>().Count(label => label.AutomationId == "creation-budget-status")
                         == (exact ? 0 : 1), "An inexact cumulative budget must not become exact from earlier Attributes.");
