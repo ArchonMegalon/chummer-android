@@ -7,6 +7,16 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationSkillsSourceContractTests(unittest.TestCase):
+    def test_skills_ledgers_share_one_card_without_hiding_any_budget(self) -> None:
+        page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        self.assertIn('summary.AutomationId = "creation-skills-budgets"', page)
+        self.assertIn('summary.AutomationId = "creation-skills-preview-budgets"', page)
+        self.assertIn("CreationSkillsBudgetRow.Create(", page)
+        self.assertIn("current.Remaining", page)
+        self.assertIn("current.Used", page)
+        self.assertIn("current.Total", page)
+        self.assertIn("current.Remaining < 0 ? NativeTheme.Danger : NativeTheme.Text", page)
+
     def test_specializations_use_complete_catalog_and_explicit_preview(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         self.assertNotIn("source.Specializations.Take(", page)

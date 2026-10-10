@@ -85,9 +85,13 @@ public sealed class CreationSkillsPage : NativePageBase
             _body.Add(CreateReviewButton(state, "creation-skills-review-top"));
         }
         AddBinding(state);
-        AddBudget(() => _draft.Preview?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active", CharacterCreationBudgetIds.ActiveSkills);
-        AddBudget(() => _draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups", CharacterCreationBudgetIds.SkillGroups);
-        AddBudget(() => _draft.Preview?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge", CharacterCreationBudgetIds.KnowledgeSkills);
+        VerticalStackLayout budgets = new() { Spacing = 12 };
+        AddBudget(budgets, () => _draft.Preview?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget, "active", CharacterCreationBudgetIds.ActiveSkills);
+        AddBudget(budgets, () => _draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget, "groups", CharacterCreationBudgetIds.SkillGroups);
+        AddBudget(budgets, () => _draft.Preview?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget, "knowledge", CharacterCreationBudgetIds.KnowledgeSkills);
+        Border summary = NativeTheme.Card(budgets);
+        summary.AutomationId = "creation-skills-budgets";
+        _body.Add(summary);
         if (!CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State) || !_draft.Matches(state, Coordinator.State))
         {
             AddBlockers(state.Blockers);
@@ -182,33 +186,11 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(binding);
     }
 
-    private void AddBudget(Func<CharacterCreationBudgetState> readBudget, string token, string canonicalBudgetId)
+    private void AddBudget(VerticalStackLayout budgets, Func<CharacterCreationBudgetState> readBudget, string token, string canonicalBudgetId)
     {
-        var budget = readBudget();
-        VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId)));
-        Label remaining = NativeTheme.Title(string.Empty, 20);
-        Label used = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-        void Update()
-        {
-            var current = readBudget();
-            remaining.Text = CreationAllocationStrings.Format(
-                "Skills.BudgetLeft",
-                "{0} left",
-                current.Remaining.ToString("0.##", CultureInfo.CurrentCulture));
-            used.Text = CreationAllocationStrings.Format(
-                "Skills.BudgetUsed",
-                "{0} / {1} points",
-                current.Used.ToString("0.##", CultureInfo.CurrentCulture),
-                current.Total.ToString("0.##", CultureInfo.CurrentCulture));
-        }
-        Update();
-        _projectionUpdates.Add(Update);
-        card.Add(remaining);
-        card.Add(used);
-        Border border = NativeTheme.Card(card);
-        border.AutomationId = $"creation-skills-budget-{token}";
-        _body.Add(border);
+        budgets.Add(CreationSkillsBudgetRow.Create(readBudget, canonicalBudgetId,
+            $"creation-skills-budget-{token}", out Action update));
+        _projectionUpdates.Add(update);
     }
 
     private void AddCatalog(
@@ -641,6 +623,51 @@ public static class CreationSkillsCatalogPaging
         => NormalizeOffset(offset + pageSize, count, pageSize);
 }
 
+/// <summary>One wrapping row per ledger; values always come from the accepted Core projection.</summary>
+internal static class CreationSkillsBudgetRow
+{
+    internal static Grid Create(Func<CharacterCreationBudgetState> readBudget,
+        string canonicalBudgetId, string automationId, out Action update)
+    {
+        Grid row = new()
+        {
+            AutomationId = automationId,
+            ColumnSpacing = 12,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            }
+        };
+        Label title = NativeTheme.Body(BuildPageUiProjection.BudgetLabel(readBudget(), canonicalBudgetId));
+        title.FontAttributes = FontAttributes.Bold;
+        title.VerticalOptions = LayoutOptions.Center;
+        Label remaining = NativeTheme.Title(string.Empty, 20);
+        remaining.AutomationId = automationId + "-remaining";
+        remaining.HorizontalTextAlignment = TextAlignment.End;
+        Label used = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        used.AutomationId = automationId + "-used";
+        used.HorizontalTextAlignment = TextAlignment.End;
+        VerticalStackLayout values = new() { Spacing = 2 };
+        values.Add(remaining);
+        values.Add(used);
+        row.Add(title);
+        row.Add(values, 1);
+        update = () =>
+        {
+            var current = readBudget();
+            remaining.Text = CreationAllocationStrings.Format("Skills.BudgetLeft", "{0} left",
+                current.Remaining.ToString("0.##", CultureInfo.CurrentCulture));
+            remaining.TextColor = current.Remaining < 0 ? NativeTheme.Danger : NativeTheme.Text;
+            used.Text = CreationAllocationStrings.Format("Skills.BudgetUsed", "{0} / {1} points",
+                current.Used.ToString("0.##", CultureInfo.CurrentCulture),
+                current.Total.ToString("0.##", CultureInfo.CurrentCulture));
+        };
+        update();
+        return row;
+    }
+}
+
 /// <summary>Immutable Core preview followed by one explicit digest-bound confirmation.</summary>
 public sealed class CreationSkillsPreviewPage : NativePageBase
 {
@@ -727,6 +754,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "SkillsPreview.FinalCoreLedgers",
             "Points after saving")));
+        VerticalStackLayout budgets = new() { Spacing = 12 };
         foreach (var (budget, canonicalBudgetId) in new[]
                  {
                      (_preview.ActiveSkillPointBudget, CharacterCreationBudgetIds.ActiveSkills),
@@ -734,21 +762,12 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                      (_preview.KnowledgeSkillPointBudget, CharacterCreationBudgetIds.KnowledgeSkills)
                  })
         {
-            VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId), 18));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Total", "Total"),
-                budget.Total.ToString("0.##", CultureInfo.CurrentCulture)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Used", "Used"),
-                budget.Used.ToString("0.##", CultureInfo.CurrentCulture)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
-                budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)));
-            Border border = NativeTheme.Card(card);
-            border.AutomationId = $"creation-skills-preview-budget-{Token(budget.BudgetId)}";
-            _body.Add(border);
+            budgets.Add(CreationSkillsBudgetRow.Create(() => budget, canonicalBudgetId,
+                $"creation-skills-preview-budget-{Token(budget.BudgetId)}", out _));
         }
+        Border summary = NativeTheme.Card(budgets);
+        summary.AutomationId = "creation-skills-preview-budgets";
+        _body.Add(summary);
     }
 
     private void AddSelections()
