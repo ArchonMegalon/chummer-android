@@ -143,7 +143,12 @@ revision5/5 were unchanged. The fault itself is managed-handler evidence, not
 native fault injection or definitive attribution of the original tester report.
 The version-only delta reuses that product evidence. Local ARM64 build,
 original-key signing, independent keyless verification and one Internal upload/
-readback passed. **Physical Play 184 installation remains unverified.**
+readback passed. A later [physical Play 184 update](../play/evidence/preview184-physical-observation.md)
+verified installed version and Play signing identity, retained Life Modules
+Creation/reader navigation, the same selected runner and two dossiers after
+process death, and exact full 2,447-word chapter/illustration restoration. Save
+was invoked without edits; no new durable commit receipt is claimed. The
+abandoned-press fault remains managed-handler evidence, not physical injection.
 SystemUI boot stalls, startup performance, complete Creation/Career and the
 same-character live manuscript acceptance remain open. The diagnostics contract
 still requires its exact retained local package. The original uncertain FirstBook
