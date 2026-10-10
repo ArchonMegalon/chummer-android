@@ -55,16 +55,34 @@ def test_internal_diagnostics_default_has_visible_control_and_explicit_build_sco
     assert "CHUMMER_INTERNAL_TEST" in symbol.text
     settings = APPLICATION_SETTINGS.read_text(encoding="utf-8")
     home = (ROOT / "src/Chummer.Android/Native/HomePage.cs").read_text(encoding="utf-8")
-    assert 'automationId: "home-diagnostics-settings"' in home
-    assert "if (!NativeProblemPolicy.InternalTestBuild) return;" in home
-    assert "new ApplicationSettingsPage(Coordinator)" in home
+    assert "home-diagnostics-settings" not in home
+    assert "AddDiagnosticNotice" not in home
+    assert "SettingsDiagnostics" not in home
     assert "NativeProblemPolicy.InternalTestBuild" in settings
     assert '"SettingsDiagnosticsInternalDefault"' in settings
     assert '"SettingsDiagnosticsOtherDefault"' in settings
     for locale in ("", ".de", ".es"):
         resources = ET.parse(ROOT / f"src/Chummer.Android/Resources/Localization/PhoneStrings{locale}.resx").getroot()
-        for key in ("HomeDiagnosticsInternal", "SettingsDiagnosticsInternalDefault", "SettingsDiagnosticsOtherDefault"):
+        for key in ("SettingsDiagnosticsAutomatic", "SettingsDiagnosticsSwitchDetail", "SettingsDiagnosticsInternalDefault", "SettingsDiagnosticsOtherDefault"):
             assert resources.find(f"./data[@name='{key}']/value").text
+
+
+def test_diagnostics_use_a_readable_switch_without_rewriting_loaded_consent() -> None:
+    settings = APPLICATION_SETTINGS.read_text(encoding="utf-8")
+    assert "private readonly Switch? _automaticDiagnostics;" in settings
+    assert "_automaticDiagnostics = NativeTheme.ReadableSwitch();" in settings
+    assert '_automaticDiagnostics.AutomationId = "settings-diagnostics-automatic"' in settings
+    assert "_automaticDiagnostics.Toggled +=" in settings
+    assert "if (_diagnosticsBusy || !_automaticDiagnostics.IsEnabled) return;" in settings
+    assert "await RefreshDiagnosticsAsync(args.Value);" in settings
+    assert "_automaticDiagnostics.Clicked" not in settings
+    assert "!_diagnosticsEnabled" not in settings
+    refresh = settings[settings.index("private async Task RefreshDiagnosticsAsync"):]
+    assert refresh.index("_diagnosticsBusy = true") < refresh.index("_automaticDiagnostics.IsToggled = _diagnosticsEnabled") < refresh.index("_diagnosticsBusy = false")
+    assert "enabled is null || await _reports.SetEnabledAsync(enabled.Value)" in refresh
+    assert "_diagnosticsRetryTarget = saved ? null : enabled" in refresh
+    assert "_retryDiagnostics.IsVisible = _diagnosticsRetryTarget is not null" in refresh
+    assert "if (_diagnosticsRetryTarget is bool target) await RefreshDiagnosticsAsync(target);" in settings
 
 
 def test_phone_settings_do_not_render_the_legacy_character_settings_catalog() -> None:

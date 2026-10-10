@@ -409,7 +409,7 @@ No change has been saved yet.</value></data>
   <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer keeps up to 128 technical events for two days on this phone: app version, page category, operation, duration and error category. No runner, book, account data or error text.</value></data>
   <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Share technical report</value></data>
   <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>When enabled, new failures and operations over 30 seconds are sent to the Chummer team at chummer.run while the app is running. Up to eight reports per two days; no old history. Reports stay in the private inbox for up to two days. Disable anytime to clear unsent reports; already received reports expire separately.</value></data>
-  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Internal test: automatic technical reports are on by default. A saved off choice stays off, including after updates. You can disable sending below.</value></data>
+  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Internal test: automatic technical reports are on by default. A saved off choice stays off, including after updates. You can disable sending with the switch.</value></data>
   <data name="SettingsDiagnosticsOtherDefault" xml:space="preserve"><value>Automatic technical reports are off by default in this build. A saved explicit choice is retained.</value></data>
   <data name="HomeDiagnosticsInternal" xml:space="preserve"><value>Internal test: technical reports are on by default, unless you turn them off. No runner, book or account content. Tap to review or disable.</value></data>
   <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Loading diagnostic setting…</value></data>
@@ -419,4 +419,6 @@ No change has been saved yet.</value></data>
   <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Automatic technical reports: on. Changes apply immediately.</value></data>
   <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Automatic technical reports: off. Changes apply immediately.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Retry saving diagnostic choice</value></data>
+  <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Automatic technical reports</value></data>
+  <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Changes apply immediately. Switching off clears unsent reports.</value></data>
 </root>

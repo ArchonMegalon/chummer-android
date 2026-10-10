@@ -409,7 +409,7 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="SettingsDiagnosticsLocal" xml:space="preserve"><value>Chummer speichert bis zu 128 technische Ereignisse für zwei Tage auf diesem Handy: App-Version, Seitenkategorie, Vorgang, Dauer und Fehlerkategorie. Keine Runner-, Buch- oder Kontodaten und keine Fehlertexte.</value></data>
   <data name="SettingsDiagnosticsShare" xml:space="preserve"><value>Technischen Bericht teilen</value></data>
   <data name="SettingsDiagnosticsAutomaticDetail" xml:space="preserve"><value>Wenn eingeschaltet, werden neue Fehler und Vorgänge über 30 Sekunden an das Chummer-Team bei chummer.run gesendet, solange die App läuft. Höchstens acht Berichte pro zwei Tage; keine alten Protokolle. Die Berichte bleiben bis zu zwei Tage im privaten Eingang. Ausschalten löscht ungesendete Berichte; bereits empfangene laufen separat ab.</value></data>
-  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Interner Test: Automatische technische Berichte sind standardmäßig an. Eine gespeicherte Auswahl „aus“ bleibt auch nach Updates erhalten. Du kannst den Versand unten ausschalten.</value></data>
+  <data name="SettingsDiagnosticsInternalDefault" xml:space="preserve"><value>Interner Test: Automatische technische Berichte sind standardmäßig an. Eine gespeicherte Auswahl „aus“ bleibt auch nach Updates erhalten. Du kannst den Versand mit dem Schalter ausschalten.</value></data>
   <data name="SettingsDiagnosticsOtherDefault" xml:space="preserve"><value>Automatische technische Berichte sind in dieser Version standardmäßig aus. Eine ausdrücklich gespeicherte Auswahl bleibt erhalten.</value></data>
   <data name="HomeDiagnosticsInternal" xml:space="preserve"><value>Interner Test: Technische Berichte sind standardmäßig an, sofern du sie nicht ausschaltest. Keine Runner-, Buch- oder Kontoinhalte. Antippen zum Prüfen oder Ausschalten.</value></data>
   <data name="SettingsDiagnosticsLoading" xml:space="preserve"><value>Diagnose-Einstellung wird geladen…</value></data>
@@ -419,4 +419,6 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="SettingsDiagnosticsOn" xml:space="preserve"><value>Automatische technische Berichte: an. Änderungen gelten sofort.</value></data>
   <data name="SettingsDiagnosticsOff" xml:space="preserve"><value>Automatische technische Berichte: aus. Änderungen gelten sofort.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Diagnose-Auswahl erneut speichern</value></data>
+  <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Automatische technische Berichte</value></data>
+  <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Änderungen gelten sofort. Ausschalten löscht noch nicht gesendete Berichte.</value></data>
 </root>

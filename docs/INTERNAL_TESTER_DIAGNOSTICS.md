@@ -18,9 +18,12 @@ An existing disabled state (including the earlier off-by-default implementation)
 is preserved conservatively, even when its origin cannot be distinguished.
 Corrupt/inaccessible state never counts as a fresh install. An Internal default
 does not authorize sending after switching to a non-Internal build; an explicit
-saved enable remains a separate choice. The Home screen links directly to the
-diagnostic setting and discloses the default without claiming everyone has it on.
-The separate settings action takes effect
+saved enable remains a separate choice. Diagnostics appear only under More →
+Settings, not on Home (owner decision, 10 October 2026). A native on/off switch
+shows the actual reporting state; the disclosure explains the Internal default
+without claiming everyone has it on. Switching off also clears unsent reports.
+A failed save keeps the sender stopped and shows a separate retry action.
+The switch takes effect
 immediately (not through the language/settings Save button). DE/EN/ES disclosures
 explain the first-party destination, metadata, two-day private inbox and withdrawal.
 On 9 October a synthetic HTTPS report was accepted, deduplicated and read back
