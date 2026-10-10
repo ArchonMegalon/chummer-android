@@ -238,6 +238,7 @@ internal static partial class AfterRunAuthorityHarness
                 IssuedPageLifecycle(editor, "OnDisappearing");
             }
             await VerifyAttributePreviewStillReadsCurrentWorkspaceAsync(contentRoot);
+            await VerifyInlineAttributePendingAsync(ui, contentRoot);
             foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
             {
                 var owners = new ControlledLinkedOwner();
@@ -278,17 +279,40 @@ internal static partial class AfterRunAuthorityHarness
                 string InlineValue() => MinimalVisible(page).OfType<Label>().Single(item =>
                     item.AutomationId == "creation-attributes-open-edg-value").Text;
                 var retainedInline = Inline("increase");
+                var retainedRows = ((VerticalStackLayout)scroll.Content!).Children.ToArray();
+                var retainedValue = MinimalVisible(page).OfType<Label>().Single(item =>
+                    item.AutomationId == "creation-attributes-open-edg-value");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retainedInline).SendClicked()));
                 Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
                     "The attributes list must allocate Edge without opening a nested editor.");
-                // Disabled detached native controls do not enter an async handler.
-                ((IButtonController)retainedInline).SendClicked();
-                await Task.Yield();
+                Require(ReferenceEquals(Inline("increase"), retainedInline)
+                    && retainedRows.SequenceEqual(((VerticalStackLayout)scroll.Content!).Children)
+                    && MinimalVisible(page).OfType<Label>().Contains(retainedValue)
+                    && MinimalVisible(page).OfType<Label>().Single(x =>
+                        x.AutomationId == "creation-attributes-budget-special-remaining").Text
+                        == (state.SpecialPointBudget.Remaining - 1).ToString("0.##", CultureInfo.CurrentCulture)
+                    && SemanticProperties.GetDescription(retainedInline.Parent!.Parent!)
+                        .Contains((inlineInitial + 1).ToString(CultureInfo.CurrentUICulture), StringComparison.Ordinal),
+                    "An accepted point must update values, budgets and accessibility without rebuilding the native list.");
+                MinimalRender(page);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retainedInline).SendClicked()));
                 Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
                     "A detached inline stepper replayed a point.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Inline("decrease")).SendClicked()));
                 Require(InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
                     "Inline minus failed to return the exact special point.");
+                var stablePlus = Inline("increase");
+                var stableMinus = Inline("decrease");
+                for (int repeat = 0; repeat < 2; repeat++)
+                {
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)stablePlus).SendClicked()));
+                    Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
+                        "Reused + did not bind the newly displayed allocation.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)stableMinus).SendClicked()));
+                    Require(ReferenceEquals(Inline("increase"), stablePlus) && ReferenceEquals(Inline("decrease"), stableMinus)
+                        && InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
+                        "Consecutive accepted adjustments replaced controls or replayed an old allocation.");
+                }
                 var pageDraft = (CreationAttributesPhoneDraft)typeof(CreationAttributesPage).GetField("_draft",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
                 int navigationDepth = page.Navigation.NavigationStack.Count;
@@ -671,6 +695,100 @@ internal static partial class AfterRunAuthorityHarness
                 "Saved Magic point did not survive recovery and cold-store reopen.");
             Console.WriteLine("PASS localized attribute review recovery, exact diagnostic disclosure, no replay and cold reopen: " + code);
         }
+    }
+
+    private static async Task VerifyInlineAttributePendingAsync(IssuedPageUiContext ui, string contentRoot)
+    {
+        foreach (string outcome in new[] { "ready", "error", "cancel", "leave", "owner-aba" })
+        {
+            var owners = new ControlledLinkedOwner();
+            AttributesCommitProbe? probe = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                attributesDecorator: actual => probe = new(actual));
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var state = runtime.Coordinator.LoadCreationAttributes().Value!;
+            var page = new CreationAttributesPage(runtime.Coordinator, state);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+            var rows = body.Children.ToArray();
+            var plus = MinimalVisible(page).OfType<Button>().Single(x =>
+                x.AutomationId == "creation-attributes-inline-increase-mag");
+            var value = MinimalVisible(page).OfType<Label>().Single(x =>
+                x.AutomationId == "creation-attributes-open-mag-value");
+            string initial = value.Text;
+            int loads = probe!.LoadCalls;
+            int previews = probe.PreviewCalls;
+            using var release = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            probe.BeforeRead = () =>
+            {
+                entered.TrySetResult();
+                Require(release.Wait(TimeSpan.FromSeconds(10)), "Inline preview test was not released.");
+                if (outcome == "error") throw new InvalidOperationException("private-inline-error");
+                if (outcome == "cancel") throw new OperationCanceledException();
+            };
+            Task pending = ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked());
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(!pending.IsCompleted && !plus.IsEnabled && plus.Text == "…"
+                    && rows.SequenceEqual(body.Children) && value.Text == initial,
+                    "Pending inline preview must retain the displayed values and show feedback at the pressed control.");
+                ((IButtonController)plus).SendClicked();
+                MinimalRender(page);
+                var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ => heartbeat.SetResult(), null);
+                await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                Require(probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads
+                    && rows.SequenceEqual(body.Children) && value.Text == initial,
+                    "Duplicate tap/render caused extra Core work or optimistic point changes.");
+                if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
+                if (outcome == "owner-aba")
+                {
+                    var owner = owners.Current;
+                    owners.Set(ContactsOwnerB);
+                    owners.Set(owner);
+                }
+            }
+            finally
+            {
+                release.Set();
+                try { await JoinIssuedPageAsync(pending); }
+                finally { probe.BeforeRead = null; }
+            }
+            if (outcome == "ready")
+            {
+                Require(rows.SequenceEqual(body.Children) && plus.IsEnabled && plus.Text == "+"
+                    && value.Text == (int.Parse(initial, CultureInfo.InvariantCulture) + 1).ToString(CultureInfo.InvariantCulture)
+                    && probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads,
+                    "Accepted inline preview must update the same controls with one Core preview and no extra Load.");
+            }
+            else
+            {
+                Require(value.Text == initial && !plus.IsEnabled && plus.Text == "+",
+                    "Failed, departed or owner-stale preview updated or re-enabled the retained controls: " + outcome);
+                Require(!MinimalVisibleText(page).Contains("private-inline-error", StringComparison.Ordinal),
+                    "Inline failure exposed raw exception text.");
+                if (outcome is "error" or "cancel")
+                {
+                    var retry = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == plus.AutomationId);
+                    Require(retry.IsEnabled && !ReferenceEquals(retry, plus),
+                        "Inline failure stranded the page instead of offering a fresh guarded adjustment.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked()));
+                    Require(MinimalVisible(page).OfType<Label>().Single(x => x.AutomationId == value.AutomationId).Text
+                        == (int.Parse(initial, CultureInfo.InvariantCulture) + 1).ToString(CultureInfo.InvariantCulture)
+                        && !MinimalVisible(page).OfType<Border>().Any(x => x.AutomationId == "creation-attributes-preview-blockers"),
+                        "Successful retry did not clear the old failure and show the accepted allocation.");
+                }
+            }
+            Require(probe.ConfirmCalls == 0, "An inline read saved the runner.");
+            RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            if (outcome != "leave") IssuedPageLifecycle(page, "OnDisappearing");
+        }
+        Console.WriteLine("PASS stable inline controls, fresh projection, bounded duplicate work, UI heartbeat, failure recovery, departure and owner ABA");
     }
 
     private static async Task VerifySpecialPointPendingFeedbackAsync(IssuedPageUiContext ui,
