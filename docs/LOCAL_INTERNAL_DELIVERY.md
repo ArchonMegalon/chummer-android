@@ -132,7 +132,19 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 179 is the latest [observed Internal availability](../play/evidence/preview179-internal-observation.json),
+Preview 180 is the latest [observed Internal availability](../play/evidence/preview180-internal-observation.json),
+confirmed on 10 October at 15:39 Europe/Vienna. Normal and special attribute
+budgets on the Creation dashboard now open their corresponding editor section
+directly. Ordinary Attributes entry retains its overview; compact budgets, bold
+values, controls and rule limits remain. Focused managed/source checks and native
+API36 German 130% font/navigation smoke passed; the later version-only change
+reuses those results explicitly. Local ARM64 build, original-key signing,
+independent keyless verification and one Internal upload/readback passed.
+**Physical Play 180 installation, real tester-incident intake, faster cold
+startup and complete Creation/Career remain unverified.** Version180 is consumed;
+previous evidence and rollback artifacts are retained.
+
+Preview 179's [observed Internal availability](../play/evidence/preview179-internal-observation.json),
 confirmed on 10 October at 15:02 Europe/Vienna. Creation budgets now use one
 compact, full-width list instead of nested wrapping cards. Bold remaining points,
 usage/totals, explanations and admitted editor links remain. Focused managed and
