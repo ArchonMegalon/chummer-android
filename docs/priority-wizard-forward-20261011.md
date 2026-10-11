@@ -31,3 +31,13 @@ route and is not claimed as passing; its receipt/graph validation is unchanged.
 Adapt that historical route before claiming its seven-journey qualification.
 This local increment does not claim whole-Creation parity, Attributes/Skills
 post-save continuation, provider generation or Play delivery.
+
+Local Release/Internal x64 SDK-test APK build passed on source `07c57884`,
+SHA-256 `31c744cc21a2b8864c1e248cdc96a30dc62c9feefb5b1b6b61fcd69d061be121`.
+The rendered test was stopped before assignment confirmation: repeated emulator
+System UI/Process system/Digital Wellbeing ANRs prevented a usable test route.
+Home → New runner was observed, but no new runner or save was dispatched.
+All seven retained synthetic workspace files remained byte-identical. Owned
+emulator and temporary app egress rules were cleaned up; user phone unchanged.
+This is not a native forward-navigation pass or startup-performance result.
+The private packet's `NATIVE_RESULT.md` preserves the exact scope and next check.
