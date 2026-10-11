@@ -132,6 +132,12 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
+The subsequent [saved-allocation review fix](creation-attributes-saved-review-20261011.md)
+has passing focused local managed/native checks, including a read-only review,
+the actual Back button and cold reopen with all five synthetic workspace files
+unchanged. This is source/test evidence only; it is not part of the already
+distributed Preview 187 and has no newer Play delivery receipt yet.
+
 Preview 187 is the latest [observed Internal availability](../play/evidence/preview187-internal-observation.json),
 released on 11 October at 04:06 Europe/Vienna. Attribute review now groups
 budgets and all thirteen projected values into compact cards, with large bold
