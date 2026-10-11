@@ -16,6 +16,8 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
             values = {entry.attrib["name"]: entry.findtext("value") for entry in root.findall("data")}
             self.assertEqual(title, values["Finalization.StartingCashTitle"])
             self.assertTrue(values["Finalization.StartingCashHelp"])
+            self.assertTrue(values["Finalization.StartingLifestyle"])
+            self.assertTrue(values["Karma.DiceTotalHelp"])
             self.assertTrue(values["Finalization.InvalidDiceTotal"])
             for key in ("Title", "Review", "ReviewHelp", "StaleReview", "EnterCareer", "After", "KarmaRemaining",
                         "NuyenRemaining", "Change", "ConfirmHelp", "Saving", "Confirm", "Mode", "CareerTransition",
@@ -31,12 +33,28 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         )[0]
 
     def test_dashboard_opens_only_the_current_explicit_cash_choice(self):
-        source = self.finalization_handler()
-        self.assertIn("!IsCurrentCreationDashboardPage()", source)
-        current = source.index("!Coordinator.IsCreationFinalizationStateCurrent(authority.Value)")
-        navigation = source.index("await Navigation.PushAsync(new CreationStartingCashPage")
+        handler = self.finalization_handler()
+        self.assertIn("RunCreationNavigationAsync(route.Open, pressGeneration)", handler)
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        source = dashboard.split("private CreationBudgetRoute CreationFinalizationReviewRoute()", 1)[1].split(
+            "private void AddCreationFinalizationStatus", 1)[0]
+        self.assertIn("generation == _dossierRenderGeneration", source)
+        self.assertIn("&& IsCurrentCreationDashboardPage()", source)
+        current = source.index("&& Coordinator.IsCreationFinalizationStateCurrent(authority!.Value!)")
+        navigation = source.index("Navigation.PushAsync(new CreationStartingCashPage")
         self.assertLess(current, navigation)
         self.assertNotIn("ReviewCreationFinalizationAsync", source)
+
+    def test_cash_selector_uses_only_issued_options_and_invalidates_old_input(self):
+        source = self.cash_page()
+        self.assertIn("_authority.StartingCashSources?.ToArray()", source)
+        self.assertIn("if (sources.Length > 1)", source)
+        selection = source.split("picker.SelectedIndexChanged +=", 1)[1].split("_body.Add(picker);", 1)[0]
+        self.assertIn("!Current()", selection)
+        self.assertIn("_sourceDigest = selected;", selection)
+        self.assertIn('_roll = string.Empty;', selection)
+        self.assertIn("_inputVersion++;", selection)
+        self.assertIn("Refresh();", selection)
 
     def cash_page(self) -> str:
         return (NATIVE / "CreationFinalizationPage.cs").read_text(encoding="utf-8").split(

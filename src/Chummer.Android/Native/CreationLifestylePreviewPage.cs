@@ -15,22 +15,48 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
     };
     private CreationLifestylePhoneConfirmResult? _confirmation;
     private bool _explicitlyConfirmed;
+    private readonly CharacterOverviewState _original;
+    private bool _submitted;
+    private bool _saving;
+    private bool _nextUnavailable;
+    private Button? _confirm;
+    private CancellationTokenSource? _forwardLifetime;
+    private CharacterCreationLifestylesInteractionLoadResult? _loaded;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     internal CreationLifestylePreviewPage(
         RunnerSessionCoordinator coordinator,
         CharacterCreationLifestylePreparedPreview prepared) : base(coordinator)
     {
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
-        Title = "Review lifestyle change";
+        _original = coordinator.State;
+        Title = Copy("Review", "Review lifestyle change");
         AutomationId = "creation-lifestyle-preview-page";
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnDisappearing()
+    {
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loaded = null;
+        Refresh();
+        if (_confirmation?.Receipt is not null) return;
+        var loaded = await Coordinator.LoadCreationLifestylesForDisplayAsync(Coordinator.State, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _loaded = loaded;
+    }
+
     protected override void Refresh()
     {
+        if (_saving) return;
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Creation Lifestyle change"));
+        _technicalDetails = new() { Spacing = 6 };
+        _body.Add(NativeTheme.Title(Copy("Review", "Review lifestyle change")));
         AddBinding();
         AddTargetDiff();
         AddBudgets();
@@ -38,6 +64,12 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+        var original = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-lifestyle-preview-details",
+            () => IsCurrentAppearanceGeneration(appearance)
+                && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                && original.DisplayOwnerContext == _prepared.DisplayOwnerContext));
     }
 
     private void AddBinding()
@@ -48,22 +80,22 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
             + _prepared.Mutation.LifestyleId.ToString("D"),
             NativeTheme.Muted);
         binding.AutomationId = "creation-lifestyle-preview-binding";
-        _body.Add(binding);
-        _body.Add(DigestLabel("Preview digest", _prepared.PreviewDigest, "creation-lifestyle-preview-digest"));
-        _body.Add(DigestLabel("Atomic plan digest", _prepared.WritePlan.PlanDigest, "creation-lifestyle-plan-digest"));
+        _technicalDetails.Add(binding);
+        _technicalDetails.Add(DigestLabel("Preview digest", _prepared.PreviewDigest, "creation-lifestyle-preview-digest"));
+        _technicalDetails.Add(DigestLabel("Atomic plan digest", _prepared.WritePlan.PlanDigest, "creation-lifestyle-plan-digest"));
     }
 
     private void AddTargetDiff()
     {
         VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow("Target before / after"));
-        card.Add(NativeTheme.Metric("Mutation", RunnerSessionCoordinator.HumanizeId(_prepared.Mutation.MutationKind)));
-        card.Add(NativeTheme.Metric("Name", $"{Name(_prepared.Before)} → {Name(_prepared.After)}"));
-        card.Add(NativeTheme.Metric("Base", $"{Base(_prepared.Before)} → {Base(_prepared.After)}"));
-        card.Add(NativeTheme.Metric("Per increment", $"{Cost(_prepared.Before)} → {Cost(_prepared.After)}"));
-        card.Add(NativeTheme.Metric("Total", $"{Total(_prepared.Before)} → {Total(_prepared.After)}"));
-        card.Add(NativeTheme.Metric("Lifestyle points", $"{Points(_prepared.Before)} → {Points(_prepared.After)}"));
-        card.Add(NativeTheme.Metric("Qualities", $"{QualityCount(_prepared.Before)} → {QualityCount(_prepared.After)}"));
+        card.Add(NativeTheme.Eyebrow(Copy("Changes", "Changes")));
+        card.Add(NativeTheme.Metric(Copy("Mutation","Mutation"), RunnerSessionCoordinator.HumanizeId(_prepared.Mutation.MutationKind)));
+        card.Add(NativeTheme.Metric(Copy("Name","Name"), $"{Name(_prepared.Before)} → {Name(_prepared.After)}"));
+        card.Add(NativeTheme.Metric(Copy("Base","Base"), $"{Base(_prepared.Before)} → {Base(_prepared.After)}"));
+        card.Add(NativeTheme.Metric(Copy("Perincrement","Per increment"), $"{Cost(_prepared.Before)} → {Cost(_prepared.After)}"));
+        card.Add(NativeTheme.Metric(Copy("Total","Total"), $"{Total(_prepared.Before)} → {Total(_prepared.After)}"));
+        card.Add(NativeTheme.Metric(Copy("Lifestylepoints","Lifestyle points"), $"{Points(_prepared.Before)} → {Points(_prepared.After)}"));
+        card.Add(NativeTheme.Metric(Copy("Qualities","Qualities"), $"{QualityCount(_prepared.Before)} → {QualityCount(_prepared.After)}"));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-lifestyle-preview-target";
         _body.Add(border);
@@ -71,18 +103,18 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
 
     private void AddBudgets()
     {
-        AddBudget("Starting nuyen before", _prepared.BudgetBefore, "creation-lifestyle-preview-budget-before");
-        AddBudget("Starting nuyen after", _prepared.BudgetAfter, "creation-lifestyle-preview-budget-after");
+        AddBudget(Copy("BudgetBefore", "Starting nuyen before"), _prepared.BudgetBefore, "creation-lifestyle-preview-budget-before");
+        AddBudget(Copy("BudgetAfter", "Starting nuyen after"), _prepared.BudgetAfter, "creation-lifestyle-preview-budget-after");
     }
 
     private void AddBudget(string title, CharacterCreationLifestyleBudget budget, string automationId)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(title));
-        card.Add(NativeTheme.Metric("Total", budget.Total.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Used", budget.Used.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Remaining", budget.Remaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Overspend", budget.Overspend.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Total", "Total"), budget.Total.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Used", "Used"), budget.Used.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Remaining", "Remaining"), budget.Remaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(Copy("Overspend", "Overspend"), budget.Overspend.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
         SemanticProperties.SetDescription(
@@ -93,7 +125,7 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
 
     private void AddWritePlan()
     {
-        _body.Add(NativeTheme.Eyebrow("Ordered atomic write plan"));
+        _technicalDetails.Add(NativeTheme.Eyebrow("Ordered atomic write plan"));
         foreach (CharacterCreationLifestyleWriteOperation operation in _prepared.WritePlan.Operations)
         {
             VerticalStackLayout operationCard = new() { Spacing = 6 };
@@ -107,7 +139,7 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
                 NativeTheme.Muted));
             Border border = NativeTheme.Card(operationCard, new Thickness(14));
             border.AutomationId = $"creation-lifestyle-write-{operation.Order}-{operation.MutationKind}";
-            _body.Add(border);
+            _technicalDetails.Add(border);
         }
 
         VerticalStackLayout preservation = new() { Spacing = 6 };
@@ -122,7 +154,7 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
         preservation.Add(NativeTheme.Metric("Content after", _prepared.WritePlan.ContentDigestAfter));
         Border card = NativeTheme.Card(preservation);
         card.AutomationId = "creation-lifestyle-preview-preservation";
-        _body.Add(card);
+        _technicalDetails.Add(card);
     }
 
     private void AddBlockers()
@@ -134,7 +166,7 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
         if (blockers.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Blockers"));
+        card.Add(NativeTheme.Eyebrow(Copy("NeedsAttention", "Needs attention")));
         foreach (string blocker in blockers)
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -152,11 +184,26 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
             })
         {
             Label done = NativeTheme.Body(
-                _confirmation.RecoveredByReceiptLookup
-                    ? "Confirmed and recovered by the retained idempotency receipt."
-                    : "Confirmed, atomically checkpointed, and reloaded from Core.");
+                Copy("Saved", "Lifestyle change saved."));
             done.AutomationId = "creation-lifestyle-confirmed";
             _body.Add(NativeTheme.Card(done));
+            return;
+        }
+
+        if (_confirmation?.Receipt is { } committed
+            && CreationLifestylesPhoneAuthority.ReceiptMatches(_prepared, committed))
+        {
+            Label saved = NativeTheme.Body(
+                Copy("SavedReload", "Your change is saved. Reopen the runner in its original account to continue. Do not submit the change again."));
+            saved.AutomationId = "creation-lifestyle-committed-reload-required";
+            _body.Add(NativeTheme.Card(saved));
+            return;
+        }
+
+        if (_submitted)
+        {
+            _body.Add(NativeTheme.Body(Copy("OutcomeUnknown",
+                "The result could not be verified. Reopen this runner before making another change."), NativeTheme.Muted));
             return;
         }
 
@@ -167,8 +214,8 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
             Color = NativeTheme.Signal
         };
         Label explicitLabel = NativeTheme.Body(
-            "I explicitly confirm this exact Lifestyle preview and atomic write plan.");
-        Grid row = new()
+            Copy("ConfirmHelp", "I have reviewed these details and costs and want to save this change."));
+        Grid explicitRow = new()
         {
             ColumnDefinitions =
             {
@@ -177,11 +224,11 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
             },
             ColumnSpacing = 10
         };
-        row.Add(explicitConfirm);
-        row.Add(explicitLabel, 1);
-        _body.Add(NativeTheme.Card(row, new Thickness(14)));
+        explicitRow.Add(explicitConfirm);
+        explicitRow.Add(explicitLabel, 1);
+        _body.Add(NativeTheme.Card(explicitRow, new Thickness(14)));
 
-        Button confirm = NativeTheme.PrimaryButton("Confirm Lifestyle change");
+        Button confirm = NativeTheme.PrimaryButton(Copy("Confirm", "Save lifestyle change"));
         confirm.AutomationId = "creation-lifestyle-confirm";
         confirm.IsEnabled = CanConfirm() && _explicitlyConfirmed;
         explicitConfirm.CheckedChanged += (_, args) =>
@@ -191,16 +238,84 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
         };
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            _confirmation = await Coordinator.ConfirmCreationLifestyleAsync(_prepared);
+            long appearance = CaptureAppearanceGeneration();
+            if (_submitted || !_explicitlyConfirmed || !CanConfirm()
+                || !IsCurrentAppearanceGeneration(appearance)
+                || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            _submitted = true;
+            _saving = true;
+            confirm.IsEnabled = false;
+            confirm.Text = Copy("Saving", "Saving lifestyle…");
+            try
+            {
+                _confirmation = await Coordinator.ConfirmCreationLifestyleAsync(_prepared);
+                if (_confirmation.RefreshedState is not null) await ContinueToLifestylesAsync(appearance);
+            }
+            finally { _saving = false; }
         });
+        _confirm = confirm;
         _body.Add(confirm);
+    }
+
+    private bool CanContinueSaved() => _confirmation?.Receipt is { } receipt
+        && CreationLifestylesPhoneAuthority.ReceiptMatches(_prepared, receipt)
+        && _original.DisplayOwnerContext == _prepared.DisplayOwnerContext
+        && Coordinator.CanDisplayCreationPurchase(_original) && Coordinator.State.Profile?.Created == false;
+
+    private async Task ContinueToLifestylesAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextUnavailable = false;
+        if (_confirm is { } button)
+        {
+            button.IsEnabled = false;
+            button.Text = Copy("OpeningList", "Opening lifestyles…");
+        }
+        try
+        {
+            var page = await Coordinator.PrepareCreationAfterLifestylePageAsync(_original, _prepared,
+                _confirmation!.Receipt!, _confirmation.RefreshedState, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (page is null || !page.IsPreparedDisplayCurrent) { _nextUnavailable = true; return; }
+            await navigation.PushAsync(page, animated: false);
+            if (!navigation.NavigationStack.SequenceEqual(stack.Append(page))) return;
+            // Retire only this contiguous Lifestyles route. Keep the root and any
+            // unrelated page, and never send Back into a consumed mutation preview.
+            for (int i = stack.Length - 2; i > 0; i--)
+            {
+                if (stack[i] is not (CreationLifestyleEditPage or CreationLifestylesPage)) break;
+                navigation.RemovePage(stack[i]);
+            }
+            // Removing this page detaches its NavigationProxy. Remove ancestors
+            // first, while that proxy still belongs to the live navigation host.
+            navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            if (!_saving) Refresh();
+        }
     }
 
     private bool CanConfirm()
     {
-        CharacterCreationLifestylesInteractionLoadResult live = Coordinator.LoadCreationLifestyles();
-        return live.State is { } state
+        var live = _loaded;
+        return live?.State is { } state
                && live.Blockers.Count == 0
+               && _prepared.RequiresExplicitConfirmation
+               && _prepared.CanConfirm
+               && _prepared.Blockers.Count == 0
                && CreationLifestylesPhoneAuthority.PreparedMatches(
                    _prepared,
                    state,
@@ -209,42 +324,30 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
 
     private void AddReceipt()
     {
-        if (_confirmation is not
-            {
-                Outcome: CharacterCreationLifestyleOutcomes.Applied or CharacterCreationLifestyleOutcomes.Replayed,
-                Receipt: { } receipt,
-                RefreshedState: { } refreshed
-            })
-        {
-            return;
-        }
-
-        VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow("Atomic creation receipt"));
-        card.Add(NativeTheme.Metric("Previous revision", receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Content revision", receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Saved revision", receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Lifestyle cost before", receipt.LifestyleCostBefore.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Lifestyle cost after", receipt.LifestyleCostAfter.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Remaining", receipt.LifestyleBudgetRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Reloaded Lifestyles", refreshed.Lifestyles.Count.ToString(CultureInfo.InvariantCulture)));
-        Border border = NativeTheme.Card(card);
+        if (_confirmation?.Receipt is not { } receipt
+            || !CreationLifestylesPhoneAuthority.ReceiptMatches(_prepared, receipt)) return;
+        var card = new VerticalStackLayout { Spacing = 7 };
+        card.Add(NativeTheme.Body(Copy("Saved", "Lifestyle change saved.")));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Remaining", "Remaining"),
+            receipt.LifestyleBudgetRemaining.ToString(CultureInfo.InvariantCulture)));
+        var border = NativeTheme.Card(card);
         border.AutomationId = "creation-lifestyle-confirm-receipt";
         _body.Add(border);
-
-        _body.Add(DigestLabel("Receipt ID", receipt.ReceiptId, "creation-lifestyle-receipt-id"));
-        _body.Add(DigestLabel("Receipt digest", receipt.ReceiptDigest, "creation-lifestyle-receipt-digest"));
-        _body.Add(DigestLabel("Content before", receipt.ContentDigestBefore, "creation-lifestyle-receipt-content-before"));
-        _body.Add(DigestLabel("Content after", receipt.ContentDigestAfter, "creation-lifestyle-receipt-content-after"));
-        _body.Add(DigestLabel("Source", receipt.SourceDigest, "creation-lifestyle-receipt-source"));
-        _body.Add(DigestLabel("Rules", receipt.RulesDigest, "creation-lifestyle-receipt-rules"));
-        _body.Add(DigestLabel("Runtime", receipt.RuntimeDigest, "creation-lifestyle-receipt-runtime"));
-
-        Button back = NativeTheme.PrimaryButton("Back to creation dashboard");
-        back.AutomationId = "creation-lifestyle-back-to-build";
-        back.Clicked += async (_, _) => await Navigation.PopToRootAsync(animated: false);
-        _body.Add(back);
+        _technicalDetails.Add(DigestLabel("Receipt ID", receipt.ReceiptId, "creation-lifestyle-receipt-id"));
+        _technicalDetails.Add(DigestLabel("Receipt digest", receipt.ReceiptDigest, "creation-lifestyle-receipt-digest"));
+        if (_nextUnavailable) _body.Add(NativeTheme.Body(Copy("ListUnavailable",
+            "Your lifestyle is saved. Try Continue again to reopen the list; this will not save twice."), NativeTheme.Muted));
+        long appearance = CaptureAppearanceGeneration();
+        var next = NativeTheme.PrimaryButton(Copy("ContinueLifestyles", "Continue to lifestyles"));
+        next.AutomationId = "creation-lifestyle-continue-lifestyles";
+        next.IsEnabled = CanContinueSaved();
+        next.Clicked += async (_, _) => await RunAsync(() => ContinueToLifestylesAsync(appearance));
+        _confirm = next;
+        _body.Add(next);
     }
+
+    private static string Copy(string key, string fallback)
+        => CreationFlowStrings.Get("Lifestyles." + key, fallback);
 
     private Label DigestLabel(string label, string value, string automationId)
     {

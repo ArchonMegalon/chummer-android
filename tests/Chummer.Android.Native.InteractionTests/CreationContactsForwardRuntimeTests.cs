@@ -157,6 +157,14 @@ internal static partial class AfterRunAuthorityHarness
                         await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(lifestyles, "OnAppearing")));
                         Require(MinimalVisible(lifestyles).Any(x => x.AutomationId == "creation-lifestyles-budget"),
                             "Lifestyles failed to prepare its admitted state off-thread: " + string.Join(";", lifestyleAlerts.Messages));
+                        Require(!MinimalVisible(lifestyles).Any(x => x.AutomationId == "creation-lifestyles-authority"),
+                            "Machine rule/runtime digests leaked into the normal Lifestyle list.");
+                        var lifestyleState = await coordinator.LoadCreationLifestylesForDisplayAsync(coordinator.State, default);
+                        Require(lifestyleState.State is { CanEdit: true, Blockers.Count: 0, Budget.IsExact: true }
+                            && lifestyleState.State.Budget.Total > 0m
+                            && CreationLifestylesPhoneAuthority.IsReady(lifestyleState.State, coordinator.State),
+                            "Lifestyles lost the saved Priority resource budget after Contacts: "
+                            + string.Join(",", lifestyleState.State?.Blockers ?? lifestyleState.Blockers));
                         IssuedPageLifecycle(lifestyles, "OnDisappearing");
                         await navigation.PopAsync(false);
                     }

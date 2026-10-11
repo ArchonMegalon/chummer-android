@@ -91,7 +91,7 @@
   <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Elige dónde vive tu runner y revisa el coste.</value></data>
   <data name="Contacts.PageTitle" xml:space="preserve"><value>Contactos de creación</value></data>
   <data name="Contacts.Unnamed" xml:space="preserve"><value>Contacto sin nombre</value></data>
-  <data name="Lifestyles.AddFromCatalog" xml:space="preserve"><value>Añadir desde el catálogo exacto de Core</value></data>
+  <data name="Lifestyles.AddFromCatalog" xml:space="preserve"><value>Añadir un estilo de vida</value></data>
   <data name="Lifestyles.AuthorityBlocked" xml:space="preserve"><value>Autoridad de estilos de vida de creación bloqueada</value></data>
   <data name="Lifestyles.AuthorityUnavailable" xml:space="preserve"><value>Autoridad de estilos de vida de creación no disponible</value></data>
   <data name="Lifestyles.Budget" xml:space="preserve"><value>Presupuesto inicial de nuyen</value></data>
@@ -99,10 +99,10 @@
   <data name="Lifestyles.CatalogDetail" xml:space="preserve"><value>{0} por {1} · {2} {3}</value></data>
   <data name="Lifestyles.Current" xml:space="preserve"><value>Estilos de vida actuales</value></data>
   <data name="Lifestyles.Empty" xml:space="preserve"><value>Todavía no se seleccionó ningún estilo de vida.</value></data>
-  <data name="Lifestyles.ExistingDetail" xml:space="preserve"><value>{0} · {1} nuyen · autoridad {2}</value></data>
-  <data name="Lifestyles.Eyebrow" xml:space="preserve"><value>Creación del personaje · Contactos/Estilos de vida</value></data>
+  <data name="Lifestyles.ExistingDetail" xml:space="preserve"><value>{0} · {1} nuyen</value></data>
+  <data name="Lifestyles.Eyebrow" xml:space="preserve"><value>Creación de personaje</value></data>
   <data name="Lifestyles.Heading" xml:space="preserve"><value>Estilos de vida</value></data>
-  <data name="Lifestyles.Intro" xml:space="preserve"><value>Elige una entrada del catálogo de Core, configura un borrador tipado, revisa la economía exacta y el plan de escritura atómica vinculado a preservación, y después confirma por separado.</value></data>
+  <data name="Lifestyles.Intro" xml:space="preserve"><value>Elige dónde vive tu runner, revisa el coste y continúa al dinero inicial.</value></data>
   <data name="Lifestyles.Options" xml:space="preserve"><value>Opciones de estilo de vida</value></data>
   <data name="Lifestyles.Overspend" xml:space="preserve"><value>Exceso de gasto</value></data>
   <data name="Lifestyles.PageTitle" xml:space="preserve"><value>Estilos de vida de creación</value></data>
@@ -2178,4 +2178,29 @@
   <data name="Contacts.OpeningList" xml:space="preserve"><value>Abriendo contactos…</value></data>
   <data name="Contacts.ListUnavailable" xml:space="preserve"><value>Tu contacto está guardado. Pulsa Continuar para intentar abrir la lista de nuevo; no se guardará dos veces.</value></data>
   <data name="Contacts.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Abre de nuevo este runner antes de realizar otro cambio.</value></data>
+  <data name="Lifestyles.Review" xml:space="preserve"><value>Revisar estilo de vida</value></data>
+  <data name="Lifestyles.Changes" xml:space="preserve"><value>Cambios</value></data>
+  <data name="Lifestyles.Mutation" xml:space="preserve"><value>Cambio</value></data>
+  <data name="Lifestyles.Name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Lifestyles.Base" xml:space="preserve"><value>Estilo de vida</value></data>
+  <data name="Lifestyles.Perincrement" xml:space="preserve"><value>Coste por período</value></data>
+  <data name="Lifestyles.Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Lifestyles.Lifestylepoints" xml:space="preserve"><value>Puntos de estilo de vida</value></data>
+  <data name="Lifestyles.Qualities" xml:space="preserve"><value>Cualidades</value></data>
+  <data name="Lifestyles.BudgetBefore" xml:space="preserve"><value>Nuyen iniciales antes</value></data>
+  <data name="Lifestyles.BudgetAfter" xml:space="preserve"><value>Nuyen iniciales después</value></data>
+  <data name="Lifestyles.NeedsAttention" xml:space="preserve"><value>Requiere atención</value></data>
+  <data name="Lifestyles.Saved" xml:space="preserve"><value>Estilo de vida guardado.</value></data>
+  <data name="Lifestyles.SavedReload" xml:space="preserve"><value>El cambio está guardado. Vuelve a abrir el runner en su cuenta original para continuar. No vuelvas a guardarlo.</value></data>
+  <data name="Lifestyles.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Vuelve a abrir este runner antes de realizar otro cambio.</value></data>
+  <data name="Lifestyles.ConfirmHelp" xml:space="preserve"><value>He revisado estos datos y costes y quiero guardar el cambio.</value></data>
+  <data name="Lifestyles.Confirm" xml:space="preserve"><value>Guardar estilo de vida</value></data>
+  <data name="Lifestyles.Saving" xml:space="preserve"><value>Guardando estilo de vida…</value></data>
+  <data name="Lifestyles.OpeningList" xml:space="preserve"><value>Abriendo estilos de vida…</value></data>
+  <data name="Lifestyles.ListUnavailable" xml:space="preserve"><value>Tu estilo de vida está guardado. Pulsa Continuar de nuevo para abrir la lista; no se guardará dos veces.</value></data>
+  <data name="Lifestyles.ContinueLifestyles" xml:space="preserve"><value>Continuar a estilos de vida</value></data>
+  <data name="Lifestyles.ContinueCash" xml:space="preserve"><value>Continuar al dinero inicial</value></data>
+  <data name="Lifestyles.OpeningCash" xml:space="preserve"><value>Abriendo dinero inicial…</value></data>
+  <data name="Lifestyles.ShowQualities" xml:space="preserve"><value>Ventajas y desventajas opcionales del estilo de vida</value></data>
+  <data name="Lifestyles.HideQualities" xml:space="preserve"><value>Ocultar ventajas y desventajas del estilo de vida</value></data>
 </root>

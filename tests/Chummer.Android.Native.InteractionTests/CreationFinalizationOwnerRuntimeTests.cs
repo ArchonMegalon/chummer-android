@@ -2821,27 +2821,142 @@ internal static partial class AfterRunAuthorityHarness
     public static async Task RunStartingCashPhonePagesAsync(string contentRoot)
     {
         foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen })
+        foreach (bool purchased in new[] { false, true })
         {
             using var ui = new IssuedPageUiContext();
             await ui.RunAsync(async () =>
             {
                 var owners = new ControlledLinkedOwner();
-                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationFinalization: true);
+                LifestylesUiBoundaryProbe? lifestyles = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, creationLifestyles: true,
+                    lifestylesDecorator: inner => lifestyles = new(inner, SynchronizationContext.Current!));
                 await runtime.Coordinator.InitializeAsync();
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                 var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
                 await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var navigation = new NavigationPage(new ContentPage());
+                var window = new Window(navigation);
+                await navigation.PushAsync(new CreationLifestylesPage(runtime.Coordinator), false);
+                await Appear();
+                if (purchased)
+                {
+                    foreach (string name in new[] { "Low", "Street" })
+                    {
+                        var state = (await runtime.Coordinator.LoadCreationLifestylesForDisplayAsync(
+                            runtime.Coordinator.State, default)).State!;
+                        var option = state.Authority.LifestyleOptions.Single(item => item.Name == name);
+                        Guid id = name == "Low" ? Guid.Parse("eeeeeeee-0000-4000-8000-000000000001")
+                            : Guid.Parse("11111111-0000-4000-8000-000000000001");
+                        var editor = new CreationLifestyleEditPage(runtime.Coordinator, id, option.OptionId, true);
+                        await navigation.PushAsync(editor, false);
+                        using var editorAlerts = new IssuedPageAlerts(editor, window);
+                        await Appear();
+                        Require(!MinimalVisible(editor).Any(x => x.AutomationId == "creation-lifestyle-edit-binding"),
+                            "Lifestyle editor exposes machine identifiers by default.");
+                        int readsBeforeEditing = lifestyles!.LoadCalls;
+                        int previewsBeforeEditing = lifestyles.PreviewCalls;
+                        Require(!MinimalVisible(editor).Any(x => x.AutomationId?.StartsWith("creation-lifestyle-quality-", StringComparison.Ordinal) == true),
+                            "Optional Lifestyle qualities overwhelm the initial editor.");
+                        ClickDetails("creation-lifestyle-qualities-toggle");
+                        Require(MinimalVisible(editor).Any(x => x.AutomationId?.StartsWith("creation-lifestyle-quality-", StringComparison.Ordinal) == true),
+                            "Lifestyle qualities cannot be opened from the admitted display.");
+                        ClickDetails("creation-lifestyle-qualities-toggle");
+                        Require(!MinimalVisible(editor).Any(x => x.AutomationId?.StartsWith("creation-lifestyle-quality-", StringComparison.Ordinal) == true),
+                            "Lifestyle qualities did not collapse.");
+                        var nameInput = Element<Entry>("creation-lifestyle-name");
+                        nameInput.Text = name + " home";
+                        Element<Entry>("creation-lifestyle-increments").Text = name == "Low" ? "2" : "1";
+                        Element<Entry>("creation-lifestyle-city").Text = "Seattle";
+                        Require(lifestyles.LoadCalls == readsBeforeEditing && lifestyles.PreviewCalls == previewsBeforeEditing,
+                            "Editing local Lifestyle fields repeated a Core read or recalculation.");
+                        var beforePreview = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                        await Click("creation-lifestyle-preview");
+                        Require(Current() is CreationLifestylePreviewPage,
+                            "Actual Lifestyle editor did not produce a review: " + string.Join(";", editorAlerts.Messages));
+                        RequireSameRewardDocument(beforePreview, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                        var reviewPage = (CreationLifestylePreviewPage)Current();
+                        using var reviewAlerts = new IssuedPageAlerts(reviewPage, window);
+                        nameInput.Text = "Detached control must not alter the review";
+                        Require(!MinimalVisible(reviewPage).Any(x => x.AutomationId == "creation-lifestyle-preview-digest"),
+                            "Machine identifiers leaked into the normal Lifestyle review.");
+                        Element<CheckBox>("creation-lifestyle-explicit-confirm").IsChecked = true;
+                        var save = Element<Button>("creation-lifestyle-confirm");
+                        int commitsBeforeSave = lifestyles.ConfirmCalls;
+                        bool interruptRefresh = method == CharacterCreationBuildMethods.Priority && name == "Low";
+                        lifestyles.FailPostCommitReads = interruptRefresh;
+                        await Click("creation-lifestyle-confirm");
+                        if (interruptRefresh)
+                        {
+                            Require(ReferenceEquals(Current(), reviewPage)
+                                && MinimalVisible(reviewPage).Any(x => x.AutomationId == "creation-lifestyle-confirm-receipt"),
+                                "A refresh outage discarded the verified Lifestyle commit receipt.");
+                            var committed = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                            Require(committed.ContentRevision == state.Binding.ContentRevision + 1,
+                                "The read outage changed the atomic commit outcome.");
+                            ((IButtonController)save).SendClicked();
+                            await ui.DrainDispatchedAsyncVoidAsync();
+                            Require(lifestyles.ConfirmCalls == commitsBeforeSave + 1,
+                                "The failed-refresh screen replayed an already committed mutation.");
+                            lifestyles.FailPostCommitReads = false;
+                            lifestyles.ReadsUnavailable = false;
+                            await Click("creation-lifestyle-continue-lifestyles");
+                            RequireSameRewardDocument(committed, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                        }
+                        Require(Current() is CreationLifestylesPage && navigation.Navigation.NavigationStack.Count == 2,
+                            "Lifestyle save retained a consumed review/editor instead of a fresh list: "
+                            + string.Join(";", reviewAlerts.Messages));
+                        var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                        Require(saved.ContentRevision == state.Binding.ContentRevision + 1
+                            && saved.SavedRevision == saved.ContentRevision, "Lifestyle save was not one atomic revision.");
+                        ((IButtonController)save).SendClicked();
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                        Require(lifestyles.ConfirmCalls == commitsBeforeSave + 1,
+                            "A detached Lifestyle save control replayed the mutation.");
+                        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                        Require(Element<Button>("creation-lifestyles-continue-starting-cash").IsEnabled,
+                            "Saved Lifestyle has no usable forward action.");
+                    }
+                    before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                }
                 var loaded = runtime.Coordinator.LoadCreationFinalization().Value!;
                 Require(runtime.Coordinator.IsCreationFinalizationStateCurrent(loaded), "Starting cash needs an issued current state.");
                 var source = loaded.StartingCashSource!;
-                var page = new CreationStartingCashPage(runtime.Coordinator, loaded);
-                var navigation = new NavigationPage(new ContentPage());
-                await navigation.PushAsync(page, false);
-                var window = new Window(navigation);
+                await Click("creation-lifestyles-continue-starting-cash");
+                Require(Current() is CreationStartingCashPage, "Lifestyles did not lead directly to starting cash.");
+                var page = (CreationStartingCashPage)Current();
                 using var alerts = new IssuedPageAlerts(page, window);
                 await alerts.PreflightAsync();
                 await Appear();
                 var input = Element<Entry>("creation-starting-cash-roll");
+                Require(IssuedElements(page).OfType<Label>().Any(label => label.Text == CreationKarmaCopy.DiceTotalHelp),
+                    "The cash page must explain total face values rather than hits.");
+                var pickers = IssuedElements(page).OfType<Picker>()
+                    .Where(picker => picker.AutomationId == "creation-starting-cash-lifestyle").ToArray();
+                Require(pickers.Length == (purchased ? 1 : 0), "A single lifestyle needs no selector; multiple owned tiers do.");
+                if (purchased)
+                {
+                    var picker = pickers.Single();
+                    Require(loaded.StartingCashSources is { Count: 2 } && source.Name == "Low"
+                        && picker.ItemsSource.Count == 2 && picker.SelectedIndex == 0,
+                        "Only purchased lifestyle tiers may be offered, with the Core default selected.");
+                    input.Text = source.Dice.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    var detachedInput = input;
+                    picker.SelectedIndex = 1;
+                    source = loaded.StartingCashSources![1];
+                    Require(source.Name == "Street", "SETUP: expected the lower owned starting-cash option.");
+                    input = Element<Entry>("creation-starting-cash-roll");
+                    Require(string.IsNullOrEmpty(input.Text) && !Element<Button>("creation-starting-cash-preview").IsEnabled,
+                        "Changing lifestyle must clear the old roll and disable review.");
+                    detachedInput.Text = "999";
+                    picker.SelectedIndex = 0;
+                    Require(string.IsNullOrEmpty(input.Text)
+                        && Element<Picker>("creation-starting-cash-lifestyle").SelectedIndex == 1
+                        && Element<Label>("creation-starting-cash-source").Text
+                            == CreationKarmaCopy.StartingCash(source.Name, source.Dice, source.Multiplier),
+                        "Detached controls changed the currently selected cash authority.");
+                    RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                }
                 Require(string.IsNullOrEmpty(input.Text) && !Element<Button>("creation-starting-cash-preview").IsEnabled,
                     "Starting cash must not implicitly choose or roll a value.");
                 input.Text = "not a roll";
@@ -2904,6 +3019,12 @@ internal static partial class AfterRunAuthorityHarness
                     && receipt.StartingCash == review.Plan.StartingCash
                     && receipt.StartingCashAuthorityDigest == review.Plan.StartingCashAuthorityDigest,
                     "The native confirm lost its cash choice or saved more than one revision.");
+                if (purchased)
+                {
+                    var homes = XElement.Parse(cold.Document.Content).Element("lifestyles")!.Elements("lifestyle").ToArray();
+                    Require(homes.Length == 2 && homes.Single(home => home.Element("baselifestyle")?.Value == "Low")
+                        .Element("months")?.Value == "2", "Career cold reopen lost purchased Lifestyle months.");
+                }
                 owners.Set(ContactsOwnerB);
                 owners.Set(OwnerScope.LocalSingleUser);
                 Require(!runtime.Coordinator.IsCreationFinalizationStateCurrent(loaded), "Owner ABA revived the old cash page.");
@@ -2911,7 +3032,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(!Element<VerticalStackLayout>("creation-finalization-receipt-technical-details").IsVisible,
                     "Owner ABA revived disclosure of an old receipt.");
                 ui.AssertHealthy();
-                Console.WriteLine("PASS " + method + " starting-cash page: explicit roll, Core rejection, preview, stale Entry, confirm and cold receipt");
+                Console.WriteLine("PASS " + method + " starting-cash page (purchased=" + purchased
+                    + "): owned choice, explicit roll, Core rejection, preview, stale controls, confirm and cold receipt");
 
                 NativePageBase Current() => (NativePageBase)navigation.Navigation.NavigationStack.Last();
                 T Element<T>(string id) where T : Element => IssuedElements(Current()).OfType<T>().Single(e => e.AutomationId == id);
@@ -2924,20 +3046,54 @@ internal static partial class AfterRunAuthorityHarness
                 async Task Appear()
                 {
                     if (IssuedPageField<int>(Current(), "_subscribed") == 0)
-                        await ui.BeginAsyncVoid(() => IssuedPageLifecycle(Current(), "OnAppearing"));
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(Current(), "OnAppearing")));
                 }
                 async Task Click(string id)
                 {
                     var previous = Current();
                     var button = Element<Button>(id);
                     Require(button.IsEnabled, "Button disabled: " + id);
-                    await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked()));
                     if (!ReferenceEquals(previous, Current()) && IssuedPageField<int>(previous, "_subscribed") != 0)
                         IssuedPageLifecycle(previous, "OnDisappearing");
                     await Appear();
                 }
             });
         }
+    }
+
+    private sealed class LifestylesUiBoundaryProbe(IOwnerBoundCharacterCreationLifestylesService inner,
+        SynchronizationContext ui) : IOwnerBoundCharacterCreationLifestylesService
+    {
+        public int LoadCalls;
+        public int PreviewCalls;
+        public int ConfirmCalls;
+        public bool FailPostCommitReads;
+        public bool ReadsUnavailable;
+        private static void NotOnUi(SynchronizationContext ui)
+            => Require(SynchronizationContext.Current != ui,
+                "Lifestyle Core work blocked the native UI synchronization context.");
+        public CharacterCreationLifestyleResult<CharacterCreationLifestylesState> Load(
+            OwnerContextStamp owner, CharacterCreationLifestylesLoadRequest request)
+        {
+            NotOnUi(ui); LoadCalls++;
+            if (ReadsUnavailable) throw new IOException("Synthetic post-commit Lifestyle read outage.");
+            return inner.Load(owner, request);
+        }
+        public CharacterCreationLifestyleResult<CharacterCreationLifestylePreview> Preview(
+            OwnerContextStamp owner, CharacterCreationLifestylePreviewRequest request)
+        { NotOnUi(ui); PreviewCalls++; return inner.Preview(owner, request); }
+        public CharacterCreationLifestyleResult<CharacterCreationLifestyleReceipt> Confirm(
+            OwnerContextStamp owner, CharacterCreationLifestyleConfirmRequest request)
+        {
+            NotOnUi(ui); ConfirmCalls++;
+            var result = inner.Confirm(owner, request);
+            if (result.Value is not null && FailPostCommitReads) ReadsUnavailable = true;
+            return result;
+        }
+        public CharacterCreationLifestyleResult<CharacterCreationLifestyleReceipt> LookupReceipt(
+            OwnerContextStamp owner, CharacterCreationLifestyleReceiptLookupRequest request)
+        { NotOnUi(ui); return inner.LookupReceipt(owner, request); }
     }
 
     private static CharacterCreationStartingCashChoice FinalizationFixtureCash(CharacterCreationFinalizationState state)

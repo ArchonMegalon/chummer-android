@@ -581,7 +581,9 @@ internal static partial class AfterRunAuthorityHarness
             Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null,
             Func<ICharacterCreationResourcesInteractionPresenter, ICharacterCreationResourcesInteractionPresenter>? resourcesDecorator = null,
             Func<ICharacterCreationGearInteractionPresenter, ICharacterCreationGearInteractionPresenter>? gearDecorator = null,
-            bool creationLifestyles = false)
+            bool creationLifestyles = false,
+            Func<IOwnerBoundCharacterCreationLifestylesService,
+                IOwnerBoundCharacterCreationLifestylesService>? lifestylesDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -693,7 +695,9 @@ internal static partial class AfterRunAuthorityHarness
                         originScenes, originTimeline, completionDrafts, _provider.GetRequiredService<ICharacterFileQueries>());
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
                     null!, contactsPresenter!, creationLifestyles ? new CharacterCreationLifestylesInteractionPresenter(
-                        _provider.GetRequiredService<ICharacterCreationLifestylesService>()) : null!, null!, Shell,
+                        _provider.GetRequiredService<ICharacterCreationLifestylesService>(),
+                        lifestylesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesService>()) : null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),
                     outputDocuments!, linkedCharacters!, outputSystem!, accountService ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),

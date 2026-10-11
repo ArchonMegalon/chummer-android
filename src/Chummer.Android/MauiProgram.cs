@@ -207,7 +207,8 @@ public static class MauiProgram
                 provider.GetRequiredService<IOwnerBoundCharacterCreationContactsService>()));
         builder.Services.AddSingleton<ICharacterCreationLifestylesInteractionPresenter>(provider =>
             new CharacterCreationLifestylesInteractionPresenter(
-                provider.GetRequiredService<ICharacterCreationLifestylesService>()));
+                provider.GetRequiredService<ICharacterCreationLifestylesService>(),
+                provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesService>()));
         builder.Services.AddSingleton<ICharacterCreationResourcesInteractionPresenter>(provider =>
             new CharacterCreationResourcesInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationResourcesService>(),

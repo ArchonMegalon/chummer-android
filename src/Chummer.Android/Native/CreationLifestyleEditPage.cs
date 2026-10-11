@@ -18,6 +18,15 @@ public sealed class CreationLifestyleEditPage : NativePageBase
     };
     private Button? _previewButton;
     private IReadOnlyList<string> _prepareBlockers = [];
+    private CharacterCreationLifestylesInteractionLoadResult? _loaded;
+    private CharacterOverviewState? _display;
+    private bool _loading = true;
+    private bool _admitted;
+    private bool _preparing;
+    private bool _qualitiesExpanded;
+    private long _render;
+    private CancellationTokenSource? _previewLifetime;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     internal CreationLifestyleEditPage(
         RunnerSessionCoordinator coordinator,
@@ -37,18 +46,61 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loading = true;
+        _loaded = null;
+        _display = null;
+        _admitted = false;
+        Refresh();
+        try
+        {
+            var display = Coordinator.State;
+            var loaded = await Coordinator.LoadCreationLifestylesForDisplayAsync(display, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(display)) return;
+            _loaded = loaded;
+            _display = display;
+            _admitted = loaded.Outcome == CharacterCreationLifestyleOutcomes.Available
+                && loaded.Blockers.Count == 0 && loaded.State is { } state
+                && CreationLifestylesPhoneAuthority.IsReady(state, display);
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
+    }
+
+    protected override void OnDisappearing()
+    {
+        _previewLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
+    private bool Current(CharacterCreationLifestylesInteractionState state)
+        => _admitted && ReferenceEquals(_loaded?.State, state) && _display is { } display
+           && Coordinator.IsCreationCatalogDisplayCurrent(display);
+
+    private bool CanEdit(CharacterCreationLifestylesInteractionState state, long render)
+        => !_preparing && render == _render && Current(state)
+           && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration());
+
     protected override void Refresh()
     {
+        _render++;
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _previewButton = null;
         _body.Add(NativeTheme.Eyebrow("Character creation · Lifestyle"));
-
-        CharacterCreationLifestylesInteractionLoadResult load = Coordinator.LoadCreationLifestyles();
-        if (!string.Equals(load.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
-            || load.State is not { } state
-            || !CreationLifestylesPhoneAuthority.IsReady(state, Coordinator.State))
+        if (_loading)
         {
-            AddBlockers("Lifestyle authority unavailable", load.Blockers, "creation-lifestyle-edit-blockers");
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-lifestyle-edit-loading" });
+            return;
+        }
+        var load = _loaded;
+        if (load is null || !string.Equals(load.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
+            || load.State is not { } state
+            || !Current(state))
+        {
+            AddBlockers("Lifestyle authority unavailable", load?.Blockers ??
+                [CharacterCreationLifestylesBlockers.AuthorityUnavailable], "creation-lifestyle-edit-blockers");
             return;
         }
 
@@ -86,12 +138,15 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         AddIdentityAndTiming(state, configuration);
         AddEconomicsInputs(state, configuration);
         AddLocation(state, configuration);
-        AddQualities(state, configuration);
         if (_prepareBlockers.Count > 0)
         {
             AddBlockers("Preview blockers", _prepareBlockers, "creation-lifestyle-preview-blockers");
         }
         AddPreviewActions(state);
+        AddQualities(state, configuration);
+        long render = _render;
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-lifestyle-edit-details",
+            () => CanEdit(state, render)));
     }
 
     private void AddBinding(
@@ -103,13 +158,14 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             + $"Lifestyle {configuration.LifestyleId:D}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-lifestyle-edit-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
     }
 
     private void AddBaseLifestyle(
         CharacterCreationLifestylesInteractionState state,
         CharacterCreationLifestyleConfiguration configuration)
     {
+        long render = _render;
         CharacterCreationLifestyleCatalogOption[] options = state.Authority.LifestyleOptions
             .Where(option => option.IsSelectable && option.EligibilityIsExact && option.Blockers.Count == 0)
             .OrderBy(option => option.BaseCost)
@@ -128,7 +184,7 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             StringComparison.Ordinal));
         picker.SelectedIndexChanged += (_, _) =>
         {
-            if (picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Length)
+            if (CanEdit(state, render) && picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Length)
             {
                 _prepareBlockers = [];
                 _draft.TrySelectBase(state, options[picker.SelectedIndex].OptionId);
@@ -148,12 +204,14 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         CharacterCreationLifestylesInteractionState state,
         CharacterCreationLifestyleConfiguration configuration)
     {
+        long render = _render;
         VerticalStackLayout card = new() { Spacing = 8 };
         card.Add(NativeTheme.Eyebrow("Identity and term"));
         Entry name = NativeTheme.TextField("creation-lifestyle-name", configuration.Name);
-        name.TextChanged += (_, args) => Update(
-            _draft.TrySetName(state, args.NewTextValue),
-            state);
+        name.TextChanged += (_, args) =>
+        {
+            if (CanEdit(state, render)) Update(_draft.TrySetName(state, args.NewTextValue), state);
+        };
         card.Add(NativeTheme.FieldLabel("Name"));
         card.Add(name);
 
@@ -163,7 +221,7 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             configuration.StyleId);
         style.SelectedIndexChanged += (_, _) =>
         {
-            if (style.SelectedIndex >= 0)
+            if (CanEdit(state, render) && style.SelectedIndex >= 0)
             {
                 _draft.TrySetStyle(state, CharacterCreationLifestyleStyleIds.All[style.SelectedIndex]);
                 Refresh();
@@ -252,7 +310,42 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         CharacterCreationLifestylesInteractionState state,
         CharacterCreationLifestyleConfiguration configuration)
     {
-        _body.Add(NativeTheme.Eyebrow("Lifestyle qualities"));
+        long render = _render;
+        VerticalStackLayout choices = new() { Spacing = 10, IsVisible = _qualitiesExpanded && !_preparing };
+        bool populated = false;
+        string Copy() => CreationFlowStrings.Get(
+            choices.IsVisible ? "Lifestyles.HideQualities" : "Lifestyles.ShowQualities",
+            choices.IsVisible ? "Hide optional lifestyle qualities" : "Optional lifestyle qualities");
+        Button toggle = NativeTheme.ReadingButton(Copy());
+        toggle.AutomationId = "creation-lifestyle-qualities-toggle";
+        toggle.IsEnabled = !_preparing;
+        toggle.Clicked += (_, _) =>
+        {
+            if (!ReferenceEquals(toggle.Parent, _body) || !CanEdit(state, render)) return;
+            _qualitiesExpanded = !choices.IsVisible;
+            choices.IsVisible = _qualitiesExpanded;
+            if (choices.IsVisible && !populated)
+            {
+                PopulateQualities(choices, state, configuration, render);
+                populated = true;
+            }
+            toggle.Text = Copy();
+        };
+        _body.Add(toggle);
+        _body.Add(choices);
+        if (choices.IsVisible)
+        {
+            PopulateQualities(choices, state, configuration, render);
+            populated = true;
+        }
+    }
+
+    private void PopulateQualities(
+        VerticalStackLayout choices,
+        CharacterCreationLifestylesInteractionState state,
+        CharacterCreationLifestyleConfiguration configuration,
+        long render)
+    {
         foreach (CharacterCreationLifestyleQualityCatalogOption option in state.Authority.QualityOptions
                      .OrderBy(item => item.Category, StringComparer.Ordinal)
                      .ThenBy(item => item.Name, StringComparer.Ordinal))
@@ -284,29 +377,38 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             row.Add(label, 1);
             check.CheckedChanged += (_, args) =>
             {
+                if (!CanEdit(state, render)) return;
                 _prepareBlockers = [];
                 _draft.TryToggleQuality(state, option.OptionId, args.Value);
                 UpdatePreviewEnabled(state);
             };
             Border border = NativeTheme.Card(row, new Thickness(14));
             border.AutomationId = $"creation-lifestyle-quality-card-{Token(option.OptionId)}";
-            _body.Add(border);
+            choices.Add(border);
         }
     }
 
     private void AddPreviewActions(CharacterCreationLifestylesInteractionState state)
     {
-        _previewButton = NativeTheme.PrimaryButton("Preview exact Lifestyle change");
+        long render = _render;
+        _previewButton = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Contacts.Review", "Review changes"));
         _previewButton.AutomationId = "creation-lifestyle-preview";
-        _previewButton.IsEnabled = _draft.HasChanges(state);
-        _previewButton.Clicked += async (_, _) => await PreparePreviewAsync(state, delete: false);
+        _previewButton.IsEnabled = !_preparing && _draft.HasChanges(state);
+        _previewButton.Clicked += async (_, _) =>
+        {
+            if (CanEdit(state, render)) await PreparePreviewAsync(state, delete: false);
+        };
         _body.Add(_previewButton);
 
         if (!_isCreate)
         {
             Button delete = NativeTheme.SecondaryButton("Review Lifestyle deletion");
             delete.AutomationId = "creation-lifestyle-delete-preview";
-            delete.Clicked += async (_, _) => await PreparePreviewAsync(state, delete: true);
+            delete.IsEnabled = !_preparing;
+            delete.Clicked += async (_, _) =>
+            {
+                if (CanEdit(state, render)) await PreparePreviewAsync(state, delete: true);
+            };
             _body.Add(delete);
         }
 
@@ -315,13 +417,21 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             + "proves unknown sibling and nested state preservation, and requires a separate confirmation.",
             NativeTheme.Muted);
         scope.AutomationId = "creation-lifestyle-draft-scope";
-        _body.Add(scope);
+        _technicalDetails.Add(scope);
+        if (_preparing)
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-lifestyle-preview-loading" });
     }
 
-    private async Task PreparePreviewAsync(
+    private Task PreparePreviewAsync(
         CharacterCreationLifestylesInteractionState state,
         bool delete)
+        => RunAsync(async () =>
     {
+        if (!Current(state) || _display is not { } original || _preparing) return;
+        long appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        if (stack.LastOrDefault() != this) return;
         _prepareBlockers = [];
         CharacterCreationLifestyleMutationInput? input = delete
             ? _draft.ToDeleteInput(state)
@@ -332,22 +442,37 @@ public sealed class CreationLifestyleEditPage : NativePageBase
             Refresh();
             return;
         }
-        CharacterCreationLifestylesInteractionPrepareResult result =
-            Coordinator.PrepareCreationLifestyle(input);
-        if (!string.Equals(result.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
-            || result.State is not { } preparedState
-            || result.PreparedPreview is not { } prepared
-            || result.Blockers.Count > 0
-            || !CreationLifestylesPhoneAuthority.PreparedMatches(prepared, preparedState, Coordinator.State))
+        using var lifetime = new CancellationTokenSource();
+        _previewLifetime = lifetime;
+        _preparing = true;
+        Refresh();
+        try
         {
-            _prepareBlockers = result.Blockers.Count > 0
-                ? result.Blockers
-                : [CharacterCreationLifestylesBlockers.AuthorityUnavailable];
-            Refresh();
-            return;
+            CharacterCreationLifestylesInteractionPrepareResult result =
+                await Coordinator.PrepareCreationLifestyleForDisplayAsync(original, input, lifetime.Token);
+            lifetime.Token.ThrowIfCancellationRequested();
+            if (!IsCurrentAppearanceGeneration(appearance) || !Current(state)
+                || !navigation.NavigationStack.SequenceEqual(stack)) return;
+            if (!string.Equals(result.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
+                || result.State is not { } preparedState
+                || result.PreparedPreview is not { } prepared
+                || result.Blockers.Count > 0
+                || !CreationLifestylesPhoneAuthority.PreparedMatches(prepared, preparedState, Coordinator.State))
+            {
+                _prepareBlockers = result.Blockers.Count > 0
+                    ? result.Blockers
+                    : [CharacterCreationLifestylesBlockers.AuthorityUnavailable];
+                Refresh();
+                return;
+            }
+            await navigation.PushAsync(new CreationLifestylePreviewPage(Coordinator, prepared));
         }
-        await Navigation.PushAsync(new CreationLifestylePreviewPage(Coordinator, prepared));
-    }
+        finally
+        {
+            if (ReferenceEquals(_previewLifetime, lifetime)) _previewLifetime = null;
+            _preparing = false;
+        }
+    });
 
     private View NumberEntry(
         string label,
@@ -356,11 +481,15 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         Func<string, bool> apply,
         CharacterCreationLifestylesInteractionState state)
     {
+        long render = _render;
         VerticalStackLayout container = new() { Spacing = 5 };
         container.Add(NativeTheme.FieldLabel(label));
         Entry entry = NativeTheme.TextField(automationId, value);
         entry.Keyboard = Keyboard.Numeric;
-        entry.TextChanged += (_, args) => Update(apply(args.NewTextValue ?? string.Empty), state);
+        entry.TextChanged += (_, args) =>
+        {
+            if (CanEdit(state, render)) Update(apply(args.NewTextValue ?? string.Empty), state);
+        };
         container.Add(entry);
         return container;
     }
@@ -372,13 +501,17 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         Func<bool, bool> apply,
         CharacterCreationLifestylesInteractionState state)
     {
+        long render = _render;
         Switch toggle = new()
         {
             AutomationId = automationId,
             IsToggled = value,
             HorizontalOptions = LayoutOptions.Start
         };
-        toggle.Toggled += (_, args) => Update(apply(args.Value), state);
+        toggle.Toggled += (_, args) =>
+        {
+            if (CanEdit(state, render)) Update(apply(args.Value), state);
+        };
         VerticalStackLayout container = new() { Spacing = 5 };
         container.Add(NativeTheme.FieldLabel(label));
         container.Add(toggle);
@@ -393,9 +526,13 @@ public sealed class CreationLifestyleEditPage : NativePageBase
         Func<string?, bool> apply,
         CharacterCreationLifestylesInteractionState state)
     {
+        long render = _render;
         card.Add(NativeTheme.FieldLabel(label));
         Entry entry = NativeTheme.TextField(automationId, value);
-        entry.TextChanged += (_, args) => Update(apply(args.NewTextValue), state);
+        entry.TextChanged += (_, args) =>
+        {
+            if (CanEdit(state, render)) Update(apply(args.NewTextValue), state);
+        };
         card.Add(entry);
     }
 
@@ -420,7 +557,7 @@ public sealed class CreationLifestyleEditPage : NativePageBase
     private void UpdatePreviewEnabled(CharacterCreationLifestylesInteractionState state)
     {
         if (_previewButton is not null)
-            _previewButton.IsEnabled = _draft.HasChanges(state);
+            _previewButton.IsEnabled = !_preparing && Current(state) && _draft.HasChanges(state);
     }
 
     private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)

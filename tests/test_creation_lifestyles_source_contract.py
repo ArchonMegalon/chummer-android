@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -21,13 +22,16 @@ class CreationLifestylesSourceContractTests(unittest.TestCase):
             "prepared.IdempotencyKey",
             "prepared.PreviewDigest",
             "ExplicitlyConfirmed: true",
-            "_creationLifestylesPresenter.Confirm(State, confirmation)",
-            "_creationLifestylesPresenter.LookupReceipt(State, prepared.IdempotencyKey)",
+            "_creationLifestylesPresenter.Confirm(originalOverview, confirmation)",
             "CreationLifestylesPhoneAuthority.ReceiptMatches(",
             "CreationLifestylesPhoneAuthority.RefreshedStateMatches(",
             'expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..]',
         ):
-            self.assertIn(marker, source)
+            self.assertTrue(marker in source, f"Missing Lifestyle coordinator guard: {marker}")
+        self.assertTrue(re.search(
+            r"lookup = await Task\.Run\(\(\) => _creationLifestylesPresenter\.LookupReceipt\(\s*"
+            r"originalOverview, prepared\.IdempotencyKey\)\)", source),
+            "Receipt recovery must run off the UI context under the original owner.")
 
         region = source[
             source.index("LoadCreationLifestyles()") : source.index(
@@ -113,7 +117,7 @@ class CreationLifestylesSourceContractTests(unittest.TestCase):
             'AutomationId = "creation-lifestyle-confirm"',
             'AutomationId = "creation-lifestyle-confirm-receipt"',
             "Coordinator.ConfirmCreationLifestyleAsync(_prepared)",
-            'AutomationId = "creation-lifestyle-back-to-build"',
+            'AutomationId = "creation-lifestyle-continue-lifestyles"',
         ):
             self.assertIn(marker, preview)
 
@@ -121,6 +125,31 @@ class CreationLifestylesSourceContractTests(unittest.TestCase):
         self.assertIn("LoadCreationLifestylesForDisplayAsync", listing)
         self.assertNotIn("Coordinator.LoadCreationLifestyles()", listing)
         self.assertIn("new CreationLifestylesPage(Coordinator)", contacts)
+        self.assertNotIn("Coordinator.LoadCreationLifestyles()", preview)
+        self.assertNotIn("PopToRootAsync", preview)
+        self.assertIn("_submitted = true", preview)
+        self.assertIn("PrepareCreationAfterLifestylePageAsync", preview)
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", preview)
+        self.assertIn("navigation.RemovePage(this)", preview)
+        self.assertIn("CanContinueSaved()", preview)
+        self.assertIn('"creation-lifestyles-continue-starting-cash"', listing)
+        self.assertIn("Task.Run(() => Coordinator.LoadCreationFinalizationInBackground", listing)
+        self.assertIn("Coordinator.IsCreationFinalizationStateCurrent(loaded.Value)", listing)
+        self.assertIn("new CreationStartingCashPage(Coordinator, loaded.Value)", listing)
+        self.assertNotIn("Coordinator.LoadCreationLifestyles()", edit)
+        self.assertIn("LoadCreationLifestylesForDisplayAsync", edit)
+        self.assertIn("PrepareCreationLifestyleForDisplayAsync(original, input, lifetime.Token)", edit)
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", edit)
+        self.assertIn("CanEdit(state, render)", edit)
+        self.assertIn("_technicalDetails.Add(binding)", edit)
+        self.assertLess(edit.index("AddPreviewActions(state);"), edit.index("AddQualities(state, configuration);"))
+        self.assertIn('toggle.AutomationId = "creation-lifestyle-qualities-toggle"', edit)
+        self.assertIn("choices.IsVisible && !populated", edit)
+        self.assertIn("ReferenceEquals(toggle.Parent, _body)", edit)
+        self.assertIn("PopulateQualities(choices, state, configuration, render)", edit)
+        authority = listing[listing.index("private void AddAuthority("):listing.index("private void AddBlockers(")]
+        self.assertIn("_technicalDetails.Add(border)", authority)
+        self.assertNotIn("_body.Add(border)", authority)
 
         combined = listing + edit + preview
         for forbidden in (
