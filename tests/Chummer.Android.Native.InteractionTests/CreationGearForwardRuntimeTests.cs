@@ -18,8 +18,9 @@ internal static partial class AfterRunAuthorityHarness
             var culture = CultureInfo.CurrentUICulture;
             try
             {
-                foreach (string scenario in new[] { "local", "sum", "nonempty", "linked",
-                    "contacts-fault", "refresh-fault", "owner-b", "owner-aba", "departure", "return", "unknown" })
+                foreach (string scenario in new[] { "missing-skills", "local", "sum", "nonempty", "linked",
+                    "contacts-fault", "refresh-fault", "owner-b", "owner-aba", "departure", "return", "unknown",
+                    "missing-skills-no-editor" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(
                         scenario == "sum" ? "de-AT" : scenario == "contacts-fault" ? "es-MX" : "en-GB");
@@ -27,9 +28,11 @@ internal static partial class AfterRunAuthorityHarness
                     GearNextContactsProbe? contacts = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationFinalization: true, productionCreationOverview: true, creationContacts: true,
+                        creationSkills: scenario == "missing-skills",
                         contactsDecorator: service => contacts = new(service));
                     var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeGear: true,
-                        buildMethod: scenario == "sum" ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority);
+                        buildMethod: scenario == "sum" ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority,
+                        omitSkillsBeforeGear: scenario.StartsWith("missing-skills", StringComparison.Ordinal));
                     var store = new FileWorkspaceStore(runtime.StateDirectory);
                     bool linked = scenario is "linked" or "owner-b" or "owner-aba";
                     if (linked)
@@ -101,6 +104,30 @@ internal static partial class AfterRunAuthorityHarness
                     bool advanced = scenario is "local" or "sum" or "nonempty" or "linked";
                     Require(navigation.Navigation.NavigationStack.Last() is CreationContactsPage == advanced,
                         "Gear advanced incorrectly: " + scenario);
+                    if (scenario == "missing-skills")
+                    {
+                        var denied = coordinator.LoadCreationContacts();
+                        Require(denied.State is { } unavailable
+                            && CreationContactsPhoneAuthority.IsBound(unavailable, coordinator.State)
+                            && unavailable.Blockers.Contains(CharacterCreationContactsBlockers.BudgetAuthorityRequired)
+                            && coordinator.State.CreationWizard!.CompletionBlockers.Contains(
+                                CharacterCreationFinalizationBlockers.SkillsDraftRequired),
+                            "SETUP: Core did not identify missing Skills as the Contacts prerequisite.");
+                        Require(navigation.Navigation.NavigationStack.Last() is CreationSkillsPage
+                            && !navigation.Navigation.NavigationStack.Contains(review),
+                            "Saved Gear must lead to Core's missing Skills step, not an endless Contacts retry.");
+                        var next = (CreationSkillsPage)navigation.Navigation.NavigationStack.Last();
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(next, "OnAppearing")));
+                        Require(MinimalVisible(next).OfType<Picker>().Any(x =>
+                            x.AutomationId == "creation-skills-native-language-picker" && x.IsEnabled)
+                            && MinimalVisible(next).OfType<Label>().Any(x => x.AutomationId == "creation-gear-skills-required"
+                                && x.Text == CreationFlowStrings.Get("Gear.SkillsRequired", "missing")),
+                            "Missing Skills route did not open the actual admitted editor.");
+                        IssuedPageLifecycle(next, "OnDisappearing");
+                        await navigation.PopAsync(animated: false);
+                        Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), editor),
+                            "Back from missing Skills returned to the consumed Gear review.");
+                    }
                     if (scenario is "contacts-fault" or "refresh-fault")
                     {
                         var retry = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-gear-continue-next");
@@ -134,7 +161,27 @@ internal static partial class AfterRunAuthorityHarness
                         Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), editor),
                             "Back returned to the consumed Gear review.");
                     }
+                    if (scenario is "local" or "missing-skills")
+                    {
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
+                        var resume = MinimalVisible(editor).OfType<Button>().Single(x => x.AutomationId == "creation-gear-saved-continue");
+                        Require(!MinimalVisible(editor).Any(x => x.AutomationId == "creation-gear-preview"),
+                            "An unchanged saved basket still offers an unnecessary review.");
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)resume).SendClicked()));
+                        Require(scenario == "local" ? navigation.Navigation.NavigationStack.Last() is CreationContactsPage
+                            : navigation.Navigation.NavigationStack.Last() is CreationSkillsPage,
+                            "Reopened saved Gear cannot continue without another purchase.");
+                        await navigation.PopAsync(animated: false);
+                        IssuedPageLifecycle(editor, "OnDisappearing");
+                        ((IButtonController)resume).SendClicked();
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                        Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), editor),
+                            "A departed saved-basket control remained usable.");
+                    }
                     if (scenario == "unknown") Require(contacts.LoadCalls == 0, "Unknown commit advanced without a receipt.");
+                    if (scenario == "missing-skills-no-editor")
+                        Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), review),
+                            "Missing Skills service must not open an unbound editor.");
                     ((IButtonController)save).SendClicked();
                     await ui.DrainDispatchedAsyncVoidAsync();
                     Require(gear.ConfirmCalls == 1 && contacts.ConfirmCalls == 0 && alerts.Titles.Count == 0,

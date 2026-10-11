@@ -23,13 +23,30 @@ def source(path: Path) -> str:
 
 
 class CreationGearSourceContractTests(unittest.TestCase):
+    def test_unchanged_saved_basket_continuation_does_not_purchase(self) -> None:
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        continuation = coordinator.split("PrepareSavedCreationGearNextPageAsync(", 1)[1]
+        continuation = continuation.split("internal Task<CharacterCreationGearInteractionConfirmResult>", 1)[0]
+        self.assertNotIn(".Confirm(", continuation)
+        for guard in ("LoadCreationGearForDisplayAsync", "current.Binding != issued.Binding",
+                      "current.SnapshotDigest, issued.SnapshotDigest", "issued.PendingDraft is null"):
+            self.assertIn(guard, continuation)
+        page = source(PAGE)
+        continuation = page.split("private async Task ContinueSavedAsync(", 1)[1].split("private void AddAuthority(", 1)[0]
+        for guard in ("ReferenceEquals(next.Parent, _basketBody)", "IsCurrentAppearanceGeneration(appearance)",
+                      "DiffersFromPersisted(_basket, state.PendingDraft)", "navigation.NavigationStack.SequenceEqual(stack)"):
+            self.assertIn(guard, continuation)
+        self.assertNotIn("ConfirmCreationGearPurchaseAsync", continuation)
+
     def test_saved_gear_continuation_is_read_only_and_uses_exact_contacts(self) -> None:
         coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
-        continuation = coordinator.split("internal async Task<CreationContactsPage?> PrepareCreationAfterGearPageAsync(", 1)[1]
+        continuation = coordinator.split("internal async Task<CreationGearContinuation?> PrepareCreationAfterGearPageAsync(", 1)[1]
         continuation = continuation.split("internal Task<CharacterCreationGearInteractionConfirmResult>", 1)[0]
         self.assertNotIn(".Confirm(", continuation)
         for guard in ("CreationGearPhoneAuthority.ReceiptMatches", "CreationGearPhoneAuthority.RefreshedStateMatches",
-                      "CreationContactsPhoneAuthority.IsReady(state, display)", "IsCreationCatalogDisplayCurrent(display)"):
+                      "CreationContactsPhoneAuthority.IsReady(state, display)", "IsCreationCatalogDisplayCurrent(display)",
+                      "CharacterCreationFinalizationBlockers.SkillsDraftRequired", "LoadCreationSkillsForDisplay(display)",
+                      "CreationSkillsPhoneAuthority.IsReady(requiredSkills, display)", "IsCreationSkillsStateCurrent(requiredSkills)"):
             self.assertIn(guard, continuation)
         page = source(PAGE)
         self.assertIn("await ContinueToNextAsync(appearance)", page)
@@ -41,7 +58,7 @@ class CreationGearSourceContractTests(unittest.TestCase):
         for suffix in ("", ".de", ".es"):
             resource = ROOT / f"src/Chummer.Android/Resources/Localization/CreationFlowStrings{suffix}.resx"
             rows = list(ET.parse(resource).getroot().findall("data"))
-            for key in ("Gear.ContinueNext", "Gear.OpeningNext", "Gear.NextUnavailable"):
+            for key in ("Gear.ContinueNext", "Gear.OpeningNext", "Gear.NextUnavailable", "Gear.SkillsRequired"):
                 matches = [row.findtext("value") for row in rows if row.attrib["name"] == key]
                 self.assertEqual(1, len(matches), (suffix, key))
                 self.assertTrue(matches[0].strip(), (suffix, key))

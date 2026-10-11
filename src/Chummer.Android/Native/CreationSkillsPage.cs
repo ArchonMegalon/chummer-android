@@ -24,13 +24,15 @@ public sealed class CreationSkillsPage : NativePageBase
     private readonly List<Func<bool>> _ratingShapeChecks = [];
     private string? _ratingFeedbackKey;
     private IReadOnlyList<string> _ratingFeedback = [];
+    private readonly bool _afterSavedGear;
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
-        CharacterCreationSkillsState? authority = null) : base(coordinator)
+        CharacterCreationSkillsState? authority = null, bool afterSavedGear = false) : base(coordinator)
     {
         _authority = authority;
         _revalidationAuthority = authority;
+        _afterSavedGear = afterSavedGear;
         Title = CreationAllocationStrings.Get("Skills.PageTitle", "Skills");
         AutomationId = "creation-skills-page";
         Content = new ScrollView { Content = _body };
@@ -78,6 +80,13 @@ public sealed class CreationSkillsPage : NativePageBase
         ResetCatalogPagingIfAuthorityChanged(state);
         if (CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State) && _draft.Matches(state, Coordinator.State))
         {
+            if (_afterSavedGear)
+            {
+                var notice = NativeTheme.Body(CreationFlowStrings.Get("Gear.SkillsRequired",
+                    "Your equipment is saved. Save your skills to calculate contact points."), NativeTheme.Muted);
+                notice.AutomationId = "creation-gear-skills-required";
+                _body.Insert(0, notice);
+            }
             AddNativeLanguage(state);
             if (_blockers.Count > 0) AddBlockers(_blockers, "creation-skills-review-top-blockers");
             _body.Add(CreateReviewButton(state, "creation-skills-review-top"));

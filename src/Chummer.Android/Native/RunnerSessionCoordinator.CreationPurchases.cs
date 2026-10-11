@@ -131,7 +131,9 @@ public sealed partial class RunnerSessionCoordinator
                 ? new CreationGearPage(this, _creationGearPresenter, _presenter, display, gear.Load, receipt) : null;
     }
 
-    internal async Task<CreationContactsPage?> PrepareCreationAfterGearPageAsync(
+    internal sealed record CreationGearContinuation(Page Page, CharacterOverviewState Display);
+
+    internal async Task<CreationGearContinuation?> PrepareCreationAfterGearPageAsync(
         ICharacterCreationGearInteractionPresenter gear, CharacterOverviewState original,
         CharacterCreationGearPreparedPreview prepared, CharacterCreationGearReceipt receipt,
         CancellationToken ct)
@@ -156,14 +158,55 @@ public sealed partial class RunnerSessionCoordinator
                 ? current : null;
         }, ct);
         if (display is null) return null;
+        return await PrepareCreationGearNextStepAsync(display, receipt, ct);
+    }
+
+    internal async Task<CreationGearContinuation?> PrepareSavedCreationGearNextPageAsync(
+        ICharacterCreationGearInteractionPresenter gear, CharacterOverviewState display,
+        CharacterCreationGearInteractionState issued, CancellationToken ct)
+    {
+        if (!IsCreationCatalogDisplayCurrent(display) || issued.PendingDraft is null) return null;
+        var reopened = await LoadCreationGearForDisplayAsync(gear, display, ct);
+        if (!reopened.Ready || reopened.Load.Outcome != CharacterCreationGearOutcomes.Available
+            || reopened.Load.State is not { PendingDraft: not null } current
+            || current.Binding != issued.Binding
+            || !CharacterCreationGearRules.DigestsEqual(current.SnapshotDigest, issued.SnapshotDigest)
+            || !IsCreationCatalogDisplayCurrent(display)) return null;
+        return await PrepareCreationGearNextStepAsync(display, null, ct);
+    }
+
+    private async Task<CreationGearContinuation?> PrepareCreationGearNextStepAsync(
+        CharacterOverviewState display, CharacterCreationGearReceipt? receipt, CancellationToken ct)
+    {
         // This loader has its own activation gate: call after releasing the
         // refresh gate. Contacts keeps Core's actual shared-budget admission.
         var contacts = await LoadCreationContactsForDisplayAsync(display, ct);
         ct.ThrowIfCancellationRequested();
-        return contacts.Outcome == CharacterCreationContactOutcomes.Available
-            && contacts.State is { } state && CreationContactsPhoneAuthority.IsReady(state, display)
-            && CanDisplayCreationPurchase(original) && IsCreationCatalogDisplayCurrent(display)
-                ? new CreationContactsPage(this, state, display, receipt) : null;
+        if (contacts.Outcome != CharacterCreationContactOutcomes.Available
+            || contacts.State is not { } state || !CreationContactsPhoneAuthority.IsBound(state, display)
+            || !IsCreationCatalogDisplayCurrent(display)) return null;
+        if (CreationContactsPhoneAuthority.IsReady(state, display))
+            return new(new CreationContactsPage(this, state, display, receipt), display);
+
+        // Gear can be saved after visiting steps out of order. A Contacts budget
+        // denied by Core is not a transient read failure: finish the missing
+        // Skills choices instead of sending the user through an endless retry.
+        // Only the exact current wizard and fresh, owner-bound Skills authority
+        // admit this route. Never manufacture contact points or save a draft.
+        if (!state.Blockers.Contains(CharacterCreationContactsBlockers.BudgetAuthorityRequired)
+            || display.CreationWizard is not { } wizard
+            || wizard.WorkspaceId != display.WorkspaceId?.Value
+            || wizard.WorkspaceRevision != display.ContentRevision
+            || !wizard.CompletionBlockers.Contains(CharacterCreationFinalizationBlockers.SkillsDraftRequired))
+            return null;
+        var skills = await WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+            ReadCreationAuthority(display, () => LoadCreationSkillsForDisplay(display), ct), ct), ct);
+        ct.ThrowIfCancellationRequested();
+        return skills.Outcome == CharacterCreationFoundationOutcomes.Success
+            && skills.Value is { } requiredSkills && CreationSkillsPhoneAuthority.IsReady(requiredSkills, display)
+            && IsCreationSkillsStateCurrent(requiredSkills)
+            && IsCreationCatalogDisplayCurrent(display)
+                ? new(new CreationSkillsPage(this, requiredSkills, afterSavedGear: true), display) : null;
     }
 
     internal Task<CharacterCreationGearInteractionConfirmResult> ConfirmCreationGearPurchaseAsync(
