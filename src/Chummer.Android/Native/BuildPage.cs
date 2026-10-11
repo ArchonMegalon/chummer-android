@@ -347,6 +347,9 @@ public static class BuildPageUiProjection
 
     public static bool ShowCreationStage(CharacterCreationWizardSnapshot snapshot, CharacterCreationWizardStageState stage)
     {
+        // Rules & sources is a read-only summary, not a decision or a wizard step.
+        // It stays available in the overflow menu; Core's snapshot is unchanged.
+        if (stage.StepId == CharacterCreationWizardStepIds.Basics) return false;
         // Priority chooses metatype in the typed method editor. The shared
         // inventory's Foundation/Life Modules cards belong to the other journey,
         // not to unfinished Priority work. This only filters navigation: retain
@@ -888,6 +891,7 @@ public sealed class BuildPage : NativePageBase
     private CharacterOverviewState? _persistedReceiptDisplay;
     private CharacterCreationFinalizationReceipt? _persistedCreationReceipt;
     private CreationKarmaPhoneSession? _karmaDashboardSession;
+    private ToolbarItem? _creationRules;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -1085,6 +1089,7 @@ public sealed class BuildPage : NativePageBase
         _body.Clear();
         _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
+        UpdateCreationRulesMenu();
         BuildPageRouteMarker routeMarker = BuildPageUiProjection.RouteMarker(Coordinator.State.Profile);
         AddRouteMarker(routeMarker.AutomationId, routeMarker.Label);
         ResetScrollForCurrentAppearance();
@@ -1536,12 +1541,6 @@ public sealed class BuildPage : NativePageBase
                 // creates its own fresh Core authority before enabling edits.
                 await Navigation.PushAsync(new CreationKarmaPage(Coordinator));
             }, canOpen, "creation-stage-method"));
-        // Keep the existing settings-inspection route; only Priority-specific
-        // allocation/finalization placeholders are replaced by the Karma wizard.
-        if (snapshot.Steps.Any(stage => stage.StepId == CharacterCreationWizardStepIds.Basics && stage.IsAvailable))
-            _body.Add(CreationNavigationRow(StageLabel(snapshot, CharacterCreationWizardStepIds.Basics),
-                CreationAllocationStrings.BasicsSummary,
-                async () => { if (Current()) await OpenCreationBasicsAsync(); }, canOpen, "creation-stage-basics"));
     }
 
     private void AddLifeModuleCreationDashboard()
@@ -1760,8 +1759,9 @@ public sealed class BuildPage : NativePageBase
                           ?? "sr5-life-module-origin-authority-unavailable"
                         : "creation-build-method-editor-unavailable";
         string method = BuildPageUiProjection.MethodLabel(snapshot.BuildMethod);
-        string activeStage = StageLabel(snapshot, snapshot.ActiveStepId);
-        string detail = canOpen ? activeStage : CreationFlowStrings.DashboardBlocker(blocker);
+        // Describe this destination, not the unrelated currently active step.
+        string detail = canOpen ? PhoneStrings.Get("CreationMethodDetail", "Priority ranks, metatype and talent")
+            : CreationFlowStrings.DashboardBlocker(blocker);
         if (canOpen && !CurrentPhoneWizardScope.CoversCreationMethod(snapshot.BuildMethod))
             detail = CurrentPhoneWizardScope.MarkExperimental(detail);
         _body.Add(CreationNavigationRow(
@@ -2672,7 +2672,6 @@ public sealed class BuildPage : NativePageBase
     {
         Dictionary<string, CreationBudgetRoute> routes = new(StringComparer.Ordinal);
         CreationBudgetRoute finalization = CreationFinalizationReviewRoute();
-        _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("CreationSteps", "Generation steps")));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
             if (!BuildPageUiProjection.ShowCreationStage(snapshot, stage))
@@ -3204,6 +3203,31 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationBasicsAsync()
         => Navigation.PushAsync(new CreationBasicsPage(Coordinator));
+
+    private void UpdateCreationRulesMenu()
+    {
+        if (_creationRules is not null) ToolbarItems.Remove(_creationRules);
+        _creationRules = null;
+        if (Coordinator.State.Profile?.Created != false
+            || Coordinator.State.CreationWizard?.Steps.Any(stage =>
+                stage.StepId == CharacterCreationWizardStepIds.Basics && stage.IsAvailable) != true) return;
+        var displayed = Coordinator.State;
+        long appearance = CaptureAppearanceGeneration();
+        long render = _dossierRenderGeneration;
+        _creationRules = new ToolbarItem
+        {
+            Text = CreationAllocationStrings.Get("Basics.PageTitle", "Rules & sources"),
+            AutomationId = "creation-rules-summary",
+            Order = ToolbarItemOrder.Secondary,
+            Command = new Command(async () => await RunAsync(async () =>
+            {
+                if (render != _dossierRenderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || !Coordinator.IsCreationFinalizationDisplayCurrent(displayed)) return;
+                await OpenCreationBasicsAsync();
+            }))
+        };
+        ToolbarItems.Add(_creationRules);
+    }
 
     private async Task OpenSr5LifeModuleOriginAsync()
     {

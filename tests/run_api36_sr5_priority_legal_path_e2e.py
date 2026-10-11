@@ -80,7 +80,6 @@ class FinalizationReceiptAuthority:
 
 
 LEGAL_PATH_STAGES = (
-    LegalPathStage("basics", "creation-stage-basics", "creation-basics-page", "creation-basics-authority", False),
     LegalPathStage("method", "creation-stage-method", "creation-prerequisite-page", "creation-prerequisite-pending-draft", True),
     LegalPathStage("foundation", "creation-stage-foundation", "creation-foundation-page", "creation-foundation-pending-draft", False),
     LegalPathStage("attributes", "creation-stage-attributes", "creation-attributes-page", "creation-attributes-pending-draft", True),
@@ -95,7 +94,7 @@ LEGAL_PATH_STAGES = (
 
 def validate_stage_catalog(stages: tuple[LegalPathStage, ...] = LEGAL_PATH_STAGES) -> None:
     expected = (
-        "basics", "method", "foundation", "attributes", "qualities", "skills",
+        "method", "foundation", "attributes", "qualities", "skills",
         "magic-resonance", "resources", "contacts-lifestyles", "identity-story",
     )
     actual = tuple(stage.step_id for stage in stages)
@@ -281,14 +280,6 @@ def open_exact_stage(device: shared.Device, stage: LegalPathStage) -> dict[str, 
             ),
             "Creation prerequisite authority",
         )
-    elif stage.step_id == "basics":
-        device.wait_exact_resource_id_bidirectional(
-            "creation-basics-sourcebooks-contract-unavailable", timeout=60,
-            backward_scrolls=24, forward_scrolls=24, scroll_distance_ratio=0.22,
-            evidence_prefix="sr5-priority-sourcebooks-contract-unavailable",
-            surface_name="Fail-closed creation sourcebook dependency",
-        )
-        result["sourcebookMutation"] = "typed-contract-unavailable"
     elif stage.step_id == "resources":
         gear = device.wait_exact_resource_id_bidirectional(
             "creation-resources-open-gear", timeout=60, backward_scrolls=24,

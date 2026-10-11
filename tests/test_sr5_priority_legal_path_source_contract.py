@@ -64,6 +64,11 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         self.assertNotIn(": Task.CompletedTask;\n\n    private static string CreationContactsStageDetail", source)
 
     def test_basics_is_read_only_and_names_the_exact_missing_dependency(self) -> None:
+        dashboard = BUILD_PAGE.read_text(encoding="utf-8")
+        self.assertIn('AutomationId = "creation-rules-summary"', dashboard)
+        self.assertIn('Order = ToolbarItemOrder.Secondary', dashboard)
+        self.assertIn('if (stage.StepId == CharacterCreationWizardStepIds.Basics) return false;', dashboard)
+        self.assertNotIn('"creation-stage-basics"', dashboard)
         source = BASICS_PAGE.read_text(encoding="utf-8")
         for marker in (
             "creation-basics-authority",

@@ -322,7 +322,7 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="RunnerMetavariant" xml:space="preserve"><value>Metavariante</value></data>
   <data name="RunnerRules" xml:space="preserve"><value>Reglas</value></data>
   <data name="RunnerRuleProfile" xml:space="preserve"><value>Perfil de reglas</value></data>
-  <data name="CreationSteps" xml:space="preserve"><value>Pasos de creación</value></data>
+  <data name="CreationMethodDetail" xml:space="preserve"><value>Prioridades, metatipo y talento</value></data>
   <data name="CreationContinue" xml:space="preserve"><value>Continuar</value></data>
   <data name="CreationRemaining" xml:space="preserve"><value>Quedan {0:0.##}</value></data>
   <data name="CreationMethodTitle" xml:space="preserve"><value>Método · {0}</value></data>
