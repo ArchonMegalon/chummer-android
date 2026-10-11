@@ -468,6 +468,16 @@ internal static class Program
             await AfterRunAuthorityHarness.RunSkillsForwardAsync(args[1]);
             return;
         }
+        if (args.Length == 3 && args[0] == "--creation-magic-forward-seed")
+        {
+            await AfterRunAuthorityHarness.RunMagicForwardAsync(args[1], "adept", args[2]);
+            return;
+        }
+        if (args.Length is 2 or 3 && args[0] == "--creation-magic-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunMagicForwardAsync(args[1], args.Length == 3 ? args[2] : null);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-qualities-forward-content-root")
         {
             await AfterRunAuthorityHarness.RunQualitiesForwardAsync(args[1]);

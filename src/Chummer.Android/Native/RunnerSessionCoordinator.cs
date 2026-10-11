@@ -1911,6 +1911,22 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         // is not evidence of a mundane runner and must not skip a required step.
         if (talent != CharacterCreationMagicResonanceKinds.Mundane)
             return new CreationMagicResonancePage(this, display, magic);
+        return await PrepareCreationResourcesPageAsync(display, cancellationToken);
+    }
+
+    internal async Task<Page?> PrepareCreationAfterMagicPageAsync(CharacterOverviewState display,
+        CharacterCreationMagicResonanceCheckpoint checkpoint, CancellationToken cancellationToken)
+    {
+        var loaded = await LoadCreationMagicResonanceForDisplayAsync(display, cancellationToken);
+        bool saved = await Task.Run(() => loaded.Outcome == CharacterCreationFoundationOutcomes.Success
+            && CreationMagicResonancePhoneAuthority.SavedCheckpointMatches(checkpoint, loaded.Value, display), cancellationToken);
+        if (!saved || !IsCreationCatalogDisplayCurrent(display)) return null;
+        return await PrepareCreationResourcesPageAsync(display, cancellationToken);
+    }
+
+    private async Task<Page?> PrepareCreationResourcesPageAsync(
+        CharacterOverviewState display, CancellationToken cancellationToken)
+    {
         if (_creationResourcesPresenter is null) return null;
         var resources = await WithWorkspaceActivationGateAsync(() => Task.Run(() =>
             ReadCreationAuthority(display, () =>

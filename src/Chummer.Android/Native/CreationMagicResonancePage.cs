@@ -30,6 +30,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
     private VisualElement? _budgetFocusTarget;
     private VisualElement? _queuedFocusTarget;
     private long _renderGeneration;
+    private CancellationTokenSource? _resumeLifetime;
+    private string? _resumeAcknowledgedDigest;
+    private bool _resumeUnavailable;
     private (CharacterOverviewState Display, CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load)? _initialLoad;
 
     public CreationMagicResonancePage(RunnerSessionCoordinator coordinator, string? budgetId = null)
@@ -69,6 +72,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         // chooser or resuming the app must not pull the reader back again.
         _pendingBudgetId = null;
         _budgetFocusTarget = null;
+        _resumeLifetime?.Cancel();
         base.OnDisappearing();
     }
 
@@ -457,16 +461,15 @@ public sealed class CreationMagicResonancePage : NativePageBase
                  && checkpoint.OwnsRecoveryRevision(original)
                  && checkpoint.Confirmation is { } confirmation)
         {
-            Button receipt = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
-                "Common.OpenSavedReceipt",
-                "Open saved receipt"));
+            if (_resumeUnavailable)
+                recovery.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Review.NextUnavailable",
+                    "Your choices are saved. Resources could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+            Button receipt = NativeTheme.PrimaryButton(_resumeLifetime is null
+                ? CreationFlowStrings.Get("Magic.Review.ContinueNext", "Continue to Resources")
+                : CreationFlowStrings.Get("Magic.Review.OpeningNext", "Opening Resources…"));
             receipt.AutomationId = "creation-magic-resonance-open-receipt";
-            receipt.Clicked += async (_, _) => await Navigation.PushAsync(
-                new CreationMagicResonanceReceiptPage(
-                    Coordinator,
-                    checkpoint,
-                    confirmation,
-                    _store));
+            receipt.IsEnabled = _resumeLifetime is null;
+            receipt.Clicked += async (_, _) => await RunAsync(() => ContinueSavedAsync(checkpoint, original));
             recovery.Add(receipt);
         }
         else
@@ -741,10 +744,55 @@ public sealed class CreationMagicResonancePage : NativePageBase
         Refresh();
     }
 
+    private async Task ContinueSavedAsync(CharacterCreationMagicResonanceCheckpoint checkpoint,
+        CharacterOverviewState display)
+    {
+        if (_resumeLifetime is not null) return;
+        long appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Confirmed
+            && checkpoint.OwnsRecoveryRevision(display)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _resumeLifetime = lifetime;
+        _resumeUnavailable = false;
+        Refresh();
+        try
+        {
+            var next = await Coordinator.PrepareCreationAfterMagicPageAsync(display, checkpoint, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (next is null || _resumeAcknowledgedDigest != checkpoint.CheckpointDigest
+                && !_store.TryAcknowledgeConfirmed(CharacterCreationMagicResonanceCheckpointCas.From(checkpoint), out _))
+            { _resumeUnavailable = true; return; }
+            _resumeAcknowledgedDigest = checkpoint.CheckpointDigest;
+            await navigation.PushAsync(next, animated: false);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _resumeUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_resumeLifetime, lifetime)) _resumeLifetime = null;
+            Refresh();
+        }
+    }
+
     private async Task ResolveConfirmingAsync(
         CharacterCreationMagicResonanceCheckpoint checkpoint,
         CharacterOverviewState original)
     {
+        long appearance = CaptureAppearanceGeneration();
+        var stack = Navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationMagicOwnerCurrent(original.DisplayOwnerContext)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && Navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
         if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
         {
             _localBlockers = [CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision];
@@ -766,13 +814,19 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     out CharacterCreationMagicResonanceCheckpoint confirmed,
                     out string recordBlocker))
             {
-                await Navigation.PushAsync(new CreationMagicResonanceReceiptPage(
-                    Coordinator,
-                    confirmed,
-                    confirmation,
-                    _store));
+                if (Current() && result.Blockers.Count == 0)
+                {
+                    await ContinueSavedAsync(confirmed, Coordinator.State);
+                    // The editor's pre-commit snapshot is now retired. If the
+                    // next read failed, retain a usable saved-state continuation
+                    // rather than leaving that stale editor stranded.
+                    if (Current() && _resumeUnavailable)
+                        await Navigation.PushAsync(new CreationMagicResonanceReceiptPage(
+                            Coordinator, confirmed, confirmation, _store));
+                }
                 return;
             }
+            if (!Current()) return;
             await DisplayAlertAsync(
                 CreationFlowStrings.Get("Common.ReceiptLocked", "Receipt remains locked"),
                 CreationFlowStrings.MagicBlocker(recordBlocker),
@@ -1376,6 +1430,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     };
     private IReadOnlyList<string> _blockers = [];
     private int _confirmStarted;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
+    private bool _acknowledged;
     private readonly Button _confirm;
     // Keep saving feedback readable without a continuous animation competing
     // with the fresh rule checks and post-save overview preparation.
@@ -1406,12 +1463,35 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
     }
 
+    protected override void OnDisappearing()
+    {
+        // Cancel only next-page preparation, never an admitted durable save.
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
     protected override void Refresh()
     {
         UpdateConfirmationFeedback();
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _reviewOptions = [];
+        if (_checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Confirmed)
+        {
+            _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Receipt.Safe",
+                "Your choices are saved. They take effect when you finish character creation.")));
+            _body.Add(_confirmProgress);
+            if (_nextStepUnavailable)
+                _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Review.NextUnavailable",
+                    "Your choices are saved. Resources could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+            var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Magic.Review.ContinueNext", "Continue to Resources"));
+            next.AutomationId = "creation-magic-resonance-continue-next";
+            next.IsEnabled = Volatile.Read(ref _confirmStarted) == 0 && _forwardLifetime is null && CanContinueSaved();
+            next.Clicked += async (_, _) => await RunAsync(() => ContinueToNextAsync(CaptureAppearanceGeneration()));
+            _body.Add(next);
+            return;
+        }
         if (!Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext))
         {
             _body.Add(NativeTheme.Body("Reopen Magic / Resonance for the current account.", NativeTheme.Muted));
@@ -1469,33 +1549,43 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     private void UpdateConfirmationFeedback()
     {
         bool pending = Volatile.Read(ref _confirmStarted) != 0;
+        bool opening = _forwardLifetime is not null;
         CharacterCreationMagicResonancePreview preview = _checkpoint.Review.Preview;
-        _confirm.Text = pending
-            ? CreationFlowStrings.Get("Magic.Review.Saving", "Saving…")
+        _confirm.Text = opening
+            ? CreationFlowStrings.Get("Magic.Review.OpeningNext", "Opening Resources…")
+            : pending ? CreationFlowStrings.Get("Magic.Review.Saving", "Saving…")
             : CreationFlowStrings.Get("Magic.Review.Confirm", "Save choices");
         _confirm.IsEnabled = !pending
             && Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext)
             && _checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Reviewed
             && preview.RequiresExplicitConfirmation && preview.CanConfirm && preview.Blockers.Count == 0;
-        _confirmProgress.Text = CreationFlowStrings.Get(
+        _confirmProgress.Text = opening
+            ? CreationFlowStrings.Get("Magic.Review.OpeningNext", "Opening Resources…")
+            : CreationFlowStrings.Get(
             "Magic.Review.Confirming", "Checking and saving choices…");
-        _confirmProgress.IsVisible = pending;
+        _confirmProgress.IsVisible = pending || opening;
     }
 
     private async Task ConfirmAsync()
     {
         if (Interlocked.CompareExchange(ref _confirmStarted, 1, 0) != 0)
             return;
+        long generation = CaptureAppearanceGeneration();
+        var stack = Navigation.NavigationStack.ToArray();
+        bool CurrentReview() => IsCurrentAppearanceGeneration(generation)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && Navigation.NavigationStack.SequenceEqual(stack);
         try
         {
             // RunAsync suppresses coordinator refreshes while this action owns the gate.
             // Update the existing controls before awaiting; do not rebuild a scrolled review.
             UpdateConfirmationFeedback();
-            long generation = CaptureAppearanceGeneration();
             CharacterOverviewState original = _display;
+            if (!CurrentReview() || _checkpoint.Phase != CharacterCreationMagicResonanceCheckpointPhase.Reviewed
+                || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
             CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
                 await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, CancellationToken.None);
-            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            if (!CurrentReview()) return;
             if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
                 throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
             if (load.Value is not { } core
@@ -1513,7 +1603,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             }
             CharacterCreationMagicResonanceReview refreshed =
                 await Coordinator.ReviewCreationMagicResonanceForDisplayAsync(original, editor, _checkpoint.Review.Draft);
-            if (!IsCurrentAppearanceGeneration(generation)) throw new OperationCanceledException();
+            if (!CurrentReview()) return;
             if (!Coordinator.IsCreationCatalogDisplayCurrent(original))
                 throw new InvalidOperationException(CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
             if (!CreationMagicResonancePhoneAuthority.ReviewsEqual(
@@ -1556,11 +1646,8 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
                     return;
                 }
                 _checkpoint = confirmed;
-                await Navigation.PushAsync(new CreationMagicResonanceReceiptPage(
-                    Coordinator,
-                    confirmed,
-                    confirmation,
-                    _store));
+                if (CurrentReview() && result.Blockers.Count == 0)
+                    await ContinueToNextAsync(generation);
                 return;
             }
             if (result.MutationOutcomeKnown
@@ -1584,6 +1671,48 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         finally
         {
             Interlocked.Exchange(ref _confirmStarted, 0);
+            Refresh();
+        }
+    }
+
+    private bool CanContinueSaved()
+        => _checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Confirmed
+           && _checkpoint.Confirmation is { Receipt.CharacterDocumentChanged: false }
+           && Coordinator.IsCreationMagicOwnerCurrent(_display.DisplayOwnerContext)
+           && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
+
+    private async Task ContinueToNextAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        var display = Coordinator.State;
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        UpdateConfirmationFeedback();
+        try
+        {
+            var next = await Coordinator.PrepareCreationAfterMagicPageAsync(display, _checkpoint, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (next is null || !_acknowledged && !_store.TryAcknowledgeConfirmed(
+                    CharacterCreationMagicResonanceCheckpointCas.From(_checkpoint), out _))
+            { _nextStepUnavailable = true; return; }
+            _acknowledged = true;
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next))) navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
             Refresh();
         }
     }
@@ -1655,6 +1784,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
 public sealed class CreationMagicResonanceReceiptPage : NativePageBase
 {
     private readonly Chummer.Application.Owners.OwnerContextStamp? _originalOwner;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
+    private bool _acknowledged;
     private readonly CharacterCreationMagicResonanceCheckpoint _checkpoint;
     private readonly CharacterCreationMagicResonanceConfirmation _confirmation;
     private readonly CharacterCreationMagicResonanceCheckpointStore _store;
@@ -1688,9 +1820,15 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
             throw new InvalidOperationException(
                 "The receipt page requires one exact durable Confirmed checkpoint.");
         }
-        Title = CreationFlowStrings.Get("Magic.Receipt.PageTitle", "Magic / Resonance receipt");
+        Title = CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved");
         AutomationId = "creation-magic-resonance-receipt-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
@@ -1758,11 +1896,14 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
             !receipt.CharacterDocumentChanged ? NativeTheme.Muted : NativeTheme.Danger);
         boundary.AutomationId = "creation-magic-resonance-receipt-finalization-state";
         _body.Add(boundary);
-        Button acknowledge = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
-            "Common.AcknowledgeReceipt",
-            "Acknowledge receipt"));
+        if (_nextStepUnavailable)
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Review.NextUnavailable",
+                "Your choices are saved. Resources could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+        Button acknowledge = NativeTheme.PrimaryButton(_forwardLifetime is null
+            ? CreationFlowStrings.Get("Magic.Review.ContinueNext", "Continue to Resources")
+            : CreationFlowStrings.Get("Magic.Review.OpeningNext", "Opening Resources…"));
         acknowledge.AutomationId = "creation-magic-resonance-receipt-acknowledge";
-        acknowledge.IsEnabled = !receipt.CharacterDocumentChanged
+        acknowledge.IsEnabled = _forwardLifetime is null && !receipt.CharacterDocumentChanged
                                 && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
         acknowledge.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         _body.Add(acknowledge);
@@ -1773,22 +1914,40 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
     {
         // A retained button must not acknowledge another account's or runner's
         // journal, including A → B → A transitions with a newer owner stamp.
-        if (!CanDisplayReceipt() || !_checkpoint.OwnsRecoveryRevision(Coordinator.State)) return;
-        if (!_store.TryAcknowledgeConfirmed(
-                CharacterCreationMagicResonanceCheckpointCas.From(_checkpoint),
-                out string blocker))
+        if (_forwardLifetime is not null) return;
+        long appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        var display = Coordinator.State;
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanDisplayReceipt()
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && _checkpoint.OwnsRecoveryRevision(display)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        Refresh();
+        try
         {
-            await DisplayAlertAsync(
-                CreationFlowStrings.Get("Common.ReceiptNotAcknowledged", "Receipt not acknowledged"),
-                CreationFlowStrings.MagicBlocker(blocker),
-                CreationFlowStrings.Get("Common.OK", "OK"));
-            return;
+            var next = await Coordinator.PrepareCreationAfterMagicPageAsync(display, _checkpoint, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (next is null || !_acknowledged && !_store.TryAcknowledgeConfirmed(
+                    CharacterCreationMagicResonanceCheckpointCas.From(_checkpoint), out _))
+            { _nextStepUnavailable = true; return; }
+            _acknowledged = true;
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next))) navigation.RemovePage(this);
         }
-        // Keep navigation attached while returning to the runner. Popping this
-        // receipt first detaches its proxy and can strand the user in Magic.
-        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
-            throw new InvalidOperationException("Creation returns through the phone Runner route.");
-        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            Refresh();
+        }
     }
 
     private bool CanDisplayReceipt() => Coordinator.IsCreationMagicOwnerCurrent(_originalOwner)

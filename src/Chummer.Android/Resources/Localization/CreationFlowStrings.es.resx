@@ -170,6 +170,9 @@
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirma para guardar estas elecciones. Podrás finalizar la creación tras completar los demás pasos.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Guardar elecciones</value></data>
   <data name="Magic.Review.Saving" xml:space="preserve"><value>Guardando…</value></data>
+  <data name="Magic.Review.OpeningNext" xml:space="preserve"><value>Abriendo Recursos…</value></data>
+  <data name="Magic.Review.ContinueNext" xml:space="preserve"><value>Continuar a Recursos</value></data>
+  <data name="Magic.Review.NextUnavailable" xml:space="preserve"><value>Tus elecciones están guardadas. No se pudo abrir Recursos. Pulsa «Continuar» de nuevo; no se guardarán dos veces.</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Comprobando y guardando las opciones…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Revisión</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Revisar tus elecciones</value></data>
