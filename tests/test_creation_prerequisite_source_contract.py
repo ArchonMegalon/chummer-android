@@ -3642,8 +3642,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "creation-resources-confirm": confirm,
         }
         receipt_nodes = {
-            "creation-resources-confirm-receipt": self.canonical_node(
-                "creation-resources-confirm-receipt"
+            "creation-gear-page": self.canonical_node(
+                "creation-gear-page"
             ),
             "creation-resources-receipt-option-id": self.canonical_node(
                 "creation-resources-receipt-option-id",
@@ -3682,7 +3682,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.wait_exact_resource_id_bidirectional.return_value = option
         device.wait_for_single_exact_resource_id.side_effect = (
             preview_nodes["creation-resources-preview-page"],
-            receipt_nodes["creation-resources-confirm-receipt"],
+            receipt_nodes["creation-gear-page"],
         )
         deadline = driver.time.monotonic() + 30
         with mock.patch.object(
@@ -3706,6 +3706,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("required_terminal_selectors", scan.call_args_list[1].kwargs)
         device.wait_exact_resource_id_bidirectional.assert_not_called()
         self.assertEqual(2, device.shell.call_count)
+
+    def test_resources_reopen_uses_back_from_gear_without_another_save(self) -> None:
+        device = mock.Mock()
+        gear = self.canonical_node("creation-gear-page")
+        resources = self.canonical_node("creation-resources-page")
+        device.wait_for_single_exact_resource_id.side_effect = (gear, resources)
+        deadline = driver.time.monotonic() + 30
+        driver.reopen_resources(device, deadline=deadline)
+        device.back.assert_called_once_with(deadline=deadline)
+        device.shell.assert_not_called()
+        self.assertEqual(
+            ["creation-gear-page", "creation-resources-page"],
+            [call.args[0] for call in device.wait_for_single_exact_resource_id.call_args_list],
+        )
 
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")

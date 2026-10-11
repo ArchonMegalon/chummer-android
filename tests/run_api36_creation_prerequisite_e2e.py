@@ -10643,38 +10643,24 @@ def reopen_resources(
     *,
     deadline: float,
 ) -> None:
-    reopen = device.wait_exact_resource_id_bidirectional(
-        "creation-resources-reopen",
-        timeout=90,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
+    # Save advances to Gear. One ordinary Back must skip the consumed review
+    # and reopen Resources; never tap another mutation or manufacture a receipt.
+    reopen = device.wait_for_single_exact_resource_id(
+        "creation-gear-page",
+        timeout=60,
         evidence_prefix="creation-resources-reopen",
-        surface_name="Persisted Resources reopen action",
+        surface_name="Gear after saved Resources",
         deadline=deadline,
     )
     _require_canonical_chummer_resource_id(
         device,
         reopen,
-        "creation-resources-reopen",
+        "creation-gear-page",
         evidence_prefix="creation-resources-reopen",
-        surface_name="Persisted Resources reopen action",
+        surface_name="Gear after saved Resources",
         deadline=deadline,
     )
-    if (
-        reopen.attributes.get("enabled") != "true"
-        or reopen.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(reopen, deadline=deadline)
-    ):
-        device.capture("creation-resources-reopen-invalid", deadline=deadline)
-        raise RuntimeError("Persisted Resources reopen action was not exactly tappable")
-    device.shell(
-        "input",
-        "tap",
-        *(str(value) for value in reopen.center),
-        timeout=shared._remaining_operation_timeout(deadline=deadline, maximum=15),
-        deadline=deadline,
-    )
+    device.back(deadline=deadline)
     route = device.wait_for_single_exact_resource_id(
         "creation-resources-page",
         timeout=60,
@@ -11186,7 +11172,7 @@ def select_and_confirm_resources(
         )
     if deadline is None:
         receipt_route = device.wait(
-            "creation-resources-confirm-receipt",
+            "creation-gear-page",
             timeout=90,
             scroll=True,
             max_scrolls=22,
@@ -11195,26 +11181,26 @@ def select_and_confirm_resources(
         receipt_nodes: dict[str, shared.UiNode] | None = None
     else:
         receipt_route = device.wait_for_single_exact_resource_id(
-            "creation-resources-confirm-receipt",
+            "creation-gear-page",
             timeout=90,
             scroll=True,
             max_scrolls=22,
-            evidence_prefix="creation-resources-confirm-receipt",
-            surface_name="Creation Resources confirmation receipt",
+            evidence_prefix="creation-gear-page",
+            surface_name="Gear with exact Resources confirmation receipt",
             deadline=deadline,
         )
         _require_canonical_chummer_resource_id(
             device,
             receipt_route,
-            "creation-resources-confirm-receipt",
-            evidence_prefix="creation-resources-confirm-receipt",
-            surface_name="Creation Resources confirmation receipt",
+            "creation-gear-page",
+            evidence_prefix="creation-gear-page",
+            surface_name="Gear with exact Resources confirmation receipt",
             deadline=deadline,
         )
         receipt_nodes = scan_deadline_bound_resources_surface(
             device,
             (
-                "creation-resources-confirm-receipt",
+                "creation-gear-page",
                 "creation-resources-receipt-option-id",
                 "creation-resources-receipt-workspace-revision",
                 "creation-resources-receipt-saved-revision",

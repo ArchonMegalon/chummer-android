@@ -99,6 +99,38 @@ public sealed partial class RunnerSessionCoordinator
             };
         }, ct);
 
+    internal async Task<CreationGearPage?> PrepareCreationAfterResourcesPageAsync(
+        ICharacterCreationResourcesInteractionPresenter resources, CharacterOverviewState original,
+        CharacterCreationResourcesPreparedPreview prepared, CharacterCreationResourcesReceipt receipt,
+        CancellationToken ct)
+    {
+        if (_creationGearPresenter is null || !CanDisplayCreationPurchase(original)
+            || !CreationResourcesPhoneAuthority.ReceiptMatches(prepared, receipt)) return null;
+        var display = await WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!CanDisplayCreationPurchase(original)) return null;
+            // Reopening a known commit is read-only. It never repeats Confirm,
+            // even if the previous post-commit overview refresh failed.
+            if (State.ContentRevision != receipt.WorkspaceRevision
+                || State.SavedRevision != receipt.SavedRevision || State.Error is not null)
+                if (!await RefreshCreationPurchaseAsync(original, receipt.WorkspaceId,
+                        receipt.WorkspaceRevision, receipt.SavedRevision, ct)) return null;
+            var current = State;
+            if (!IsCreationCatalogDisplayCurrent(current)) return null;
+            bool exact = await Task.Run(() => ReadCreationAuthority(current, () =>
+                resources.Load(current).State is { } state
+                && CreationResourcesPhoneAuthority.RefreshedStateMatches(prepared, receipt, state), ct), ct);
+            return exact && CanDisplayCreationPurchase(original) && IsCreationCatalogDisplayCurrent(current)
+                ? current : null;
+        }, ct);
+        if (display is null) return null;
+        var gear = await LoadCreationGearForDisplayAsync(_creationGearPresenter, display, ct);
+        ct.ThrowIfCancellationRequested();
+        return gear.Ready && gear.Load.Outcome == CharacterCreationGearOutcomes.Available
+            && CanDisplayCreationPurchase(original) && IsCreationCatalogDisplayCurrent(display)
+                ? new CreationGearPage(this, _creationGearPresenter, _presenter, display, gear.Load, receipt) : null;
+    }
+
     internal Task<CharacterCreationGearInteractionConfirmResult> ConfirmCreationGearPurchaseAsync(
         ICharacterCreationGearInteractionPresenter presenter, CharacterOverviewState original,
         CharacterCreationGearPreparedPreview prepared, CancellationToken ct = default)

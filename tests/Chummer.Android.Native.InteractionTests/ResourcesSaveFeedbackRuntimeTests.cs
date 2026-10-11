@@ -52,11 +52,15 @@ internal static partial class AfterRunAuthorityHarness
                 probe.UiThread = Environment.CurrentManagedThreadId;
                 var page = new CreationResourcesPreviewPage(runtime.Coordinator, probe, runtime.Presenter,
                     prepared, AndroidSurfaceStrings.Resolve(), original);
+                var navigation = new NavigationPage(new ContentPage());
+                await navigation.PushAsync(page, animated: false);
+                var window = new Window(navigation);
+                using var alerts = new IssuedPageAlerts(page, window);
+                await alerts.PreflightAsync();
                 var type = typeof(CreationResourcesPreviewPage);
                 void Render() => type.GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                await (Task)type.GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(page, [CancellationToken.None])!;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                 Render();
                 var button = body.Children.OfType<Button>().Single(row => row.AutomationId == "creation-resources-confirm");
                 var authority = body.Children.OfType<Label>().Single(row => row.AutomationId == "creation-resources-confirm-authority");
@@ -138,6 +142,7 @@ internal static partial class AfterRunAuthorityHarness
                         "Cold reopen failed to recover exact saved Resources without another mutation.");
                 }
                 Require(!linked || !store.Get(runtime.Id).Success, "Scoped Resources save created a hidden legacy workspace.");
+                IssuedPageLifecycle(page, "OnDisappearing");
             });
             Console.WriteLine("PASS Resources save feedback " + scenario + ": real Core, UI heartbeat, stable controls, one submission and cold recovery");
         }

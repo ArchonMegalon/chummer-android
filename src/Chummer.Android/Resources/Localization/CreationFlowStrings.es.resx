@@ -2165,4 +2165,7 @@
   <data name="Qualities.Review.ContinueNext" xml:space="preserve"><value>Continuar</value></data>
   <data name="Qualities.Review.OpeningNext" xml:space="preserve"><value>Abriendo el siguiente paso…</value></data>
   <data name="Qualities.Review.NextUnavailable" xml:space="preserve"><value>Tus cualidades están guardadas. No se pudo abrir el siguiente paso. Pulsa Continuar de nuevo; no se guardarán dos veces.</value></data>
+  <data name="Resources.ContinueNext" xml:space="preserve"><value>Continuar al equipo</value></data>
+  <data name="Resources.OpeningNext" xml:space="preserve"><value>Abriendo equipo…</value></data>
+  <data name="Resources.NextUnavailable" xml:space="preserve"><value>Tu presupuesto está guardado. No se pudo abrir el equipo. Pulsa Continuar de nuevo; no se guardará dos veces.</value></data>
 </root>

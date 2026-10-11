@@ -579,7 +579,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService,
                 IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null,
             Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null,
-            Func<ICharacterCreationResourcesInteractionPresenter, ICharacterCreationResourcesInteractionPresenter>? resourcesDecorator = null)
+            Func<ICharacterCreationResourcesInteractionPresenter, ICharacterCreationResourcesInteractionPresenter>? resourcesDecorator = null,
+            Func<ICharacterCreationGearInteractionPresenter, ICharacterCreationGearInteractionPresenter>? gearDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -702,7 +703,9 @@ internal static partial class AfterRunAuthorityHarness
                         ?? new CharacterCreationResourcesInteractionPresenter(
                             _provider.GetRequiredService<ICharacterCreationResourcesService>(),
                             _provider.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()),
-                    creationGearPresenter: new CharacterCreationGearInteractionPresenter(
+                    creationGearPresenter: gearDecorator?.Invoke(new CharacterCreationGearInteractionPresenter(
+                        _provider.GetRequiredService<ICharacterCreationGearService>(),
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>())) ?? new CharacterCreationGearInteractionPresenter(
                         _provider.GetRequiredService<ICharacterCreationGearService>(),
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()),
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,

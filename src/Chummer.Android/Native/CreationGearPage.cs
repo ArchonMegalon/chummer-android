@@ -26,19 +26,38 @@ public sealed class CreationGearPage : NativePageBase
     private int _catalogOffset;
     private CharacterOverviewState? _loadedDisplay;
     private CharacterCreationGearInteractionLoadResult? _loaded;
+    private CharacterOverviewState? _initialDisplay;
+    private CharacterCreationGearInteractionLoadResult? _initialLoad;
+    private readonly CharacterCreationResourcesReceipt? _resourcesReceipt;
     private bool _ready;
     private bool _loading = true;
     private VerticalStackLayout _basketBody = new() { Spacing = 14 };
     private VerticalStackLayout _basketDetails = new() { Spacing = 6 };
     private readonly List<(CharacterCreationGearCatalogOption Option, Border Row)> _catalogRows = [];
 
+    internal bool IsPreparedDisplayCurrent => _initialDisplay is { } display
+        && Coordinator.IsCreationCatalogDisplayCurrent(display);
+
     public CreationGearPage(
         RunnerSessionCoordinator coordinator,
         ICharacterCreationGearInteractionPresenter gear,
-        ICharacterOverviewPresenter overview) : base(coordinator)
+        ICharacterOverviewPresenter overview) : this(coordinator, gear, overview, null, null)
+    {
+    }
+
+    internal CreationGearPage(
+        RunnerSessionCoordinator coordinator,
+        ICharacterCreationGearInteractionPresenter gear,
+        ICharacterOverviewPresenter overview,
+        CharacterOverviewState? initialDisplay,
+        CharacterCreationGearInteractionLoadResult? initialLoad,
+        CharacterCreationResourcesReceipt? resourcesReceipt = null) : base(coordinator)
     {
         _gear = gear ?? throw new ArgumentNullException(nameof(gear));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
+        _initialDisplay = initialDisplay;
+        _initialLoad = initialLoad;
+        _resourcesReceipt = resourcesReceipt;
         _copy = AndroidSurfaceStrings.Resolve();
         Title = _copy["Gear.PageTitle"];
         AutomationId = "creation-gear-page";
@@ -54,9 +73,17 @@ public sealed class CreationGearPage : NativePageBase
         _loading = true;
         Refresh();
         CharacterOverviewState original = Coordinator.State;
+        var admitted = ReferenceEquals(original, _initialDisplay)
+            && Coordinator.IsCreationCatalogDisplayCurrent(original) ? _initialLoad : null;
+        _initialDisplay = null;
+        _initialLoad = null;
         try
         {
-            var prepared = await Coordinator.LoadCreationGearForDisplayAsync(_gear, original, cancellationToken);
+            // Only the exact coordinator-admitted first appearance can consume
+            // this read. Re-entry always refreshes Core catalogue authority.
+            var prepared = admitted is not null
+                ? (Load: admitted, Ready: true)
+                : await Coordinator.LoadCreationGearForDisplayAsync(_gear, original, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             _loadedDisplay = original;
             _loaded = prepared.Load;
@@ -106,6 +133,15 @@ public sealed class CreationGearPage : NativePageBase
         }
 
         InitializeBasket(state);
+        // The preceding commit remains inspectable in the existing collapsed
+        // diagnostic details. Never show its receipt against a later revision.
+        if (_resourcesReceipt is { } receipt && receipt.WorkspaceId == state.Binding.WorkspaceId
+            && receipt.WorkspaceRevision == state.Binding.ContentRevision
+            && receipt.SavedRevision == state.Binding.SavedRevision
+            && receipt.DraftRevision == state.Binding.ResourcesDraftRevision
+            && CharacterCreationResourcesRules.DigestsEqual(receipt.DraftDigest, state.Binding.ResourcesDraftDigest)
+            && CharacterCreationResourcesRules.DigestsEqual(receipt.RawCharacterXmlDigest, state.Binding.RawCharacterXmlDigest))
+            _technicalDetails.Add(CreationResourcesPreviewPage.CreateReceiptDetails(receipt));
         AddBinding(state);
         AddPersistedBudget(state);
         if (!_ready)
