@@ -132,7 +132,28 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 195 is the latest [observed Internal availability](../play/evidence/preview195-internal-observation.json),
+Preview 196 is the latest [observed Internal availability](../play/evidence/preview196-internal-observation.json),
+released on 11 October at 23:54 Europe/Vienna. Contacts and Lifestyles now return
+Save to the freshly admitted list and offer the next step. Pending confirmed
+Resources/Gear funds admit Lifestyle purchases and survive Career finalization.
+Original-owner checks, background preparation, committed-receipt recovery,
+selectable owned starting cash and dice-total help remain guarded. Optional
+qualities and technical details are collapsed; slider-only controls remain.
+Core149, UI426 and Android704 merged normally. Affected Core/MAUI checks,
+247 focused Android checks and the UI882-test fresh consumer passed. Retained
+API36 native evidence covers one Low purchase, cash and finalization into Career,
+then exact new-process recovery; a later display-only APK checks the compact
+Lifestyle layout without another purchase. These distinct APKs and provenance
+reuse boundaries are recorded, not treated as physical Play196 evidence.
+Local locked ARM64/Internal build, unsigned content/proof/hygiene checks,
+isolated original-key signing, independent keyless signature/payload checks and
+one scoped upload/readback passed. Physical Play196 is not verified. The old
+broad source-contract run remains failed; slow startup, remaining localization,
+complete Creation/Career/Origin acceptance, the original FirstBook uncertainty
+and diagnostic-contract portability remain open.196 is consumed; this record
+does not require a rebuild or re-upload.
+
+Preview 195's [observed Internal availability](../play/evidence/preview195-internal-observation.json) was
 released on 11 October at 19:26 Europe/Vienna. Gear Save now opens Contacts
 automatically; if Core requires saved Skills, Continue opens that editor with a
 localized explanation. Saved Gear offers read-only continuation, and Back skips
