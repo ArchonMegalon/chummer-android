@@ -203,7 +203,18 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>nativo</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Revisar las habilidades guardadas con las reglas actuales</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No hay ningún borrador anterior de habilidades compatible para este runner. No se ha cambiado nada.</value></data>
-  <data name="Creation.BasicsSummary" xml:space="preserve"><value>Consulta las reglas y los libros habilitados para tu runner. Esta configuración no se puede cambiar aquí.</value></data>
+  <data name="Creation.BasicsSummary" xml:space="preserve"><value>Consulta la edición y el método de creación de tu runner. Aquí no se pueden cambiar los libros.</value></data>
+  <data name="Basics.PageTitle" xml:space="preserve"><value>Reglas y fuentes</value></data>
+  <data name="Basics.Heading" xml:space="preserve"><value>Tu runner</value></data>
+  <data name="Basics.Runner" xml:space="preserve"><value>Runner</value></data>
+  <data name="Basics.Edition" xml:space="preserve"><value>Edición</value></data>
+  <data name="Basics.Profile" xml:space="preserve"><value>Perfil de reglas</value></data>
+  <data name="Basics.BuildMethod" xml:space="preserve"><value>Método de creación</value></data>
+  <data name="Basics.NotSet" xml:space="preserve"><value>Sin definir</value></data>
+  <data name="Basics.Unavailable" xml:space="preserve"><value>No se pudo cargar la configuración de creación. Vuelve atrás y abre este runner de nuevo.</value></data>
+  <data name="Basics.SourceBooks" xml:space="preserve"><value>Libros</value></data>
+  <data name="Basics.SourceBooksReadOnly" xml:space="preserve"><value>Los libros siguen el perfil guardado de este runner. Todavía no puedes cambiarlos en esta pantalla.</value></data>
+  <data name="Basics.UnknownMethod" xml:space="preserve"><value>No disponible</value></data>
   <data name="Karma.Title" xml:space="preserve"><value>Creación con Karma</value></data>
   <data name="Karma.Metatype" xml:space="preserve"><value>Metatipo</value></data>
   <data name="Karma.Talent" xml:space="preserve"><value>Talento</value></data>

@@ -68,11 +68,12 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         for marker in (
             "creation-basics-authority",
             "rules.GameEdition",
-            "rules.Settings",
             "snapshot.BuildMethod",
-            "snapshot.SourceDigest",
             "creation-basics-sourcebooks-contract-unavailable",
             "no typed creation settings-profile/sourcebook selection contract",
+            'CreationAllocationStrings.Get("Basics.SourceBooksReadOnly",',
+            "!Guid.TryParse(rules.Settings, out _)",
+            "snapshot.WorkspaceRevision != Coordinator.State.ContentRevision",
         ):
             self.assertIn(marker, source)
         for forbidden in (
@@ -81,6 +82,8 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
             "settings.xml#",
             "CharacterSettings",
             "SourcebookSummary",
+            "snapshot.SourceDigest",
+            "ShortDigest(",
         ):
             self.assertNotIn(forbidden, source)
 

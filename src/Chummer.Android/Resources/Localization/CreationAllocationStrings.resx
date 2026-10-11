@@ -203,7 +203,18 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>native</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Review saved Skills choices against current rules</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>No supported historical Skills draft is available for this runner. Nothing was changed.</value></data>
-  <data name="Creation.BasicsSummary" xml:space="preserve"><value>View your runner's rules and enabled sourcebooks. These settings cannot be changed here.</value></data>
+  <data name="Creation.BasicsSummary" xml:space="preserve"><value>View your runner's edition and build method. Source books cannot be changed here.</value></data>
+  <data name="Basics.PageTitle" xml:space="preserve"><value>Rules &amp; sources</value></data>
+  <data name="Basics.Heading" xml:space="preserve"><value>Your runner</value></data>
+  <data name="Basics.Runner" xml:space="preserve"><value>Runner</value></data>
+  <data name="Basics.Edition" xml:space="preserve"><value>Edition</value></data>
+  <data name="Basics.Profile" xml:space="preserve"><value>Rules profile</value></data>
+  <data name="Basics.BuildMethod" xml:space="preserve"><value>Build method</value></data>
+  <data name="Basics.NotSet" xml:space="preserve"><value>Not set</value></data>
+  <data name="Basics.Unavailable" xml:space="preserve"><value>Creation settings could not be loaded. Go back and reopen this runner.</value></data>
+  <data name="Basics.SourceBooks" xml:space="preserve"><value>Source books</value></data>
+  <data name="Basics.SourceBooksReadOnly" xml:space="preserve"><value>Source books follow this runner's saved profile. You cannot change them on this screen yet.</value></data>
+  <data name="Basics.UnknownMethod" xml:space="preserve"><value>Unavailable</value></data>
   <data name="Karma.Title" xml:space="preserve"><value>Karma creation</value></data>
   <data name="Karma.Metatype" xml:space="preserve"><value>Metatype</value></data>
   <data name="Karma.Talent" xml:space="preserve"><value>Talent</value></data>

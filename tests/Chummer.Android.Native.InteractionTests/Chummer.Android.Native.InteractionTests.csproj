@@ -34,6 +34,7 @@
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
     <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
     <Compile Include="CreationReloadRuntimeTests.cs" />
+    <Compile Include="CreationBasicsRuntimeTests.cs" />
     <Compile Include="CreationSpecialAttributesRuntimeTests.cs" />
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="ResourcesSaveFeedbackRuntimeTests.cs" />

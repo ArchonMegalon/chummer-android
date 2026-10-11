@@ -140,6 +140,7 @@ foreach ((string locale, string expert) in new[]
 
 string[] surfaceFiles =
 [
+    "CreationBasicsPage.cs",
     "CreationAttributesPage.cs",
     "CreationSkillsPage.cs",
     "CreationMetatypePage.cs",
