@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 197 is the latest [observed Internal availability](../play/evidence/preview197-internal-observation.json),
+Preview 198 is the latest [observed Internal availability](../play/evidence/preview198-internal-observation.json),
+released on 12 October at 01:57 Europe/Vienna. Magic/Resonance confirmation now
+opens Resources directly; saved recovery can Continue without saving again and
+Back skips the consumed review. Android708 merged with the reviewed tree.
+Fifteen new actual-Core/MAUI Magic cases, ten shared Qualities cases and existing
+Magic owner/recovery checks passed, plus source15/version1/key hygiene. The
+partial host-shell exit127 remains explicitly separate from the completed cases
+and later successful remaining run. API36 German130% SDK-test evidence covers
+one edited Adept, one save6/6->7/7, all4PP, Resources6000nuyen, Back and cold
+read-only Continue. Eight other runners/raw character unchanged; all nine cold
+files equal post-save bytes. Local ARM64/Internal build, unsigned checks,
+original-key isolated signing, independent keyless verification and one scoped
+upload/readback passed. Core/UI unchanged. Physical198, startup/reload closure,
+complete Creation/Career/Origin and remaining UX/localization are not claimed.
+198 is consumed; evidence updates do not require a rebuild or re-upload.
+
+Preview 197's [observed Internal availability](../play/evidence/preview197-internal-observation.json) was
 released on 12 October at 00:50 Europe/Vienna. Successful Priority/Sum-to-Ten
 final confirmation opens the restored Career root directly; Back skips the
 consumed wizard. Saved-receipt recovery and exact owner/page/navigation guards
