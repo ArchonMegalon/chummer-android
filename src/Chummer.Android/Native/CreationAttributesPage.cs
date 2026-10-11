@@ -516,7 +516,7 @@ public sealed class CreationAttributesPage : NativePageBase
                     || !Coordinator.IsCreationAttributesStateCurrent(state) || !_draft.Matches(state, Coordinator.State)
                     || !_draft.Allocations(state).SequenceEqual(allocations)) return;
                 if (result.Value is { } preview
-                    && Coordinator.CanOfferCreationAttributesConfirmation(preview, allocations))
+                    && Coordinator.CanOfferCreationAttributesReview(preview, allocations))
                 {
                     _previewBlockers = [];
                     await Navigation.PushAsync(new CreationAttributesPreviewPage(
@@ -1144,13 +1144,15 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _confirmButton = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
+        bool savedReview = Coordinator.IsSavedCreationAttributesReview(_preview, _allocations);
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.ExplicitReview",
-            "Explicit review")));
+            savedReview ? "Attributes.ResumedDraft" : "Common.ExplicitReview",
+            savedReview ? "Saved allocation" : "Explicit review")));
         _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
             "AttributeAllocation.Eyebrow",
             "Attribute allocation")));
-        if (!Coordinator.CanDisplayCreationAttributesPreview(_preview))
+        if (!Coordinator.CanDisplayCreationAttributesPreview(_preview)
+            || !_preview.CanConfirm && !savedReview)
         {
             _body.Add(NativeTheme.Body(CreationAllocationStrings.AttributeBlocker(
                 CharacterCreationAttributesBlockers.StaleWorkspaceRevision), NativeTheme.Danger));
@@ -1169,10 +1171,10 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         AddDigest("creation-attributes-preview-digest", _preview.PreviewDigest);
         AddDigest("creation-attributes-preview-raw-character-xml-digest", _preview.Binding.RawCharacterXmlDigest);
         AddDigest("creation-attributes-preview-auxiliary-state-digest", _preview.Binding.AuxiliaryStateDigest);
-        AddBudgets();
+        AddBudgets(savedReview);
         AddAttributes();
-        AddBlockers();
-        AddConfirmation();
+        AddBlockers(savedReview);
+        AddConfirmation(savedReview);
         AddReceipt();
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-preview-details"));
     }
@@ -1185,11 +1187,11 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         base.OnDisappearing();
     }
 
-    private void AddBudgets()
+    private void AddBudgets(bool savedReview)
     {
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "AttributesPreview.FinalDraftLedgers",
-            "Points after saving")));
+            savedReview ? "Attributes.ExactLedgers" : "AttributesPreview.FinalDraftLedgers",
+            savedReview ? "Available points" : "Points after saving")));
         VerticalStackLayout budgets = new() { Spacing = 14 };
         foreach (var (budget, canonicalBudgetId) in new[]
                  {
@@ -1284,7 +1286,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         RowSpacing = 2
     };
 
-    private void AddBlockers()
+    private void AddBlockers(bool savedReview)
     {
         string[] blockers = _preview.Blockers
             .Concat(_confirmation?.Blockers ?? [])
@@ -1292,6 +1294,14 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             .ToArray();
         if (blockers.Length == 0)
             return;
+        if (savedReview)
+        {
+            // Only the coordinator-admitted exact saved duplicate reaches this
+            // branch. Keep Core's no-save reason available in technical details.
+            foreach (string blocker in blockers)
+                _technicalDetails.Add(NativeTheme.Body(blocker, NativeTheme.Muted));
+            return;
+        }
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.CheckChoices", "Check your choices")));
@@ -1304,8 +1314,23 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(border);
     }
 
-    private void AddConfirmation()
+    private void AddConfirmation(bool savedReview)
     {
+        if (savedReview)
+        {
+            Label saved = NativeTheme.Body(CreationAllocationStrings.Get(
+                "AttributesPreview.AlreadySaved",
+                "These choices are already saved. Go back to change them."));
+            saved.AutomationId = "creation-attributes-saved-review";
+            _body.Add(saved);
+            Button back = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "AttributesPreview.BackToAttributes", "Back to attributes"));
+            back.AutomationId = "creation-attributes-back-to-attributes";
+            back.Clicked += async (_, _) => await RunAsync(async () => await Navigation.PopAsync());
+            _body.Add(back);
+            return;
+        }
+
         if (_confirmation is
             {
                 Outcome: CharacterCreationFoundationOutcomes.Success,

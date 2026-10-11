@@ -48,6 +48,8 @@
   <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Guardar atributos</value></data>
   <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Guarda las elecciones mostradas. Tu runner sigue en creación.</value></data>
   <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Tus atributos se han guardado.</value></data>
+  <data name="AttributesPreview.AlreadySaved" xml:space="preserve"><value>Estas elecciones ya están guardadas. Vuelve atrás para cambiarlas.</value></data>
+  <data name="AttributesPreview.BackToAttributes" xml:space="preserve"><value>Volver a los atributos</value></data>
   <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Karma de creación restante</value></data>
   <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Estas elecciones están guardadas en tu borrador. Termina la creación por separado para pasar a Carrera.</value></data>
   <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Puntos tras guardar</value></data>

@@ -20,7 +20,8 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     private sealed record AttributesLoad(CharacterOverviewState Display, CharacterCreationAttributesState State);
-    private sealed record AttributesPreview(AttributesLoad Load, CharacterCreationAttributeAllocation[] Allocations)
+    private sealed record AttributesPreview(AttributesLoad Load, CharacterCreationAttributeAllocation[] Allocations,
+        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Result)
     {
         public bool ConfirmationStarted { get; set; }
     }
@@ -84,14 +85,29 @@ public sealed partial class RunnerSessionCoordinator
         // Keep the issued-display guards; confirmation still reloads/reprojects.
         var result = service.Preview(owner, new(binding, copied));
         if (!IsCreationAttributesStateCurrent(issued.State)) return AttributesUnavailable<CharacterCreationAttributesPreview>();
-        if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } preview })
-            _attributePreviews.GetValue(preview, _ => new(issued, copied));
+        // Core can also issue the exact saved projection as a blocked duplicate.
+        // Admit it for read-only review through the existing strict local-undo
+        // checks, never by removing its blocker or making it confirmable.
+        if (result.Value is { } preview
+            && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.State, State, result, copied))
+            _attributePreviews.GetValue(preview, _ => new(issued, copied, result));
         return result;
     }
 
     internal bool IsCreationAttributesPreviewCurrent(CharacterCreationAttributesPreview preview)
         => _attributePreviews.TryGetValue(preview, out var issued) && !issued.ConfirmationStarted
            && IsCreationAttributesStateCurrent(issued.Load.State);
+
+    internal bool CanOfferCreationAttributesReview(CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => _attributePreviews.TryGetValue(preview, out var issued)
+           && IsCreationAttributesPreviewCurrent(preview)
+           && allocations.SequenceEqual(issued.Allocations)
+           && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.Load.State, State, issued.Result, allocations);
+
+    internal bool IsSavedCreationAttributesReview(CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => !preview.CanConfirm && CanOfferCreationAttributesReview(preview, allocations);
 
     // Rendering uses the exact issued projection, never a synchronous Core read.
     // This only offers the review action: ConfirmIssuedAttributesAsync still
@@ -105,6 +121,11 @@ public sealed partial class RunnerSessionCoordinator
 
     internal bool CanDisplayCreationAttributesPreview(CharacterCreationAttributesPreview preview)
         => _attributePreviews.TryGetValue(preview, out var issued)
+           // A successful confirmation may retain its original preview alongside
+           // the receipt. A saved-only review has no such transition: it must
+           // remain bound to the exact current saved revision and projection.
+           && (issued.Result.Outcome == CharacterCreationFoundationOutcomes.Success
+               || CanOfferCreationAttributesReview(preview, issued.Allocations))
            && IsNativePersistenceOwnerCurrent(issued.Load.Display.DisplayOwnerContext)
            && State.WorkspaceId == issued.Load.Display.WorkspaceId
            && State.DisplayOwnerContext == issued.Load.Display.DisplayOwnerContext
@@ -130,7 +151,7 @@ public sealed partial class RunnerSessionCoordinator
     private async Task<CreationAttributesPhoneConfirmResult> ConfirmIssuedAttributesAsync(
         CharacterCreationAttributesPreview preview, CharacterCreationAttributeAllocation[] allocations, CancellationToken ct)
     {
-        if (!_attributePreviews.TryGetValue(preview, out var issued) || !IsCreationAttributesPreviewCurrent(preview)
+        if (!_attributePreviews.TryGetValue(preview, out var issued) || !CanOfferCreationAttributesConfirmation(preview, allocations)
             || !allocations.SequenceEqual(issued.Allocations) || _ownerBoundAttributesService is not { } service
             || issued.Load.Display.DisplayOwnerContext is not { } owner)
             return RejectedAttributes(CharacterCreationAttributesBlockers.StaleWorkspaceRevision);

@@ -11,6 +11,7 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            await VerifySavedAttributeReviewAsync(ui, contentRoot);
             var owners = new ControlledLinkedOwner();
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                 creationFinalization: true, creationAttributes: true, productionCreationOverview: true);
@@ -97,6 +98,110 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { CultureInfo.CurrentUICulture = culture; }
         });
+    }
+
+    private static async Task VerifySavedAttributeReviewAsync(IssuedPageUiContext ui, string contentRoot)
+    {
+        var owners = new ControlledLinkedOwner();
+        AttributesCommitProbe? probe = null;
+        await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+            creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+            attributesDecorator: actual => probe = new(actual));
+        var saved = PrepareActualFinalizationReadyContext(runtime, stopBeforeSkills: true);
+        await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+        var coordinator = runtime.Coordinator;
+        var state = coordinator.LoadCreationAttributes().Value!;
+        Require(state.PendingDraft is not null, "SETUP: actual saved attribute draft is missing.");
+        var page = new CreationAttributesPage(coordinator, state);
+        var navigation = new NavigationPage(new ContentPage());
+        await navigation.PushAsync(page, false);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+        var review = MinimalVisible(page).OfType<Button>().Single(x =>
+            x.AutomationId == "creation-attributes-prepare-preview");
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked()));
+        var savedReview = navigation.Navigation.NavigationStack.Last() as CreationAttributesPreviewPage;
+        Require(savedReview is not null,
+            "An unchanged saved allocation must open a read-only review, not a duplicate-save blocker.");
+        var allocations = state.PendingDraft!.Allocations;
+        var duplicate = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+        Require(!duplicate.CanConfirm && duplicate.Blockers.SequenceEqual(new[] { "creation-attributes-draft-duplicate" }),
+            "SETUP: actual Core must still reject duplicate persistence.");
+        int reads = probe!.LoadCalls + probe.PreviewCalls;
+        var culture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                MinimalRender(savedReview!);
+                var visible = MinimalVisible(savedReview!).ToArray();
+                Require(visible.OfType<Label>().Any(x => x.AutomationId == "creation-attributes-saved-review"
+                    && x.Text == CreationAllocationStrings.Get("AttributesPreview.AlreadySaved", "missing")),
+                    "Read-only review must explain that the choices are already saved: " + locale);
+                Require(!visible.Any(x => x.AutomationId is "creation-attributes-confirm"
+                    or "creation-attributes-preview-blockers" or "creation-attributes-explicit-confirmation"),
+                    "Saved review must not offer another save or display a duplicate blocker.");
+                Require(visible.OfType<Button>().Any(x => x.AutomationId == "creation-attributes-back-to-attributes"
+                    && x.IsEnabled), "Saved review needs a return to allocation.");
+                foreach (var attribute in state.Attributes)
+                    Require(visible.OfType<Label>().Any(x => x.AutomationId == "creation-attributes-preview-value-"
+                        + CreationAttributesPage.Token(attribute.AttributeId)
+                        && x.Text == attribute.Current.ToString(CultureInfo.InvariantCulture)),
+                        "Saved review changed or omitted an authoritative value.");
+                MinimalRequireNoMachineValues(savedReview!);
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = culture; }
+        Require(probe.LoadCalls + probe.PreviewCalls == reads, "Read-only review rendering performed Core I/O.");
+        Require(!coordinator.CanOfferCreationAttributesConfirmation(duplicate, allocations)
+            && !coordinator.CanDisplayCreationAttributesPreview(duplicate with { }),
+            "Saved or unissued previews must not gain confirmation/display authority.");
+        await coordinator.ConfirmCreationAttributesAsync(duplicate, allocations);
+        Require(probe.ConfirmCalls == 0 && probe.LoadCalls + probe.PreviewCalls == reads,
+            "Direct confirmation of a saved review must be rejected before Core I/O.");
+        RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+
+        // A normal changed allocation still saves once. The old saved review
+        // must stop showing values when its exact revision is no longer current.
+        var draft = new CreationAttributesPhoneDraft();
+        draft.Bind(state, coordinator.State);
+        var changed = draft.ChangedAllocations(state, "BOD", 1, 0)!;
+        var changedPreview = coordinator.PreviewCreationAttributes(state.Binding, changed).Value!;
+        var confirmation = await coordinator.ConfirmCreationAttributesAsync(changedPreview, changed);
+        Require(confirmation.Receipt is not null && confirmation.RefreshedState is not null && probe.ConfirmCalls == 1,
+            "A genuine changed allocation must still save exactly once.");
+        MinimalRender(savedReview!);
+        Require(!coordinator.CanDisplayCreationAttributesPreview(duplicate)
+            && !MinimalVisible(savedReview!).Any(x => x.AutomationId?.StartsWith("creation-attributes-preview-value-", StringComparison.Ordinal) == true),
+            "A stale saved review exposed values after a new revision.");
+        var updated = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        Require(updated.ContentRevision == saved.ContentRevision + 1 && updated.SavedRevision == updated.ContentRevision,
+            "Changed allocation did not persist exactly one revision.");
+        await HydrateFinalizationOwnerAsync(runtime, owners, updated);
+        var reopened = coordinator.LoadCreationAttributes().Value!;
+        var reopenedAllocations = reopened.PendingDraft!.Allocations;
+        var reopenedPreview = coordinator.PreviewCreationAttributes(reopened.Binding, reopenedAllocations).Value!;
+        var reopenedReview = new CreationAttributesPreviewPage(coordinator, reopenedPreview, reopenedAllocations);
+        MinimalRender(reopenedReview);
+        Require(MinimalVisible(reopenedReview).Any(x => x.AutomationId == "creation-attributes-saved-review"),
+            "Cold-store reopen must retain read-only saved review.");
+        var originalOwner = owners.Current;
+        owners.Set(ContactsOwnerB);
+        owners.Set(originalOwner);
+        MinimalRender(reopenedReview);
+        Require(!coordinator.CanDisplayCreationAttributesPreview(reopenedPreview)
+            && !MinimalVisible(reopenedReview).Any(x => x.AutomationId?.StartsWith("creation-attributes-preview-value-", StringComparison.Ordinal) == true),
+            "Owner A-to-B-to-A reactivated a saved review from the previous owner transition.");
+        await coordinator.ConfirmCreationAttributesAsync(reopenedPreview, reopenedAllocations);
+        Require(probe.ConfirmCalls == 1 && alerts.Titles.Count == 0,
+            "Read-only review replayed persistence or raised an alert.");
+        RequireSameRewardDocument(updated, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+        IssuedPageLifecycle(savedReview!, "OnDisappearing");
+        IssuedPageLifecycle(page, "OnDisappearing");
+        Console.WriteLine("PASS saved attribute review: actual click, EN/DE/ES, no render/duplicate-save I/O, changed save, stale revision, cold store and owner ABA");
     }
 
     internal static async Task RunAttributeSaveFeedbackAsync(string contentRoot)
