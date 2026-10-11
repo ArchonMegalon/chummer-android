@@ -27,7 +27,8 @@ class SkillsReReviewSourceTests(unittest.TestCase):
             values = {row.attrib["name"]: row.findtext("value", "") for row in entries}
             self.assertEqual(len(entries), len(values), "Duplicate resource key")
             catalogs.append({key: value for key, value in values.items() if key.startswith("SkillsReReview.")})
-        self.assertEqual(len(catalogs[0]), 31)
+        self.assertEqual(len(catalogs[0]), 32)
+        self.assertIn("SkillsReReview.UnavailableSpecialization", catalogs[0])
         for catalog in catalogs:
             self.assertEqual(set(catalog), set(catalogs[0]))
             for key, value in catalog.items():

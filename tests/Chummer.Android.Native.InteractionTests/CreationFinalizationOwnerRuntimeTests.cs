@@ -1111,113 +1111,10 @@ internal static partial class AfterRunAuthorityHarness
         await VerifySkillRatingPendingAsync(contentRoot);
     }
 
-    private static async Task VerifySkillRatingPendingAsync(string contentRoot)
-    {
-        using var ui = new IssuedPageUiContext();
-        await ui.RunAsync(async () =>
-        {
-            foreach (string outcome in new[] { "ready", "error", "cancel", "leave", "owner-aba" })
-            {
-                var owners = new ControlledLinkedOwner();
-                SkillsRatingProbe? probe = null;
-                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
-                    creationFinalization: true, creationAttributes: true, creationSkills: true,
-                    productionCreationOverview: true, skillsDecorator: actual => probe = new(actual));
-                var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
-                await HydrateFinalizationOwnerAsync(runtime, owners, before);
-                var state = runtime.Coordinator.LoadCreationSkills().Value!;
-                var source = CreationSkillsPhoneAuthority.AvailableActiveSkills(state).First();
-                string token = new(source.SourceSkillId.ToLowerInvariant()
-                    .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
-                var page = new CreationSkillsPage(runtime.Coordinator, state);
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
-                Border Card() => MinimalVisible(page).OfType<Border>().Single(x => x.AutomationId == "creation-skill-" + token);
-                Button Plus() => ((VerticalStackLayout)Card().Content!).Children.OfType<HorizontalStackLayout>()
-                    .Single().Children.OfType<Button>().Single(x => x.Text == "+");
-                CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
-                    .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Plus()).SendClicked()));
-                var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                var rows = body.Children.ToArray();
-                var plus = Plus();
-                string initial = JsonSerializer.Serialize(Draft().Skills);
-                int loads = probe!.LoadCalls, previews = probe.PreviewCalls, confirms = probe.ConfirmCalls;
-                using var release = new ManualResetEventSlim();
-                var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                probe.BeforePreview = () =>
-                {
-                    entered.TrySetResult();
-                    Require(release.Wait(TimeSpan.FromSeconds(10)), "Skills preview was not released.");
-                    if (outcome == "error") throw new InvalidOperationException("private-skills-error");
-                    if (outcome == "cancel") throw new OperationCanceledException();
-                };
-                Task pending = ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked());
-                try
-                {
-                    await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                    Require(!pending.IsCompleted && !plus.IsEnabled && plus.Text == "…"
-                        && rows.SequenceEqual(body.Children) && JsonSerializer.Serialize(Draft().Skills) == initial,
-                        "Pending Skills calculation replaced controls, hid feedback or optimistically spent points.");
-                    Require(((VerticalStackLayout)Card().Content!).Children.OfType<Label>().Any(label =>
-                        label.IsVisible && label.AutomationId?.EndsWith("-feedback", StringComparison.Ordinal) == true
-                        && label.Text == CreationAllocationStrings.Get("Skills.CheckingRating", "missing")),
-                        "An in-flight rating check has no adjacent progress feedback.");
-                    ((IButtonController)plus).SendClicked();
-                    MinimalRender(page);
-                    var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    ui.Post(_ => heartbeat.SetResult(), null);
-                    await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(2));
-                    // The admitted preview retains its one fresh Core load;
-                    // duplicate taps and renders must not add another one.
-                    Require(probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads + 1
-                        && rows.SequenceEqual(body.Children), "Duplicate tap/render repeated Skills reads or blocked the UI.");
-                    if (outcome == "leave") IssuedPageLifecycle(page, "OnDisappearing");
-                    if (outcome == "owner-aba")
-                    {
-                        var owner = owners.Current;
-                        owners.Set(ContactsOwnerB);
-                        owners.Set(owner);
-                    }
-                }
-                finally
-                {
-                    release.Set();
-                    try { await JoinIssuedPageAsync(pending); }
-                    finally { probe.BeforePreview = null; }
-                }
-                if (outcome == "ready")
-                    Require(rows.SequenceEqual(body.Children) && plus.IsEnabled && plus.Text == "+"
-                        && Draft().Skills.Single(x => x.Kind == source.Kind && x.SourceSkillId == source.SourceSkillId).Rating == 2
-                        && probe.PreviewCalls == previews + 1 && probe.LoadCalls == loads + 1,
-                        "Successful Skills preview did not retain the same controls with a fresh Core result.");
-                else
-                {
-                    Require(JsonSerializer.Serialize(Draft().Skills) == initial
-                        && (outcome is "error" or "cancel" || !plus.IsEnabled),
-                        "A failed, departed or owner-stale Skills preview changed the draft: " + outcome);
-                    Require(!MinimalVisibleText(page).Contains("private-skills-error", StringComparison.Ordinal),
-                        "Skills error exposed raw exception text.");
-                    if (outcome is "error" or "cancel")
-                    {
-                        var retry = Plus();
-                        Require(retry.IsEnabled && ReferenceEquals(retry, plus)
-                            && rows.SequenceEqual(body.Children), "Skills error stranded or replaced the controls.");
-                        Require(((VerticalStackLayout)Card().Content!).Children.OfType<Label>().Any(label =>
-                            label.IsVisible && label.AutomationId?.EndsWith("-feedback", StringComparison.Ordinal) == true
-                            && label.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.AuthorityUnavailable)),
-                            "A failed skill preview has no explanation beside its controls.");
-                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked()));
-                        Require(Draft().Skills.Single(x => x.Kind == source.Kind && x.SourceSkillId == source.SourceSkillId).Rating == 2,
-                            "A fresh guarded Skills retry failed.");
-                    }
-                }
-                Require(probe.ConfirmCalls == confirms, "Skills rating preview dispatched a save.");
-                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
-                if (outcome != "leave") IssuedPageLifecycle(page, "OnDisappearing");
-            }
-        });
-        Console.WriteLine("PASS Skills stable controls, fresh preview, duplicate tap, UI heartbeat, failure recovery, departure and owner ABA");
-    }
+    // Rating taps now use the detached Core session. Keep lifecycle/owner and
+    // failure isolation coverage, with fresh store checks reserved for Review.
+    private static Task VerifySkillRatingPendingAsync(string contentRoot)
+        => VerifySkillRatingCacheAsync(contentRoot);
 
     private sealed class SkillsRatingProbe(IOwnerBoundCharacterCreationSkillsService inner)
         : IOwnerBoundCharacterCreationSkillsService
@@ -1283,7 +1180,8 @@ internal static partial class AfterRunAuthorityHarness
                         && feedback.TextColor == NativeTheme.Danger
                         && JsonSerializer.Serialize(Draft().Groups) == accepted && plus.IsEnabled,
                         "Rejected group increase must explain Core's refusal beside the unchanged controls/draft.");
-                    Require(card.Children.IndexOf(feedback) == card.Children.IndexOf((View)plus.Parent) + 1,
+                    Require(card.Children.IndexOf(feedback) == card.Children.IndexOf((View)plus.Parent) + 2
+                        && card.Children[card.Children.IndexOf(feedback) - 1] is Slider,
                         "The denial moved away from the tapped group controls.");
                     await Click(minus);
                     Require(Draft().Groups.Single(x => x.GroupId == group.GroupId).Rating == 1

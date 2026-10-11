@@ -3,7 +3,7 @@ using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
 
-/// <summary>Phone Skills step; every tap is accepted only after a full Core preview.</summary>
+/// <summary>Core-owned local draft calculation; fresh store/source review before saving.</summary>
 public sealed class CreationSkillsPage : NativePageBase
 {
     private const int CatalogPageSize = 20;
@@ -20,12 +20,10 @@ public sealed class CreationSkillsPage : NativePageBase
     private int _activeCatalogOffset;
     private int _knowledgeCatalogOffset;
     private long _renderGeneration;
-    private CancellationTokenSource? _ratingPreparation;
     private readonly List<Action> _projectionUpdates = [];
     private readonly List<Func<bool>> _ratingShapeChecks = [];
     private string? _ratingFeedbackKey;
     private IReadOnlyList<string> _ratingFeedback = [];
-    private bool _ratingPending;
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
@@ -40,7 +38,6 @@ public sealed class CreationSkillsPage : NativePageBase
 
     protected override void Refresh()
     {
-        if (_ratingPreparation is not null) return;
         _renderGeneration++;
         _projectionUpdates.Clear();
         _ratingShapeChecks.Clear();
@@ -114,8 +111,7 @@ public sealed class CreationSkillsPage : NativePageBase
 
     protected override void OnDisappearing()
     {
-        _ratingPreparation?.Cancel();
-        _ratingPreparation = null;
+        _draft.RetireSession();
         base.OnDisappearing();
     }
 
@@ -253,6 +249,7 @@ public sealed class CreationSkillsPage : NativePageBase
             }
             UpdateDetail();
             _projectionUpdates.Add(UpdateDetail);
+            detail.FontAttributes = FontAttributes.Bold;
             card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
             string feedbackKey = $"{source.Kind}-{Token(source.SourceSkillId)}";
@@ -282,6 +279,13 @@ public sealed class CreationSkillsPage : NativePageBase
                 controls.Add(native);
             }
             card.Add(controls);
+            AddRatingSlider(card, state, feedbackKey,
+                SkillCatalogStrings.SkillName(source.Kind, source.SourceSkillId, source.Name),
+                () => CurrentSelection()?.Rating ?? 0,
+                () => (_draft.MinimumRating(source), source.Kind == CharacterCreationSkillKinds.Active
+                    ? state.Authority.MaxActiveSkillRatingCreate : state.Authority.MaxKnowledgeSkillRatingCreate,
+                    CurrentSelection()?.IsNativeLanguage != true),
+                target => _draft.WithSkill(source, target - (CurrentSelection()?.Rating ?? 0)), () => _draft.Groups);
             AddRatingFeedback(card, feedbackKey);
             if (source.Specializations.Count > 0 && selected is { Rating: > 0, IsNativeLanguage: false })
                 AddSpecializationPicker(card, state, source, selected);
@@ -298,7 +302,6 @@ public sealed class CreationSkillsPage : NativePageBase
         previous.IsEnabled = offset > 0;
         previous.Clicked += (_, _) =>
         {
-            if (_ratingPreparation is not null) return;
             SetCatalogOffset(
                 catalogToken,
                 CreationSkillsCatalogPaging.PreviousOffset(offset, CatalogPageSize));
@@ -312,7 +315,6 @@ public sealed class CreationSkillsPage : NativePageBase
         next.IsEnabled = end < catalog.Count;
         next.Clicked += (_, _) =>
         {
-            if (_ratingPreparation is not null) return;
             SetCatalogOffset(
                 catalogToken,
                 CreationSkillsCatalogPaging.NextOffset(offset, catalog.Count, CatalogPageSize));
@@ -387,6 +389,13 @@ public sealed class CreationSkillsPage : NativePageBase
             minus.AutomationId = $"creation-skills-{feedbackKey}-decrease";
             plus.AutomationId = $"creation-skills-{feedbackKey}-increase";
             controls.Add(minus); controls.Add(plus); card.Add(controls);
+            AddRatingSlider(card, state, feedbackKey, SkillCatalogStrings.GroupName(source.Name),
+                () => _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating ?? 0,
+                () => (_draft.MinimumRating(source), state.Authority.MaxSkillGroupRatingCreate, true),
+                _ => _draft.Skills,
+                () => _draft.Groups,
+                target => _draft.WithGroup(source,
+                    target - (_draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating ?? 0)));
             AddRatingFeedback(card, feedbackKey);
             _body.Add(NativeTheme.Card(card));
         }
@@ -436,8 +445,8 @@ public sealed class CreationSkillsPage : NativePageBase
         long appearanceGeneration = CaptureAppearanceGeneration();
         // Rating-only previews retain this picker and any unsubmitted selection.
         // Refresh only its accepted allocation, never its pending SelectedIndex.
-        _projectionUpdates.Add(() => selected = _draft.Skills.Single(item =>
-            item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId));
+        _projectionUpdates.Add(() => selected = _draft.Skills.SingleOrDefault(item =>
+            item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId) ?? selected);
         choose.Clicked += async (_, _) =>
         {
             int index = picker.SelectedIndex;
@@ -465,12 +474,9 @@ public sealed class CreationSkillsPage : NativePageBase
         void Update()
         {
             bool selected = _ratingFeedbackKey == key;
-            feedback.Text = selected && _ratingPending
-                ? CreationAllocationStrings.Get("Skills.CheckingRating", "Checking…")
-                : selected ? string.Join("\n", _ratingFeedback.Select(CreationAllocationStrings.SkillBlocker)
+            feedback.Text = selected ? string.Join("\n", _ratingFeedback.Select(CreationAllocationStrings.SkillBlocker)
                     .Distinct(StringComparer.Ordinal)) : string.Empty;
             feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
-            feedback.TextColor = _ratingPending ? NativeTheme.Muted : NativeTheme.Danger;
         }
         Update();
         _projectionUpdates.Add(Update);
@@ -483,57 +489,88 @@ public sealed class CreationSkillsPage : NativePageBase
     {
         long render = _renderGeneration;
         long appearance = CaptureAppearanceGeneration();
-        string label = button.Text;
-        void Update() => button.IsEnabled = !_ratingPending && enabled();
+        void Update() => button.IsEnabled = enabled();
         Update();
         _projectionUpdates.Add(Update);
-        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(async () =>
+        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() =>
         {
             bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
-                && Coordinator.IsCreationSkillsStateCurrent(state) && _draft.Matches(state, Coordinator.State);
-            if (!button.IsEnabled || !Current()) return false;
+                && Coordinator.IsCreationSkillsDraftDisplayCurrent(state) && _draft.HasPreparedState(state);
+            if (!button.IsEnabled || !Current()) return Task.FromResult(false);
             var requestedSkills = skills().ToArray();
             var requestedGroups = groups().ToArray();
-            var original = Coordinator.State;
-            using var lifetime = new CancellationTokenSource();
-            _ratingPreparation = lifetime;
             _ratingFeedbackKey = feedbackKey;
             _ratingFeedback = [];
-            _ratingPending = true;
-            foreach (var update in _projectionUpdates) update();
-            button.Text = "…";
             try
             {
-                var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
-                    () => Coordinator.PreviewCreationSkills(state.Binding, requestedSkills, requestedGroups), lifetime.Token), lifetime.Token);
-                lifetime.Token.ThrowIfCancellationRequested();
-                if (!Current()) return false;
-                bool adopted = _draft.TryAdopt(state, Coordinator.State, result, requestedSkills, requestedGroups);
-                _ratingFeedback = result.Blockers.Count > 0 ? result.Blockers
+                bool adopted = _draft.TryPreviewPrepared(state, requestedSkills, requestedGroups, out var blockers);
+                _ratingFeedback = blockers.Count > 0 ? blockers
                     : adopted ? [] : [CharacterCreationSkillsBlockers.AuthorityUnavailable];
                 _blockers = _ratingFeedback;
                 // Rebuild only for native-language/specialization shape changes. A refusal
                 // stays beside the tapped control, without rebuilding the long
                 // catalog or moving its feedback outside the current viewport.
-                return adopted && !_ratingShapeChecks.All(check => check());
+                return Task.FromResult(adopted && !_ratingShapeChecks.All(check => check()));
             }
-            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { return false; }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                if (!Current()) return false;
+                if (!Current()) return Task.FromResult(false);
                 _blockers = [CharacterCreationSkillsBlockers.AuthorityUnavailable];
                 _ratingFeedback = _blockers;
-                return false;
+                return Task.FromResult(false);
             }
             finally
             {
-                button.Text = label;
-                if (ReferenceEquals(_ratingPreparation, lifetime)) _ratingPreparation = null;
-                _ratingPending = false;
                 if (Current())
                     foreach (var update in _projectionUpdates) update();
             }
         });
+    }
+
+    private void AddRatingSlider(VerticalStackLayout card, CharacterCreationSkillsState state,
+        string feedbackKey, string label, Func<int> current,
+        Func<(int Minimum, int Maximum, bool Enabled)> range,
+        Func<int, IReadOnlyList<CharacterCreationSkillAllocation>> skills,
+        Func<IReadOnlyList<CharacterCreationSkillGroupAllocation>> groups,
+        Func<int, IReadOnlyList<CharacterCreationSkillGroupAllocation>>? changedGroups = null)
+    {
+        long render = _renderGeneration;
+        long appearance = CaptureAppearanceGeneration();
+        bool dragging = false;
+        bool refreshAfterDrag = false;
+        bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationSkillsDraftDisplayCurrent(state) && _draft.HasPreparedState(state);
+        var slider = new CreationIntegerSlider($"creation-skills-slider-{feedbackKey}", label, current, range,
+            target => RunWithConditionalRefreshAsync(() =>
+            {
+                if (!Current()) return Task.FromResult(false);
+                _ratingFeedbackKey = feedbackKey;
+                bool accepted = _draft.TryPreviewPrepared(state, skills(target),
+                    changedGroups?.Invoke(target) ?? groups(), out var blockers);
+                _ratingFeedback = _blockers = blockers;
+                foreach (var update in _projectionUpdates) update();
+                bool refresh = accepted && !_ratingShapeChecks.All(check => check());
+                // Rating 0→1 adds the specialization picker. Keep the current
+                // native slider alive until release so that this does not cut
+                // a drag short at its first point. Budget feedback stays live.
+                if (dragging)
+                {
+                    refreshAfterDrag |= refresh;
+                    return Task.FromResult(false);
+                }
+                return Task.FromResult(refresh);
+            }));
+        slider.DragStarted += (_, _) => dragging = Current();
+        slider.DragCompleted += async (_, _) =>
+        {
+            dragging = false;
+            if (!refreshAfterDrag) return;
+            refreshAfterDrag = false;
+            await RunWithConditionalRefreshAsync(() => Task.FromResult(
+                Current() && !_ratingShapeChecks.All(check => check())));
+        };
+        _projectionUpdates.Add(slider.UpdateProjection);
+        card.Add(slider);
     }
 
     private async Task PreviewAsync(

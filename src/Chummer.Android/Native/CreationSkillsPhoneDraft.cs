@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Application.Characters;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -14,13 +15,49 @@ internal sealed class CreationSkillsPhoneDraft
     private CharacterCreationSkillsBinding? _binding;
     private string? _snapshotDigest;
     private CharacterCreationSkillsPreview? _preview;
+    private CharacterCreationSkillsState? _preparedState;
+    private CharacterCreationSkillsService.DraftSession? _session;
+
+    public bool HasPreparedState(CharacterCreationSkillsState state)
+        => ReferenceEquals(_preparedState, state) && _session is not null;
+
+    public void RetireSession() { _session = null; _preparedState = null; }
+
+    // Only the private Core session can supply this local projection. It is not
+    // registered in the coordinator's confirmation table, so it cannot be saved.
+    public bool TryPreviewPrepared(CharacterCreationSkillsState state,
+        IReadOnlyList<CharacterCreationSkillAllocation> skills,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups, out IReadOnlyList<string> blockers)
+    {
+        blockers = [CharacterCreationSkillsBlockers.StaleWorkspaceRevision];
+        if (!HasPreparedState(state)) return false;
+        var result = _session!.Preview(skills, groups);
+        blockers = result.Blockers;
+        if (result.Value is not { } preview
+            || !(result.Outcome == CharacterCreationFoundationOutcomes.Success && preview.CanConfirm && blockers.Count == 0
+                || result.Outcome == CharacterCreationFoundationOutcomes.Blocked
+                && (blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired })
+                    || blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate })))) return false;
+        Adopt(preview);
+        if (blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate })) blockers = [];
+        return true;
+    }
 
     public void Bind(CharacterCreationSkillsState state, CharacterOverviewState overview)
     {
-        if (Matches(state, overview)) return;
+        if (Matches(state, overview))
+        {
+            if (!HasPreparedState(state))
+            {
+                _session = CharacterCreationSkillsService.CreateDraftSession(state);
+                _preparedState = state;
+            }
+            return;
+        }
         _skills.Clear(); _groups.Clear(); _binding = null; _snapshotDigest = null; _preview = null;
         _skillMinimums.Clear(); _groupMinimums.Clear();
         _availableSkills.Clear(); _availableGroups.Clear();
+        RetireSession();
         if (!CreationSkillsPhoneAuthority.IsReady(state, overview)) return;
         _binding = state.Binding; _snapshotDigest = state.SnapshotDigest;
         foreach (var skill in CreationSkillsPhoneAuthority.AvailableActiveSkills(state).Concat(state.Authority.KnowledgeSkills))
@@ -40,6 +77,8 @@ internal sealed class CreationSkillsPhoneDraft
             _groups[item.GroupId] = new(item.GroupId, item.Rating);
             _groupMinimums[item.GroupId] = item.GrantedRating;
         }
+        _session = CharacterCreationSkillsService.CreateDraftSession(state);
+        _preparedState = state;
     }
 
     public bool Matches(CharacterCreationSkillsState state, CharacterOverviewState overview) =>
@@ -122,6 +161,12 @@ internal sealed class CreationSkillsPhoneDraft
         if (!Matches(state, overview)
             || !CreationSkillsPhoneAuthority.CanStagePreview(state, overview, result, skills, groups)
             || result.Value is not { } preview) return false;
+        Adopt(preview);
+        return true;
+    }
+
+    private void Adopt(CharacterCreationSkillsPreview preview)
+    {
         _skills.Clear(); _groups.Clear();
         foreach (CharacterCreationSkillProjection item in preview.Skills)
             _skills[(item.Kind, item.SourceSkillId)] = new(
@@ -133,6 +178,5 @@ internal sealed class CreationSkillsPhoneDraft
         foreach (CharacterCreationSkillGroupProjection item in preview.SkillGroups)
             _groups[item.GroupId] = new(item.GroupId, item.Rating);
         _preview = preview;
-        return true;
     }
 }

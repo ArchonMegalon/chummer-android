@@ -29,6 +29,10 @@ public sealed partial class RunnerSessionCoordinator
            && ReferenceEquals(issued.State, state) && SkillsDisplayCurrent(issued.Display)
            && CreationSkillsPhoneAuthority.MatchesOverview(state, State);
 
+    internal bool IsCreationSkillsDraftDisplayCurrent(CharacterCreationSkillsState state)
+        => _skillLoads.TryGetValue(state.Binding, out var issued)
+           && ReferenceEquals(issued.State, state) && SkillsDisplayCurrent(issued.Display);
+
     public CharacterCreationFoundationResult<CharacterCreationSkillsState> LoadCreationSkills()
         => LoadCreationSkillsForDisplay(State);
 
