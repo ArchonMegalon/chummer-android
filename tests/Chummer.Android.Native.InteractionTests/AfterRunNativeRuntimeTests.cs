@@ -577,7 +577,8 @@ internal static partial class AfterRunAuthorityHarness
             bool localRunnerAdoption = false,
             Func<IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleOriginService>? lifeOriginDecorator = null,
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService,
-                IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null)
+                IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null,
+            Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -744,7 +745,8 @@ internal static partial class AfterRunAuthorityHarness
                     originBookReadings: originReadings,
                     originBookScenes: originScenes,
                     originSceneDocuments: originSceneDocuments,
-                    localRunnerAdoptionService: LocalAdoption);
+                    localRunnerAdoptionService: LocalAdoption,
+                    careerQualityWorkspace: careerQualityWorkspaceFactory?.Invoke(Client));
             }
             catch
             {

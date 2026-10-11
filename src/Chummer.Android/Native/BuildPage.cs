@@ -1229,19 +1229,19 @@ public sealed class BuildPage : NativePageBase
             WizardStrings.Get("Career.ChangeQuality", "Change a quality"),
             CurrentPhoneWizardScope.MarkExperimental(
                 WizardStrings.Get("Career.ChangeQualityDetail", "Review a quality change and its Karma cost.")),
-            OpenSr5CareerQualityWizardAsync,
+            () => RunAsync(OpenSr5CareerQualityWizardAsync),
             automationId: "build-career-quality"));
         card.Add(NativeTheme.NavigationRow(
             WizardStrings.Get("Career.AdvanceGroup", "Advance a skill group"),
             CurrentPhoneWizardScope.MarkExperimental(
                 WizardStrings.Get("Career.AdvanceGroupDetail", "Improve a skill group and check the Karma cost.")),
-            OpenSr5CareerSkillGroupWizardAsync,
+            () => RunAsync(OpenSr5CareerSkillGroupWizardAsync),
             automationId: "build-career-skill-group"));
         card.Add(NativeTheme.NavigationRow(
             WizardStrings.Get("Career.AddSpecialization", "Add a specialization"),
             CurrentPhoneWizardScope.MarkExperimental(
                 WizardStrings.Get("Career.AddSpecializationDetail", "Choose a skill and a field to specialize in.")),
-            OpenSr5CareerSpecializationWizardAsync,
+            () => RunAsync(OpenSr5CareerSpecializationWizardAsync),
             automationId: "build-career-specialization"));
         card.Add(NativeTheme.NavigationRow(
             Sr5CareerFlowStrings.Text("Cyberware purchase"),
