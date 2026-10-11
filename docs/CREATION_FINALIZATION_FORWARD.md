@@ -40,6 +40,34 @@ unissued receipt to a screen requiring original-owner issuance. The latter now
 also asserts that a matching stored projection is not a display capability.
 Timeouts and production owner checks were not relaxed.
 
-Native API-36 smoke, a signed ARM64 AAB and Play delivery are still pending for
-this change. This is not a complete Creation/Career/Origin, physical-installation,
-startup-performance, tablet or general-release claim.
+## Native route
+
+The local API-36 x64 Release/Internal SDK-test APK built with zero warnings/errors:
+`ca4b9d791b59025b41b73058c65fae37e74b1aec7cf773d6191a1cfb64ead238`.
+Its separate application ID and SDK debug certificate are not a production
+upload signature. Product source, resources and build inputs match reviewed
+commit `bf39f070aac94facb3b2f4bca23e8197340c85bc`; Core/UI inputs are unchanged.
+
+The German, 130%-font native route used an actual Core-created synthetic ready
+Priority draft. Explicit starting-cash input 1 for Street produced the displayed
+20 cash, 5,020 total nuyen and 7 karma. One confirmation opened the Career root
+automatically, without the receipt page. Android Back returned to the launcher,
+not a consumed wizard. Force-stop and a verified new process restored the same
+selected Career runner.
+
+The runner advanced from revision 7/7 to 8/8 with exactly one finalization
+receipt. Stored values remain 7 karma and 5,020 nuyen; consumed creation state
+is retained in its finalization archive. The other seven synthetic runners were
+unchanged, and all eight workspace files after cold reopen match their exact
+post-finalization bytes. No second confirmation was issued. The owned emulator
+was stopped and only its scoped temporary egress rules were removed.
+
+The retained packet is `finalization-forward-20261012.3i2W4tBd`, including
+screenshots, hierarchies and before/after/cold state. A pre-unlock capture failure,
+SystemUI boot ANR, slow initial restoration and an early test-driver Back before
+the keyboard appeared remain recorded. They are not startup-performance passes.
+One selector mismatch caused no tap. No user phone or provider was used.
+
+A signed ARM64 AAB and Play delivery remain pending for this change. This is not
+a complete Creation/Career/Origin, physical-installation, startup-performance,
+tablet or general-release claim.
