@@ -948,6 +948,7 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Finalization.Reopened" xml:space="preserve"><value>Dein gespeicherter Runner wurde im Karrieremodus wieder geöffnet.</value></data>
   <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Deine Änderungen sind gespeichert. Öffne deinen Runner erneut, bevor du im Karrieremodus weitermachst.</value></data>
   <data name="Finalization.OpenCareer" xml:space="preserve"><value>Runner im Karrieremodus öffnen</value></data>
+  <data name="Finalization.ViewConfirmation" xml:space="preserve"><value>Speicherbestätigung ansehen</value></data>
   <data name="Finalization.Method.Priority" xml:space="preserve"><value>Priorität</value></data>
   <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
   <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>

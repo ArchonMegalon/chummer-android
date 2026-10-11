@@ -2835,7 +2835,12 @@ internal static partial class AfterRunAuthorityHarness
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                 var before = PrepareActualFinalizationReadyContext(runtime, buildMethod: method);
                 await HydrateFinalizationOwnerAsync(runtime, owners, before);
-                var navigation = new NavigationPage(new ContentPage());
+                var careerRoot = new BuildPage(runtime.Coordinator);
+                // Headless presentation adapter: acknowledge only the native
+                // scroll request, not loading, navigation or rule readiness.
+                var rootScroll = (IScrollViewController)(ScrollView)careerRoot.Content!;
+                rootScroll.ScrollToRequested += (_, _) => rootScroll.SendScrollFinished();
+                var navigation = new NavigationPage(careerRoot);
                 var window = new Window(navigation);
                 await navigation.PushAsync(new CreationLifestylesPage(runtime.Coordinator), false);
                 await Appear();
@@ -2999,8 +3004,30 @@ internal static partial class AfterRunAuthorityHarness
                 Require(binding.IsVisible, "The current review cannot disclose its exact binding.");
                 ClickDetails("creation-finalization-technical-details-toggle");
                 Require(!binding.IsVisible, "The review binding could not collapse.");
+                var finalizationPage = (CreationFinalizationPage)Current();
                 await Click("creation-finalization-confirm");
-                Require(Current() is CreationFinalizationReceiptPage, "The actual confirm did not show its receipt.");
+                Require(ReferenceEquals(Current(), careerRoot) && navigation.Navigation.NavigationStack.Count == 1
+                    && runtime.Coordinator.State.Profile?.Created == true,
+                    "The actual confirm did not go straight to restored Career and retire the wizard.");
+                // Exercise receipt disclosure separately from the successful
+                // forward route. Only the original issued completion has this
+                // page's owner binding; a fresh stored projection is not a
+                // capability to open it, even when the bytes match.
+                var retained = await runtime.Coordinator.LoadPersistedPriorityTableCreationReceiptAsync(
+                    runtime.Coordinator.State, default);
+                Require(retained is not null, "Career lost its persisted finalization receipt.");
+                var completion = (CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>)typeof(CreationFinalizationPage)
+                    .GetField("_completion", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(finalizationPage)!;
+                Require(completion.Value is { } issued
+                    && issued.ReceiptDigest == retained!.ReceiptDigest
+                    && issued.WorkspaceId == retained.WorkspaceId
+                    && issued.ContentRevision == retained.ContentRevision
+                    && runtime.Coordinator.CanDisplayCreationFinalizationReceipt(issued)
+                    && !runtime.Coordinator.CanDisplayCreationFinalizationReceipt(retained),
+                    "The saved receipt identity or original-owner disclosure boundary changed.");
+                IssuedPageLifecycle(careerRoot, "OnDisappearing");
+                await navigation.PushAsync(new CreationFinalizationReceiptPage(runtime.Coordinator, completion.Value!, []), false);
+                await Appear();
                 var technical = Element<VerticalStackLayout>("creation-finalization-receipt-technical-details");
                 Require(!technical.IsVisible && Element<Button>("creation-finalization-open-career").IsEnabled,
                     "Receipt diagnostics are exposed by default or Career action was lost.");

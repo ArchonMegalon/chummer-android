@@ -655,6 +655,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationFinalizationOwnerCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-finalization-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationFinalizationForwardAsync(args[1]);
+            return;
+        }
         if (args.Length == 1 && args[0] == "--tablet-inspector-binding")
         {
             await TabletInspectorBindingTests.RunAsync();

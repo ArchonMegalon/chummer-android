@@ -22,7 +22,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
             for key in ("Title", "Review", "ReviewHelp", "StaleReview", "EnterCareer", "After", "KarmaRemaining",
                         "NuyenRemaining", "Change", "ConfirmHelp", "Saving", "Confirm", "Mode", "CareerTransition",
                         "SavedTitle", "ReceiptAccount", "CareerReady", "BuildMethod", "Career", "Creation", "Reopened",
-                        "ReopenRequired", "OpenCareer", "Method.Priority", "Method.SumToTen", "Method.Karma", "Method.LifeModules",
+                        "ReopenRequired", "OpenCareer", "ViewConfirmation", "Method.Priority", "Method.SumToTen", "Method.Karma", "Method.LifeModules",
                         "CashLifestyle", "CashDiceTotal"):
                 self.assertTrue(values[f"Finalization.{key}"], (suffix, key))
 
@@ -91,6 +91,23 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertIn("_ownerBoundFinalizationService?.Confirm(owner, command)", dispatch)
         self.assertIn("original.DisplayOwnerContext", dispatch)
         self.assertNotIn("await", dispatch)
+
+    def test_successful_finalization_retires_wizard_only_after_current_career_restore(self):
+        source = (NATIVE / "CreationFinalizationPage.cs").read_text(encoding="utf-8")
+        continuation = source.split("private async Task OpenCompletionAsync", 1)[1].split("// Display only:", 1)[0]
+        self.assertIn("navigation.NavigationStack.SequenceEqual(originalStack)", continuation)
+        self.assertIn("Coordinator.CanDisplayCreationFinalizationReceipt(receipt)", continuation)
+        self.assertLess(continuation.index("_completion.Blockers.Count == 0"), continuation.index("PopToRootAsync"))
+        self.assertLess(continuation.index("Coordinator.IsCreationFinalizationReceiptCurrent(receipt)"), continuation.index("PopToRootAsync"))
+        self.assertIn("CreationFinalizationReceiptPage", continuation)
+        self.assertNotIn("ConfirmCreationFinalizationAsync", continuation)
+
+    def test_completion_is_retained_before_page_checks_and_never_reconfirmed(self):
+        source = (NATIVE / "CreationFinalizationPage.cs").read_text(encoding="utf-8")
+        confirm = source.split("private async Task ConfirmAsync()", 1)[1].split("private bool IsCurrentPage", 1)[0]
+        self.assertIn("_completion is not null", confirm)
+        self.assertLess(confirm.index("_completion = result"), confirm.index("if (!IsCurrentPage(originalAppearance)"))
+        self.assertIn("ReferenceEquals(confirm.Parent, _body)", source)
 
 
 if __name__ == "__main__":
