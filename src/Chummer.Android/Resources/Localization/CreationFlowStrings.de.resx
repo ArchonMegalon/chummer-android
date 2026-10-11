@@ -2186,4 +2186,7 @@
   <data name="Resources.ContinueNext" xml:space="preserve"><value>Weiter zur Ausrüstung</value></data>
   <data name="Resources.OpeningNext" xml:space="preserve"><value>Ausrüstung wird geöffnet…</value></data>
   <data name="Resources.NextUnavailable" xml:space="preserve"><value>Dein Budget ist gespeichert. Die Ausrüstung konnte nicht geöffnet werden. Versuche Weiter erneut; es wird nicht doppelt gespeichert.</value></data>
+  <data name="Gear.ContinueNext" xml:space="preserve"><value>Weiter zu Kontakten</value></data>
+  <data name="Gear.OpeningNext" xml:space="preserve"><value>Kontakte werden geöffnet…</value></data>
+  <data name="Gear.NextUnavailable" xml:space="preserve"><value>Deine Ausrüstung ist gespeichert. Kontakte konnten nicht geöffnet werden. Versuche es mit Weiter erneut; dabei wird nicht nochmals gespeichert.</value></data>
 </root>

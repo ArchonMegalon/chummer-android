@@ -168,6 +168,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunGearSaveFeedbackAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-gear-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunGearForwardAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-continue-routes-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationContinueRoutesAsync(args[1]);

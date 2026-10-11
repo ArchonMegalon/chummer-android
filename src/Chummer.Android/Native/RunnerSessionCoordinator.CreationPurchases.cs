@@ -131,6 +131,41 @@ public sealed partial class RunnerSessionCoordinator
                 ? new CreationGearPage(this, _creationGearPresenter, _presenter, display, gear.Load, receipt) : null;
     }
 
+    internal async Task<CreationContactsPage?> PrepareCreationAfterGearPageAsync(
+        ICharacterCreationGearInteractionPresenter gear, CharacterOverviewState original,
+        CharacterCreationGearPreparedPreview prepared, CharacterCreationGearReceipt receipt,
+        CancellationToken ct)
+    {
+        if (!CanDisplayCreationPurchase(original)
+            || !CreationGearPhoneAuthority.ReceiptMatches(prepared, receipt)) return null;
+        var display = await WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (!CanDisplayCreationPurchase(original)) return null;
+            // Observe the known saved basket; never repeat a purchase when only
+            // its post-commit refresh or the next page's read failed.
+            if (State.ContentRevision != receipt.WorkspaceRevision
+                || State.SavedRevision != receipt.SavedRevision || State.Error is not null)
+                if (!await RefreshCreationPurchaseAsync(original, receipt.WorkspaceId,
+                        receipt.WorkspaceRevision, receipt.SavedRevision, ct)) return null;
+            var current = State;
+            if (!IsCreationCatalogDisplayCurrent(current)) return null;
+            bool exact = await Task.Run(() => ReadCreationAuthority(current, () =>
+                gear.Load(current).State is { } state
+                && CreationGearPhoneAuthority.RefreshedStateMatches(prepared, receipt, state), ct), ct);
+            return exact && CanDisplayCreationPurchase(original) && IsCreationCatalogDisplayCurrent(current)
+                ? current : null;
+        }, ct);
+        if (display is null) return null;
+        // This loader has its own activation gate: call after releasing the
+        // refresh gate. Contacts keeps Core's actual shared-budget admission.
+        var contacts = await LoadCreationContactsForDisplayAsync(display, ct);
+        ct.ThrowIfCancellationRequested();
+        return contacts.Outcome == CharacterCreationContactOutcomes.Available
+            && contacts.State is { } state && CreationContactsPhoneAuthority.IsReady(state, display)
+            && CanDisplayCreationPurchase(original) && IsCreationCatalogDisplayCurrent(display)
+                ? new CreationContactsPage(this, state, display, receipt) : null;
+    }
+
     internal Task<CharacterCreationGearInteractionConfirmResult> ConfirmCreationGearPurchaseAsync(
         ICharacterCreationGearInteractionPresenter presenter, CharacterOverviewState original,
         CharacterCreationGearPreparedPreview prepared, CancellationToken ct = default)

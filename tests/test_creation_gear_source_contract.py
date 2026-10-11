@@ -23,6 +23,29 @@ def source(path: Path) -> str:
 
 
 class CreationGearSourceContractTests(unittest.TestCase):
+    def test_saved_gear_continuation_is_read_only_and_uses_exact_contacts(self) -> None:
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        continuation = coordinator.split("internal async Task<CreationContactsPage?> PrepareCreationAfterGearPageAsync(", 1)[1]
+        continuation = continuation.split("internal Task<CharacterCreationGearInteractionConfirmResult>", 1)[0]
+        self.assertNotIn(".Confirm(", continuation)
+        for guard in ("CreationGearPhoneAuthority.ReceiptMatches", "CreationGearPhoneAuthority.RefreshedStateMatches",
+                      "CreationContactsPhoneAuthority.IsReady(state, display)", "IsCreationCatalogDisplayCurrent(display)"):
+            self.assertIn(guard, continuation)
+        page = source(PAGE)
+        self.assertIn("await ContinueToNextAsync(appearance)", page)
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", page)
+        self.assertIn("navigation.RemovePage(this)", page)
+        self.assertIn("_forwardLifetime?.Cancel()", page)
+        self.assertNotIn('"creation-gear-reopen"', page)
+        import xml.etree.ElementTree as ET
+        for suffix in ("", ".de", ".es"):
+            resource = ROOT / f"src/Chummer.Android/Resources/Localization/CreationFlowStrings{suffix}.resx"
+            rows = list(ET.parse(resource).getroot().findall("data"))
+            for key in ("Gear.ContinueNext", "Gear.OpeningNext", "Gear.NextUnavailable"):
+                matches = [row.findtext("value") for row in rows if row.attrib["name"] == key]
+                self.assertEqual(1, len(matches), (suffix, key))
+                self.assertTrue(matches[0].strip(), (suffix, key))
+
     def test_related_source_contracts_use_explicit_workspace_without_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             missing = Path(temporary) / "absent-workspace"
@@ -140,7 +163,7 @@ class CreationGearSourceContractTests(unittest.TestCase):
             "creation-gear-confirm",
             "creation-gear-confirm-authority",
             "creation-gear-confirm-receipt",
-            "creation-gear-reopen",
+            "creation-gear-continue-next",
         ):
             self.assertIn(automation_id, page)
         coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")

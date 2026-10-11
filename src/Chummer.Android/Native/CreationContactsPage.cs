@@ -15,13 +15,27 @@ public sealed class CreationContactsPage : NativePageBase
     private CharacterCreationContactsInteractionState? _authority;
     private CharacterCreationContactsInteractionLoadResult? _loaded;
     private bool _loading;
+    private readonly CharacterOverviewState? _forwardDisplay;
+    private readonly CharacterCreationGearReceipt? _gearReceipt;
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+
+    internal bool IsPreparedDisplayCurrent => _forwardDisplay is { } display
+        && Coordinator.IsCreationCatalogDisplayCurrent(display)
+        && _authority is { } state && CreationContactsPhoneAuthority.IsReady(state, display);
 
     public CreationContactsPage(
         RunnerSessionCoordinator coordinator,
-        CharacterCreationContactsInteractionState? authority = null) : base(coordinator)
+        CharacterCreationContactsInteractionState? authority = null) : this(coordinator, authority, null, null)
+    {
+    }
+
+    internal CreationContactsPage(RunnerSessionCoordinator coordinator,
+        CharacterCreationContactsInteractionState? authority, CharacterOverviewState? forwardDisplay,
+        CharacterCreationGearReceipt? gearReceipt) : base(coordinator)
     {
         _authority = authority;
+        _forwardDisplay = forwardDisplay;
+        _gearReceipt = gearReceipt;
         Title = CreationFlowStrings.Get("Contacts.PageTitle", "Creation contacts");
         AutomationId = "creation-contacts-page";
         Content = new ScrollView { Content = _body };
@@ -86,6 +100,11 @@ public sealed class CreationContactsPage : NativePageBase
         }
 
         AddBinding(state);
+        if (IsPreparedDisplayCurrent && _gearReceipt is { } receipt
+            && receipt.WorkspaceId == state.Binding.WorkspaceId
+            && receipt.WorkspaceRevision == state.Binding.ContentRevision
+            && receipt.SavedRevision == state.Binding.SavedRevision)
+            _technicalDetails.Add(CreationGearPreviewPage.CreateReceiptDetails(receipt));
         AddBudget(
             state.ContactBudget,
             CreationFlowStrings.Get("Contacts.ContactPoints", "Contact points"),
