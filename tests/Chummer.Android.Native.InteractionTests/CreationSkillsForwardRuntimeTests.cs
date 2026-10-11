@@ -145,6 +145,7 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class QualitiesForwardProbe(IOwnerBoundCharacterCreationQualitiesService inner) : IOwnerBoundCharacterCreationQualitiesService
     {
         public Action? BeforeLoad;
+        public Action? AfterConfirm;
         public int LoadCalls, PreviewCalls, ConfirmCalls;
         public CharacterCreationFoundationResult<CharacterCreationQualitiesState>? LastResult;
         public CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load(OwnerContextStamp owner, CharacterCreationQualitiesLoadRequest request)
@@ -152,6 +153,6 @@ internal static partial class AfterRunAuthorityHarness
         public CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> Preview(OwnerContextStamp owner, CharacterCreationQualitiesPreviewRequest request)
         { PreviewCalls++; return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> Confirm(OwnerContextStamp owner, CharacterCreationQualitiesConfirmRequest request)
-        { ConfirmCalls++; return inner.Confirm(owner, request); }
+        { ConfirmCalls++; var result = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
     }
 }

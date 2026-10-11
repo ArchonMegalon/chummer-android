@@ -18,6 +18,7 @@ public sealed class CreationResourcesPage : NativePageBase
     private readonly ICharacterCreationGearInteractionPresenter? _gear;
     private readonly AndroidSurfaceCopy _copy;
     private CharacterCreationResourcesInteractionState? _authority;
+    private CharacterOverviewState? _initialAuthorityDisplay;
     private CharacterOverviewState? _loadedDisplay;
     private bool _ready;
     private bool _loading = true;
@@ -47,6 +48,7 @@ public sealed class CreationResourcesPage : NativePageBase
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _gear = gear;
         _authority = authority;
+        _initialAuthorityDisplay = authority is null ? null : coordinator.State;
         _copy = AndroidSurfaceStrings.Resolve();
         Title = _copy["Resources.PageTitle"];
         AutomationId = "creation-resources-page";
@@ -62,7 +64,10 @@ public sealed class CreationResourcesPage : NativePageBase
         CharacterOverviewState original = Coordinator.State;
         try
         {
-            var candidate = _authority;
+            // A prepared next-step read belongs to one exact owner/display and
+            // one appearance, not another account with matching numeric revisions.
+            var candidate = ReferenceEquals(_initialAuthorityDisplay, original) ? _authority : null;
+            _initialAuthorityDisplay = null;
             var prepared = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
             {
                 var load = candidate is not null && CreationResourcesPhoneAuthority.IsReady(candidate, original)

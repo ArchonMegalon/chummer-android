@@ -2699,6 +2699,12 @@ internal static partial class AfterRunAuthorityHarness
         var reviewed = CharacterCreationQualitiesCheckpoint.CreateReviewed(preview.Value!, [], Guid.NewGuid());
         Require(journal.TryCreate(reviewed, out reviewed, out var blocker), blocker);
         var page = new CreationQualitiesReviewPage(coordinator, reviewed, journal, original);
+        var navigation = new NavigationPage(page);
+        var window = new Window(navigation);
+        using var alerts = new IssuedPageAlerts(page, window);
+        await alerts.PreflightAsync();
+        var appearance = (IssuedPageUiContext)SynchronizationContext.Current!;
+        await JoinIssuedPageAsync(appearance.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
         var refresh = typeof(CreationQualitiesReviewPage).GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var apply = typeof(CreationQualitiesReviewPage).GetMethod("ApplyAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator)
@@ -4206,7 +4212,7 @@ internal static partial class AfterRunAuthorityHarness
         }
         if (attributeTalent is not null)
         {
-            Require(stopBeforeAttributes, "Awakened fixture is only intended for attribute allocation tests.");
+            Require(stopBeforeAttributes || stopBeforeQualities, "Awakened fixture is intended for allocation or Qualities-forward tests.");
             ranks[CharacterCreationPriorityCategoryIds.Heritage] = "B";
             ranks[CharacterCreationPriorityCategoryIds.Talent] = attributeTalentRank;
             ranks[CharacterCreationPriorityCategoryIds.Attributes] = attributeTalentRank == "A" ? "C" : "A";

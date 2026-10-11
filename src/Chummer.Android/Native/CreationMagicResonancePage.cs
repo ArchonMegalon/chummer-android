@@ -30,6 +30,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
     private VisualElement? _budgetFocusTarget;
     private VisualElement? _queuedFocusTarget;
     private long _renderGeneration;
+    private (CharacterOverviewState Display, CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> Load)? _initialLoad;
 
     public CreationMagicResonancePage(RunnerSessionCoordinator coordinator, string? budgetId = null)
         : this(
@@ -40,6 +41,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     ?? throw new InvalidOperationException("Open a runner before Magic / Resonance.")), budgetId)
     {
     }
+
+    internal CreationMagicResonancePage(RunnerSessionCoordinator coordinator, CharacterOverviewState display,
+        CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load) : this(coordinator)
+        => _initialLoad = (display, load);
 
     internal CreationMagicResonancePage(
         RunnerSessionCoordinator coordinator,
@@ -125,7 +130,12 @@ public sealed class CreationMagicResonancePage : NativePageBase
         var preparedDraft = before.Copy();
         try
         {
-            var loaded = await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, cancellationToken);
+            var initial = _initialLoad;
+            _initialLoad = null;
+            var loaded = initial is { } retained && ReferenceEquals(retained.Display, original)
+                && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                ? retained.Load
+                : await Coordinator.LoadCreationMagicResonanceForDisplayAsync(original, cancellationToken);
             var editor = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();

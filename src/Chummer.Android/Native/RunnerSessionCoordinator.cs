@@ -340,6 +340,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private const string CharacterSettingsCatalogPreferenceKey = "chummer.android.character-settings-catalog.v1";
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
+    private readonly ICharacterCreationResourcesInteractionPresenter? _creationResourcesPresenter;
+    private readonly ICharacterCreationGearInteractionPresenter? _creationGearPresenter;
     private readonly IChummerClient _client;
     private readonly IOwnerContextAccessor? _damageJournalOwnerAccessor;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
@@ -466,10 +468,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IOwnerBoundCharacterCreationSkillsService? ownerBoundCreationSkillsService = null,
         IOwnerBoundCharacterCreationQualitiesService? ownerBoundCreationQualitiesService = null,
         IOwnerBoundCharacterCreationMagicResonanceService? ownerBoundCreationMagicResonanceService = null,
-        AndroidLocalRunnerAdoptionService? localRunnerAdoptionService = null)
+        AndroidLocalRunnerAdoptionService? localRunnerAdoptionService = null,
+        ICharacterCreationResourcesInteractionPresenter? creationResourcesPresenter = null,
+        ICharacterCreationGearInteractionPresenter? creationGearPresenter = null)
     {
         _localRunnerAdoption = localRunnerAdoptionService;
         _presenter = presenter;
+        _creationResourcesPresenter = creationResourcesPresenter;
+        _creationGearPresenter = creationGearPresenter;
         _client = client;
         // Maui's existing IOwnerContextAccessor registration is the same issuing
         // accessor used by Core. Hosts that omit this capability fail closed.
@@ -1832,6 +1838,34 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private static CharacterCreationFoundationResult<CharacterCreationQualitiesState> QualitiesDisplayUnavailable()
         => new(CharacterCreationFoundationOutcomes.Conflict, null,
             [CharacterCreationQualitiesBlockers.RevisionConflict]);
+
+    internal async Task<Page?> PrepareCreationAfterQualitiesPageAsync(
+        CharacterOverviewState display, CancellationToken cancellationToken)
+    {
+        var magic = await LoadCreationMagicResonanceForDisplayAsync(display, cancellationToken);
+        var talent = await Task.Run(() =>
+            magic.Outcome == CharacterCreationFoundationOutcomes.Success
+                && CreationMagicResonancePhoneAuthority.TryProjectForOverview(magic.Value, display, out var editor)
+                    ? editor!.Talent.Kind : null, cancellationToken);
+        if (!IsCreationCatalogDisplayCurrent(display) || talent is null) return null;
+        // Only the exact Core talent makes Magic inapplicable. Missing authority
+        // is not evidence of a mundane runner and must not skip a required step.
+        if (talent != CharacterCreationMagicResonanceKinds.Mundane)
+            return new CreationMagicResonancePage(this, display, magic);
+        if (_creationResourcesPresenter is null) return null;
+        var resources = await WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+            ReadCreationAuthority(display, () =>
+            {
+                var load = _creationResourcesPresenter.Load(display);
+                return load.Outcome == CharacterCreationResourcesOutcomes.Available
+                    && load.State is { } state && CreationResourcesPhoneAuthority.IsReady(state, display)
+                        ? state : null;
+            }, cancellationToken), cancellationToken), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return resources is not null && IsCreationCatalogDisplayCurrent(display)
+            ? new CreationResourcesPage(this, _creationResourcesPresenter, _presenter, _creationGearPresenter, resources)
+            : null;
+    }
 
     internal Task<(CharacterCreationGearInteractionLoadResult Load, bool Ready)>
         LoadCreationGearForDisplayAsync(ICharacterCreationGearInteractionPresenter gear,
