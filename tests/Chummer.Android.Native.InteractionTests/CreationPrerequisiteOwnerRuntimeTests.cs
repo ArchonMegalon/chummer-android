@@ -389,7 +389,11 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
-    private static async Task RunCreationPrerequisiteCasesAsync(string contentRoot, bool parentReadinessOnly)
+    public static Task RunCreationPrerequisiteForwardCasesAsync(string contentRoot)
+        => RunCreationPrerequisiteCasesAsync(contentRoot, false, forwardOnly: true);
+
+    private static async Task RunCreationPrerequisiteCasesAsync(string contentRoot, bool parentReadinessOnly,
+        bool forwardOnly = false)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
             throw new ArgumentException("Supply the explicit canonical Core content root.", nameof(contentRoot));
@@ -408,7 +412,10 @@ internal static partial class AfterRunAuthorityHarness
                 "parent-return-confirmed-load-fault",
                 "parent-return-core-blocked", "parent-return-core-invalid", "parent-return-core-empty",
                 "parent-return-core-copy", "parent-return-core-recovery", "parent-return-core-fault-recovery",
-                "parent-return-core-currentness"];
+                "parent-return-core-currentness", "forward", "forward-sum", "forward-load-fault",
+                "forward-owner-b", "forward-owner-aba", "forward-departure", "forward-old-render"];
+            if (forwardOnly)
+                cases = cases.Where(scenario => scenario.StartsWith("forward", StringComparison.Ordinal)).ToArray();
             if (parentReadinessOnly)
                 cases = cases.Where(scenario => scenario.StartsWith("parent-return", StringComparison.Ordinal)).ToArray();
             foreach (string scenario in cases)
@@ -436,7 +443,10 @@ internal static partial class AfterRunAuthorityHarness
     {
         var owners = new ControlledLinkedOwner();
         PrerequisiteCoreProbe? probe = null;
+        AttributesCommitProbe? attributes = null;
         await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationPrerequisite: true,
+            creationAttributes: scenario.StartsWith("forward", StringComparison.Ordinal),
+            attributesDecorator: actual => attributes = new(actual),
             prerequisiteDecorator: actual =>
             {
                 probe = new(actual, owners, ui);
@@ -445,7 +455,8 @@ internal static partial class AfterRunAuthorityHarness
         await runtime.Coordinator.InitializeAsync();
         await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
         WorkspaceStoredDocument seed = PreparePrerequisiteOwnerFixture(runtime,
-            scenario == "parent-return-confirmed-sum" ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority);
+            scenario is "parent-return-confirmed-sum" or "forward-sum"
+                ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority);
         CloneFinalizationRecordFixture(runtime, ContactsOwnerA, seed);
         CloneFinalizationRecordFixture(runtime, ContactsOwnerB, seed);
         if (scenario != "local") owners.Set(ContactsOwnerA);
@@ -503,9 +514,10 @@ internal static partial class AfterRunAuthorityHarness
                     && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(loaded.Value),
                 "SETUP: actual Bootstrap/Load did not issue an actionable Priority prerequisite: " + JsonSerializer.Serialize(loaded));
             var state = loaded.Value!;
-            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
+            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal)
+                || scenario.StartsWith("forward", StringComparison.Ordinal))
             {
-                await RunPrerequisiteConfirmedParentReturnAsync(runtime, owners, ui, probe!, state, scenario);
+                await RunPrerequisiteConfirmedParentReturnAsync(runtime, owners, ui, probe!, state, scenario, attributes);
                 return;
             }
             if (scenario.StartsWith("parent-return-core-", StringComparison.Ordinal))
@@ -693,7 +705,8 @@ internal static partial class AfterRunAuthorityHarness
                 || scenario.StartsWith("parent-return", StringComparison.Ordinal)
                    && !scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
                 Require(after.All(pair => pair.Value.Digest == before[pair.Key].Digest), "Rejected read changed a cold partition.");
-            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal))
+            if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal)
+                || scenario.StartsWith("forward", StringComparison.Ordinal))
                 Require(after["account-a"].Content == before["account-a"].Content + 1
                     && after["account-a"].Saved == after["account-a"].Content
                     && after["account-a"].Draft is not null
@@ -767,7 +780,7 @@ internal static partial class AfterRunAuthorityHarness
 
     private static async Task RunPrerequisiteConfirmedParentReturnAsync(NativeRewardRuntime runtime,
         ControlledLinkedOwner owners, IssuedPageUiContext ui, PrerequisiteCoreProbe probe,
-        CharacterCreationPrerequisiteState state, string scenario)
+        CharacterCreationPrerequisiteState state, string scenario, AttributesCommitProbe? attributes = null)
     {
         var page = new CreationPrerequisitePage(runtime.Coordinator, state);
         var navigation = new NavigationPage(new ContentPage());
@@ -803,11 +816,79 @@ internal static partial class AfterRunAuthorityHarness
                 .Single(item => item.AutomationId == "creation-prerequisite-confirm");
             Require(confirm.IsEnabled, "SETUP: real review not confirmable.");
             probe.FailPostCommitLoad = scenario == "parent-return-confirmed-load-fault";
+            if (attributes is not null)
+                attributes.BeforeRead = () =>
+                {
+                    Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                        "Forward navigation loaded Attributes on the UI thread.");
+                    if (scenario == "forward-load-fault") throw new InvalidOperationException("diagnostic next-step read fault");
+                    var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ =>
+                    {
+                        try
+                        {
+                            // An overlapping tap must not replay the saved assignment.
+                            ((IButtonController)confirm).SendClicked();
+                            if (scenario.StartsWith("forward-owner", StringComparison.Ordinal)) owners.Set(ContactsOwnerB);
+                            if (scenario == "forward-owner-aba") owners.Set(ContactsOwnerA);
+                            if (scenario == "forward-departure") IssuedPageLifecycle(review!, "OnDisappearing");
+                            if (scenario == "forward-old-render")
+                                typeof(CreationPrerequisitePreviewPage).GetMethod("Refresh",
+                                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(review, null);
+                            observed.TrySetResult();
+                        }
+                        catch (Exception error) { observed.TrySetException(error); }
+                    }, null);
+                    Require(observed.Task.Wait(TimeSpan.FromSeconds(5)), "Forward read blocked the UI pump.");
+                    observed.Task.GetAwaiter().GetResult();
+                };
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
             Require(probe.SuccessfulConfirms == 1, "SETUP: confirmation did not commit exactly once.");
             var result = (CreationPrerequisitePhoneConfirmResult)typeof(CreationPrerequisitePreviewPage)
                 .GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(review)!;
             Require(result.Receipt is not null, "SETUP: committed receipt missing.");
+            if (attributes is not null)
+            {
+                Require(attributes.LoadCalls == 1 && attributes.PreviewCalls == 0 && attributes.ConfirmCalls == 0,
+                    "Confirmation must load the next step once, without an Attribute mutation.");
+                bool advanced = scenario is "forward" or "forward-sum";
+                if (advanced)
+                {
+                    Require(navigation.Navigation.NavigationStack.Last() is CreationAttributesPage
+                        && !navigation.Navigation.NavigationStack.Contains(review!),
+                        "Successful assignment confirmation stranded the user on the receipt instead of opening Attributes.");
+                    var next = (CreationAttributesPage)navigation.Navigation.NavigationStack.Last();
+                    attributes.BeforeRead = null;
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(next, "OnAppearing")));
+                    Require(IssuedElements(next).Any(item => item.AutomationId == "creation-attributes-normal-heading"),
+                        "Forward navigation did not render the actual Attribute allocation controls.");
+                    IssuedPageLifecycle(next, "OnDisappearing");
+                    await navigation.PopAsync(animated: false);
+                    Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), page),
+                        "Back from Attributes must return to assignments, not a consumed receipt.");
+                }
+                else
+                    Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), review),
+                        "Failed/stale/departed next-step load stole navigation.");
+                if (scenario == "forward-load-fault")
+                {
+                    Require(IssuedElements(review!).Any(item => item.AutomationId == "creation-prerequisite-next-unavailable"),
+                        "Next-step failure hid the saved result or offered no feedback.");
+                    attributes.BeforeRead = null;
+                    var retry = IssuedElements(review!).OfType<Button>()
+                        .Single(item => item.AutomationId == "creation-prerequisite-continue-attributes");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked()));
+                    Require(navigation.Navigation.NavigationStack.Last() is CreationAttributesPage
+                        && attributes.LoadCalls == 2 && probe.ConfirmCalls == 1,
+                        "Continuing after a read failure must retry only the read, never the committed assignment.");
+                }
+                var committed = PrerequisiteColdRows(runtime);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+                Require(probe.ConfirmCalls == 1 && alerts.Titles.Count == 0
+                    && PrerequisiteColdRows(runtime).All(pair => pair.Value.Digest == committed[pair.Key].Digest),
+                    "Forward navigation replayed a consumed confirmation, changed storage or raised an unhandled alert.");
+                return;
+            }
             if (scenario == "parent-return-confirmed-owner-aba")
             {
                 owners.Set(ContactsOwnerB);

@@ -225,4 +225,7 @@
   <data name="Career.VehicleDetail" xml:space="preserve"><value>Choose a vehicle or drone, then review upgrades and costs.</value></data>
   <data name="Career.CommerceDetail" xml:space="preserve"><value>Browse implants and custom drugs, then review costs and effects.</value></data>
   <data name="Career.CommerceUnavailable" xml:space="preserve"><value>Purchases are not currently available for this runner.</value></data>
+  <data name="Priority.Preview.OpeningAttributes" xml:space="preserve"><value>Opening attributes…</value></data>
+  <data name="Priority.Preview.ContinueAttributes" xml:space="preserve"><value>Continue to attributes</value></data>
+  <data name="Priority.Preview.NextUnavailable" xml:space="preserve"><value>Assignments saved. Attributes could not be loaded. Tap Continue to try loading them again.</value></data>
 </root>

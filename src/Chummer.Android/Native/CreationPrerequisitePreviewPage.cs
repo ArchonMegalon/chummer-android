@@ -21,6 +21,8 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         Spacing = 14
     };
     private CreationPrerequisitePhoneConfirmResult? _confirmation;
+    private CancellationTokenSource? _forwardPreparation;
+    private bool _nextStepUnavailable;
     private bool _revalidated;
     private long _renderGeneration;
 
@@ -64,6 +66,12 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         if (IsCurrentAppearanceGeneration(appearance))
             _revalidated = loaded.Outcome == CharacterCreationFoundationOutcomes.Success
                            && Coordinator.IsCreationPrerequisitePreviewCurrent(_preview);
+    }
+
+    protected override void OnDisappearing()
+    {
+        _forwardPreparation?.Cancel();
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
@@ -387,6 +395,13 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                     "Creation-method draft confirmed and authoritative state reloaded."));
             complete.AutomationId = "creation-prerequisite-confirmed";
             _body.Add(NativeTheme.Card(complete));
+            if (_nextStepUnavailable)
+            {
+                Label failure = NativeTheme.Body(WizardStrings.Get("Priority.Preview.NextUnavailable",
+                    "Assignments saved. Attributes could not be loaded. Tap Continue to try loading them again."), NativeTheme.Danger);
+                failure.AutomationId = "creation-prerequisite-next-unavailable";
+                _body.Add(failure);
+            }
             return;
         }
 
@@ -423,7 +438,11 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 _selections,
                 isCurrentPreview: () => IsCurrentPreview(render, appearance));
             if (IsCurrentAppearanceGeneration(appearance))
+            {
                 _onConfirmed?.Invoke(_confirmation);
+                confirm.Text = WizardStrings.Get("Priority.Preview.OpeningAttributes", "Opening attributes…");
+                await ContinueToAttributesAsync(_confirmation, render, appearance);
+            }
         });
         _body.Add(confirm);
 
@@ -542,12 +561,77 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         Border border = NativeTheme.Card(card);
         _body.Add(border);
 
-        Button back = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Preview.BackToBuild", "Back to Build"));
-        back.AutomationId = "creation-prerequisite-back-to-build";
         long render = _renderGeneration;
         long appearance = CaptureAppearanceGeneration();
+        if (refreshed.CanEnterAttributes && !refreshed.RequiresMetatypeAttributeAdjustment)
+        {
+            CreationPrerequisitePhoneConfirmResult confirmation = _confirmation;
+            Button next = NativeTheme.PrimaryButton(WizardStrings.Get("Priority.Preview.ContinueAttributes", "Continue to attributes"));
+            next.AutomationId = "creation-prerequisite-continue-attributes";
+            next.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                next.IsEnabled = false;
+                next.Text = WizardStrings.Get("Priority.Preview.OpeningAttributes", "Opening attributes…");
+                await ContinueToAttributesAsync(confirmation, render, appearance);
+            });
+            _body.Add(next);
+        }
+        Button back = NativeTheme.SecondaryButton(WizardStrings.Get("Priority.Preview.BackToBuild", "Back to Build"));
+        back.AutomationId = "creation-prerequisite-back-to-build";
         back.Clicked += async (_, _) => await RunAsync(() => BackToBuildAsync(receipt, refreshed, render, appearance));
         _body.Add(back);
+    }
+
+    private async Task ContinueToAttributesAsync(CreationPrerequisitePhoneConfirmResult confirmation,
+        long render, long appearance)
+    {
+        if (confirmation is not { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, RefreshedState: { CanEnterAttributes: true,
+                    RequiresMetatypeAttributeAdjustment: false } refreshed }
+            || confirmation.Blockers.Count != 0) return;
+        INavigation navigation = Navigation;
+        Page[] stack = navigation.NavigationStack.ToArray();
+        bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(_confirmation, confirmation)
+            && Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+
+        var original = Coordinator.State;
+        using var lifetime = new CancellationTokenSource();
+        _forwardPreparation = lifetime;
+        _nextStepUnavailable = false;
+        try
+        {
+            // Only the read is cancellable here. The assignment has already
+            // committed and must never be replayed if loading the next page fails.
+            var loaded = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                Coordinator.LoadCreationAttributes, lifetime.Token), lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } attributes }
+                || !Coordinator.IsCreationAttributesStateCurrent(attributes)
+                || !CreationAttributesPhoneAuthority.IsReady(attributes, Coordinator.State))
+            {
+                _nextStepUnavailable = true;
+                return;
+            }
+            var next = new CreationAttributesPage(Coordinator, attributes);
+            await navigation.PushAsync(next, animated: false);
+            // Retire just this consumed review, keeping its assignments parent
+            // available through Back. Never chain pops through Shell's root.
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
+                navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            if (Current()) _nextStepUnavailable = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_forwardPreparation, lifetime)) _forwardPreparation = null;
+        }
     }
 
     private bool IsCurrentPreview(long render, long appearance)
