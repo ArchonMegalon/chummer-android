@@ -1529,7 +1529,7 @@ internal static partial class AfterRunAuthorityHarness
             }
             Require(!CharacterCreationMagicResonanceCheckpointStore.CreateDefault().TryRead(out _, out var localBlocker)
                 && string.IsNullOrEmpty(localBlocker), "A scoped review leaked into the legacy local journal.");
-            await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview);
+            await VerifyMagicConfirmationFeedbackAsync(runtime.Coordinator, probe, journal, storedReview, ui);
             await VerifyMagicOptionPendingAsync(runtime.Coordinator, probe, retainedEditor, retainedDraft, draft, ui);
 
             using var canceled = new CancellationTokenSource();
@@ -2008,9 +2008,12 @@ internal static partial class AfterRunAuthorityHarness
 
     private static async Task VerifyMagicConfirmationFeedbackAsync(RunnerSessionCoordinator coordinator,
         MagicReadProbe probe, CharacterCreationMagicResonanceCheckpointStore journal,
-        CharacterCreationMagicResonanceCheckpoint reviewed)
+        CharacterCreationMagicResonanceCheckpoint reviewed, IssuedPageUiContext ui)
     {
         var page = new CreationMagicResonanceReviewPage(coordinator, reviewed, journal);
+        var navigation = new NavigationPage(page);
+        var window = new Window(navigation);
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
         var refresh = typeof(CreationMagicResonanceReviewPage)
             .GetMethod("Refresh", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var confirm = typeof(CreationMagicResonanceReviewPage)
@@ -2072,6 +2075,7 @@ internal static partial class AfterRunAuthorityHarness
                 && unchanged.CheckpointDigest == reviewed.CheckpointDigest && probe.Confirms == 0,
                 "Pending feedback or a failed read changed the durable Magic command.");
         }
+        IssuedPageLifecycle(page, "OnDisappearing");
         Console.WriteLine("PASS Magic readable non-animated pending feedback, in-place controls, duplicate exclusion and error/cancel cleanup");
     }
 

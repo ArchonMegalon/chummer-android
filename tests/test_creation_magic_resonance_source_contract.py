@@ -40,6 +40,8 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
                 self.assertLessEqual(len(values[key]), 20, (locale, key))
             self.assertTrue(values["Magic.Review.Confirming"], locale)
             self.assertNotEqual(values["Magic.Review.Saving"], values["Magic.Review.Confirming"], locale)
+            for key in ("Magic.Review.OpeningNext", "Magic.Review.ContinueNext", "Magic.Review.NextUnavailable"):
+                self.assertTrue(values[key], (locale, key))
 
     def test_core_reads_and_previews_are_async_and_render_uses_prepared_snapshot(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
@@ -62,13 +64,19 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
         self.assertIn("new DisplayBoundMagicResonanceService(_ownerBoundMagicResonanceService, owner)", coordinator)
         self.assertNotIn("_creationMagicResonanceService.Load", coordinator)
 
-    def test_receipt_acknowledgement_returns_through_attached_phone_shell(self) -> None:
+    def test_receipt_continues_after_exact_saved_read_without_replaying_confirmation(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
         action = page[page.index("private async Task AcknowledgeAsync()") :]
         action = action[:action.index("private static void AddDigest(")]
         self.assertIn("_store.TryAcknowledgeConfirmed(", action)
-        self.assertIn("MainShell { UsesTabletComposition: false } shell", action)
-        self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", action)
+        self.assertIn("PrepareCreationAfterMagicPageAsync", action)
+        self.assertLess(action.index("PrepareCreationAfterMagicPageAsync"), action.index("_store.TryAcknowledgeConfirmed("))
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", action)
+        self.assertIn("IsCurrentAppearanceGeneration(appearance)", action)
+        self.assertIn("IsCreationCatalogDisplayCurrent(display)", action)
+        self.assertIn("navigation.RemovePage(this)", action)
+        self.assertNotIn("ConfirmCreationMagicResonanceAsync", action)
+        self.assertNotIn("PhoneShellRoutes.RunnerAbsolute", action)
         self.assertNotIn("Navigation.Pop", action)
 
     def test_shared_magic_copy_does_not_mislabel_sum_to_ten_as_priority(self) -> None:
@@ -114,7 +122,7 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             "TryRecordConfirmed(",
             'AutomationId = "creation-magic-resonance-confirm-receipt"',
             "CharacterDocumentChanged",
-            "acknowledge.IsEnabled = !receipt.CharacterDocumentChanged",
+            "acknowledge.IsEnabled = _forwardLifetime is null && !receipt.CharacterDocumentChanged",
         ):
             self.assertIn(marker, page)
 
@@ -143,10 +151,12 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             self.assertIn(f'diagnostics.Add(NativeTheme.Metric(\n            CreationFlowStrings.Get("{key}"', receipt)
         self.assertIn('NativeTheme.TechnicalDetails(diagnostics, "creation-magic-resonance-receipt-details")', receipt)
         self.assertIn("CreationMagicResonancePage.KindLabel(receipt.TalentKind)", receipt)
-        self.assertIn("acknowledge.IsEnabled = !receipt.CharacterDocumentChanged", receipt)
+        self.assertIn("acknowledge.IsEnabled = _forwardLifetime is null && !receipt.CharacterDocumentChanged", receipt)
         self.assertIn("Coordinator.IsCreationMagicOwnerCurrent(_originalOwner)", receipt)
         self.assertIn("Coordinator.State.WorkspaceId == _confirmation.Receipt.WorkspaceId", receipt)
-        self.assertIn("if (!CanDisplayReceipt() || !_checkpoint.OwnsRecoveryRevision(Coordinator.State)) return;", receipt)
+        self.assertIn("IsCurrentAppearanceGeneration(appearance) && CanDisplayReceipt()", receipt)
+        self.assertIn("_checkpoint.OwnsRecoveryRevision(display)", receipt)
+        self.assertIn("if (!Current()) return;", receipt)
         rereview = (NATIVE / "CreationMagicReReviewPage.cs").read_text(encoding="utf-8")
         self.assertNotIn("_body.Add(identity)", rereview)
         self.assertNotIn("_body.Add(binding)", rereview)
@@ -320,7 +330,13 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
             dashboard,
         )
         self.assertIn(": routes.GetValueOrDefault(stepId);", dashboard)
-        self.assertIn("route?.CanOpen == true ? route.Open : static () => Task.CompletedTask", dashboard)
+        # The minimal wizard now omits blocked destinations instead of rendering
+        # a no-op row. The same authority guard must precede the real callback.
+        continuation = dashboard[dashboard.index(": routes.GetValueOrDefault(stepId);"):]
+        continuation = continuation[:continuation.index("private static string? ProjectionStageBlocker")]
+        self.assertIn("if (route?.CanOpen != true) continue;", continuation)
+        self.assertIn("route.Open,", continuation)
+        self.assertLess(continuation.index("if (route?.CanOpen != true) continue;"), continuation.index("route.Open,"))
         self.assertIn(
             "CharacterCreationWizardStepIds.MagicResonance => CharacterCreationFinalizationBlockers.MagicResonanceDraftRequired",
             dashboard,

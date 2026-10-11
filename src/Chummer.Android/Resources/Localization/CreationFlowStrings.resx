@@ -172,6 +172,9 @@
   <data name="Magic.Review.Boundary" xml:space="preserve"><value>Confirm to save these choices. You can finish character creation after the remaining steps.</value></data>
   <data name="Magic.Review.Confirm" xml:space="preserve"><value>Save choices</value></data>
   <data name="Magic.Review.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Magic.Review.OpeningNext" xml:space="preserve"><value>Opening Resources…</value></data>
+  <data name="Magic.Review.ContinueNext" xml:space="preserve"><value>Continue to Resources</value></data>
+  <data name="Magic.Review.NextUnavailable" xml:space="preserve"><value>Your choices are saved. Resources could not be opened. Try Continue again; this will not save twice.</value></data>
   <data name="Magic.Review.Confirming" xml:space="preserve"><value>Checking and saving choices…</value></data>
   <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5 · Review</value></data>
   <data name="Magic.Review.Heading" xml:space="preserve"><value>Review your choices</value></data>

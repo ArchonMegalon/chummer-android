@@ -240,6 +240,21 @@ internal static class CreationMagicResonancePhoneAuthority
                    persisted.CoreSnapshotDigest);
     }
 
+    public static bool SavedCheckpointMatches(CharacterCreationMagicResonanceCheckpoint checkpoint,
+        CharacterCreationMagicResonanceState? state, CharacterOverviewState overview)
+        => checkpoint.Phase == CharacterCreationMagicResonanceCheckpointPhase.Confirmed
+           && checkpoint.IsStructurallyValid()
+           && checkpoint.Confirmation is { } confirmation
+           && OverviewMatchesReceipt(overview, confirmation.Receipt)
+           && TryProjectForOverview(state, overview, out var editor)
+           && state!.PendingDraft is { } pending
+           && CharacterCreationMagicResonanceDigest.EqualsFixedTime(pending.DraftDigest, confirmation.Receipt.DraftDigest)
+           && CharacterCreationMagicResonanceDigest.EqualsFixedTime(
+               CharacterCreationMagicResonanceDigest.Compute(pending.Selections),
+               CharacterCreationMagicResonanceDigest.Compute(checkpoint.Review.Preview.Selections))
+           && CharacterCreationMagicResonanceDigest.EqualsFixedTime(
+               editor!.CoreSnapshotDigest, confirmation.PersistedState.CoreSnapshotDigest);
+
     public static bool OverviewMatchesReceipt(
         CharacterOverviewState overview,
         CharacterCreationMagicResonanceReceipt receipt)
