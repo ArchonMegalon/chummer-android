@@ -132,13 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-The subsequent [saved-allocation review fix](creation-attributes-saved-review-20261011.md)
-has passing focused local managed/native checks, including a read-only review,
-the actual Back button and cold reopen with all five synthetic workspace files
-unchanged. This is source/test evidence only; it is not part of the already
-distributed Preview 187 and has no newer Play delivery receipt yet.
+Preview 188 is the latest [observed Internal availability](../play/evidence/preview188-internal-observation.json),
+released on 11 October at 05:05 Europe/Vienna. The
+[saved-allocation review fix](creation-attributes-saved-review-20261011.md)
+opens an unchanged allocation read-only, with an already-saved message and Back,
+not another Save. Core duplicate-save, owner/revision and budget guards remain.
+Focused actual Core/MAUI EN/DE/ES checks and the German 130% API36 emulator route
+passed, including actual Back and cold reopen with all five synthetic files
+unchanged. Local ARM64 Internal build, original-key signing, independent keyless
+verification and one scoped upload/readback passed. A
+[physical Play187→188 update](../play/evidence/preview188-physical-observation.md)
+verified the established Play certificate and this exact read-only route before
+and after a verified new process. All 13 displayed values and remaining pools
+0/0/25 were unchanged; no phone save/finalization occurred. This closes the
+specific Preview 187 duplicate-review defect, not complete Creation/Career/live Origin or
+startup performance. Original FirstBook uncertainty remains fenced. Version 188
+is consumed; prior artifacts and historical failure records remain intact.
 
-Preview 187 is the latest [observed Internal availability](../play/evidence/preview187-internal-observation.json),
+Preview 187's [observed Internal availability](../play/evidence/preview187-internal-observation.json) was
 released on 11 October at 04:06 Europe/Vienna. Attribute review now groups
 budgets and all thirteen projected values into compact cards, with large bold
 values and nonzero point/Karma costs. Rules and save guards are unchanged.
@@ -151,9 +162,10 @@ Local ARM64 build, original-key signing, independent keyless verification and
 one Internal upload/readback passed. A later [physical Play186→187 update](../play/evidence/preview187-physical-observation.md)
 verified the Play certificate, changed-draft compact review and a cold reopen
 with the original saved runner/values/budgets. The temporary changes were never
-saved. **Unchanged saved-allocation review still reports a duplicate blocker;
-this is an open UX defect, not a passing route. Startup performance, complete
-Creation/Career and the full live manuscript remain open.** Original FirstBook
+saved. **Unchanged saved-allocation review on 187 reported a duplicate blocker;
+that historical route remains a failure, now corrected and physically checked
+in 188 above. Startup performance, complete Creation/Career and the full live
+manuscript remain open.** Original FirstBook
 uncertainty remains fenced, without paid replay. Version187 is consumed; prior
 artifacts remain.
 
