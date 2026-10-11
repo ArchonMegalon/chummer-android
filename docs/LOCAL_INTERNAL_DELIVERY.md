@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 191 is the latest [observed Internal availability](../play/evidence/preview191-internal-observation.json),
+Preview 192 is the latest [observed Internal availability](../play/evidence/preview192-internal-observation.json),
+released on 11 October at 16:28 Europe/Vienna. Creation attributes, skills and
+groups now use sliders only, with the full range visible and unavailable values
+grey/struck. Cached local draft checks update values and shared budgets without
+per-adjustment store reads; fresh Review/Save authority remains required.
+PRs 695/696 consume the current sealed Core/UI graph. Focused actual-Core/MAUI
+checks, source contracts and the bounded x64 API36 Release/Internal slider smoke
+passed. The native route made no save; all seven retained synthetic workspace
+files were unchanged. Earlier physical save/restart evidence covers unchanged
+persistence, not the final slider-only controls. The exact merged tree passed
+local locked ARM64/Internal build, existing-key signing, independent keyless
+certificate/payload checks and one scoped upload/final confirmation/readback.
+Physical Play192 installation is not yet verified. One SystemUI boot ANR during
+the emulator check does not close startup performance. Full Creation/Career/Origin,
+the original FirstBook fence and local diagnostic-contract portability remain
+open. The earlier unsigned192 candidate was excluded before signing/upload;
+only this fresh slider-only artifact was delivered. Version192 is consumed.
+
+Preview 191's [observed Internal availability](../play/evidence/preview191-internal-observation.json) was
 released on 11 October at 13:26 Europe/Vienna. Admitted Attribute saves open
 Skills directly; Skills saves open Qualities. Back skips the consumed review;
 failed next-step reads offer read-only continuation without replaying a save.
