@@ -42,6 +42,7 @@
     <Compile Include="CreationDraftSliderRuntimeTests.cs" />
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="ResourcesSaveFeedbackRuntimeTests.cs" />
+    <Compile Include="CreationResourcesForwardRuntimeTests.cs" />
     <Compile Include="MinimalUiRuntimeTests.cs" />
     <Compile Include="CareerMinimalUiRuntimeTests.cs" />
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />

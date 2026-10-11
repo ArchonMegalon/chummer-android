@@ -86,7 +86,7 @@ class CreationResourcesSourceContractTests(unittest.TestCase):
             "creation-resources-preview-contribution",
             "creation-resources-confirm",
             "creation-resources-confirm-receipt",
-            "creation-resources-reopen",
+            "creation-resources-continue-next",
         ):
             self.assertIn(automation_id, text)
         self.assertIn("_resources.Prepare(", text)

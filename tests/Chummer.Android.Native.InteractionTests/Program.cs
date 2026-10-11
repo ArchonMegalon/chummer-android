@@ -158,6 +158,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunResourcesSaveFeedbackAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-resources-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunResourcesForwardAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-gear-save-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunGearSaveFeedbackAsync(args[1]);

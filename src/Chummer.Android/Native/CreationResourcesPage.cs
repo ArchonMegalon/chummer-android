@@ -398,6 +398,8 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     };
     private CharacterCreationResourcesReceipt? _receipt;
     private string? _failure;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
 
     public CreationResourcesPreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -414,6 +416,13 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         Title = _copy["ResourcesPreview.PageTitle"];
         AutomationId = "creation-resources-preview-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        // Cancel only next-page reads, never an already admitted durable save.
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
@@ -438,7 +447,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     {
         // Preserve the issued controls and scroll position during confirmation,
         // but never retain another account or runner's private preview.
-        if (_saving && Coordinator.CanDisplayCreationPurchase(_original)) return;
+        if ((_saving || _forwardLifetime is not null) && Coordinator.CanDisplayCreationPurchase(_original)) return;
         if (_saveProgress is { } previousProgress)
             previousProgress.IsVisible = previousProgress.IsRunning = false;
         _confirm = null;
@@ -464,35 +473,23 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         {
             VerticalStackLayout applied = new() { Spacing = 6 };
             applied.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Saved"]));
-            if (_failure is not null) applied.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
+            if (_nextStepUnavailable) applied.Add(NativeTheme.Body(
+                CreationFlowStrings.Get("Resources.NextUnavailable", "Your budget is saved. Gear could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+            else if (_failure is not null) applied.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
             _technicalDetails.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
             _technicalDetails.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
             _technicalDetails.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
             _technicalDetails.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.ReceiptDigest", ShortDigest(receipt.ReceiptDigest)), NativeTheme.Muted));
-            _technicalDetails.Add(ExactValue("creation-resources-receipt-option-id", receipt.OptionId));
-            _technicalDetails.Add(ExactValue(
-                "creation-resources-receipt-workspace-revision",
-                receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
-            _technicalDetails.Add(ExactValue(
-                "creation-resources-receipt-saved-revision",
-                receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-            _technicalDetails.Add(ExactValue(
-                "creation-resources-receipt-draft-revision",
-                receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-            _technicalDetails.Add(ExactValue(
-                "creation-resources-receipt-total-starting-nuyen",
-                receipt.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture)));
-            _technicalDetails.Add(ExactValue("creation-resources-receipt-preview-digest", receipt.PreviewDigest));
-            _technicalDetails.Add(ExactValue("creation-resources-receipt-draft-digest", receipt.DraftDigest));
-            _technicalDetails.Add(ExactValue("creation-resources-receipt-digest", receipt.ReceiptDigest));
+            _technicalDetails.Add(CreateReceiptDetails(receipt));
             Border receiptCard = NativeTheme.Card(applied);
             receiptCard.AutomationId = "creation-resources-confirm-receipt";
             _body.Add(receiptCard);
-            _body.Add(NativeTheme.NavigationRow(
-                _copy["ResourcesPreview.Back"],
-                _copy["ResourcesPreview.Reopen"],
-                () => Navigation.PopAsync(),
-                automationId: "creation-resources-reopen"));
+            Button next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Resources.ContinueNext", "Continue to gear"));
+            next.AutomationId = "creation-resources-continue-next";
+            next.IsEnabled = CanContinueSaved();
+            next.Clicked += async (_, _) => await RunAsync(() => ContinueToNextAsync(CaptureAppearanceGeneration()));
+            _confirm = next;
+            _body.Add(next);
             _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-resources-preview-details"));
             return;
         }
@@ -530,7 +527,10 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
 
     private async Task ConfirmAsync()
     {
-        if (_submitted || !_ready || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+        long appearance = CaptureAppearanceGeneration();
+        if (_submitted || !_ready || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
         _submitted = true;
         _ready = false;
         _failure = null;
@@ -593,11 +593,66 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
                 }
             }
 #endif
+            await ContinueToNextAsync(appearance);
         }
         finally
         {
             _saving = false;
             if (progress is not null) progress.IsVisible = progress.IsRunning = false;
+        }
+    }
+
+    private bool CanContinueSaved() => _receipt is not null
+        && Coordinator.CanDisplayCreationPurchase(_original) && Coordinator.State.Profile?.Created == false;
+
+    internal static View CreateReceiptDetails(CharacterCreationResourcesReceipt receipt)
+    {
+        var details = new VerticalStackLayout { Spacing = 6, AutomationId = "creation-resources-receipt-details" };
+        details.Add(ExactValue("creation-resources-receipt-option-id", receipt.OptionId));
+        details.Add(ExactValue("creation-resources-receipt-workspace-revision", receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
+        details.Add(ExactValue("creation-resources-receipt-saved-revision", receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        details.Add(ExactValue("creation-resources-receipt-draft-revision", receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
+        details.Add(ExactValue("creation-resources-receipt-total-starting-nuyen", receipt.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture)));
+        details.Add(ExactValue("creation-resources-receipt-preview-digest", receipt.PreviewDigest));
+        details.Add(ExactValue("creation-resources-receipt-draft-digest", receipt.DraftDigest));
+        details.Add(ExactValue("creation-resources-receipt-digest", receipt.ReceiptDigest));
+        return details;
+    }
+
+    private async Task ContinueToNextAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        if (_confirm is { } next)
+        {
+            next.IsEnabled = false;
+            next.Text = CreationFlowStrings.Get("Resources.OpeningNext", "Opening gear…");
+        }
+        if (_confirmationStatus is { } status)
+            status.Text = CreationFlowStrings.Get("Resources.OpeningNext", "Opening gear…");
+        try
+        {
+            var page = await Coordinator.PrepareCreationAfterResourcesPageAsync(
+                _resources, _original, _prepared, _receipt!, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (page is null || !page.IsPreparedDisplayCurrent) { _nextStepUnavailable = true; return; }
+            await navigation.PushAsync(page, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(page))) navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            if (!_saving) Refresh();
         }
     }
 

@@ -2183,4 +2183,7 @@
   <data name="Qualities.Review.ContinueNext" xml:space="preserve"><value>Weiter</value></data>
   <data name="Qualities.Review.OpeningNext" xml:space="preserve"><value>Nächster Schritt wird geöffnet…</value></data>
   <data name="Qualities.Review.NextUnavailable" xml:space="preserve"><value>Deine Vor- und Nachteile sind gespeichert. Der nächste Schritt konnte nicht geöffnet werden. Versuche „Weiter“ erneut; es wird nicht doppelt gespeichert.</value></data>
+  <data name="Resources.ContinueNext" xml:space="preserve"><value>Weiter zur Ausrüstung</value></data>
+  <data name="Resources.OpeningNext" xml:space="preserve"><value>Ausrüstung wird geöffnet…</value></data>
+  <data name="Resources.NextUnavailable" xml:space="preserve"><value>Dein Budget ist gespeichert. Die Ausrüstung konnte nicht geöffnet werden. Versuche Weiter erneut; es wird nicht doppelt gespeichert.</value></data>
 </root>
