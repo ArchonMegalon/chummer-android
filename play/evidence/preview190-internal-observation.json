@@ -1,0 +1,104 @@
+{
+  "status": "Available on Play Internal; physical Play update not yet observed",
+  "readbackRecordedAtUtc": "2026-10-11T09:55:40Z",
+  "playDisplayedReleaseTime": "11 Oct 11:55 Europe/Vienna",
+  "packageId": "com.myexternalbrain.chummer",
+  "versionName": "0.1.0-preview.190",
+  "versionCode": 190,
+  "track": "internal",
+  "playReleaseId": "184",
+  "standingUploadApproval": "Owner 2026-10-05: verified builds to existing Internal track and audience only",
+  "change": "Skill and skill-group adjustments show pending status and localized refusal beside the controls. Creation summary steps are removed, Priority describes its actual destination, and successful assignment confirmation opens Attributes. Career entry failures show a contained message instead of crashing.",
+  "androidProducerCommit": "f313d3cfa285463841535c5b522a7d35ed82ab59",
+  "androidProducerTree": "e926c1ea03d73e86cc327e91f54a46b991c657f4",
+  "productPullRequests": [
+    "https://github.com/ArchonMegalon/chummer-android/pull/686",
+    "https://github.com/ArchonMegalon/chummer-android/pull/687",
+    "https://github.com/ArchonMegalon/chummer-android/pull/688"
+  ],
+  "versionPullRequest": "https://github.com/ArchonMegalon/chummer-android/pull/689",
+  "versionMergeCommit": "695021995770036bb91dc7ff0addf046a1eac9f0",
+  "mergeTreeEqualsProducerTree": true,
+  "dependencyMode": "locked_package_closure_with_pinned_presentation_source_and_core_content",
+  "sourceCheckoutsPresent": true,
+  "ambientSiblingRootsAllowed": false,
+  "presentationCommit": "e2ce2062717e6cf16bf13c52e25ffacb1809549e",
+  "coreRecipeCommit": "5705edda9ed8528013d32d8665401f310e05b807",
+  "coreRuntimeCommit": "c6eb8674990dc4e959707b19011cb2321e1dc825",
+  "packageBindingSha256": "54e7dde0fd2aba3717b9bd906236c58aa5d3ffa96d55b2b2ef0abfb76d0c85bd",
+  "uiVerificationSha256": "2669af0e6b177f5a53a8f2663641666feae917b1c70aab6dbddaf1d2fb18aaad",
+  "diagnosticsContractDistribution": "Exact retained local package; published package authority absent",
+  "execution": "local offline Docker build, isolated original-key signer, independent keyless verifier",
+  "distributionChannel": "internal",
+  "buildImage": "sha256:9ce8fdc9a9e55bbf4c5893694f85949f9639de9ebd95545ea93588e602596f9e",
+  "toolchain": "Local .NET 10.0.112, Android 36.1.69, MAUI 10.0.20, API 36 SDK and JDK 17.0.20.1; workload inventory warning retained; actual locked restore, C# compile, 134 ARM64 AOT steps and AAB generation passed",
+  "unsignedAabSha256": "824213a85607a4916ba6ebe5eff7698812e2eede5ca7a1b3876455b563d2d86e",
+  "unsignedAabBytes": 35911500,
+  "signedAabSha256": "b9dea48e1ae854faff40b5bdad3bcc8f68e41d4c6d4d17355183498cb950e125",
+  "signedAabBytes": 36084577,
+  "uploadCertificateSha256": "d9c4b635121544d5522abf1ec2dfda3c1938aab93d6726bb93c9871ec9ed1d15",
+  "verification": {
+    "unsignedSourceContentAndPackages": "passed; all 18 packages, 13 authority files and 331 Core content files verified",
+    "unsignedInputsReceiptSha256": "6600e9c77e99c0f14e6f8a2216a219ce2e7f8f084e0324b28ab699b361f5264e",
+    "bundleManifest": "package/version/ARM64/minimum 24/target 36 passed",
+    "proofExclusionAndCredentialHygiene": "passed",
+    "strictJarSignature": "passed",
+    "unchangedNonSignaturePayloadEntries": 1787,
+    "signedVerificationSha256": "0c635789f51f2fc94e1f4c7855a68bcad9bf267194234369c09af61b84b8c207",
+    "buildLogSha256": "320eac37c61a472686c2b49d143746c387af26edb824d223a40742ecfa152aa5"
+  },
+  "affectedChecks": {
+    "releaseDelta": "Version only over merged PRs 686/687/688; unchanged bounded product evidence reused, not relabeled as physical Play 190 evidence",
+    "focusedReceiptSha256": "ea27043a6a03e8f4b252087cb20b3408c6141ba60f90ae344a366926ae99f8a1",
+    "versionChecks": "19 release-intent/listing tests passed; exact local Design policy passed",
+    "skillGroupFeedback": {
+      "documentation": "docs/creation-inline-feedback-20261011.md",
+      "managed": "Actual Core/MAUI EN/DE/ES, pending, owner/ABA, UI heartbeat, picker and explicit Save/cold-store checks passed",
+      "native": "API 36 SDK-test app: German Firearms group 0 to 1 to 2; third plus shows budget refusal beside unchanged controls; decrease to 1 clears refusal; all seven saved synthetic files unchanged",
+      "nativeResultSha256": "2158b4c54cdb31628ef7dde5ab5ace6f89125085c875677f5a9f9e79f5690119",
+      "managedLogSha256": "f83ceef006cfaa2f226e3f42a445da787a43581991301058bac811e22adc88a9",
+      "originalUserTapCauseEstablished": false
+    },
+    "priorityForward": {
+      "documentation": "docs/priority-wizard-forward-20261011.md",
+      "managed": "Seven new actual-Core forward cases and 16 existing readiness cases passed",
+      "native": "Separate physical ARM64/API 36 SDK-test app: one Human/Mundane assignment confirmation opens Attributes with 20 normal/9 special/25 Karma; Back returns to assignments; verified new process restores the same synthetic runner and budgets without another confirmation",
+      "physicalSdkTestResultSha256": "ea061e1952efb67f9c7ac5daf55a044957c0bcf807b1d3baf5d3b91a19e5b2a1",
+      "managedLogSha256": "df0ac2fd866e298cbf96419d1c5c0e3773896efb6987b93ed961bca3d30d2cea"
+    },
+    "careerEntry": {
+      "native": "Two quality-entry denials show feedback without process death; cold restore retains all seven synthetic files; this is containment, not a newly admitted Career quality capability",
+      "nativeResultSha256": "908a604ba49cbdb0816a29f5eb94a6fa0148468d0b49263c64ee9defc26b19d1"
+    },
+    "limits": [
+      "Separate SDK-test APK observations are not physical production Play 190 tests",
+      "Three pre-existing source-contract failures reproduced against old code remain recorded; not relabeled as passing",
+      "Earlier emulator OS ANRs remain recorded; no native startup-speed claim",
+      "Remaining allocation-step auto-forward and Origin pre-story minimalism are not claimed complete",
+      "Original uncertain FirstBook successor remains fenced without replay",
+      "Full Creation/Career, current live multi-chapter manuscript and wider beta are not claimed"
+    ]
+  },
+  "play": {
+    "transport": "authenticated scoped Play Console browser, not Publisher API",
+    "uploadCount": 1,
+    "finalConfirmationCount": 1,
+    "status": "Available to internal testers",
+    "supportedPhoneCount": 8718,
+    "newlyUnsupportedPhoneCount": 0,
+    "warnings": ["No deobfuscation mapping uploaded", "No native debug symbols uploaded"],
+    "readbackSha256": "0fc10bb18f1cbb09e5f7a4d4bd3f70abfac6bbf14cac253f6ea6cc460fa1761e",
+    "availabilityScreenshotSha256": "320473c186e6246d6c4ffbdf2005ec1e69edf83d0ed13f809f5cc199848688b5",
+    "internalTestLink": "https://play.google.com/apps/internaltest/4700678198570024687"
+  },
+  "retention": "Private exact source, build, signer, verifier and readback packet retained; previous artifacts preserved; version 190 consumed",
+  "physicalPlayInstallationVerified": false,
+  "physicalObservation": {
+    "observedAtUtc": "2026-10-11T09:59:58Z",
+    "status": "Phone remains Play 189; scoped Internal listing offers Open, not Update. No sideload, uninstall, data clear or installation attempted.",
+    "screenshotSha256": "aca981646c66c5629548f9ed10de8c261643141bd9118bb979cb7d758220a2b2",
+    "hierarchySha256": "2500847dcadb036ce0af4a26946ce90f8afc16756bb614a7f64e3d095d91434f"
+  },
+  "fullCreationCareerOrBetaCompletionClaimed": false,
+  "publicTrackOrAudienceChanged": false
+}
