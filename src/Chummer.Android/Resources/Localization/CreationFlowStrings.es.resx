@@ -2162,4 +2162,7 @@
   <data name="Contacts.Field.family" xml:space="preserve"><value>Familia</value></data>
   <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Chantaje</value></data>
   <data name="Gear.AvailableCatalog" xml:space="preserve"><value>Solo se muestra el equipo disponible para este personaje. Revisa la selección para comprobar su coste total.</value></data>
+  <data name="Qualities.Review.ContinueNext" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Qualities.Review.OpeningNext" xml:space="preserve"><value>Abriendo el siguiente paso…</value></data>
+  <data name="Qualities.Review.NextUnavailable" xml:space="preserve"><value>Tus cualidades están guardadas. No se pudo abrir el siguiente paso. Pulsa Continuar de nuevo; no se guardarán dos veces.</value></data>
 </root>

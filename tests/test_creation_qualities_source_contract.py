@@ -129,15 +129,28 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
                 if key in localized_effects:
                     self.assertTrue(value)
 
-    def test_acknowledged_receipt_returns_through_phone_shell(self) -> None:
+    def test_acknowledged_receipt_opens_next_step_without_replaying_save(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         action = page[page.index("private async Task AcknowledgeAsync()") :]
         action = action[:action.index("private static void AddDigest(")]
         self.assertIn("await RunAsync(AcknowledgeAsync)", page)
         self.assertIn("_store.TryAcknowledgeApplied(", action)
-        self.assertIn("MainShell { UsesTabletComposition: false } shell", action)
-        self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false)", action)
+        self.assertIn("Coordinator.PrepareCreationAfterQualitiesPageAsync(display, lifetime.Token)", action)
+        self.assertIn("CreationQualitiesPhoneAuthority.ReceiptMatches", action)
+        self.assertIn("Coordinator.IsCreationQualitiesOwnerCurrent(_originalOwner)", action)
+        self.assertIn("IsCurrentAppearanceGeneration(appearance)", action)
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", action)
+        self.assertIn("await navigation.PushAsync(next, animated: false)", action)
+        self.assertIn("navigation.RemovePage(this)", action)
+        self.assertNotIn("ConfirmCreationQualitiesAsync", action)
         self.assertNotIn("Navigation.Pop", action)
+
+    def test_next_step_copy_exists_in_every_locale(self) -> None:
+        for locale in ("", ".de", ".es"):
+            path = REPO / "src/Chummer.Android/Resources/Localization" / f"CreationFlowStrings{locale}.resx"
+            copy = {row.attrib["name"]: row.findtext("value") for row in ET.parse(path).getroot().findall("data")}
+            for suffix in ("ContinueNext", "OpeningNext", "NextUnavailable"):
+                self.assertTrue(copy[f"Qualities.Review.{suffix}"])
 
     def test_catalog_render_does_not_repeat_core_or_digest_work(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")

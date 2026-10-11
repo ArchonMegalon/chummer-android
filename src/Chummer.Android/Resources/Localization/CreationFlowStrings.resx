@@ -3475,4 +3475,7 @@
   <data name="Contacts.Field.blackmail" xml:space="preserve"><value>Blackmail</value></data>
   <data name="Gear.AvailableCatalog" xml:space="preserve"><value>Only equipment available for this character is shown. Review your basket to check its total cost.</value></data>
   <data name="Finalization.Progress" xml:space="preserve"><value>{0} of {1} required steps complete</value></data>
+  <data name="Qualities.Review.ContinueNext" xml:space="preserve"><value>Continue</value></data>
+  <data name="Qualities.Review.OpeningNext" xml:space="preserve"><value>Opening the next step…</value></data>
+  <data name="Qualities.Review.NextUnavailable" xml:space="preserve"><value>Your qualities are saved. The next step could not be opened. Try Continue again; this will not save twice.</value></data>
 </root>

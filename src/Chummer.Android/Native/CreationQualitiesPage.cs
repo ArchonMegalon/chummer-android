@@ -1701,6 +1701,10 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     private readonly Button _apply;
     private readonly Label _applyProgress = NativeTheme.Body(string.Empty);
     private int _applyStarted;
+    private CharacterCreationQualitiesState? _confirmedState;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
+    private bool _acknowledged;
 
     internal CreationQualitiesReviewPage(
         RunnerSessionCoordinator coordinator,
@@ -1724,10 +1728,33 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnDisappearing()
+    {
+        // Cancel only preparation of the next screen, never an admitted save.
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
     protected override void Refresh()
     {
         UpdateConfirmationFeedback();
         _body.Clear();
+        if (_checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Applied)
+        {
+            _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Qualities.Receipt.Safe", "Draft saved")));
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Review.Boundary",
+                "Your choices are saved with this draft. Their effects are applied when you finish creating your runner.")));
+            _body.Add(_applyProgress);
+            if (_nextStepUnavailable)
+                _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Review.NextUnavailable",
+                    "Your qualities are saved. The next step could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+            var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Qualities.Review.ContinueNext", "Continue"));
+            next.AutomationId = "creation-qualities-continue-next";
+            next.IsEnabled = Volatile.Read(ref _applyStarted) == 0 && _forwardLifetime is null && CanContinueSaved();
+            next.Clicked += async (_, _) => await RunAsync(() => ContinueToNextAsync(CaptureAppearanceGeneration()));
+            _body.Add(next);
+            return;
+        }
         if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
         {
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Info.Stale",
@@ -1802,8 +1829,10 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     private void UpdateConfirmationFeedback()
     {
         bool pending = Volatile.Read(ref _applyStarted) != 0;
-        _apply.Text = pending
-            ? CreationFlowStrings.Get("Qualities.Review.Saving", "Saving…")
+        bool opening = _forwardLifetime is not null;
+        _apply.Text = opening
+            ? CreationFlowStrings.Get("Qualities.Review.OpeningNext", "Opening the next step…")
+            : pending ? CreationFlowStrings.Get("Qualities.Review.Saving", "Saving…")
             : CreationFlowStrings.Get("Qualities.Review.Confirm", "Save qualities");
         _apply.IsEnabled = !pending
             && _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
@@ -1811,20 +1840,28 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
             && _checkpoint.Preview.CanConfirm
             && _checkpoint.Preview.RequiresExplicitConfirmation
             && _checkpoint.Preview.Blockers.Count == 0;
-        _applyProgress.Text = CreationFlowStrings.Get("Qualities.Review.Confirming", "Checking and saving qualities…");
-        _applyProgress.IsVisible = pending;
+        _applyProgress.Text = opening
+            ? CreationFlowStrings.Get("Qualities.Review.OpeningNext", "Opening the next step…")
+            : CreationFlowStrings.Get("Qualities.Review.Confirming", "Checking and saving qualities…");
+        _applyProgress.IsVisible = pending || opening;
     }
 
     private async Task ApplyAsync()
     {
         if (Interlocked.CompareExchange(ref _applyStarted, 1, 0) != 0)
             return;
+        long appearance = CaptureAppearanceGeneration();
+        var stack = Navigation.NavigationStack.ToArray();
+        bool CurrentReview() => IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && Navigation.NavigationStack.SequenceEqual(stack);
         try
         {
             // RunAsync suppresses coordinator refresh while work is pending.
             // Update the displayed controls before the first await, in place.
             UpdateConfirmationFeedback();
-            if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
+            if (!CurrentReview() || _checkpoint.Phase != CharacterCreationQualitiesCheckpointPhase.Reviewed
+                || !Coordinator.IsCreationCatalogDisplayCurrent(_original))
             {
                 _blockers = [CharacterCreationQualitiesBlockers.RevisionConflict];
                 return;
@@ -1835,7 +1872,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
                 await Task.Run(() => Coordinator.ReadCreationAuthority(_original, () => Coordinator.PreviewCreationQualities(
                     _checkpoint.Preview.Binding,
                     _checkpoint.SelectedOptionIds, _original), CancellationToken.None));
-            if (!Coordinator.IsCreationCatalogDisplayCurrent(_original) || live.Value is not { } state
+            if (!CurrentReview() || !Coordinator.IsCreationCatalogDisplayCurrent(_original) || live.Value is not { } state
                 || !_checkpoint.OwnsExactReview(state, Coordinator.State)
                 || !CreationQualitiesPhoneAuthority.CanDisplayPreview(
                     state,
@@ -1879,11 +1916,9 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
                     return;
                 }
                 _checkpoint = applied;
-                await Navigation.PushAsync(new CreationQualitiesReceiptPage(
-                    Coordinator,
-                    applied,
-                    receipt,
-                    _store));
+                _confirmedState = result.RefreshedState;
+                if (CurrentReview() && result.Blockers.Count == 0)
+                    await ContinueToNextAsync(appearance);
                 return;
             }
             if (result.MutationOutcomeKnown
@@ -1911,6 +1946,58 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         }
     }
 
+    private bool CanContinueSaved()
+        => _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Applied
+           && _checkpoint.Receipt is { CharacterDocumentChanged: false }
+           && _confirmedState is not null
+           && Coordinator.IsCreationQualitiesOwnerCurrent(_original.DisplayOwnerContext)
+           && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
+
+    private async Task ContinueToNextAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        var display = Coordinator.State;
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        UpdateConfirmationFeedback();
+        try
+        {
+            // The saved Core receipt, not a click or a matching runner ID, admits
+            // continuation. All catalogue validation stays off the UI thread.
+            bool saved = await Task.Run(() => CreationQualitiesPhoneAuthority.ReceiptMatches(
+                _checkpoint, _checkpoint.Receipt!, _confirmedState!, display), lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (!saved) { _nextStepUnavailable = true; return; }
+            var next = await Coordinator.PrepareCreationAfterQualitiesPageAsync(display, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (next is null) { _nextStepUnavailable = true; return; }
+            // Retain the existing durable CAS acknowledgement. A failed read or
+            // departed/changed owner must never discard an unacknowledged claim.
+            if (!_acknowledged && !_store.TryAcknowledgeApplied(
+                    CharacterCreationQualitiesCheckpointCas.From(_checkpoint), out _))
+            { _nextStepUnavailable = true; return; }
+            _acknowledged = true;
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next))) navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            Refresh();
+        }
+    }
+
     private static void AddDigest(VerticalStackLayout technical, string automationId, string digest)
     {
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
@@ -1927,6 +2014,9 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
     private readonly CharacterCreationQualitiesCheckpoint _checkpoint;
     private readonly CharacterCreationQualitiesDraftReceipt _receipt;
     private readonly CharacterCreationQualitiesCheckpointStore _store;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
+    private bool _acknowledged;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -1950,6 +2040,12 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
         Title = CreationFlowStrings.Get("Qualities.Receipt.PageTitle", "Qualities saved");
         AutomationId = "creation-qualities-receipt-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
@@ -1991,11 +2087,14 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
             !_receipt.CharacterDocumentChanged ? NativeTheme.Muted : NativeTheme.Danger);
         boundary.AutomationId = "creation-qualities-receipt-finalization-state";
         _body.Add(boundary);
-        Button acknowledge = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
-            "Qualities.Receipt.Continue",
-            "Continue"));
+        if (_nextStepUnavailable)
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Qualities.Review.NextUnavailable",
+                "Your qualities are saved. The next step could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+        Button acknowledge = NativeTheme.PrimaryButton(_forwardLifetime is null
+            ? CreationFlowStrings.Get("Qualities.Receipt.Continue", "Continue")
+            : CreationFlowStrings.Get("Qualities.Review.OpeningNext", "Opening the next step…"));
         acknowledge.AutomationId = "creation-qualities-receipt-acknowledge";
-        acknowledge.IsEnabled = !_receipt.CharacterDocumentChanged
+        acknowledge.IsEnabled = _forwardLifetime is null && !_receipt.CharacterDocumentChanged
                                 && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
         acknowledge.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         _body.Add(acknowledge);
@@ -2004,21 +2103,46 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
 
     private async Task AcknowledgeAsync()
     {
-        if (!_store.TryAcknowledgeApplied(
-                CharacterCreationQualitiesCheckpointCas.From(_checkpoint),
-                out string blocker))
+        if (_forwardLifetime is not null) return;
+        long appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        var display = Coordinator.State;
+        bool Current() => IsCurrentAppearanceGeneration(appearance)
+            && Coordinator.IsCreationQualitiesOwnerCurrent(_originalOwner)
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && !_receipt.CharacterDocumentChanged && _checkpoint.OwnsRecoveryRevision(display)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        Refresh();
+        try
         {
-            await DisplayAlertAsync(
-                CreationFlowStrings.Get("Common.ReceiptNotAcknowledged", "Receipt not acknowledged"),
-                blocker,
-                CreationFlowStrings.Get("Common.OK", "OK"));
-            return;
+            var loaded = await Coordinator.LoadCreationQualitiesForDisplayAsync(display, lifetime.Token);
+            bool saved = await Task.Run(() => loaded.Value is { } state
+                && CreationQualitiesPhoneAuthority.ReceiptMatches(_checkpoint, _receipt, state, display), lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (!saved) { _nextStepUnavailable = true; return; }
+            var next = await Coordinator.PrepareCreationAfterQualitiesPageAsync(display, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (next is null || !_acknowledged && !_store.TryAcknowledgeApplied(
+                    CharacterCreationQualitiesCheckpointCas.From(_checkpoint), out _))
+            { _nextStepUnavailable = true; return; }
+            _acknowledged = true;
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next))) navigation.RemovePage(this);
         }
-        // Receipt acknowledgement has completed; return through the attached
-        // Shell, not this page's navigation proxy after popping its own page.
-        if (Shell.Current is not MainShell { UsesTabletComposition: false } shell)
-            throw new InvalidOperationException("Creation returns through the phone Runner route.");
-        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute, animate: false);
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            Refresh();
+        }
     }
 
     private static void AddDigest(

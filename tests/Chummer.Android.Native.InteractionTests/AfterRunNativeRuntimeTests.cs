@@ -578,7 +578,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<IOwnerBoundLifeModuleOriginService, IOwnerBoundLifeModuleOriginService>? lifeOriginDecorator = null,
             Func<IOwnerBoundCharacterCreationLifeModuleFinalizationService,
                 IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null,
-            Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null)
+            Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null,
+            Func<ICharacterCreationResourcesInteractionPresenter, ICharacterCreationResourcesInteractionPresenter>? resourcesDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -695,6 +696,15 @@ internal static partial class AfterRunAuthorityHarness
                     outputDocuments!, linkedCharacters!, outputSystem!, accountService ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
                     new CharacterRosterFavoritePresenter(new FileCharacterRosterFavoriteStore(StateDirectory)),
                     new ApplicationDeleteConfirmationPresenter(new FileApplicationDeleteConfirmationStore(StateDirectory, new Version(0, 1))),
+                    creationResourcesPresenter: resourcesDecorator?.Invoke(new CharacterCreationResourcesInteractionPresenter(
+                        _provider.GetRequiredService<ICharacterCreationResourcesService>(),
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()))
+                        ?? new CharacterCreationResourcesInteractionPresenter(
+                            _provider.GetRequiredService<ICharacterCreationResourcesService>(),
+                            _provider.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()),
+                    creationGearPresenter: new CharacterCreationGearInteractionPresenter(
+                        _provider.GetRequiredService<ICharacterCreationGearService>(),
+                        _provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()),
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),
