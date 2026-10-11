@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 192 is the latest [observed Internal availability](../play/evidence/preview192-internal-observation.json),
+Preview 193 is the latest [observed Internal availability](../play/evidence/preview193-internal-observation.json),
+released on 11 October at 17:15 Europe/Vienna. Qualities Save now opens the next
+applicable step: verified Magic/Resonance or mundane Resources. Failed next-step
+reads offer continuation without replaying the save; Back skips the consumed
+confirmation. PR 698 passed ten actual-Core/MAUI forward cases, six Resources
+cases, focused source/version checks and affected compilation. The German130%
+API36 x64 Release/Internal SDK-test route saved once, opened Resources, skipped
+review on Back and restored the same qualities in a new process. One draft
+advanced4/4 to5/5; the other six were unchanged, and all seven cold files matched
+post-save bytes. The release has only application/version metadata and docs delta
+from that native smoke. Local ARM64 build, original-key isolated signing,
+independent keyless certificate/payload checks and one scoped upload/readback
+passed. Physical Play193 installation is not yet verified. The emulator SystemUI
+ANR/transient observer failures do not close startup performance. Full Creation/
+Career/Origin, the original FirstBook fence and diagnostic-contract portability
+remain open. Version193 is consumed; no rebuild/re-upload is needed.
+
+Preview 192's [observed Internal availability](../play/evidence/preview192-internal-observation.json) was
 released on 11 October at 16:28 Europe/Vienna. Creation attributes, skills and
 groups now use sliders only, with the full range visible and unavailable values
 grey/struck. Cached local draft checks update values and shared budgets without
