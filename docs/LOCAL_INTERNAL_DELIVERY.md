@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 190 is the latest [observed Internal availability](../play/evidence/preview190-internal-observation.json),
+Preview 191 is the latest [observed Internal availability](../play/evidence/preview191-internal-observation.json),
+released on 11 October at 13:26 Europe/Vienna. Admitted Attribute saves open
+Skills directly; Skills saves open Qualities. Back skips the consumed review;
+failed next-step reads offer read-only continuation without replaying a save.
+PRs 691/692 passed their focused actual-Core/MAUI and physical SDK-test routes,
+including cold restoration. The version-only candidate reused those unchanged
+results, then passed local locked ARM64/Internal build, existing-key signing,
+independent keyless verification and one scoped upload/readback. A
+[physical Play189→191 update](../play/evidence/preview191-physical-observation.md)
+verified version, Play certificate and retained runner-sheet restoration after a
+new-process launch. The changed Creation mutations were not replayed on that
+Play binary; no full Creation/Career/Origin or startup-performance claim is made.
+Long catalogues, later-step navigation and Origin pre-story minimalism remain.
+The original FirstBook fence and retained local diagnostic-contract feed remain.
+Version 191 is consumed; these records require no new build or upload.
+
+Preview 190's [observed Internal availability](../play/evidence/preview190-internal-observation.json) was
 released on 11 October at 11:55 Europe/Vienna. Skill/group adjustments now show
 pending status and localized refusal next to the controls without rebuilding the
 whole page. Creation removes summary-only steps, Priority describes its actual
