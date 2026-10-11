@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 188 is the latest [observed Internal availability](../play/evidence/preview188-internal-observation.json),
+Preview 189 is the latest [observed Internal availability](../play/evidence/preview189-internal-observation.json),
+released on 11 October at 08:15 Europe/Vienna. Eligible runners with exact racial
+quality grants can now select Ambidextrous; unknown anatomy/variants/ware and
+altered source authority remain closed. Managed Core/MAUI checks and the German
+130% API36 native Add/save/cold-reopen passed. The recovered keyless local builder
+uses official portable.NET10.0.112 with retained Android/MAUI/JDK inputs; its
+workload inventory warning is retained, while actual locked restore, C#/ARM64 AOT
+and AAB generation passed. Separate original-key signing, independent keyless
+payload/certificate checks and one Internal upload/readback passed. A
+[physical Play188→189 update](../play/evidence/preview189-physical-observation.md)
+verified the Play certificate, actual Ambidextrous Add/review/one Save and a new
+process restoring the same runner, selected quality, racial Low-Light Vision and
+21 remaining Karma. The next step is Resources; effects remain pending finalization.
+This closes the narrow racial-quality admission defect, not complete Creation,
+Career, live multi-chapter Origin or startup performance. The original FirstBook
+uncertainty remains fenced; the diagnostic contract still needs its retained
+local feed. Version189 is consumed; no rebuild/upload is needed for these records.
+
+Preview 188's [observed Internal availability](../play/evidence/preview188-internal-observation.json) was
 released on 11 October at 05:05 Europe/Vienna. The
 [saved-allocation review fix](creation-attributes-saved-review-20261011.md)
 opens an unchanged allocation read-only, with an already-saved message and Back,
