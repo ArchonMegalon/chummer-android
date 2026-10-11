@@ -49,9 +49,10 @@ being relabelled as proof of this stronger assertion.
 The owned emulator was stopped and its exact test-app egress rules removed
 after cold-reopen observation; retained files and evidence were preserved.
 The emulator had a SystemUI boot ANR and slow restoration; this increment makes
-no startup-performance claim. No Preview196 ARM64 AAB, upload-key signature or
-Play upload is evidenced here. Preview195 remains the latest recorded Internal
-availability. Full Creation/Career/Origin and physical current-Play acceptance
+no startup-performance claim. At that earlier observation, no Preview196 ARM64
+AAB, upload-key signature or Play upload existed; Preview195 was then the latest
+Internal availability. The subsequent delivery result is below. Full
+Creation/Career/Origin and physical current-Play acceptance
 remain open; historical hosted qualification is not claimed.
 
 ## Pending Lifestyle correction
@@ -154,5 +155,19 @@ navigation/restoration/icon string assumptions. The two relevant dependency-
 graph and release-identity cases pass separately. No full-contract pass or
 relaxed guard is claimed.
 
-The signed ARM64 release and actual Play readback are still required for
-delivery. Preview195 remains the recorded Play version; 196 is not uploaded.
+## Preview196 delivered to Internal
+
+Android704 merged as `c3df9e79687ee8b68a07e8f32a94a655c057b74a`, with the same
+tree as reviewed `f32ee173218242697254946e11f03511585cd9eb`. Its exact local
+ARM64 Release/Internal AAB passed source/content, manifest, proof-exclusion and
+credential-hygiene checks. Separate original-key signing and independent keyless
+verification preserved all 1,787 non-signature payload entries. Signed SHA-256:
+`a432897018f0486e4ff0b83e6325e341e80db98efa0f689a05c6f701c863d2da`.
+
+One scoped upload and final confirmation under standing Internal approval
+produced Play release190. Console readback at `2026-10-11T21:54:56Z` showed
+`196 (0.1.0-preview.196)` as **Available to internal testers**, released at
+23:54 Europe/Vienna. See the [artifact and readback record](../play/evidence/preview196-internal-observation.json).
+Physical Play196 installation remains unverified. No complete Creation/Career/
+Origin, startup-performance or public-release claim is made. Version196 is
+consumed; documentation updates must not rebuild or upload it again.
