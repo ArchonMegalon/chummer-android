@@ -1120,6 +1120,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     private readonly Action<CreationAttributesPhoneConfirmResult>? _onConfirmed;
     private Button? _confirmButton;
     private bool _saving;
+    private CancellationTokenSource? _forwardPreparation;
+    private bool _nextStepUnavailable;
+    private long _renderGeneration;
 
     internal CreationAttributesPreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -1141,6 +1144,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         // Keep the pressed control and scroll position while the save finishes.
         // Owner changes must still clear the previous account's projection.
         if (_saving && Coordinator.CanDisplayCreationAttributesPreview(_preview)) return;
+        _renderGeneration++;
         _confirmButton = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
@@ -1182,6 +1186,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     protected override void OnDisappearing()
     {
         _confirmButton = null;
+        _forwardPreparation?.Cancel();
         // Departure does not cancel/replay a mutation whose outcome may already
         // be durable. The coordinator retains its exact owner and receipt guards.
         base.OnDisappearing();
@@ -1343,6 +1348,14 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                 "Your attribute choices are saved."));
             complete.AutomationId = "creation-attributes-confirmed";
             _body.Add(NativeTheme.Card(complete));
+            if (_nextStepUnavailable)
+            {
+                Label failure = NativeTheme.Body(CreationAllocationStrings.Get(
+                    "AttributesPreview.NextUnavailable",
+                    "Attributes saved. Skills could not be loaded. Tap Continue to try loading them again."), NativeTheme.Danger);
+                failure.AutomationId = "creation-attributes-next-unavailable";
+                _body.Add(failure);
+            }
             return;
         }
 
@@ -1358,6 +1371,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
             if (_saving || !ReferenceEquals(_confirmButton, confirm) || !confirm.IsEnabled
                 || !Coordinator.CanOfferCreationAttributesConfirmation(_preview, _allocations)) return;
             long saveAppearance = CaptureAppearanceGeneration();
+            long saveRender = _renderGeneration;
             _saving = true;
             string label = confirm.Text;
             confirm.IsEnabled = false;
@@ -1368,6 +1382,11 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                     _preview,
                     _allocations);
                 _onConfirmed?.Invoke(_confirmation);
+                if (IsCurrentAppearanceGeneration(saveAppearance))
+                {
+                    confirm.Text = CreationAllocationStrings.Get("AttributesPreview.OpeningSkills", "Opening skills…");
+                    await ContinueToSkillsAsync(_confirmation, saveRender, saveAppearance);
+                }
             }
             finally
             {
@@ -1450,12 +1469,78 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         border.AutomationId = "creation-attributes-confirm-receipt";
         _body.Add(border);
 
+        if (_confirmation.Blockers.Count == 0 && refreshed.PendingDraft?.CharacterEffectsApplied == false)
+        {
+            var confirmation = _confirmation;
+            long render = _renderGeneration;
+            long appearance = CaptureAppearanceGeneration();
+            Button next = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+                "AttributesPreview.ContinueSkills", "Continue to skills"));
+            next.AutomationId = "creation-attributes-continue-skills";
+            next.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                next.IsEnabled = false;
+                next.Text = CreationAllocationStrings.Get("AttributesPreview.OpeningSkills", "Opening skills…");
+                await ContinueToSkillsAsync(confirmation, render, appearance);
+            });
+            _body.Add(next);
+        }
         Button back = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
             "Common.BackToBuild",
             "Back to Build"));
         back.AutomationId = "creation-attributes-back-to-build";
         back.Clicked += async (_, _) => await RunAsync(BackToBuildAsync);
         _body.Add(back);
+    }
+
+    private async Task ContinueToSkillsAsync(CreationAttributesPhoneConfirmResult confirmation,
+        long render, long appearance)
+    {
+        if (confirmation is not { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, RefreshedState: { PendingDraft.CharacterEffectsApplied: false } }
+            || confirmation.Blockers.Count != 0) return;
+        INavigation navigation = Navigation;
+        Page[] stack = navigation.NavigationStack.ToArray();
+        bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(_confirmation, confirmation)
+            && Coordinator.IsCreationAttributesReceiptCurrent(receipt)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+
+        var original = Coordinator.State;
+        using var lifetime = new CancellationTokenSource();
+        _forwardPreparation = lifetime;
+        _nextStepUnavailable = false;
+        try
+        {
+            // The save is already durable. A failure here can retry this read,
+            // never confirm again or infer a successful Skills mutation.
+            var loaded = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+                Coordinator.LoadCreationSkills, lifetime.Token), lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } skills }
+                || !Coordinator.IsCreationSkillsStateCurrent(skills)
+                || !CreationSkillsPhoneAuthority.IsReady(skills, Coordinator.State))
+            {
+                _nextStepUnavailable = true;
+                return;
+            }
+            var next = new CreationSkillsPage(Coordinator, skills);
+            await navigation.PushAsync(next, animated: false);
+            // Keep the editor reachable with Back, not this consumed review.
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
+                navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            if (Current()) _nextStepUnavailable = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_forwardPreparation, lifetime)) _forwardPreparation = null;
+        }
     }
 
     private async Task BackToBuildAsync()
