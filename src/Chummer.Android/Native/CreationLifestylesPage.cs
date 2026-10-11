@@ -12,12 +12,28 @@ public sealed class CreationLifestylesPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private CharacterCreationLifestylesInteractionLoadResult? _loaded;
+    private bool _loading;
 
     public CreationLifestylesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = CreationFlowStrings.Get("Lifestyles.PageTitle", "Creation lifestyles");
         AutomationId = "creation-lifestyles-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loaded = null;
+        _loading = true;
+        Refresh();
+        try
+        {
+            var loaded = await Coordinator.LoadCreationLifestylesForDisplayAsync(Coordinator.State, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loaded = loaded;
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
     }
 
     protected override void Refresh()
@@ -34,15 +50,20 @@ public sealed class CreationLifestylesPage : NativePageBase
                 + "preservation-bound atomic write plan, then confirm separately."),
             NativeTheme.Muted));
 
-        CharacterCreationLifestylesInteractionLoadResult load = Coordinator.LoadCreationLifestyles();
-        if (!string.Equals(load.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
-            || load.State is not { } state)
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-lifestyles-loading" });
+            return;
+        }
+        var load = _loaded;
+        if (load?.Outcome != CharacterCreationLifestyleOutcomes.Available
+            || load.State is not { } state || !CreationLifestylesPhoneAuthority.IsBound(state, Coordinator.State))
         {
             AddBlockers(
                 CreationFlowStrings.Get(
                     "Lifestyles.AuthorityUnavailable",
                     "Creation Lifestyles authority unavailable"),
-                load.Blockers,
+                load?.Blockers ?? [CharacterCreationLifestylesBlockers.AuthorityUnavailable],
                 "creation-lifestyles-unavailable");
             return;
         }

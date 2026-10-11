@@ -17,6 +17,7 @@ public sealed class CreationContactsPage : NativePageBase
     private bool _loading;
     private readonly CharacterOverviewState? _forwardDisplay;
     private readonly CharacterCreationGearReceipt? _gearReceipt;
+    private readonly CharacterCreationContactReceipt? _contactReceipt;
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
     internal bool IsPreparedDisplayCurrent => _forwardDisplay is { } display
@@ -31,11 +32,12 @@ public sealed class CreationContactsPage : NativePageBase
 
     internal CreationContactsPage(RunnerSessionCoordinator coordinator,
         CharacterCreationContactsInteractionState? authority, CharacterOverviewState? forwardDisplay,
-        CharacterCreationGearReceipt? gearReceipt) : base(coordinator)
+        CharacterCreationGearReceipt? gearReceipt, CharacterCreationContactReceipt? contactReceipt = null) : base(coordinator)
     {
         _authority = authority;
         _forwardDisplay = forwardDisplay;
         _gearReceipt = gearReceipt;
+        _contactReceipt = contactReceipt;
         Title = CreationFlowStrings.Get("Contacts.PageTitle", "Creation contacts");
         AutomationId = "creation-contacts-page";
         Content = new ScrollView { Content = _body };
@@ -68,13 +70,6 @@ public sealed class CreationContactsPage : NativePageBase
                 "Contacts.Intro",
                 "Add someone your runner can turn to. Review their details and point cost before saving."),
             NativeTheme.Muted));
-        _body.Add(NativeTheme.NavigationRow(
-            CreationFlowStrings.Get("Lifestyles.Heading", "Lifestyles"),
-            CreationFlowStrings.Get(
-                "Contacts.OpenLifestyles",
-                "Choose where your runner lives and review the cost."),
-            () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
-            automationId: "creation-contacts-open-lifestyles"));
         if (_loading)
         {
             _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-contacts-loading" });
@@ -100,6 +95,16 @@ public sealed class CreationContactsPage : NativePageBase
         }
 
         AddBinding(state);
+        if (IsPreparedDisplayCurrent && _contactReceipt is { } contactReceipt
+            && contactReceipt.WorkspaceId == state.Binding.WorkspaceId
+            && contactReceipt.ContentRevision == state.Binding.ContentRevision
+            && contactReceipt.SavedRevision == state.Binding.SavedRevision)
+        {
+            _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Contacts.Saved", "Contact change saved.")));
+            var receiptLabel = NativeTheme.Body(contactReceipt.ReceiptDigest, NativeTheme.Muted);
+            receiptLabel.AutomationId = "creation-contact-receipt-digest";
+            _technicalDetails.Add(receiptLabel);
+        }
         if (IsPreparedDisplayCurrent && _gearReceipt is { } receipt
             && receipt.WorkspaceId == state.Binding.WorkspaceId
             && receipt.WorkspaceRevision == state.Binding.ContentRevision
@@ -134,6 +139,20 @@ public sealed class CreationContactsPage : NativePageBase
             _body.Add(add);
         }
         AddContacts(state);
+        CharacterOverviewState nextDisplay = Coordinator.State;
+        long nextAppearance = CaptureAppearanceGeneration();
+        Button next = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Contacts.ContinueLifestyles", "Continue to lifestyles"));
+        next.AutomationId = "creation-contacts-open-lifestyles";
+        next.Clicked += async (_, _) =>
+        {
+            if (IsCurrentAppearanceGeneration(nextAppearance)
+                && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                && Coordinator.IsCreationCatalogDisplayCurrent(nextDisplay)
+                && CreationContactsPhoneAuthority.IsReady(state, nextDisplay))
+                await RunAsync(() => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)));
+        };
+        _body.Add(next);
         AddSourceAuthority(state);
         CharacterOverviewState original = Coordinator.State;
         long appearance = CaptureAppearanceGeneration();

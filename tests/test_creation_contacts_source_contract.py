@@ -163,10 +163,15 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             '"creation-contact-receipt-content-before"',
             '"creation-contact-receipt-content-after"',
             "Coordinator.ConfirmCreationContactAsync(",
-            'AutomationId = "creation-contact-back-to-build"',
-            "Navigation.PopToRootAsync(animated: false)",
+            'AutomationId = "creation-contact-continue-contacts"',
+            "ContinueToContactsAsync(appearance)",
+            "navigation.RemovePage(this)",
         ):
             self.assertIn(marker, preview)
+        self.assertNotIn("creation-contact-back-to-build", preview)
+        self.assertIn("_submitted = true;", preview)
+        self.assertIn("IsCurrentAppearanceGeneration(appearance)", preview)
+        self.assertIn("navigation.NavigationStack.SequenceEqual(stack)", preview)
 
         self.assertIn("if (Coordinator.State.Profile.Created == false)", build)
         self.assertIn("CharacterCreationWizardStepIds.ContactsLifestyles", build)
@@ -183,7 +188,7 @@ class CreationContactsSourceContractTests(unittest.TestCase):
             self.assertIn(marker, build)
         creation_gate = build[
             build.index("if (Coordinator.State.Profile.Created == false)") : build.index(
-                'Title = "Sheet";'
+                'Title = PhoneStrings.Get("RunnerSheet", "Sheet");'
             )
         ]
         self.assertIn("AddCreationWizardDashboard();", creation_gate)

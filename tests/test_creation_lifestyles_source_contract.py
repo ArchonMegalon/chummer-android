@@ -117,7 +117,9 @@ class CreationLifestylesSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, preview)
 
-        self.assertIn('automationId: "creation-contacts-open-lifestyles"', contacts)
+        self.assertIn('next.AutomationId = "creation-contacts-open-lifestyles"', contacts)
+        self.assertIn("LoadCreationLifestylesForDisplayAsync", listing)
+        self.assertNotIn("Coordinator.LoadCreationLifestyles()", listing)
         self.assertIn("new CreationLifestylesPage(Coordinator)", contacts)
 
         combined = listing + edit + preview

@@ -2190,4 +2190,10 @@
   <data name="Gear.SkillsRequired" xml:space="preserve"><value>Deine Ausrüstung ist gespeichert. Speichere noch deine Fertigkeiten, damit die Kontaktpunkte berechnet werden können.</value></data>
   <data name="Gear.OpeningNext" xml:space="preserve"><value>Kontakte werden geöffnet…</value></data>
   <data name="Gear.NextUnavailable" xml:space="preserve"><value>Deine Ausrüstung ist gespeichert. Kontakte konnten nicht geöffnet werden. Versuche es mit Weiter erneut; dabei wird nicht nochmals gespeichert.</value></data>
+  <data name="Contacts.ContinueLifestyles" xml:space="preserve"><value>Weiter zu Lebensstil</value></data>
+  <data name="Contacts.ContinueContacts" xml:space="preserve"><value>Weiter zu Kontakten</value></data>
+  <data name="Contacts.Saving" xml:space="preserve"><value>Kontakt wird gespeichert…</value></data>
+  <data name="Contacts.OpeningList" xml:space="preserve"><value>Kontakte werden geöffnet…</value></data>
+  <data name="Contacts.ListUnavailable" xml:space="preserve"><value>Dein Kontakt ist gespeichert. Versuche erneut, die Liste mit Weiter zu öffnen. Dabei wird nicht noch einmal gespeichert.</value></data>
+  <data name="Contacts.OutcomeUnknown" xml:space="preserve"><value>Das Ergebnis konnte nicht geprüft werden. Öffne diesen Runner erneut, bevor du eine weitere Änderung vornimmst.</value></data>
 </root>

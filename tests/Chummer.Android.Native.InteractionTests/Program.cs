@@ -620,6 +620,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationContactsOwnerCasesAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-contacts-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationContactsForwardAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-contacts-bootstrap-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationContactsBootstrapCasesAsync(args[1]);

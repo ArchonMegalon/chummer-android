@@ -2172,4 +2172,10 @@
   <data name="Gear.SkillsRequired" xml:space="preserve"><value>Tu equipo está guardado. Guarda tus habilidades para calcular los puntos de contacto.</value></data>
   <data name="Gear.OpeningNext" xml:space="preserve"><value>Abriendo contactos…</value></data>
   <data name="Gear.NextUnavailable" xml:space="preserve"><value>Tu equipo está guardado. No se pudieron abrir los contactos. Pulsa Continuar de nuevo; no se guardará dos veces.</value></data>
+  <data name="Contacts.ContinueLifestyles" xml:space="preserve"><value>Continuar a estilos de vida</value></data>
+  <data name="Contacts.ContinueContacts" xml:space="preserve"><value>Continuar a contactos</value></data>
+  <data name="Contacts.Saving" xml:space="preserve"><value>Guardando contacto…</value></data>
+  <data name="Contacts.OpeningList" xml:space="preserve"><value>Abriendo contactos…</value></data>
+  <data name="Contacts.ListUnavailable" xml:space="preserve"><value>Tu contacto está guardado. Pulsa Continuar para intentar abrir la lista de nuevo; no se guardará dos veces.</value></data>
+  <data name="Contacts.OutcomeUnknown" xml:space="preserve"><value>No se pudo verificar el resultado. Abre de nuevo este runner antes de realizar otro cambio.</value></data>
 </root>

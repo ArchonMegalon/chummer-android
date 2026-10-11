@@ -3485,4 +3485,10 @@
   <data name="Gear.SkillsRequired" xml:space="preserve"><value>Your equipment is saved. Save your skills to calculate contact points.</value></data>
   <data name="Gear.OpeningNext" xml:space="preserve"><value>Opening contacts…</value></data>
   <data name="Gear.NextUnavailable" xml:space="preserve"><value>Your equipment is saved. Contacts could not be opened. Try Continue again; this will not save twice.</value></data>
+  <data name="Contacts.ContinueLifestyles" xml:space="preserve"><value>Continue to lifestyles</value></data>
+  <data name="Contacts.ContinueContacts" xml:space="preserve"><value>Continue to contacts</value></data>
+  <data name="Contacts.Saving" xml:space="preserve"><value>Saving contact…</value></data>
+  <data name="Contacts.OpeningList" xml:space="preserve"><value>Opening contacts…</value></data>
+  <data name="Contacts.ListUnavailable" xml:space="preserve"><value>Your contact is saved. Try Continue again to reopen the list; this will not save twice.</value></data>
+  <data name="Contacts.OutcomeUnknown" xml:space="preserve"><value>The result could not be verified. Reopen this runner before making another change.</value></data>
 </root>
