@@ -566,17 +566,21 @@ internal static partial class AfterRunAuthorityHarness
                 IssuedElements(preview).OfType<CheckBox>().Single(x => x.AutomationId == "creation-contact-explicit-confirm").IsChecked = true;
                 Require(confirm.IsEnabled, "Explicit confirmation did not admit an exact preview.");
                 await ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked());
-                Require(IssuedElements(preview).Any(x => x.AutomationId == "creation-contact-confirm-receipt")
-                    && !IssuedElements(preview).Any(x => x.AutomationId == "creation-contact-confirm"),
-                    "Saved page lost its receipt or offered replay.");
-                VerifyDisclosure(preview, "creation-contact-preview-details", "sha256:");
+                Require(navigation.Navigation.NavigationStack.Last() is CreationContactsPage
+                    && !navigation.Navigation.NavigationStack.Contains(preview),
+                    "Saved contact did not return to the current list.");
+                var savedList = (CreationContactsPage)navigation.Navigation.NavigationStack.Last();
+                await Appear(savedList, alreadyPushed: true);
+                Require(IssuedElements(savedList).Any(x => x.AutomationId == "creation-contact-receipt-digest"),
+                    "Saved list lost its receipt diagnostics.");
+                VerifyDisclosure(savedList, "creation-contacts-details", "sha256:");
                 var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id).Value!;
                 Require(cold.ContentRevision == savedBefore.ContentRevision + 1 && cold.SavedRevision == cold.ContentRevision
                     && cold.Document.Content.Contains(note, StringComparison.Ordinal)
                     && cold.Document.Content.Contains("Street doc", StringComparison.Ordinal),
                     "Actual page confirmation lost reviewed text or did not checkpoint once.");
 
-                var panel = IssuedElements(preview).OfType<VerticalStackLayout>().Single(x => x.AutomationId == "creation-contact-preview-details");
+                var panel = IssuedElements(savedList).OfType<VerticalStackLayout>().Single(x => x.AutomationId == "creation-contacts-details");
                 var toggle = panel.Children.OfType<Button>().Single();
                 var technical = panel.Children.OfType<VerticalStackLayout>().Single();
                 owners.Set(ContactsOwnerB);

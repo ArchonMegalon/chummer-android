@@ -12,6 +12,79 @@ public sealed partial class RunnerSessionCoordinator
     private sealed class CreationPurchaseAttempt { public int Started; }
     private readonly ConditionalWeakTable<object, CreationPurchaseAttempt> _purchaseAttempts = new();
 
+    internal Task<CharacterCreationLifestylesInteractionLoadResult> LoadCreationLifestylesForDisplayAsync(
+        CharacterOverviewState original, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+            ReadCreationAuthority(original, () => _creationLifestylesPresenter.Load(original), ct), ct), ct);
+
+    internal Task<CharacterCreationLifestylesInteractionPrepareResult> PrepareCreationLifestyleForDisplayAsync(
+        CharacterOverviewState original, CharacterCreationLifestyleMutationInput input, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+            ReadCreationAuthority(original, () => _creationLifestylesPresenter.Prepare(original, input), ct), ct), ct);
+
+    internal async Task<CreationContactsPage?> PrepareCreationAfterContactPageAsync(
+        CharacterOverviewState original, CharacterCreationContactPreparedPreview prepared,
+        CharacterCreationContactReceipt receipt, CharacterCreationContactsInteractionState? refreshed,
+        CancellationToken ct)
+    {
+        if (!CanDisplayCreationPurchase(original)
+            || original.DisplayOwnerContext != prepared.DisplayOwnerContext
+            || !CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt)) return null;
+        if (refreshed is null || !CreationContactsPhoneAuthority.RefreshedStateMatches(prepared, receipt, refreshed, State))
+        {
+            refreshed = await WithWorkspaceActivationGateAsync(async () =>
+            {
+                if (!CanDisplayCreationPurchase(original)
+                    || !await RefreshCreationPurchaseAsync(original, receipt.WorkspaceId,
+                        receipt.ContentRevision, receipt.SavedRevision, ct)) return null;
+                var display = State;
+                var loaded = await Task.Run(() => ReadCreationAuthority(display,
+                    () => _creationContactsPresenter.Load(display), ct), ct);
+                return loaded.Outcome == CharacterCreationContactOutcomes.Available
+                    && loaded.Blockers.Count == 0 ? loaded.State : null;
+            }, ct);
+        }
+        ct.ThrowIfCancellationRequested();
+        var current = State;
+        return refreshed is not null && CanDisplayCreationPurchase(original)
+            && IsCreationCatalogDisplayCurrent(current)
+            && CreationContactsPhoneAuthority.RefreshedStateMatches(prepared, receipt, refreshed, current)
+            && CreationContactsPhoneAuthority.IsReady(refreshed, current)
+                ? new CreationContactsPage(this, refreshed, current, null, receipt) : null;
+    }
+
+
+    internal async Task<CreationLifestylesPage?> PrepareCreationAfterLifestylePageAsync(
+        CharacterOverviewState original, CharacterCreationLifestylePreparedPreview prepared,
+        CharacterCreationLifestyleReceipt receipt, CharacterCreationLifestylesInteractionState? refreshed,
+        CancellationToken ct)
+    {
+        if (!CanDisplayCreationPurchase(original)
+            || original.DisplayOwnerContext != prepared.DisplayOwnerContext
+            || !CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, receipt)) return null;
+        if (refreshed is null || !CreationLifestylesPhoneAuthority.RefreshedStateMatches(prepared, receipt, refreshed, State))
+        {
+            refreshed = await WithWorkspaceActivationGateAsync(async () =>
+            {
+                if (!CanDisplayCreationPurchase(original)
+                    || !await RefreshCreationPurchaseAsync(original, receipt.WorkspaceId,
+                        receipt.ContentRevision, receipt.SavedRevision, ct)) return null;
+                var display = State;
+                var loaded = await Task.Run(() => ReadCreationAuthority(display,
+                    () => _creationLifestylesPresenter.Load(display), ct), ct);
+                return loaded.Outcome == CharacterCreationLifestyleOutcomes.Available
+                    && loaded.Blockers.Count == 0 ? loaded.State : null;
+            }, ct);
+        }
+        ct.ThrowIfCancellationRequested();
+        var current = State;
+        return refreshed is not null && CanDisplayCreationPurchase(original)
+            && IsCreationCatalogDisplayCurrent(current)
+            && CreationLifestylesPhoneAuthority.RefreshedStateMatches(prepared, receipt, refreshed, current)
+            && CreationLifestylesPhoneAuthority.IsReady(refreshed, current)
+                ? new CreationLifestylesPage(this, refreshed, current) : null;
+    }
+
     internal bool CanDisplayCreationPurchase(CharacterOverviewState original)
         => original.DisplayOwnerContext is { IsValid: true } owner
            && IsNativePersistenceOwnerCurrent(owner) && State.DisplayOwnerContext == owner

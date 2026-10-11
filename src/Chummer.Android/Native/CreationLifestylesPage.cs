@@ -12,17 +12,54 @@ public sealed class CreationLifestylesPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private CharacterCreationLifestylesInteractionLoadResult? _loaded;
+    private bool _loading;
+    private CharacterCreationLifestylesInteractionState? _authority;
+    private CharacterOverviewState? _display;
+    private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextUnavailable;
+    internal bool IsPreparedDisplayCurrent => _display is { } display
+        && Coordinator.IsCreationCatalogDisplayCurrent(display)
+        && _authority is { } state && CreationLifestylesPhoneAuthority.IsReady(state, display);
 
-    public CreationLifestylesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public CreationLifestylesPage(RunnerSessionCoordinator coordinator) : this(coordinator, null, null) { }
+
+    internal CreationLifestylesPage(RunnerSessionCoordinator coordinator,
+        CharacterCreationLifestylesInteractionState? authority, CharacterOverviewState? display) : base(coordinator)
     {
+        _authority = authority;
+        _display = display;
         Title = CreationFlowStrings.Get("Lifestyles.PageTitle", "Creation lifestyles");
         AutomationId = "creation-lifestyles-page";
         Content = new ScrollView { Content = _body };
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        if (IsPreparedDisplayCurrent) return;
+        _authority = null;
+        _display = null;
+        _loaded = null;
+        _loading = true;
+        Refresh();
+        try
+        {
+            var display = Coordinator.State;
+            var loaded = await Coordinator.LoadCreationLifestylesForDisplayAsync(display, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Coordinator.IsCreationCatalogDisplayCurrent(display)) return;
+            _loaded = loaded;
+            _authority = loaded.State;
+            _display = display;
+        }
+        finally { if (!cancellationToken.IsCancellationRequested) _loading = false; }
+    }
+
     protected override void Refresh()
     {
         _body.Clear();
+        _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Lifestyles.Eyebrow",
             "Character creation · Contacts/Lifestyles")));
@@ -30,19 +67,24 @@ public sealed class CreationLifestylesPage : NativePageBase
         _body.Add(NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Lifestyles.Intro",
-                "Choose a Core catalog entry, configure a typed draft, inspect exact economics and the "
-                + "preservation-bound atomic write plan, then confirm separately."),
+                "Choose where your runner lives, review the cost, then continue to starting cash."),
             NativeTheme.Muted));
 
-        CharacterCreationLifestylesInteractionLoadResult load = Coordinator.LoadCreationLifestyles();
-        if (!string.Equals(load.Outcome, CharacterCreationLifestyleOutcomes.Available, StringComparison.Ordinal)
-            || load.State is not { } state)
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-lifestyles-loading" });
+            return;
+        }
+        var load = _loaded;
+        if (_authority is not { } state || _display is not { } display
+            || !Coordinator.IsCreationCatalogDisplayCurrent(display)
+            || !CreationLifestylesPhoneAuthority.IsBound(state, display))
         {
             AddBlockers(
                 CreationFlowStrings.Get(
                     "Lifestyles.AuthorityUnavailable",
                     "Creation Lifestyles authority unavailable"),
-                load.Blockers,
+                load?.Blockers ?? [CharacterCreationLifestylesBlockers.AuthorityUnavailable],
                 "creation-lifestyles-unavailable");
             return;
         }
@@ -61,8 +103,56 @@ public sealed class CreationLifestylesPage : NativePageBase
         }
 
         AddExisting(state);
+        AddContinue(state, display);
         AddCatalog(state);
         AddAuthority(state);
+        long appearance = CaptureAppearanceGeneration();
+        _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-lifestyles-details",
+            () => Current(state, display, appearance)));
+    }
+
+    protected override void OnDisappearing()
+    {
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
+    private bool Current(CharacterCreationLifestylesInteractionState state, CharacterOverviewState display, long appearance)
+        => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_authority, state)
+            && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && CreationLifestylesPhoneAuthority.IsReady(state, display);
+
+    private void AddContinue(CharacterCreationLifestylesInteractionState state, CharacterOverviewState display)
+    {
+        if (_nextUnavailable) _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Finalization.Blocked",
+            "Finish the required steps and resolve the warnings before reviewing your runner."), NativeTheme.Danger));
+        var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Lifestyles.ContinueCash", "Continue to starting cash"));
+        next.AutomationId = "creation-lifestyles-continue-starting-cash";
+        long appearance = CaptureAppearanceGeneration();
+        next.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            if (_forwardLifetime is not null || !Current(state, display, appearance)) return;
+            using var lifetime = new CancellationTokenSource();
+            _forwardLifetime = lifetime;
+            next.IsEnabled = false;
+            next.Text = CreationFlowStrings.Get("Lifestyles.OpeningCash", "Opening starting cash…");
+            try
+            {
+                var loaded = await Task.Run(() => Coordinator.LoadCreationFinalizationInBackground(display, lifetime.Token));
+                if (!Current(state, display, appearance) || lifetime.IsCancellationRequested) return;
+                if (loaded is { Outcome: CharacterCreationFinalizationOutcomes.Available, Value.CanReview: true }
+                    && Coordinator.IsCreationFinalizationStateCurrent(loaded.Value))
+                    await Navigation.PushAsync(new CreationStartingCashPage(Coordinator, loaded.Value), animated: false);
+                else _nextUnavailable = true;
+            }
+            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+            finally
+            {
+                if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            }
+        });
+        _body.Add(next);
     }
 
     private void AddBinding(CharacterCreationLifestylesInteractionState state)
@@ -77,7 +167,7 @@ public sealed class CreationLifestylesPage : NativePageBase
                 ShortDigest(state.Binding.SourceDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-lifestyles-binding";
-        _body.Add(binding);
+        _technicalDetails.Add(binding);
     }
 
     private void AddBudget(CharacterCreationLifestyleBudget budget, string automationId)
@@ -119,6 +209,8 @@ public sealed class CreationLifestylesPage : NativePageBase
             return;
         }
 
+        var display = _display!;
+        long appearance = CaptureAppearanceGeneration();
         foreach (CharacterCreationLifestyleProjection lifestyle in state.Lifestyles
                      .OrderBy(item => item.Configuration.Name, StringComparer.Ordinal))
         {
@@ -126,15 +218,13 @@ public sealed class CreationLifestylesPage : NativePageBase
                 lifestyle.Configuration.Name,
                 CreationFlowStrings.Format(
                     "Lifestyles.ExistingDetail",
-                    "{0} · {1} nuyen · authority {2}",
+                    "{0} · {1} nuyen",
                     lifestyle.BaseLifestyleName,
-                    lifestyle.Economics.TotalCost.ToString(CultureInfo.InvariantCulture),
-                    ShortDigest(lifestyle.LifestyleDigest)),
-                () => Navigation.PushAsync(new CreationLifestyleEditPage(
-                    Coordinator,
-                    lifestyle.Configuration.LifestyleId,
-                    optionId: null,
-                    isCreate: false)),
+                    lifestyle.Economics.TotalCost.ToString(CultureInfo.InvariantCulture)),
+                () => Current(state, display, appearance)
+                    ? RunAsync(() => Navigation.PushAsync(new CreationLifestyleEditPage(
+                        Coordinator, lifestyle.Configuration.LifestyleId, optionId: null, isCreate: false)))
+                    : Task.CompletedTask,
                 automationId: $"creation-lifestyle-item-{lifestyle.Configuration.LifestyleId:N}"));
         }
     }
@@ -144,6 +234,8 @@ public sealed class CreationLifestylesPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
             "Lifestyles.AddFromCatalog",
             "Add from exact Core catalog")));
+        var display = _display!;
+        long appearance = CaptureAppearanceGeneration();
         foreach (CharacterCreationLifestyleCatalogOption option in state.Authority.LifestyleOptions
                      .OrderBy(item => item.BaseCost)
                      .ThenBy(item => item.Name, StringComparer.Ordinal))
@@ -162,11 +254,10 @@ public sealed class CreationLifestylesPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 option.Name,
                 detail,
-                () => Navigation.PushAsync(new CreationLifestyleEditPage(
-                    Coordinator,
-                    lifestyleId,
-                    option.OptionId,
-                    isCreate: true)),
+                () => enabled && Current(state, display, appearance)
+                    ? RunAsync(() => Navigation.PushAsync(new CreationLifestyleEditPage(
+                        Coordinator, lifestyleId, option.OptionId, isCreate: true)))
+                    : Task.CompletedTask,
                 enabled: enabled,
                 automationId: $"creation-lifestyle-catalog-{Token(option.OptionId)}"));
         }
@@ -183,7 +274,7 @@ public sealed class CreationLifestylesPage : NativePageBase
         card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Runtime", "Runtime"), state.Binding.RuntimeDigest));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-lifestyles-authority";
-        _body.Add(border);
+        _technicalDetails.Add(border);
     }
 
     private void AddBlockers(string title, IReadOnlyList<string> blockers, string automationId)

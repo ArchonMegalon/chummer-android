@@ -1346,20 +1346,27 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    public async Task<CreationLifestylePhoneConfirmResult> ConfirmCreationLifestyleAsync(
+    public Task<CreationLifestylePhoneConfirmResult> ConfirmCreationLifestyleAsync(
         CharacterCreationLifestylePreparedPreview prepared,
         CancellationToken cancellationToken = default)
-        => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationLifestyleCoreAsync(prepared, cancellationToken),
+    {
+        CharacterOverviewState originalOverview = State;
+        return WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationLifestyleCoreAsync(prepared, originalOverview, cancellationToken),
             cancellationToken);
+    }
 
     private async Task<CreationLifestylePhoneConfirmResult> ConfirmCreationLifestyleCoreAsync(
         CharacterCreationLifestylePreparedPreview prepared,
+        CharacterOverviewState originalOverview,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prepared);
-        CharacterCreationLifestylesInteractionLoadResult before = LoadCreationLifestyles();
+        CharacterCreationLifestylesInteractionLoadResult before = await Task.Run(
+            () => _creationLifestylesPresenter.Load(originalOverview), cancellationToken);
         if (before.State is not { } state
+            || !CreationContactsOwnerIsCurrent(originalOverview)
+            || originalOverview.DisplayOwnerContext != prepared.DisplayOwnerContext
             || !CreationLifestylesPhoneAuthority.PreparedMatches(prepared, state, State))
         {
             return new CreationLifestylePhoneConfirmResult(
@@ -1382,12 +1389,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         Exception? ambiguousFailure = null;
         try
         {
-            result = _creationLifestylesPresenter.Confirm(State, confirmation);
+            result = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return _creationLifestylesPresenter.Confirm(originalOverview, confirmation);
+            });
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // The atomic Core commit may have completed before the caller observed a transport
-            // failure. Retain the same key and recover only the matching durable receipt.
+            // Core may have durably checkpointed before a transport/presentation failure became
+            // observable. Recover the retained key under the ORIGINAL owner, never a fresh account.
             ambiguousFailure = exception;
         }
 
@@ -1401,10 +1412,17 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         } && CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, receipt!);
         if (!directlyValid)
         {
-            await _presenter.LoadAsync(prepared.Binding.WorkspaceId, cancellationToken);
-            await SyncShellAsync(cancellationToken);
-            CharacterCreationLifestylesInteractionReceiptLookupResult lookup =
-                _creationLifestylesPresenter.LookupReceipt(State, prepared.IdempotencyKey);
+            CharacterCreationLifestylesInteractionReceiptLookupResult lookup;
+            try
+            {
+                lookup = await Task.Run(() => _creationLifestylesPresenter.LookupReceipt(
+                    originalOverview, prepared.IdempotencyKey));
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                lookup = new(CharacterCreationLifestyleOutcomes.Unavailable, null, null,
+                    [CharacterCreationLifestylesBlockers.AuthorityUnavailable]);
+            }
             if (string.Equals(
                     lookup.Outcome,
                     CharacterCreationLifestyleOutcomes.Available,
@@ -1417,6 +1435,13 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             }
             else
             {
+                if (lookup.Receipt is { } committed
+                    && CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, committed))
+                {
+                    receipt = committed;
+                    recoveredByReceiptLookup = true;
+                    return CommittedLifestylesRequireReload();
+                }
                 return new CreationLifestylePhoneConfirmResult(
                     result?.Outcome ?? CharacterCreationLifestyleOutcomes.Unavailable,
                     prepared,
@@ -1434,9 +1459,29 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             }
         }
 
-        await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        CharacterCreationLifestylesInteractionLoadResult refreshed = LoadCreationLifestyles();
+        try
+        {
+            // Reuse the owner-bound purchase refresh: exactly one shell sync,
+            // without the default presenter's duplicate roster reopen.
+            if (!await RefreshCreationPurchaseAsync(originalOverview, receipt!.WorkspaceId,
+                    receipt.ContentRevision, receipt.SavedRevision, cancellationToken))
+                return CommittedLifestylesRequireReload();
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A committed receipt remains true even if refresh or cancellation fails afterwards.
+            return CommittedLifestylesRequireReload();
+        }
+        CharacterOverviewState refreshDisplay = State;
+        CharacterCreationLifestylesInteractionLoadResult refreshed;
+        try
+        {
+            refreshed = await Task.Run(() => _creationLifestylesPresenter.Load(refreshDisplay));
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            return CommittedLifestylesRequireReload();
+        }
         if (refreshed.State is not { } refreshedState
             || !CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, receipt)
             || !CreationLifestylesPhoneAuthority.RefreshedStateMatches(
@@ -1460,10 +1505,20 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                     .ToArray());
         }
 
-        _ = await TryRefreshWorkspaceAuthorityAsync(
-            expectedWorkspaceId: receipt.WorkspaceId,
-            expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..],
-            cancellationToken);
+        try
+        {
+            _ = await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: receipt.WorkspaceId,
+                expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..],
+                cancellationToken,
+                expectedOwner: originalOverview.DisplayOwnerContext);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            return CommittedLifestylesRequireReload();
+        }
+        if (!CreationContactsOwnerIsCurrent(originalOverview))
+            return CommittedLifestylesRequireReload();
         _notice = recoveredByReceiptLookup
             ? "Creation Lifestyle saved; the exact receipt recovered an ambiguous confirmation."
             : "Creation Lifestyle saved and atomically checkpointed.";
@@ -1477,6 +1532,10 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             refreshedState,
             recoveredByReceiptLookup,
             []);
+
+        CreationLifestylePhoneConfirmResult CommittedLifestylesRequireReload()
+            => new(CharacterCreationLifestyleOutcomes.Conflict, prepared, receipt, null,
+                recoveredByReceiptLookup, [CharacterCreationLifestylesBlockers.StaleWorkspaceRevision]);
     }
 
     public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>

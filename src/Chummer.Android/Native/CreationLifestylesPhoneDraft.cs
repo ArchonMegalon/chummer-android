@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -12,6 +13,7 @@ namespace Chummer.Android.Native;
 internal sealed class CreationLifestylesPhoneDraft
 {
     private CharacterCreationLifestyleBinding? _binding;
+    private OwnerContextStamp? _owner;
     private string? _snapshotDigest;
     private string? _originalDigest;
     private CharacterCreationLifestyleConfiguration? _original;
@@ -31,6 +33,7 @@ internal sealed class CreationLifestylesPhoneDraft
             return false;
 
         _binding = state.Binding;
+        _owner = state.DisplayOwnerContext;
         _snapshotDigest = state.SnapshotDigest;
         _originalDigest = null;
         _mutationKind = CharacterCreationLifestyleMutationKinds.Create;
@@ -69,6 +72,7 @@ internal sealed class CreationLifestylesPhoneDraft
         if (!CreationLifestylesPhoneAuthority.IsExactProjection(projection))
             return false;
         _binding = state.Binding;
+        _owner = state.DisplayOwnerContext;
         _snapshotDigest = state.SnapshotDigest;
         _originalDigest = projection.LifestyleDigest;
         _mutationKind = CharacterCreationLifestyleMutationKinds.Edit;
@@ -82,6 +86,7 @@ internal sealed class CreationLifestylesPhoneDraft
         Guid lifestyleId,
         string mutationKind)
         => _binding is not null
+           && _owner == state.DisplayOwnerContext
            && _current is { } current
            && current.LifestyleId == lifestyleId
            && string.Equals(_mutationKind, mutationKind, StringComparison.Ordinal)
@@ -263,6 +268,7 @@ internal sealed class CreationLifestylesPhoneDraft
         => TryCurrent(state, out CharacterCreationLifestyleConfiguration current)
            && HasChanges(state)
             ? new CharacterCreationLifestyleMutationInput(_mutationKind, current.LifestyleId, current)
+                { DisplayOwnerContext = state.DisplayOwnerContext }
             : null;
 
     public CharacterCreationLifestyleMutationInput? ToDeleteInput(
@@ -273,6 +279,7 @@ internal sealed class CreationLifestylesPhoneDraft
                 CharacterCreationLifestyleMutationKinds.Delete,
                 current.LifestyleId,
                 Configuration: null)
+                { DisplayOwnerContext = state.DisplayOwnerContext }
             : null;
 
     private bool TrySetText(
@@ -357,6 +364,7 @@ internal static class CreationLifestylesPhoneAuthority
         CharacterCreationLifestylesInteractionState state,
         CharacterOverviewState overview)
         => overview.Profile?.Created == false
+           && state.DisplayOwnerContext == overview.DisplayOwnerContext
            && overview.WorkspaceId is { } workspaceId
            && overview.CreationWizard is { CharacterCreated: false } wizard
            && state.Binding.WorkspaceId == workspaceId
@@ -445,6 +453,7 @@ internal static class CreationLifestylesPhoneAuthority
         CharacterCreationLifestylesInteractionState state,
         CharacterOverviewState overview)
         => IsReady(state, overview)
+           && prepared.DisplayOwnerContext == state.DisplayOwnerContext
            && BindingEquals(prepared.Binding, state.Binding)
            && string.Equals(prepared.LifestylesSnapshotDigest, state.SnapshotDigest, StringComparison.Ordinal)
            && prepared.LifestylesBefore.Count == state.Lifestyles.Count

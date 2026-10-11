@@ -9,6 +9,7 @@ internal sealed class CreationStartingCashPage : NativePageBase
     private readonly CharacterCreationFinalizationState _authority;
     private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
     private string _roll = string.Empty;
+    private string? _sourceDigest;
     private IReadOnlyList<string> _blockers = [];
     private long _render, _inputVersion;
 
@@ -16,6 +17,7 @@ internal sealed class CreationStartingCashPage : NativePageBase
         : base(coordinator)
     {
         _authority = authority;
+        _sourceDigest = authority.StartingCashSource?.AuthorityDigest;
         Title = CreationAllocationStrings.Get("Finalization.StartingCashTitle", "Starting cash");
         AutomationId = "creation-starting-cash-page";
         Content = new ScrollView { Content = _body };
@@ -34,19 +36,47 @@ internal sealed class CreationStartingCashPage : NativePageBase
         _body.Clear();
         _body.IsEnabled = true;
         _body.Add(NativeTheme.Title(Title));
+        var sources = _authority.StartingCashSources?.ToArray()
+            ?? (_authority.StartingCashSource is { } fallback ? [fallback] : []);
         if (!Coordinator.IsCreationFinalizationStateCurrent(_authority)
-            || _authority.StartingCashSource is not { } source)
+            || sources.FirstOrDefault(option => option.AuthorityDigest == _sourceDigest) is not { } source)
         {
             _body.Add(NativeTheme.Body(CreationKarmaCopy.Stale, NativeTheme.Danger));
             return;
         }
         _body.Add(NativeTheme.Body(CreationAllocationStrings.Get("Finalization.StartingCashHelp",
             "Enter the starting-cash dice total for the displayed lifestyle. Core applies the carryover limits before adding this cash. Nothing is saved until you confirm the next review."), NativeTheme.Muted));
+        if (sources.Length > 1)
+        {
+            var picker = new Picker
+            {
+                Title = CreationAllocationStrings.Get("Finalization.StartingLifestyle", "Lifestyle for starting cash"),
+                TextColor = NativeTheme.Text,
+                BackgroundColor = NativeTheme.Surface,
+                AutomationId = "creation-starting-cash-lifestyle",
+                ItemsSource = sources.Select(option => CreationKarmaCopy.StartingCash(
+                    option.Name, option.Dice, option.Multiplier)).ToArray(),
+                SelectedIndex = Array.FindIndex(sources, option => option.AuthorityDigest == _sourceDigest)
+            };
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (!Current() || picker.SelectedIndex < 0 || picker.SelectedIndex >= sources.Length) return;
+                string selected = sources[picker.SelectedIndex].AuthorityDigest;
+                if (selected == _sourceDigest) return;
+                _sourceDigest = selected;
+                _roll = string.Empty;
+                _blockers = [];
+                _inputVersion++;
+                Refresh();
+            };
+            _body.Add(picker);
+        }
         var terms = NativeTheme.Body(CreationKarmaCopy.StartingCash(source.Name, source.Dice, source.Multiplier));
         terms.AutomationId = "creation-starting-cash-source";
         _body.Add(terms);
         _body.Add(NativeTheme.Body(source.SourceBook + " · " + source.Page, NativeTheme.Muted));
         _body.Add(NativeTheme.Body(CreationKarmaCopy.DiceTotal));
+        _body.Add(NativeTheme.Body(CreationKarmaCopy.DiceTotalHelp, NativeTheme.Muted));
         var input = new Entry
         {
             Text = _roll,

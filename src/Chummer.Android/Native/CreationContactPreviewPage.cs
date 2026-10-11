@@ -18,6 +18,12 @@ public sealed class CreationContactPreviewPage : NativePageBase
     };
     private CreationContactPhoneConfirmResult? _confirmation;
     private bool _explicitlyConfirmed;
+    private readonly CharacterOverviewState _original;
+    private bool _submitted;
+    private bool _saving;
+    private bool _nextUnavailable;
+    private Button? _confirm;
+    private CancellationTokenSource? _forwardLifetime;
     private CharacterCreationContactsInteractionLoadResult? _loaded;
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
 
@@ -26,9 +32,16 @@ public sealed class CreationContactPreviewPage : NativePageBase
         CharacterCreationContactPreparedPreview prepared) : base(coordinator)
     {
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
+        _original = coordinator.State;
         Title = Copy("Review", "Review changes");
         AutomationId = "creation-contact-preview-page";
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
     }
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
@@ -43,6 +56,7 @@ public sealed class CreationContactPreviewPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_saving) return;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(Copy("Review", "Review changes")));
@@ -252,6 +266,13 @@ public sealed class CreationContactPreviewPage : NativePageBase
             return;
         }
 
+        if (_submitted)
+        {
+            _body.Add(NativeTheme.Body(Copy("OutcomeUnknown",
+                "The result could not be verified. Reopen this runner before making another change."), NativeTheme.Muted));
+            return;
+        }
+
         CheckBox explicitConfirm = new()
         {
             AutomationId = "creation-contact-explicit-confirm",
@@ -283,9 +304,74 @@ public sealed class CreationContactPreviewPage : NativePageBase
         };
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            _confirmation = await Coordinator.ConfirmCreationContactAsync(_prepared);
+            long appearance = CaptureAppearanceGeneration();
+            if (_submitted || !_explicitlyConfirmed || !CanConfirm()
+                || !IsCurrentAppearanceGeneration(appearance)
+                || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            _submitted = true;
+            _saving = true;
+            confirm.IsEnabled = false;
+            confirm.Text = Copy("Saving", "Saving contact…");
+            try
+            {
+                _confirmation = await Coordinator.ConfirmCreationContactAsync(_prepared);
+                if (_confirmation.RefreshedState is not null) await ContinueToContactsAsync(appearance);
+            }
+            finally { _saving = false; }
         });
+        _confirm = confirm;
         _body.Add(confirm);
+    }
+
+    private bool CanContinueSaved() => _confirmation?.Receipt is { } receipt
+        && CreationContactsPhoneAuthority.ReceiptMatches(_prepared, receipt)
+        && _original.DisplayOwnerContext == _prepared.DisplayOwnerContext
+        && Coordinator.CanDisplayCreationPurchase(_original) && Coordinator.State.Profile?.Created == false;
+
+    private async Task ContinueToContactsAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextUnavailable = false;
+        if (_confirm is { } button)
+        {
+            button.IsEnabled = false;
+            button.Text = Copy("OpeningList", "Opening contacts…");
+        }
+        try
+        {
+            var page = await Coordinator.PrepareCreationAfterContactPageAsync(_original, _prepared,
+                _confirmation!.Receipt!, _confirmation.RefreshedState, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (page is null || !page.IsPreparedDisplayCurrent) { _nextUnavailable = true; return; }
+            await navigation.PushAsync(page, animated: false);
+            if (!navigation.NavigationStack.SequenceEqual(stack.Append(page))) return;
+            // Retire only this contiguous Contacts route. Keep the root and any
+            // unrelated page, and never send Back into a consumed mutation preview.
+            for (int i = stack.Length - 2; i > 0; i--)
+            {
+                if (stack[i] is not (CreationContactEditPage or CreationContactsPage)) break;
+                navigation.RemovePage(stack[i]);
+            }
+            // Removing this page detaches its NavigationProxy. Remove ancestors
+            // first, while that proxy still belongs to the live navigation host.
+            navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            if (!_saving) Refresh();
+        }
     }
 
     private bool CanConfirm()
@@ -379,19 +465,15 @@ public sealed class CreationContactPreviewPage : NativePageBase
             receipt.CommandDigest,
             "creation-contact-receipt-command-digest"));
 
-        Button back = NativeTheme.SecondaryButton(Copy("BackToCreation", "Back to Creation"));
-        back.AutomationId = "creation-contact-back-to-build";
-        back.Clicked += async (_, _) => await BackToBuildAsync();
-        _body.Add(back);
-    }
-
-    private async Task BackToBuildAsync()
-    {
-        // Shell omits the current tab's ShellContent root (BuildPage) from this
-        // child navigation stack. Pop every Contacts/Edit/Preview route to reveal
-        // that root; looking for BuildPage in NavigationStack leaves one route
-        // behind and a root-type guard incorrectly terminates the process.
-        await Navigation.PopToRootAsync(animated: false);
+        if (_nextUnavailable) _body.Add(NativeTheme.Body(Copy("ListUnavailable",
+            "Your contact is saved. Try Continue again to reopen the list; this will not save twice."), NativeTheme.Muted));
+        long appearance = CaptureAppearanceGeneration();
+        Button next = NativeTheme.PrimaryButton(Copy("ContinueContacts", "Continue to contacts"));
+        next.AutomationId = "creation-contact-continue-contacts";
+        next.IsEnabled = CanContinueSaved();
+        next.Clicked += async (_, _) => await RunAsync(() => ContinueToContactsAsync(appearance));
+        _confirm = next;
+        _body.Add(next);
     }
 
     private static Border DigestLabel(string title, string value, string automationId)

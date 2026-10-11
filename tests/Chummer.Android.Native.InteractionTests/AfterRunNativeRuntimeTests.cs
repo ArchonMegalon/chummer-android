@@ -580,7 +580,10 @@ internal static partial class AfterRunAuthorityHarness
                 IOwnerBoundCharacterCreationLifeModuleFinalizationService>? foundationReaderDecorator = null,
             Func<IChummerClient, ICareerQualityAtomicWorkspace>? careerQualityWorkspaceFactory = null,
             Func<ICharacterCreationResourcesInteractionPresenter, ICharacterCreationResourcesInteractionPresenter>? resourcesDecorator = null,
-            Func<ICharacterCreationGearInteractionPresenter, ICharacterCreationGearInteractionPresenter>? gearDecorator = null)
+            Func<ICharacterCreationGearInteractionPresenter, ICharacterCreationGearInteractionPresenter>? gearDecorator = null,
+            bool creationLifestyles = false,
+            Func<IOwnerBoundCharacterCreationLifestylesService,
+                IOwnerBoundCharacterCreationLifestylesService>? lifestylesDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -691,7 +694,10 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetRequiredService<IOwnerBoundLifeModuleOriginService>(), originReadings,
                         originScenes, originTimeline, completionDrafts, _provider.GetRequiredService<ICharacterFileQueries>());
                 Coordinator = new RunnerSessionCoordinator(Presenter, Client, operations,
-                    null!, contactsPresenter!, null!, null!, Shell,
+                    null!, contactsPresenter!, creationLifestyles ? new CharacterCreationLifestylesInteractionPresenter(
+                        _provider.GetRequiredService<ICharacterCreationLifestylesService>(),
+                        lifestylesDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationLifestylesService>()) : null!, null!, Shell,
                     _provider.GetRequiredService<IShellSurfaceResolver>(),
                     _provider.GetRequiredService<ICommandAvailabilityEvaluator>(),
                     outputDocuments!, linkedCharacters!, outputSystem!, accountService ?? StrictPageProxy.Create<IAndroidAccountLinkService>(),
