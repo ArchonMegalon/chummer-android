@@ -122,6 +122,12 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationQualityDetailsAsync(args[1], args.Length == 3 ? args[2] : null);
             return;
         }
+        if (args.Length is 2 or 3 && args[0] == "--creation-racial-quality-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationQualityDetailsAsync(args[1], args.Length == 3 ? args[2] : null,
+                racialVision: true);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--minimal-ui-content-root")
         {
             await AfterRunAuthorityHarness.RunMinimalUiAsync(args[1]);
