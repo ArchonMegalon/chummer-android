@@ -3598,7 +3598,8 @@ internal static partial class AfterRunAuthorityHarness
         Console.WriteLine($"PASS single-pass quality binding ({singleValidationReads} catalog reads), changed budget, mutable catalog and stale revision rejected");
     }
 
-    internal static async Task RunCreationQualityDetailsAsync(string contentRoot, string? smokeWorkspacePath = null)
+    internal static async Task RunCreationQualityDetailsAsync(string contentRoot, string? smokeWorkspacePath = null,
+        bool racialVision = false)
     {
         VerifyQualitySummaryContent(contentRoot);
         using var ui = new IssuedPageUiContext();
@@ -3607,7 +3608,8 @@ internal static partial class AfterRunAuthorityHarness
             var owners = new ControlledLinkedOwner();
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                 creationFinalization: true, productionCreationOverview: true);
-            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true,
+                metatypeName: racialVision ? "Elf" : "Human");
             if (smokeWorkspacePath is not null)
             {
                 Require(Path.IsPathFullyQualified(smokeWorkspacePath), "Use an explicit private smoke fixture path.");
@@ -3673,11 +3675,27 @@ internal static partial class AfterRunAuthorityHarness
             var draft = new CreationQualitiesPhoneDraft();
             draft.Bind(state, original);
             var option = draft.AvailableOptions(state, original, editor, default)
-                .Where(item => !item.IsMetagenic)
+                .Where(item => !item.IsMetagenic && (!racialVision || item.Name == "Ambidextrous"))
                 .OrderByDescending(item => !string.IsNullOrWhiteSpace(item.FollowUpChoiceLabel)).First();
             var configure = new CreationQualityConfigurePage(coordinator, state, editor, option, draft, original);
             var previewResult = coordinator.PreviewCreationQualities(state.Binding, [option.OptionId], original);
-            Require(draft.TryAdopt(state, original, previewResult, [option.OptionId])
+            if (racialVision)
+            {
+                Require(state.Authority.GrantedQualities.Any(item => item.Name == "Low-Light Vision")
+                    && option.KarmaCost == 4, "SETUP: real racial vision and exact paid Ambidextrous are required.");
+                MinimalRender(configure);
+                var add = MinimalVisible(configure).OfType<Button>().Single(item =>
+                    item.AutomationId == "creation-quality-configure-toggle");
+                Require(add.IsEnabled, "Racial vision incorrectly disables the native Add to draft action.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)add).SendClicked()));
+                Require(draft.IsSelected(option.OptionId) && draft.Preview is { CanConfirm: true }
+                    && draft.Preview.KarmaRemaining == state.Preview.KarmaRemaining - 4,
+                    "The actual Add action must select Ambidextrous and charge exactly four Karma.");
+            }
+            else
+                Require(draft.TryAdopt(state, original, previewResult, [option.OptionId]),
+                    "SETUP: selected quality draft adoption failed.");
+            Require(draft.Preview?.PreviewDigest == previewResult.Value?.PreviewDigest
                 && previewResult.Value is { CanConfirm: true }, "SETUP: selected quality must have a real confirmable preview.");
             var preview = previewResult.Value!;
             var checkpoint = CharacterCreationQualitiesCheckpoint.CreateReviewed(preview, [option.OptionId], Guid.NewGuid());
@@ -3794,6 +3812,14 @@ internal static partial class AfterRunAuthorityHarness
                 var cold = coordinator.LoadCreationQualities().Value!;
                 Require(CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(applying, result.Receipt!, cold),
                     "Exact quality selection/receipt did not survive cold-store reopen.");
+                if (racialVision)
+                {
+                    var selection = saved.Document.AuxiliaryState.CharacterCreationQualitiesDraft!.Selections.Single();
+                    Require(selection.Name == "Ambidextrous" && selection.KarmaCost == 4
+                        && cold.Authority.GrantedQualities.Any(item => item.Name == "Low-Light Vision")
+                        && cold.Preview.KarmaRemaining == preview.KarmaRemaining,
+                        "Cold reread lost the paid quality, racial vision, or exact remaining Karma.");
+                }
                 var receipt = new CreationQualitiesReceiptPage(coordinator, applied, result.Receipt!, store);
                 foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
                 {
