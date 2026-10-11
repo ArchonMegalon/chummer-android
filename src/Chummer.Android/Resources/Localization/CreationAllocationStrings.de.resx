@@ -203,7 +203,18 @@
   <data name="SkillsReReview.Native" xml:space="preserve"><value>Muttersprache</value></data>
   <data name="SkillsReReview.Check" xml:space="preserve"><value>Gespeicherte Fertigkeiten mit aktuellen Regeln neu prüfen</value></data>
   <data name="SkillsReReview.Unavailable" xml:space="preserve"><value>Für diesen Runner ist kein unterstützter früherer Fertigkeitsentwurf verfügbar. Es wurde nichts geändert.</value></data>
-  <data name="Creation.BasicsSummary" xml:space="preserve"><value>Regeln und aktivierte Quellenbücher deines Runners ansehen. Diese Einstellungen lassen sich hier nicht ändern.</value></data>
+  <data name="Creation.BasicsSummary" xml:space="preserve"><value>Edition und Bauart deines Runners ansehen. Quellenbücher lassen sich hier nicht ändern.</value></data>
+  <data name="Basics.PageTitle" xml:space="preserve"><value>Regeln &amp; Quellen</value></data>
+  <data name="Basics.Heading" xml:space="preserve"><value>Dein Runner</value></data>
+  <data name="Basics.Runner" xml:space="preserve"><value>Runner</value></data>
+  <data name="Basics.Edition" xml:space="preserve"><value>Edition</value></data>
+  <data name="Basics.Profile" xml:space="preserve"><value>Regelprofil</value></data>
+  <data name="Basics.BuildMethod" xml:space="preserve"><value>Bauart</value></data>
+  <data name="Basics.NotSet" xml:space="preserve"><value>Nicht festgelegt</value></data>
+  <data name="Basics.Unavailable" xml:space="preserve"><value>Die Erstellungseinstellungen konnten nicht geladen werden. Gehe zurück und öffne diesen Runner erneut.</value></data>
+  <data name="Basics.SourceBooks" xml:space="preserve"><value>Quellenbücher</value></data>
+  <data name="Basics.SourceBooksReadOnly" xml:space="preserve"><value>Die Quellenbücher richten sich nach dem gespeicherten Profil dieses Runners. Hier kannst du sie noch nicht ändern.</value></data>
+  <data name="Basics.UnknownMethod" xml:space="preserve"><value>Nicht verfügbar</value></data>
   <data name="Karma.Title" xml:space="preserve"><value>Karma-Erstellung</value></data>
   <data name="Karma.Metatype" xml:space="preserve"><value>Metatyp</value></data>
   <data name="Karma.Talent" xml:space="preserve"><value>Talent</value></data>

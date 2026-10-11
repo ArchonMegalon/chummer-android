@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-basics-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationBasicsAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-reload-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationReloadAsync(args[1]);

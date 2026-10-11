@@ -1,4 +1,3 @@
-using System.Globalization;
 using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
@@ -19,7 +18,7 @@ public sealed class CreationBasicsPage : NativePageBase
 
     public CreationBasicsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Creation setup";
+        Title = CreationAllocationStrings.Get("Basics.PageTitle", "Rules & sources");
         AutomationId = "creation-basics-page";
         Content = new ScrollView { Content = _body };
     }
@@ -27,8 +26,7 @@ public sealed class CreationBasicsPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Character creation"));
-        _body.Add(NativeTheme.Title("Profile & source books"));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get("Basics.Heading", "Your runner")));
 
         CharacterProfileSection? profile = Coordinator.State.Profile;
         CharacterRulesSection? rules = Coordinator.State.Rules;
@@ -42,7 +40,8 @@ public sealed class CreationBasicsPage : NativePageBase
             || snapshot.WorkspaceRevision != Coordinator.State.ContentRevision)
         {
             Label unavailable = NativeTheme.Body(
-                "The revision-bound creation setup is unavailable. No settings or sourcebook data was inferred.",
+                CreationAllocationStrings.Get("Basics.Unavailable",
+                    "Creation settings could not be loaded. Go back and reopen this runner."),
                 NativeTheme.Danger);
             unavailable.AutomationId = "creation-basics-authority-unavailable";
             _body.Add(NativeTheme.Card(unavailable));
@@ -50,25 +49,30 @@ public sealed class CreationBasicsPage : NativePageBase
         }
 
         VerticalStackLayout binding = new() { Spacing = 6 };
-        binding.Add(NativeTheme.Eyebrow("Bound bootstrap"));
-        binding.Add(NativeTheme.Metric("Runner", FirstNonBlank(profile.Alias, profile.Name, "Not set")));
-        binding.Add(NativeTheme.Metric("Edition", rules.GameEdition));
-        binding.Add(NativeTheme.Metric("Settings profile", rules.Settings));
-        binding.Add(NativeTheme.Metric("Build method", snapshot.BuildMethod));
-        binding.Add(NativeTheme.Metric(
-            "Workspace revision",
-            snapshot.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
-        binding.Add(NativeTheme.Metric("Source authority", ShortDigest(snapshot.SourceDigest)));
+        // Profile IDs, revisions and digests stay in the original bound state;
+        // they are not useful display names on the player's setup screen.
+        binding.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Basics.Runner", "Runner"),
+            FirstNonBlank(profile.Alias, profile.Name, CreationAllocationStrings.Get("Basics.NotSet", "Not set"))));
+        binding.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Basics.Edition", "Edition"), rules.GameEdition));
+        if (!string.IsNullOrWhiteSpace(rules.Settings) && !Guid.TryParse(rules.Settings, out _))
+            binding.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Basics.Profile", "Rules profile"), rules.Settings));
+        binding.Add(NativeTheme.Metric(CreationAllocationStrings.Get("Basics.BuildMethod", "Build method"),
+            snapshot.BuildMethod is CharacterCreationBuildMethods.Priority or CharacterCreationBuildMethods.SumToTen
+                or CharacterCreationBuildMethods.Karma or CharacterCreationBuildMethods.LifeModules
+                ? BuildPageUiProjection.MethodLabel(snapshot.BuildMethod)
+                : CreationAllocationStrings.Get("Basics.UnknownMethod", "Unavailable")));
         Border authority = NativeTheme.Card(binding);
         authority.AutomationId = "creation-basics-authority";
         _body.Add(authority);
 
         VerticalStackLayout books = new() { Spacing = 6 };
-        books.Add(NativeTheme.Eyebrow("Source books"));
+        books.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Basics.SourceBooks", "Source books")));
+        // There is no typed creation settings-profile/sourcebook selection contract.
+        // Do not infer an enabled-book list or expose an ineffective editor.
         Label blocker = NativeTheme.Body(
-            "This dependency graph has no typed creation settings-profile/sourcebook selection contract. "
-            + "The selected profile remains frozen; Chummer will not edit settings.xml or guess enabled books.",
-            NativeTheme.Danger);
+            CreationAllocationStrings.Get("Basics.SourceBooksReadOnly",
+                "Source books follow this runner's saved profile. You cannot change them on this screen yet."),
+            NativeTheme.Muted);
         blocker.AutomationId = "creation-basics-sourcebooks-contract-unavailable";
         books.Add(blocker);
         _body.Add(NativeTheme.Card(books));
@@ -77,9 +81,4 @@ public sealed class CreationBasicsPage : NativePageBase
     private static string FirstNonBlank(params string?[] values)
         => values.FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value))?.Trim()
            ?? string.Empty;
-
-    private static string ShortDigest(string value)
-        => string.IsNullOrWhiteSpace(value)
-            ? "bootstrap pending"
-            : value[..Math.Min(19, value.Length)];
 }
