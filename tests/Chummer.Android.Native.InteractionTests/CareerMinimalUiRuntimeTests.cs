@@ -2,12 +2,106 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Chummer.Android.Native;
+using Chummer.Contracts.Characters;
+using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation.Overview;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunCareerEntryFailureAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var priorApp = Application.Current;
+            var app = new ReviewRouteApplication();
+            Application.Current = app;
+            var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
+            using var account = new ActualAccountFixture();
+            await account.Account.InitializeAsync();
+            ObservedCareerQualityWorkspace? quality = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot,
+                linkedOwners: account.Owner, accountService: account.Account,
+                careerQualityWorkspaceFactory: client => quality = new(
+                    new AndroidCareerQualityAtomicWorkspace(client)));
+            BuildPage? page = null;
+            try
+            {
+                await runtime.Coordinator.InitializeAsync();
+                await runtime.LoadRunnerAsync();
+                var before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                page = new BuildPage(runtime.Coordinator);
+                var shell = new Shell();
+                shell.Items.Add(new ShellContent { Content = page });
+                var scroll = (ScrollView)page.Content!;
+                scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+                window.Page = shell;
+                await ui.DrainDispatchedAsyncVoidAsync();
+                using var alerts = new IssuedPageAlerts(page, window);
+                IssuedPageLifecycle(page, "OnDisappearing");
+                await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(alerts.Titles.Count == 0, "SETUP: Career appearance failed before the tested click.");
+                Require(ReferenceEquals(Shell.Current?.CurrentPage, page), "SETUP: Career page is not current.");
+
+                // Use the registered Android adapter and exact local client, not
+                // a fabricated null snapshot. This is the Play-observed denial.
+                for (int click = 1; click <= 2; click++)
+                {
+                    var button = MinimalVisible(page).OfType<Button>().Single(x =>
+                        x.AutomationId == "build-career-quality");
+                    await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(quality!.Reads == click && quality.Writes == 0,
+                        "Failed Career entry replayed a read or attempted a mutation.");
+                    Require(alerts.Titles.Count == click && alerts.Messages.Count == click
+                        && alerts.Messages[^1] == "Exact SR5 quality authority is unavailable for this dossier.",
+                        "Unavailable quality authority must remain visible without escaping the button handler.");
+                    Require(ReferenceEquals(Shell.Current?.CurrentPage, page)
+                        && page.Navigation.NavigationStack.Count == 1,
+                        "Unavailable authority opened an editor or left the Career page.");
+                    RequireSameRewardDocument(before,
+                        new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                }
+                ui.AssertHealthy();
+                Console.WriteLine("PASS Career entry: actual quality button, local capability denial contained, explicit retry available, no automatic replay/mutation, cold saved runner unchanged");
+            }
+            finally
+            {
+                if (page is not null) IssuedPageLifecycle(page, "OnDisappearing");
+                quality?.Dispose();
+                app.CloseWindow(window);
+                Application.Current = priorApp!;
+            }
+        });
+    }
+
+    private sealed class ObservedCareerQualityWorkspace(AndroidCareerQualityAtomicWorkspace inner)
+        : ICareerQualityAtomicWorkspace, IDisposable
+    {
+        internal int Reads { get; private set; }
+        internal int Writes { get; private set; }
+        public Task<CareerQualityAuthoritySnapshot?> ReadAsync(CharacterWorkspaceId id, CancellationToken ct)
+        {
+            Reads++;
+            return inner.ReadAsync(id, ct);
+        }
+        public Task<CareerQualityAtomicCommitResult?> CommitAsync(CharacterCareerQualityPlan plan, CancellationToken ct)
+        {
+            Writes++;
+            throw new InvalidOperationException("Read-only entry must never commit a quality.");
+        }
+        public Task<CareerQualityAtomicCorrectionResult?> CorrectAsync(CharacterCareerQualityCorrectionPlan plan, CancellationToken ct)
+        {
+            Writes++;
+            throw new InvalidOperationException("Read-only entry must never correct a quality.");
+        }
+        public void Dispose() => inner.Dispose();
+    }
+
     internal static async Task RunCareerMinimalUiAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();
