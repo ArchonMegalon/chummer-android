@@ -6,7 +6,6 @@
   "containsDraftState": false,
   "draftAuthority": "typed-phone-pages-only",
   "stageIds": [
-    "basics",
     "method",
     "foundation",
     "attributes",

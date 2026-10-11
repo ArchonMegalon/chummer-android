@@ -433,7 +433,8 @@ internal static partial class AfterRunAuthorityHarness
                     snapshot with { BuildMethod = CharacterCreationBuildMethods.LifeModules },
                     snapshot with { BuildMethod = "unknown-method" }
                 })
-                    Require(other.Steps.All(stage => BuildPageUiProjection.ShowCreationStage(other, stage)),
+                    Require(other.Steps.Where(stage => stage.StepId != CharacterCreationWizardStepIds.Basics)
+                        .All(stage => BuildPageUiProjection.ShowCreationStage(other, stage)),
                         "Priority navigation filtering must not hide another ruleset/method's steps.");
                 foreach (var stage in snapshot.Steps.Where(stage => otherJourneySteps.Contains(stage.StepId, StringComparer.Ordinal)))
                 foreach (var requiredOrActive in new[]
@@ -470,7 +471,8 @@ internal static partial class AfterRunAuthorityHarness
                         .ToArray();
                     foreach (var stage in snapshot.Steps.Where(stage => stage.StepId != CharacterCreationWizardStepIds.Method))
                     {
-                        bool relevant = !otherJourneySteps.Contains(stage.StepId, StringComparer.Ordinal);
+                        bool relevant = stage.StepId != CharacterCreationWizardStepIds.Basics
+                            && !otherJourneySteps.Contains(stage.StepId, StringComparer.Ordinal);
                         Require(routes.ContainsKey(stage.StepId) == relevant
                             && stageButtons.Any(button => button.AutomationId == "creation-stage-" + stage.StepId) == relevant,
                             $"{buildMethod}: irrelevant cards must disappear; required/blocked {stage.StepId} must stay visible.");
@@ -479,6 +481,21 @@ internal static partial class AfterRunAuthorityHarness
                         .SingleOrDefault(button => button.AutomationId == "creation-next-method");
                     Require((methodButton is { IsEnabled: true }) == available && methodRoute.CanOpen == available,
                         "Continue must agree with the canonical method route and never borrow generic legality.");
+                    Require(!MinimalVisibleText(page).Contains("Generation steps", StringComparison.Ordinal)
+                        && !routes.ContainsKey(CharacterCreationWizardStepIds.Basics),
+                        "A read-only Basics summary was presented as a Creation decision.");
+                    if (available)
+                    {
+                        var later = snapshot with { ActiveStepId = CharacterCreationWizardStepIds.Attributes };
+                        var isolated = new BuildPage(runtime.Coordinator);
+                        var laterRoute = (CreationBudgetRoute)methodRender.Invoke(isolated, [later, null, typed])!;
+                        string expectedDetail = PhoneStrings.Get("CreationMethodDetail", "missing");
+                        if (!CurrentPhoneWizardScope.CoversCreationMethod(buildMethod))
+                            expectedDetail = CurrentPhoneWizardScope.MarkExperimental(expectedDetail);
+                        Require(laterRoute.Detail == expectedDetail
+                            && !laterRoute.Detail.Contains("Attributes", StringComparison.Ordinal),
+                            "The Priority destination is mislabeled as Attribute allocation.");
+                    }
                     Require(cards.SelectMany(grid => grid.Children.OfType<Button>()).Count(button =>
                         button.AutomationId?.StartsWith("creation-next-", StringComparison.Ordinal) == true) <= 1,
                         "Continue repeated the full stage index instead of offering one next step.");
@@ -1141,6 +1158,10 @@ internal static partial class AfterRunAuthorityHarness
                     Require(!pending.IsCompleted && !plus.IsEnabled && plus.Text == "…"
                         && rows.SequenceEqual(body.Children) && JsonSerializer.Serialize(Draft().Skills) == initial,
                         "Pending Skills calculation replaced controls, hid feedback or optimistically spent points.");
+                    Require(((VerticalStackLayout)Card().Content!).Children.OfType<Label>().Any(label =>
+                        label.IsVisible && label.AutomationId?.EndsWith("-feedback", StringComparison.Ordinal) == true
+                        && label.Text == CreationAllocationStrings.Get("Skills.CheckingRating", "missing")),
+                        "An in-flight rating check has no adjacent progress feedback.");
                     ((IButtonController)plus).SendClicked();
                     MinimalRender(page);
                     var heartbeat = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1171,14 +1192,20 @@ internal static partial class AfterRunAuthorityHarness
                         "Successful Skills preview did not retain the same controls with a fresh Core result.");
                 else
                 {
-                    Require(JsonSerializer.Serialize(Draft().Skills) == initial && !plus.IsEnabled,
+                    Require(JsonSerializer.Serialize(Draft().Skills) == initial
+                        && (outcome is "error" or "cancel" || !plus.IsEnabled),
                         "A failed, departed or owner-stale Skills preview changed the draft: " + outcome);
                     Require(!MinimalVisibleText(page).Contains("private-skills-error", StringComparison.Ordinal),
                         "Skills error exposed raw exception text.");
                     if (outcome is "error" or "cancel")
                     {
                         var retry = Plus();
-                        Require(retry.IsEnabled && !ReferenceEquals(retry, plus), "Skills error stranded the controls.");
+                        Require(retry.IsEnabled && ReferenceEquals(retry, plus)
+                            && rows.SequenceEqual(body.Children), "Skills error stranded or replaced the controls.");
+                        Require(((VerticalStackLayout)Card().Content!).Children.OfType<Label>().Any(label =>
+                            label.IsVisible && label.AutomationId?.EndsWith("-feedback", StringComparison.Ordinal) == true
+                            && label.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.AuthorityUnavailable)),
+                            "A failed skill preview has no explanation beside its controls.");
                         await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retry).SendClicked()));
                         Require(Draft().Skills.Single(x => x.Kind == source.Kind && x.SourceSkillId == source.SourceSkillId).Rating == 2,
                             "A fresh guarded Skills retry failed.");
@@ -1203,6 +1230,77 @@ internal static partial class AfterRunAuthorityHarness
         { Interlocked.Increment(ref PreviewCalls); BeforePreview?.Invoke(); return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request)
         { Interlocked.Increment(ref ConfirmCalls); return inner.Confirm(owner, request); }
+    }
+
+    internal static async Task RunSkillGroupInlineFeedbackAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var culture = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (string locale in new[] { "en", "de", "es" })
+                {
+                    System.Globalization.CultureInfo.CurrentUICulture = new(locale);
+                    var owners = new ControlledLinkedOwner();
+                    await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                        creationFinalization: true, creationAttributes: true, creationSkills: true,
+                        productionCreationOverview: true);
+                    var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeQualities: true);
+                    await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                    var state = runtime.Coordinator.LoadCreationSkills().Value!;
+                    Require(state.SkillGroupPointBudget.Remaining == 2, "SETUP: Priority C must grant two group points.");
+                    var group = CreationSkillsPhoneAuthority.AvailableGroups(state).First();
+                    string key = "group-" + new string(group.GroupId.ToLowerInvariant()
+                        .Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+                    var page = new CreationSkillsPage(runtime.Coordinator, state);
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                    var plus = MinimalVisible(page).OfType<Button>().Single(x =>
+                        x.AutomationId == $"creation-skills-{key}-increase");
+                    var minus = MinimalVisible(page).OfType<Button>().Single(x =>
+                        x.AutomationId == $"creation-skills-{key}-decrease");
+                    var card = (VerticalStackLayout)plus.Parent.Parent;
+                    var feedback = card.Children.OfType<Label>().Single(x =>
+                        x.AutomationId == $"creation-skills-{key}-feedback");
+                    var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+                    var rows = body.Children.ToArray();
+                    CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
+                        .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
+                    async Task Click(Button button) => await JoinIssuedPageAsync(ui.BeginAsyncVoid(() =>
+                        ((IButtonController)button).SendClicked()));
+                    Require(!feedback.IsVisible, "Untouched group has a spurious error.");
+                    await Click(plus);
+                    Require(Draft().Groups.Single(x => x.GroupId == group.GroupId).Rating == 1
+                        && !feedback.IsVisible, "Legal group increase did not update its rating.");
+                    await Click(plus);
+                    string accepted = JsonSerializer.Serialize(Draft().Groups);
+                    Require(Draft().Preview!.SkillGroupPointBudget.Remaining == 0,
+                        "The second group point did not consume Core's exact budget.");
+                    await Click(plus);
+                    Require(rows.SequenceEqual(body.Children) && feedback.IsVisible
+                        && feedback.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.GroupBudgetExceeded)
+                        && feedback.TextColor == NativeTheme.Danger
+                        && JsonSerializer.Serialize(Draft().Groups) == accepted && plus.IsEnabled,
+                        "Rejected group increase must explain Core's refusal beside the unchanged controls/draft.");
+                    Require(card.Children.IndexOf(feedback) == card.Children.IndexOf((View)plus.Parent) + 1,
+                        "The denial moved away from the tapped group controls.");
+                    await Click(minus);
+                    Require(Draft().Groups.Single(x => x.GroupId == group.GroupId).Rating == 1
+                        && !feedback.IsVisible && rows.SequenceEqual(body.Children),
+                        "A valid correction did not clear the row error/update its rating in place.");
+                    owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA);
+                    accepted = JsonSerializer.Serialize(Draft().Groups);
+                    await Click(plus);
+                    Require(JsonSerializer.Serialize(Draft().Groups) == accepted,
+                        "A stale owner transition admitted a retained group action.");
+                    RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                }
+            }
+            finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
+        });
+        Console.WriteLine("PASS skill groups: EN/DE/ES real Core +/−, budget refusal beside control, stable rows, correction, owner ABA, no durable mutation");
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)

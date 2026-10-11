@@ -175,7 +175,7 @@ def main() -> int:
         open_build_route=False,
         reset_swipes=18,
     )
-    device.wait("creation-stage-basics", timeout=60, scroll=True, max_scrolls=18)
+    device.wait("creation-wizard-dashboard", timeout=60, scroll=True, max_scrolls=18)
     shared.reset_scroll_to_top(device, swipes=18)
     binding_before = node_text(device, "creation-wizard-binding", scroll=True)
     assert_creation_editor_gated(device)

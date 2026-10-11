@@ -23,7 +23,9 @@ public sealed class CreationSkillsPage : NativePageBase
     private CancellationTokenSource? _ratingPreparation;
     private readonly List<Action> _projectionUpdates = [];
     private readonly List<Func<bool>> _ratingShapeChecks = [];
-    private readonly List<Button> _ratingButtons = [];
+    private string? _ratingFeedbackKey;
+    private IReadOnlyList<string> _ratingFeedback = [];
+    private bool _ratingPending;
 
     public CreationSkillsPage(
         RunnerSessionCoordinator coordinator,
@@ -42,7 +44,6 @@ public sealed class CreationSkillsPage : NativePageBase
         _renderGeneration++;
         _projectionUpdates.Clear();
         _ratingShapeChecks.Clear();
-        _ratingButtons.Clear();
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Common.CharacterCreation",
@@ -254,18 +255,19 @@ public sealed class CreationSkillsPage : NativePageBase
             _projectionUpdates.Add(UpdateDetail);
             card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
+            string feedbackKey = $"{source.Kind}-{Token(source.SourceSkillId)}";
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Decrease",
                 "−"));
             minus.IsEnabled = selected is { IsNativeLanguage: false }
                 && selected.Rating > _draft.MinimumRating(source);
-            BindRatingAdjustment(minus, state, () => _draft.WithSkill(source, -1), () => _draft.Groups,
+            BindRatingAdjustment(minus, state, feedbackKey, () => _draft.WithSkill(source, -1), () => _draft.Groups,
                 () => CurrentSelection() is { IsNativeLanguage: false } value && value.Rating > _draft.MinimumRating(source));
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            BindRatingAdjustment(plus, state, () => _draft.WithSkill(source, 1), () => _draft.Groups, () => true);
+            BindRatingAdjustment(plus, state, feedbackKey, () => _draft.WithSkill(source, 1), () => _draft.Groups, () => true);
             controls.Add(minus); controls.Add(plus);
             if (source.CanBeNativeLanguage)
             {
@@ -280,6 +282,7 @@ public sealed class CreationSkillsPage : NativePageBase
                 controls.Add(native);
             }
             card.Add(controls);
+            AddRatingFeedback(card, feedbackKey);
             if (source.Specializations.Count > 0 && selected is { Rating: > 0, IsNativeLanguage: false })
                 AddSpecializationPicker(card, state, source, selected);
             Border border = NativeTheme.Card(card);
@@ -325,6 +328,8 @@ public sealed class CreationSkillsPage : NativePageBase
             return;
 
         _catalogSnapshotDigest = state.SnapshotDigest;
+        _ratingFeedbackKey = null;
+        _ratingFeedback = [];
         _activeCatalogOffset = 0;
         _knowledgeCatalogOffset = 0;
     }
@@ -342,6 +347,11 @@ public sealed class CreationSkillsPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "Skills.SkillGroups",
             "Skill groups")));
+        // Keep this ledger beside its controls, not several screens above them.
+        var budget = new VerticalStackLayout();
+        AddBudget(budget, () => _draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget,
+            "groups-inline", CharacterCreationBudgetIds.SkillGroups);
+        _body.Add(budget);
         foreach (CharacterCreationSkillGroupCatalogEntry source in CreationSkillsPhoneAuthority.AvailableGroups(state))
         {
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
@@ -358,21 +368,26 @@ public sealed class CreationSkillsPage : NativePageBase
                     source.MemberSkillSourceIds.Count);
             }
             UpdateDetail();
+            detail.FontAttributes = FontAttributes.Bold;
             _projectionUpdates.Add(UpdateDetail);
             card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
+            string feedbackKey = $"group-{Token(source.GroupId)}";
             HorizontalStackLayout controls = new() { Spacing = 8 };
             Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Decrease",
                 "−"));
             minus.IsEnabled = selected?.Rating > _draft.MinimumRating(source);
-            BindRatingAdjustment(minus, state, () => _draft.Skills, () => _draft.WithGroup(source, -1),
+            BindRatingAdjustment(minus, state, feedbackKey, () => _draft.Skills, () => _draft.WithGroup(source, -1),
                 () => _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating > _draft.MinimumRating(source));
             Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
                 "Common.Increase",
                 "+"));
-            BindRatingAdjustment(plus, state, () => _draft.Skills, () => _draft.WithGroup(source, 1), () => true);
+            BindRatingAdjustment(plus, state, feedbackKey, () => _draft.Skills, () => _draft.WithGroup(source, 1), () => true);
+            minus.AutomationId = $"creation-skills-{feedbackKey}-decrease";
+            plus.AutomationId = $"creation-skills-{feedbackKey}-increase";
             controls.Add(minus); controls.Add(plus); card.Add(controls);
+            AddRatingFeedback(card, feedbackKey);
             _body.Add(NativeTheme.Card(card));
         }
     }
@@ -443,17 +458,35 @@ public sealed class CreationSkillsPage : NativePageBase
         card.Add(choose);
     }
 
-    private void BindRatingAdjustment(Button button, CharacterCreationSkillsState state,
+    private void AddRatingFeedback(VerticalStackLayout card, string key)
+    {
+        Label feedback = NativeTheme.Body(string.Empty, NativeTheme.Danger);
+        feedback.AutomationId = $"creation-skills-{key}-feedback";
+        void Update()
+        {
+            bool selected = _ratingFeedbackKey == key;
+            feedback.Text = selected && _ratingPending
+                ? CreationAllocationStrings.Get("Skills.CheckingRating", "Checking…")
+                : selected ? string.Join("\n", _ratingFeedback.Select(CreationAllocationStrings.SkillBlocker)
+                    .Distinct(StringComparer.Ordinal)) : string.Empty;
+            feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
+            feedback.TextColor = _ratingPending ? NativeTheme.Muted : NativeTheme.Danger;
+        }
+        Update();
+        _projectionUpdates.Add(Update);
+        card.Add(feedback);
+    }
+
+    private void BindRatingAdjustment(Button button, CharacterCreationSkillsState state, string feedbackKey,
         Func<IReadOnlyList<CharacterCreationSkillAllocation>> skills,
         Func<IReadOnlyList<CharacterCreationSkillGroupAllocation>> groups, Func<bool> enabled)
     {
         long render = _renderGeneration;
         long appearance = CaptureAppearanceGeneration();
         string label = button.Text;
-        void Update() => button.IsEnabled = enabled();
+        void Update() => button.IsEnabled = !_ratingPending && enabled();
         Update();
         _projectionUpdates.Add(Update);
-        _ratingButtons.Add(button);
         button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(async () =>
         {
             bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
@@ -464,7 +497,10 @@ public sealed class CreationSkillsPage : NativePageBase
             var original = Coordinator.State;
             using var lifetime = new CancellationTokenSource();
             _ratingPreparation = lifetime;
-            foreach (var control in _ratingButtons) control.IsEnabled = false;
+            _ratingFeedbackKey = feedbackKey;
+            _ratingFeedback = [];
+            _ratingPending = true;
+            foreach (var update in _projectionUpdates) update();
             button.Text = "…";
             try
             {
@@ -473,25 +509,29 @@ public sealed class CreationSkillsPage : NativePageBase
                 lifetime.Token.ThrowIfCancellationRequested();
                 if (!Current()) return false;
                 bool adopted = _draft.TryAdopt(state, Coordinator.State, result, requestedSkills, requestedGroups);
-                bool sameBlockers = _blockers.SequenceEqual(result.Blockers);
-                _blockers = result.Blockers;
-                // Preserve controls only when Core accepted the proposal and
-                // no native-language, specialization or warning surface changes.
-                if (!adopted || !sameBlockers || !_ratingShapeChecks.All(check => check())) return true;
-                foreach (var update in _projectionUpdates) update();
-                return false;
+                _ratingFeedback = result.Blockers.Count > 0 ? result.Blockers
+                    : adopted ? [] : [CharacterCreationSkillsBlockers.AuthorityUnavailable];
+                _blockers = _ratingFeedback;
+                // Rebuild only for native-language/specialization shape changes. A refusal
+                // stays beside the tapped control, without rebuilding the long
+                // catalog or moving its feedback outside the current viewport.
+                return adopted && !_ratingShapeChecks.All(check => check());
             }
             catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { return false; }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                if (!IsCurrentAppearanceGeneration(appearance)) return false;
+                if (!Current()) return false;
                 _blockers = [CharacterCreationSkillsBlockers.AuthorityUnavailable];
-                return true;
+                _ratingFeedback = _blockers;
+                return false;
             }
             finally
             {
                 button.Text = label;
                 if (ReferenceEquals(_ratingPreparation, lifetime)) _ratingPreparation = null;
+                _ratingPending = false;
+                if (Current())
+                    foreach (var update in _projectionUpdates) update();
             }
         });
     }
@@ -598,6 +638,8 @@ public sealed class CreationSkillsPage : NativePageBase
         }
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
+        if (automationId is "creation-skills-review-blockers" or "creation-skills-review-top-blockers")
+            _projectionUpdates.Add(() => border.IsVisible = blockers.SequenceEqual(_blockers));
         _body.Add(border);
     }
 
