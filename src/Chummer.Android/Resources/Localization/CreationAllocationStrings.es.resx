@@ -948,6 +948,7 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Finalization.Reopened" xml:space="preserve"><value>Tu runner guardado se ha abierto de nuevo en modo Carrera.</value></data>
   <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Tus cambios están guardados. Abre de nuevo tu runner antes de continuar en modo Carrera.</value></data>
   <data name="Finalization.OpenCareer" xml:space="preserve"><value>Abrir runner en Carrera</value></data>
+  <data name="Finalization.ViewConfirmation" xml:space="preserve"><value>Ver confirmación guardada</value></data>
   <data name="Finalization.Method.Priority" xml:space="preserve"><value>Prioridad</value></data>
   <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Suma diez</value></data>
   <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>

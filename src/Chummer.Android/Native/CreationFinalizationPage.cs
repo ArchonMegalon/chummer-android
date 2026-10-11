@@ -167,6 +167,7 @@ public sealed class CreationFinalizationPage : NativePageBase
         Spacing = 14
     };
     private readonly string _idempotencyKey;
+    private CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>? _completion;
     private bool _confirming;
     private long _appearanceGeneration;
     private bool _visible;
@@ -207,6 +208,33 @@ public sealed class CreationFinalizationPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        if (_completion?.Value is { } saved)
+        {
+            // A durable completion survives navigation/reload failures. Never
+            // offer Confirm again, even if this page disappears and returns.
+            if (!Coordinator.CanDisplayCreationFinalizationReceipt(saved))
+            {
+                _body.Add(NativeTheme.Body(Copy("ReceiptAccount", "Return to the original account to view this confirmation."), NativeTheme.Danger));
+                return;
+            }
+            _body.Add(NativeTheme.Title(Copy("SavedTitle", "Creation saved")));
+            bool ready = _completion.Blockers.Count == 0 && Coordinator.IsCreationFinalizationReceiptCurrent(saved);
+            _body.Add(NativeTheme.Body(ready
+                ? Copy("Reopened", "Your saved runner has reopened in Career mode.")
+                : Copy("ReopenRequired", "Your changes are saved. Reopen your runner before continuing in Career mode.")));
+            Button continueSaved = NativeTheme.PrimaryButton(ready
+                ? Copy("OpenCareer", "Open Career runner") : Copy("ViewConfirmation", "View saved confirmation"));
+            continueSaved.AutomationId = "creation-finalization-continue-saved";
+            continueSaved.IsEnabled = !_confirming;
+            long appearance = _appearanceGeneration;
+            continueSaved.Clicked += async (_, _) =>
+            {
+                if (!IsCurrentPage(appearance) || !ReferenceEquals(continueSaved.Parent, _body)) return;
+                await RunAsync(() => OpenCompletionAsync(appearance, Navigation.NavigationStack.ToArray()));
+            };
+            _body.Add(continueSaved);
+            return;
+        }
         if (!Coordinator.IsCreationFinalizationReviewCurrent(_review))
         {
             _body.Add(NativeTheme.Body(Copy("StaleReview", "This review is no longer current. Reopen your runner and review again."), NativeTheme.Danger));
@@ -306,24 +334,33 @@ public sealed class CreationFinalizationPage : NativePageBase
             _confirming ? Copy("Saving", "Saving…") : Copy("Confirm", "Confirm and enter Career"));
         confirm.AutomationId = "creation-finalization-confirm";
         confirm.IsEnabled = !_confirming;
-        confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        long confirmAppearance = _appearanceGeneration;
+        confirm.Clicked += async (_, _) =>
+        {
+            if (!IsCurrentPage(confirmAppearance) || !ReferenceEquals(confirm.Parent, _body)) return;
+            await RunAsync(ConfirmAsync);
+        };
         _body.Add(confirm);
     }
 
     private async Task ConfirmAsync()
     {
-        if (_confirming || !_visible)
+        if (_confirming || _completion is not null || !IsCurrentPage(_appearanceGeneration))
             return;
         long originalAppearance = _appearanceGeneration;
+        Page[] originalStack = Navigation.NavigationStack.ToArray();
         _confirming = true;
         Refresh();
         try
         {
             CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> result =
                 await Coordinator.ConfirmCreationFinalizationAsync(_review, _idempotencyKey);
-            if (!_visible || _appearanceGeneration != originalAppearance)
-                return;
-            if (result.Value is not { } receipt
+            // Retain a known commit before inspecting the current appearance.
+            // Returning to this page must only continue/read, never re-submit.
+            if (result.Value is not null && result.Outcome is (CharacterCreationFinalizationOutcomes.Applied
+                or CharacterCreationFinalizationOutcomes.Replayed)) _completion = result;
+            if (!IsCurrentPage(originalAppearance) || !Navigation.NavigationStack.SequenceEqual(originalStack)) return;
+            if (result.Value is null
                 || result.Outcome is not (CharacterCreationFinalizationOutcomes.Applied
                     or CharacterCreationFinalizationOutcomes.Replayed))
             {
@@ -331,17 +368,44 @@ public sealed class CreationFinalizationPage : NativePageBase
                     result.Blockers.FirstOrDefault()
                     ?? "Core rejected finalization. Reload and review the current runner revision.");
             }
-            if (!Coordinator.CanDisplayCreationFinalizationReceipt(receipt))
-                return;
-            await Navigation.PushAsync(new CreationFinalizationReceiptPage(
-                Coordinator,
-                receipt,
-                result.Blockers));
+            await OpenCompletionAsync(originalAppearance, originalStack);
         }
         finally
         {
             _confirming = false;
+            // A user may return while the durable commit is finishing. Expose
+            // only the retained read-only continuation on that current page;
+            // do not auto-navigate from the retired appearance's completion.
+            if (_completion is not null && IsCurrentPage(_appearanceGeneration)) Refresh();
         }
+    }
+
+    private bool IsCurrentPage(long appearance) => _visible && _appearanceGeneration == appearance
+        && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this);
+
+    private async Task OpenCompletionAsync(long appearance, IReadOnlyList<Page> originalStack)
+    {
+        var navigation = Navigation;
+        bool Current() => IsCurrentPage(appearance) && navigation.NavigationStack.SequenceEqual(originalStack);
+        if (!Current() || _completion?.Value is not { } receipt
+            || !Coordinator.CanDisplayCreationFinalizationReceipt(receipt)) return;
+        if (_completion.Blockers.Count == 0 && Coordinator.IsCreationFinalizationReceiptCurrent(receipt))
+        {
+            try
+            {
+                // The coordinator has already restored the exact durable Career
+                // revision. Retire the wizard, including its consumed reviews.
+                await navigation.PopToRootAsync(animated: false);
+                return;
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // A navigation failure cannot turn a known commit into a retry.
+                // If this same screen still owns navigation, retain its receipt.
+            }
+        }
+        if (!Current() || !Coordinator.CanDisplayCreationFinalizationReceipt(receipt)) return;
+        await navigation.PushAsync(new CreationFinalizationReceiptPage(Coordinator, receipt, _completion.Blockers));
     }
 
     // Display only: the exact Core-supplied name is already bound into the plan.

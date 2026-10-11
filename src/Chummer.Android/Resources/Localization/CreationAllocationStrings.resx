@@ -948,6 +948,7 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Finalization.Reopened" xml:space="preserve"><value>Your saved runner has reopened in Career mode.</value></data>
   <data name="Finalization.ReopenRequired" xml:space="preserve"><value>Your changes are saved. Reopen your runner before continuing in Career mode.</value></data>
   <data name="Finalization.OpenCareer" xml:space="preserve"><value>Open Career runner</value></data>
+  <data name="Finalization.ViewConfirmation" xml:space="preserve"><value>View saved confirmation</value></data>
   <data name="Finalization.Method.Priority" xml:space="preserve"><value>Priority</value></data>
   <data name="Finalization.Method.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
   <data name="Finalization.Method.Karma" xml:space="preserve"><value>Karma</value></data>
