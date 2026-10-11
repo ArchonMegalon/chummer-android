@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 189 is the latest [observed Internal availability](../play/evidence/preview189-internal-observation.json),
+Preview 190 is the latest [observed Internal availability](../play/evidence/preview190-internal-observation.json),
+released on 11 October at 11:55 Europe/Vienna. Skill/group adjustments now show
+pending status and localized refusal next to the controls without rebuilding the
+whole page. Creation removes summary-only steps, Priority describes its actual
+destination, and successful assignment confirmation opens Attributes directly.
+Career-entry failures are contained with feedback; this does not admit a missing
+Career quality capability. PRs 686/687/688 retain their affected actual-Core/MAUI
+and native SDK-test evidence, including group-budget rejection and the physical
+Priority forward/Back/cold-reopen route. Those unchanged results were reused for
+the version-only release, not claimed as tests of a Play-installed 190 binary.
+Local locked ARM64 Internal build, original-key signing, independent keyless
+certificate/payload verification and one upload/readback passed. At 11:59 the
+physical phone still has Play 189 and its Internal listing offers Open, not
+Update. Physical Play 190 installation is therefore **not yet verified**.
+No startup-performance, complete Creation/Career or live-manuscript claim is made.
+The original FirstBook fence and retained local diagnostic-contract feed remain.
+Version 190 is consumed; documentation does not require another upload.
+
+Preview 189's [observed Internal availability](../play/evidence/preview189-internal-observation.json) was
 released on 11 October at 08:15 Europe/Vienna. Eligible runners with exact racial
 quality grants can now select Ambidextrous; unknown anatomy/variants/ware and
 altered source authority remain closed. Managed Core/MAUI checks and the German
