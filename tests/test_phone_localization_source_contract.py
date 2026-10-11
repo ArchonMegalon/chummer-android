@@ -150,7 +150,11 @@ class PhoneLocalizationSourceContractTests(unittest.TestCase):
     def test_skills_editor_and_review_localize_display_without_changing_typed_ids(self) -> None:
         source = (PROJECT / "Native" / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         for canonical in ("ActiveSkills", "SkillGroups", "KnowledgeSkills"):
-            self.assertEqual(2, source.count("CharacterCreationBudgetIds." + canonical))
+            # Skill groups also repeat their live shared budget beside the
+            # sliders; that row must retain the same canonical identity.
+            self.assertEqual(3 if canonical == "SkillGroups" else 2,
+                             source.count("CharacterCreationBudgetIds." + canonical))
+        self.assertIn('"groups-inline", CharacterCreationBudgetIds.SkillGroups)', source)
         self.assertEqual(2, source.count("CreationSkillsBudgetRow.Create("))
         self.assertEqual(1, source.count("BuildPageUiProjection.BudgetLabel(readBudget(), canonicalBudgetId)"))
         self.assertNotIn("budget.Label", source)

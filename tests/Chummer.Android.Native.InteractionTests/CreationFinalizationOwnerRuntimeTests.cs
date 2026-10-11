@@ -4176,8 +4176,11 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeQualities = false, string buildMethod = CharacterCreationBuildMethods.Priority,
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
-        bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human")
+        bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human",
+        bool omitSkillsBeforeGear = false)
     {
+        Require(!omitSkillsBeforeGear || stopBeforeGear,
+            "An out-of-order Gear fixture is not a finalization-ready character.");
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or Sum-to-Ten; repeated ranks for Human, distinct ranks for Elf/Ork;
         // actual services issue every draft and receipt.
@@ -4249,16 +4252,19 @@ internal static partial class AfterRunAuthorityHarness
             "Actual Attributes failed: " + JsonSerializer.Serialize(attributeReceipt));
         if (stopBeforeSkills)
             return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
-        var skills = services.GetRequiredService<ICharacterCreationSkillsService>();
-        var skillState = skills.Load(new(runtime.Id)).Value!;
-        var native = skillState.Authority.KnowledgeSkills.First(item => item.CanBeNativeLanguage);
-        CharacterCreationSkillAllocation[] allocations =
-            [new(native.SourceSkillId, CharacterCreationSkillKinds.Knowledge, null, null, true)];
-        var skillPreview = skills.Preview(new(skillState.Binding, allocations, [])).Value!;
-        var skillReceipt = skills.Confirm(new(skillPreview.Binding, allocations, [], skillPreview.PreviewDigest,
-            "native-finalization-skills", true));
-        Require(skillReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
-            "Actual Skills failed: " + JsonSerializer.Serialize(skillReceipt));
+        if (!omitSkillsBeforeGear)
+        {
+            var skills = services.GetRequiredService<ICharacterCreationSkillsService>();
+            var skillState = skills.Load(new(runtime.Id)).Value!;
+            var native = skillState.Authority.KnowledgeSkills.First(item => item.CanBeNativeLanguage);
+            CharacterCreationSkillAllocation[] allocations =
+                [new(native.SourceSkillId, CharacterCreationSkillKinds.Knowledge, null, null, true)];
+            var skillPreview = skills.Preview(new(skillState.Binding, allocations, [])).Value!;
+            var skillReceipt = skills.Confirm(new(skillPreview.Binding, allocations, [], skillPreview.PreviewDigest,
+                "native-finalization-skills", true));
+            Require(skillReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
+                "Actual Skills failed: " + JsonSerializer.Serialize(skillReceipt));
+        }
         if (stopBeforeQualities)
             return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var qualities = services.GetRequiredService<ICharacterCreationQualitiesService>();

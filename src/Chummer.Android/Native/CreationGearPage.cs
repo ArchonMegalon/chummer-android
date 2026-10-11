@@ -34,6 +34,13 @@ public sealed class CreationGearPage : NativePageBase
     private VerticalStackLayout _basketBody = new() { Spacing = 14 };
     private VerticalStackLayout _basketDetails = new() { Spacing = 6 };
     private readonly List<(CharacterCreationGearCatalogOption Option, Border Row)> _catalogRows = [];
+    private CancellationTokenSource? _continueLifetime;
+
+    protected override void OnDisappearing()
+    {
+        _continueLifetime?.Cancel();
+        base.OnDisappearing();
+    }
 
     internal bool IsPreparedDisplayCurrent => _initialDisplay is { } display
         && Coordinator.IsCreationCatalogDisplayCurrent(display);
@@ -98,6 +105,8 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_continueLifetime is not null && _loadedDisplay is { } continuing
+            && Coordinator.IsCreationCatalogDisplayCurrent(continuing)) return;
         _catalogRows.Clear();
         _basketBody = new() { Spacing = 14 };
         _basketDetails = new() { Spacing = 6 };
@@ -251,6 +260,15 @@ public sealed class CreationGearPage : NativePageBase
         }
 
         bool differs = CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft);
+        if (!differs && state.PendingDraft is not null)
+        {
+            var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts"));
+            next.AutomationId = "creation-gear-saved-continue";
+            long appearance = CaptureAppearanceGeneration();
+            next.Clicked += async (_, _) => await RunAsync(() => ContinueSavedAsync(state, next, appearance));
+            _basketBody.Add(next);
+            return;
+        }
         Button preview = NativeTheme.PrimaryButton(_copy["Gear.ReviewBasket"]);
         preview.AutomationId = "creation-gear-preview";
         preview.IsEnabled = differs;
@@ -425,7 +443,7 @@ public sealed class CreationGearPage : NativePageBase
         int quantity)
     {
         // Retained controls may belong to a departed appearance or account.
-        if (!_ready || !ReferenceEquals(state, _loaded?.State)
+        if (_continueLifetime is not null || !_ready || !ReferenceEquals(state, _loaded?.State)
             || _loadedDisplay is not { } original
             || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         if (!CreationGearPhoneBasket.TrySetQuantity(
@@ -468,6 +486,7 @@ public sealed class CreationGearPage : NativePageBase
 
     private async Task OpenPreviewAsync(CharacterCreationGearInteractionState state)
     {
+        if (_continueLifetime is not null) return;
         if (!CreationGearPhoneBasket.TryCreateSelections(
                 _basket,
                 state.Authority.MaximumBasketLines,
@@ -501,6 +520,54 @@ public sealed class CreationGearPage : NativePageBase
             return;
         }
         await Navigation.PushAsync(new CreationGearPreviewPage(Coordinator, _gear, _overview, prepared, _copy, original));
+    }
+
+    private async Task ContinueSavedAsync(CharacterCreationGearInteractionState state, Button next, long appearance)
+    {
+        if (_continueLifetime is not null || _loadedDisplay is not { } display) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => _ready && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(state, _loaded?.State) && state.PendingDraft is not null
+            && ReferenceEquals(next.Parent, _basketBody)
+            && !CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft)
+            && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _continueLifetime = lifetime;
+        next.IsEnabled = false;
+        next.Text = CreationFlowStrings.Get("Gear.OpeningNext", "Opening contacts…");
+        bool unavailable = false;
+        try
+        {
+            var continuation = await Coordinator.PrepareSavedCreationGearNextPageAsync(_gear, display, state, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (continuation is null || !Coordinator.IsCreationCatalogDisplayCurrent(continuation.Display))
+            { unavailable = true; return; }
+            await navigation.PushAsync(continuation.Page, animated: false);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException) { unavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_continueLifetime, lifetime)) _continueLifetime = null;
+            if (Current())
+            {
+                next.IsEnabled = true;
+                next.Text = CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts");
+                if (unavailable)
+                {
+                    const string id = "creation-gear-saved-next-unavailable";
+                    if (!_basketBody.Children.OfType<Label>().Any(x => x.AutomationId == id))
+                    {
+                        var feedback = NativeTheme.Body(CreationFlowStrings.Get("Gear.NextUnavailable", "Your equipment is saved. Try Continue again."), NativeTheme.Muted);
+                        feedback.AutomationId = id;
+                        _basketBody.Add(feedback);
+                    }
+                }
+            }
+        }
     }
 
     private void AddAuthority(CharacterCreationGearInteractionState state)
@@ -558,6 +625,8 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private bool _loading = true;
     private bool _submitted;
     private bool _saving;
+    private CancellationTokenSource? _forwardLifetime;
+    private bool _nextStepUnavailable;
     private Button? _confirm;
     private Label? _confirmationStatus;
     private ActivityIndicator? _saveProgress;
@@ -588,6 +657,14 @@ public sealed class CreationGearPreviewPage : NativePageBase
         Content = new ScrollView { Content = _body };
     }
 
+    protected override void OnDisappearing()
+    {
+        // Navigation cancels only the read preparing the next step, never the
+        // already-submitted durable purchase.
+        _forwardLifetime?.Cancel();
+        base.OnDisappearing();
+    }
+
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken ct)
     {
         _ready = false;
@@ -610,7 +687,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
     {
         // Keep the issued, possibly scrolled confirmation controls stable while
         // saving. A changed account/runner must still hide the private preview.
-        if (_saving && Coordinator.CanDisplayCreationPurchase(_original)) return;
+        if ((_saving || _forwardLifetime is not null) && Coordinator.CanDisplayCreationPurchase(_original)) return;
         if (_saveProgress is { } previousProgress)
             previousProgress.IsVisible = previousProgress.IsRunning = false;
         _confirm = null;
@@ -634,11 +711,17 @@ public sealed class CreationGearPreviewPage : NativePageBase
         if (_receipt is { } receipt)
         {
             AddReceipt(receipt);
-            _body.Add(NativeTheme.NavigationRow(
-                _copy["GearPreview.Back"],
-                _copy["GearPreview.Reopen"],
-                () => Navigation.PopAsync(),
-                automationId: "creation-gear-reopen"));
+            Button next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts"));
+            next.AutomationId = "creation-gear-continue-next";
+            next.IsEnabled = CanContinueSaved();
+            long savedAppearance = CaptureAppearanceGeneration();
+            next.Clicked += async (_, _) =>
+            {
+                if (ReferenceEquals(_confirm, next) && IsCurrentAppearanceGeneration(savedAppearance))
+                    await RunAsync(() => ContinueToNextAsync(savedAppearance));
+            };
+            _confirm = next;
+            _body.Add(next);
             _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-gear-preview-details"));
             return;
         }
@@ -654,7 +737,12 @@ public sealed class CreationGearPreviewPage : NativePageBase
         Button confirm = NativeTheme.PrimaryButton(_copy["GearPreview.Confirm"]);
         confirm.AutomationId = "creation-gear-confirm";
         confirm.IsEnabled = exact;
-        confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
+        long appearance = CaptureAppearanceGeneration();
+        confirm.Clicked += async (_, _) =>
+        {
+            if (ReferenceEquals(_confirm, confirm) && IsCurrentAppearanceGeneration(appearance))
+                await RunAsync(ConfirmAsync);
+        };
         _confirm = confirm;
         _body.Add(confirm);
         Label authority = NativeTheme.Body(
@@ -714,7 +802,10 @@ public sealed class CreationGearPreviewPage : NativePageBase
 
     private async Task ConfirmAsync()
     {
-        if (_submitted || !_ready || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+        long appearance = CaptureAppearanceGeneration();
+        if (_submitted || !_ready || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
         _submitted = true;
         _ready = false;
         _failure = null;
@@ -751,7 +842,9 @@ public sealed class CreationGearPreviewPage : NativePageBase
                 || !Coordinator.CanDisplayCreationPurchase(_original))
             {
                 _failure = CreationFlowStrings.Get("Purchases.SavedReopen", "Saved. Reopen the character to refresh this view.");
+                return;
             }
+            await ContinueToNextAsync(appearance);
         }
         finally
         {
@@ -760,31 +853,82 @@ public sealed class CreationGearPreviewPage : NativePageBase
         }
     }
 
+    private bool CanContinueSaved() => _receipt is not null
+        && Coordinator.CanDisplayCreationPurchase(_original) && Coordinator.State.Profile?.Created == false;
+
+    private async Task ContinueToNextAsync(long appearance)
+    {
+        if (_forwardLifetime is not null || !CanContinueSaved()) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => IsCurrentAppearanceGeneration(appearance) && CanContinueSaved()
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        _nextStepUnavailable = false;
+        if (_confirm is { } next)
+        {
+            next.IsEnabled = false;
+            next.Text = CreationFlowStrings.Get("Gear.OpeningNext", "Opening contacts…");
+        }
+        if (_confirmationStatus is { } status)
+            status.Text = CreationFlowStrings.Get("Gear.OpeningNext", "Opening contacts…");
+        try
+        {
+            var continuation = await Coordinator.PrepareCreationAfterGearPageAsync(
+                _gear, _original, _prepared, _receipt!, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (continuation is null || !Coordinator.IsCreationCatalogDisplayCurrent(continuation.Display))
+            { _nextStepUnavailable = true; return; }
+            var page = continuation.Page;
+            await navigation.PushAsync(page, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(page))) navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { if (Current()) _nextStepUnavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            if (!_saving) Refresh();
+        }
+    }
+
     private void AddReceipt(CharacterCreationGearReceipt receipt)
     {
         VerticalStackLayout content = new() { Spacing = 6 };
         content.Add(NativeTheme.Eyebrow(_copy["GearPreview.Persisted"]));
-        if (_failure is not null) content.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
+        if (_nextStepUnavailable) content.Add(NativeTheme.Body(
+            CreationFlowStrings.Get("Gear.NextUnavailable", "Your equipment is saved. Contacts could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted));
+        else if (_failure is not null) content.Add(NativeTheme.Body(_failure, NativeTheme.Muted));
         _technicalDetails.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
         _technicalDetails.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
         _technicalDetails.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
         content.Add(NativeTheme.Metric(_copy["Gear.BasketCost"], Nuyen(receipt.BasketCost)));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-workspace-revision", receipt.WorkspaceRevision));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-saved-revision", receipt.SavedRevision));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-resources-draft-revision", receipt.ResourcesDraftRevision));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-draft-revision", receipt.DraftRevision));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-line-count", receipt.LineCount));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-basket-cost", receipt.BasketCost));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-remaining-nuyen", receipt.RemainingNuyen));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-raw-character-xml-digest", receipt.RawCharacterXmlDigest));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-resources-draft-digest", receipt.ResourcesDraftDigest));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-command-digest", receipt.CommandDigest));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-preview-digest", receipt.PreviewDigest));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-draft-digest", receipt.DraftDigest));
-        _technicalDetails.Add(ExactValue("creation-gear-receipt-digest", receipt.ReceiptDigest));
+        _technicalDetails.Add(CreateReceiptDetails(receipt));
         Border card = NativeTheme.Card(content);
         card.AutomationId = "creation-gear-confirm-receipt";
         _body.Add(card);
+    }
+
+    internal static View CreateReceiptDetails(CharacterCreationGearReceipt receipt)
+    {
+        var details = new VerticalStackLayout { Spacing = 6, AutomationId = "creation-gear-receipt-details" };
+        details.Add(ExactValue("creation-gear-receipt-workspace-revision", receipt.WorkspaceRevision));
+        details.Add(ExactValue("creation-gear-receipt-saved-revision", receipt.SavedRevision));
+        details.Add(ExactValue("creation-gear-receipt-resources-draft-revision", receipt.ResourcesDraftRevision));
+        details.Add(ExactValue("creation-gear-receipt-draft-revision", receipt.DraftRevision));
+        details.Add(ExactValue("creation-gear-receipt-line-count", receipt.LineCount));
+        details.Add(ExactValue("creation-gear-receipt-basket-cost", receipt.BasketCost));
+        details.Add(ExactValue("creation-gear-receipt-remaining-nuyen", receipt.RemainingNuyen));
+        details.Add(ExactValue("creation-gear-receipt-raw-character-xml-digest", receipt.RawCharacterXmlDigest));
+        details.Add(ExactValue("creation-gear-receipt-resources-draft-digest", receipt.ResourcesDraftDigest));
+        details.Add(ExactValue("creation-gear-receipt-command-digest", receipt.CommandDigest));
+        details.Add(ExactValue("creation-gear-receipt-preview-digest", receipt.PreviewDigest));
+        details.Add(ExactValue("creation-gear-receipt-draft-digest", receipt.DraftDigest));
+        details.Add(ExactValue("creation-gear-receipt-digest", receipt.ReceiptDigest));
+        return details;
     }
 
     private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";

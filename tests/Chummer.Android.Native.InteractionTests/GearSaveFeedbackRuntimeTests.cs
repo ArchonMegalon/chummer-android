@@ -161,11 +161,12 @@ internal static partial class AfterRunAuthorityHarness
                 probe.UiThread = Environment.CurrentManagedThreadId;
                 var page = new CreationGearPreviewPage(runtime.Coordinator, probe, runtime.Presenter,
                     prepared, AndroidSurfaceStrings.Resolve(), original);
+                var navigation = new NavigationPage(page);
+                var window = new Window(navigation);
                 var type = typeof(CreationGearPreviewPage);
                 void Render() => type.GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                await (Task)type.GetMethod("PrepareForAppearanceRefreshAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(page, [CancellationToken.None])!;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                 Render();
                 var button = body.Children.OfType<Button>().Single(row => row.AutomationId == "creation-gear-confirm");
                 var authority = body.Children.OfType<Label>().Single(row => row.AutomationId == "creation-gear-confirm-authority");

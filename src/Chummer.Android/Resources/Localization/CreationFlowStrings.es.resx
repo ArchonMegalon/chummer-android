@@ -2168,4 +2168,8 @@
   <data name="Resources.ContinueNext" xml:space="preserve"><value>Continuar al equipo</value></data>
   <data name="Resources.OpeningNext" xml:space="preserve"><value>Abriendo equipo…</value></data>
   <data name="Resources.NextUnavailable" xml:space="preserve"><value>Tu presupuesto está guardado. No se pudo abrir el equipo. Pulsa Continuar de nuevo; no se guardará dos veces.</value></data>
+  <data name="Gear.ContinueNext" xml:space="preserve"><value>Continuar a contactos</value></data>
+  <data name="Gear.SkillsRequired" xml:space="preserve"><value>Tu equipo está guardado. Guarda tus habilidades para calcular los puntos de contacto.</value></data>
+  <data name="Gear.OpeningNext" xml:space="preserve"><value>Abriendo contactos…</value></data>
+  <data name="Gear.NextUnavailable" xml:space="preserve"><value>Tu equipo está guardado. No se pudieron abrir los contactos. Pulsa Continuar de nuevo; no se guardará dos veces.</value></data>
 </root>
