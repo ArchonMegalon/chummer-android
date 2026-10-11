@@ -1153,43 +1153,44 @@ internal static partial class AfterRunAuthorityHarness
                         .Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
                     var page = new CreationSkillsPage(runtime.Coordinator, state);
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
-                    var plus = MinimalVisible(page).OfType<Button>().Single(x =>
-                        x.AutomationId == $"creation-skills-{key}-increase");
-                    var minus = MinimalVisible(page).OfType<Button>().Single(x =>
-                        x.AutomationId == $"creation-skills-{key}-decrease");
-                    var card = (VerticalStackLayout)plus.Parent.Parent;
+                    var slider = MinimalVisible(page).OfType<CreationIntegerSlider>().Single(x =>
+                        x.AutomationId == $"creation-skills-slider-{key}");
+                    var card = (VerticalStackLayout)slider.Parent;
                     var feedback = card.Children.OfType<Label>().Single(x =>
                         x.AutomationId == $"creation-skills-{key}-feedback");
                     var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
                     var rows = body.Children.ToArray();
                     CreationSkillsPhoneDraft Draft() => (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
                         .GetField("_draft", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(page)!;
-                    async Task Click(Button button) => await JoinIssuedPageAsync(ui.BeginAsyncVoid(() =>
-                        ((IButtonController)button).SendClicked()));
+                    async Task Move(int target)
+                    {
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = target));
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                    }
                     Require(!feedback.IsVisible, "Untouched group has a spurious error.");
-                    await Click(plus);
+                    await Move(1);
                     Require(Draft().Groups.Single(x => x.GroupId == group.GroupId).Rating == 1
                         && !feedback.IsVisible, "Legal group increase did not update its rating.");
-                    await Click(plus);
+                    await Move(2);
                     string accepted = JsonSerializer.Serialize(Draft().Groups);
                     Require(Draft().Preview!.SkillGroupPointBudget.Remaining == 0,
                         "The second group point did not consume Core's exact budget.");
-                    await Click(plus);
+                    await Move(3);
                     Require(rows.SequenceEqual(body.Children) && feedback.IsVisible
                         && feedback.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.GroupBudgetExceeded)
                         && feedback.TextColor == NativeTheme.Danger
-                        && JsonSerializer.Serialize(Draft().Groups) == accepted && plus.IsEnabled,
+                        && JsonSerializer.Serialize(Draft().Groups) == accepted && slider.IsEnabled,
                         "Rejected group increase must explain Core's refusal beside the unchanged controls/draft.");
-                    Require(card.Children.IndexOf(feedback) == card.Children.IndexOf((View)plus.Parent) + 2
-                        && card.Children[card.Children.IndexOf(feedback) - 1] is Slider,
+                    Require(card.Children.IndexOf(feedback) == card.Children.IndexOf(slider) + 2
+                        && ReferenceEquals(card.Children[card.Children.IndexOf(feedback) - 1], slider.RatingScale),
                         "The denial moved away from the tapped group controls.");
-                    await Click(minus);
+                    await Move(1);
                     Require(Draft().Groups.Single(x => x.GroupId == group.GroupId).Rating == 1
                         && !feedback.IsVisible && rows.SequenceEqual(body.Children),
                         "A valid correction did not clear the row error/update its rating in place.");
                     owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA);
                     accepted = JsonSerializer.Serialize(Draft().Groups);
-                    await Click(plus);
+                    await Move(2);
                     Require(JsonSerializer.Serialize(Draft().Groups) == accepted,
                         "A stale owner transition admitted a retained group action.");
                     RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
@@ -1198,7 +1199,7 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { System.Globalization.CultureInfo.CurrentUICulture = culture; }
         });
-        Console.WriteLine("PASS skill groups: EN/DE/ES real Core +/−, budget refusal beside control, stable rows, correction, owner ABA, no durable mutation");
+        Console.WriteLine("PASS skill groups: EN/DE/ES real Core slider, budget refusal beside control, stable rows, correction, owner ABA, no durable mutation");
     }
 
     internal static async Task RunCreationSkillsReviewFeedbackAsync(string contentRoot)

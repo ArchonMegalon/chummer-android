@@ -421,6 +421,7 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="SettingsDiagnosticsRetry" xml:space="preserve"><value>Diagnose-Auswahl erneut speichern</value></data>
   <data name="SettingsDiagnosticsAutomatic" xml:space="preserve"><value>Automatische technische Berichte</value></data>
   <data name="SettingsDiagnosticsSwitchDetail" xml:space="preserve"><value>Änderungen gelten sofort. Ausschalten löscht noch nicht gesendete Berichte.</value></data>
-  <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Ziehe den Regler oder nutze − und +. Tippe auf ein Attribut für Karma-Optionen.</value></data>
+  <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Ziehe den Regler. Graue Werte sind nicht verfügbar. Tippe auf ein Attribut für Karma-Optionen.</value></data>
+  <data name="CreationRatingUnavailable" xml:space="preserve"><value>Mit der aktuellen Verteilung nicht verfügbar</value></data>
   <data name="CreationKarmaOptions" xml:space="preserve"><value>Karma-Optionen</value></data>
 </root>

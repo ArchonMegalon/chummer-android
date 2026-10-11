@@ -253,19 +253,6 @@ public sealed class CreationSkillsPage : NativePageBase
             card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
             string feedbackKey = $"{source.Kind}-{Token(source.SourceSkillId)}";
-            HorizontalStackLayout controls = new() { Spacing = 8 };
-            Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
-                "Common.Decrease",
-                "−"));
-            minus.IsEnabled = selected is { IsNativeLanguage: false }
-                && selected.Rating > _draft.MinimumRating(source);
-            BindRatingAdjustment(minus, state, feedbackKey, () => _draft.WithSkill(source, -1), () => _draft.Groups,
-                () => CurrentSelection() is { IsNativeLanguage: false } value && value.Rating > _draft.MinimumRating(source));
-            Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
-                "Common.Increase",
-                "+"));
-            BindRatingAdjustment(plus, state, feedbackKey, () => _draft.WithSkill(source, 1), () => _draft.Groups, () => true);
-            controls.Add(minus); controls.Add(plus);
             if (source.CanBeNativeLanguage)
             {
                 Button native = NativeTheme.SecondaryButton(selected?.IsNativeLanguage == true
@@ -276,9 +263,8 @@ public sealed class CreationSkillsPage : NativePageBase
                         ? _draft.Skills.Where(item => item.SourceSkillId != source.SourceSkillId).ToArray()
                         : _draft.WithSkill(source, 0, native: true),
                     _draft.Groups);
-                controls.Add(native);
+                card.Add(native);
             }
-            card.Add(controls);
             AddRatingSlider(card, state, feedbackKey,
                 SkillCatalogStrings.SkillName(source.Kind, source.SourceSkillId, source.Name),
                 () => CurrentSelection()?.Rating ?? 0,
@@ -375,20 +361,6 @@ public sealed class CreationSkillsPage : NativePageBase
             card.Add(detail);
             AddTalentGrant(card, _draft.MinimumRating(source));
             string feedbackKey = $"group-{Token(source.GroupId)}";
-            HorizontalStackLayout controls = new() { Spacing = 8 };
-            Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
-                "Common.Decrease",
-                "−"));
-            minus.IsEnabled = selected?.Rating > _draft.MinimumRating(source);
-            BindRatingAdjustment(minus, state, feedbackKey, () => _draft.Skills, () => _draft.WithGroup(source, -1),
-                () => _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating > _draft.MinimumRating(source));
-            Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
-                "Common.Increase",
-                "+"));
-            BindRatingAdjustment(plus, state, feedbackKey, () => _draft.Skills, () => _draft.WithGroup(source, 1), () => true);
-            minus.AutomationId = $"creation-skills-{feedbackKey}-decrease";
-            plus.AutomationId = $"creation-skills-{feedbackKey}-increase";
-            controls.Add(minus); controls.Add(plus); card.Add(controls);
             AddRatingSlider(card, state, feedbackKey, SkillCatalogStrings.GroupName(source.Name),
                 () => _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating ?? 0,
                 () => (_draft.MinimumRating(source), state.Authority.MaxSkillGroupRatingCreate, true),
@@ -483,50 +455,6 @@ public sealed class CreationSkillsPage : NativePageBase
         card.Add(feedback);
     }
 
-    private void BindRatingAdjustment(Button button, CharacterCreationSkillsState state, string feedbackKey,
-        Func<IReadOnlyList<CharacterCreationSkillAllocation>> skills,
-        Func<IReadOnlyList<CharacterCreationSkillGroupAllocation>> groups, Func<bool> enabled)
-    {
-        long render = _renderGeneration;
-        long appearance = CaptureAppearanceGeneration();
-        void Update() => button.IsEnabled = enabled();
-        Update();
-        _projectionUpdates.Add(Update);
-        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() =>
-        {
-            bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
-                && Coordinator.IsCreationSkillsDraftDisplayCurrent(state) && _draft.HasPreparedState(state);
-            if (!button.IsEnabled || !Current()) return Task.FromResult(false);
-            var requestedSkills = skills().ToArray();
-            var requestedGroups = groups().ToArray();
-            _ratingFeedbackKey = feedbackKey;
-            _ratingFeedback = [];
-            try
-            {
-                bool adopted = _draft.TryPreviewPrepared(state, requestedSkills, requestedGroups, out var blockers);
-                _ratingFeedback = blockers.Count > 0 ? blockers
-                    : adopted ? [] : [CharacterCreationSkillsBlockers.AuthorityUnavailable];
-                _blockers = _ratingFeedback;
-                // Rebuild only for native-language/specialization shape changes. A refusal
-                // stays beside the tapped control, without rebuilding the long
-                // catalog or moving its feedback outside the current viewport.
-                return Task.FromResult(adopted && !_ratingShapeChecks.All(check => check()));
-            }
-            catch (Exception error) when (error is not OutOfMemoryException)
-            {
-                if (!Current()) return Task.FromResult(false);
-                _blockers = [CharacterCreationSkillsBlockers.AuthorityUnavailable];
-                _ratingFeedback = _blockers;
-                return Task.FromResult(false);
-            }
-            finally
-            {
-                if (Current())
-                    foreach (var update in _projectionUpdates) update();
-            }
-        });
-    }
-
     private void AddRatingSlider(VerticalStackLayout card, CharacterCreationSkillsState state,
         string feedbackKey, string label, Func<int> current,
         Func<(int Minimum, int Maximum, bool Enabled)> range,
@@ -559,7 +487,8 @@ public sealed class CreationSkillsPage : NativePageBase
                     return Task.FromResult(false);
                 }
                 return Task.FromResult(refresh);
-            }));
+            }), target => target == current() || _draft.CanSelectPrepared(state, skills(target),
+                changedGroups?.Invoke(target) ?? groups()), () => _draft.Preview ?? (object)state);
         slider.DragStarted += (_, _) => dragging = Current();
         slider.DragCompleted += async (_, _) =>
         {
@@ -571,6 +500,7 @@ public sealed class CreationSkillsPage : NativePageBase
         };
         _projectionUpdates.Add(slider.UpdateProjection);
         card.Add(slider);
+        card.Add(slider.RatingScale);
     }
 
     private async Task PreviewAsync(

@@ -473,63 +473,68 @@ internal static partial class AfterRunAuthorityHarness
                 ((IButtonController)specialJump!).SendClicked();
                 Require(target is null, "Detached special points entry still navigates.");
                 int inlineInitial = state.Attributes.Single(item => item.AttributeId == "EDG").Current;
-                Button Inline(string direction) => MinimalVisible(page).OfType<Button>().Single(item =>
-                    item.AutomationId == "creation-attributes-inline-" + direction + "-edg");
+                Slider Inline() => MinimalVisible(page).OfType<Slider>().Single(item =>
+                    item.AutomationId == "creation-attributes-slider-edg");
+                async Task Move(Slider control, int targetValue)
+                {
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => control.Value = targetValue));
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                }
                 string InlineValue() => MinimalVisible(page).OfType<Label>().Single(item =>
                     item.AutomationId == "creation-attributes-open-edg-value").Text;
-                var retainedInline = Inline("increase");
+                var retainedInline = Inline();
                 var retainedRows = ((VerticalStackLayout)scroll.Content!).Children.ToArray();
                 var retainedValue = MinimalVisible(page).OfType<Label>().Single(item =>
                     item.AutomationId == "creation-attributes-open-edg-value");
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)retainedInline).SendClicked()));
+                await Move(retainedInline, inlineInitial + 1);
                 Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
                     "The attributes list must allocate Edge without opening a nested editor.");
-                Require(ReferenceEquals(Inline("increase"), retainedInline)
+                Require(ReferenceEquals(Inline(), retainedInline)
                     && retainedRows.SequenceEqual(((VerticalStackLayout)scroll.Content!).Children)
                     && MinimalVisible(page).OfType<Label>().Contains(retainedValue)
                     && MinimalVisible(page).OfType<Label>().Single(x =>
                         x.AutomationId == "creation-attributes-budget-special-remaining").Text
                         == (state.SpecialPointBudget.Remaining - 1).ToString("0.##", CultureInfo.CurrentCulture)
-                    && SemanticProperties.GetDescription(retainedInline.Parent!.Parent!)
+                    && SemanticProperties.GetDescription(retainedInline.Parent!.Parent!.Parent!)
                         .Contains((inlineInitial + 1).ToString(CultureInfo.CurrentUICulture), StringComparison.Ordinal),
                     "An accepted point must update values, budgets and accessibility without rebuilding the native list.");
                 MinimalRender(page);
                 // At the metatype cap MAUI suppresses the disabled native
                 // event entirely; otherwise the detached guard returns inline.
-                ((IButtonController)retainedInline).SendClicked();
+                retainedInline.Value = inlineInitial + 2;
                 await Task.Yield();
                 Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
-                    "A detached inline stepper replayed a point.");
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Inline("decrease")).SendClicked()));
+                    "A detached inline slider replayed a point.");
+                await Move(Inline(), inlineInitial);
                 Require(InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
-                    "Inline minus failed to return the exact special point.");
-                var stablePlus = Inline("increase");
-                var stableMinus = Inline("decrease");
+                    "Slider decrease failed to return the exact special point.");
+                var stablePlus = Inline();
+                var stableMinus = Inline();
                 for (int repeat = 0; repeat < 2; repeat++)
                 {
-                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)stablePlus).SendClicked()));
+                    await Move(stablePlus, inlineInitial + 1);
                     Require(InlineValue() == (inlineInitial + 1).ToString(CultureInfo.InvariantCulture),
                         "Reused + did not bind the newly displayed allocation.");
-                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)stableMinus).SendClicked()));
-                    Require(ReferenceEquals(Inline("increase"), stablePlus) && ReferenceEquals(Inline("decrease"), stableMinus)
+                    await Move(stableMinus, inlineInitial);
+                    Require(ReferenceEquals(Inline(), stablePlus) && ReferenceEquals(Inline(), stableMinus)
                         && InlineValue() == inlineInitial.ToString(CultureInfo.InvariantCulture),
                         "Consecutive accepted adjustments replaced controls or replayed an old allocation.");
                 }
                 var pageDraft = (CreationAttributesPhoneDraft)typeof(CreationAttributesPage).GetField("_draft",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
                 int navigationDepth = page.Navigation.NavigationStack.Count;
-                Button Karma(string direction) => MinimalVisible(page).OfType<Button>().Single(item =>
-                    item.AutomationId == "creation-attributes-inline-karma-" + direction + "-bod");
+                Slider Karma() => MinimalVisible(page).OfType<Slider>().Single(item =>
+                    item.AutomationId == "creation-attributes-slider-karma-bod");
                 Button KarmaToggle() => MinimalVisible(page).OfType<Button>().Single(item =>
                     item.AutomationId == "creation-attributes-open-bod");
-                Require(!MinimalVisible(page).OfType<Button>().Any(item =>
-                    item.AutomationId == "creation-attributes-inline-karma-increase-bod"),
-                    "Karma options must start folded, not crowd out the point steppers.");
+                Require(!MinimalVisible(page).OfType<Slider>().Any(item =>
+                    item.AutomationId == "creation-attributes-slider-karma-bod"),
+                    "Karma options must start folded, not crowd out the point sliders.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)KarmaToggle()).SendClicked()));
-                Require(page.Navigation.NavigationStack.Count == navigationDepth && Karma("increase").IsEnabled,
+                Require(page.Navigation.NavigationStack.Count == navigationDepth && Karma().IsEnabled,
                     "Opening Karma must stay on the same attributes page.");
                 int initialBody = pageDraft.Attribute(state, "BOD")!.Current;
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Karma("increase")).SendClicked()));
+                await Move(Karma(), initialBody + 1);
                 Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody + 1
                     // Detached previews own their blocker collections; compare
                     // every budget value, not the arrays' object identities.
@@ -537,20 +542,20 @@ internal static partial class AfterRunAuthorityHarness
                     && JsonSerializer.Serialize(pageDraft.SpecialBudget(state)) == JsonSerializer.Serialize(state.SpecialPointBudget)
                     && pageDraft.KarmaBudget(state).Remaining < state.CreationKarmaBudget.Remaining,
                     "In-page Karma must adopt Core's result without spending normal or special points.");
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)Karma("decrease")).SendClicked()));
+                await Move(Karma(), initialBody);
                 Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody
                     && JsonSerializer.Serialize(pageDraft.KarmaBudget(state)) == JsonSerializer.Serialize(state.CreationKarmaBudget),
                     "In-page Karma minus must restore the exact Core budget.");
-                var hiddenKarma = Karma("increase");
+                var hiddenKarma = Karma();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)KarmaToggle()).SendClicked()));
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)hiddenKarma).SendClicked()));
+                await Move(hiddenKarma, initialBody + 1);
                 Require(pageDraft.Attribute(state, "BOD")!.Current == initialBody,
                     "A folded Karma control must not apply a retained action.");
                 var compactRemaining = MinimalVisible(page).OfType<Label>().Single(item =>
                     item.AutomationId == "creation-attributes-budget-normal-remaining");
                 Require(compactRemaining.FontAttributes.HasFlag(FontAttributes.Bold) && compactRemaining.FontSize >= 24,
                     "Compact budget must retain a readable bold remaining-point value.");
-                Console.WriteLine("PASS flat attributes: compact budgets, in-page Karma +/-, separate pools and folded-action rejection: " + method);
+                Console.WriteLine("PASS flat attributes: compact budgets, in-page Karma slider, separate pools and folded-action rejection: " + method);
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 var draft = new CreationAttributesPhoneDraft();
                 draft.Bind(state, coordinator.State);
@@ -918,8 +923,8 @@ internal static partial class AfterRunAuthorityHarness
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
             var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
             var rows = body.Children.ToArray();
-            var plus = MinimalVisible(page).OfType<Button>().Single(x =>
-                x.AutomationId == "creation-attributes-inline-increase-mag");
+            var slider = MinimalVisible(page).OfType<Slider>().Single(x =>
+                x.AutomationId == "creation-attributes-slider-mag");
             var value = MinimalVisible(page).OfType<Label>().Single(x =>
                 x.AutomationId == "creation-attributes-open-mag-value");
             string initial = value.Text;
@@ -931,11 +936,12 @@ internal static partial class AfterRunAuthorityHarness
                 var owner = owners.Current;
                 owners.Set(ContactsOwnerB); owners.Set(owner);
             }
-            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value += 1));
+            await ui.DrainDispatchedAsyncVoidAsync();
             probe.BeforeRead = null;
             Require(probe.LoadCalls + probe.PreviewCalls == reads && probe.ConfirmCalls == 0,
                 "Local attribute editing must not read the store or save.");
-            Require(rows.SequenceEqual(body.Children) && plus.Text == "+"
+            Require(rows.SequenceEqual(body.Children) && slider.IsEnabled
                 && value.Text == (outcome == "ready"
                     ? (int.Parse(initial, CultureInfo.InvariantCulture) + 1).ToString(CultureInfo.InvariantCulture) : initial),
                 "Cached attribute controls lost values, layout or lifetime/owner fencing: " + outcome);

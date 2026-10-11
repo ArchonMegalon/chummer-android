@@ -30,7 +30,19 @@ internal static partial class AfterRunAuthorityHarness
                 await inputUi.DrainDispatchedAsyncVoidAsync();
                 Require(current == 1 && slider.Value == 1 && changes == 2,
                     "Refused slider value replayed instead of returning to the accepted integer.");
-                Console.WriteLine("PASS integer slider snapping and refusal: one edit per input, no replay");
+                int probes = 0;
+                object version = new();
+                var scale = new CreationIntegerSlider("scale-cache", "Rating", () => current,
+                    () => (0, 6, true), _ => Task.CompletedTask, value => { probes++; return value <= 2; }, () => version);
+                Require(probes == 7 && scale.RatingScale.Children.Count == 7, "Scale omitted its complete 0–6 range.");
+                scale.UpdateProjection(); scale.UpdateProjection();
+                Require(probes == 7, "Unchanged scale replayed speculative rule calculations.");
+                version = new();
+                scale.UpdateProjection();
+                Require(probes == 14, "A changed draft failed to invalidate its affordances.");
+                Require(scale.RatingScale.Children.OfType<Label>().Single(x => x.Text == "6").TextDecorations
+                    == TextDecorations.Strikethrough, "Unavailable maximum is not visibly distinct.");
+                Console.WriteLine("PASS integer slider/scale: rounding, refusal, cached affordances and invalidation");
             });
         await VerifySkillRatingCacheAsync(contentRoot);
         using var ui = new IssuedPageUiContext();
@@ -66,11 +78,24 @@ internal static partial class AfterRunAuthorityHarness
                     "Attribute slider did not snap to the accepted integer.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 3));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                var plus = MinimalVisible(page).OfType<Button>().Single(x =>
-                    x.AutomationId == "creation-attributes-inline-increase-bod");
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                Require(!MinimalVisible(page).OfType<Button>().Any(x => x.Text is "+" or "−"),
+                    "Attribute allocation still exposes +/- buttons.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 4));
+                await ui.DrainDispatchedAsyncVoidAsync();
                 Require(body.Value == 4 && draft.NormalBudget(state).Remaining == state.NormalPointBudget.Remaining - 3,
-                    "Slider, + and remaining normal points disagree.");
+                    "Slider and remaining normal points disagree.");
+                Require(state.MaxNumberMaxAttributesCreate == 1, "SETUP: one metatype maximum expected.");
+                var agility = (CreationIntegerSlider)SliderFor("AGI");
+                Label AgilityMax() => agility.RatingScale.Children.OfType<Label>().Single(x =>
+                    x.Text == agility.Maximum.ToString(System.Globalization.CultureInfo.CurrentCulture));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Maximum));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(AgilityMax().TextDecorations == TextDecorations.Strikethrough,
+                    "Spending the one metatype maximum did not grey the other attribute's maximum.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 4));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(AgilityMax().TextDecorations == TextDecorations.None,
+                    "Returning the metatype maximum did not re-enable the other attribute's maximum.");
                 int startingMagic = draft.Attribute(state, "MAG")!.Current;
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => magic.Value = startingMagic + 1));
                 await ui.DrainDispatchedAsyncVoidAsync();
@@ -80,7 +105,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(probe.LoadCalls + probe.PreviewCalls == reads && probe.ConfirmCalls == 0,
                     "Attribute editing performed store/source I/O or an implicit save.");
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
-                Console.WriteLine($"PASS {method} normal/special integer sliders + button: {timing.ElapsedMilliseconds}ms, zero Core I/O");
+                Console.WriteLine($"PASS {method} normal/special integer sliders: {timing.ElapsedMilliseconds}ms, zero Core I/O");
 
                 var allocations = draft.Allocations(state);
                 var local = draft.PreviewPrepared(state, allocations).Value!;
@@ -133,7 +158,8 @@ internal static partial class AfterRunAuthorityHarness
                 var draft = (CreationSkillsPhoneDraft)typeof(CreationSkillsPage)
                     .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
                 var slider = MinimalVisible(page).OfType<Slider>().Single(x => x.AutomationId == "creation-skills-slider-" + key);
-                var plus = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == $"creation-skills-{key}-increase");
+                Require(!MinimalVisible(page).OfType<Button>().Any(x => x.Text is "+" or "−"),
+                    "Skill allocation still exposes +/- buttons.");
                 int reads = probe!.LoadCalls + probe.PreviewCalls;
                 // Local edits must not depend on a slow or failed backing-store preview.
                 probe.BeforePreview = () => throw new IOException("private-preview-unavailable");
@@ -162,34 +188,59 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS active-skill drag 0→1→2: one deferred specialization refresh, zero Core I/O");
                 // The completed drag rebuilt the catalog; only its new controls are current.
                 slider = MinimalVisible(page).OfType<Slider>().Single(x => x.AutomationId == "creation-skills-slider-" + key);
-                plus = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == $"creation-skills-{key}-increase");
+
+                var ratingSlider = (CreationIntegerSlider)slider;
+                Label Tick(int value) => ratingSlider.RatingScale.Children.OfType<Label>().Single(x => x.Text == value.ToString());
+                var otherGroup = MinimalVisible(page).OfType<CreationIntegerSlider>().First(x =>
+                    x.AutomationId.StartsWith("creation-skills-slider-group-", StringComparison.Ordinal)
+                    && !ReferenceEquals(x, slider) && x.Value == 0
+                    && x.RatingScale.Children.OfType<Label>().Any(t => t.Text == "1" && t.TextDecorations == TextDecorations.None));
+                Label OtherOne() => otherGroup.RatingScale.Children.OfType<Label>().Single(x => x.Text == "1");
+                Require(Tick(2).TextDecorations == TextDecorations.None
+                    && Tick(3).TextDecorations == TextDecorations.Strikethrough,
+                    "Group scale does not distinguish affordable 2 from unavailable 3.");
                 var timing = System.Diagnostics.Stopwatch.StartNew();
                 Console.WriteLine("ACTION group slider to 1");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 1.2));
                 await ui.DrainDispatchedAsyncVoidAsync();
                 Require(slider.Value == 1 && draft.Groups.Single(x => x.GroupId == group.GroupId).Rating == 1,
                     "Group slider did not accept an integer Core projection.");
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 2));
+                await ui.DrainDispatchedAsyncVoidAsync();
                 Require(slider.Value == 2 && draft.Preview!.SkillGroupPointBudget.Remaining == 0,
-                    "Group + and slider lost their shared point budget.");
+                    "Group slider lost its point budget.");
+                Require(OtherOne().TextDecorations == TextDecorations.Strikethrough,
+                    "Spending the shared group pool did not grey another group's first point.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 3));
                 await ui.DrainDispatchedAsyncVoidAsync();
                 var feedback = MinimalVisible(page).OfType<Label>().Single(x => x.AutomationId == $"creation-skills-{key}-feedback");
                 Require(slider.Value == 2 && feedback.IsVisible
                     && feedback.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.GroupBudgetExceeded),
                     "Over-budget slider did not reset with an adjacent explanation.");
+                Require(Tick(2).TextDecorations == TextDecorations.None
+                    && Tick(3).TextDecorations == TextDecorations.Strikethrough,
+                    "Budget refusal changed the accepted scale.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 1));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(Tick(2).TextDecorations == TextDecorations.None,
+                    "Returning a group point did not re-enable its affordable value.");
+                Require(OtherOne().TextDecorations == TextDecorations.None,
+                    "Returning a shared group point did not re-enable the other group's first point.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 2));
+                await ui.DrainDispatchedAsyncVoidAsync();
                 Require(probe.LoadCalls + probe.PreviewCalls == reads && probe.ConfirmCalls == 0,
                     "Cached group input performed Core I/O or a save.");
                 Require(!runtime.Coordinator.IsCreationSkillsPreviewCurrent(draft.Preview!)
                     && !runtime.Coordinator.CanDisplayCreationSkillsPreview(draft.Preview!),
                     "A cached skills calculation acquired fresh review/confirmation authority.");
-                Console.WriteLine($"PASS cached group drag/+ and budget denial: {timing.ElapsedMilliseconds}ms, zero Core I/O");
+                Console.WriteLine($"PASS cached group drag and budget denial: {timing.ElapsedMilliseconds}ms, zero Core I/O");
                 string retained = JsonSerializer.Serialize(draft.Groups);
                 if (leave) IssuedPageLifecycle(page, "OnDisappearing");
                 else { var owner = owners.Current; owners.Set(ContactsOwnerB); owners.Set(owner); }
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 1));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)plus).SendClicked()));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 0));
+                await ui.DrainDispatchedAsyncVoidAsync();
                 Require(JsonSerializer.Serialize(draft.Groups) == retained && slider.Value == 2,
                     "Departure or owner A→B→A revived a cached rating action.");
                 probe.BeforePreview = null;

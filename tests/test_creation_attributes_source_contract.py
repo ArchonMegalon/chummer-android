@@ -15,8 +15,8 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertIn("karma: true", entry)
         self.assertIn("karma ? 0 : delta, karma ? delta : 0", entry)
         self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", entry)
-        self.assertIn("_draft.Allocations(state).SequenceEqual(expected)", entry)
-        self.assertIn("(!karma || _expandedAttributeId == attribute.AttributeId)", entry)
+        self.assertIn("_draft.HasPreparedState(state)", entry)
+        self.assertIn("(karma && _expandedAttributeId != attribute.AttributeId)", entry)
         refresh = entry.split("protected override void Refresh()", 1)[1].split("protected override", 1)[0]
         self.assertLess(refresh.index("AddAttributeGroup("), refresh.index("AddLimits(state)"))
         self.assertLess(refresh.index("AddReviewAction(state)"), refresh.index("AddPendingDraft(state.PendingDraft)"))
@@ -38,10 +38,12 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
 
     def test_accepted_inline_points_update_existing_controls_only_after_core(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
-        inline = page.split("private void AddInlineAdjustment(", 1)[1].split("private void AddReviewAction(", 1)[0]
+        inline = page.split("private void AddAttributeSlider(", 1)[1].split("private void AddReviewAction(", 1)[0]
         self.assertIn("RunWithConditionalRefreshAsync", inline)
         self.assertLess(inline.index("_draft.TryAdopt("), inline.index("!TryUpdateProjection(state)"))
-        self.assertIn("!accepted || hadBlockers || !TryUpdateProjection(state)", inline)
+        self.assertIn("accepted && !TryUpdateProjection(state)", inline)
+        self.assertNotIn("NativeTheme.SecondaryButton", inline)
+        self.assertIn("controls.Add(slider.RatingScale)", inline)
         self.assertIn("pair.First.DisableReasons.SequenceEqual(pair.Second.DisableReasons)", inline)
         self.assertNotIn("_body.Clear()", inline)
         self.assertIn("foreach (var update in _projectionUpdates) update();", inline)
@@ -144,7 +146,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
 
     def test_inline_steppers_and_sliders_use_core_draft_without_store_reads(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
-        inline = page.split("private void AddInlineAdjustment(", 1)[1].split("private bool TryUpdateProjection(", 1)[0]
+        inline = page.split("private void AddAttributeSlider(", 1)[1].split("private bool TryUpdateProjection(", 1)[0]
         for marker in ("_draft.PreviewPrepared(state, allocations)",
                        "Coordinator.IsCreationAttributesDraftDisplayCurrent(state)",
                        "_draft.HasPreparedState(state)", "_draft.TryAdopt(",

@@ -1,10 +1,20 @@
 # Creation allocation sliders — bounded implementation and acceptance
 
-Ordinary/special attributes, active/knowledge skills and skill groups share
-integer sliders with their existing precise +/- controls. Accepted values and
+Ordinary/special attributes, active/knowledge skills and skill groups use
+integer sliders without separate +/- controls on the current allocation pages.
+The expandable attribute Karma allocation uses a separate slider for that pool.
+Accepted values and
 remaining budgets update from one detached Core rules snapshot. A refused value
 returns to the last accepted rating with an adjacent explanation. Ordinary,
 special, skill-group, knowledge and Karma budgets remain separate.
+
+The full rules-projected range stays visible, even when its upper ratings cannot
+currently be selected. Unavailable ticks are grey and struck through, with an
+accessible unavailable description; the current number is bold. Affordances
+use the same Core draft evaluator without adopting speculative values. A changed
+allocation invalidates the scales, including shared budgets and another
+attribute already reaching its cap. Unchanged projections reuse cached ticks.
+Fixed grants and native-language rows cannot be reduced below their rules floor.
 
 The snapshot is a read-only local draft, not authorization to save. Leaving the
 page retires it. Changed owner (including A→B→A), workspace or revision makes old
@@ -26,7 +36,7 @@ until a drag finishes, so the first point does not interrupt the gesture.
 - Existing affected special-attribute, specialization and review/save cases,
   plus localized source contracts, were retained and adjusted for local drafts.
 
-## Physical-device scope
+## Earlier physical-device scope (before slider-only refinement)
 
 A separate local SDK-test Release/Internal APK was checked on an API 36 ARM64
 phone. One synthetic Priority/Human/Mundane runner reached Body 4 and Edge 3;
@@ -53,6 +63,12 @@ passed the local producer, fresh consumer, native compile and allocation-handler
 checks. Android consumes those actual packages and retained receipt, not the
 private SDK-test package identities. The unchanged rule-data files were checked.
 Preview192 is the intended candidate; this is not a Play availability claim.
+
+The first unsigned Preview192 output was marked NOT_FOR_RELEASE before signing
+or upload when the user requested slider-only controls. It must not be reused
+for this refinement. Version192 has not been consumed; Play191 remains the last
+observed Internal version. The new slider-only rendering requires its own native
+smoke; earlier phone observations above are not acceptance of that rendering.
 
 The initial fresh restore fetched the public NuGet variant of ILLink10.0.12.
 Its bytes differ from the SDK-shipped variant used for Preview191, even though
