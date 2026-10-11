@@ -132,7 +132,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 194 is the latest [observed Internal availability](../play/evidence/preview194-internal-observation.json),
+Preview 195 is the latest [observed Internal availability](../play/evidence/preview195-internal-observation.json),
+released on 11 October at 19:26 Europe/Vienna. Gear Save now opens Contacts
+automatically; if Core requires saved Skills, Continue opens that editor with a
+localized explanation. Saved Gear offers read-only continuation, and Back skips
+the consumed confirmation. PR702 passed 13 actual-Core/MAUI forward cases, five
+Gear save/recovery cases, 52 focused source/localization checks with 12 subtests
+and affected compilation. The same-tree German130% API36 x64 Release/Internal
+SDK-test covered both missing-Skills recovery and one Resources save followed
+by one Gear save, automatic Contacts, Back and new-process read-only Continue.
+One draft advanced5/5->6/6->7/7; one receipt each,50000nuyen and9Contacts points
+remained; no Contacts mutation. Raw character, saved Skills and six other runners
+were unchanged; all seven cold files equaled post-save bytes. Local ARM64 build,
+isolated original-key signing, independent keyless certificate/payload checks
+and one scoped upload/readback passed. Slider-only192 and forward steps193/194
+remain. Physical Play195 is not verified. Slow startup/save, earlier emulator
+failures, full Creation/Career/Origin acceptance, original FirstBook uncertainty
+and diagnostic-contract portability remain open.195 is consumed; this evidence
+update needs no rebuild or re-upload.
+
+Preview 194's [observed Internal availability](../play/evidence/preview194-internal-observation.json) was
 released on 11 October at 18:01 Europe/Vienna. Resources Save now opens Gear
 automatically; failed next-step reads offer read-only continuation without
 another save, and Back skips the consumed confirmation. PR 700 passed nine
