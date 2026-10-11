@@ -6,6 +6,99 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    internal static async Task RunCompactAttributeReviewAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, creationAttributes: true, productionCreationOverview: true);
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                attributeTalent: "Mystic Adept", attributeTalentRank: "C");
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var coordinator = runtime.Coordinator;
+            var state = coordinator.LoadCreationAttributes().Value!;
+            var draft = new CreationAttributesPhoneDraft();
+            draft.Bind(state, coordinator.State);
+            var culture = CultureInfo.CurrentUICulture;
+            try
+            {
+                foreach (bool spend in new[] { false, true })
+                {
+                    if (spend)
+                    {
+                        var special = draft.ChangedAllocations(state, "MAG", 1, 0)!;
+                        Require(draft.TryAdopt(state, coordinator.State,
+                            coordinator.PreviewCreationAttributes(state.Binding, special), special), "SETUP: Magic point rejected.");
+                        var karma = draft.ChangedAllocations(state, "BOD", 0, 1)!;
+                        Require(draft.TryAdopt(state, coordinator.State,
+                            coordinator.PreviewCreationAttributes(state.Binding, karma), karma), "SETUP: Karma point rejected.");
+                    }
+                    var allocations = draft.Allocations(state);
+                    var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
+                    Require(preview.Attributes.Any(x => !x.IsEnabled), "SETUP: disabled attribute missing.");
+                    if (spend) Require(preview.Attributes.Any(x => x.KarmaCost > 0)
+                        && preview.Attributes.Any(x => x.PriorityPointsSpent > 0), "SETUP: actual costs missing.");
+                    foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+                    {
+                        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                        var review = new CreationAttributesPreviewPage(coordinator, preview, allocations);
+                        MinimalRender(review);
+                        foreach (var attribute in preview.Attributes)
+                        {
+                            string token = CreationAttributesPage.Token(attribute.AttributeId);
+                            var row = MinimalVisible(review).Single(x => x.AutomationId == "creation-attributes-preview-attribute-" + token);
+                            Require(row is Grid, "Attribute review must use compact rows, not a tall card per attribute.");
+                            var grid = (Grid)row;
+                            var value = MinimalVisible(row).OfType<Label>().Single(x => x.AutomationId == "creation-attributes-preview-value-" + token);
+                            Require(value.Text == attribute.Current.ToString(CultureInfo.InvariantCulture)
+                                && value.FontAttributes.HasFlag(FontAttributes.Bold) && value.FontSize >= 28
+                                && Grid.GetRow(value) == 0 && Grid.GetColumn(value) == 1,
+                                "Compact review lost a Core value or moved it below the attribute name.");
+                            var costs = MinimalVisible(row).OfType<Label>().SingleOrDefault(x =>
+                                x.AutomationId == "creation-attributes-preview-cost-" + token);
+                            var expected = new List<string>();
+                            if (attribute.PriorityPointsSpent != 0) expected.Add(
+                                CreationAllocationStrings.Get(attribute.Category == CharacterCreationAttributeCategories.Special
+                                    ? "AttributeAllocation.SpecialSpent" : "Common.PriorityPoints", "missing")
+                                + " " + attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture));
+                            if (attribute.KarmaLevels != 0) expected.Add(CreationAllocationStrings.Get("Common.KarmaLevels", "missing")
+                                + " " + attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture));
+                            if (attribute.KarmaCost != 0) expected.Add(CreationAllocationStrings.Get("Common.KarmaCost", "missing")
+                                + " " + attribute.KarmaCost.ToString(CultureInfo.InvariantCulture));
+                            Require(expected.Count == 0 ? costs is null : costs?.Text == string.Join(" · ", expected),
+                                "Compact review omitted an actual cost or repeated zero-cost rows in " + locale);
+                            Require(grid.HeightRequest < 0 && (costs is null || costs.MaxLines == -1),
+                                "Compact review must grow for translated text and large fonts.");
+                        }
+                        foreach (var budget in new[] { preview.NormalPointBudget, preview.SpecialPointBudget, preview.CreationKarmaBudget })
+                        {
+                            string id = "creation-attributes-preview-budget-" + CreationAttributesPage.Token(budget.BudgetId);
+                            var row = MinimalVisible(review).Single(x => x.AutomationId == id);
+                            Require(row is Grid && MinimalVisible(row).OfType<Label>().Count() == 3,
+                                "Review budget must have one name/value row and one wrapping detail, not three stacked metrics.");
+                            var value = MinimalVisible(row).OfType<Label>().Single(x => x.AutomationId == id + "-remaining");
+                            Require(value.Text == budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture)
+                                && value.FontAttributes.HasFlag(FontAttributes.Bold), "Compact budget lost exact remaining points.");
+                            string description = SemanticProperties.GetDescription(row);
+                            Require(description.Contains(CreationAttributesPage.FormatBudget(budget.Total, budget.Unit), StringComparison.Ordinal)
+                                && description.Contains(CreationAttributesPage.FormatBudget(budget.Used, budget.Unit), StringComparison.Ordinal)
+                                && description.Contains(CreationAttributesPage.FormatBudget(budget.Remaining, budget.Unit), StringComparison.Ordinal),
+                                "Compact budget accessibility lost total, used or remaining values.");
+                        }
+                        Require(MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-confirm").IsEnabled,
+                            "Compacting the valid review disabled its save action.");
+                        MinimalRequireNoMachineValues(review);
+                        RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                        Console.WriteLine($"PASS compact attribute review: {locale}, costs={spend}, exact values/budgets, no render mutation");
+                    }
+                }
+            }
+            finally { CultureInfo.CurrentUICulture = culture; }
+        });
+    }
+
     internal static async Task RunAttributeSaveFeedbackAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();

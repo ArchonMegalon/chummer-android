@@ -1190,6 +1190,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.FinalDraftLedgers",
             "Points after saving")));
+        VerticalStackLayout budgets = new() { Spacing = 14 };
         foreach (var (budget, canonicalBudgetId) in new[]
                  {
                      (_preview.NormalPointBudget, CharacterCreationBudgetIds.NormalAttributes),
@@ -1197,21 +1198,31 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                      (_preview.CreationKarmaBudget, CharacterCreationBudgetIds.Karma)
                  })
         {
-            VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId), 18));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Total", "Total"),
-                CreationAttributesPage.FormatBudget(budget.Total, budget.Unit)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Used", "Used"),
-                CreationAttributesPage.FormatBudget(budget.Used, budget.Unit)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
+            string name = BuildPageUiProjection.BudgetLabel(budget, canonicalBudgetId);
+            Grid row = ReviewRow($"creation-attributes-preview-budget-{CreationAttributesPage.Token(budget.BudgetId)}");
+            row.Add(NativeTheme.Title(name, 18));
+            Label remaining = NativeTheme.Title(budget.Remaining.ToString("0.##", CultureInfo.CurrentCulture), 28);
+            remaining.AutomationId = row.AutomationId + "-remaining";
+            remaining.TextColor = budget.IsExact ? NativeTheme.Text : NativeTheme.Danger;
+            row.Add(remaining, 1);
+            Label detail = NativeTheme.Body(
+                CreationAllocationStrings.Get("Common.Remaining", "Remaining") + " · "
+                + CreationAllocationStrings.Get("Common.Used", "Used") + " "
+                + CreationAttributesPage.FormatBudget(budget.Used, budget.Unit) + " / "
+                + CreationAttributesPage.FormatBudget(budget.Total, budget.Unit)
+                + (budget.IsExact ? string.Empty : " · "
+                    + CreationAllocationStrings.Get("Common.BudgetNotExact", "Budget is not exact")),
+                budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger);
+            row.Add(detail, 0, 1);
+            Grid.SetColumnSpan(detail, 2);
+            SemanticProperties.SetDescription(row, CreationAllocationStrings.Format(
+                "Common.BudgetSemanticDescription", "{0}. Total {1}. Used {2}. Remaining {3}.",
+                name, CreationAttributesPage.FormatBudget(budget.Total, budget.Unit),
+                CreationAttributesPage.FormatBudget(budget.Used, budget.Unit),
                 CreationAttributesPage.FormatBudget(budget.Remaining, budget.Unit)));
-            Border border = NativeTheme.Card(card);
-            border.AutomationId = $"creation-attributes-preview-budget-{CreationAttributesPage.Token(budget.BudgetId)}";
-            _body.Add(border);
+            budgets.Add(row);
         }
+        _body.Add(NativeTheme.Card(budgets));
     }
 
     private void AddAttributes()
@@ -1219,35 +1230,59 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
             "AttributesPreview.TypedAllocations",
             "Your attributes")));
+        VerticalStackLayout attributes = new() { Spacing = 12 };
         foreach (CharacterCreationAttributeProjection attribute in _preview.Attributes)
         {
-            VerticalStackLayout card = new() { Spacing = 5 };
-            card.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(attribute.AttributeId), 18));
+            string token = CreationAttributesPage.Token(attribute.AttributeId);
+            Grid row = ReviewRow($"creation-attributes-preview-attribute-{token}");
+            Label name = NativeTheme.Title(CreationAttributesPage.AttributeLabel(attribute.AttributeId), 18);
+            name.VerticalOptions = LayoutOptions.Center;
+            row.Add(name);
             _technicalDetails.Add(NativeTheme.Metric(
                 CreationAllocationStrings.Get("Common.TypedId", "Typed ID"),
                 attribute.AttributeId));
             Label current = NativeTheme.Title(attribute.Current.ToString(CultureInfo.InvariantCulture), 28);
-            current.AutomationId = $"creation-attributes-preview-value-{CreationAttributesPage.Token(attribute.AttributeId)}";
+            current.AutomationId = $"creation-attributes-preview-value-{token}";
             SemanticProperties.SetDescription(current, CreationAttributesPage.AttributeLabel(attribute.AttributeId)
                 + " · " + CreationAllocationStrings.Get("Common.Value", "Value")
                 + " " + attribute.Current.ToString(CultureInfo.InvariantCulture));
-            card.Add(current);
-            card.Add(NativeTheme.Metric(
-                attribute.Category == CharacterCreationAttributeCategories.Special
+            row.Add(current, 1);
+            // Keep every Core-projected attribute, including disabled ones, but
+            // do not make the user scroll through three zero-cost metrics each.
+            // Costs are presentation only; confirmation still uses the unchanged
+            // immutable preview and exact allocation list below.
+            List<string> costs = [];
+            if (attribute.PriorityPointsSpent != 0)
+                costs.Add((attribute.Category == CharacterCreationAttributeCategories.Special
                     ? CreationAllocationStrings.Get("AttributeAllocation.SpecialSpent", "Special points spent")
-                    : CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
-                attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels"),
-                attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric(
-                CreationAllocationStrings.Get("Common.KarmaCost", "Karma cost"),
-                attribute.KarmaCost.ToString(CultureInfo.InvariantCulture)));
-            Border border = NativeTheme.Card(card);
-            border.AutomationId = $"creation-attributes-preview-attribute-{CreationAttributesPage.Token(attribute.AttributeId)}";
-            _body.Add(border);
+                    : CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"))
+                    + " " + attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture));
+            if (attribute.KarmaLevels != 0)
+                costs.Add(CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels")
+                    + " " + attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture));
+            if (attribute.KarmaCost != 0)
+                costs.Add(CreationAllocationStrings.Get("Common.KarmaCost", "Karma cost")
+                    + " " + attribute.KarmaCost.ToString(CultureInfo.InvariantCulture));
+            if (costs.Count > 0)
+            {
+                Label detail = NativeTheme.Body(string.Join(" · ", costs), NativeTheme.Muted);
+                detail.AutomationId = $"creation-attributes-preview-cost-{token}";
+                row.Add(detail, 0, 1);
+                Grid.SetColumnSpan(detail, 2);
+            }
+            attributes.Add(row);
         }
+        _body.Add(NativeTheme.Card(attributes));
     }
+
+    private static Grid ReviewRow(string automationId) => new()
+    {
+        AutomationId = automationId,
+        ColumnDefinitions = new ColumnDefinitionCollection { new(GridLength.Star), new(GridLength.Auto) },
+        RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Auto) },
+        ColumnSpacing = 12,
+        RowSpacing = 2
+    };
 
     private void AddBlockers()
     {
