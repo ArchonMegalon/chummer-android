@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 185 is the latest [observed Internal availability](../play/evidence/preview185-internal-observation.json),
+Preview 186 is the latest [observed Internal availability](../play/evidence/preview186-internal-observation.json),
+released on 11 October at 02:53 Europe/Vienna. Creation Basics now hides technical
+profile IDs, workspace revisions/digests and the developer warning while retaining
+human profile names. Sections and build-method names are localized in English,
+German and Spanish. Source-book settings remain read-only; existing rules and
+saved-state guards are unchanged. Actual MAUI/Core red/green regression, three
+regional locales and seven invalid-boundary checks passed. An API36 x64
+Release/Internal test-package smoke at 130% font reopened the same Priority
+runner/Basics after verified process death, with four saved files unchanged.
+The version-only delta explicitly reuses that bounded product evidence. Local
+ARM64 build, original-key signing, independent keyless verification and one
+Internal upload/readback passed. **Physical Play186 installation, startup
+improvement and complete Creation/Career/live manuscript acceptance remain
+unverified.** The original uncertain FirstBook successor remains fenced; no
+paid replay occurred. Version186 is consumed; previous artifacts remain.
+
+Preview 185's [observed Internal availability](../play/evidence/preview185-internal-observation.json) was
 released on 11 October at 01:41 Europe/Vienna. Creation now distinguishes saved,
 readable Origin chapters from an unavailable successor, in English, German and
 Spanish. No generation, acknowledgement, next-choice admission or rule behavior
@@ -149,8 +165,9 @@ is consumed; previous artifacts and evidence remain.
 Physical follow-up at 01:48 Vienna: the phone's Play update failed twice with
 "Can't update Chummer", installer status1010 and nearby delivery response2.
 The second attempt followed reconciliation of the first terminal failure and a
-fresh Play Store process/listing; there was no third attempt. Root cause is not
-established. The phone retained Play184 and its exact accepted2447-word chapter;
+fresh Play Store process/listing. Later matching-device Console evidence preceded
+one third bounded attempt, which failed identically; there was no fourth retry.
+Root cause is not established. The phone retained Play184 and its exact accepted2447-word chapter;
 no data clear, sideload, account/security change or replacement upload occurred.
 This is **not** a physical185 pass, and Console availability does not override it.
 
