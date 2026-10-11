@@ -45,3 +45,18 @@ benchmark, private-file equality proof or complete Creation/Career acceptance.
 
 Package integration and Play delivery are recorded separately when completed;
 this document alone grants neither package nor publication authority.
+
+## Exact package intake
+
+Core runtime c3dcf15e / package recipe c2fa9c64 and Presentation seal21a4a070
+passed the local producer, fresh consumer, native compile and allocation-handler
+checks. Android consumes those actual packages and retained receipt, not the
+private SDK-test package identities. The unchanged rule-data files were checked.
+Preview192 is the intended candidate; this is not a Play availability claim.
+
+The initial fresh restore fetched the public NuGet variant of ILLink10.0.12.
+Its bytes differ from the SDK-shipped variant used for Preview191, even though
+both report the same upstream source commit. That incidental tool change was
+excluded: the existing exact SDK package was retained and both project restores
+passed offline with their resulting locks. The Release build must use that same
+retained cache; neither variant was relabeled under the other checksum.
