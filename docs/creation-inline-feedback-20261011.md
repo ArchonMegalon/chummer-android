@@ -36,7 +36,28 @@ Private local packet: `origin-minimal-20261011.Th4VMn78`.
 Managed final pass: `managed-03.log`; Android compile: `native-compile-01.log`.
 Physical phone was inspected read-only; it was on the Career sheet, so this
 does not establish the exact cause of the user's particular rejected group tap.
-Rendered changed-build smoke and distribution are separate acceptance steps.
+Rendered API36 smoke passed on the changed Release/Internal x64 SDK-test APK:
+`3f0577e3fb2af067ffea73cd0d1895aae483af1f82fbf4446354808ae3513fe5`
+(37,232,261 bytes). Source `ecd8897872dc76663a571ea879d06eaffcbb26c4`,
+tree `1f135c836328989f69f856511a9b05e637dd7f90`; merging the already-tested
+base main into the review branch changed no tree bytes. This separate
+`com.myexternalbrain.chummer.readvalidation156` application uses only the SDK
+test certificate, not the upload key; the installed APK digest matched.
+
+In the retained synthetic Priority runner, actual native Firearms-group taps
+staged 0→1→2. The third increase left rating 2 and showed the localized group
+budget refusal directly beneath the same controls, without changing their
+position. Decrease returned to 1 and removed the budget refusal. The separate
+native-language reminder correctly remained because that choice was unfinished.
+All seven persisted synthetic workspaces stayed byte-identical; no save was
+requested. Native captures 11–20 and before/after hashes are in the packet.
+Capture 15 failed to obtain an idle hierarchy; it performed no additional tap;
+fresh capture 16 established the result before the next deliberate action.
+
+The emulator required one SystemUI Wait at boot. Cold startup remains slow;
+this is not startup-performance evidence. Test-app IPv4/IPv6 egress was blocked;
+no provider/account operation or diagnostic delivery was attempted. The user's
+physical Play installation was not changed. Distribution is a separate step.
 
 ## Remaining workflow audit
 
