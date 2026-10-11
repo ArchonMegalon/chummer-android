@@ -41,3 +41,26 @@ All seven retained synthetic workspace files remained byte-identical. Owned
 emulator and temporary app egress rules were cleaned up; user phone unchanged.
 This is not a native forward-navigation pass or startup-performance result.
 The private packet's `NATIVE_RESULT.md` preserves the exact scope and next check.
+
+## Subsequent physical ARM64 acceptance
+
+The same product source was built locally for a separately labelled SDK-test
+package on an API36 ARM64 phone; the installed Play189 app was not replaced.
+Producer `417518b7` differs from `07c57884` only in this evidence document.
+APK SHA-256 `ef6540a74784b6d3584d312f61e9e517a12f21390c463d6f81894d5d90fed364`,
+36,699,160 bytes; installed base digest and SDK-test certificate checked.
+Build passed with zero warnings/errors. No proof instrumentation or account link.
+
+Actual native actions created one synthetic Priority runner, selected Human,
+Mundane and ranks Heritage A / Talent E / Attributes B / Skills C / Resources D.
+One explicit confirmation automatically opened Attributes with 20 normal points,
+9 special points and 25 Karma. No Back to Build or second Continue was needed.
+One Navigate up returned to assignments, not the consumed review page.
+
+The first process was force-stopped and verified absent. A new process restored
+the same single runner; Continue opened Attributes with the identical 20/9/25
+budgets and no allocation. No assignment confirmation was replayed. This proves
+the bounded visible save/reopen route, not private-file byte equality, full
+Creation/Career, a native Sum-to-Ten run, or improved startup performance.
+The private packet retains the screenshots/hierarchies and `PHONE_RESULT.md`.
+This is a physical SDK-test sideload result, not a Play release/install receipt.
