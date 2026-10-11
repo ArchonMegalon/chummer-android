@@ -135,12 +135,13 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class SkillsForwardProbe(IOwnerBoundCharacterCreationSkillsService inner) : IOwnerBoundCharacterCreationSkillsService
     {
         public Action? BeforeLoad;
+        public Action? AfterConfirm;
         public int LoadCalls, PreviewCalls, ConfirmCalls;
         public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request)
         { LoadCalls++; BeforeLoad?.Invoke(); return inner.Load(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(OwnerContextStamp owner, CharacterCreationSkillsPreviewRequest request)
         { PreviewCalls++; return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request)
-        { ConfirmCalls++; return inner.Confirm(owner, request); }
+        { ConfirmCalls++; var result = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return result; }
     }
 }

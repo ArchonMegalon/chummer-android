@@ -731,6 +731,11 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
     };
     private CreationSkillsPhoneConfirmResult? _confirmation;
     private readonly Action<CreationSkillsPhoneConfirmResult>? _onConfirmed;
+    private Button? _confirmButton;
+    private bool _saving;
+    private CancellationTokenSource? _forwardPreparation;
+    private bool _nextStepUnavailable;
+    private long _renderGeneration;
 
     internal CreationSkillsPreviewPage(
         RunnerSessionCoordinator coordinator,
@@ -757,6 +762,9 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_saving && Coordinator.CanDisplayCreationSkillsPreview(_preview)) return;
+        _renderGeneration++;
+        _confirmButton = null;
         _body.Clear();
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
@@ -795,6 +803,14 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             () => ReferenceEquals(details, _technicalDetails)
                   && IsCurrentAppearanceGeneration(appearanceGeneration)
                   && Coordinator.CanDisplayCreationSkillsPreview(_preview)));
+    }
+
+    protected override void OnDisappearing()
+    {
+        _confirmButton = null;
+        // Cancel the following read, never an admitted write with an uncertain outcome.
+        _forwardPreparation?.Cancel();
+        base.OnDisappearing();
     }
 
     private void AddBudgets()
@@ -894,6 +910,14 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                 refreshRequired ? NativeTheme.Danger : NativeTheme.Text);
             complete.AutomationId = "creation-skills-confirmed";
             _body.Add(NativeTheme.Card(complete));
+            if (_nextStepUnavailable)
+            {
+                Label failure = NativeTheme.Body(CreationAllocationStrings.Get(
+                    "SkillsPreview.NextUnavailable",
+                    "Skills saved. Qualities could not be loaded. Tap Continue to try loading them again."), NativeTheme.Danger);
+                failure.AutomationId = "creation-skills-next-unavailable";
+                _body.Add(failure);
+            }
             return;
         }
 
@@ -907,14 +931,37 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             "Save skills"));
         confirm.AutomationId = "creation-skills-confirm";
         confirm.IsEnabled = canConfirm;
+        _confirmButton = confirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            _confirmation = await Coordinator.ConfirmCreationSkillsAsync(
-                _preview,
-                _allocations,
-                _groups,
-                _idempotencyKey);
-            _onConfirmed?.Invoke(_confirmation);
+            if (_saving || !ReferenceEquals(_confirmButton, confirm) || !confirm.IsEnabled
+                || !Coordinator.IsCreationSkillsPreviewCurrent(_preview)) return;
+            long appearance = CaptureAppearanceGeneration();
+            long render = _renderGeneration;
+            _saving = true;
+            string label = confirm.Text;
+            confirm.IsEnabled = false;
+            confirm.Text = CreationAllocationStrings.Get("SkillsPreview.Saving", "Saving…");
+            try
+            {
+                _confirmation = await Coordinator.ConfirmCreationSkillsAsync(
+                    _preview, _allocations, _groups, _idempotencyKey);
+                _onConfirmed?.Invoke(_confirmation);
+                if (IsCurrentAppearanceGeneration(appearance))
+                {
+                    confirm.Text = CreationAllocationStrings.Get("SkillsPreview.OpeningQualities", "Opening qualities…");
+                    await ContinueToQualitiesAsync(_confirmation, render, appearance);
+                }
+            }
+            finally
+            {
+                _saving = false;
+                confirm.Text = label;
+                // Retained Save stays disabled. Only the current render owns actions.
+                long currentAppearance = CaptureAppearanceGeneration();
+                if (currentAppearance != appearance && IsCurrentAppearanceGeneration(currentAppearance))
+                    Refresh();
+            }
         });
         _body.Add(confirm);
         Label explicitAction = NativeTheme.Body(
@@ -985,12 +1032,75 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         border.AutomationId = "creation-skills-confirm-receipt";
         _body.Add(border);
 
+        if (_confirmation.Blockers.Count == 0 && refreshed.PendingDraft?.CharacterEffectsApplied == false)
+        {
+            var confirmation = _confirmation;
+            long render = _renderGeneration;
+            long appearance = CaptureAppearanceGeneration();
+            Button next = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+                "SkillsPreview.ContinueQualities", "Continue to qualities"));
+            next.AutomationId = "creation-skills-continue-qualities";
+            next.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                next.IsEnabled = false;
+                next.Text = CreationAllocationStrings.Get("SkillsPreview.OpeningQualities", "Opening qualities…");
+                await ContinueToQualitiesAsync(confirmation, render, appearance);
+            });
+            _body.Add(next);
+        }
         Button back = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
             "Common.BackToBuild",
             "Back to Build"));
         back.AutomationId = "creation-skills-back-to-build";
         back.Clicked += async (_, _) => await RunAsync(BackToBuildAsync);
         _body.Add(back);
+    }
+
+    private async Task ContinueToQualitiesAsync(CreationSkillsPhoneConfirmResult confirmation,
+        long render, long appearance)
+    {
+        if (confirmation is not { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, RefreshedState: { PendingDraft.CharacterEffectsApplied: false } }
+            || confirmation.Blockers.Count != 0) return;
+        INavigation navigation = Navigation;
+        Page[] stack = navigation.NavigationStack.ToArray();
+        bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(_confirmation, confirmation)
+            && Coordinator.IsCreationSkillsReceiptCurrent(receipt)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+
+        var original = Coordinator.State;
+        using var lifetime = new CancellationTokenSource();
+        _forwardPreparation = lifetime;
+        _nextStepUnavailable = false;
+        try
+        {
+            var loaded = await Coordinator.LoadCreationQualitiesForDisplayAsync(original, lifetime.Token);
+            bool ready = await Task.Run(() => loaded is
+                    { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
+                && CreationQualitiesPhoneAuthority.IsReady(state, original), lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (!ready)
+            {
+                _nextStepUnavailable = true;
+                return;
+            }
+            var next = new CreationQualitiesPage(Coordinator, original, loaded);
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
+                navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            if (Current()) _nextStepUnavailable = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_forwardPreparation, lifetime)) _forwardPreparation = null;
+        }
     }
 
     private async Task BackToBuildAsync()
