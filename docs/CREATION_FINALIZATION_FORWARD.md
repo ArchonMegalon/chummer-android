@@ -68,6 +68,15 @@ SystemUI boot ANR, slow initial restoration and an early test-driver Back before
 the keyboard appeared remain recorded. They are not startup-performance passes.
 One selector mismatch caused no tap. No user phone or provider was used.
 
-A signed ARM64 AAB and Play delivery remain pending for this change. This is not
-a complete Creation/Career/Origin, physical-installation, startup-performance,
-tablet or general-release claim.
+## Internal delivery
+
+Android706 merged normally as `3d651f1d69f5e96d73fb328987594a9318adb7fc`,
+tree `0179f2ff4ea72069273369dbc101a7eb55cc1781`, identical to the reviewed tree.
+The local ARM64/Internal AAB passed source/content/proof/hygiene checks,
+isolated original-key signing and independent keyless signature/payload checks.
+Signed SHA256: `28bbfaeecf4b586daca0afaa03e3da7705183a7784a397e84524de622a24f87a`.
+One authorized upload and final confirmation produced Preview197, observed
+Available to internal testers at12 October00:50 Europe/Vienna. See the
+[exact release record](../play/evidence/preview197-internal-observation.json).
+Physical Play197 installation is not yet verified. This is not a complete
+Creation/Career/Origin, startup-performance, tablet or general-release claim.
