@@ -71,3 +71,50 @@ Owned temporary device captures were removed after byte comparison with private
 local copies. No new build, signature or upload was needed; version 184 remains
 unchanged. This supplements the observation-time limits in the earlier
 [Internal availability record](preview184-internal-observation.json).
+
+## Later observation: full chapter exports and another cold reopen
+
+On 11 October 2026, 00:08–00:14 UTC, the same Play-installed Preview 184
+exported the retained chapter through its normal EPUB and HTML controls and
+Android's Save As picker. Both files were saved under new names in Downloads;
+existing exports were not replaced. The app confirmed that the book was saved,
+not published. Pulled files and the files remaining on the phone have identical
+hashes:
+
+| Export | Bytes | SHA-256 |
+| --- | ---: | --- |
+| EPUB | 1,953,790 | `924295b82cd8350f7221735dc9de37cc8227f23acd9087a657951f78d306efe3` |
+| HTML | 2,611,217 | `066d3b7b01164580d1811d752b832568cc43cba60c4533474814d6b30defd93c` |
+
+Both exports contain the complete accepted chapter: 40 paragraphs, 17,196
+characters and 2,447 words. Extracted prose exactly matches the accepted text
+digest above; this is not a summary or a placeholder. Each export contains the
+same 1,943,844-byte, 1536×1024 PNG, matching the retained illustration receipt:
+`67e5099774aac3917c0f7a147eb2be108f2828b99a10306b32123d1b54de951e`.
+The EPUB ZIP integrity and first, uncompressed mimetype entry passed; its chapter
+references the embedded image. HTML contains the full prose and inline image.
+The unresolved successor is not included. This is **one complete chapter, not a
+completed multi-chapter manuscript**.
+
+After export, force-stop was verified and relaunch created a different process.
+A Play-owned flexible-update dialog interrupted startup; it was dismissed
+without another update request. The same selected runner restored, and normal
+reader entry again exposed the exact full chapter text and visible illustration.
+An initially observed two-pixel image fragment was viewport clipping: scrolling
+revealed the full image. It was not reproduced as an image-rendering defect.
+
+The private `physical-origin-export184-20261011.lDNws1Xg` packet retains the
+exports, bounded verification scripts, screenshots and hierarchies:
+
+- Export verification SHA-256:
+  `51031dfdb38ce36688a020d76b18f314f44e7f86507105304ba12966fc1b06b7`.
+- Physical result SHA-256:
+  `89b211a6b88e5c90ac309b04959902f04b0ece5de0ba76473a7070d98807b6cb`.
+
+No provider write, reading acknowledgement, module decision or Career
+finalization occurred. The original uncertain-generation fence remained
+byte-identical. No private app-file equality or startup-speed improvement is
+claimed. No new build, signing or Play upload was needed. The phone remains on
+184; these results do not qualify Preview 185 or close the complete live-book
+acceptance gap. Temporary device captures were removed only after comparison
+with retained private copies; the two requested exports remain in Downloads.

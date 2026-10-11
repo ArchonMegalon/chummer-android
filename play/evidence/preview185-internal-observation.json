@@ -93,6 +93,21 @@
     "accountOrSecuritySettingsChanged": false,
     "previousAppPreserved": "Play184, existing process and exact accepted2447-word chapter reopened; this is not a185 test"
   },
+  "deliveryDiagnosticFollowup": {
+    "consoleObservedAtUtc": "2026-10-10T23:56:13Z",
+    "releaseAndArtifactActive": true,
+    "matchingApi36DeviceApkOffered": true,
+    "deviceApkDownloadSizeDisplayed": "34.6 MB",
+    "consoleDownloadMetadata": "Device download request and archive response returned HTTP200; response body not retained, no completed-download or APK-integrity claim",
+    "reviewReceiptSha256": "f0170e9f50f3e74a696bb3a35a127ef8ad16bad6b5a85ebeb8173c1ebdb718e3",
+    "subsequentPhoneAttempt": "One further bounded attempt after fresh matching-device Console evidence; same terminal Can't update Chummer message",
+    "totalUpdateButtonDispatches": 3,
+    "thirdFailureHierarchySha256": "eb30f33741663bb7aec6767d617af58289aa62e05c503771bf1d039dbbc5d520",
+    "installedVersionCode": 184,
+    "limits": "Console and phone entitlement/delivery paths differ. Root cause remains unestablished; no fourth retry, data clear, sideload or account/security changes",
+    "laterColdLaunch": "Play flexible-update dialog dismissed without another update dispatch; existing184 chapter exported and reopened, not a185 acceptance result",
+    "priorVersionObservation": "play/evidence/preview184-physical-observation.md"
+  },
   "physicalPlayInstallationVerified": false,
   "playAppSigningCertificateObserved": false,
   "realTesterDiagnosticsIntakeVerified": false,
