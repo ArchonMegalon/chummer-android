@@ -53,8 +53,21 @@ debug connection went offline before removing the separate synthetic test app;
 cleanup remains pending. Retained private observations are not a startup timing
 benchmark, private-file equality proof or complete Creation/Career acceptance.
 
-Package integration and Play delivery are recorded separately when completed;
-this document alone grants neither package nor publication authority.
+Package integration and Play delivery are recorded separately below; this
+document alone grants neither package nor publication authority.
+
+## Slider-only native scope
+
+The final exact reviewed Android tree passed all four affected actual-Core/MAUI
+suites and native compile with zero warnings/errors, plus 18 source contracts.
+A separate x64 Release/Internal SDK-test APK passed the bounded API36 emulator
+route: attribute 1→6, active skill 0→2, group 0→2, unavailable group ratings 3–6
+grey/struck, other-group scales invalidated when the shared pool was spent and
+an adjacent refusal on an over-budget drag. No separate +/- buttons appeared.
+No Save was issued and all seven synthetic workspace files remained byte-identical.
+The owned emulator and temporary test-app egress rules were cleaned up.
+One SystemUI boot ANR occurred before the route; this is not a startup-speed
+benchmark. Managed tests cover save/cold-store and owner/revision/lifetime fences.
 
 ## Exact package intake
 
@@ -62,13 +75,16 @@ Core runtime c3dcf15e / package recipe c2fa9c64 and Presentation seal21a4a070
 passed the local producer, fresh consumer, native compile and allocation-handler
 checks. Android consumes those actual packages and retained receipt, not the
 private SDK-test package identities. The unchanged rule-data files were checked.
-Preview192 is the intended candidate; this is not a Play availability claim.
+The final slider-only producer is merged Android e57e02f2, tree1f96ec2c.
 
 The first unsigned Preview192 output was marked NOT_FOR_RELEASE before signing
 or upload when the user requested slider-only controls. It must not be reused
-for this refinement. Version192 has not been consumed; Play191 remains the last
-observed Internal version. The new slider-only rendering requires its own native
-smoke; earlier phone observations above are not acceptance of that rendering.
+for this refinement. A fresh local ARM64/Internal build from the merged
+slider-only tree was signed with the existing upload key and independently
+verified. [Preview192](../play/evidence/preview192-internal-observation.json) is
+Available to internal testers, observed 11 October at 16:28 Europe/Vienna.
+Version192 is now consumed. Physical Play192 installation remains unverified;
+the earlier phone observations are not acceptance of the final rendering.
 
 The initial fresh restore fetched the public NuGet variant of ILLink10.0.12.
 Its bytes differ from the SDK-shipped variant used for Preview191, even though
