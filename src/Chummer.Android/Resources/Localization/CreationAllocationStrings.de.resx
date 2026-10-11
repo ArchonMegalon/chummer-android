@@ -48,6 +48,8 @@
   <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Attribute speichern</value></data>
   <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Speichere die hier angezeigte Auswahl. Dein Runner bleibt in der Erschaffung.</value></data>
   <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Deine Attribute sind gespeichert.</value></data>
+  <data name="AttributesPreview.AlreadySaved" xml:space="preserve"><value>Diese Auswahl ist bereits gespeichert. Gehe zurück, um sie zu ändern.</value></data>
+  <data name="AttributesPreview.BackToAttributes" xml:space="preserve"><value>Zurück zu den Attributen</value></data>
   <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Verbleibendes Erschaffungs-Karma</value></data>
   <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Diese Auswahl ist im Erschaffungsentwurf gespeichert. Schließe die Erschaffung separat ab, um in die Karriere zu wechseln.</value></data>
   <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Punkte nach dem Speichern</value></data>
